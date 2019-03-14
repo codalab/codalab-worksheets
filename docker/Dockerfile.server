@@ -12,20 +12,20 @@ RUN apt-get install -y python-software-properties python-virtualenv software-pro
 RUN apt-get install -y zip
 
 # Install dependencies
-RUN mkdir /opt/codalab-cli
-COPY worker /opt/codalab-cli/worker
-COPY requirements.txt /opt/codalab-cli
-COPY requirements-server.txt /opt/codalab-cli
-COPY setup.sh /opt/codalab-cli
+RUN mkdir /opt/codalab-worksheets
+COPY worker /opt/codalab-worksheets/worker
+COPY requirements.txt /opt/codalab-worksheets
+COPY requirements-server.txt /opt/codalab-worksheets
+COPY setup.sh /opt/codalab-worksheets
 #RUN cd /opt && pip install -r requirements-server.txt
-RUN cd /opt/codalab-cli && ./setup.sh server
+RUN cd /opt/codalab-worksheets && ./setup.sh server
 
 # Install code
-COPY . /opt/codalab-cli
+COPY . /opt/codalab-worksheets
 
-ENV PATH="/opt/codalab-cli/codalab/bin:${PATH}"
+ENV PATH="/opt/codalab-worksheets/codalab/bin:${PATH}"
 ENV CODALAB_HOME=/home/codalab
 
 EXPOSE 2900
 
-ENTRYPOINT ["/opt/codalab-cli/codalab/bin/cl"]
+ENTRYPOINT ["/opt/codalab-worksheets/codalab/bin/cl"]

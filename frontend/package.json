@@ -2,7 +2,7 @@
   "name": "codalab-worksheets",
   "version": "1.0.0",
   "description": "Run reproducible experiments and create executable papers using worksheets.",
-  "repository": "https://github.com/codalab/codalab-cli",
+  "repository": "https://github.com/codalab/codalab-worksheets",
   "author": "CodaLab Team",
   "license": "Apache 2.0",
   "keywords": [],

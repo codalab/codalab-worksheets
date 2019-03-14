@@ -14,7 +14,7 @@ By default, this script runs in dry-run mode, i.e. it prints verbose output
 such as the generated SQL queries but does not make changes to the databases.
 When you're ready to perform the migration, run with the '-f' flag.
 
-This scripts assumes that you are running it from the codalab-cli directory.
+This scripts assumes that you are running it from the codalab-worksheets directory.
 """
 
 import os

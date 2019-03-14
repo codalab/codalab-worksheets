@@ -132,7 +132,7 @@ def UnionCompleter(*completers):
 # TODO: argcomplete does not recognize that an argument following a target_spec might be another target_spec, or
 # TODO: even a command. The argcomplete code is a mess, so this may require some monkey patching/pull requests to
 # TODO: fix, or building our own argument parsing/completion framework (e.g. like aws-cli).
-# TODO: https://github.com/codalab/codalab-cli/issues/223
+# TODO: https://github.com/codalab/codalab-worksheets/issues/223
 class TargetsCompleter(CodaLabCompleter):
     def __call__(self, prefix, action=None, parsed_args=None):
         key, target = cli_util.parse_key_target(prefix)

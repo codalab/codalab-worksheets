@@ -2,7 +2,7 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 
-// See worker.formatting in codalab-cli
+// See worker.formatting in codalab-worksheets
 export function renderDuration(s) {
     // s: number of seconds
     // Return a human-readable string.

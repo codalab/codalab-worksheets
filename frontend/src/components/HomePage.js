@@ -226,7 +226,7 @@ class HomePage extends React.Component<{
                                         {this.renderTableItem(
                                             'REST API Reference',
                                             'Develop your own application against our REST API.',
-                                            'https://github.com/codalab/codalab-cli/blob/master/docs/rest.md',
+                                            'https://github.com/codalab/codalab-worksheets/blob/master/docs/rest.md',
                                         )}
                                         {this.renderTableItem(
                                             'Execution',
