@@ -46,10 +46,9 @@ class BaseRunManager(object):
         raise NotImplementedError
 
     @abstractmethod
-    def get_run(self, uuid):
+    def has_run(self, uuid):
         """
-        Returns the state of the run with the given UUID if it is managed
-        by this RunManager, returns None otherwise
+        Returns True if this run manager is tracking the state of this run.
         """
         raise NotImplementedError
 
@@ -129,18 +128,17 @@ class Reader(object):
             'summarize_file': self.summarize_file,
         }
 
-    def read(self, run_state, path, dep_paths, read_args, reply):
-        dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
+    def read(self, run_state, path, read_args, reply):
         read_type = read_args['type']
         handler = self.read_handlers.get(read_type, None)
         if handler:
-            handler(run_state, path, dep_paths, read_args, reply)
+            handler(run_state, path, read_args, reply)
         else:
             err = (httplib.BAD_REQUEST, "Unsupported read_type for read: %s" % read_type)
             reply(err)
 
     @abstractmethod
-    def get_target_info(self, run_state, path, dep_paths, args, reply_fn):
+    def get_target_info(self, run_state, path, args, reply_fn):
         """
         Calls reply_fn(err, msg, data) with the target_info of the path
         in the msg field, or with err if there is an error
@@ -148,7 +146,7 @@ class Reader(object):
         raise NotImplementedError
 
     @abstractmethod
-    def stream_directory(self, run_state, path, dep_paths, args, reply_fn):
+    def stream_directory(self, run_state, path, args, reply_fn):
         """
         Calls reply_fn(err, msg, data) with the dir contents of the path
         in the data field, or with err if there is an error
@@ -156,7 +154,7 @@ class Reader(object):
         raise NotImplementedError
 
     @abstractmethod
-    def stream_file(self, run_state, path, dep_paths, args, reply_fn):
+    def stream_file(self, run_state, path, args, reply_fn):
         """
         Calls reply_fn(err, msg, data) with the file contents of the path
         in the data field, or with err if there is an error
@@ -164,7 +162,7 @@ class Reader(object):
         raise NotImplementedError
 
     @abstractmethod
-    def read_file_section(self, run_state, path, dep_paths, args, reply_fn):
+    def read_file_section(self, run_state, path, args, reply_fn):
         """
         Calls reply_fn(err, msg, data) with the file section contents of the path
         in the data field, or with err if there is an error
@@ -172,7 +170,7 @@ class Reader(object):
         raise NotImplementedError
 
     @abstractmethod
-    def summarize_file(self, run_state, path, dep_paths, args, reply_fn):
+    def summarize_file(self, run_state, path, args, reply_fn):
         """
         Calls reply_fn(err, msg, data) with the file summary of the path
         in the data field, or with err if there is an error

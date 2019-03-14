@@ -17,6 +17,9 @@ class DependencyKey(object):
     def __hash__(self):
         return hash((self.parent_uuid, self.parent_path))
 
+    def to_dict(self):
+        return generic_to_dict(self)
+
 
 class Dependency(object):
     """
@@ -40,6 +43,9 @@ class Dependency(object):
         self.child_path = child_path
         self.child_uuid = child_uuid
         self.location = location  # Set if local filesystem dependency
+
+    def to_dict(self):
+        return generic_to_dict(self)
 
 
 class BundleInfo(object):
@@ -85,6 +91,14 @@ class BundleInfo(object):
         }  # type: Dict[DependencyKey, Dependency]
         self.location = location  # type: Optional[str] set if local filesystem
 
+    def to_dict(self):
+        dct = generic_to_dict(self)
+        dct['dependencies'] = [v for k,v  in dct['dependencies'].items()]
+        return dct
+
+    def __str__(self):
+        return str(self.to_dict())
+
     @classmethod
     def from_dict(cls, dct):
         return cls(
@@ -119,6 +133,9 @@ class RunResources(object):
         if ":" not in self.docker_image:
             self.docker_image += ":latest"
 
+    def to_dict(self):
+        return generic_to_dict(self)
+
     @classmethod
     def from_dict(cls, dct):
         return cls(
@@ -144,3 +161,33 @@ class WorkerRun(object):
         self.docker_image = docker_image
         self.info = info
         self.state = state
+
+    @classmethod
+    def from_dict(cls, dct):
+        return cls(
+            uuid=dct['uuid'],
+            run_status=dct['run_status'],
+            start_time=dct['start_time'],
+            docker_image=dct['docker_image'],
+            info=dct['info'],
+            state=dct['state'],
+        )
+
+    def to_dict(self):
+        return generic_to_dict(self)
+
+def generic_to_dict(obj):
+    dct = {}
+    if isinstance(obj, dict):
+        iter_dict = obj
+    elif hasattr(obj, '__dict__'):
+        iter_dict = obj.__dict__
+    else:
+        return obj
+    for k, v in iter_dict.items():
+        if isinstance(v, dict) or hasattr(v, '__dict__'):
+            dct[k] = generic_to_dict(v)
+        else:
+            dct[k] = v
+    return dct
+
