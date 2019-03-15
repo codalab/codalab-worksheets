@@ -12,12 +12,8 @@ jobs:
         - docker --version
       install:
         - pip install --upgrade pip docker-compose
-      before_script:
-        - ./docker/service/start-service.sh -i -b
-        - pip install .
-        - cl work localhost::
       script:
-        - ./venv/bin/python test-cli.py --cl-executable codalab/bin/cl default
+        - ./docker/service/start-service.sh -i -b -t
     - stage: style
       language: python
       python: 3.6

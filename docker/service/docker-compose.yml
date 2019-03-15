@@ -83,3 +83,13 @@ services:
     depends_on:
       - bundle-manager
 
+  tests:
+    image: codalab/bundleserver:${CODALAB_VERSION}
+    entrypoint: /opt/codalab-worksheets/venv/bin/python
+    command: /opt/codalab-worksheets/test-cli.py default
+    environment:
+      - CODALAB_HOME=${CODALAB_SERVICE_HOME}
+      - CODALAB_USERNAME=${CODALAB_ROOT_USER}
+      - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+    depends_on:
+      - rest-server

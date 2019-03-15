@@ -8,11 +8,17 @@ set -o pipefail
 
 usage()
 {
-  echo "Starts a full Codalab Worksheets service. Optionally builds docker images for it. If not building local images, 'latest' tags used, otherwise images are built with the 'local-dev' tag and these images are used. [[-b --build: Build docker images first] [-h --help: get usage help]]"
+  echo "Starts a full Codalab Worksheets service. Optionally builds docker images for it. If not building local images, 'latest' tags used, otherwise images are built with the 'local-dev' tag and these images are used. 
+  [
+    [-b --build: Build docker images first]
+    [-t --test: Run tests as well, fail if tests fail]
+    [-h --help: get usage help]
+  ]"
 }
 
 BUILD=0
 INIT=0
+TEST=0
 
 CODALAB_MYSQL_ROOT_PWD=${CODALAB_MYSQL_ROOT_PWD:-mysql_root_pwd}
 
@@ -32,6 +38,8 @@ for arg in "$@"; do
     -b | --build )      BUILD=1
                         ;;
     -i | --init )       INIT=1
+                        ;;
+    -t | --test )       TEST=1
                         ;;
     -h | --help )       usage
                         exit
@@ -72,3 +80,7 @@ docker-compose up -d --no-recreate bundle-manager
 docker-compose up -d --no-recreate frontend
 docker-compose up -d --no-recreate nginx
 docker-compose up -d --no-recreate worker
+
+if [ "$TEST" = "1" ]; then
+  docker-compose up --no-recreate --exit-code-from tests tests
+fi
