@@ -14,8 +14,8 @@ jobs:
         - pip install --upgrade pip docker-compose
       before_script:
         - ./docker/service/start-service.sh -i -b
-        - pip install ./worker
-        - cl-worker --server http://127.0.0.1:2900 --work-dir /home/travis/.codalab/worker-scratch --password-file /home/travis/.codalab/root.password --verbose &
+        - pip install .
+        - cl work localhost::
       script:
         - ./venv/bin/python test-cli.py --cl-executable codalab/bin/cl default
     - stage: style
