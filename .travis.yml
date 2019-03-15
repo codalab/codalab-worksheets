@@ -6,7 +6,7 @@ jobs:
       services:
         - docker
       env:
-        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CI=false CODALAB_SERVICE_HOME=/home/travis/codalab/home/ CODALAB_BUNDLE_STORE=/home/codalab/bundles/ CODALAB_MYSQL_MOUNT=/home/codalab/mysql/
+        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CI=false CODALAB_SERVICE_HOME=/home/travis/codalab/home/ CODALAB_BUNDLE_STORE=/home/travis/codalab/bundles/ CODALAB_MYSQL_MOUNT=/home/travis/codalab/mysql/
       python: 2.7
       before_install:
         - docker --version
