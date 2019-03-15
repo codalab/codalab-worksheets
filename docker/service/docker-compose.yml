@@ -64,5 +64,5 @@ services:
     ports:
       - 80:80
     volumes:
-      - ./files/config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./files/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
