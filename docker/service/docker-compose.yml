@@ -71,3 +71,15 @@ services:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - frontend
+
+  worker:
+    image: codalab/worker:${CODALAB_VERSION}
+    command: --server http://rest-server:2900 --verbose
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - CODALAB_USERNAME=${CODALAB_ROOT_USER}
+      - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+    depends_on:
+      - bundle-manager
+
