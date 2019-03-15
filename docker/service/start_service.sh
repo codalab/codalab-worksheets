@@ -18,9 +18,9 @@ CODALAB_MYSQL_PWD=${CODALAB_MYSQL_PWD:-mysql_pwd}
 CODALAB_ROOT_USER=${CODALAB_ROOT_USER:-codalab}
 CODALAB_ROOT_PWD=${CODALAB_ROOT_PWD:-testpassword}
 
-CODALAB_SERVICE_HOME=${CODALAB_SERVICE_HOME:-/var/lib/codalab/home}
-CODALAB_BUNDLE_STORE=${CODALAB_BUNDLE_STORE:-/var/lib/codalab/bundles}
-CODALAB_MYSQL_MOUNT=${CODALAB_MYSQL_MOUNT:-/var/lib/codalab/mysql}
+CODALAB_SERVICE_HOME=${CODALAB_SERVICE_HOME:-/var/lib/codalab/home/}
+CODALAB_BUNDLE_STORE=${CODALAB_BUNDLE_STORE:-/var/lib/codalab/bundles/}
+CODALAB_MYSQL_MOUNT=${CODALAB_MYSQL_MOUNT:-/var/lib/codalab/mysql/}
 
 
 for arg in "$@"; do
@@ -42,22 +42,26 @@ else
   CODALAB_VERSION=${CODALAB_VERSION:-latest}
 fi
 
+cd docker/service
+
 echo "==> Bringing down old instance of service"
 docker-compose down --remove-orphans
 
-cd docker/service
+mkdir -p $CODALAB_SERVICE_HOME
+mkdir -p $CODALAB_BUNDLE_STORE
+mkdir -p $CODALAB_MYSQL_MOUNT
 
 docker-compose up -d mysql
-docker-compose run --entrypoint='' rest-server bash -c "/opt/codalab-cli/venv/bin/pip/install /opt/codalab-cli && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-cli/codalab/bin/cl config server/engine_url mysql://$MYSQL_USER:$MYSQL_PWD@mysql:3306/codalab_bundles && /opt/codalab-cli/codalab/bin/cl config cli/default_address http://rest-server:2900"
+docker-compose run --entrypoint='' rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://$MYSQL_USER:$MYSQL_PWD@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900x"
 
 if [ "$INIT" = "1" ]; then
-  docker-compose run --entrypoint='' rest-server bash -c "/opt/codalab-cli/venv/bin/pip/install /opt/codalab-cli && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-cli/venv/bin/python /opt/codalab-cli/scripts/create-root-user.py $CODALAB_PWD"
+  docker-compose run --entrypoint='' rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py $CODALAB_PWD"
 fi
 
 docker-compose up -d rest-server
 
 if [ "$INIT" = "1" ]; then
-  docker-compose run --entrypoint='' bundle-manager bash -c "data/bin/wait-for-it.sh rest-server:2900 -- opt/codalab-cli/codalab/bin/cl logout && /opt/codalab-cli/codalab/bin/cl new home && /opt/codalab-cli/codalab/bin/cl new dashboard"
+  docker-compose run --entrypoint='' bundle-manager bash -c "data/bin/wait-for-it.sh rest-server:2900 -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard"
 fi
 
 docker-compose up -d bundle-manager
