@@ -108,6 +108,9 @@ class DockerImageManager:
                         self._docker.images.remove(tag)
                     # if we successfully removed the image also remove its cache entry
                     del self._image_cache[entry_to_remove.digest]
+                except docker.errors.NotFound:
+                    # image doesn't exist anymore for some reason, stop tracking it
+                    del self._image_cache[entry_to_remove.digest]
                 except docker.errors.APIError as err:
                     # Maybe we can't delete this image because its container is still running
                     # (think a run that takes 4 days so this is the oldest image but still in use)

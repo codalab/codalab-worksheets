@@ -174,12 +174,17 @@ class LocalRunManager(BaseRunManager):
                 self._runs[bundle_uuid] = self._run_state_manager.transition(run_state)
 
             # filter out finished runs
-            finished_container_ids = [run.container for run in self._runs.values() if (run.stage == LocalRunStage.FINISHED or run.stage == LocalRunStage.FINALIZING) and run.container_id is not None]
+            finished_container_ids = [
+                run.container
+                for run in self._runs.values()
+                if (run.stage == LocalRunStage.FINISHED or run.stage == LocalRunStage.FINALIZING)
+                and run.container_id is not None
+            ]
             for container_id in finished_container_ids:
                 try:
                     container = self._docker.containers.get(container_id)
                     container.remove(force=True)
-                except docker.errors.NotFound:
+                except (docker.errors.NotFound, docker.errors.NullResource):
                     pass
             self._runs = {k: v for k, v in self._runs.items() if v.stage != LocalRunStage.FINISHED}
 
