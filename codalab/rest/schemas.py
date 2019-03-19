@@ -182,7 +182,7 @@ class BundleSchema(Schema):
     bundle_type = fields.String(
         validate=validate.OneOf({bsc.BUNDLE_TYPE for bsc in BUNDLE_SUBCLASSES})
     )
-    command = fields.String(allow_none=True)
+    command = fields.String(allow_none=True, validate=validate_ascii)
     data_hash = fields.String()
     state = fields.String()
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
