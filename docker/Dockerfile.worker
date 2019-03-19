@@ -1,14 +1,21 @@
 FROM ubuntu:16.04
 MAINTAINER Percy Liang <pliang@cs.stanford.edu>
 
+ENV DEBIAN_FRONTEND noninteractive
+
 # Install dependencies
-RUN apt-get update
-RUN apt-get install -y python-dev python-pip
+RUN apt-get update; apt-get install -y \
+  python-dev \
+  python-pip;
+
 COPY worker/requirements.txt /opt
-RUN pip install -r /opt/requirements.txt
+RUN pip install --upgrade pip; \
+    pip install -r /opt/requirements.txt;
 
 # Install dependencies again
 COPY worker /opt/worker
-RUN pip install -e /opt/worker
+
+RUN pip install --upgrade pip; \
+    pip install -e /opt/worker;
 
 ENTRYPOINT ["cl-worker"]

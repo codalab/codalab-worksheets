@@ -3,13 +3,19 @@ MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update
-RUN apt-get install -y build-essential git
-RUN apt-get install -y libfuse-dev libjpeg-dev
-RUN apt-get install -y libmysqlclient-dev mysql-client
-RUN apt-get install -y python-dev python-pip
-RUN apt-get install -y python-software-properties python-virtualenv software-properties-common
-RUN apt-get install -y zip
+RUN apt-get update; apt-get install -y \
+    build-essential \
+    git \
+    libfuse-dev \
+    libjpeg-dev \
+    libmysqlclient-dev \
+    mysql-client \
+    python-dev \
+    python-pip \
+    python-software-properties \
+    python-virtualenv \
+    software-properties-common \
+    zip;
 
 # Install dependencies
 RUN mkdir /opt/codalab-worksheets
@@ -17,7 +23,6 @@ COPY worker /opt/codalab-worksheets/worker
 COPY requirements.txt /opt/codalab-worksheets
 COPY requirements-server.txt /opt/codalab-worksheets
 COPY setup.sh /opt/codalab-worksheets
-#RUN cd /opt && pip install -r requirements-server.txt
 RUN cd /opt/codalab-worksheets && ./setup.sh server
 
 # Install code
