@@ -85,7 +85,8 @@ services:
 
   tests:
     image: codalab/bundleserver:${CODALAB_VERSION}
-    entrypoint: /opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/test-cli.py
+    working_dir: /opt/codalab-worksheets/
+    entrypoint: ./venv/bin/python ./test-cli.py
     command: all --instance http://rest-server:2900
     environment:
       - CODALAB_USERNAME=${CODALAB_ROOT_USER}
