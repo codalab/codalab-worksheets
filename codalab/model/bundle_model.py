@@ -919,10 +919,13 @@ class BundleModel(object):
         # (Clients should check for this case ahead of time if they want to
         # silently skip over creating bundles that already exist.)
         with self.engine.begin() as connection:
-            result = connection.execute(cl_bundle.insert().values(bundle_value))
-            self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
-            self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-            bundle.id = result.lastrowid
+            try:
+                result = connection.execute(cl_bundle.insert().values(bundle_value))
+                self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
+                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+                bundle.id = result.lastrowid
+            except UnicodeError:
+                raise UsageError("Invalid character detected; use ascii characters only.")
 
     def update_bundle(self, bundle, update, connection=None):
         """
