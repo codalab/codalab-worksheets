@@ -1651,9 +1651,10 @@ def test(ctx):
     check_equals('_', get_info(uuid, 'name'))  # Currently ignores unicode chars for name
     check_equals('你好世界😊', run_command([cl, 'cat', uuid]))
 
-    # Unicode in bundle description and tags
+    # Unicode in bundle description, tags and command
     run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'], 1)
     run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'], 1)
+    run_command([cl, 'run', 'echo "fáncy ünicode"'], 1)
 
     # Unicode in edits --> interactive mode not tested, but `cl edit` properly discards
     # edits that introduce unicode.
