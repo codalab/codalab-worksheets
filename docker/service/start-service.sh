@@ -8,16 +8,41 @@ set -o pipefail
 
 usage()
 {
-  echo "Starts a full Codalab Worksheets service. Optionally builds docker images for it. If not building local images, 'latest' tags used, otherwise images are built with the 'local-dev' tag and these images are used. 
+  echo "Starts a full Codalab Worksheets service. Optionally builds docker images for it.
+If not building local images, 'latest' tags used, otherwise images are built with the
+'local-dev' tag and these images are used.
+
+Uses environment variables to configure where to mount persistent directories needed for
+the service (MYSQL data directory, service home directory, bundle store, worker working directory),
+which version of codalab to use, and root CodaLab user information.
+
+Here's a comprehensive list of environment variables you can set, their explanation,
+and default values:
   [
-    [-b --build: Build docker images first]
-    [-t --test: Run tests as well, fail if tests fail]
-    [-h --help: get usage help]
+    [ CODALAB_MYSQL_ROOT_PWD: Root password for the database (mysql_root_pwd) ]
+    [ CODALAB_MYSQL_USER: MYSQL username for the Codalab MYSQL client (codalab) ]
+    [ CODALAB_MYSQL_PWD: MYSQL password for the Codalab MYSQL client (mysql_pwd) ]
+    [ CODALAB_ROOT_USER: Codalab username for the Codalab admin user (codalab) ]
+    [ CODALAB_ROOT_PWD: Codalab password for the Codalab admin user (testpassword) ]
+    [ CODALAB_SERVICE_HOME: Path on the host machine to store home directory of the Codalab server (/var/lib/codalab/home/) ]
+    [ CODALAB_BUNDLE_STORE: Path on the host machine to store Codalab bundle contents (/var/lib/codalab/bundles/) ]
+    [ CODALAB_MYSQL_MOUNT: Path on the host machine to store MYSQL data files of the Codalab database (/var/lib/codalab/mysql/) ]
+    [ CODALAB_WORKER_DIR: Path on the host machine to store Codalab worker working files, used if worker is specified (/var/lib/codalab/worker-dir/) ]
+    [ CODALAB_VERSION: Version of Codalab to bring up, gets overriden by local build if --build option given (latest) ]
+  ]
+
+Here's a list of arguments you can pass to control which services are brought up:
+  [
+    [ -b --build: Build docker images first ]
+    [ -w --worker: Start a CodaLab worker as well ]
+    [ -t --test: Run tests as well, fail if tests fail ]
+    [ -h --help: get usage help ]
   ]"
 }
 
 BUILD=0
 INIT=0
+WORKER=0
 TEST=0
 
 CODALAB_MYSQL_ROOT_PWD=${CODALAB_MYSQL_ROOT_PWD:-mysql_root_pwd}
@@ -41,6 +66,8 @@ for arg in "$@"; do
     -i | --init )       INIT=1
                         ;;
     -t | --test )       TEST=1
+                        ;;
+    -w | --worker )     WORKER=1
                         ;;
     -h | --help )       usage
                         exit
@@ -80,7 +107,11 @@ fi
 docker-compose up -d --no-recreate bundle-manager
 docker-compose up -d --no-recreate frontend
 docker-compose up -d --no-recreate nginx
-docker-compose up -d --no-recreate worker
+
+if [ "$WORKER" = "1" ]; then
+  mkdir -p $CODALAB_WORKER_DIR
+  docker-compose up -d --no-recreate worker
+fi
 
 if [ "$TEST" = "1" ]; then
   cd ../..

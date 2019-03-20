@@ -13,7 +13,7 @@ jobs:
       install:
         - pip install --upgrade pip docker-compose
       script:
-        - ./docker/service/start-service.sh -i -b -t
+        - ./docker/service/start-service.sh -i -b -t -w
     - stage: style
       language: python
       python: 3.6
