@@ -2,7 +2,7 @@
 name: Codalab Issue Report
 about: Report an issue you ran into while using Codalab
 title: "[USER ISSUE]"
-labels: bug
+labels: user-question
 assignees: ''
 
 ---
