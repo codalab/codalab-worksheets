@@ -20,6 +20,7 @@ from __future__ import print_function
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
 
+import argparse
 import json
 import os
 import random
@@ -32,7 +33,7 @@ import time
 import traceback
 
 
-cl = 'codalab/bin/cl'
+global cl
 # Directory where this script lives.
 base_path = os.path.dirname(os.path.abspath(__file__))
 crazy_name = 'crazy (ain\'t it)'
@@ -312,7 +313,7 @@ def temp_instance():
 
         yield CodaLabInstance(remote_host, remote_worksheet, test_username, test_password)
 
-    except:
+    except Exception:
         error_occurred = True
         raise
 
@@ -473,18 +474,23 @@ class TestModule(object):
         return filter(lambda m: m.default, cls.modules.itervalues())
 
     @classmethod
-    def run(cls, query):
-        """Run the modules named in query.
+    def run(cls, tests, instance):
+        """Run the modules named in tests againts instance.
 
-        query should be a list of strings, each of which is either 'all',
+        tests should be a list of strings, each of which is either 'all',
         'default', or the name of an existing test module.
+
+        instance should be a codalab instance to connect to like:
+            - main
+            - localhost
+            - http://server-domain:2900
         """
         # Might prompt user for password
-        subprocess.call([cl, 'work', 'local::'])
+        subprocess.call([cl, 'work', '%s::' % instance])
 
-        # Build list of modules to run based on query
+        # Build list of modules to run based on tests
         modules_to_run = []
-        for name in query:
+        for name in tests:
             if name == 'all':
                 modules_to_run.extend(cls.all_modules())
             elif name == 'default':
@@ -902,7 +908,7 @@ def test(ctx):
 
 @TestModule.register('freeze')
 def test(ctx):
-    orig_wuuid = run_command([cl, 'work', '-u'])
+    run_command([cl, 'work', '-u'])
     wname = random_name()
     wuuid = run_command([cl, 'new', wname])
     ctx.collect_worksheet(wuuid)
@@ -1013,7 +1019,7 @@ def test(ctx):
     run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
     # make sure special characters in the name of a bundle don't break
     special_name = random_name() + '-dashed.dotted'
-    special_uuid = run_command([cl, 'run', 'echo hello', '-n', special_name])
+    run_command([cl, 'run', 'echo hello', '-n', special_name])
     dependent = run_command([cl, 'run', ':%s' % special_name, 'cat %s/stdout' % special_name])
     wait(dependent)
     check_equals('hello', run_command([cl, 'cat', dependent + '/stdout']))
@@ -1579,7 +1585,7 @@ def test(ctx):
         devset_uuid = run_command([cl, 'upload', test_path('a.txt')])
         testset_uuid = run_command([cl, 'upload', test_path('b.txt')])
         script_uuid = run_command([cl, 'upload', test_path('evaluate.sh')])
-        submission_uuid = run_command(
+        run_command(
             [
                 cl,
                 'run',
@@ -1663,13 +1669,31 @@ def test(ctx):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 1:
-        print('Usage: python %s <module> ... <module>' % sys.argv[0])
-        print(
-            'This test will modify your current instance by creating temporary worksheets and bundles, but these should be deleted.'
-        )
-        print('Modules: default all ' + ' '.join(TestModule.modules.keys()))
-    else:
-        success = TestModule.run(sys.argv[1:])
-        if not success:
-            sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
+    )
+    parser.add_argument(
+        '--cl-executable',
+        type=str,
+        help='Path to codalab CLI executable, defaults to "cl"',
+        default='cl',
+    )
+    parser.add_argument(
+        '--instance',
+        type=str,
+        help='CodaLab instance to run tests against, defaults to "localhost"',
+        default='localhost',
+    )
+    parser.add_argument(
+        'tests',
+        metavar='TEST',
+        nargs='+',
+        type=str,
+        choices=TestModule.modules.keys() + ['all', 'default'],
+        help='Tests to run from: {%(choices)s}',
+    )
+    args = parser.parse_args()
+    cl = args.cl_executable
+    success = TestModule.run(args.tests, args.instance)
+    if not success:
+        sys.exit(1)
