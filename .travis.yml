@@ -36,7 +36,7 @@ jobs:
         - ./codalab/bin/cl upload -c stuff
         - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^
       script:
-        - ./venv/bin/python test-cli.py default
+        - ./venv/bin/python test-cli.py --cl-executable codalab/bin/cl default
     - stage: style
       language: python
       python: 3.6
