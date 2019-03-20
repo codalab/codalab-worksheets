@@ -22,12 +22,19 @@ and default values:
     [ CODALAB_MYSQL_ROOT_PWD: Root password for the database (mysql_root_pwd) ]
     [ CODALAB_MYSQL_USER: MYSQL username for the Codalab MYSQL client (codalab) ]
     [ CODALAB_MYSQL_PWD: MYSQL password for the Codalab MYSQL client (mysql_pwd) ]
+
     [ CODALAB_ROOT_USER: Codalab username for the Codalab admin user (codalab) ]
     [ CODALAB_ROOT_PWD: Codalab password for the Codalab admin user (testpassword) ]
+
     [ CODALAB_SERVICE_HOME: Path on the host machine to store home directory of the Codalab server (/var/lib/codalab/home/) ]
     [ CODALAB_BUNDLE_STORE: Path on the host machine to store Codalab bundle contents (/var/lib/codalab/bundles/) ]
     [ CODALAB_MYSQL_MOUNT: Path on the host machine to store MYSQL data files of the Codalab database (/var/lib/codalab/mysql/) ]
     [ CODALAB_WORKER_DIR: Path on the host machine to store Codalab worker working files, used if worker is specified (/var/lib/codalab/worker-dir/) ]
+
+    [ CODALAB_REST_PORT: Port for the REST server to listen on (2900) ]
+    [ CODALAB_FRONTEND_PORT: Port for the frontend server to listen on (2700) ]
+    [ CODALAB_MYSQL_PORT: Port for the MYSQL database to bind on the host (3306) ]
+
     [ CODALAB_VERSION: Version of Codalab to bring up, gets overriden by local build if --build option given (latest) ]
   ]
 
@@ -57,6 +64,10 @@ CODALAB_SERVICE_HOME=${CODALAB_SERVICE_HOME:-/var/lib/codalab/home/}
 CODALAB_BUNDLE_STORE=${CODALAB_BUNDLE_STORE:-/var/lib/codalab/bundles/}
 CODALAB_MYSQL_MOUNT=${CODALAB_MYSQL_MOUNT:-/var/lib/codalab/mysql/}
 CODALAB_WORKER_DIR=${CODALAB_WORKER_DIR:-/var/lib/codalab/worker-dir/}
+
+CODALAB_REST_PORT=${CODALAB_REST_PORT:-2900}
+CODALAB_FRONTEND_PORT=${CODALAB_FRONTEND_PORT:-2700}
+CODALAB_MYSQL_PORT=${CODALAB_MYSQL_PORT:-3306}
 
 
 for arg in "$@"; do
@@ -92,7 +103,7 @@ mkdir -p $CODALAB_BUNDLE_STORE
 mkdir -p $CODALAB_MYSQL_MOUNT
 
 docker-compose up -d mysql
-docker-compose run --entrypoint='' rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://$CODALAB_MYSQL_USER:$CODALAB_MYSQL_PWD@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
+docker-compose run --entrypoint='' rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://$CODALAB_MYSQL_USER:$CODALAB_MYSQL_PWD@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:$CODALAB_REST_PORT && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
 
 if [ "$INIT" = "1" ]; then
   docker-compose run --entrypoint='' rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py $CODALAB_ROOT_PWD"
@@ -101,7 +112,7 @@ fi
 docker-compose up -d --no-recreate rest-server
 
 if [ "$INIT" = "1" ]; then
-  docker-compose run --entrypoint='' bundle-manager bash -c "data/bin/wait-for-it.sh rest-server:2900 -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard"
+  docker-compose run --entrypoint='' bundle-manager bash -c "data/bin/wait-for-it.sh rest-server:$CODALAB_REST_PORT -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard"
 fi
 
 docker-compose up -d --no-recreate bundle-manager
@@ -115,6 +126,6 @@ fi
 
 if [ "$TEST" = "1" ]; then
   cd ../..
-  pip install -e ./
-  python test-cli.py --instance http://localhost:2900 all
+  pip install --user -e ./
+  python test-cli.py --instance http://localhost:$CODALAB_REST_PORT all
 fi

@@ -8,8 +8,6 @@ jobs:
       env:
         - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CODALAB_ROOT_PASSWORD=testpassword CI=false CODALAB_SERVICE_HOME=/home/travis/codalab/home/ CODALAB_BUNDLE_STORE=/home/travis/codalab/bundles/ CODALAB_MYSQL_MOUNT=/home/travis/codalab/mysql/ CODALAB_WORKER_DIR=/home/travis/codalab/worker-dir/
       python: 2.7
-      before_install:
-        - docker --version
       install:
         - pip install --upgrade pip docker-compose
         - ./setup.sh server

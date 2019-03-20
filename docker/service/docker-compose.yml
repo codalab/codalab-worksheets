@@ -29,6 +29,8 @@ services:
     volumes:
       - ${CODALAB_MYSQL_MOUNT}/config/conf.d:/etc/mysql/conf.d
       - ${CODALAB_MYSQL_MOUNT}/mysql:/var/lib/mysql
+    ports:
+      - ${CODALAB_MYSQL_PORT}:3306
     logging:
       *non-blocking-logging
 
@@ -36,7 +38,7 @@ services:
     image: codalab/bundleserver:${CODALAB_VERSION}
     command: server
     ports:
-      - 2900:2900
+      - ${CODALAB_REST_PORT}:2900
     environment:
       - CODALAB_HOME=${CODALAB_SERVICE_HOME}
       - CODALAB_USERNAME=${CODALAB_ROOT_USER}
@@ -69,7 +71,7 @@ services:
   frontend:
     image: codalab/frontend:${CODALAB_VERSION}
     ports:
-      - 2700:2700
+      - ${CODALAB_FRONTEND_PORT}:2700
     depends_on:
       - rest-server
     logging:
