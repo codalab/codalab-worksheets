@@ -31,6 +31,7 @@ CODALAB_ROOT_PWD=${CODALAB_ROOT_PWD:-testpassword}
 CODALAB_SERVICE_HOME=${CODALAB_SERVICE_HOME:-/var/lib/codalab/home/}
 CODALAB_BUNDLE_STORE=${CODALAB_BUNDLE_STORE:-/var/lib/codalab/bundles/}
 CODALAB_MYSQL_MOUNT=${CODALAB_MYSQL_MOUNT:-/var/lib/codalab/mysql/}
+CODALAB_WORKER_DIR=${CODALAB_WORKER_DIR:-/var/lib/codalab/worker-dir/}
 
 
 for arg in "$@"; do

@@ -12,6 +12,12 @@ x-codalab-bundles-mount:
   source: ${CODALAB_BUNDLE_STORE}
   target: ${CODALAB_BUNDLE_STORE}
 
+x-non-blocking-logging:
+  &non-blocking-logging
+  driver: json-file
+  options:
+    mode: non-blocking
+
 services:
   mysql:
     image: mysql:5.5.53
@@ -23,6 +29,8 @@ services:
     volumes:
       - ${CODALAB_MYSQL_MOUNT}/config/conf.d:/etc/mysql/conf.d
       - ${CODALAB_MYSQL_MOUNT}/mysql:/var/lib/mysql
+    logging:
+      *non-blocking-logging
 
   rest-server:
     image: codalab/bundleserver:${CODALAB_VERSION}
@@ -39,6 +47,8 @@ services:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - mysql
+    logging:
+      *non-blocking-logging
 
   bundle-manager:
     image: codalab/bundleserver:${CODALAB_VERSION}
@@ -53,6 +63,8 @@ services:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - rest-server
+    logging:
+      *non-blocking-logging
 
   frontend:
     image: codalab/frontend:${CODALAB_VERSION}
@@ -60,6 +72,8 @@ services:
       - 2700:2700
     depends_on:
       - rest-server
+    logging:
+      *non-blocking-logging
 
   nginx:
     image: nginx:1.12.0
@@ -71,17 +85,23 @@ services:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - frontend
+    logging:
+      *non-blocking-logging
 
   worker:
     image: codalab/worker:${CODALAB_VERSION}
-    command: --server http://rest-server:2900 --verbose
+    command: --server http://rest-server:2900 --verbose --work-dir ${CODALAB_WORKER_DIR}
+    privileged: True
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
     environment:
       - CODALAB_USERNAME=${CODALAB_ROOT_USER}
       - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
     depends_on:
       - bundle-manager
+    logging:
+      *non-blocking-logging
 
   tests:
     image: codalab/bundleserver:${CODALAB_VERSION}
@@ -93,3 +113,5 @@ services:
       - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
     depends_on:
       - rest-server
+    logging:
+      *non-blocking-logging
