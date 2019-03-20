@@ -9,13 +9,13 @@ RUN apt-get update; apt-get install -y \
   python-pip;
 
 COPY worker/requirements.txt /opt
-RUN pip install --upgrade pip; \
-    pip install -r /opt/requirements.txt;
+RUN /usr/bin/env python -m pip install --user --upgrade pip; \
+    /usr/bin/env python -m pip install -r /opt/requirements.txt;
 
 # Install dependencies again
 COPY worker /opt/worker
 
-RUN pip install --upgrade pip; \
-    pip install -e /opt/worker;
+RUN /usr/bin/env python -m pip install --user --upgrade pip; \
+    /usr/bin/env python -m pip install -e /opt/worker;
 
 ENTRYPOINT ["cl-worker"]
