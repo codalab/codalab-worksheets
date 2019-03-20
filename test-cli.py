@@ -32,8 +32,8 @@ import sys
 import time
 import traceback
 
-global cl
 
+global cl
 # Directory where this script lives.
 base_path = os.path.dirname(os.path.abspath(__file__))
 crazy_name = 'crazy (ain\'t it)'
