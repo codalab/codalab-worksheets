@@ -12,6 +12,7 @@ jobs:
         - docker --version
       install:
         - pip install --upgrade pip docker-compose
+        - ./setup.sh server
       script:
         - ./docker/service/start-service.sh -i -b -t -w
     - stage: style
