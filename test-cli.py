@@ -32,8 +32,8 @@ import sys
 import time
 import traceback
 
+global cl
 
-cl = 'cl'
 # Directory where this script lives.
 base_path = os.path.dirname(os.path.abspath(__file__))
 crazy_name = 'crazy (ain\'t it)'
@@ -1669,12 +1669,30 @@ def test(ctx):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)')
-    parser.add_argument('--cl-executable', type=str, help='Path to codalab CLI executable, defaults to "cl"', default='cl')
-    parser.add_argument('--instance', type=str, help='CodaLab instance to run tests against, defaults to "localhost"', default='localhost')
-    parser.add_argument('tests', metavar='TEST', nargs='+', type=str, choices=TestModule.modules.keys() + ['all', 'default'], help='Tests to run from: {%(choices)s}')
+    parser = argparse.ArgumentParser(
+        description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
+    )
+    parser.add_argument(
+        '--cl-executable',
+        type=str,
+        help='Path to codalab CLI executable, defaults to "cl"',
+        default='cl',
+    )
+    parser.add_argument(
+        '--instance',
+        type=str,
+        help='CodaLab instance to run tests against, defaults to "localhost"',
+        default='localhost',
+    )
+    parser.add_argument(
+        'tests',
+        metavar='TEST',
+        nargs='+',
+        type=str,
+        choices=TestModule.modules.keys() + ['all', 'default'],
+        help='Tests to run from: {%(choices)s}',
+    )
     args = parser.parse_args()
-    global cl
     cl = args.cl_executable
     success = TestModule.run(args.tests, args.instance)
     if not success:
