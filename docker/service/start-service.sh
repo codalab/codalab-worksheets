@@ -83,5 +83,7 @@ docker-compose up -d --no-recreate nginx
 docker-compose up -d --no-recreate worker
 
 if [ "$TEST" = "1" ]; then
-  docker-compose up --no-recreate --exit-code-from tests tests
+  cd ../..
+  pip install -e ./
+  python test-cli.py --instance http://localhost:2900 all
 fi
