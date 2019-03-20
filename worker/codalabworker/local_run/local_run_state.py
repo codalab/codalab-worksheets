@@ -352,7 +352,7 @@ class LocalRunStateMachine(StateTransitioner):
         run_state = check_and_report_finished(run_state)
         run_state = check_resource_utilization(run_state)
 
-        if run_state.is_killed and run_state.container_id is not None:
+        if run_state.is_killed:
             try:
                 run_state.container.kill()
             except docker.errors.APIError:
@@ -363,7 +363,7 @@ class LocalRunStateMachine(StateTransitioner):
                     traceback.print_exc()
             self.disk_utilization[bundle_uuid]['running'] = False
             self.disk_utilization.remove(bundle_uuid)
-            return run_state._replace(stage=LocalRunStage.CLEANING_UP, container_id=None)
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP)
         if run_state.info['finished']:
             logger.debug(
                 'Finished run with UUID %s, exitcode %s, failure_message %s',
