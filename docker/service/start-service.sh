@@ -126,6 +126,6 @@ fi
 
 if [ "$TEST" = "1" ]; then
   cd ../..
-  pip install --user -e ./
+  pip install -e ./
   python test-cli.py --instance http://localhost:$CODALAB_REST_PORT all
 fi
