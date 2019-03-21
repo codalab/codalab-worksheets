@@ -18,6 +18,13 @@ x-non-blocking-logging:
   options:
     mode: non-blocking
 
+x-codalab-env:
+  &codalab-env
+  - CODALAB_HOME=${CODALAB_SERVICE_HOME}
+  - CODALAB_USERNAME=${CODALAB_ROOT_USER}
+  - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+
+
 services:
   mysql:
     image: mysql:5.5.53
@@ -40,9 +47,7 @@ services:
     ports:
       - ${CODALAB_REST_PORT}:2900
     environment:
-      - CODALAB_HOME=${CODALAB_SERVICE_HOME}
-      - CODALAB_USERNAME=${CODALAB_ROOT_USER}
-      - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+      *codalab-env
     volumes:
       - *codalab-home-mount
       - *codalab-bundles-mount
@@ -56,9 +61,7 @@ services:
     image: codalab/bundleserver:${CODALAB_VERSION}
     command: bundle-manager
     environment:
-      - CODALAB_HOME=${CODALAB_SERVICE_HOME}
-      - CODALAB_USERNAME=${CODALAB_ROOT_USER}
-      - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+      *codalab-env
     volumes:
       - *codalab-home-mount
       - *codalab-bundles-mount
@@ -98,8 +101,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
     environment:
-      - CODALAB_USERNAME=${CODALAB_ROOT_USER}
-      - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+      *codalab-env
     depends_on:
       - bundle-manager
     logging:
@@ -111,8 +113,7 @@ services:
     entrypoint: ./venv/bin/python ./test-cli.py
     command: all --instance http://rest-server:2900
     environment:
-      - CODALAB_USERNAME=${CODALAB_ROOT_USER}
-      - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+      *codalab-env
     depends_on:
       - rest-server
     logging:
