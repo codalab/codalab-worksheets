@@ -8,8 +8,13 @@ jobs:
       env:
         - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CODALAB_ROOT_PASSWORD=testpassword CI=false CODALAB_SERVICE_HOME=/home/travis/codalab/home/ CODALAB_BUNDLE_STORE=/home/travis/codalab/bundles/ CODALAB_MYSQL_MOUNT=/home/travis/codalab/mysql/ CODALAB_WORKER_DIR=/home/travis/codalab/worker-dir/ CODALAB_MYSQL_PORT=33306
       python: 2.7
+      before_install:
+        - sudo rm /usr/local/bin/docker-compose
+        - curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
+        - chmod +x docker-compose
+        - sudo mv docker-compose /usr/local/bin
       install:
-        - pip install --upgrade pip docker-compose
+        - pip install --upgrade pip
         - ./setup.sh server
       script:
         - ./docker/service/start-service.sh -i -b -t -w
