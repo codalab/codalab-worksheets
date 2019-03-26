@@ -266,6 +266,7 @@ def temp_instance():
         'CODALAB_BUNDLE_STORE': temp_path('-mysql', tmp=True),
         'CODALAB_MYSQL_MOUNT': temp_path('-bundles', tmp=True),
         'CODALAB_WORKER_DIR': temp_path('-worker-dir', tmp=True),
+        'CODALAB_WORKER_NETWORK_NAME': random_name(),
         'CODALAB_REST_PORT': ports[0],
         'CODALAB_MYSQL_PORT': ports[1],
         'CODALAB_FRONTEND_PORT': ports[2],
