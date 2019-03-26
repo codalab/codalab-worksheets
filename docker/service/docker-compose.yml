@@ -38,6 +38,8 @@ services:
       - ${CODALAB_MYSQL_MOUNT}/mysql:/var/lib/mysql
     ports:
       - ${CODALAB_MYSQL_PORT}:3306
+    networks:
+      - service
     logging:
       *non-blocking-logging
 
@@ -54,6 +56,8 @@ services:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - mysql
+    networks:
+      - service
     logging:
       *non-blocking-logging
 
@@ -68,6 +72,8 @@ services:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - rest-server
+    networks:
+      - service
     logging:
       *non-blocking-logging
 
@@ -77,6 +83,8 @@ services:
       - ${CODALAB_FRONTEND_PORT}:2700
     depends_on:
       - rest-server
+    networks:
+      - service
     logging:
       *non-blocking-logging
 
@@ -90,12 +98,14 @@ services:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - frontend
+    networks:
+      - service
     logging:
       *non-blocking-logging
 
   worker:
     image: codalab/worker:${CODALAB_VERSION}
-    command: --server http://rest-server:2900 --verbose --work-dir ${CODALAB_WORKER_DIR}
+    command: --server http://rest-server:2900 --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_NAME}
     privileged: True
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -104,6 +114,9 @@ services:
       *codalab-env
     depends_on:
       - bundle-manager
+    networks:
+      - service
+      - worker
     logging:
       *non-blocking-logging
 
@@ -116,5 +129,13 @@ services:
       *codalab-env
     depends_on:
       - rest-server
+    networks:
+      - service
     logging:
       *non-blocking-logging
+
+networks:
+  worker:
+    name: ${CODALAB_WORKER_NETWORK_NAME}
+    internal: True
+  service:

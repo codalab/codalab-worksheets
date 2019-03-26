@@ -31,6 +31,8 @@ and default values:
     [ CODALAB_MYSQL_MOUNT: Path on the host machine to store MYSQL data files of the Codalab database (/var/lib/codalab/mysql/) ]
     [ CODALAB_WORKER_DIR: Path on the host machine to store Codalab worker working files, used if worker is specified (/var/lib/codalab/worker-dir/) ]
 
+    [ CODALAB_WORKER_NETWORK_NAME: Name for the docker network that includes the worker and all the container docker networks (codalab_worker_network) ]
+
     [ CODALAB_REST_PORT: Port for the REST server to listen on (2900) ]
     [ CODALAB_FRONTEND_PORT: Port for the frontend server to listen on (2700) ]
     [ CODALAB_MYSQL_PORT: Port for the MYSQL database to bind on the host (3306) ]
@@ -64,6 +66,8 @@ CODALAB_SERVICE_HOME=${CODALAB_SERVICE_HOME:-/var/lib/codalab/home/}
 CODALAB_BUNDLE_STORE=${CODALAB_BUNDLE_STORE:-/var/lib/codalab/bundles/}
 CODALAB_MYSQL_MOUNT=${CODALAB_MYSQL_MOUNT:-/var/lib/codalab/mysql/}
 CODALAB_WORKER_DIR=${CODALAB_WORKER_DIR:-/var/lib/codalab/worker-dir/}
+
+CODALAB_WORKER_NETWORK_NAME=${CODALAB_WORKER_NETWORK_NAME:-codalab_worker_network}
 
 CODALAB_REST_PORT=${CODALAB_REST_PORT:-2900}
 CODALAB_FRONTEND_PORT=${CODALAB_FRONTEND_PORT:-2700}
