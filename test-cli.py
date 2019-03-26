@@ -1420,10 +1420,6 @@ def test(ctx):
 
 @TestModule.register('netcat')
 def test(ctx):
-    run_command(
-        ['docker', 'pull', 'codalab/default-cpu:latest']
-    )  # pull image in order to run python script
-
     script_uuid = run_command([cl, 'upload', test_path('netcat-test.py')])
     uuid = run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
     wait_until_running(uuid)
@@ -1458,7 +1454,7 @@ def test(ctx):
         [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python --version']
     )
     wait(uuid)
-    check_contains('2.7', run_command([cl, 'cat', uuid + '/stdout']))
+    check_contains('2.7', run_command([cl, 'cat', uuid + '/stderr']))
     uuid = run_command(
         [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3.6 --version']
     )
