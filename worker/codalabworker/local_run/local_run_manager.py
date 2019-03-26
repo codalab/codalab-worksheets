@@ -79,8 +79,10 @@ class LocalRunManager(BaseRunManager):
 
         def create_or_get_network(name, internal):
             try:
+                logger.debug('Creating docker network %s', ex)
                 return self._docker.networks.create(name, internal=internal, check_duplicate=True)
             except docker.errors.APIError:
+                logger.debug('Network %s already exists, reusing', ex)
                 return self._docker.networks.list(names=[name])[0]
 
         self.worker_docker_network = create_or_get_network(docker_network_prefix, True)

@@ -46,6 +46,7 @@ Here's a list of arguments you can pass to control which services are brought up
     [ -w --worker: Start a CodaLab worker as well ]
     [ -t --test: Run tests as well, fail if tests fail ]
     [ -h --help: get usage help ]
+    [ -s --stop: Just stop the service ]
   ]"
 }
 
@@ -83,6 +84,11 @@ for arg in "$@"; do
     -t | --test )       TEST=1
                         ;;
     -w | --worker )     WORKER=1
+                        ;;
+    -s | --stop )       cd docker/service
+                        echo "==> Bringing down Codalab service"
+                        docker-compose down --remove-orphans
+                        exit
                         ;;
     -h | --help )       usage
                         exit

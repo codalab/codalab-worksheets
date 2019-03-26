@@ -295,7 +295,7 @@ def temp_instance():
         command = 'docker-compose run -d --name temp-bundle-manager --no-deps --service-ports bundle-manager bundle-manager'
         subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
 
-        command = 'docker-compose run -d --name temp-worker --no-deps worker --server http://temp-rest-server:2900 --verbose --work-dir ${CODALAB_WORKER_DIR}'
+        command = 'docker-compose run -d --name temp-worker --no-deps worker --server http://temp-rest-server:2900 --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_NAME}'
         subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
 
         # Switch to new host and log in to cache auth token
