@@ -20,7 +20,7 @@ Here's a comprehensive list of environment variables you can set, their explanat
 and default values:
   [
     [ CODALAB_MYSQL_ROOT_PWD: Root password for the database (mysql_root_pwd) ]
-    [ CODALAB_MYSQL_USER: MYSQL username for the Codalab MYSQL client (codalab) ]
+    [ CODALAB_MYSQL_USER: MYSQL username for the Codalab MYSQL client (bundles_user) ]
     [ CODALAB_MYSQL_PWD: MYSQL password for the Codalab MYSQL client (mysql_pwd) ]
 
     [ CODALAB_ROOT_USER: Codalab username for the Codalab admin user (codalab) ]
@@ -131,5 +131,6 @@ fi
 if [ "$TEST" = "1" ]; then
   cd ../..
   pip install -e ./
+  cl config server/engine_url mysql://$CODALAB_MYSQL_USER:$CODALAB_MYSQL_PWD@127.0.0.1:$CODALAB_MYSQL_PORT/codalab_bundles
   python test-cli.py --instance http://localhost:$CODALAB_REST_PORT all
 fi
