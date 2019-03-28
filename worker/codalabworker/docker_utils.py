@@ -224,5 +224,8 @@ def check_finished(container):
             failure_msg = stderr.decode('ascii', errors='ignore')
         else:
             failure_msg = None
-        return (True, container.attrs['State']['ExitCode'], failure_msg)
+        exitcode = container.attrs['State']['ExitCode']
+        if exitcode == '137':
+            failure_msg = 'Memory limit exceeded.'
+        return (True, exitcode, failure_msg)
     return (False, None, None)
