@@ -14,7 +14,7 @@ jobs:
         - chmod +x docker-compose
         - sudo mv docker-compose /usr/local/bin
       install:
-        - pip install --upgrade pip
+        - pip install --upgrade pip MySQL-python
         - ./setup.sh server
       script:
         - ./docker/service/start-service.sh -i -b -t -w
