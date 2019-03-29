@@ -244,6 +244,7 @@ def temp_instance():
 
     def get_free_ports(num_ports):
         import socket
+
         socks = [socket.socket(socket.AF_INET, socket.SOCK_STREAM) for i in range(num_ports)]
         ports = []
         for s in socks:
@@ -252,7 +253,6 @@ def temp_instance():
         for s in socks:
             s.close()
         return ports
-
 
     ports = get_free_ports(3)
     remote_env = {
@@ -272,10 +272,17 @@ def temp_instance():
         'CODALAB_FRONTEND_PORT': ports[2],
     }
 
-    for dirpath in [remote_env['CODALAB_SERVICE_HOME'], remote_env['CODALAB_BUNDLE_STORE'], remote_env['CODALAB_MYSQL_MOUNT'], remote_env['CODALAB_WORKER_DIR']]:
+    for dirpath in [
+        remote_env['CODALAB_SERVICE_HOME'],
+        remote_env['CODALAB_BUNDLE_STORE'],
+        remote_env['CODALAB_MYSQL_MOUNT'],
+        remote_env['CODALAB_WORKER_DIR'],
+    ]:
         os.makedirs(dirpath)
 
-    docker_service_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'docker', 'service')
+    docker_service_dir = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), 'docker', 'service'
+    )
     try:
         command = 'docker-compose run -d --name temp-mysql --no-deps --service-ports mysql mysqld'
         subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
@@ -309,7 +316,9 @@ def temp_instance():
 
         run_command([cl, 'work', remote_worksheet], env=env)
 
-        yield CodaLabInstance(remote_host, remote_worksheet, env['CODALAB_USER'], env['CODALAB_PASSWORD'])
+        yield CodaLabInstance(
+            remote_host, remote_worksheet, env['CODALAB_USER'], env['CODALAB_PASSWORD']
+        )
 
     except Exception as ex:
         print(ex)

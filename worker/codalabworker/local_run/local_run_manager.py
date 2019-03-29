@@ -86,12 +86,8 @@ class LocalRunManager(BaseRunManager):
                 return self._docker.networks.list(names=[name])[0]
 
         self.worker_docker_network = create_or_get_network(docker_network_prefix, True)
-        self.docker_network_external = create_or_get_network(
-            docker_network_prefix + "_ext", False
-        )
-        self.docker_network_internal = create_or_get_network(
-            docker_network_prefix + "_int", True
-        )
+        self.docker_network_external = create_or_get_network(docker_network_prefix + "_ext", False)
+        self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", True)
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved
