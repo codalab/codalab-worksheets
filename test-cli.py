@@ -1549,10 +1549,6 @@ def test(ctx):
         ]
     )
     wait(uuid)
-    uuid = run_command([cl, 'run', '--request-docker-image=codalab/ubuntu:1.9', 'echo $SCALA_HOME'])
-    wait(uuid)
-    check_equals('/usr/share/java', run_command([cl, 'cat', uuid + '/stdout']))
-    # TODO (bkgoksel): Test CUDA?
     pass
 
 
