@@ -15,7 +15,7 @@ jobs:
         - sudo mv docker-compose /usr/local/bin
       install:
         - pip install --upgrade pip MySQL-python
-        - ./docker/build-images.sh ${TRAVIS_BRANCH} -p
+        - ./scripts/travis_deploy.sh ${TRAVIS_BRANCH} -p
         - ./setup.sh server
       script:
         - ./docker/service/start-service.sh -i -t -w
