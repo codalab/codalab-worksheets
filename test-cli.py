@@ -256,7 +256,7 @@ def temp_instance():
 
     ports = get_free_ports(3)
     remote_env = {
-        'CODALAB_VERSION': 'local-dev',
+        'CODALAB_VERSION': os.environ.get('CODALAB_VERSION', 'latest'),
         'CODALAB_MYSQL_USER': os.environ.get('CODALAB_MYSQL_USER', 'codalab'),
         'CODALAB_MYSQL_PWD': os.environ.get('CODALAB_MYSQL_PWD', 'testpwd'),
         'CODALAB_MYSQL_ROOT_PWD': os.environ.get('CODALAB_MYSQL_ROOT_PWD', 'rootpwd'),

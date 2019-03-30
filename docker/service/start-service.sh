@@ -10,7 +10,7 @@ usage()
 {
   echo "Starts a full Codalab Worksheets service. Optionally builds docker images for it.
 If not building local images, 'latest' tags used, otherwise images are built with the
-'local-dev' tag and these images are used.
+'$CODALAB_VERSION'[\$CODALAB_VERSION] tag and these images are used.
 
 Uses environment variables to configure where to mount persistent directories needed for
 the service (MYSQL data directory, service home directory, bundle store, worker working directory),
@@ -37,7 +37,7 @@ and default values:
     [ CODALAB_FRONTEND_PORT: Port for the frontend server to listen on (2700) ]
     [ CODALAB_MYSQL_PORT: Port for the MYSQL database to bind on the host (3306) ]
 
-    [ CODALAB_VERSION: Version of Codalab to bring up, gets overriden by local build if --build option given (latest) ]
+    [ CODALAB_VERSION: Version of Codalab to bring up and tag to use if --build option given (latest) ]
   ]
 
 Here's a list of arguments you can pass to control which services are brought up:
@@ -73,7 +73,7 @@ CODALAB_WORKER_NETWORK_NAME=${CODALAB_WORKER_NETWORK_NAME:-codalab_worker_networ
 CODALAB_REST_PORT=${CODALAB_REST_PORT:-2900}
 CODALAB_FRONTEND_PORT=${CODALAB_FRONTEND_PORT:-2700}
 CODALAB_MYSQL_PORT=${CODALAB_MYSQL_PORT:-3306}
-
+CODALAB_VERSION=${CODALAB_VERSION:-latest}
 
 for arg in "$@"; do
   case $arg in
@@ -96,11 +96,8 @@ for arg in "$@"; do
 done
 
 if [ "$BUILD" = "1" ]; then
-  CODALAB_VERSION=local-dev
-  echo "==> Building 'local-dev' Docker images"
-  ./docker/build-images.sh local-dev
-else
-  CODALAB_VERSION=${CODALAB_VERSION:-latest}
+  echo "==> Building Docker images"
+  ./docker/build-images.sh $CODALAB_VERSION
 fi
 
 cd docker/service
