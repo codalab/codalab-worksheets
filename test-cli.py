@@ -58,8 +58,9 @@ def path_contents(path):
     return open(path).read().rstrip()
 
 
-def temp_path(suffix):
-    return os.path.join(base_path, random_name() + suffix)
+def temp_path(suffix, tmp=False):
+    root = '/tmp' if tmp else base_path
+    return os.path.join(root, random_name() + suffix)
 
 
 def random_name():
@@ -111,14 +112,14 @@ def sanitize(string, max_chars=256):
     return string
 
 
-def run_command(args, expected_exit_code=0, max_output_chars=256):
+def run_command(args, expected_exit_code=0, max_output_chars=256, env=None):
     for a in args:
         assert isinstance(a, str)
     # Travis only prints ASCII
     print('>> %s' % " ".join([a.decode("utf-8").encode("ascii", errors='replace') for a in args]))
 
     try:
-        output = subprocess.check_output(args)
+        output = subprocess.check_output(args, env=env)
         exitcode = 0
     except subprocess.CalledProcessError as e:
         output = e.output
@@ -236,110 +237,105 @@ def temp_instance():
         with temp_instance() as remote:
             run_command([cl, 'work', remote.home])
             ... do more stuff with new temp instance ...
-
-    TODO:
-        - Use dockerized CodaLab services
     """
+    print('getting temp instance')
+    # Dockerized instance
     original_worksheet = current_worksheet()
 
-    # Create another CodaLab instance.
-    old_home = os.path.abspath(os.path.expanduser(os.getenv('CODALAB_HOME', '~/.codalab')))
-    remote_home = temp_path('-home')
-    os.mkdir(remote_home)
-    remote_worker_scratch = temp_path('-worker-scratch')
-    os.mkdir(remote_worker_scratch)
-    os.environ['CODALAB_HOME'] = remote_home
+    def get_free_ports(num_ports):
+        import socket
 
-    # Create credentials
-    test_username = os.environ.get('CODALAB_USERNAME', 'codalab')
-    test_password = os.environ.get('CODALAB_PASSWORD', '1234')
-    password_file = temp_path('-password')
-    with open(password_file, 'wb') as fp:
-        print(test_username, file=fp)
-        print(test_password, file=fp)
-    os.chmod(password_file, stat.S_IWUSR | stat.S_IRUSR)  # set mode to 0600
+        socks = [socket.socket(socket.AF_INET, socket.SOCK_STREAM) for i in range(num_ports)]
+        ports = []
+        for s in socks:
+            s.bind(("", 0))
+        ports = [str(s.getsockname()[1]) for s in socks]
+        for s in socks:
+            s.close()
+        return ports
 
-    # Use simple local database
-    run_command([cl, 'config', 'server/class', 'SQLiteModel'])
-    run_command([cl, 'config', 'server/engine_url', 'sqlite:///' + remote_home + '/bundle.db'])
+    ports = get_free_ports(3)
+    remote_env = {
+        'CODALAB_VERSION': os.environ.get('CODALAB_VERSION', 'latest'),
+        'CODALAB_MYSQL_USER': os.environ.get('CODALAB_MYSQL_USER', 'codalab'),
+        'CODALAB_MYSQL_PWD': os.environ.get('CODALAB_MYSQL_PWD', 'testpwd'),
+        'CODALAB_MYSQL_ROOT_PWD': os.environ.get('CODALAB_MYSQL_ROOT_PWD', 'rootpwd'),
+        'CODALAB_ROOT_USER': os.environ.get('CODALAB_ROOT_USER', 'codalab'),
+        'CODALAB_ROOT_PWD': os.environ.get('CODALAB_ROOT_PWD', 'testpwd'),
+        'CODALAB_SERVICE_HOME': temp_path('-home', tmp=True),
+        'CODALAB_BUNDLE_STORE': temp_path('-mysql', tmp=True),
+        'CODALAB_MYSQL_MOUNT': temp_path('-bundles', tmp=True),
+        'CODALAB_WORKER_DIR': temp_path('-worker-dir', tmp=True),
+        'CODALAB_WORKER_NETWORK_NAME': random_name(),
+        'CODALAB_REST_PORT': ports[0],
+        'CODALAB_MYSQL_PORT': ports[1],
+        'CODALAB_FRONTEND_PORT': ports[2],
+    }
 
-    # Configure aux servers with alternate ports
-    run_command([cl, 'config', 'server/rest_port', '3900'])
-    remote_host = 'http://localhost:3900'
-    remote_worksheet = remote_host + '::'
+    for dirpath in [
+        remote_env['CODALAB_SERVICE_HOME'],
+        remote_env['CODALAB_BUNDLE_STORE'],
+        remote_env['CODALAB_MYSQL_MOUNT'],
+        remote_env['CODALAB_WORKER_DIR'],
+    ]:
+        os.makedirs(dirpath)
 
-    # Create root user
-    run_command(['scripts/create-root-user.py', test_password])
-
-    rest_server_proc = None
-    bundle_manager_proc = None
-    worker_proc = None
-    os.environ['PYTHONUNBUFFERED'] = '1'  # prevents stalling when waiting for output
-    FNULL = open(os.devnull, 'w')
-
-    error_occurred = False
-
+    docker_service_dir = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), 'docker', 'service'
+    )
     try:
-        # Start auxiliary servers for the new auxiliary host
-        rest_server_proc = subprocess.Popen([cl, 'server'], stdout=FNULL, stderr=subprocess.PIPE)
-        bundle_manager_proc = subprocess.Popen(
-            [cl, 'bundle-manager'], stdout=FNULL, stderr=subprocess.PIPE
-        )
-        wait_until_substring(rest_server_proc.stderr, 'Booting worker')
-        wait_until_substring(bundle_manager_proc.stderr, 'Bundle manager running')
+        command = 'docker-compose run -d --name temp-mysql --no-deps --service-ports mysql mysqld'
+        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
 
-        # Start worker after servers are up
-        worker_proc = subprocess.Popen(
-            [
-                os.path.join(base_path, 'venv/bin/python'),
-                os.path.join(base_path, 'worker/codalabworker/main.py'),
-                '--server=' + remote_host,
-                '--work-dir=' + remote_worker_scratch,
-                '--password-file=' + password_file,
-            ],
-            stdout=subprocess.PIPE,
-            stderr=FNULL,
-        )
-        wait_until_substring(worker_proc.stdout, 'Worker started')
+        command = 'docker-compose run --rm --no-deps --entrypoint "" rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh temp-mysql:3306 -- opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://$CODALAB_MYSQL_USER:$CODALAB_MYSQL_PWD@temp-mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://temp-rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"'
+        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
 
-        # Restore original config
-        os.environ['CODALAB_HOME'] = old_home
+        command = 'docker-compose run --rm --no-deps --entrypoint "" rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh temp-mysql:3306 -- opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py $CODALAB_ROOT_PWD"'
+        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
+
+        command = 'docker-compose run -d --name temp-rest-server --no-deps --service-ports rest-server server'
+        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
+
+        command = 'docker-compose run --rm --no-deps --entrypoint "" rest-server bash -c "data/bin/wait-for-it.sh temp-rest-server:2900 -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard"'
+        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
+
+        command = 'docker-compose run -d --name temp-bundle-manager --no-deps --service-ports bundle-manager bundle-manager'
+        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
+
+        command = 'docker-compose run -d --name temp-worker --no-deps worker --server http://temp-rest-server:2900 --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_NAME}'
+        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
 
         # Switch to new host and log in to cache auth token
+        remote_host = 'http://localhost:%s' % remote_env['CODALAB_REST_PORT']
+        remote_worksheet = '%s::' % remote_host
         run_command([cl, 'logout', remote_worksheet[:-2]])
-        os.environ['CODALAB_USERNAME'] = test_username
-        os.environ['CODALAB_PASSWORD'] = test_password
-        run_command([cl, 'work', remote_worksheet])
 
-        yield CodaLabInstance(remote_host, remote_worksheet, test_username, test_password)
+        env = os.environ.copy()
+        env['CODALAB_USER'] = remote_env['CODALAB_ROOT_USER']
+        env['CODALAB_PASSWORD'] = remote_env['CODALAB_ROOT_PWD']
 
-    except Exception:
+        run_command([cl, 'work', remote_worksheet], env=env)
+
+        yield CodaLabInstance(
+            remote_host, remote_worksheet, env['CODALAB_USER'], env['CODALAB_PASSWORD']
+        )
+
+    except Exception as ex:
+        print(ex)
         error_occurred = True
         raise
 
     finally:
-        # Kill any processes started in reverse order
-        def cleanup_process(proc, name):
-            if proc:
-                proc.kill()
-                if error_occurred:
-                    _, stderr = proc.communicate()
-                    if stderr:
-                        print(Colorizer.yellow('[!] stderr captured from %s' % name))
-                        print(stderr)
+        subprocess.call(['docker', 'stop', 'temp-worker'])
+        subprocess.call(['docker', 'stop', 'temp-bundle-manager'])
+        subprocess.call(['docker', 'stop', 'temp-rest-server'])
+        subprocess.call(['docker', 'stop', 'temp-mysql'])
 
-        cleanup_process(worker_proc, 'worker')
-        cleanup_process(bundle_manager_proc, 'bundle-manager')
-        cleanup_process(rest_server_proc, 'server')
+        subprocess.call(['docker', 'rm', 'temp-worker'])
+        subprocess.call(['docker', 'rm', 'temp-bundle-manager'])
+        subprocess.call(['docker', 'rm', 'temp-rest-server'])
+        subprocess.call(['docker', 'rm', 'temp-mysql'])
 
-        # Clean up temporary data
-        shutil.rmtree(remote_home)
-        shutil.rmtree(remote_worker_scratch)
-        os.remove(password_file)
-        del os.environ['PYTHONUNBUFFERED']
-        FNULL.close()
-
-        # Switch back to original worksheet for convenience
         run_command([cl, 'work', original_worksheet])
 
 
@@ -1375,14 +1371,14 @@ def test(ctx):
         run_command([cl, 'work', source_worksheet])
         uuid = run_command([cl, 'upload', test_path('')])
         run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
-        check_agree([cl, 'info', '-f', 'data_hash,data_size,name', uuid])
+        check_agree([cl, 'info', '-f', 'data_hash,name', uuid])
         check_agree([cl, 'cat', uuid])
 
         # Upload to remote, transfer to local
         run_command([cl, 'work', remote_worksheet])
         uuid = run_command([cl, 'upload', test_path('')])
         run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', source_worksheet])
-        check_agree([cl, 'info', '-f', 'data_hash,data_size,name', uuid])
+        check_agree([cl, 'info', '-f', 'data_hash,name', uuid])
         check_agree([cl, 'cat', uuid])
 
         # Upload to remote, transfer to local (metadata only)
@@ -1434,10 +1430,6 @@ def test(ctx):
 
 @TestModule.register('netcat')
 def test(ctx):
-    run_command(
-        ['docker', 'pull', 'codalab/default-cpu:latest']
-    )  # pull image in order to run python script
-
     script_uuid = run_command([cl, 'upload', test_path('netcat-test.py')])
     uuid = run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
     wait_until_running(uuid)
@@ -1472,7 +1464,7 @@ def test(ctx):
         [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python --version']
     )
     wait(uuid)
-    check_contains('2.7', run_command([cl, 'cat', uuid + '/stdout']))
+    check_contains('2.7', run_command([cl, 'cat', uuid + '/stderr']))
     uuid = run_command(
         [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3.6 --version']
     )
@@ -1566,10 +1558,6 @@ def test(ctx):
         ]
     )
     wait(uuid)
-    uuid = run_command([cl, 'run', '--request-docker-image=codalab/ubuntu:1.9', 'echo $SCALA_HOME'])
-    wait(uuid)
-    check_equals('/usr/share/java', run_command([cl, 'cat', uuid + '/stdout']))
-    # TODO (bkgoksel): Test CUDA?
     pass
 
 

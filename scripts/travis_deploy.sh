@@ -1,5 +1,5 @@
 #!/bin/bash
-# travis_deploy.sh
+# travis-deploy.sh
 # Called by Travis CI at the end of a successful build to do necessary
 # deployment actions like building and pushing docker images and PyPI
 # packages
@@ -11,9 +11,9 @@ if [ "$2" = "release" ]; then
 fi
 
 if [ "$RELEASE" = "1" ]; then
-  ./docker/build_images.sh $TAG -p
-  ./docker/build_images.sh latest -p
-  ./scripts/upload_to_pypi.sh $TAG
+  ./docker/build-images.sh $TAG -p
+  ./docker/build-images.sh latest -p
+  ./scripts/upload-to-pypi.sh $TAG
 else
-  ./docker/build_images.sh $TAG -p
+  ./docker/build-images.sh $TAG -p
 fi

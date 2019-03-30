@@ -6,37 +6,19 @@ jobs:
       services:
         - docker
       env:
-        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CI=false
+        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CODALAB_ROOT_PASSWORD=testpassword CI=false CODALAB_SERVICE_HOME=/home/travis/codalab/home/ CODALAB_BUNDLE_STORE=/home/travis/codalab/bundles/ CODALAB_MYSQL_MOUNT=/home/travis/codalab/mysql/ CODALAB_WORKER_DIR=/home/travis/codalab/worker-dir/ CODALAB_MYSQL_PORT=33306 CODALAB_VERSION=${TRAVIS_BRANCH}
       python: 2.7
       before_install:
-        - docker --version
+        - sudo rm /usr/local/bin/docker-compose
+        - curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
+        - chmod +x docker-compose
+        - sudo mv docker-compose /usr/local/bin
       install:
-        - pip install sqlalchemy
-      #   add packages required by tests (mock and nose are on Travis VM by default)
-        - pip install pyyaml psutil
-        - sudo apt-get update
-        - sudo apt-get install -y sshpass python-virtualenv
-        - sudo apt-get install -y libmysqlclient-dev
+        - pip install --upgrade pip MySQL-python
+        - ./scripts/travis_deploy.sh ${TRAVIS_BRANCH} -p
         - ./setup.sh server
-        - ./venv/bin/pip install --upgrade setuptools
-        - ./venv/bin/pip install --upgrade pip
-      before_script:
-        - mysql -e "CREATE DATABASE codalab_bundles;"
-        - ./codalab/bin/cl config server/engine_url mysql://root@localhost:3306/codalab_bundles
-        - ./codalab/bin/cl config cli/default_address http://localhost:2900
-        - ./scripts/create-root-user.py $CODALAB_PASSWORD
-        - ./codalab/bin/cl server &
-        - ./codalab/bin/cl bundle-manager &
-        - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/travis/.codalab/root.password
-        - chmod 600 /home/travis/.codalab/root.password
-        - sleep 15
-        - pip install ./worker
-        - cl-worker --server http://127.0.0.1:2900 --work-dir /home/travis/.codalab/worker-scratch --password-file /home/travis/.codalab/root.password --verbose &
-        - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
-        - ./codalab/bin/cl upload -c stuff
-        - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^
       script:
-        - ./venv/bin/python test-cli.py --cl-executable codalab/bin/cl default
+        - ./docker/service/start-service.sh -i -t -w
     - stage: style
       language: python
       python: 3.6
@@ -59,14 +41,14 @@ jobs:
         # Otherwise if we're on master or staging build named images
         - provider: script
           # Remove first char of tag (v) to get version number from tag
-          script: ./scripts/travis_deploy.sh ${TRAVIS_TAG#?} release
+          script: ./scripts/travis-deploy.sh ${TRAVIS_TAG#?} release
           on:
             # only build on valid semver tags
             tags: true
             condition: $TRAVIS_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+
         - provider: script
           # Build with branch name if not releasing
-          script: ./scripts/travis_deploy.sh $TRAVIS_BRANCH branch
+          script: ./scripts/travis-deploy.sh $TRAVIS_BRANCH branch
           on:
             # only build for master and staging for debugging
             branch: master

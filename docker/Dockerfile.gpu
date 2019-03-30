@@ -68,7 +68,6 @@ RUN pip2 install -U \
       wheel \
       scikit-learn \
       scikit-image \
-      dlib \
       nltk
 
 RUN python -m spacy download en
@@ -88,7 +87,6 @@ RUN pip3 install -U \
       wheel \
       scikit-learn \
       scikit-image \
-      dlib \
       nltk
 
 RUN python3.6 -m spacy download en

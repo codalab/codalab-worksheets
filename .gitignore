@@ -66,5 +66,7 @@ codalab/tags
 notes.otl
 codalab-worker-scratch/
 
+pip-wheel-metadata/
+
 frontend/node_modules
 frontend/package-lock.json
