@@ -1,5 +1,5 @@
 #!/bin/bash
-# upload_to_pypi.sh
+# upload-to-pypi.sh
 # Builds and uploads Codalab pip packages
 
 usage()
