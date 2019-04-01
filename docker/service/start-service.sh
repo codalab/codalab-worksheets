@@ -9,8 +9,9 @@ set -o pipefail
 usage()
 {
   echo "Starts a full Codalab Worksheets service. Optionally builds docker images for it.
-If not building local images, 'latest' tags used, otherwise images are built with the
-'$CODALAB_VERSION'[\$CODALAB_VERSION] tag and these images are used.
+If not building local images, images with '$CODALAB_VERSION'[\$CODALAB_VERSION] tags are pulled
+from DockerHub, otherwise images are built with the '$CODALAB_VERSION'[\$CODALAB_VERSION] tag
+and these images are used.
 
 Uses environment variables to configure where to mount persistent directories needed for
 the service (MYSQL data directory, service home directory, bundle store, worker working directory),
