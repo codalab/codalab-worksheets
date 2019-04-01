@@ -15,7 +15,7 @@ jobs:
         - sudo mv docker-compose /usr/local/bin
       install:
         - pip install --upgrade pip MySQL-python
-        - ./scripts/travis_deploy.sh ${TRAVIS_BRANCH} -p
+        - ./docker/build-images.sh ${TRAVIS_BRANCH} -p
         - ./setup.sh server
       script:
         - ./docker/service/start-service.sh -i -t -w
@@ -48,7 +48,7 @@ jobs:
             condition: $TRAVIS_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+
         - provider: script
           # Build with branch name if not releasing
-          script: ./scripts/travis-deploy.sh $TRAVIS_BRANCH branch
+          script: ./scripts/travis-deploy.sh master
           on:
             # only build for master and staging for debugging
             branch: master
