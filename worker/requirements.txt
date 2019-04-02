@@ -4,7 +4,7 @@ marshmallow-jsonapi==0.15.1
 marshmallow==2.6.1
 setuptools>=40.0.0
 argcomplete==1.9.4
-PyYAML==3.13
+PyYAML==5.1
 psutil==5.4.6
 six==1.11.0
 SQLAlchemy==1.0.8

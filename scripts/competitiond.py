@@ -227,7 +227,7 @@ class Competition(object):
     @staticmethod
     def _load_config(config_path):
         with open(config_path, 'r') as fp:
-            config = yaml.load(fp)
+            config = yaml.safe_load(fp)
         try:
             config = ConfigSchema(strict=True).load(config).data
         except ValidationError as e:
