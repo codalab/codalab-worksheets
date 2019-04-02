@@ -34,6 +34,7 @@ and default values:
 
     [ CODALAB_WORKER_NETWORK_NAME: Name for the docker network that includes the worker and all the container docker networks (codalab_worker_network) ]
 
+    [ CODALAB_HTTP_PORT: Port for nginx to listen on, this is the general use port that redirects to both frontend and backend (80) ]
     [ CODALAB_REST_PORT: Port for the REST server to listen on (2900) ]
     [ CODALAB_FRONTEND_PORT: Port for the frontend server to listen on (2700) ]
     [ CODALAB_MYSQL_PORT: Port for the MYSQL database to bind on the host (3306) ]
@@ -71,6 +72,7 @@ CODALAB_WORKER_DIR=${CODALAB_WORKER_DIR:-/var/lib/codalab/worker-dir/}
 
 CODALAB_WORKER_NETWORK_NAME=${CODALAB_WORKER_NETWORK_NAME:-codalab_worker_network}
 
+CODALAB_HTTP_PORT=${CODALAB_REST_PORT:-80}
 CODALAB_REST_PORT=${CODALAB_REST_PORT:-2900}
 CODALAB_FRONTEND_PORT=${CODALAB_FRONTEND_PORT:-2700}
 CODALAB_MYSQL_PORT=${CODALAB_MYSQL_PORT:-3306}
