@@ -17,7 +17,7 @@ class ChatBoxQA(object):
     def prepare(cls):
         file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'chat_box_qa.yaml')
         with open(file_path, 'r') as stream:
-            cls.qa_body = yaml.load(stream)
+            cls.qa_body = yaml.safe_load(stream)
 
     @classmethod
     def get_similarity(cls, query_question, model_question):
