@@ -207,7 +207,6 @@ chmod 600 %s""" % args.password_file
         args.id,
         args.tag,
         args.work_dir,
-        args.exit_when_idle,
         bundle_service,
     )
 
