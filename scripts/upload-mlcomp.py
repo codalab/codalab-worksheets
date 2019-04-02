@@ -9,7 +9,7 @@
 import sys, os, yaml
 
 for path in sys.argv[1:]:
-    info = yaml.load(open(os.path.join(path, 'metadata')))
+    info = yaml.safe_load(open(os.path.join(path, 'metadata')))
     if 'format' in info:
         bundle_type = 'dataset'
         tags = info['format']
