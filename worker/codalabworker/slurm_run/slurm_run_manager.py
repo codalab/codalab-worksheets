@@ -88,7 +88,6 @@ class SlurmRunManager(BaseRunManager):
         2. Write bundle, resources and lock files
         3. Submit slurm job
         """
-        __import__('pdb').set_trace()
         bundle = BundleInfo.from_dict(bundle)
         resources = RunResources.from_dict(resources)
         self.runs.add(bundle.uuid)
@@ -156,7 +155,6 @@ class SlurmRunManager(BaseRunManager):
         if self.slurm_host is not None:
             final_command = 'ssh {} {}'.format(self.slurm_host, final_command)
         try:
-            __import__('pdb').set_trace()
             subprocess.check_call(final_command, shell=True)
         except Exception as e:
             # TODO: something went wrong
