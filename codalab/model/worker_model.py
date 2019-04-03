@@ -32,12 +32,11 @@ class WorkerModel(object):
        listen on these sockets for messages and send messages to these sockets.
     """
 
-    def __init__(self, engine, socket_dir, shared_file_system):
+    def __init__(self, engine, socket_dir):
         self._engine = engine
         self._socket_dir = socket_dir
-        self.shared_file_system = shared_file_system
 
-    def worker_checkin(self, user_id, worker_id, tag, cpus, gpus, memory_bytes, dependencies):
+    def worker_checkin(self, user_id, worker_id, tag, cpus, gpus, memory_bytes, dependencies, shared_filesystem_worker):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
         that the worker should listen for messages on.
@@ -48,6 +47,7 @@ class WorkerModel(object):
                 'cpus': cpus,
                 'gpus': gpus,
                 'memory_bytes': memory_bytes,
+                'shared_filesystem_worker': shared_filesystem_worker,
                 'checkin_time': datetime.datetime.now(),
             }
             existing_row = conn.execute(
@@ -163,6 +163,7 @@ class WorkerModel(object):
                 'gpus': row.gpus,
                 'memory_bytes': row.memory_bytes,
                 'checkin_time': row.checkin_time,
+                'shared_filesystem_worker': row.shared_filesystem_worker,
                 'socket_id': row.socket_id,
                 'run_uuids': [],
                 'dependencies': row.dependencies

@@ -31,12 +31,14 @@ class Worker(object):
         worker_id,  # type: str
         tag,  # type: str
         work_dir,  # type: str
+        shared_file_system,  # type: bool
         bundle_service,  # type: BundleServiceClient
     ):
         self.id = worker_id
         self._state_committer = JsonStateCommitter(commit_file)
         self._tag = tag
         self._work_dir = work_dir
+        self._shared_file_system = shared_file_system
         self._bundle_service = bundle_service
         self._stop = False
         self._last_checkin_successful = False
@@ -78,6 +80,7 @@ class Worker(object):
             'memory_bytes': self._run_manager.memory_bytes,
             'dependencies': self._run_manager.all_dependencies,
             'hostname': socket.gethostname(),
+            'shared_filesystem_worker': self._shared_file_system,
             'runs': self._run_manager.all_runs,
         }
         response = self._bundle_service.checkin(self.id, request)

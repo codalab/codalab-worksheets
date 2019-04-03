@@ -32,6 +32,7 @@ def checkin(worker_id):
         request.json["gpus"],
         request.json["memory_bytes"],
         request.json["dependencies"],
+        request.json["shared_filesystem_worker"],
     )
 
     for uuid, run in request.json["runs"].items():

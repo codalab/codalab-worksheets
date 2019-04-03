@@ -207,6 +207,7 @@ chmod 600 %s""" % args.password_file
         args.id,
         args.tag,
         args.work_dir,
+        args.shared_file_system,
         bundle_service,
     )
 

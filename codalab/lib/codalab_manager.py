@@ -198,6 +198,9 @@ class CodaLabManager(object):
             'workers': {
                 'default_cpu_image': 'codalab/default-cpu:latest',
                 'default_gpu_image': 'codalab/default-gpu:latest',
+                'max_request_time': '100d',
+                'max_request_memory': '1000g',
+                'max_request_disk': '1000g',
             },
         }
 
@@ -358,11 +361,7 @@ class CodaLabManager(object):
 
     @cached
     def worker_model(self):
-        # Whether the file system is shared between the worker and the bundle
-        # service. Note, that the file system is considered to be shared only if
-        # the worker is running as the root user.
-        shared_file_system = self.config['workers'].get('shared_file_system', False)
-        return WorkerModel(self.model().engine, self.worker_socket_dir, shared_file_system)
+        return WorkerModel(self.model().engine, self.worker_socket_dir)
 
     @cached
     def upload_manager(self):
