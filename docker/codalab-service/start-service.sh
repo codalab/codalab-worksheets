@@ -53,6 +53,7 @@ Here's a list of arguments you can pass to control which services are brought up
     [ -h --help: get usage help ]
     [ -s --stop: Just stop the service ]
     [ -l --logs: Stream logs until force quit by user ]
+    [ -r --run-slurm: Use a slurm worker ]
   ]"
 }
 
@@ -60,6 +61,7 @@ BUILD=0
 DEV=0
 INIT=0
 WORKER=0
+SLURM_WORKER=0
 TEST=0
 
 
@@ -167,6 +169,11 @@ if [ "$WORKER" = "1" ]; then
   echo "===> Bringing up worker"
   mkdir -p $CODALAB_WORKER_DIR
   docker-compose $COMPOSE_FILES up -d --no-deps --no-recreate worker
+fi
+if [ "$SLURM_WORKER" = "1" ]; then
+  echo 'starting slurm worker'
+  mkdir -p $CODALAB_WORKER_DIR
+  docker-compose -f docker-compose.yml -f docker-compose.slurm-worker.yml up -d --no-recreate worker
 fi
 
 if [ "$TEST" = "1" ]; then

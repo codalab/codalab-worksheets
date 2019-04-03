@@ -1019,7 +1019,7 @@ class BundleCLI(object):
         client = self.manager.current_client()
         raw_info = client.get_workers_info()
 
-        columns = ['worker_id', 'cpus', 'gpus', 'memory_bytes', 'last_checkin', 'tag']
+        columns = ['worker_id', 'cpus', 'gpus', 'memory_bytes', 'last_checkin', 'tag', 'shared_file_system']
 
         data = []
 
@@ -1030,6 +1030,7 @@ class BundleCLI(object):
                     'cpus': '{}/{}'.format(worker['cpus_in_use'], worker['cpus']),
                     'gpus': '{}/{}'.format(worker['gpus_in_use'], worker['gpus']),
                     'memory_bytes': formatting.size_str(worker['memory_bytes']),
+                    'shared_file_system': worker['shared_filesystem_worker'],
                     'last_checkin': '{} ago'.format(
                         formatting.duration_str(int(time.time()) - worker['checkin_time'])
                     ),
