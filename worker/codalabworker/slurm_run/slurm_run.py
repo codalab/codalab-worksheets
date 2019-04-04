@@ -114,6 +114,7 @@ class SlurmRun(object):
             print(self.run_state.run_status)
             self.write_state()
             self.wait_for_bundle_folder()
+            self.run_state.run_status = "Starting container"
             self.container = self.start_container()
             self.run_state.info['container_id'] = self.container.id
             self.run_state.run_status = "Running job in Docker"
@@ -125,7 +126,7 @@ class SlurmRun(object):
             self.container = None
             if 'exitcode' not in self.run_state.info:
                 self.run_state.info['exitcode'] = '1'
-            self.run_state.info['failure_message'] = str(ex)
+            self.run_state.info['failure_message'] = "Error while %s: %s" % (self.run_state.run_status, str(ex))
             self.run_state.state = State.FINALIZING
             self.finished = True
             self.write_state()
@@ -194,25 +195,21 @@ class SlurmRun(object):
         """
         # Symlink dependencies
         docker_dependencies = []
-        docker_dependencies_path = "/" + self.bundle.uuid + "_dependencies"
+        docker_dep_prefix = '/' + self.bundle.uuid + '/'
         for dep_key, dep in self.bundle.dependencies.items():
-            child_path = os.path.normpath(
+            full_child_path = os.path.normpath(
                 os.path.join(self.bundle.location, dep.child_path)
             )
-            if not child_path.startswith(self.bundle.location):
-                raise Exception("Invalid key for dependency: %s" % (dep.child_path))
+            if not full_child_path.startswith(self.bundle.location):
+                raise Exception("Invalid key for dependency: %s" % (dep.full_child_path))
+            child_path = os.path.join(docker_dep_prefix, dep.child_path)
 
-            docker_dependency_path = os.path.join(
-                docker_dependencies_path, dep.child_path
-            )
-            os.symlink(docker_dependency_path, child_path)
             dependency_path = os.path.realpath(
                 os.path.join(os.path.realpath(dep.location), dep.parent_path)
             )
             # These are turned into docker volume bindings like:
-            #   dependency_path:docker_dependency_path:ro
-            docker_dependencies.append((dependency_path, docker_dependency_path))
-
+            #   dependency_path:child_path:ro
+            docker_dependencies.append((dependency_path, child_path))
         return docker_utils.start_bundle_container(
             self.bundle.location,
             self.bundle.uuid,
