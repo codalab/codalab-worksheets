@@ -1,0 +1,111 @@
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.asSeparater {
+  margin: 0px 16px;
+  color: rgba(34, 94, 168, 0.75);
+}
+
+.sectionTitle {
+  color: rgba(34, 94, 168, 0.75);
+  font-size: 14pt;
+  margin-bottom: 16px;
+}
+
+.nameInput {
+  width: 120px;
+  padding: 8px;
+  border: 1px solid rgba(34, 94, 168, 0.75);
+  border-radius: 4px;
+}
+
+.nameInput:hover {
+  background-color: rgba(34, 94, 168, 0.1); 
+}
+
+.commandInputContainer {
+  margin-top: 16px;
+  background-color: black;
+  border-radius: 4px;
+  color: #ddd;
+}
+
+.commandInput {
+  padding: 8px;
+  font-size: 13pt;
+  border: 0px;
+  background-color: black;
+  color: #ddd;
+  flex: 1;
+  outline: none;
+  border-radius: 4px;
+}
+
+.closeIcon {
+  color: rgba(34, 94, 168, 0.75);
+  border: 1px solid rgba(34, 94, 168, 0.75);
+  border-radius: 50%;
+  margin-left: 8px;
+}
+
+.closeIcon:hover {
+  background-color: rgba(34, 94, 168, 0.1);
+}
+
+.inlineLabel {
+  color: rgba(34, 94, 168, 0.75);
+  margin-right: 16px;
+}
+
+.configSection {
+  margin-bottom: 8px;
+  align-items: flex-end;
+}
+
+.search-txt::placeholder {
+  color: white;
+}
+
+.search-container {
+  background: rgba(34, 94, 168, 0.75);
+  border-radius: 40px;
+  height: 40px;
+  padding: 4px;
+}
+
+.search-container:hover > .search-txt {
+}
+
+.search-container:hover > .search-btn {
+  border: 1px solid white;
+}
+
+.search-btn {
+  align-items: center;
+  border-radius: 50%;
+  box-sizing: border-box;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  float: right;
+  height: 40px;
+  justify-content: center;
+  padding: 0 !important;
+  transition: 0.4s;
+  width: 40px;
+}
+
+.search-txt {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  line-height: 40px;
+  outline: none;
+  padding: 0 6px;
+  max-width: 140px;
+  min-width: 100px;
+}
