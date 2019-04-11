@@ -60,6 +60,9 @@ export default class RunInfo extends Component {
       </div>
       {
         tags.map((tag, idx) => <Chip
+          style={ {
+            width: 'fit-content',
+          } }
           label={ tag }
           onDelete={ () => removeTag(idx) }
         />)
