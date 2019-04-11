@@ -15,7 +15,7 @@ export default class CommandInput extends Component {
     >
       <div style={ { marginLeft: 8 } }>$</div>
       <input
-        placeholder="Command"
+        placeholder="type command here (e.g python train.py -d data/trainset.txt)"
         onChange={ this.handleChange }
         className="commandInput"
       />
