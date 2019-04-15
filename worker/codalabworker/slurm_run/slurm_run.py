@@ -16,6 +16,7 @@ import fcntl
 import json
 import os
 import shutil
+import signal
 import subprocess
 import threading
 import time
@@ -37,15 +38,13 @@ def parse_args():
 def main():
     args = parse_args()
     run = SlurmRun(args)
+    # Slurm sends a SIGTERM when jobs are preempted
+    signal.signal(signal.SIGTERM, lambda signum, frame: run.handle_term())
     run.start()
 
 
 class KilledException(Exception):
-    def __str__(self):
-        return 'Bundle killed by server'
-
-    def __repr__(self):
-        return 'Bundle killed by server'
+    pass
 
 
 class SlurmRun(object):
@@ -97,6 +96,10 @@ class SlurmRun(object):
         else:
             self.gpus = []
 
+    def handle_term(self):
+        self.kill_message = "Job preempted by Slurm"
+        self.killed = True
+
     def start(self):
         try:
             print("Run started")
@@ -127,11 +130,15 @@ class SlurmRun(object):
             self.monitor_container()
         except Exception as ex:
             self.container = None
-            del self.run_state.info['container_ip']
-            del self.run_state.info['container_id']
+            if 'container_ip' in self.run_state.info:
+                del self.run_state.info['container_ip']
+            if 'container_id' in self.run_state.info:
+                del self.run_state.info['container_id']
             if 'exitcode' not in self.run_state.info:
                 self.run_state.info['exitcode'] = '1'
-            self.run_state.info['failure_message'] = "Error while %s: %s" % (self.run_state.run_status, str(ex))
+            if not self.kill_message:
+                self.kill_message = str(ex)
+            self.run_state.info['failure_message'] = "Error while %s: %s" % (self.run_state.run_status, self.kill_message)
             self.run_state.state = State.FINALIZING
             self.finished = True
             self.write_state()
@@ -153,9 +160,10 @@ class SlurmRun(object):
                 if f.read() == KILLED_STRING:
                     print("Kill message received")
                     self.killed = True
-                    self.run_state.info['exitcode'] = 1
-                    self.run_state.info['failure_message'] = 'Kill requested'
-                    raise KilledException()
+                    self.kill_message = 'Kill requested by server'
+        if self.killed:
+            self.run_state.info['exitcode'] = 1
+            raise KilledException()
 
     def pull_docker_image(self):
         """
@@ -192,7 +200,8 @@ class SlurmRun(object):
             retries_left -= 1
             time.sleep(0.5)
         if not retries_left:
-            raise Exception("Bundle location {} not found".format(self.bundle.location))
+            self.kill_message = "Bundle location {} not found".format(self.bundle.location)
+            raise Exception()
 
     def start_container(self):
         """
@@ -206,7 +215,8 @@ class SlurmRun(object):
                 os.path.join(self.bundle.location, dep.child_path)
             )
             if not full_child_path.startswith(self.bundle.location):
-                raise Exception("Invalid key for dependency: %s" % (dep.full_child_path))
+                self.kill_message = "Invalid key for dependency: %s" % (dep.full_child_path)
+                raise Exception()
             child_path = os.path.join(docker_dep_prefix, dep.child_path)
 
             dependency_path = os.path.realpath(
@@ -299,11 +309,12 @@ class SlurmRun(object):
             try:
                 self.write_state()
             except KilledException as ex:
-                kill_messages.append(str(ex))
+                kill_messages.append(self.kill_message)
             if kill_messages:
                 self.killed = True
+                self.kill_message = ', '.join(kill_messages)
                 self.run_state.info['exitcode'] = 1
-                self.run_state.info['failure_message'] = ', '.join(kill_messages)
+                self.run_state.info['failure_message'] = self.kill_message
 
             if self.killed:
                 try:
