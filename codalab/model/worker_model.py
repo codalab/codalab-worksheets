@@ -193,6 +193,7 @@ class WorkerModel(object):
             return {
                 'user_id': worker_row.user_id,
                 'worker_id': worker_row.worker_id,
+                'shared_filesystem_worker': worker_row.shared_filesystem_worker,
                 'socket_id': worker_row.socket_id,
             }
 
