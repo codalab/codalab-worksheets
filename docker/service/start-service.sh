@@ -128,24 +128,33 @@ mkdir -p $CODALAB_SERVICE_HOME
 mkdir -p $CODALAB_BUNDLE_STORE
 mkdir -p $CODALAB_MYSQL_MOUNT
 
+echo "===> Starting mysql"
 docker-compose $COMPOSE_FILES up -d mysql
+echo "===> Configuring Codalab server"
 docker-compose $COMPOSE_FILES run --rm --entrypoint='' --user=$CODALAB_UID rest-server bash -c "data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://$CODALAB_MYSQL_USER:$CODALAB_MYSQL_PWD@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:$CODALAB_REST_PORT && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
 
 if [ "$INIT" = "1" ]; then
+  echo "===> Creating root user"
   docker-compose $COMPOSE_FILES run --rm --entrypoint='' --user='0:0' rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py $CODALAB_ROOT_PWD"
 fi
 
+echo "===> Bringing up rest server"
 docker-compose $COMPOSE_FILES up -d --no-recreate rest-server
 
 if [ "$INIT" = "1" ]; then
+  echo "===> Creating initial worksheets"
   docker-compose $COMPOSE_FILES run --rm --entrypoint='' --user=$CODALAB_UID bundle-manager bash -c "data/bin/wait-for-it.sh rest-server:$CODALAB_REST_PORT -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard"
 fi
 
+echo "===> Bringing up bundle manager"
 docker-compose $COMPOSE_FILES up -d --no-recreate bundle-manager
+echo "===> Bringing up frontend"
 docker-compose $COMPOSE_FILES up -d --no-recreate frontend
+echo "===> Bringing up nginx"
 docker-compose $COMPOSE_FILES up -d --no-recreate nginx
 
 if [ "$WORKER" = "1" ]; then
+  echo "===> Bringing up worker"
   mkdir -p $CODALAB_WORKER_DIR
   docker-compose $COMPOSE_FILES up -d --no-recreate worker
 fi

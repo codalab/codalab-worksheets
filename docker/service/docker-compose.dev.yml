@@ -1,3 +1,5 @@
+version: '3.5'
+
 services:
   frontend:
     build:
@@ -12,5 +14,3 @@ services:
       - rest-server
     networks:
       - service
-    logging:
-      *non-blocking-logging
