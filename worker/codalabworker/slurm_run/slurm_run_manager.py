@@ -2,12 +2,14 @@ from codalabworker.bundle_state_objects import BundleInfo, RunResources, WorkerR
 from codalabworker.run_manager import BaseRunManager, Reader
 from codalabworker.download_util import get_target_path, PathException
 import codalabworker.download_util as download_util
+import codalabworker.docker_utils as docker_utils
 import errno
 import fcntl
 import json
 import os
 import time
 import shutil
+import socket
 import subprocess
 
 
@@ -186,7 +188,7 @@ class SlurmRunManager(BaseRunManager):
             return
 
         target_info = None
-        dependency_paths = set([dep.child_path for dep in bundle_info.dependencies])
+        dependency_paths = set([dep.child_path for dep in bundle_info.dependencies.values()])
 
         # if path is a dependency raise an error
         if path and os.path.normpath(path) in dependency_paths:
@@ -228,29 +230,8 @@ class SlurmRunManager(BaseRunManager):
         Returns a stream with the response contents
         TODO: Test this
         """
-        run_state = self.run_states[uuid]
-        bundle_info = self.bundle_infos[uuid]
-        if bundle_info.uuid not in self.runs or 'container_id' not in run_state.info:
-            return
-        container_ip = docker_utils.get_container_ip(
-            self.docker_network_external_name, run_state.info['container_id']
-        )
-        if not container_ip:
-            container_ip = docker_utils.get_container_ip(
-                self.docker_network_internal_name, run_state.info['container_id']
-            )
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((container_ip, port))
-        s.sendall(message)
-
-        total_data = []
-        while True:
-            data = s.recv(LocalRunManager.NETCAT_BUFFER_SIZE)
-            if not data:
-                break
-            total_data.append(data)
-        s.close()
-        reply(None, {}, ''.join(total_data))
+        err = (httplib.BAD_REQUEST, "Netcat not supported for Slurm workers yet")
+        reply_fn(err)
 
     def kill(self, uuid):
         """
