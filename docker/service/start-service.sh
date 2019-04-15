@@ -45,6 +45,7 @@ and default values:
 Here's a list of arguments you can pass to control which services are brought up:
   [
     [ -b --build: Build docker images first ]
+    [ -d --dev: Development setup from local files ]
     [ -w --worker: Start a CodaLab worker as well ]
     [ -t --test: Run tests as well, fail if tests fail ]
     [ -h --help: get usage help ]
@@ -53,6 +54,7 @@ Here's a list of arguments you can pass to control which services are brought up
 }
 
 BUILD=0
+DEV=0
 INIT=0
 WORKER=0
 TEST=0
@@ -82,6 +84,8 @@ for arg in "$@"; do
   case $arg in
     -b | --build )      BUILD=1
                         ;;
+    -d | --dev )       DEV=1
+                        ;;
     -i | --init )       INIT=1
                         ;;
     -t | --test )       TEST=1
@@ -103,35 +107,41 @@ if [ "$BUILD" = "1" ]; then
   ./docker/build-images.sh $CODALAB_VERSION
 fi
 
+if [ "$DEV" = "1" ]; then
+  COMPOSE_FILES='-f docker-compose.yml -f docker-compose.dev.yml'
+else
+  COMPOSE_FILES='-f docker-compose.yml'
+fi
+
 cd docker/service
 
 echo "==> Bringing down old instance of service"
-docker-compose down --remove-orphans
+docker-compose $COMPOSE_FILES down --remove-orphans
 
 mkdir -p $CODALAB_SERVICE_HOME
 mkdir -p $CODALAB_BUNDLE_STORE
 mkdir -p $CODALAB_MYSQL_MOUNT
 
-docker-compose up -d mysql
-docker-compose run --rm --entrypoint='' rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets/worker && /opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://$CODALAB_MYSQL_USER:$CODALAB_MYSQL_PWD@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:$CODALAB_REST_PORT && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
+docker-compose $COMPOSE_FILES up -d mysql
+docker-compose $COMPOSE_FILES run --rm --entrypoint='' rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets/worker && /opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://$CODALAB_MYSQL_USER:$CODALAB_MYSQL_PWD@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:$CODALAB_REST_PORT && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
 
 if [ "$INIT" = "1" ]; then
-  docker-compose run --rm --entrypoint='' rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets/worker && /opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py $CODALAB_ROOT_PWD"
+  docker-compose $COMPOSE_FILES run --rm --entrypoint='' rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets/worker && /opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py $CODALAB_ROOT_PWD"
 fi
 
-docker-compose up -d --no-recreate rest-server
+docker-compose $COMPOSE_FILES up -d --no-recreate rest-server
 
 if [ "$INIT" = "1" ]; then
-  docker-compose run --rm --entrypoint='' bundle-manager bash -c "data/bin/wait-for-it.sh rest-server:$CODALAB_REST_PORT -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard"
+  docker-compose $COMPOSE_FILES run --rm --entrypoint='' bundle-manager bash -c "data/bin/wait-for-it.sh rest-server:$CODALAB_REST_PORT -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard"
 fi
 
-docker-compose up -d --no-recreate bundle-manager
-docker-compose up -d --no-recreate frontend
-docker-compose up -d --no-recreate nginx
+docker-compose $COMPOSE_FILES up -d --no-recreate bundle-manager
+docker-compose $COMPOSE_FILES up -d --no-recreate frontend
+docker-compose $COMPOSE_FILES up -d --no-recreate nginx
 
 if [ "$WORKER" = "1" ]; then
   mkdir -p $CODALAB_WORKER_DIR
-  docker-compose up -d --no-recreate worker
+  docker-compose $COMPOSE_FILES up -d --no-recreate worker
 fi
 
 if [ "$TEST" = "1" ]; then

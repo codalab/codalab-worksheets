@@ -1,0 +1,10 @@
+FROM node:10
+
+RUN npm install -g serve
+
+WORKDIR /opt/frontend
+COPY frontend/package*.json ./
+RUN npm install
+
+EXPOSE 2700
+CMD [ "serve", "-s", "build", "-l", "2700" ]

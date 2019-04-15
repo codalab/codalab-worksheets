@@ -1,0 +1,16 @@
+services:
+  frontend:
+    build:
+      context: ../..
+      dockerfile: ../Dockerfile.frontend.dev
+    command: npm run start
+    ports:
+      - ${CODALAB_FRONTEND_PORT}:2700
+    volumes:
+      - ../../frontend:/opt/frontend
+    depends_on:
+      - rest-server
+    networks:
+      - service
+    logging:
+      *non-blocking-logging

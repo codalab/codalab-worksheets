@@ -7,24 +7,40 @@ usage()
 {
   echo "Build docker images from the codebase. [
     [TAG: Tag to use for images]
+    [-d --dev: If specified build the dev images instead]
     [-p --push: If specified push the images to Dockerhub (requires DOCKER_USERNAME and DOCKER_PWD environment variables to be set)]
   ]"
 }
 
 TAG=$1
 shift
-if [ "$1" = '-p' ] || [ "$1" = '--push' ]; then
-  PUSH=1
-else
-  PUSH=0
-fi
+
+PUSH=0
+DEV=0
+
+for arg in "$@"; do
+  case $arg in
+    -p | --push )       PUSH=1
+                        ;;
+    -d | --dev )        DEV=1
+                        ;;
+    -h | --help )       usage
+                        exit
+  esac
+done
 
 echo "==> Building the bundleserver Docker image"
 docker pull codalab/bundleserver:$TAG
 docker build --cache-from codalab/bundleserver:$TAG -t codalab/bundleserver:$TAG -f docker/Dockerfile.server .
 echo "==> Building the frontend Docker image"
-docker pull codalab/frontend:$TAG
-docker build --cache-from codalab/frontend:$TAG -t codalab/frontend:$TAG -f docker/Dockerfile.frontend .
+
+if [ "$DEV" = "1" ]; then
+  docker build -t codalab/frontend-dev:$TAG -f docker/Dockerfile.frontend.dev .
+else
+  docker pull codalab/frontend:$TAG
+  docker build --cache-from codalab/frontend:$TAG -t codalab/frontend:$TAG -f docker/Dockerfile.frontend .
+fi
+
 echo "==> Building the worker Docker image"
 docker pull codalab/worker:$TAG
 docker build --cache-from codalab/worker:$TAG -t codalab/worker:$TAG -f docker/Dockerfile.worker .
