@@ -73,18 +73,18 @@ class SlurmRun(object):
         self.docker_client = docker.from_env()
         self.docker_runtime = "nvidia" if self.resources.gpus else "runc"
         if self.resources.network:
-            self.docker_network_name = args.docker_network_external_name
+            docker_network_name = args.docker_network_external_name
             internal = False
         else:
-            self.docker_network_name = args.docker_network_internal_name
+            docker_network_name = args.docker_network_internal_name
             internal = True
         try:
-            self.docker_client.networks.create(
-                self.docker_network_name, internal=internal, check_duplicate=True
+            self.docker_network = self.docker_client.networks.create(
+                docker_network_name, internal=internal, check_duplicate=True
             )
         except docker.errors.APIError:
             # Network already exists, go on
-            pass
+            self.docker_network = self.docker_client.networks.list(names=[docker_network_name])[0]
         self.UPDATE_INTERVAL = 5
         self.finished = False
         self.killed = False
@@ -117,6 +117,9 @@ class SlurmRun(object):
             self.run_state.run_status = "Starting container"
             self.container = self.start_container()
             self.run_state.info['container_id'] = self.container.id
+            self.run_state.info['container_ip'] = docker_utils.get_container_ip(
+                self.docker_network.name, self.container
+            )
             self.run_state.run_status = "Running job in Docker"
             print(self.run_state.run_status)
             self.run_state.state = State.RUNNING
@@ -124,6 +127,8 @@ class SlurmRun(object):
             self.monitor_container()
         except Exception as ex:
             self.container = None
+            del self.run_state.info['container_ip']
+            del self.run_state.info['container_id']
             if 'exitcode' not in self.run_state.info:
                 self.run_state.info['exitcode'] = '1'
             self.run_state.info['failure_message'] = "Error while %s: %s" % (self.run_state.run_status, str(ex))
@@ -217,7 +222,7 @@ class SlurmRun(object):
             self.bundle.command,
             self.resources.docker_image,
             gpuset=self.gpus,
-            network=self.docker_network_name,
+            network=self.docker_network.name,
             memory_bytes=self.resources.memory,
             runtime=self.docker_runtime,
         )
