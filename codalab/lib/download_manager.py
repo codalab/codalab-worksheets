@@ -307,10 +307,10 @@ class DownloadManager(object):
             bundle_state_cache[uuid] = self._bundle_model.get_bundle_state(uuid)
         return bundle_state_cache[uuid]
 
-    def cached_if_stable(uuid, namespace, key, f):
+    def cached_if_stable(self, uuid, namespace, key, f):
         # If the bundle is in a final state, the contents are immutable and we
         # can save time by going to the cache
-        if self.get_bundle_state(uuid) in State.FINAL_STATES
+        if self.get_bundle_state(uuid) in State.FINAL_STATES:
             return cache.get_or_compute(namespace, key, f)
         else:
             return f()
