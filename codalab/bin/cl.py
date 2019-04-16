@@ -81,7 +81,6 @@ def run_server_with_watch():
         Commands.Argument(
             '--redis-port', help='Port of a Redis server to use as a cache',
             type=int)
-        )
     ),
 )
 def do_rest_server_command(bundle_cli, args):
