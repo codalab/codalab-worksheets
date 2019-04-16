@@ -261,7 +261,12 @@ class DownloadManager(object):
     def _get_target_path(self, uuid, path):
         bundle_path = self._bundle_store.get_bundle_location(uuid)
         try:
-            return download_util.get_target_path(bundle_path, uuid, path)
+            key = (bundle_path, uuid, path)
+            # If the bundle is not running, the contents are immutable and we can save time by going to the cache
+            if self.get_bundle_state(uuid) != State.RUNNING:
+                return cache.get_or_compute('target_path', key, lambda: download_util.get_target_path(*key))
+            else:
+                return download_util.get_target_path(*key)
         except download_util.PathException as e:
             raise UsageError(e.message)
 
