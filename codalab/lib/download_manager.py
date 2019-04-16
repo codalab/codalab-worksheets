@@ -71,7 +71,7 @@ class DownloadManager(object):
             try:
                 # TODO: cache this in redis
                 key = (bundle_path, uuid, path, depth)
-                return cache.get_or_compute(namespace, key, lambda: download_util.get_target_info(*key))
+                return cache.get_or_compute('target_info', key, lambda: download_util.get_target_info(*key))
             except download_util.PathException as e:
                 raise UsageError(e.message)
         else:
