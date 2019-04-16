@@ -206,10 +206,7 @@ class DownloadManager(object):
             # If the bundle is not running, the contents are immutable and we can save time by going to the cache
             key = (file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text)
             summarize = lambda: file_util.summarize_file(*key)
-            if self.get_bundle_state(uuid) != State.RUNNING:
-                string = cache.get_or_compute('summarize_file', key, summarize)
-            else:
-                string = summarize()
+            string = self.cached_if_stable(uuid, 'summarize_file', key, summarize)
 
             if gzipped:
                 string = file_util.gzip_string(string)
@@ -262,11 +259,8 @@ class DownloadManager(object):
         bundle_path = self._bundle_store.get_bundle_location(uuid)
         try:
             key = (bundle_path, uuid, path)
-            # If the bundle is not running, the contents are immutable and we can save time by going to the cache
-            if self.get_bundle_state(uuid) != State.RUNNING:
-                return cache.get_or_compute('target_path', key, lambda: download_util.get_target_path(*key))
-            else:
-                return download_util.get_target_path(*key)
+            get_target_path = lambda: download_util.get_target_path(*key)
+            return self.cached_if_stable(uuid, 'target_path', key, get_target_path)
         except download_util.PathException as e:
             raise UsageError(e.message)
 
@@ -312,6 +306,14 @@ class DownloadManager(object):
         if uuid not in bundle_state_cache:
             bundle_state_cache[uuid] = self._bundle_model.get_bundle_state(uuid)
         return bundle_state_cache[uuid]
+
+    def cached_if_stable(uuid, namespace, key, f):
+        # If the bundle is in a final state, the contents are immutable and we
+        # can save time by going to the cache
+        if self.get_bundle_state(uuid) in State.FINAL_STATES
+            return cache.get_or_compute(namespace, key, f)
+        else:
+            return f()
 
 
 class Deallocating(object):
