@@ -36,14 +36,23 @@ class DownloadManager(object):
     Note, this class does not check permissions in any way. The caller is
     responsible for doing all required permissions checks.
     """
-
     def __init__(self, bundle_model, worker_model, bundle_store):
         self._bundle_model = bundle_model
         self._worker_model = worker_model
         self._bundle_store = bundle_store
+        self.cache_init()
+
+    def cache_init(self):
+        self._cache = {
+            'bundle_state': {},
+            'target_info': {},
+        }
 
     @retry_if_no_longer_running
-    def get_target_info(self, uuid, path, depth):
+    def get_target_info(self, *args, **kwargs):
+        return self._get_target_info(*args, **kwargs)
+
+    def _get_target_info(self, uuid, path, depth):
         """
         Returns information about an individual target inside the bundle, or
         None if the target or bundle doesn't exist.
@@ -52,7 +61,7 @@ class DownloadManager(object):
         worker.download_util.get_target_info.
         """
         try:
-            bundle_state = self._bundle_model.get_bundle_state(uuid)
+            bundle_state = self.get_bundle_state(uuid)
         except NotFoundError:
             bundle_state = None
 
@@ -90,7 +99,10 @@ class DownloadManager(object):
                 self._worker_model.deallocate_socket(response_socket_id)
 
     @retry_if_no_longer_running
-    def stream_tarred_gzipped_directory(self, uuid, path):
+    def stream_tarred_gzipped_directory(self, *args, **kwargs):
+        return self._stream_tarred_gzipped_directory(*args, **kwargs)
+
+    def _stream_tarred_gzipped_directory(self, uuid, path):
         """
         Returns a file-like object containing a tarred and gzipped archive
         of the given directory.
@@ -113,7 +125,10 @@ class DownloadManager(object):
                 raise
 
     @retry_if_no_longer_running
-    def stream_file(self, uuid, path, gzipped):
+    def stream_file(self, *args, **kwargs):
+        return self._stream_file(*args, **kwargs)
+
+    def _stream_file(self, uuid, path, gzipped):
         """
         Returns a file-like object reading the given file. This file is gzipped
         if gzipped is True.
@@ -141,7 +156,10 @@ class DownloadManager(object):
                 raise
 
     @retry_if_no_longer_running
-    def read_file_section(self, uuid, path, offset, length, gzipped):
+    def read_file_section(self, *args, **kwargs):
+        return self._read_file_section(*args, **kwargs)
+
+    def _read_file_section(self, uuid, path, offset, length, gzipped):
         """
         Reads length bytes of the file at the given path in the bundle.
         The result is gzipped if gzipped is True.
@@ -171,7 +189,10 @@ class DownloadManager(object):
             return string
 
     @retry_if_no_longer_running
-    def summarize_file(self, uuid, path, num_head_lines, num_tail_lines, max_line_length, truncation_text, gzipped):
+    def summarize_file(self, *args, **kwargs):
+        return self._summarize_file(*args, **kwargs)
+
+    def _summarize_file(self, uuid, path, num_head_lines, num_tail_lines, max_line_length, truncation_text, gzipped):
         """
         Summarizes the file at the given path in the bundle, returning a string
         containing the given numbers of lines from beginning and end of the file.
@@ -220,7 +241,7 @@ class DownloadManager(object):
         return string
 
     def _is_available_locally(self, uuid):
-        if self._bundle_model.get_bundle_state(uuid) == State.RUNNING:
+        if self.get_bundle_state(uuid) == State.RUNNING:
             if self._worker_model.shared_file_system:
                 worker = self._worker_model.get_bundle_worker(uuid)
                 return worker['user_id'] == self._bundle_model.root_user_id
@@ -272,6 +293,27 @@ class DownloadManager(object):
     def _get_read_response_string(self, response_socket_id):
         with closing(self._get_read_response_stream(response_socket_id)) as fileobj:
             return fileobj.read()
+
+#    def cache(self, subcache_key):
+#        def cache_decorator(f):
+#                cache = self._cache[subcache_key]
+#                if uuid not in cache:
+#                    cache[uuid] = self._bundle_model.get_bundle_state(uuid)
+#                return cache[uuid]
+#        return cache_decorator
+#
+#    @self.cache('bundle_state')
+#    def get_bundle_state(self, uuid):
+#        return self._bundle_model.get_bundle_state(uuid)
+
+    def cached(self, subcache_key, cache_key, compute_f):
+        cache = self._cache[subcache_key]
+        if cache_key not in cache:
+            cache[cache_key] = compute_f()
+        return cache[cache_key]
+
+    def get_bundle_state(self, uuid):
+        return self.cached('bundle_state', uuid, lambda: self._bundle_model.get_bundle_state(uuid))
 
 
 class Deallocating(object):

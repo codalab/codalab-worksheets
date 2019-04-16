@@ -56,6 +56,19 @@ ROUTES_NOT_LOGGED_REGEXES = [
 ]
 
 
+class ClearCachePlugin(object):
+    """Clears the thread-local request cache before each reqeust"""
+    api = 2
+    def apply(self, callback, route):
+        def wrapper(*args, **kwargs):
+            local.cache = {
+                'read_permissions': {},
+            }
+            local.download_manager.cache_init()
+            return callback(*args, **kwargs)
+
+        return wrapper
+
 class SaveEnvironmentPlugin(object):
     """Saves environment objects in the local request variable."""
     api = 2
@@ -252,6 +265,7 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     port = manager.config['server']['rest_port']
 
     install(SaveEnvironmentPlugin(manager))
+    install(ClearCachePlugin())
     install(CheckJsonPlugin())
     install(LoggingPlugin())
     install(oauth2_provider.check_oauth())

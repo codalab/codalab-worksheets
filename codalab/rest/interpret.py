@@ -48,6 +48,11 @@ from codalab.rest.worksheets import (
     search_worksheets,
 )
 
+import cProfile
+from line_profiler import LineProfiler
+
+import uuid as uuidM
+
 
 @post('/interpret/search')
 def _interpret_search():
@@ -162,6 +167,34 @@ def _interpret_genpath_table_contents():
 
 @get('/interpret/worksheet/<uuid:re:%s>' % spec_util.UUID_STR)
 def fetch_interpreted_worksheet(uuid):
+    profile_filename = '/home/ubuntu/theo/codalab-worksheets-profile/profiles/profile_%s_%s' % (uuid, str(uuidM.uuid4()))
+    #x = cProfile.run('do_fetch_interpreted_worksheet(uuid)', profile_filename)
+    #x = cProfile.runctx('do_fetch_interpreted_worksheet(uuid)', {}, {'do_fetch_interpreted_worksheet': do_fetch_interpreted_worksheet, 'uuid': uuid}, profile_filename)
+    #x = cProfile.runctx('do_fetch_interpreted_worksheet(uuid)', globals(), locals(), profile_filename)
+
+    lp = LineProfiler()
+    import codalab, codalabworker
+    lp.add_module(codalabworker.download_util)
+    lp.add_module(codalab.lib.download_manager)
+    lp.add_module(codalabworker.file_util)
+    lp.add_module(rest_util)
+    lp.add_module(codalab.objects.permission)
+    #lp.add_module(codalab.lib.bundle_store)
+    lp.add_module(codalab.model.worker_model)
+    lp.add_module(codalab.model)
+    lp.add_function(resolve_interpreted_items)
+    lp.add_function(interpret_file_genpath)
+    x = lp.runcall(do_fetch_interpreted_worksheet, uuid)
+    lp.dump_stats(profile_filename)
+    #lp.print_stats(stripzeros=True)
+    current_stats_filename = '/home/ubuntu/theo/codalab-worksheets-profile/current-profile.txt'
+    with open(current_stats_filename, 'w') as f:
+        lp.print_stats(stripzeros=True, stream=f)
+    return x
+
+    #do_fetch_interpreted_worksheet(uuid)
+
+def do_fetch_interpreted_worksheet(uuid):
     """
     Return information about a worksheet. Calls
     - get_worksheet_info: get basic info

@@ -8,6 +8,7 @@ import re
 from bottle import abort, local, request
 
 from codalab.bundles import PrivateBundle
+from codalab.common import PermissionError
 from codalab.lib import bundle_util
 from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_ALL,
@@ -148,8 +149,28 @@ def _get_user_bundle_permissions(uuids):
         request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids))
 
 
+def _permission_check_success():
+    pass
+def _permission_check_fail(e):
+    def f():
+        raise e
+    return f
+
+
 def check_target_has_read_permission(target):
-    check_bundles_have_read_permission(local.model, request.user, [target[0]])
+    def compute():
+        try:
+            check_bundles_have_read_permission(local.model, request.user, [target[0]])
+            return _permission_check_success
+        except PermissionError as e:
+            return _permission_check_fail(e)
+
+    cache = local.cache['read_permissions']
+    key = (local.model, request.user, target[0])
+    if key not in cache:
+        cache[key] = compute()
+
+    cache[key]()
 
 
 def get_target_info(target, depth):
