@@ -3,8 +3,9 @@ version: '3.5'
 services:
   frontend:
     build:
-      context: ../..
+      context: .
       dockerfile: ../Dockerfile.frontend.dev
+    image: codalab/frontend-dev:${CODALAB_VERSION}
     command: npm run start
     ports:
       - ${CODALAB_FRONTEND_PORT}:2700
