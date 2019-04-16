@@ -207,7 +207,7 @@ class DownloadManager(object):
             key = (file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text)
             summarize = lambda: file_util.summarize_file(*key)
             if self.get_bundle_state(uuid) != State.RUNNING:
-                cache.get_or_compute('summarize_file', key, summarize)
+                string = cache.get_or_compute('summarize_file', key, summarize)
             else:
                 string = summarize()
 
