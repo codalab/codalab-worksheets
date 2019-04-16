@@ -45,7 +45,6 @@ class DownloadManager(object):
     def cache_init(self):
         self._cache = {
             'bundle_state': {},
-            'target_info': {},
         }
 
     @retry_if_no_longer_running
@@ -294,18 +293,6 @@ class DownloadManager(object):
         with closing(self._get_read_response_stream(response_socket_id)) as fileobj:
             return fileobj.read()
 
-#    def cache(self, subcache_key):
-#        def cache_decorator(f):
-#                cache = self._cache[subcache_key]
-#                if uuid not in cache:
-#                    cache[uuid] = self._bundle_model.get_bundle_state(uuid)
-#                return cache[uuid]
-#        return cache_decorator
-#
-#    @self.cache('bundle_state')
-#    def get_bundle_state(self, uuid):
-#        return self._bundle_model.get_bundle_state(uuid)
-
     def cached(self, subcache_key, cache_key, compute_f):
         cache = self._cache[subcache_key]
         if cache_key not in cache:
@@ -313,7 +300,10 @@ class DownloadManager(object):
         return cache[cache_key]
 
     def get_bundle_state(self, uuid):
-        return self.cached('bundle_state', uuid, lambda: self._bundle_model.get_bundle_state(uuid))
+        cache = self._cache['bundle_state']
+        if uuid not in cache:
+            cache[uuid] = self._bundle_model.get_bundle_state(uuid))
+        return cache[cache_key]
 
 
 class Deallocating(object):
