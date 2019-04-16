@@ -182,6 +182,7 @@ def fetch_interpreted_worksheet(uuid):
     #lp.add_module(codalab.lib.bundle_store)
     lp.add_module(codalab.model.worker_model)
     lp.add_module(codalab.model)
+    lp.add_module(codalab.lib.cache)
     lp.add_function(resolve_interpreted_items)
     lp.add_function(interpret_file_genpath)
     x = lp.runcall(do_fetch_interpreted_worksheet, uuid)

@@ -8,7 +8,9 @@ import redis
 redis_connection = None
 
 def init(redis_connection_pool):
-    redis_connection = redis.Redis(connection_pool=redis_connection_pool)
+    global redis_connection
+    if not redis_connection:
+        redis_connection = redis.Redis(connection_pool=redis_connection_pool)
 
 def get_or_compute(namespace, key, f):
     if redis_connection:
