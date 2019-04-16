@@ -297,7 +297,7 @@ class DownloadManager(object):
     def get_bundle_state(self, uuid):
         bundle_state_cache = self._bundle_state_cache
         if uuid not in bundle_state_cache:
-            bundle_state_cache[uuid] = self._bundle_model.get_bundle_state(uuid))
+            bundle_state_cache[uuid] = self._bundle_model.get_bundle_state(uuid)
         return bundle_state_cache[uuid]
 
 
