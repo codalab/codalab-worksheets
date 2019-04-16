@@ -14,3 +14,4 @@ marshmallow-jsonapi==0.6.0
 marshmallow==2.6.1
 oauthlib==1.0.3
 MySQL-python==1.2.5
+redis==3.2.1

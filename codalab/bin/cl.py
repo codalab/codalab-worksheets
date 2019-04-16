@@ -2,6 +2,7 @@
 # Main entry point for CodaLab.
 # Run 'cl' rather than this script.
 import os
+import redis
 import signal
 import sys
 import time
@@ -74,7 +75,13 @@ def run_server_with_watch():
             type=int, default=50),
         Commands.Argument(
             '-d', '--debug', help='Run the development server for debugging.',
-            action='store_true')
+            action='store_true'),
+        Commands.Argument(
+            '--redis-host', help='Host of a Redis server to use as a cache'),
+        Commands.Argument(
+            '--redis-port', help='Port of a Redis server to use as a cache',
+            type=int)
+        )
     ),
 )
 def do_rest_server_command(bundle_cli, args):
@@ -84,8 +91,12 @@ def do_rest_server_command(bundle_cli, args):
     if args.watch:
         run_server_with_watch()
     else:
+        # initialize a Redis connection pool if supplied with redis args
+        redis_connection_pool = None
+        if args.redis_host and args.redis_port:
+            redis_connection_pool = redis.ConnectionPool(host=args.redis_host, port=args.redis_port)
         from codalab.server.rest_server import run_rest_server
-        run_rest_server(bundle_cli.manager, args.debug, args.processes, args.threads)
+        run_rest_server(bundle_cli.manager, args.debug, args.processes, args.threads, redis_connection_pool)
 
 
 @Commands.command(

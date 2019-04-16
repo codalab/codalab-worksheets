@@ -3,6 +3,7 @@ import sys
 from contextlib import closing
 
 from codalab.common import http_error_to_exception, precondition, State, UsageError, NotFoundError
+from codalab.lib import cache
 from codalabworker import download_util
 from codalabworker import file_util
 
@@ -43,9 +44,7 @@ class DownloadManager(object):
         self.cache_init()
 
     def cache_init(self):
-        self._cache = {
-            'bundle_state': {},
-        }
+        self._bundle_state_cache = {}
 
     @retry_if_no_longer_running
     def get_target_info(self, *args, **kwargs):
@@ -70,7 +69,9 @@ class DownloadManager(object):
         elif bundle_state != State.RUNNING:
             bundle_path = self._bundle_store.get_bundle_location(uuid)
             try:
-                return download_util.get_target_info(bundle_path, uuid, path, depth)
+                # TODO: cache this in redis
+                key = (bundle_path, uuid, path, depth)
+                return cache.get_or_compute(namespace, key, lambda: download_util.get_target_info(*key))
             except download_util.PathException as e:
                 raise UsageError(e.message)
         else:
@@ -293,17 +294,11 @@ class DownloadManager(object):
         with closing(self._get_read_response_stream(response_socket_id)) as fileobj:
             return fileobj.read()
 
-    def cached(self, subcache_key, cache_key, compute_f):
-        cache = self._cache[subcache_key]
-        if cache_key not in cache:
-            cache[cache_key] = compute_f()
-        return cache[cache_key]
-
     def get_bundle_state(self, uuid):
-        cache = self._cache['bundle_state']
-        if uuid not in cache:
-            cache[uuid] = self._bundle_model.get_bundle_state(uuid))
-        return cache[cache_key]
+        bundle_state_cache = self._bundle_state_cache
+        if uuid not in bundle_state_cache:
+            bundle_state_cache[uuid] = self._bundle_model.get_bundle_state(uuid))
+        return bundle_state_cache[uuid]
 
 
 class Deallocating(object):

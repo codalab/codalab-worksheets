@@ -26,7 +26,7 @@ from bottle import (
 )
 
 from codalab.common import exception_to_http_error
-from codalab.lib import formatting, server_util
+from codalab.lib import cache, formatting, server_util
 import codalab.rest.account
 import codalab.rest.bundle_actions
 import codalab.rest.bundles
@@ -258,12 +258,13 @@ def dummy_xmlrpc_app():
     app = Bottle()
     return app
 
-
-def run_rest_server(manager, debug, num_processes, num_threads):
+def run_rest_server(manager, debug, num_processes, num_threads, redis_connection_pool):
     """Runs the REST server."""
     host = manager.config['server']['rest_host']
     port = manager.config['server']['rest_port']
 
+    if redis_connection_pool:
+        cache.init(redis_connection_pool)
     install(SaveEnvironmentPlugin(manager))
     install(ClearCachePlugin())
     install(CheckJsonPlugin())
