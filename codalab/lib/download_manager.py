@@ -66,15 +66,17 @@ class DownloadManager(object):
         # Return None if invalid bundle reference
         if bundle_state is None:
             return None
-        elif bundle_state != State.RUNNING:
+
+        if self._is_available_locally(uuid):
             bundle_path = self._bundle_store.get_bundle_location(uuid)
             try:
                 # TODO: cache this in redis
                 key = (bundle_path, uuid, path, depth)
-                return cache.get_or_compute('target_info', key, lambda: download_util.get_target_info(*key))
+                return self.cached_if_stable(uuid, 'target_info', key, lambda: download_util.get_target_info(*key))
             except download_util.PathException as e:
                 raise UsageError(e.message)
         else:
+            # TODO: clean up this comment
             # get_target_info calls are sent to the worker even on a shared file
             # system since 1) due to NFS caching the worker has more up to date
             # information on directory contents, and 2) the logic of hiding
