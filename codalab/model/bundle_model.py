@@ -201,7 +201,6 @@ class BundleModel(object):
             ]).where(table.c.uuid.in_(uuids))).fetchall()
             return dict((row.uuid, row.owner_id) for row in rows)
     def get_bundle_owner_ids(self, uuids, session_cache = None):
-        # TODO: cache
         return self.get_owner_ids(cl_bundle, uuids)
     def get_worksheet_owner_ids(self, uuids):
         return self.get_owner_ids(cl_worksheet, uuids)
@@ -1527,7 +1526,12 @@ class BundleModel(object):
             object_permissions = session_cache.setdefault(user_id, {})
 
         uuids_not_in_cache = [uuid for uuid in object_uuids if uuid not in object_permissions]
-        owner_ids = self.get_owner_ids(table, uuids_not_in_cache)
+        # hax
+        if table == cl_group_bundle_permission:
+            owner_table = cl_bundle
+        elif table == cl_group_worksheet_permission:
+            owner_table = cl_worksheet
+        owner_ids = self.get_owner_ids(owner_table, uuids_not_in_cache)
         for object_uuid in uuids_not_in_cache:
             owner_id = owner_ids.get(object_uuid)
             # Owner and root has all permissions.
