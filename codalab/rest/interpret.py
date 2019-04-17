@@ -508,9 +508,6 @@ def interpret_file_genpaths(requests):
     """
     target_cache = {}
     responses = []
-    # Pipeline permissions checks
-    #bundle_uuids = {bundle_uuid for (bundle_uuid, _, _) in requests}
-    # TODO: batch fetch permissions for performance
     for (bundle_uuid, genpath, post) in requests:
         value = interpret_file_genpath(target_cache, bundle_uuid, genpath, post)
         responses.append(value)
