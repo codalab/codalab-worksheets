@@ -48,11 +48,6 @@ from codalab.rest.worksheets import (
     search_worksheets,
 )
 
-import cProfile
-from line_profiler import LineProfiler
-
-import uuid as uuidM
-
 
 @post('/interpret/search')
 def _interpret_search():
