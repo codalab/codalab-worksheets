@@ -45,6 +45,7 @@ class DownloadManager(object):
 
     def cache_init(self):
         self._bundle_state_cache = {}
+        self._bundle_worker_cache = {}
 
     @retry_if_no_longer_running
     def get_target_info(self, *args, **kwargs):
@@ -72,7 +73,7 @@ class DownloadManager(object):
             try:
                 # TODO: cache this in redis
                 key = (bundle_path, uuid, path, depth)
-                return self.cached_if_stable(uuid, 'target_info', key, lambda: download_util.get_target_info(*key))
+                return self._cached_if_stable(uuid, 'target_info', key, lambda: download_util.get_target_info(*key))
             except download_util.PathException as e:
                 raise UsageError(e.message)
         else:
@@ -208,13 +209,13 @@ class DownloadManager(object):
             # If the bundle is not running, the contents are immutable and we can save time by going to the cache
             key = (file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text)
             summarize = lambda: file_util.summarize_file(*key)
-            string = self.cached_if_stable(uuid, 'summarize_file', key, summarize)
+            string = self._cached_if_stable(uuid, 'summarize_file', key, summarize)
 
             if gzipped:
                 string = file_util.gzip_string(string)
             return string
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
                 read_args = {
@@ -237,7 +238,7 @@ class DownloadManager(object):
         """
         Sends a raw bytestring into the specified port of a running bundle, then return the response.
         """
-        worker = self._worker_model.get_bundle_worker(uuid)
+        worker = self.get_bundle_worker(uuid)
         response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
         try:
             self._send_netcat_message(worker, response_socket_id, uuid, port, message)
@@ -250,7 +251,7 @@ class DownloadManager(object):
     def _is_available_locally(self, uuid):
         if self.get_bundle_state(uuid) == State.RUNNING:
             if self._worker_model.shared_file_system:
-                worker = self._worker_model.get_bundle_worker(uuid)
+                worker = self.get_bundle_worker(uuid)
                 return worker['user_id'] == self._bundle_model.root_user_id
             else:
                 return False
@@ -262,7 +263,7 @@ class DownloadManager(object):
         try:
             key = (bundle_path, uuid, path)
             get_target_path = lambda: download_util.get_target_path(*key)
-            return self.cached_if_stable(uuid, 'target_path', key, get_target_path)
+            return self._cached_if_stable(uuid, 'target_path', key, get_target_path)
         except download_util.PathException as e:
             raise UsageError(e.message)
 
@@ -304,18 +305,23 @@ class DownloadManager(object):
             return fileobj.read()
 
     def get_bundle_state(self, uuid):
-        bundle_state_cache = self._bundle_state_cache
-        if uuid not in bundle_state_cache:
-            bundle_state_cache[uuid] = self._bundle_model.get_bundle_state(uuid)
-        return bundle_state_cache[uuid]
+        return self._cached_by_session(self._bundle_state_cache, uuid, lambda: self._bundle_model.get_bundle_state(uuid))
 
-    def cached_if_stable(self, uuid, namespace, key, f):
+    def get_bundle_worker(self, uuid):
+        return self._cached_by_session(self._bundle_worker_cache, uuid, lambda: self._worker_model.get_bundle_worker(uuid))
+
+    def _cached_if_stable(self, uuid, namespace, key, f):
         # If the bundle is in a final state, the contents are immutable and we
         # can save time by going to the cache
         if self.get_bundle_state(uuid) in State.FINAL_STATES:
             return cache.get_or_compute(namespace, key, f)
         else:
             return f()
+
+    def _cached_by_session(self, session_cache, key, f):
+        if key not in session_cache:
+            session_cache[key] = f()
+        return session_cache[key]
 
 
 class Deallocating(object):
