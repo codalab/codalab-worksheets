@@ -109,8 +109,7 @@ def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_p
         host_worksheets = local.model.get_host_worksheet_uuids(readable)
         # Gather all worksheet uuids
         worksheet_uuids = [uuid for l in host_worksheets.itervalues() for uuid in l]
-        wpermissions = local.model.get_user_worksheet_permissions(
-            request.user.user_id, worksheet_uuids, local.model.get_worksheet_owner_ids(worksheet_uuids))
+        wpermissions = local.model.get_user_worksheet_permissions(request.user.user_id, worksheet_uuids, local.worksheet_permissions_cache)
         readable_worksheet_uuids = set(uuid for uuid, permission in wpermissions.iteritems()
                                        if permission >= GROUP_OBJECT_PERMISSION_READ)
         # Lookup names
@@ -145,32 +144,11 @@ def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_p
 
 
 def _get_user_bundle_permissions(uuids):
-    return local.model.get_user_bundle_permissions(
-        request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids))
-
-
-def _permission_check_success():
-    pass
-def _permission_check_fail(e):
-    def f():
-        raise e
-    return f
+    return local.model.get_user_bundle_permissions(request.user.user_id, uuids, local.bundle_permissions_cache)
 
 
 def check_target_has_read_permission(target):
-    def compute():
-        try:
-            check_bundles_have_read_permission(local.model, request.user, [target[0]])
-            return _permission_check_success
-        except PermissionError as e:
-            return _permission_check_fail(e)
-
-    cache = local.cache['read_permissions']
-    key = (local.model, request.user, target[0])
-    if key not in cache:
-        cache[key] = compute()
-
-    cache[key]()
+    check_bundles_have_read_permission(local.model, request.user, [target[0]], local.bundle_permissions_cache)
 
 
 def get_target_info(target, depth):

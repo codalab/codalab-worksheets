@@ -56,14 +56,13 @@ ROUTES_NOT_LOGGED_REGEXES = [
 ]
 
 
-class ClearCachePlugin(object):
+class InitCachePlugin(object):
     """Clears the thread-local request cache before each reqeust"""
     api = 2
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
-            local.cache = {
-                'read_permissions': {},
-            }
+            local.bundle_permissions_cache = {}
+            local.worksheet_permissions_cache = {}
             local.download_manager.cache_init()
             return callback(*args, **kwargs)
 
@@ -266,7 +265,7 @@ def run_rest_server(manager, debug, num_processes, num_threads, redis_connection
     if redis_connection_pool:
         cache.init(redis_connection_pool)
     install(SaveEnvironmentPlugin(manager))
-    install(ClearCachePlugin())
+    install(InitCachePlugin())
     install(CheckJsonPlugin())
     install(LoggingPlugin())
     install(oauth2_provider.check_oauth())

@@ -200,7 +200,8 @@ class BundleModel(object):
                 table.c.owner_id,
             ]).where(table.c.uuid.in_(uuids))).fetchall()
             return dict((row.uuid, row.owner_id) for row in rows)
-    def get_bundle_owner_ids(self, uuids):
+    def get_bundle_owner_ids(self, uuids, session_cache = None):
+        # TODO: cache
         return self.get_owner_ids(cl_bundle, uuids)
     def get_worksheet_owner_ids(self, uuids):
         return self.get_owner_ids(cl_worksheet, uuids)
@@ -1506,7 +1507,7 @@ class BundleModel(object):
     def get_group_worksheet_permissions(self, user_id, worksheet_uuid):
         return self.get_group_permissions(cl_group_worksheet_permission, user_id, worksheet_uuid)
 
-    def get_user_permissions(self, table, user_id, object_uuids, owner_ids):
+    def get_user_permissions(self, table, user_id, object_uuids, session_cache = None):
         """
         Gets the set of permissions granted to the given user on the given objects.
         owner_ids: map from object_uuid to owner_id.
@@ -1514,30 +1515,44 @@ class BundleModel(object):
 
         Use user_id = None to check the set of permissions of an anonymous user.
         To compute this, look at the groups that the user belongs to.
-        """
-        object_permissions = dict((object_uuid, GROUP_OBJECT_PERMISSION_NONE) for object_uuid in object_uuids)
 
-        remaining_object_uuids = []
-        for object_uuid in object_uuids:
+        The session cache is used to improve performance for multiple checks
+        within a session. This should never be reused across sessions.
+        """
+        if user_id = self.root_user_id:
+            return { uuid: GROUP_OBJECT_PERMISSION_ALL for uuid in object_uuids }
+
+        object_permissions = {}
+        if session_cache != None:
+            object_permissions = session_cache.setdefault(user_id, {})
+
+        uuids_not_in_cache = [uuid for uuid in object_uuid if uuid not in object_permissions]
+        owner_ids = self.get_owner_ids(table, uuids_not_in_cache)
+        for object_uuid in uuids_not_in_cache:
             owner_id = owner_ids.get(object_uuid)
             # Owner and root has all permissions.
-            if user_id == owner_id or user_id == self.root_user_id:
+            if user_id == owner_id:
                 object_permissions[object_uuid] = GROUP_OBJECT_PERMISSION_ALL
-            else:
-                remaining_object_uuids.append(object_uuid)
 
-        if len(remaining_object_uuids) > 0:
-            result = self.batch_get_group_permissions(table, user_id, remaining_object_uuids)
+        uuids_not_in_cache_or_owned = [uuid for uuid in object_uuid if uuid not in object_permissions]
+        if len(uuids_not_in_cache_or_owned) > 0:
+            result = self.batch_get_group_permissions(table, user_id, uuids_not_in_cache_or_owned)
             user_groups = self._get_user_groups(user_id)
             for object_uuid, permissions in result.items():
                 for row in permissions:
                     if row['group_uuid'] in user_groups:
                         object_permissions[object_uuid] = max(object_permissions[object_uuid], row['permission'])
+
+        # Fill in any permissions for objects whose UUIDs we haven't found anywhere
+        for missing_uuid in [uuid for uuid in object_uuids if uuid not in object_permissions]:
+            object_permissions[missing_uuid] = GROUP_OBJECT_PERMISSION_NONE
+
         return object_permissions
-    def get_user_bundle_permissions(self, user_id, bundle_uuids, owner_ids):
-        return self.get_user_permissions(cl_group_bundle_permission, user_id, bundle_uuids, owner_ids)
-    def get_user_worksheet_permissions(self, user_id, worksheet_uuids, owner_ids):
-        return self.get_user_permissions(cl_group_worksheet_permission, user_id, worksheet_uuids, owner_ids)
+
+    def get_user_bundle_permissions(self, user_id, bundle_uuids, session_cache = None):
+        return self.get_user_permissions(cl_group_bundle_permission, user_id, bundle_uuids, session_cache)
+    def get_user_worksheet_permissions(self, user_id, worksheet_uuids, session_cache = None):
+        return self.get_user_permissions(cl_group_worksheet_permission, user_id, worksheet_uuids, session_cache)
 
     # Operations on the events log.
 

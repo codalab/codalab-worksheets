@@ -41,7 +41,7 @@ from codalab.lib.worksheet_util import (
     subworksheet_item,
 )
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
-from codalab.objects.permission import permission_str
+from codalab.objects.permission import permission_str, get_user_permissions
 from codalab.rest import util as rest_util
 from codalab.rest.worksheets import (
     get_worksheet_info,
@@ -507,6 +507,9 @@ def interpret_file_genpaths(requests):
     """
     target_cache = {}
     responses = []
+    # Pipeline permissions checks
+    #bundle_uuids = {bundle_uuid for (bundle_uuid, _, _) in requests}
+    # TODO: batch fetch permissions for performance
     for (bundle_uuid, genpath, post) in requests:
         value = interpret_file_genpath(target_cache, bundle_uuid, genpath, post)
         responses.append(value)

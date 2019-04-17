@@ -81,10 +81,10 @@ def get_single_group(model, group_spec, search_fn):
 ############################################################
 # Checking permissions
 
-def _check_permissions(model, table, user, object_uuids, owner_ids, need_permission):
+def _check_permissions(model, table, user, object_uuids, need_permission, session_cache):
     if len(object_uuids) == 0:
-        return
-    have_permissions = model.get_user_permissions(table, user.unique_id if user else None, object_uuids, owner_ids)
+        return {}
+    have_permissions = model.get_user_permissions(table, user.unique_id if user else None, object_uuids, session_cache)
     #print '_check_permissions %s %s, have %s, need %s' % (user, object_uuids, map(permission_str, have_permissions.values()), permission_str(need_permission))
     if min(have_permissions.values()) >= need_permission:
         return
@@ -101,15 +101,17 @@ def _check_permissions(model, table, user, object_uuids, owner_ids, need_permiss
     raise PermissionError("User %s does not have sufficient permissions on %s %s (have %s, need %s)." % \
         (user_str, object_type, ' '.join(object_uuids), ' '.join(map(permission_str, have_permissions.values())), permission_str(need_permission)))
 
-def check_bundles_have_read_permission(model, user, bundle_uuids):
-    _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, model.get_bundle_owner_ids(bundle_uuids), GROUP_OBJECT_PERMISSION_READ)
-def check_bundles_have_all_permission(model, user, bundle_uuids):
-    _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, model.get_bundle_owner_ids(bundle_uuids), GROUP_OBJECT_PERMISSION_ALL)
+    return have_permissions
 
-def check_worksheet_has_read_permission(model, user, worksheet):
-    _check_permissions(model, cl_group_worksheet_permission, user, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}, GROUP_OBJECT_PERMISSION_READ)
-def check_worksheet_has_all_permission(model, user, worksheet):
-    _check_permissions(model, cl_group_worksheet_permission, user, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}, GROUP_OBJECT_PERMISSION_ALL)
+def check_bundles_have_read_permission(model, user, bundle_uuids, session_cache = None):
+    return _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, GROUP_OBJECT_PERMISSION_READ, session_cache)[user.uuid]
+def check_bundles_have_all_permission(model, user, bundle_uuids, session_cache = None):
+    return _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, GROUP_OBJECT_PERMISSION_ALL, session_cache)[user.uuid]
+
+def check_worksheet_has_read_permission(model, user, worksheet, session_cache = None):
+    return _check_permissions(model, cl_group_worksheet_permission, user, [worksheet.uuid], GROUP_OBJECT_PERMISSION_READ, session_cache)[worksheet.uuid]
+def check_worksheet_has_all_permission(model, user, worksheet, session_cache = None):
+    return _check_permissions(model, cl_group_worksheet_permission, user, [worksheet.uuid], GROUP_OBJECT_PERMISSION_ALL, session_cache)[worksheet.uuid]
 
 # We use a simpler permission model for running bundles. Only the root user
 # or the user who owns the bundle can run it.

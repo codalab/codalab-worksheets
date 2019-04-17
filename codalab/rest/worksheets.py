@@ -274,10 +274,7 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permissions=True):
     The returned info object contains items which are (bundle_info, subworksheet_info, value_obj, type).
     """
     worksheet = local.model.get_worksheet(uuid, fetch_items=fetch_items)
-    check_worksheet_has_read_permission(local.model, request.user, worksheet)
-    permission = local.model.get_user_worksheet_permissions(
-        request.user.user_id, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}
-    )[worksheet.uuid]
+    permission = check_worksheet_has_read_permission(local.model, request.user, worksheet)
 
     # Create the info by starting out with the metadata.
     result = worksheet.to_dict()
