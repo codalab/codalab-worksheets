@@ -87,7 +87,7 @@ def _check_permissions(model, table, user, object_uuids, need_permission, sessio
     have_permissions = model.get_user_permissions(table, user.unique_id if user else None, object_uuids, session_cache)
     #print '_check_permissions %s %s, have %s, need %s' % (user, object_uuids, map(permission_str, have_permissions.values()), permission_str(need_permission))
     if min(have_permissions.values()) >= need_permission:
-        return
+        return have_permissions
     if user:
         user_str = '%s(%s)' % (user.name, user.unique_id)
     else:
@@ -101,12 +101,10 @@ def _check_permissions(model, table, user, object_uuids, need_permission, sessio
     raise PermissionError("User %s does not have sufficient permissions on %s %s (have %s, need %s)." % \
         (user_str, object_type, ' '.join(object_uuids), ' '.join(map(permission_str, have_permissions.values())), permission_str(need_permission)))
 
-    return have_permissions
-
 def check_bundles_have_read_permission(model, user, bundle_uuids, session_cache = None):
-    return _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, GROUP_OBJECT_PERMISSION_READ, session_cache)[user.uuid]
+    return _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, GROUP_OBJECT_PERMISSION_READ, session_cache)
 def check_bundles_have_all_permission(model, user, bundle_uuids, session_cache = None):
-    return _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, GROUP_OBJECT_PERMISSION_ALL, session_cache)[user.uuid]
+    return _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, GROUP_OBJECT_PERMISSION_ALL, session_cache)
 
 def check_worksheet_has_read_permission(model, user, worksheet, session_cache = None):
     return _check_permissions(model, cl_group_worksheet_permission, user, [worksheet.uuid], GROUP_OBJECT_PERMISSION_READ, session_cache)[worksheet.uuid]

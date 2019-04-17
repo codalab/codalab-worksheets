@@ -1545,7 +1545,7 @@ class BundleModel(object):
             for object_uuid, permissions in result.items():
                 for row in permissions:
                     if row['group_uuid'] in user_groups:
-                        object_permissions[object_uuid] = max(object_permissions[object_uuid], row['permission'])
+                        object_permissions[object_uuid] = row['permission']
 
         # Fill in any permissions for objects whose UUIDs we haven't found anywhere
         for missing_uuid in [uuid for uuid in object_uuids if uuid not in object_permissions]:
