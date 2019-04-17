@@ -1519,14 +1519,14 @@ class BundleModel(object):
         The session cache is used to improve performance for multiple checks
         within a session. This should never be reused across sessions.
         """
-        if user_id = self.root_user_id:
+        if user_id == self.root_user_id:
             return { uuid: GROUP_OBJECT_PERMISSION_ALL for uuid in object_uuids }
 
         object_permissions = {}
         if session_cache != None:
             object_permissions = session_cache.setdefault(user_id, {})
 
-        uuids_not_in_cache = [uuid for uuid in object_uuid if uuid not in object_permissions]
+        uuids_not_in_cache = [uuid for uuid in object_uuids if uuid not in object_permissions]
         owner_ids = self.get_owner_ids(table, uuids_not_in_cache)
         for object_uuid in uuids_not_in_cache:
             owner_id = owner_ids.get(object_uuid)
@@ -1534,7 +1534,7 @@ class BundleModel(object):
             if user_id == owner_id:
                 object_permissions[object_uuid] = GROUP_OBJECT_PERMISSION_ALL
 
-        uuids_not_in_cache_or_owned = [uuid for uuid in object_uuid if uuid not in object_permissions]
+        uuids_not_in_cache_or_owned = [uuid for uuid in object_uuids if uuid not in object_permissions]
         if len(uuids_not_in_cache_or_owned) > 0:
             result = self.batch_get_group_permissions(table, user_id, uuids_not_in_cache_or_owned)
             user_groups = self._get_user_groups(user_id)
