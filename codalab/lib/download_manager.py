@@ -46,6 +46,7 @@ class DownloadManager(object):
     def cache_init(self):
         self._bundle_state_cache = {}
         self._bundle_worker_cache = {}
+        self._bundle_location_cache = {}
 
     @retry_if_no_longer_running
     def get_target_info(self, *args, **kwargs):
@@ -69,7 +70,7 @@ class DownloadManager(object):
             return None
 
         if self._is_available_locally(uuid):
-            bundle_path = self._bundle_store.get_bundle_location(uuid)
+            bundle_path = self.get_bundle_location(uuid)
             try:
                 # TODO: cache this in redis
                 key = (bundle_path, uuid, path, depth)
@@ -82,7 +83,7 @@ class DownloadManager(object):
             # system since 1) due to NFS caching the worker has more up to date
             # information on directory contents, and 2) the logic of hiding
             # the dependency paths doesn't need to be re-implemented here.
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
                 read_args = {
@@ -114,7 +115,7 @@ class DownloadManager(object):
             directory_path = self._get_target_path(uuid, path)
             return file_util.tar_gzip_directory(directory_path)
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
                 read_args = {
@@ -143,7 +144,7 @@ class DownloadManager(object):
             else:
                 return open(file_path)
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
                 read_args = {
@@ -174,7 +175,7 @@ class DownloadManager(object):
                 string = file_util.gzip_string(string)
             return string
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
                 read_args = {
@@ -259,7 +260,7 @@ class DownloadManager(object):
         return True
 
     def _get_target_path(self, uuid, path):
-        bundle_path = self._bundle_store.get_bundle_location(uuid)
+        bundle_path = self.get_bundle_location(uuid)
         try:
             key = (bundle_path, uuid, path)
             get_target_path = lambda: download_util.get_target_path(*key)
@@ -303,6 +304,9 @@ class DownloadManager(object):
     def _get_read_response_string(self, response_socket_id):
         with closing(self._get_read_response_stream(response_socket_id)) as fileobj:
             return fileobj.read()
+
+    def get_bundle_location(self, uuid):
+        return self._cached_by_session(self._bundle_location_cache, uuid, lambda: self._bundle_store.get_bundle_location(uuid))
 
     def get_bundle_state(self, uuid):
         return self._cached_by_session(self._bundle_state_cache, uuid, lambda: self._bundle_model.get_bundle_state(uuid))
