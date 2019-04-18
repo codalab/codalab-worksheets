@@ -141,6 +141,7 @@ mkdir -p $CODALAB_BUNDLE_STORE
 mkdir -p $CODALAB_MYSQL_MOUNT
 
 echo "===> Starting mysql"
+docker-compose up -d mysql
 echo "===> Configuring Codalab server"
 docker-compose $COMPOSE_FILES run --no-deps --rm --entrypoint='' --user=$CODALAB_UID rest-server bash -c "data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://$CODALAB_MYSQL_USER:$CODALAB_MYSQL_PWD@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:$CODALAB_REST_PORT && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
 
@@ -169,10 +170,9 @@ if [ "$WORKER" = "1" ]; then
   mkdir -p $CODALAB_WORKER_DIR
   docker-compose $COMPOSE_FILES up -d --no-deps --no-recreate worker
 fi
+
 if [ "$SLURM_WORKER" = "1" ]; then
-  echo 'starting slurm worker'
-  mkdir -p $CODALAB_WORKER_DIR
-  docker-compose -f docker-compose.yml -f docker-compose.slurm-worker.yml up -d --no-recreate worker
+  echo 'TODO: add code to start slurm worker'
 fi
 
 if [ "$TEST" = "1" ]; then
