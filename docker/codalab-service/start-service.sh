@@ -86,11 +86,16 @@ CODALAB_FRONTEND_PORT=${CODALAB_FRONTEND_PORT:-2700}
 CODALAB_MYSQL_PORT=${CODALAB_MYSQL_PORT:-3306}
 CODALAB_VERSION=${CODALAB_VERSION:-latest}
 
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+# cd to project root
+cd $SCRIPT_DIR/../..
+echo $(pwd)
+
 for arg in "$@"; do
   case $arg in
     -b | --build )      BUILD=1
                         ;;
-    -d | --dev )       DEV=1
+    -d | --dev )        DEV=1
                         ;;
     -i | --init )       INIT=1
                         ;;
@@ -98,7 +103,7 @@ for arg in "$@"; do
                         ;;
     -w | --worker )     WORKER=1
                         ;;
-    -s | --stop )       cd docker/service
+    -s | --stop )       cd docker/codalab-service
                         echo "==> Bringing down Codalab service"
                         docker-compose down --remove-orphans
                         exit
@@ -119,7 +124,7 @@ else
   COMPOSE_FILES='-f docker-compose.yml'
 fi
 
-cd docker/service
+cd docker/codalab-service
 
 echo "==> Bringing down old instance of service"
 docker-compose $COMPOSE_FILES down --remove-orphans
@@ -160,7 +165,7 @@ if [ "$WORKER" = "1" ]; then
 fi
 
 if [ "$TEST" = "1" ]; then
-  cd ../..
+  cd ..
   pip install -e ./worker/
   pip install -e ./
   cl config server/engine_url mysql://$CODALAB_MYSQL_USER:$CODALAB_MYSQL_PWD@127.0.0.1:$CODALAB_MYSQL_PORT/codalab_bundles

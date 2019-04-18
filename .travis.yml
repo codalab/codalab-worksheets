@@ -18,7 +18,7 @@ jobs:
         - ./docker/build-images.sh ${TRAVIS_BRANCH} -p
         - ./setup.sh server
       script:
-        - ./docker/service/start-service.sh -i -t -w
+        - ./docker/codalab-service/start-service.sh -i -t -w
     - stage: style
       language: python
       python: 3.6
