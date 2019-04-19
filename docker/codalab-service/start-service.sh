@@ -52,6 +52,7 @@ Here's a list of arguments you can pass to control which services are brought up
     [ -t --test: Run tests as well, fail if tests fail ]
     [ -h --help: get usage help ]
     [ -s --stop: Just stop the service ]
+    [ -l --logs: Stream logs until force quit by user ]
   ]"
 }
 
@@ -106,6 +107,10 @@ for arg in "$@"; do
     -s | --stop )       cd docker/codalab-service
                         echo "==> Bringing down Codalab service"
                         docker-compose down --remove-orphans
+                        exit
+                        ;;
+    -l | --logs )       cd docker/service
+                        docker-compose logs -f
                         exit
                         ;;
     -h | --help )       usage
