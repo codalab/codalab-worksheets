@@ -165,7 +165,7 @@ if [ "$WORKER" = "1" ]; then
 fi
 
 if [ "$TEST" = "1" ]; then
-  cd ..
+  cd ../..
   pip install -e ./worker/
   pip install -e ./
   cl config server/engine_url mysql://$CODALAB_MYSQL_USER:$CODALAB_MYSQL_PWD@127.0.0.1:$CODALAB_MYSQL_PORT/codalab_bundles
