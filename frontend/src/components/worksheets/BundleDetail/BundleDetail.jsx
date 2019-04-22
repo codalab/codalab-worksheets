@@ -1,0 +1,204 @@
+// @flow
+import * as React from 'react';
+import Drawer from '@material-ui/core/Drawer';
+
+import ConfigurationPanel from '../ConfigurationPanel';
+import MainContent from './MainContent';
+import SideBar from './SideBar';
+
+class BundleDetail extends React.Component<
+    {
+        uuid: string,
+        open: boolean,
+        onClose: () => void,
+        // Callback on metadata change.
+        bundleMetadataChanged: () => void,
+    },
+    {
+        errorMessages: string[],
+        bundleInfo: {},
+        fileContents: string,
+        stdout: string,
+        stderr: string,
+    }
+> {
+
+    static getDerivedStateFromProps(props, state) {
+        // Any time the current bundle uuid changes,
+        // clear the error messages and not the actual contents, so that in
+        // the side panel, the page doesn't flicker.
+        if (props.uuid !== state.prevUuid) {
+            return {
+                prevUuid: props.uuid,
+                errorMessages: [],
+            };
+        }
+        return null;
+    }
+
+    constructor(props) {
+        super(props);
+        this.state = {
+            errorMessages: [],
+            bundleInfo: null,
+            fileContents: null,
+            stdout: null,
+            stderr: null,
+            prevUuid: props.uuid,
+        };
+    }
+
+    /**
+     * Return a Promise to fetch the summary of the given file.
+     * @param uuid  uuid of bundle
+     * @param path  path within the bundle
+     * @return  jQuery Deferred object
+     */
+    fetchFileSummary(uuid, path) {
+        return $.ajax({
+            type: 'GET',
+            url: '/rest/bundles/' + uuid + '/contents/blob' + path,
+            data: {
+                head: 50,
+                tail: 50,
+                truncation_text: '\n... [truncated] ...\n\n',
+            },
+            dataType: 'text',
+            cache: false,
+            context: this, // automatically bind `this` in all callbacks
+        });
+    }
+
+    /**
+     * Fetch bundle data and update the state of this component.
+     * This function will be called by the parent component 'worksheet'.
+     */
+    refreshBundle = () => {
+        // Fetch bundle metadata
+        $.ajax({
+            type: 'GET',
+
+            url: '/rest/bundles/' + this.props.uuid,
+            data: {
+                include_display_metadata: 1,
+                include: 'owner,group_permissions,host_worksheets',
+            },
+            dataType: 'json',
+            cache: false,
+            context: this, // automatically bind `this` in all callbacks
+        }).then(function(response) {
+            // Normalize JSON API doc into simpler object
+            const bundleInfo = new JsonApiDataStore().sync(response);
+            bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
+            bundleInfo.metadataType = response.data.meta.metadata_type;
+            this.setState({ bundleInfo: bundleInfo });
+        }).fail(function(xhr, status, err) {
+            this.setState({
+                bundleInfo: null,
+                fileContents: null,
+                stdout: null,
+                stderr: null,
+                errorMessages: this.state.errorMessages.concat([xhr.responseText]),
+            });
+        });
+
+        // Fetch bundle contents
+        $.ajax({
+            type: 'GET',
+            url: '/rest/bundles/' + this.props.uuid + '/contents/info/',
+            data: {
+                depth: 1,
+            },
+            dataType: 'json',
+            cache: false,
+            context: this, // automatically bind `this` in all callbacks
+        }).then(function(response) {
+            const info = response.data;
+            if (!info) return;
+            if (info.type === 'file' || info.type === 'link') {
+                return this.fetchFileSummary(this.props.uuid, '/').then(function(blob) {
+                    this.setState({ fileContents: blob, stdout: null, stderr: null });
+                });
+            } else if (info.type === 'directory') {
+                // Get stdout/stderr (important to set things to null).
+                let fetchRequests = [];
+                let stateUpdate = {
+                    fileContents: null,
+                };
+                ['stdout', 'stderr'].forEach(
+                    function(name) {
+                        if (info.contents.some((entry) => entry.name === name)) {
+                            fetchRequests.push(
+                                this.fetchFileSummary(this.props.uuid, '/' + name).then(
+                                    function(blob) {
+                                        stateUpdate[name] = blob;
+                                    },
+                                ),
+                            );
+                        } else {
+                            stateUpdate[name] = null;
+                        }
+                    }.bind(this),
+                );
+                $.when.apply($, fetchRequests).then(() => {
+                    this.setState(stateUpdate);
+                });
+                return $.when(fetchRequests);
+            }
+        }).fail(function(xhr, status, err) {
+            // 404 Not Found errors are normal if contents aren't available yet, so ignore them
+            if (xhr.status != 404) {
+                this.setState({
+                    bundleInfo: null,
+                    fileContents: null,
+                    stdout: null,
+                    stderr: null,
+                    errorMessages: this.state.errorMessages.concat([xhr.responseText]),
+                });
+            } else {
+                // If contents aren't available yet, then also clear stdout and stderr.
+                this.setState({ fileContents: null, stdout: null, stderr: null });
+            }
+        });
+    };
+  
+  render(): React.Node {
+    const { open, onClose } = this.props;
+    const {
+      bundleInfo,
+      errorMessages,
+      stdout,
+      stderr,
+      fileContents } = this.state;
+
+    return (<Drawer
+      anchor="bottom"
+      open={ open }
+      onClose={ onClose }
+      PaperProps={ { style: {
+        minHeight: '75vh',
+        width: '90vw',
+        marginLeft: '5vw',
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
+      } } }
+    >
+      <ConfigurationPanel
+        buttons={ <div>
+          Rerun
+          Kill
+        </div> }
+        sidebar={ <SideBar bundleInfo={ bundleInfo } /> }
+      >
+        <MainContent
+          bundleInfo={ bundleInfo }
+          stdout={ stdout }
+          stderr={ stderr }
+          fileContents={ fileContents }
+        />
+      </ConfigurationPanel>
+    </Drawer>);
+  }
+}
+
+export default BundleDetail;

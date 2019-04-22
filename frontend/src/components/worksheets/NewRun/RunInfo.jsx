@@ -23,10 +23,18 @@ export default class RunInfo extends Component {
 
     return <div
       style={ {
+        display: 'flex',
+        flexDirection: 'column',
         flex: 1,
       } }
     >
-      <div className="sectionTitle">Information</div>
+      <div className="sectionTitle"
+        style={ {
+          marginBottom: 0,
+        } }
+      >
+        Information
+      </div>
       <TextField
         label="Name"
         margin="dense"
@@ -60,10 +68,11 @@ export default class RunInfo extends Component {
       </div>
       {
         tags.map((tag, idx) => <Chip
+          key={ idx }
+          label={ tag }
           style={ {
             width: 'fit-content',
           } }
-          label={ tag }
           onDelete={ () => removeTag(idx) }
         />)
       }
