@@ -6,7 +6,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import { withStyles } from '@material-ui/core';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 
-import { FileBrowser } from '../FileBrowser';
+import { FileBrowser } from '../../FileBrowser';
 
 class MainContent extends React.Component<
     {
@@ -35,21 +35,24 @@ class MainContent extends React.Component<
         <div className={ bundleStateClass }>{ bundleState }</div>
         { bundleInfo.bundle_type === 'run' &&
           <div className={ classes.section }>
-            <div
-              className={ `${ classes.row } ${ classes.command }` }
+            
+            <CopyToClipboard
+              text={ bundleInfo.command }
             >
-              <CopyToClipboard
-                text={ bundleInfo.command }
+              <div
+                className={ `${ classes.row } ${ classes.command }` }
               >
+                <span>{ bundleInfo.command }</span>
                 <Tooltip title="Copy to clipboard">
                   <CopyIcon
                     style={ { color: 'white', marginLeft: 8 } }
                   />
                 </Tooltip>
-              </CopyToClipboard>
-            </div>
+              </div>
+            </CopyToClipboard>
+            
             <Typography variant="body1">
-              run time: { bundleInfo.metadata.time }
+              run time: { bundleInfo.metadata.time || 'unavailable' }
             </Typography>
           </div>
         }
@@ -90,6 +93,7 @@ const styles = (theme) => ({
     backgroundColor: '#333',
     color: 'white',
     fontFamily: 'monospace',
+    padding: theme.spacing.unit,
   },
   snippet: {
     fontFamily: 'monospace',

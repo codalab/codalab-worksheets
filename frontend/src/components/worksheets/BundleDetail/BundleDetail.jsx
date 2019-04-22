@@ -1,6 +1,9 @@
 // @flow
 import * as React from 'react';
+import * as $ from 'jquery';
 import Drawer from '@material-ui/core/Drawer';
+import Button from '@material-ui/core/Button';
+import { JsonApiDataStore } from 'jsonapi-datastore';
 
 import ConfigurationPanel from '../ConfigurationPanel';
 import MainContent from './MainContent';
@@ -9,10 +12,9 @@ import SideBar from './SideBar';
 class BundleDetail extends React.Component<
     {
         uuid: string,
-        open: boolean,
-        onClose: () => void,
         // Callback on metadata change.
         bundleMetadataChanged: () => void,
+        onClose: () => void,
     },
     {
         errorMessages: string[],
@@ -31,6 +33,7 @@ class BundleDetail extends React.Component<
             return {
                 prevUuid: props.uuid,
                 errorMessages: [],
+                open: true,
             };
         }
         return null;
@@ -45,6 +48,7 @@ class BundleDetail extends React.Component<
             stdout: null,
             stderr: null,
             prevUuid: props.uuid,
+            open: true,
         };
     }
 
@@ -163,17 +167,22 @@ class BundleDetail extends React.Component<
     };
   
   render(): React.Node {
-    const { open, onClose } = this.props;
+    const { onClose } = this.props;
     const {
+      open,
       bundleInfo,
       errorMessages,
       stdout,
       stderr,
       fileContents } = this.state;
 
+    if (!bundleInfo) {
+        return null;
+    }
+
     return (<Drawer
       anchor="bottom"
-      open={ open }
+      open
       onClose={ onClose }
       PaperProps={ { style: {
         minHeight: '75vh',
@@ -184,9 +193,9 @@ class BundleDetail extends React.Component<
       } } }
     >
       <ConfigurationPanel
-        buttons={ <div>
-          Rerun
-          Kill
+        buttons={ <div style={ { display: 'flex', flexDirection: 'row', alignItems: 'center' } }>
+            <Button variant='text' color='primary'>Kill</Button>
+            <Button variant='contained' color='primary'>Rerun</Button>
         </div> }
         sidebar={ <SideBar bundleInfo={ bundleInfo } /> }
       >
