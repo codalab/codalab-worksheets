@@ -1,9 +1,9 @@
+// @flow
 import * as React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import NativeSelect from '@material-ui/core/NativeSelect';
 import Input from '@material-ui/core/Input';
 import Checkbox from '@material-ui/core/Checkbox';
-
 
 class Configuration extends React.PureComponent<{
   handleChange: (string, { mykey: number }) => void,
