@@ -50,6 +50,7 @@ services:
       - ${CODALAB_REST_PORT}:2900
     environment:
       *codalab-env
+    user: ${CODALAB_UID}
     volumes:
       - *codalab-home-mount
       - *codalab-bundles-mount
@@ -66,6 +67,7 @@ services:
     command: bundle-manager
     environment:
       *codalab-env
+    user: ${CODALAB_UID}
     volumes:
       - *codalab-home-mount
       - *codalab-bundles-mount
@@ -106,12 +108,12 @@ services:
   worker:
     image: codalab/worker:${CODALAB_VERSION}
     command: --server http://rest-server:2900 --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_NAME}
-    privileged: True
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
     environment:
       *codalab-env
+    user: ${CODALAB_UID}
     depends_on:
       - bundle-manager
     networks:

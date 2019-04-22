@@ -1,0 +1,17 @@
+version: '3.5'
+
+services:
+  frontend:
+    build:
+      context: ./../..
+      dockerfile: docker/Dockerfile.frontend.dev
+    image: codalab/frontend-dev:${CODALAB_VERSION}
+    command: npm run start
+    ports:
+      - ${CODALAB_FRONTEND_PORT}:2700
+    volumes:
+      - ./../../frontend:/opt/frontend
+    depends_on:
+      - rest-server
+    networks:
+      - service
