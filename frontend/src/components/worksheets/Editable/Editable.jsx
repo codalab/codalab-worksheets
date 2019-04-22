@@ -1,5 +1,6 @@
 // @flow
 import * as React from 'react';
+import * as $ from 'jquery';
 import TextField from '@material-ui/core/TextField';
 
 function isAscii(str) {
@@ -79,18 +80,17 @@ export default class Editable extends React.Component<{
               classes={ classes }
               inputRef={ (ele) => { this.input = ele; } }
               label={ label }
-              value={ value }
+              value={ value || '<none>' }
               margin="dense"
               variant="outlined"
               disabled={ !canEdit }
-              placeholder="<none>"
               style={ style }
               inputProps={ {
                 style: { padding: 8 },
               } }
               onChange={ this.handleChange }
               error={ hasError }
-              helperText="Only ASCII characters allowed."
+              helperText={ hasError ? "Only ASCII characters allowed." : null }
               onKeyDown={ this.handleKeyDown }
             />
         );

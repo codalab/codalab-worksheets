@@ -6,6 +6,7 @@ import IconButton from '@material-ui/core/IconButton';
 import ShareIcon from '@material-ui/icons/Share';
 import Popper from '@material-ui/core/Popper';
 import Paper from '@material-ui/core/Paper';
+import Input from '@material-ui/core/Input';
 import { withStyles } from '@material-ui/core';
 
 class PermissionDialog extends React.Component<
@@ -13,6 +14,7 @@ class PermissionDialog extends React.Component<
       /* self permission */
       permission_spec: string,
       group_permissions: Array<{group_name: string, permission_spec: string}>,
+      classes: {},
     }
 >{
 
@@ -25,26 +27,27 @@ class PermissionDialog extends React.Component<
   }
 
   render() {
-    const { permission_spec, group_permissions } = this.props;
+    const { classes, permission_spec, group_permissions } = this.props;
     const permissions = [
       { group_name: 'you', permission_spec },
       ...group_permissions
     ];
     const { open } = this.state;
 
-    return
-      <div>
-        <IconButton
-          ref={ (ele) => { this.anchorEl = ele; } }
-          onClick={ () => { this.setState({ open: !open }); } }
-        >
-          <ShareIcon color="primary" />
-        </IconButton>
+    return (
+      <div className={ classes.container }>
+        <div ref={ (ele) => { this.anchorEl = ele; } }>
+          <IconButton
+            onClick={ () => { this.setState({ open: !open }); } }
+          >
+            <ShareIcon color="primary" />
+          </IconButton>
+        </div>
         <Popper
           open={ open }
           anchorEl={ this.anchorEl }
         >
-          <Paper>
+          <Paper style={ { padding: 8 } }>
             {
               permissions.map((entry, idx) => <div
                 key={ idx }
@@ -56,9 +59,9 @@ class PermissionDialog extends React.Component<
                 <NativeSelect
                   defaultValue={ entry.permission_spec }
                   onChange={ (event) => this.handlePermissionValueChange(
-                      group_name, event.target.value) }
+                      entry.group_name, event.target.value) }
                   input={
-                    <RawInput
+                    <Input
                       className={ classes.textField }
                     />
                   }
@@ -72,11 +75,15 @@ class PermissionDialog extends React.Component<
             }
           </Paper>
         </Popper>
-      </div>;
+      </div>
+    );
   }
 }
 
 const styles = (theme) => ({
+  container: {
+    zIndex: 1500,
+  },
   row: {
     display: 'flex',
     flexDirection: 'row',

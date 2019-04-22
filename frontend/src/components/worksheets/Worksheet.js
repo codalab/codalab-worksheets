@@ -845,6 +845,7 @@ class Worksheet extends React.Component {
                 bundleMetadataChanged={this.reloadWorksheet}
                 escCount={this.state.escCount}
                 userInfo={this.state.userInfo}
+                deFocus={ () => this.setFocus(-1, 0) }
             />
         );
 

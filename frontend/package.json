@@ -24,6 +24,7 @@
     "query-string": "^6.2.0",
     "react": "^16.6.3",
     "react-cookie": "^3.0.8",
+    "react-copy-to-clipboard": "^5.0.1",
     "react-dom": "^16.6.3",
     "react-responsive-embed": "^2.1.0",
     "react-router-dom": "^4.3.1",
