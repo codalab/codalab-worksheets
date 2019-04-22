@@ -32,14 +32,14 @@ RUN curl https://bootstrap.pypa.io/get-pip.py | python3.6
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
 
-## Oracle JDK 8
-RUN echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
-    add-apt-repository -y ppa:webupd8team/java && \
+## Oracle JDK 11
+RUN echo oracle-java11-installer shared/accepted-oracle-license-v1-2 select true | debconf-set-selections && \
+    add-apt-repository -y ppa:linuxuprising/java && \
     apt-get update && \
-    apt-get install -y oracle-java8-installer && \
-    rm -rf /var/cache/oracle-jdk8-installer
+    apt-get install -y oracle-java11-installer && \
+    apt-get install -y oracle-java11-set-default && \
+    rm -rf /var/cache/oracle-jdk11-installer
 
-ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
 ENV SCALA_VERSION 2.12.6
 
 ## Scala
