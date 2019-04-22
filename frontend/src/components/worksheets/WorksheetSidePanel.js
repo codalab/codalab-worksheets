@@ -5,6 +5,7 @@ import _ from 'underscore';
 import { renderPermissions, shorten_uuid } from '../../util/worksheet_utils';
 import { WorksheetEditableField } from '../EditableField';
 import Bundle from '../Bundle';
+import BundleDetail from './BundleDetail';
 import RunBundleBuilder from './RunBundleBuilder';
 import NewWorksheet from './NewWorksheet';
 import BundleUploader from './BundleUploader';
@@ -182,10 +183,11 @@ class WorksheetSidePanel extends React.Component {
                 var bundle_info = this.getBundleInfo(focus);
                 if (bundle_info) {
                     side_panel_details = (
-                        <Bundle
+                        <BundleDetail
                             uuid={bundle_info.uuid}
                             bundleMetadataChanged={this.props.bundleMetadataChanged}
                             ref='bundle_info_side_panel'
+                            onClose={ this.props.deFocus }
                         />
                     );
                 }

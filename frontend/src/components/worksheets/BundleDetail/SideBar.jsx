@@ -3,9 +3,9 @@ import * as React from 'react';
 import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core';
 
-import './PermissionDialog';
+import PermissionDialog from './PermissionDialog';
 import Editable from '../Editable';
-import { shorten_uuid } from '../util/worksheet_utils';
+import { shorten_uuid } from '../../../util/worksheet_utils';
 
 const metadataFields = [
   'name',
@@ -61,13 +61,13 @@ class SideBar extends React.Component<
 > {
   
   render() {
-    const { bundleInfo } = this.props;
+    const { bundleInfo, classes } = this.props;
     const { metadata, editableMetadataFields } = bundleInfo;
 
     const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
     const bundleStateClass = 'bundle-state state-' + (bundleInfo.state || 'ready');
 
-    return <div>
+    return (<div className={ classes.container }>
       {/* Clickable UUID */}
       <a
         href={ `/bundles/${ bundleInfo.uuid }` }
@@ -89,7 +89,7 @@ class SideBar extends React.Component<
           canEdit={ editableMetadataFields.includes(field) }
         />)
       }
-      <div className{ classes.section }>
+      <div className={ classes.section }>
         <Dependency
           bundleInfo={ bundleInfo }
         />
@@ -116,11 +116,15 @@ class SideBar extends React.Component<
           group_permissions={ bundleInfo.group_permissions }
         />
       </div>
-    </div>;
+    </div>);
   }
 }
 
 const styles = (theme) => ({
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
   section: {
     marginTop: 8,
   },

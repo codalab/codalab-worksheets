@@ -1,1 +1,1 @@
-export { default } from './RunBundleDetail';
+export { default } from './BundleDetail';
