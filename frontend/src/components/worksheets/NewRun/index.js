@@ -1,3 +1,1 @@
-import NewRun from './NewRun';
-export default NewRun;
-
+export { default } from './NewRun';

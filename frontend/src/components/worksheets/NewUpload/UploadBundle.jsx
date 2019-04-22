@@ -1,16 +1,16 @@
-import React, { Component } from 'react';
+import * as React from 'react';
+import { withStyles } from '@material-ui/core/styles';
 import Drawer from '@material-ui/core/Drawer';
-import Fab from '@material-ui/core/Fab';
+import Button from '@material-ui/core/Button';
 import UploadIcon from '@material-ui/icons/CloudUpload';
 import Input from '@material-ui/core/Input';
 import { MuiThemeProvider } from '@material-ui/core/styles';
 
-import theme from './theme.js';
 
 // React doesn't support transpilation of directory and
 // webkitdirectory properties, have to set them
 // programmatically.
-class InputDir extends Component {
+class InputDir extends React.Component {
   
   componentDidMount() {
     this.inputDir.directory = true;
@@ -27,14 +27,14 @@ class InputDir extends Component {
   }
 }
 
-export default class UploadBundle extends Component {
+class UploadBundle extends React.Component {
   
   state = {
     bottom: false,
   }
 
   toggleDrawer = (bool) => () => {
-    this.setState({ bottom: bool });
+    this.setState({ isDrawerVisible: bool });
   }
 
   dropFile = (e) => {
@@ -71,21 +71,19 @@ export default class UploadBundle extends Component {
 
   render() {
     return <div>
-      <MuiThemeProvider theme={ theme }>
-        <Fab
-          variant="extended"
+        <Button
+          variant="contained"
           size="medium"
           color="primary"
           aria-label="Add"
           onClick={ this.toggleDrawer(true) }
         >
-          <UploadIcon style={ { marginRight: 16 } } />
+          <UploadIcon style={ { marginRight: 8 } } />
           Upload
-        </Fab>
-      </MuiThemeProvider>
+        </Button>
       <Drawer
         anchor="bottom"
-        open={ this.state.bottom }
+        open={ this.state.isDrawerVisible }
         onClose={ this.toggleDrawer(false) }
         PaperProps={ { style: {
           minHeight: '25vh',
@@ -165,7 +163,7 @@ export default class UploadBundle extends Component {
   }
 }
 
-const styles = {
+const styles = (theme) => ({
   blueText: {
     color: '#225EA8',
   },
@@ -182,4 +180,6 @@ const styles = {
     border: '2px dashed',
     cursor: 'pointer',
   }
-};
+});
+
+export default withStyles(styles)(UploadBundle);
