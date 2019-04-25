@@ -95,7 +95,7 @@ RUN python3.6 -m spacy download en
 # CPU-specific commands
 
 RUN pip2 install -U \
-      tensorflow \
+      tensorflow==1.12.0 \
       tensorboard \
       keras
 
@@ -104,7 +104,7 @@ RUN pip2 install torchvision
 
 
 RUN pip3 install -U \
-      tensorflow \
+      tensorflow==1.12.0 \
       tensorboard \
       keras
 
