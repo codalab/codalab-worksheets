@@ -67,6 +67,8 @@ notes.otl
 codalab-worker-scratch/
 
 *.env
+*.override
+docker-compose.override.yml
 
 pip-wheel-metadata/
 
