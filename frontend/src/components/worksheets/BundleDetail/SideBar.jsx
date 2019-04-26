@@ -1,6 +1,10 @@
 // @flow
 import * as React from 'react';
 import Typography from '@material-ui/core/Typography';
+import Table from '@material-ui/core/Table';
+import TableBody from '@material-ui/core/TableBody';
+import TableCell from '@material-ui/core/TableCell';
+import TableRow from '@material-ui/core/TableRow';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core';
 
@@ -23,25 +27,29 @@ class Dependency extends React.PureComponent<
     bundleInfo.dependencies.forEach((dep, i) => {
         let dep_bundle_url = '/bundles/' + dep.parent_uuid;
         dependencies_table.push(
-            <tr key={ dep.parent_uuid + i }>
-                <td>{ dep.child_path }</td>
-                <td>
-                    &rarr; { dep.parent_name }(
-                    <a href={ dep_bundle_url }>
-                      { shorten_uuid(dep.parent_uuid) }
-                    </a>)
-                    { dep.parent_path ? '/' + dep.parent_path : '' }
-                </td>
-            </tr>
+            <TableRow key={ dep.parent_uuid + i }>
+                <TableCell>
+                    <Typography variant="body1">{ dep.child_path }</Typography>
+                </TableCell>
+                <TableCell>
+                    <Typography variant="body1">
+                        &rarr; { dep.parent_name }(
+                        <a href={ dep_bundle_url }>
+                          { shorten_uuid(dep.parent_uuid) }
+                        </a>)
+                        { dep.parent_path ? '/' + dep.parent_path : '' }
+                    </Typography>
+                </TableCell>
+            </TableRow>
         );
     });
 
     return (
         <div>
-            <h4>dependencies</h4>
-            <table className='bundle-meta table'>
-                <tbody>{ dependencies_table }</tbody>
-            </table>
+            <Typography variant="body1">dependencies</Typography>
+            <Table>
+                <TableBody>{ dependencies_table }</TableBody>
+            </Table>
         </div>
     );
   }
@@ -64,7 +72,7 @@ class SideBar extends React.Component<
         const isRunBundle = bundleInfo.bundle_type === 'run';
 
         return (
-            <Grid container spacing={8}>
+            <Grid container spacing={16}>
                 {
                     metadata.failure_message && <Grid item xs={12}>
                         <Typography variant="body1">
@@ -73,22 +81,24 @@ class SideBar extends React.Component<
                     </Grid>
                 }
                 <Grid item xs={ 12 }>
-                    <Grid container spacing={4}>
-                    {
-                        ['name', 'description'].map((field) => 
-                            <Grid item xs={12} key={ field }>
-                                <Typography variant="body1">{ field }:</Typography>
-                                <BundleEditableField
-                                    dataType={ metadataType[field] }
-                                    fieldName={ field }
-                                    uuid={ bundleInfo.uuid }
-                                    value={ metadata[field] }
-                                    canEdit={ hasEditPermission && editableMetadataFields.includes(field) }
-                                />
-                            </Grid>
-                        )
-                    }
-                    </Grid>
+                    <Typography variant="body1">Name</Typography>
+                    <BundleEditableField
+                        dataType={ metadataType.name }
+                        fieldName="name"
+                        uuid={ bundleInfo.uuid }
+                        value={ metadata.name }
+                        canEdit={ hasEditPermission && editableMetadataFields.includes("name") }
+                    />
+                </Grid>
+                <Grid item xs={ 12 }>
+                    <Typography variant="body1">Description</Typography>
+                    <BundleEditableField
+                        dataType={ metadataType.description }
+                        fieldName="description"
+                        uuid={ bundleInfo.uuid }
+                        value={ metadata.description }
+                        canEdit={ hasEditPermission && editableMetadataFields.includes("description") }
+                    />
                 </Grid>
                 { isRunBundle && <Grid item xs={12}>
                         <Dependency
@@ -98,22 +108,15 @@ class SideBar extends React.Component<
                 }
                 <Grid item xs={12}>
                     <Typography variant="body1">
-                        <a
-                            href={ `/bundles/${ bundleInfo.uuid }` }
-                            className={ classes.uuidLink }
-                        >
-                            { shorten_uuid(bundleInfo.uuid) }
-                        </a>
-                        { metadata.data_size && <u>
-                                ({ renderFormat(metadata.data_size, metadataType.data_size) })
-                            </u>
+                        { metadata.data_size && <span>Size:<u>
+                                &nbsp;({ renderFormat(metadata.data_size, metadataType.data_size) })
+                            </u><br/></span>
                         }
-                        <br />
-                        Created on &nbsp;
+                        Created on&nbsp;
                         <u>
-                            ({ renderFormat(metadata.created, 'date') })
+                            ({ renderFormat(metadata.created, metadataType.created) })
                         </u>
-                        <br />
+                        <br/>
                         Owned by &nbsp;
                         <u>
                             { bundleInfo.owner.user_name }
@@ -137,10 +140,19 @@ class SideBar extends React.Component<
                     }
                 </Grid>
                 <Grid item xs={12}>
+                    <Typography variant="body1"></Typography>
                     <PermissionDialog
                         permission_spec={ bundleInfo.permission_spec }
                         group_permissions={ bundleInfo.group_permissions }
                     />
+                </Grid>
+                <Grid item xs={12}>
+                    <a
+                        href={ `/bundles/${ bundleInfo.uuid }` }
+                        className={ classes.uuidLink }
+                    >
+                        More about bundle { shorten_uuid(bundleInfo.uuid) }
+                    </a>
                 </Grid>
             </Grid>);
     }
@@ -156,9 +168,9 @@ const styles = (theme) => ({
         alignItems: 'center',
     },
     uuidLink: {
-        color: theme.color.primary.base,
+        color: theme.color.primary.dark,
         '&:hover': {
-            color: theme.color.primary.dark,
+            color: theme.color.primary.base,
         }
     },
 });
