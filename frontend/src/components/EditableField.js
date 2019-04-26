@@ -2,7 +2,8 @@
 import * as React from 'react';
 import * as $ from 'jquery';
 import classNames from 'classnames';
-import Editable from 'react-x-editable';
+import Typography from '@material-ui/core/Typography';
+import { withStyles } from '@material-ui/core';
 import { renderFormat, serializeFormat } from '../util/worksheet_utils';
 import ReactDOM from 'react-dom';
 
@@ -12,7 +13,7 @@ function isAscii(str) {
     return /^[\x00-\x7F]*$/.test(str);
 }
 
-export class EditableField extends React.Component<{
+class EditableFieldBase extends React.Component<{
     value: string,
     buildPayload: (string) => {},
     method: string,
@@ -23,7 +24,7 @@ export class EditableField extends React.Component<{
     /** Prop default values. */
     static defaultProps = {
         method: 'POST',
-        canEdit: true,
+        canEdit: false,
     };
 
     constructor(props) {
@@ -100,6 +101,40 @@ export class EditableField extends React.Component<{
     }
 
     render() {
+        const { canEdit, classes } = this.props;
+        const { editing } = this.state;
+        if (!canEdit) {
+            return (
+                <div className={ classes.editableLinkContainer }>
+                    <Typography variant="body1">
+                        {this.state.value || '<none>'}
+                    </Typography>
+                </div>
+            );
+        }
+        return (
+            editing
+            ? <form onSubmit={this.onBlur}>
+                    <input
+                        autoFocus
+                        value={this.state.value}
+                        onBlur={this.onBlur}
+                        onChange={this.handleChange}
+                        onKeyDown={this.handleKeyPress}
+                    />
+                    {!this.state.isValid && (
+                        <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>
+                    )}
+            </form>
+            : <div className={ classes.editableLinkContainer }>
+                <a className={ classes.editableLink } onClick={this.onClick}>
+                    {this.state.value || '<none>'}
+                </a>
+            </div>
+        );
+    }
+
+    render() {
         if (!this.state.editing) {
             return (
                 <a className='editable editable-click' onClick={this.onClick}>
@@ -124,6 +159,24 @@ export class EditableField extends React.Component<{
         }
     }
 }
+
+const efStyles = (theme) => ({
+    editableLinkContainer: {
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        height: 38,
+    },
+    editableLink: {
+        textDecoration: 'none',
+        color: theme.color.primary.base,
+        '&:hover': {
+            color: theme.color.primary.light,
+        }
+    },
+});
+
+export const EditableField = withStyles(efStyles)(EditableFieldBase);
 
 export class WorksheetEditableField extends React.Component<{
     uuid: string,

@@ -2,12 +2,12 @@
 import * as React from 'react';
 import * as $ from 'jquery';
 import Drawer from '@material-ui/core/Drawer';
-import Button from '@material-ui/core/Button';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 
 import ConfigurationPanel from '../ConfigurationPanel';
 import MainContent from './MainContent';
 import SideBar from './SideBar';
+import BundleActions from './BundleActions';
 
 class BundleDetail extends React.Component<
     {
@@ -187,16 +187,14 @@ class BundleDetail extends React.Component<
       PaperProps={ { style: {
         minHeight: '75vh',
         width: '90vw',
-        marginLeft: '5vw',
+        maxWidth: 1200,
         borderTopLeftRadius: 8,
         borderTopRightRadius: 8,
+        transform: 'translateX(50vw) translateX(-50%)',
       } } }
     >
       <ConfigurationPanel
-        buttons={ <div style={ { display: 'flex', flexDirection: 'row', alignItems: 'center' } }>
-            <Button variant='text' color='primary'>Kill</Button>
-            <Button variant='contained' color='primary'>Rerun</Button>
-        </div> }
+        buttons={ <BundleActions bundleInfo={ bundleInfo } /> }
         sidebar={ <SideBar bundleInfo={ bundleInfo } /> }
       >
         <MainContent
