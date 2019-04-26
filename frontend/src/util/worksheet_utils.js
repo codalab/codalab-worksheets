@@ -45,18 +45,11 @@ export function renderDate(epochSeconds) {
     // epochSeconds: unix timestamp
     // Return a human-readable string.
     var dt = new Date(epochSeconds * 1000);
-    var year = dt.getFullYear();
-    var month = dt.getMonth() + 1;
-    var date = dt.getDate();
     var hour = dt.getHours();
     var min = dt.getMinutes();
     var sec = dt.getSeconds();
     return (
-        year +
-        '-' +
-        padInt(month, 2) +
-        '-' +
-        padInt(date, 2) +
+        dt.toLocaleDateString() +
         ' ' +
         padInt(hour, 2) +
         ':' +
