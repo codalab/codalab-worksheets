@@ -20,9 +20,6 @@ class PermissionDialog extends React.Component<
 
   constructor(props) {
     super(props);
-    this.state = {
-      open: false,
-    };
     this.anchorEl = null;
   }
 
@@ -32,58 +29,40 @@ class PermissionDialog extends React.Component<
       { group_name: 'you', permission_spec },
       ...group_permissions
     ];
-    const { open } = this.state;
 
     return (
-      <div className={ classes.container }>
-        <div ref={ (ele) => { this.anchorEl = ele; } }>
-          <IconButton
-            onClick={ () => { this.setState({ open: !open }); } }
+      <div>
+        {
+          permissions.map((entry, idx) => <div
+            key={ idx }
+            className={ classes.row }
           >
-            <ShareIcon color="primary" />
-          </IconButton>
-        </div>
-        <Popper
-          open={ open }
-          anchorEl={ this.anchorEl }
-        >
-          <Paper style={ { padding: 8 } }>
-            {
-              permissions.map((entry, idx) => <div
-                key={ idx }
-                className={ classes.row }
-              >
-                <Typography variant="body1" className={ classes.textIsolate } >
-                  { `${ entry.group_name }: ` }
-                </Typography>
-                <NativeSelect
-                  defaultValue={ entry.permission_spec }
-                  onChange={ (event) => this.handlePermissionValueChange(
-                      entry.group_name, event.target.value) }
-                  input={
-                    <Input
-                      className={ classes.textField }
-                    />
-                  }
-                >
-                  {/* Set to 'none' = removing all permission */}
-                  <option value="none">none</option>
-                  <option value="read">read</option>
-                  <option value="all">all</option>
-                </NativeSelect>
-              </div>)
-            }
-          </Paper>
-        </Popper>
+            <Typography variant="body1" className={ classes.textIsolate } >
+              { `${ entry.group_name }: ` }
+            </Typography>
+            <NativeSelect
+              defaultValue={ entry.permission_spec }
+              onChange={ (event) => this.handlePermissionValueChange(
+                  entry.group_name, event.target.value) }
+              input={
+                <Input
+                  className={ classes.textField }
+                />
+              }
+            >
+              {/* Set to 'none' = removing all permission */}
+              <option value="none">none</option>
+              <option value="read">read</option>
+              <option value="all">all</option>
+            </NativeSelect>
+          </div>)
+        }
       </div>
     );
   }
 }
 
 const styles = (theme) => ({
-  container: {
-    zIndex: 1500,
-  },
   row: {
     display: 'flex',
     flexDirection: 'row',
