@@ -169,9 +169,9 @@ const efStyles = (theme) => ({
     },
     editableLink: {
         textDecoration: 'none',
-        color: theme.color.primary.base,
+        color: theme.color.primary.dark,
         '&:hover': {
-            color: theme.color.primary.light,
+            color: theme.color.primary.base,
         }
     },
 });
