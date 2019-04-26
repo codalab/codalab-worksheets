@@ -48,6 +48,7 @@ Here's a list of arguments you can pass to control which services are brought up
   [
     [ -b --build: Build docker images first ]
     [ -d --dev: Development setup from local files ]
+    [ -r --override: Override docker-compose config with user file (docker-compose.override.yml) ]
     [ -w --worker: Start a CodaLab worker as well ]
     [ -t --test: Run tests as well, fail if tests fail ]
     [ -h --help: get usage help ]
@@ -58,6 +59,7 @@ Here's a list of arguments you can pass to control which services are brought up
 
 BUILD=0
 DEV=0
+OVERRIDE=0
 INIT=0
 WORKER=0
 TEST=0
@@ -98,6 +100,8 @@ for arg in "$@"; do
                         ;;
     -d | --dev )        DEV=1
                         ;;
+    -o | --override )   OVERRIDE=1
+                        ;;
     -i | --init )       INIT=1
                         ;;
     -t | --test )       TEST=1
@@ -123,10 +127,14 @@ if [ "$BUILD" = "1" ]; then
   ./docker/build-images.sh $CODALAB_VERSION
 fi
 
+COMPOSE_FILES='-f docker-compose.yml'
+
+if [ "$OVERRIDE" = "1" ]; then
+  COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.override.yml"
+fi
+
 if [ "$DEV" = "1" ]; then
-  COMPOSE_FILES='-f docker-compose.yml -f docker-compose.dev.yml'
-else
-  COMPOSE_FILES='-f docker-compose.yml'
+  COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.dev.yml"
 fi
 
 cd docker/codalab-service
