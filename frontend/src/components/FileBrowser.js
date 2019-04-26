@@ -1,6 +1,14 @@
 // @flow
 import * as React from 'react';
 import * as $ from 'jquery';
+import Paper from '@material-ui/core/Paper';
+import Table from '@material-ui/core/Table';
+import TableBody from '@material-ui/core/TableBody';
+import TableCell from '@material-ui/core/TableCell';
+import TableRow from '@material-ui/core/TableRow';
+import FolderIcon from '@material-ui/icons/Folder';
+import FileIcon from '@material-ui/icons/InsertDriveFile';
+import LinkIcon from '@material-ui/icons/Link';
 import classNames from 'classnames';
 import { renderSize, shorten_uuid } from '../util/worksheet_utils';
 
@@ -361,6 +369,225 @@ export class FileBrowserItem extends React.Component<{
                     {item}
                 </td>
             </tr>
+        );
+    }
+}
+
+const rowCenter = {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+};
+
+const iconStyle = {
+    color: '#aaa',
+    marginRight: 4,
+};
+
+class FileBrowserItemLite extends React.Component<
+    {
+        bundle_uuid: string,
+        updateFileBrowser: (string) => void,
+        currentWorkingDirectory: string,
+    }
+> {
+    render() {
+        let size = '';
+        let file_location = '';
+        if (this.props.type === '..') {
+            file_location = this.props.currentWorkingDirectory.substring(
+                0,
+                this.props.currentWorkingDirectory.lastIndexOf('/'),
+            );
+        } else if (this.props.currentWorkingDirectory) {
+            file_location = this.props.currentWorkingDirectory + '/' + this.props.index;
+        } else {
+            file_location = this.props.index;
+        }
+        if (this.props.hasOwnProperty('size')) size = renderSize(this.props.size);
+
+        let item;
+        if (this.props.type == 'directory' || this.props.type == '..') {
+            item = (
+                <TableRow
+                    onClick={() => this.props.updateFileBrowser(file_location)}
+                >
+                    <TableCell>
+                        <div style={ rowCenter }>
+                            <FolderIcon style={ iconStyle } />
+                            <a target='_blank'>{this.props.index}</a>
+                        </div>
+                    </TableCell>
+                    <TableCell align="right">
+                        {size}
+                    </TableCell>
+                </TableRow>
+            );
+        } else if (this.props.type == 'file') {
+            let file_link =
+                '/rest/bundles/' +
+                this.props.bundle_uuid +
+                '/contents/blob/' +
+                encodeBundleContentsPath(file_location);
+            item = (
+                <TableRow>
+                    <TableCell>
+                        <div style={ rowCenter }>
+                            <FileIcon style={ iconStyle } />
+                            <a href={file_link} target='_blank'>
+                                {this.props.index}
+                            </a>
+                        </div>
+                    </TableCell>
+                    <TableCell align="right">
+                        {size}
+                    </TableCell>
+                </TableRow>
+            );
+        } else if (this.props.type == 'link') {
+            item = (
+                <TableRow>
+                    <TableCell>
+                        <div style={ rowCenter }>
+                            <LinkIcon style={ iconStyle } />
+                            {this.props.index + ' -> ' + this.props.link}
+                        </div>
+                    </TableCell>
+                    <TableCell />
+                </TableRow>
+            );
+        }
+
+        return item;
+    }
+}
+
+export class FileBrowserLite extends React.Component<
+    {
+        uuid: string,
+    },
+    {
+        currentDirectory: string,
+        fileBrowserData: {},
+        isVisible: boolean,
+    }
+> {
+
+    constructor(props) {
+        super(props);
+        this.state = {
+            currentWorkingDirectory: '',
+            fileBrowserData: {},
+        };
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        if (prevProps.uuid != this.props.uuid) {
+            // Reset and fire off an asynchronous fetch for new data
+            this.setState({ fileBrowserData: {} });
+            this.updateFileBrowser('');
+        }
+    }
+
+    componentWillMount() {
+        if (!this.props.startCollapsed) {
+            this.setState({ isVisible: true });
+            this.updateFileBrowser('');
+        }
+    }
+
+    updateFileBrowser = (folder_path) => {
+        // folder_path is an absolute path
+        if (folder_path === undefined) folder_path = this.state.currentWorkingDirectory;
+        this.setState({ currentWorkingDirectory: folder_path });
+        let url = '/rest/bundles/' + this.props.uuid + '/contents/info/' + folder_path;
+        $.ajax({
+            type: 'GET',
+            url: url,
+            data: { depth: 1 },
+            dataType: 'json',
+            cache: false,
+            success: (data) => {
+                if (data.data.type == 'directory') {
+                    this.setState({ fileBrowserData: data.data });
+                    $('.file-browser').show();
+                } else {
+                    $('.file-browser').hide();
+                }
+            },
+            error: (xhr, status, err) => {
+                this.setState({ fileBrowserData: {} });
+                $('.file-browser').hide();
+            },
+        });
+    };
+
+    render() {
+        const { uuid, bundle_name } = this.props;
+        const entities = (this.state.fileBrowserData || {}).contents;
+        if (!entities) {
+            return null;
+        }
+        entities.sort(function(a, b) {
+            if (a.name < b.name) return -1;
+            if (a.name > b.name) return +1;
+            return 0;
+        });
+        const items = [];
+        // Show parent directory.
+        if (this.state.currentWorkingDirectory) {
+            items.push(
+                <FileBrowserItemLite
+                    key='..'
+                    index='..'
+                    type='..'
+                    updateFileBrowser={(path) => this.updateFileBrowser(path)}
+                    currentWorkingDirectory={this.state.currentWorkingDirectory}
+                />,
+            );
+        }
+
+        // Show directories
+        entities.forEach((item) => {
+            if (item.type == 'directory')
+                items.push(
+                    <FileBrowserItemLite
+                        bundle_uuid={uuid}
+                        bundle_name={bundle_name}
+                        key={item.name}
+                        index={item.name}
+                        type={item.type}
+                        updateFileBrowser={this.updateFileBrowser}
+                        currentWorkingDirectory={this.state.currentWorkingDirectory}
+                    />,
+                );
+        });
+
+        // Show files
+        entities.forEach((item) => {
+            if (item.type != 'directory')
+                items.push(
+                    <FileBrowserItemLite
+                        bundle_uuid={uuid}
+                        bundle_name={bundle_name}
+                        key={item.name}
+                        index={item.name}
+                        type={item.type}
+                        size={item.size}
+                        link={item.link}
+                        updateFileBrowser={this.updateFileBrowser}
+                        currentWorkingDirectory={this.state.currentWorkingDirectory}
+                    />,
+                );
+        });
+
+            
+        return (
+            <Paper>
+                <Table style={ { backgroundColor: 'white' } }>
+                    <TableBody>{items}</TableBody>
+                </Table>
+            </Paper>
         );
     }
 }
