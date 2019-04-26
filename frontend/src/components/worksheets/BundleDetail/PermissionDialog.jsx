@@ -74,7 +74,6 @@ const styles = (theme) => ({
     width: 120,
   },
   textIsolate: {
-    marginLeft: theme.spacing.large,
     marginRight: theme.spacing.large,
   },
 });

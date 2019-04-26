@@ -32,82 +32,77 @@ class MainContent extends React.Component<
             : (bundleInfo.state === 'ready' ? 'readyState' : 'otherState');
 		
 		return (
-			<Grid container classes={ { container: classes.container } } spacing={16}>
-                <Grid item xs={12}>
-                    <Grid
-                        container
-                        direction="row"
-                        alignItems="center"
-                        spacing={16}
-                    >
-        				<Grid item xs={12} md="auto">
-                            <div className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`}>
-                                { bundleState }
-                            </div>
+            <div className={ classes.outter }>
+                <div className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`}>
+                    { bundleState }
+                </div>
+    			<Grid container classes={ { container: classes.container } } spacing={16}>
+                    
+                    { isRunBundle &&
+                        <Grid item xs={12} md="auto">
+                            <Typography variant="body1">
+                                run time: { bundleInfo.metadata.time || '-- --' }
+                            </Typography>
                         </Grid>
-                        { isRunBundle &&
-                            <Grid item xs={12} md="auto">
-                                <Typography variant="body1">
-                                    run time: { bundleInfo.metadata.time || '-- --' }
-                                </Typography>
-                            </Grid>
-                        }
-                    </Grid>
-                </Grid>
-                { isRunBundle &&
-                    <Grid item xs={12}>  
-                        <CopyToClipboard
-                            text={ bundleInfo.command }
-                        >
-                            <div
-                                className={ `${ classes.row } ${ classes.command }` }
+                    }
+                    { isRunBundle &&
+                        <Grid item xs={12}>  
+                            <CopyToClipboard
+                                text={ bundleInfo.command }
                             >
-                                <span>{ bundleInfo.command }</span>
-                                <Tooltip title="Copy to clipboard">
-                                    <CopyIcon
-                                        style={ { color: 'white', marginLeft: 8 } }
-                                    />
-                                </Tooltip>
-                            </div>
-                        </CopyToClipboard>
+                                <div
+                                    className={ `${ classes.row } ${ classes.command }` }
+                                >
+                                    <span>{ bundleInfo.command }</span>
+                                    <Tooltip title="Copy to clipboard">
+                                        <CopyIcon
+                                            style={ { color: 'white', marginLeft: 8 } }
+                                        />
+                                    </Tooltip>
+                                </div>
+                            </CopyToClipboard>
+                        </Grid>
+                    }
+                    <Grid item xs={12}>
+                        <Grid container>
+            				{ stdout &&
+                                <Grid item xs={12}>
+                                    <Typography variant="subtitle1">stdout</Typography>
+                					<div className={ classes.snippet }>
+                						{ stdout }
+                					</div>
+                                </Grid>
+            				}
+            				{ stderr &&
+                                <Grid item xs={12}>
+                                    <Typography variant="subtitle1">stderr</Typography>
+                					<div className={ classes.snippet }>
+                						{ stderr }
+                					</div>
+                                </Grid>
+            				}
+                        </Grid>
                     </Grid>
-                }
-                <Grid item xs={12} md={8}>
-                    <Grid container>
-        				{ stdout &&
-                            <Grid item xs={12}>
-            					<div className={ classes.snippet }>
-            						<b>stdout</b>
-            						{ stdout }
-            					</div>
-                            </Grid>
-        				}
-        				{ stderr &&
-                            <Grid item xs={12}>
-            					<div className={ classes.snippet }>
-            						<b>stderr</b>
-            						{ stderr }
-            					</div>
-                            </Grid>
+                    <Grid item xs={12}>
+        				{ fileContents
+        					? <div className={ classes.snippet }>
+        						{ fileContents }
+        					</div>
+        					: <FileBrowserLite
+                                uuid={ bundleInfo.uuid }
+                            />
         				}
                     </Grid>
-                </Grid>
-                <Grid item xs={12} md={8}>
-    				{ fileContents
-    					? <div className={ classes.snippet }>
-    						{ fileContents }
-    					</div>
-    					: <FileBrowserLite
-                            uuid={ bundleInfo.uuid }
-                        />
-    				}
-                </Grid>
-			</Grid>
+    			</Grid>
+            </div>
 		);
 	}
 }
 
 const styles = (theme) => ({
+    outter: {
+        flex: 1,
+    },
 	container: {
 		padding: theme.spacing.larger,
 	},
@@ -118,10 +113,12 @@ const styles = (theme) => ({
         justifyContent: 'space-between',
     },
     stateBox: {
-        padding: theme.spacing.large,
-        borderRadius: theme.spacing.unit,
         color: 'white',
-        fontSize: '1.5rem',
+        fontSize: '1.25rem',
+        width: `calc(100% + ${ 2*theme.spacing.larger }px)`,
+        textAlign: 'center',
+        marginTop: -theme.spacing.larger,
+        marginLeft: -theme.spacing.larger,
     },
     readyState: {
         backgroundColor: theme.color.green.base,
@@ -144,7 +141,8 @@ const styles = (theme) => ({
 		fontFamily: 'monospace',
 		backgroundColor: theme.color.grey.lightest,
 		height: 160,
-		marginTop: theme.spacing.large,
+		marginBottom: theme.spacing.large,
+        overflow: 'auto',
 	},
 });
 
