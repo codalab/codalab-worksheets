@@ -49,7 +49,7 @@ export function renderDate(epochSeconds) {
     var min = dt.getMinutes();
     var sec = dt.getSeconds();
     return (
-        dt.toLocaleDateString() +
+        dt.toDateString() +
         ' ' +
         padInt(hour, 2) +
         ':' +
