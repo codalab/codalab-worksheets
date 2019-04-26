@@ -87,6 +87,7 @@ class SlurmRun(object):
         self.UPDATE_INTERVAL = 5
         self.finished = False
         self.killed = False
+        self.kill_message = None
         self.has_contents = False
         self.resource_use = {"disk": 0, "time": 0, "memory": 0}
 

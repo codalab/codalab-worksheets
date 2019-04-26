@@ -22,8 +22,8 @@ class SlurmRunManager(BaseRunManager):
     BUNDLE_FILE_NAME = "bundle_info.json"
     RESOURCES_FILE_NAME = "resources.json"
     SLURM_OUTPUT_FILE_NAME = "slurm_log.txt"
-    MAX_CORES_ALLOWED = 1
-    MAX_GPUS_ALLOWED = 3
+    MAX_CORES_ALLOWED = 500
+    MAX_GPUS_ALLOWED = 100
 
     def __init__(self, worker_dir, sbatch_binary='sbatch', slurm_run_binary='/u/nlp/bin/cl-slurm-job', slurm_host=None, docker_network_internal_name='codalab-docker-network-int', docker_network_external_name='codalab-docker-network-ext'):
         self.runs = set()  # List[str] UUIDs of runs
@@ -122,7 +122,7 @@ class SlurmRunManager(BaseRunManager):
         # TODO: host, gpu_type, parition = parse_tags()
         job_name = "codalab-run-{}".format(bundle.uuid)
         gpu_type = None
-        partition = "jag-lo" if resources.gpus else "john"
+        partition = "jag-standard" if resources.gpus else "john"
         sbatch_flags = [
             self.sbatch_binary,
             "--mem={}K".format(resources.memory//1024),
@@ -249,10 +249,7 @@ class SlurmRunManager(BaseRunManager):
         """
         Returns a list of all the runs managed by this RunManager
         """
-        runs = {k: v.to_dict() for k, v in self.run_states.items()}
-        if len(runs):
-            print(runs)
-        return runs
+        return {k: v.to_dict() for k, v in self.run_states.items()}
 
     @property
     def all_dependencies(self):
