@@ -1,4 +1,15 @@
 import * as React from 'react';
+import { withStyles } from '@material-ui/core';
+import Paper from '@material-ui/core/Paper';
+import Button from '@material-ui/core/Button';
+import IconButton from '@material-ui/core/IconButton';
+import DeleteIcon from '@material-ui/icons/Delete';
+import MoreIcon from '@material-ui/icons/MoreVert';
+import Table from '@material-ui/core/Table';
+import TableHead from '@material-ui/core/TableHead';
+import TableBody from '@material-ui/core/TableBody';
+import TableCell from '@material-ui/core/TableCell';
+import TableRow from '@material-ui/core/TableRow';
 import Immutable from 'seamless-immutable';
 import { worksheetItemPropsChanged } from '../../../util/worksheet_utils';
 import $ from 'jquery';
@@ -60,6 +71,7 @@ class TableItem extends React.Component {
     }
 
     render() {
+        const { classes } = this.props;
         if (this.props.active && this.props.focused) this.capture_keys();
 
         var self = this;
@@ -77,10 +89,11 @@ class TableItem extends React.Component {
             );
         });
         var headerHtml = headerItems.map(function(item, index) {
+            // className={columnClasses[index]}
             return (
-                <th key={index} className={columnClasses[index]}>
+                <TableCell key={index} component="th" classes={ { root: classes.root } }>
                     {item}
-                </th>
+                </TableCell>
             );
         });
         var rowItems = item.rows; // Array of {header: value, ...} objects
@@ -93,7 +106,7 @@ class TableItem extends React.Component {
             var rowFocused = self.props.focused && rowIndex == self.props.subFocusIndex;
             var url = '/bundles/' + bundleInfos[rowIndex].uuid;
             return (
-                <TableRow
+                <TableRowCustom
                     key={rowIndex}
                     ref={rowRef}
                     item={rowItem}
@@ -112,16 +125,17 @@ class TableItem extends React.Component {
                 />
             );
         });
+        // className='type-table table-responsive'
         return (
             <div className='ws-item'>
-                <div className='type-table table-responsive'>
-                    <table className={tableClassName}>
-                        <thead>
-                            <tr>{headerHtml}</tr>
-                        </thead>
-                        <tbody>{bodyRowsHtml}</tbody>
-                    </table>
-                </div>
+                <Paper>
+                    <Table className={tableClassName}>
+                        <TableHead>
+                            <TableRow>{headerHtml}</TableRow>
+                        </TableHead>
+                        <TableBody>{bodyRowsHtml}</TableBody>
+                    </Table>
+                </Paper>
             </div>
         );
     }
@@ -129,12 +143,21 @@ class TableItem extends React.Component {
 
 ////////////////////////////////////////////////////////////
 
-class TableRow extends React.Component {
+class TableRowCustomBase extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            showButtons: false,
+        };
+    }
+
     handleClick = () => {
         this.props.updateRowIndex(this.props.rowIndex);
     };
 
     render() {
+        const { classes } = this.props;
+        const { showButtons } = this.state;
         var focusedClass = this.props.focused ? 'focused' : '';
         var rowItems = this.props.item;
         var columnClasses = this.props.columnClasses;
@@ -166,17 +189,20 @@ class TableRow extends React.Component {
                 );
             else rowContent = rowContent + '';
 
+            //  className={columnClasses[col]}
             return (
-                <td key={col} className={columnClasses[col]}>
+                <TableCell key={col} classes={ { root: classes.root } }>
                     {rowContent}
-                </td>
+                </TableCell>
             );
         });
 
+        // className={focusedClass}
         return (
-            <tr
-                className={focusedClass}
+            <TableRow
                 onClick={this.handleClick}
+                onMouseEnter={() => { this.setState({ showButtons: true }) }}
+                onMouseLeave={() => { this.setState({ showButtons: false })}}
                 onContextMenu={this.props.handleContextMenu.bind(
                     null,
                     this.props.bundleInfo.uuid,
@@ -184,11 +210,84 @@ class TableRow extends React.Component {
                     this.props.rowIndex,
                     this.props.bundleInfo.bundle_type === 'run',
                 )}
+                classes={ { root: classes.row } }
             >
                 {rowCells}
-            </tr>
+                {   showButtons &&
+                    <td
+                        className={ classes.rightButtonStripe }
+                    >
+                        <IconButton>
+                            <MoreIcon />
+                        </IconButton>
+                        &nbsp;&nbsp;
+                        <IconButton>
+                            <DeleteIcon />
+                        </IconButton>
+                    </td>
+                }
+                {   showButtons &&
+                    <td
+                        className={ classes.topButtonStrip }
+                    >
+                        <Button variant='contained' color='primary' size="small">
+                            New Run
+                        </Button>
+                        &nbsp;&nbsp;
+                        <Button variant='contained' color='primary' size="small">
+                            Upload Bundle
+                        </Button>  
+                    </td>
+                }
+                {   showButtons &&
+                    <td
+                        className={ classes.bottomButtonStrip }
+                    >
+                        <Button variant='contained' color='primary' size="small">
+                            New Run
+                        </Button>
+                        &nbsp;&nbsp;
+                        <Button variant='contained' color='primary' size="small">
+                            Upload Bundle
+                        </Button>
+                    </td>
+                }
+            </TableRow>
         );
     }
 }
 
-export default TableItem;
+const styles = (theme) => ({
+    root: {
+        verticalAlign: 'middle !important',
+    },
+    row: {
+        position: 'relative',
+    },
+    rightButtonStripe: {
+        display: 'flex',
+        flexDirection: 'row',
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        height: '100%',
+    },
+    topButtonStrip: {
+        display: 'flex',
+        flexDirection: 'row',
+        position: 'absolute',
+        top: -24,
+        left: 'calc(50% - 120px)',
+    },
+    bottomButtonStrip: {
+        display: 'flex',
+        flexDirection: 'row',
+        position: 'absolute',
+        top: 'calc(100% - 24px)',
+        left: 'calc(50% - 120px)',
+    },
+});
+
+const TableRowCustom = withStyles(styles)(TableRowCustomBase);
+
+export default withStyles(styles)(TableItem);
