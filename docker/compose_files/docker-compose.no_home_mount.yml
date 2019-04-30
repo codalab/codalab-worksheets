@@ -12,3 +12,6 @@ services:
     volumes:
       - service_home:${CODALAB_SERVICE_HOME}
 
+  worker:
+    volumes:
+      - service_home:${CODALAB_SERVICE_HOME}

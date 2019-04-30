@@ -79,9 +79,6 @@ services:
 
   worker:
     image: codalab/worker:${CODALAB_VERSION}
-    command: --server http://rest-server:2900 --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_NAME}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       *codalab-env
     depends_on:

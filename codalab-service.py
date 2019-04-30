@@ -1,4 +1,7 @@
+#! /usr/bin/python2.7
+
 import argparse
+import errno
 import os
 import subprocess
 from test_cli import TestModule
@@ -28,7 +31,6 @@ class CodalabArgs(argparse.Namespace):
         'root_user': 'codalab',
         'root_pwd': 'testpassword',
         'uid': None,
-        'mount_home': False,
         'service_home': None,
         'mysql_mount': None,
         'worker_dir': None,
@@ -166,6 +168,9 @@ class CodalabArgs(argparse.Namespace):
         for arg, default in self.DEFAULT_ARGS.items():
             if getattr(self, arg) is None:
                 setattr(self, arg, default)
+        if self.worker_dir is None and self.start_worker:
+            self.worker_dir = os.path.join(self.root_dir, 'codalab-worker-scratch')
+
 
     def apply_environment(self, env):
         for arg, var in self.ARG_TO_ENV_VAR.items():
@@ -192,13 +197,13 @@ class CodalabServiceManager(object):
             environment['CODALAB_UID'] = args.uid
         else:
             environment['CODALAB_UID'] = '%s:%s' % (os.getuid(), os.getgid())
-        if args.mount_home:
+        if args.service_home:
             environment['CODALAB_SERVICE_HOME'] = args.service_home
         else:
             environment['CODALAB_SERVICE_HOME'] = '/home/codalab'
         if args.mysql_mount:
             environment['CODALAB_MYSQL_MOUNT'] = args.mysql_mount
-        if args.start_worker and args.worker_dir:
+        if args.start_worker:
             environment['CODALAB_WORKER_DIR'] = args.worker_dir
         if args.rest_port:
             environment['CODALAB_REST_PORT'] = args.rest_port
@@ -216,7 +221,7 @@ class CodalabServiceManager(object):
         compose_files = ['docker-compose.yml']
         if args.dev:
             compose_files.append('docker-compose.dev.yml')
-        if args.mount_home:
+        if args.service_home:
             compose_files.append('docker-compose.home_mount.yml')
         else:
             compose_files.append('docker-compose.no_home_mount.yml')
@@ -224,8 +229,8 @@ class CodalabServiceManager(object):
             compose_files.append('docker-compose.mysql_mount.yml')
         if args.bundle_stores:
             compose_files.append('docker-compose.bundle_mounts.yml')
-        if args.start_worker and args.worker_dir:
-            compose_files.append('docker-compose.worker_mount.yml')
+        if args.start_worker:
+            compose_files.append('docker-compose.worker.yml')
         if args.rest_port:
             compose_files.append('docker-compose.rest_port.yml')
         if args.frontend_port:
@@ -245,10 +250,30 @@ class CodalabServiceManager(object):
         self.compose_cwd = os.path.join(self.root_dir, 'docker', 'compose_files')
         self.compose_files = self.resolve_compose_files(args)
         self.compose_env = self.resolve_env_vars(args)
-        print(self.args)
-        print(self.compose_cwd)
-        print(self.compose_files)
-        print(self.compose_env)
+        if self.args.service_home:
+            try:
+                os.makedirs(self.args.service_home)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
+        if self.args.start_worker:
+            try:
+                os.makedirs(self.args.worker_dir)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
+        if self.args.mysql_mount:
+            try:
+                os.makedirs(self.args.mysql_mount)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
+        for bundle_store in self.args.bundle_stores:
+            try:
+                os.makedirs(self.args.bundle_store)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
 
     def execute(self):
         if self.command == 'build' or (self.command == 'start' and self.args.build_locally):
@@ -294,7 +319,7 @@ class CodalabServiceManager(object):
         self.bring_up_service('mysql')
 
         print("[CODALAB] ==> Configuring the service")
-        self.run_service_cmd("data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://%s:%s@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0" % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD']), root=(not self.args.mount_home))
+        self.run_service_cmd("data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://%s:%s@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0" % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD']), root=(not self.args.service_home))
 
         if self.args.initial_config:
             print("[CODALAB] ==> Creating root user")
@@ -305,7 +330,7 @@ class CodalabServiceManager(object):
 
         if self.args.initial_config:
             print("[CODALAB] ==> Creating initial worksheets")
-            self.run_service_cmd("data/bin/wait-for-it.sh rest-server:2900 -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard", root=(not self.args.mount_home))
+            self.run_service_cmd("data/bin/wait-for-it.sh rest-server:2900 -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard", root=(not self.args.service_home))
 
         print("[CODALAB] ==> Starting bundle manager")
         self.bring_up_service('bundle-manager')
