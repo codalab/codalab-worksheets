@@ -11,9 +11,9 @@ if [ "$2" = "release" ]; then
 fi
 
 if [ "$RELEASE" = "1" ]; then
-  ./docker/build-images.sh $TAG -p
-  ./docker/build-images.sh latest -p
+  ./codalab-service.py build -v $TAG --push
+  ./codalab-service.py build -v latest --push
   ./scripts/upload-to-pypi.sh $TAG
 else
-  ./docker/build-images.sh $TAG -p
+  ./codalab-service.py build -v $TAG --push
 fi

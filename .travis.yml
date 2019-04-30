@@ -6,7 +6,7 @@ jobs:
       services:
         - docker
       env:
-        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CODALAB_ROOT_PASSWORD=testpassword CI=false CODALAB_SERVICE_HOME=/home/travis/codalab/home/ CODALAB_BUNDLE_STORE=/home/travis/codalab/bundles/ CODALAB_MYSQL_MOUNT=/home/travis/codalab/mysql/ CODALAB_WORKER_DIR=/home/travis/codalab/worker-dir/ CODALAB_MYSQL_PORT=33306 CODALAB_VERSION=${TRAVIS_BRANCH}
+        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CODALAB_ROOT_PASSWORD=testpassword CI=false CODALAB_SERVICE_HOME=/home/travis/codalab/home/ CODALAB_MYSQL_MOUNT=/home/travis/codalab/mysql/ CODALAB_WORKER_DIR=/home/travis/codalab/worker-dir/ CODALAB_VERSION=${TRAVIS_BRANCH}
       python: 2.7
       before_install:
         - sudo rm /usr/local/bin/docker-compose
@@ -15,10 +15,10 @@ jobs:
         - sudo mv docker-compose /usr/local/bin
       install:
         - pip install --upgrade pip MySQL-python
-        - ./docker/build-images.sh ${TRAVIS_BRANCH} -p
+        - ./codalab-service.py build -v ${TRAVIS_BRANCH} --push
         - ./setup.sh server
       script:
-        - ./docker/codalab-service/start-service.sh -i -t -w
+        - ./codalab-service.py -i -w -t
     - stage: style
       language: python
       python: 3.6

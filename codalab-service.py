@@ -95,7 +95,7 @@ class CodalabArgs(argparse.Namespace):
         #  BUILD SETTINGS
 
         for cmd in [build_cmd, start_cmd]:
-            cmd.add_argument('--version', type=str, help='CodaLab version to use for building and deployment', default='latest')
+            cmd.add_argument('--version', '-v', type=str, help='CodaLab version to use for building and deployment', default='latest')
             cmd.add_argument('--dev', action='store_true', help='If specified use dev versions of images',)
             cmd.add_argument('--push', action='store_true', help='If specified push the images to Dockerhub',)
             cmd.add_argument('--docker-user', type=str, help='DockerHub username to push images from', default=None)
@@ -350,7 +350,7 @@ class CodalabServiceManager(object):
         self.build_image('default-cpu', 'cpu')
         self.build_image('default-gpu', 'gpu')
         if self.args.push:
-            self._run_docker_cmd(['login', '-u', self.args.docker_user, '-p', self.args.docker_pwd])
+            self._run_docker_cmd('login -u %s -p %s' % (self.args.docker_user, self.args.docker_pwd))
             self.push_image('bundleserver')
             self.push_image('frontend')
             self.push_image('worker')
