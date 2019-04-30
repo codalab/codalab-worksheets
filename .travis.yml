@@ -15,7 +15,7 @@ jobs:
         - sudo mv docker-compose /usr/local/bin
       install:
         - pip install --upgrade pip MySQL-python
-        - ./codalab-service.py build -v ${TRAVIS_BRANCH} --push
+        - ./codalab-service.py build -v ${TRAVIS_BRANCH} --push --cache-from-images
         - ./setup.sh server
       script:
         - ./codalab-service.py start -i -w -t

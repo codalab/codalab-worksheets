@@ -11,9 +11,9 @@ if [ "$2" = "release" ]; then
 fi
 
 if [ "$RELEASE" = "1" ]; then
-  ./codalab-service.py build -v $TAG --push
-  ./codalab-service.py build -v latest --push
+  ./codalab-service.py build -v $TAG --push --cache-from-images
+  ./codalab-service.py build -v latest --push --cache-from-images
   ./scripts/upload-to-pypi.sh $TAG
 else
-  ./codalab-service.py build -v $TAG --push
+  ./codalab-service.py build -v $TAG --push --cache-from-imags
 fi

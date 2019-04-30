@@ -21,6 +21,7 @@ class CodalabArgs(argparse.Namespace):
         'docker_user': None,
         'docker_pwd': None,
         'build_locally': False,
+        'cache_from_images': False,
         'test_build': False,
         'user_compose_file': None,
         'start_worker': False,
@@ -98,6 +99,7 @@ class CodalabArgs(argparse.Namespace):
             cmd.add_argument('--version', '-v', type=str, help='CodaLab version to use for building and deployment', default=argparse.SUPPRESS)
             cmd.add_argument('--dev', action='store_true', help='If specified use dev versions of images', default=argparse.SUPPRESS)
             cmd.add_argument('--push', action='store_true', help='If specified push the images to Dockerhub', default=argparse.SUPPRESS)
+            cmd.add_argument('--cache-from-images', action='store_true', help='If specified fetch latest images and use as build cache', default=argparse.SUPPRESS)
             cmd.add_argument('--docker-user', type=str, help='DockerHub username to push images from', default=argparse.SUPPRESS)
             cmd.add_argument('--docker-pwd', type=str, help='DockerHub password to push images from', default=argparse.SUPPRESS)
 
@@ -296,7 +298,9 @@ class CodalabServiceManager(object):
 
     def build_image(self, image, dockerfile):
         print("[CODALAB] ==> Building %s image " % image)
-        self._run_docker_cmd('build -t codalab/%s:%s -f docker/dockerfiles/Dockerfile.%s .' % (image, self.args.version, dockerfile))
+        cache_str = '--cache-from codalab/%s:%s' % (image, self.args.version) if self.args.cache_from_images else ''
+        command_str = 'build -t codalab/%s:%s -f docker/dockerfiles/Dockerfile.%s %s .' % (image, self.args.version, dockerfile, cache_str)
+        self._run_docker_cmd(command_str)
 
     def push_image(self, image):
         self._run_docker_cmd('push codalab/%s:%s' % (image, self.args.version))
