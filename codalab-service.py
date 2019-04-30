@@ -4,7 +4,7 @@ import argparse
 import errno
 import os
 import subprocess
-from test_cli import TestModule
+import test_cli
 
 
 def main():
@@ -21,6 +21,7 @@ class CodalabArgs(argparse.Namespace):
         'docker_user': None,
         'docker_pwd': None,
         'build_locally': False,
+        'test_build': False,
         'user_compose_file': None,
         'start_worker': False,
         'initial_config': False,
@@ -45,7 +46,7 @@ class CodalabArgs(argparse.Namespace):
         'ssl_key_file': None,
         'follow': False,
         'tail': None,
-        'tests': 'default',
+        'tests': ['default'],
     }
 
     ARG_TO_ENV_VAR = {
@@ -54,7 +55,6 @@ class CodalabArgs(argparse.Namespace):
         'push': 'CODALAB_PUSH',
         'docker_user': 'CODALAB_DOCKER_USER',
         'docker_pwd': 'CODALAB_DOCKER_PWD',
-        'build_locally': 'CODALAB_BUILD_LOCALLY',
         'user_compose_file': 'CODALAB_USER_COMPOSE_FILE',
         'start_worker': 'CODALAB_START_WORKER',
         'initial_config': 'CODALAB_INITIAL_CONFIG',
@@ -85,7 +85,7 @@ class CodalabArgs(argparse.Namespace):
 
         start_cmd = subparsers.add_parser('start', help='Start a CodaLab backend instance')
         logs_cmd = subparsers.add_parser('logs', help='View logs for existing CodaLab instance')
-        tests_cmd = subparsers.add_parser('test', help='Run tests against an existing CodaLab instance')
+        test_cmd = subparsers.add_parser('test', help='Run tests against an existing CodaLab instance')
         build_cmd = subparsers.add_parser('build', help='Build CodaLab docker images using the local codebase')
 
         subparsers.add_parser('stop', help='Stop any existing CodaLab backend instance')
@@ -104,6 +104,7 @@ class CodalabArgs(argparse.Namespace):
         #  DEPLOYMENT SETTINGS
 
         start_cmd.add_argument('--build-locally', '-b', action='store_true', help='If specified build VERSION using local code.', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--test-build', '-t', action='store_true', help='If specified run tests on the build.', default=argparse.SUPPRESS)
         start_cmd.add_argument('--user-compose-file', type=str, help='If specified path to a user-defined Docker compose file that overwrites the defaults', default=argparse.SUPPRESS)
         start_cmd.add_argument('--start-worker', '-w', action='store_true', help='If specified start a CodaLab worker on this machine.', default=argparse.SUPPRESS)
         start_cmd.add_argument('--initial-config', '-i', action='store_true', help='If specified, save the initial configuration of the instance (defaults to true if the service home or the database mounts are ephemeral)', default=argparse.SUPPRESS)
@@ -147,7 +148,7 @@ class CodalabArgs(argparse.Namespace):
 
         #  TESTS SETTINGS
 
-        tests_cmd.add_argument('tests', metavar='TEST', nargs='+', type=str, choices=TestModule.modules.keys() + ['all', 'default'], help='Tests to run')
+        test_cmd.add_argument('tests', metavar='TEST', nargs='+', type=str, choices=test_cli.TestModule.modules.keys() + ['all', 'default'], default=['default'], help='Tests to run')
         return parser
 
     @classmethod
@@ -279,14 +280,16 @@ class CodalabServiceManager(object):
             self.build()
         if self.command == 'start':
             self.start_service()
+            if self.args.test_build:
+                self.test()
         elif self.command == 'logs':
             self._run_compose_cmd('logs')
-        elif self.command == 'test':
-            self._run_compose_cmd('restart')
         elif self.command == 'stop':
             self._run_compose_cmd('stop')
         elif self.command == 'down':
             self._run_compose_cmd('down --remove-orphans')
+        elif self.command == 'test':
+            self.test()
 
     def _run_docker_cmd(self, cmd):
         subprocess.check_call('docker ' + cmd, shell=True, cwd=self.root_dir)
@@ -355,6 +358,10 @@ class CodalabServiceManager(object):
             self.push_image('worker')
             self.push_image('default-cpu')
             self.push_image('default-gpu')
+
+    def test(self):
+        test_cli.cl = '/u/nlp/bin/cl'
+        test_cli.TestModule.run(self.args.tests, 'localhost')
 
 
 if __name__ == '__main__':
