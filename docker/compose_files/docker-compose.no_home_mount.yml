@@ -1,0 +1,14 @@
+version: '3.5'
+
+volumes:
+  service_home:
+
+services:
+  rest-server:
+    volumes:
+      - service_home:${CODALAB_SERVICE_HOME}
+
+  bundle-manager:
+    volumes:
+      - service_home:${CODALAB_SERVICE_HOME}
+

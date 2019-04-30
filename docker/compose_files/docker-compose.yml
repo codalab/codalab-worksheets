@@ -1,17 +1,5 @@
 version: '3.5'
 
-x-codalab-home-mount:
-  &codalab-home-mount
-  type: bind
-  source: ${CODALAB_SERVICE_HOME}
-  target: ${CODALAB_SERVICE_HOME}
-
-x-codalab-bundles-mount:
-  &codalab-bundles-mount
-  type: bind
-  source: ${CODALAB_BUNDLE_STORE}
-  target: ${CODALAB_BUNDLE_STORE}
-
 x-non-blocking-logging:
   &non-blocking-logging
   driver: json-file
@@ -24,7 +12,6 @@ x-codalab-env:
   - CODALAB_USERNAME=${CODALAB_ROOT_USER}
   - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
 
-
 services:
   mysql:
     image: mysql:5.5.53
@@ -33,12 +20,6 @@ services:
       - MYSQL_DATABASE=codalab_bundles
       - MYSQL_USER=${CODALAB_MYSQL_USER}
       - MYSQL_PASSWORD=${CODALAB_MYSQL_PWD}
-    user: ${CODALAB_UID}
-    volumes:
-      - ${CODALAB_MYSQL_MOUNT}/config/conf.d:/etc/mysql/conf.d
-      - ${CODALAB_MYSQL_MOUNT}/mysql:/var/lib/mysql
-    ports:
-      - ${CODALAB_MYSQL_PORT}:3306
     networks:
       - service
     logging:
@@ -47,14 +28,9 @@ services:
   rest-server:
     image: codalab/bundleserver:${CODALAB_VERSION}
     command: server
-    ports:
-      - ${CODALAB_REST_PORT}:2900
     environment:
       *codalab-env
-    user: ${CODALAB_UID}
     volumes:
-      - *codalab-home-mount
-      - *codalab-bundles-mount
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - mysql
@@ -68,10 +44,7 @@ services:
     command: bundle-manager
     environment:
       *codalab-env
-    user: ${CODALAB_UID}
     volumes:
-      - *codalab-home-mount
-      - *codalab-bundles-mount
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - rest-server
@@ -82,9 +55,6 @@ services:
 
   frontend:
     image: codalab/frontend:${CODALAB_VERSION}
-    ports:
-      - ${CODALAB_FRONTEND_PORT}:2700
-    user: ${CODALAB_UID}
     depends_on:
       - rest-server
     networks:
@@ -112,10 +82,8 @@ services:
     command: --server http://rest-server:2900 --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_NAME}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
     environment:
       *codalab-env
-    user: ${CODALAB_UID}
     depends_on:
       - bundle-manager
     networks:

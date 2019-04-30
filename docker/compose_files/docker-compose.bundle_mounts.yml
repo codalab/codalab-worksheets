@@ -1,0 +1,18 @@
+version: '3.5'
+
+x-codalab-bundles-mount:
+  &codalab-bundles-mount
+  type: bind
+  source: ${CODALAB_BUNDLE_STORE}
+  target: ${CODALAB_BUNDLE_STORE}
+
+services:
+  rest-server:
+    user: ${CODALAB_UID}
+    volumes:
+      - *codalab-bundles-mount
+
+  bundle-manager:
+    user: ${CODALAB_UID}
+    volumes:
+      - *codalab-bundles-mount

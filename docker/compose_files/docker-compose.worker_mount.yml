@@ -1,0 +1,7 @@
+version: '3.5'
+
+services:
+  worker:
+    user: ${CODALAB_UID}
+    volumes:
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
