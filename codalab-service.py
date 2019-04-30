@@ -95,55 +95,55 @@ class CodalabArgs(argparse.Namespace):
         #  BUILD SETTINGS
 
         for cmd in [build_cmd, start_cmd]:
-            cmd.add_argument('--version', '-v', type=str, help='CodaLab version to use for building and deployment', default='latest')
-            cmd.add_argument('--dev', action='store_true', help='If specified use dev versions of images',)
-            cmd.add_argument('--push', action='store_true', help='If specified push the images to Dockerhub',)
-            cmd.add_argument('--docker-user', type=str, help='DockerHub username to push images from', default=None)
-            cmd.add_argument('--docker-pwd', type=str, help='DockerHub password to push images from', default=None)
+            cmd.add_argument('--version', '-v', type=str, help='CodaLab version to use for building and deployment', default=argparse.SUPPRESS)
+            cmd.add_argument('--dev', action='store_true', help='If specified use dev versions of images', default=argparse.SUPPRESS)
+            cmd.add_argument('--push', action='store_true', help='If specified push the images to Dockerhub', default=argparse.SUPPRESS)
+            cmd.add_argument('--docker-user', type=str, help='DockerHub username to push images from', default=argparse.SUPPRESS)
+            cmd.add_argument('--docker-pwd', type=str, help='DockerHub password to push images from', default=argparse.SUPPRESS)
 
         #  DEPLOYMENT SETTINGS
 
-        start_cmd.add_argument('--build-locally', '-b', action='store_true', help='If specified build VERSION using local code.')
-        start_cmd.add_argument('--user-compose-file', type=str, help='If specified path to a user-defined Docker compose file that overwrites the defaults', default=None)
-        start_cmd.add_argument('--start-worker', '-w', action='store_true', help='If specified start a CodaLab worker on this machine.')
-        start_cmd.add_argument('--initial-config', '-i', action='store_true', help='If specified, save the initial configuration of the instance (defaults to true if the service home or the database mounts are ephemeral)')
+        start_cmd.add_argument('--build-locally', '-b', action='store_true', help='If specified build VERSION using local code.', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--user-compose-file', type=str, help='If specified path to a user-defined Docker compose file that overwrites the defaults', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--start-worker', '-w', action='store_true', help='If specified start a CodaLab worker on this machine.', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--initial-config', '-i', action='store_true', help='If specified, save the initial configuration of the instance (defaults to true if the service home or the database mounts are ephemeral)', default=argparse.SUPPRESS)
 
         #  USER CREDENTIALS
 
-        start_cmd.add_argument('--mysql-root-pwd', type=str, help='Root password for the database', default='mysql_root_pwd')
-        start_cmd.add_argument('--mysql-user', type=str, help='MYSQL username for the Codalab MYSQL client', default='codalab')
-        start_cmd.add_argument('--mysql-pwd', type=str, help='MYSQL password for the Codalab MYSQL client', default='mysql_pwd')
-        start_cmd.add_argument('--root-user', type=str, help='Codalab username for the Codalab admin user', default='codalab')
-        start_cmd.add_argument('--root-pwd', type=str, help='Codalab password for the Codalab admin user', default='testpassword')
+        start_cmd.add_argument('--mysql-root-pwd', type=str, help='Root password for the database', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--mysql-user', type=str, help='MYSQL username for the Codalab MYSQL client', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--mysql-pwd', type=str, help='MYSQL password for the Codalab MYSQL client', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--root-user', type=str, help='Codalab username for the Codalab admin user', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--root-pwd', type=str, help='Codalab password for the Codalab admin user', default=argparse.SUPPRESS)
 
         #  HOST FILESYSTEM MOUNTS
 
-        start_cmd.add_argument('--uid', type=str, help='Linux UID that owns the files created by Codalab. default=(ID of the user running this script)', default=None)
-        start_cmd.add_argument('--service-home', type=str, help='Path on the host machine to store home directory of the Codalab server (by default nothing is stored', default=None)
-        start_cmd.add_argument('--mysql-mount', type=str, help='Path on the host machine to store mysql data files, by default the database is ephemeral', default=None)
-        start_cmd.add_argument('--worker-dir', type=str, help='Path on the host machine to store worker data files, by default these are ephemeral', default=None)
+        start_cmd.add_argument('--uid', type=str, help='Linux UID that owns the files created by Codalab. default=(ID of the user running this script)', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--service-home', type=str, help='Path on the host machine to store home directory of the Codalab server (by default nothing is stored', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--mysql-mount', type=str, help='Path on the host machine to store mysql data files, by default the database is ephemeral', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--worker-dir', type=str, help='Path on the host machine to store worker data files, by default these are ephemeral', default=argparse.SUPPRESS)
         start_cmd.add_argument('--bundle-store', type=str, help='Path on the host machine to store bundle data files, by default these are ephemeral', default=[], dest='bundle_stores', action='append')
 
-        start_cmd.add_argument('--worker-docker-network-name', type=str, help='Name of the docker network that includes the worker and runs', default='codalab-worker-network')
+        start_cmd.add_argument('--worker-docker-network-name', type=str, help='Name of the docker network that includes the worker and runs', default=argparse.SUPPRESS)
 
         #  HOST PORT MOUNTS
 
-        start_cmd.add_argument('--http-port', type=str, help='HTTP port for the server to listen on', default='80')
-        start_cmd.add_argument('--rest-port', type=str, help='Port for the REST server to listen on (by default it is not exposed to the host machine)', default=None)
-        start_cmd.add_argument('--frontend-port', type=str, help='Port for the React server to listen on (by default it is not exposed to the host machine)', default=None)
-        start_cmd.add_argument('--mysql-port', type=str, help='Port for the MYSQL database to listen on (by default it is not exposed to the host machine)', default=None)
+        start_cmd.add_argument('--http-port', type=str, help='HTTP port for the server to listen on', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--rest-port', type=str, help='Port for the REST server to listen on (by default it is not exposed to the host machine)', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--frontend-port', type=str, help='Port for the React server to listen on (by default it is not exposed to the host machine)', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--mysql-port', type=str, help='Port for the MYSQL database to listen on (by default it is not exposed to the host machine)', default=argparse.SUPPRESS)
 
         #  SSL CONFIGURATION
 
-        start_cmd.add_argument('--use-ssl', action='store_true', help='If specified set the server up with SSL')
-        start_cmd.add_argument('--ssl-cert-file', type=str, help='Path to the cert file for SSL')
-        start_cmd.add_argument('--ssl-key-file', type=str, help='Path to the key file for SSL')
+        start_cmd.add_argument('--use-ssl', action='store_true', help='If specified set the server up with SSL', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--ssl-cert-file', type=str, help='Path to the cert file for SSL', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--ssl-key-file', type=str, help='Path to the key file for SSL', default=argparse.SUPPRESS)
 
         #  LOGS SETTINGS
 
         logs_cmd.add_argument('services', nargs='*', default='all', help='Services to print logs for', choices=['mysql', 'rest-server', 'bundle-manager', 'frontend', 'nginx', 'worker', 'all'])
-        logs_cmd.add_argument('--follow', '-f', action='store_true', help='If specified follow the logs')
-        logs_cmd.add_argument('--tail', '-t', type=int, default=None, help='If specified tail TAIL lines from the ends of each log')
+        logs_cmd.add_argument('--follow', '-f', action='store_true', help='If specified follow the logs', default=argparse.SUPPRESS)
+        logs_cmd.add_argument('--tail', '-t', type=int, help='If specified tail TAIL lines from the ends of each log', default=argparse.SUPPRESS)
 
         #  TESTS SETTINGS
 
@@ -163,14 +163,13 @@ class CodalabArgs(argparse.Namespace):
             setattr(self, arg, None)
         self.root_dir = os.path.dirname(os.path.realpath(__file__))
 
-
     def _apply_defaults(self):
         for arg, default in self.DEFAULT_ARGS.items():
             if getattr(self, arg) is None:
                 setattr(self, arg, default)
-        if self.worker_dir is None and self.start_worker:
-            self.worker_dir = os.path.join(self.root_dir, 'codalab-worker-scratch')
 
+        if self.worker_dir is None:
+            self.worker_dir = os.path.join(self.root_dir, 'codalab-worker-scratch')
 
     def apply_environment(self, env):
         for arg, var in self.ARG_TO_ENV_VAR.items():
