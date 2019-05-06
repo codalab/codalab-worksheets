@@ -126,6 +126,7 @@ BUNDLE_COMMANDS = (
     'write',
     'mount',
     'netcat',
+    'ancestors',
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -3765,3 +3766,51 @@ class BundleCLI(object):
                 'Sanity check! Point your CLI at an instance on localhost before executing admin commands: %s'
                 % args.command
             )
+
+    @Commands.command(
+        'ancestors',
+        aliases=('ant',),
+        help='Retrieve ancestors of current node.',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-v',
+                '--verbose',
+                action='store_true',
+                help='Print top-level contents of bundle, children bundles, and host worksheets.',
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+
+    def do_ancestors_command(self, args, indent = 0):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        
+        bundles = client.fetch(
+            'bundles',
+            params={
+                'specs': args.bundle_spec,
+                'worksheet': worksheet_uuid,
+                'include': ['owner']
+                + (['children', 'group_permissions', 'host_worksheets'] if args.verbose else []),
+            },
+        )
+
+        for bundle in bundles:
+            print '{} - {} ({})'.format(' ' * indent, str(bundle['metadata']['name']), str(bundle['uuid'])[0:8]) 
+            if 'dependencies' not in bundle:
+                continue
+            for parent in bundle['dependencies']:
+               args.bundle_spec = [str(parent["parent_name"])]
+               self.do_ancestors_command(args, indent + 1)
+
+
