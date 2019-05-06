@@ -46,7 +46,7 @@ class Dependency extends React.PureComponent<
 
     return (
         <div>
-            <Typography variant="body1">dependencies</Typography>
+            <Typography variant="body1">Dependencies</Typography>
             <Table>
                 <TableBody>{ dependencies_table }</TableBody>
             </Table>

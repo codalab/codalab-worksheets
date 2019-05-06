@@ -140,7 +140,6 @@ const efStyles = (theme) => ({
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
-        height: 38,
     },
     editableLink: {
         textDecoration: 'none',
