@@ -11,7 +11,10 @@ import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import Immutable from 'seamless-immutable';
-import { worksheetItemPropsChanged } from '../../../util/worksheet_utils';
+import {
+    buildTerminalCommand,
+    worksheetItemPropsChanged,
+} from '../../../util/worksheet_utils';
 import $ from 'jquery';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 
@@ -21,6 +24,9 @@ class TableItem extends React.Component {
         super(props);
         this.state = Immutable({});
     }
+
+    marker = 'hello';
+    refsCollection = {};
 
     capture_keys() {
         // Open worksheet in new window/tab
@@ -71,7 +77,6 @@ class TableItem extends React.Component {
     }
 
     render() {
-        const { classes } = this.props;
         if (this.props.active && this.props.focused) this.capture_keys();
 
         var self = this;
@@ -91,7 +96,7 @@ class TableItem extends React.Component {
         var headerHtml = headerItems.map(function(item, index) {
             // className={columnClasses[index]}
             return (
-                <TableCell key={index} component="th" classes={ { root: classes.root } }>
+                <TableCell key={index} component="th" style={ styles.root }>
                     {item}
                 </TableCell>
             );
@@ -108,7 +113,7 @@ class TableItem extends React.Component {
             return (
                 <TableRowCustom
                     key={rowIndex}
-                    ref={rowRef}
+                    ref={ rowRef }
                     item={rowItem}
                     rowIndex={rowIndex}
                     focused={rowFocused}
@@ -153,6 +158,26 @@ class TableRowCustomBase extends React.Component {
 
     handleClick = () => {
         this.props.updateRowIndex(this.props.rowIndex);
+    };
+
+    upload = () => (ev) => {
+        ev.stopPropagation();
+    };
+
+    newRun = () => (ev) => {
+        ev.stopPropagation();
+    };
+
+    showMore = (ev) => {
+        ev.stopPropagation();
+    };
+
+    deleteItem = (ev) => {
+        ev.stopPropagation();
+        const { uuid } = this.props.bundleInfo;
+        $('#command_line')
+            .terminal()
+            .exec(buildTerminalCommand(['rm', uuid]));
     };
 
     render() {
@@ -217,11 +242,15 @@ class TableRowCustomBase extends React.Component {
                     <td
                         className={ classes.rightButtonStripe }
                     >
-                        <IconButton>
+                        <IconButton
+                            onClick={ this.showMore }
+                        >
                             <MoreIcon />
                         </IconButton>
                         &nbsp;&nbsp;
-                        <IconButton>
+                        <IconButton
+                            onClick={ this.deleteItem }
+                        >
                             <DeleteIcon />
                         </IconButton>
                     </td>
@@ -230,12 +259,16 @@ class TableRowCustomBase extends React.Component {
                     <td
                         className={ classes.topButtonStrip }
                     >
-                        <Button variant='contained' color='primary' size="small">
+                        <Button variant='contained' color='primary' size="small"
+                            onClick={ this.newRun('before') }
+                        >
                             New Run
                         </Button>
                         &nbsp;&nbsp;
-                        <Button variant='contained' color='primary' size="small">
-                            Upload Bundle
+                        <Button variant='contained' color='primary' size="small"
+                            onClick={ this.upload('before') }
+                        >
+                            Upload
                         </Button>  
                     </td>
                 }
@@ -243,12 +276,16 @@ class TableRowCustomBase extends React.Component {
                     <td
                         className={ classes.bottomButtonStrip }
                     >
-                        <Button variant='contained' color='primary' size="small">
+                        <Button variant='contained' color='primary' size="small"
+                            onClick={ this.newRun('after') }
+                        >
                             New Run
                         </Button>
                         &nbsp;&nbsp;
-                        <Button variant='contained' color='primary' size="small">
-                            Upload Bundle
+                        <Button variant='contained' color='primary' size="small"
+                            onClick={ this.upload('after') }
+                        >
+                            Upload
                         </Button>
                     </td>
                 }
@@ -265,29 +302,34 @@ const styles = (theme) => ({
         position: 'relative',
     },
     rightButtonStripe: {
+        border: 'none !important',
         display: 'flex',
         flexDirection: 'row',
+        height: '100%',
         position: 'absolute',
         right: 0,
         top: 0,
-        height: '100%',
     },
     topButtonStrip: {
+        border: 'none !important',
         display: 'flex',
         flexDirection: 'row',
-        position: 'absolute',
-        top: -24,
         left: 'calc(50% - 120px)',
+        position: 'absolute',
+        top: 0,
+        transform: 'translateY(-50%)',
     },
     bottomButtonStrip: {
+        border: 'none !important',
         display: 'flex',
         flexDirection: 'row',
-        position: 'absolute',
-        top: 'calc(100% - 24px)',
         left: 'calc(50% - 120px)',
+        position: 'absolute',
+        top: '100%',
+        transform: 'translateY(-50%)',
     },
 });
 
 const TableRowCustom = withStyles(styles)(TableRowCustomBase);
 
-export default withStyles(styles)(TableItem);
+export default TableItem;
