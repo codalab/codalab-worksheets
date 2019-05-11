@@ -142,6 +142,7 @@ class SideBar extends React.Component<
                 <Grid item xs={12}>
                     <Typography variant="body1"></Typography>
                     <PermissionDialog
+                        uuid={ bundleInfo.uuid }
                         permission_spec={ bundleInfo.permission_spec }
                         group_permissions={ bundleInfo.group_permissions }
                     />
