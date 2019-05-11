@@ -180,17 +180,17 @@ class WorksheetSidePanel extends React.Component {
                 // Show nothing (maybe later show markdown just for fun?)
             } else if (this.isFocusBundle(focus)) {
                 // Show bundle (either full bundle or row in table)
-                var bundle_info = this.getBundleInfo(focus);
-                if (bundle_info) {
-                    side_panel_details = (
-                        <BundleDetail
-                            uuid={bundle_info.uuid}
-                            bundleMetadataChanged={this.props.bundleMetadataChanged}
-                            ref='bundle_info_side_panel'
-                            onClose={ this.props.deFocus }
-                        />
-                    );
-                }
+                // var bundle_info = this.getBundleInfo(focus);
+                // if (bundle_info) {
+                //     side_panel_details = (
+                //         <BundleDetail
+                //             uuid={bundle_info.uuid}
+                //             bundleMetadataChanged={this.props.bundleMetadataChanged}
+                //             ref='bundle_info_side_panel'
+                //             onClose={ this.props.deFocus }
+                //         />
+                //     );
+                // }
             } else {
                 console.error('Unknown mode: ' + focus.mode);
             }

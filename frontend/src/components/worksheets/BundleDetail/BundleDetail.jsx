@@ -1,7 +1,7 @@
 // @flow
 import * as React from 'react';
 import * as $ from 'jquery';
-import Drawer from '@material-ui/core/Drawer';
+// import Drawer from '@material-ui/core/Drawer';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 
 import ConfigurationPanel from '../ConfigurationPanel';
@@ -55,6 +55,11 @@ class BundleDetail extends React.Component<
         };
     }
 
+    componentDidMount() {
+        this.fetchBundleMetaData();
+        this.fetchBundleContents();
+    }
+
     /**
      * Return a Promise to fetch the summary of the given file.
      * @param uuid  uuid of bundle
@@ -76,16 +81,12 @@ class BundleDetail extends React.Component<
         });
     }
 
-    /**
-     * Fetch bundle data and update the state of this component.
-     * This function will be called by the parent component 'worksheet'.
-     */
-    refreshBundle = () => {
-        // Fetch bundle metadata
+    fetchBundleMetaData = () => {
+        const { uuid } = this.props;
+
         $.ajax({
             type: 'GET',
-
-            url: '/rest/bundles/' + this.props.uuid,
+            url: '/rest/bundles/' + uuid,
             data: {
                 include_display_metadata: 1,
                 include: 'owner,group_permissions,host_worksheets',
@@ -98,7 +99,7 @@ class BundleDetail extends React.Component<
             const bundleInfo = new JsonApiDataStore().sync(response);
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
             bundleInfo.metadataType = response.data.meta.metadata_type;
-            this.setState({ bundleInfo: bundleInfo });
+            this.setState({ bundleInfo });
         }).fail(function(xhr, status, err) {
             this.setState({
                 bundleInfo: null,
@@ -108,11 +109,15 @@ class BundleDetail extends React.Component<
                 errorMessages: this.state.errorMessages.concat([xhr.responseText]),
             });
         });
+    }
 
-        // Fetch bundle contents
+    // Fetch bundle contents
+    fetchBundleContents = () => {
+        const { uuid } = this.props;
+
         $.ajax({
             type: 'GET',
-            url: '/rest/bundles/' + this.props.uuid + '/contents/info/',
+            url: '/rest/bundles/' + uuid + '/contents/info/',
             data: {
                 depth: 1,
             },
@@ -123,7 +128,7 @@ class BundleDetail extends React.Component<
             const info = response.data;
             if (!info) return;
             if (info.type === 'file' || info.type === 'link') {
-                return this.fetchFileSummary(this.props.uuid, '/').then(function(blob) {
+                return this.fetchFileSummary(uuid, '/').then(function(blob) {
                     this.setState({ fileContents: blob, stdout: null, stderr: null });
                 });
             } else if (info.type === 'directory') {
@@ -136,7 +141,7 @@ class BundleDetail extends React.Component<
                     function(name) {
                         if (info.contents.some((entry) => entry.name === name)) {
                             fetchRequests.push(
-                                this.fetchFileSummary(this.props.uuid, '/' + name).then(
+                                this.fetchFileSummary(uuid, '/' + name).then(
                                     function(blob) {
                                         stateUpdate[name] = blob;
                                     },
@@ -167,47 +172,35 @@ class BundleDetail extends React.Component<
                 this.setState({ fileContents: null, stdout: null, stderr: null });
             }
         });
-    };
-  
-  render(): React.Node {
-    const { onClose } = this.props;
-    const {
-      open,
-      bundleInfo,
-      errorMessages,
-      stdout,
-      stderr,
-      fileContents } = this.state;
-
-    if (!bundleInfo) {
-        return null;
     }
+  
+    render(): React.Node {
+        const { uuid, onClose } = this.props;
+        const {
+            bundleInfo,
+            stdout,
+            stderr,
+            fileContents } = this.state;
 
-    return (<Drawer
-      anchor="bottom"
-      open
-      onClose={ onClose }
-      PaperProps={ { style: {
-        minHeight: '75vh',
-        width: '90vw',
-        maxWidth: 1200,
-        borderTopLeftRadius: 8,
-        borderTopRightRadius: 8,
-        transform: 'translateX(50vw) translateX(-50%)',
-      } } }
-    >
-      <ConfigurationPanel
-        buttons={ <BundleActions bundleInfo={ bundleInfo } /> }
-        sidebar={ <SideBar bundleInfo={ bundleInfo } /> }
-      >
-        <MainContent
-          bundleInfo={ bundleInfo }
-          stdout={ stdout || fakestdout }
-          stderr={ stderr || fakestderr }
-          fileContents={ fileContents }
-        />
-      </ConfigurationPanel>
-    </Drawer>);
+        if (!bundleInfo) {
+            return null;
+        }
+
+        console.log(bundleInfo);
+
+        return (
+            <ConfigurationPanel
+                buttons={ <BundleActions bundleInfo={ bundleInfo } /> }
+                sidebar={ <SideBar bundleInfo={ bundleInfo } /> }
+            >
+                <MainContent
+                    bundleInfo={ bundleInfo }
+                    stdout={ stdout || fakestdout }
+                    stderr={ stderr || fakestderr }
+                    fileContents={ fileContents }
+                />
+            </ConfigurationPanel>
+        );
   }
 }
 
