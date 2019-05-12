@@ -12,8 +12,6 @@ import {
 import $ from 'jquery';
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleRow from './BundleRow';
-import InsertButtons from './InsertButtons';
-import MenuButtons from './MenuButtons';
 
 class TableItem extends React.Component {
     /** Constructor. */
@@ -71,60 +69,11 @@ class TableItem extends React.Component {
         this.props.setFocus(this.props.focusIndex, rowIndex);
     };
 
-    showButtons = (idx) => (ev) => {
-        const row = ev.currentTarget;
-        const {
-            top,
-            height,
-        } = row.getBoundingClientRect();
-        if (this.state.rowIdx !== idx) {
-            this.setState({
-                rowcenter: (idx + 0.5) * height,
-                rowIdx: idx,
-            });
-        }
-        const { clientY } = ev;
-        const onTop = (clientY >= top
-                && clientY <= top + 0.25 * height);
-        const onBotttom = (clientY >= top + 0.75 * height
-                && clientY <= top + height);
-        if (onTop || onBotttom) {
-            if (onBotttom) {
-                idx += 1;
-            }
-            const { yposition } = this.state;
-            if (idx * height !== yposition) {
-                // Only update position if the position is different.
-                this.setState({
-                    yposition: idx * height,
-                    insertBefore: idx,
-                });
-            }
-        } else {
-            this.setState({
-                yposition: -1,
-                insertBefore: -1,
-            });
-        }
-    }
-
-    removeButtons = (ev) => {
-        ev.stopPropagation();
-        this.setState({
-            yposition: -1,
-            rowcenter: -1,
-            rowIdx: -1,
-            insertBefore: -1,
-        });
-    }
-
     shouldComponentUpdate(nextProps, nextState) {
-        return (worksheetItemPropsChanged(this.props, nextProps)
-            || (this.state.yposition !== nextState.yposition));
+        return worksheetItemPropsChanged(this.props, nextProps);
     }
 
     render() {
-        const { yposition, rowcenter, rowIdx, insertBefore } = this.state;
         if (this.props.active && this.props.focused) this.capture_keys();
 
         var tableClassName = this.props.focused ? 'table focused' : 'table';
@@ -164,7 +113,6 @@ class TableItem extends React.Component {
                     updateRowIndex={this.updateRowIndex}
                     columnWithHyperlinks={columnWithHyperlinks}
                     handleContextMenu={this.props.handleContextMenu}
-                    onMouseMove={ this.showButtons(rowIndex) }
                     reloadWorksheet={ this.props.reloadWorksheet }
                 />
             );
@@ -180,20 +128,6 @@ class TableItem extends React.Component {
                         </TableHead>
                         { bodyRowsHtml }
                     </Table>
-                    {
-                        insertBefore >= 0 &&
-                        <InsertButtons
-                            yposition={ yposition }
-                            insertBefore={ insertBefore }
-                        />
-                    }
-                    {
-                        rowIdx >= 0 &&
-                        <MenuButtons
-                            rowcenter={ rowcenter }
-                            bundleInfo={ bundleInfos[rowIdx] }
-                        />
-                    }
                 </TableContainer>
             </div>
         );
