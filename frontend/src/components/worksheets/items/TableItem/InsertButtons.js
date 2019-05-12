@@ -13,13 +13,11 @@ class InsertButtons extends React.Component{
     };
 
     render() {
-        const { classes, yposition } = this.props;
+        const { classes } = this.props;
         return (
             <div
+                onMouseMove={ (ev) => { ev.stopPropagation(); } }
                 className={ classes.buttonsPanel }
-                style={ {
-                    top: yposition + 56,
-                } }
             >
                 <Button
                     variant="outlined"
