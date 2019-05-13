@@ -71,19 +71,9 @@ class SlurmRun(object):
         )
         self.docker_client = docker.from_env()
         self.docker_runtime = "nvidia" if self.resources.gpus else "runc"
-        if self.resources.network:
-            docker_network_name = args.docker_network_external_name
-            internal = False
-        else:
-            docker_network_name = args.docker_network_internal_name
-            internal = True
-        try:
-            self.docker_network = self.docker_client.networks.create(
-                docker_network_name, internal=internal, check_duplicate=True
-            )
-        except docker.errors.APIError:
-            # Network already exists, go on
-            self.docker_network = self.docker_client.networks.list(names=[docker_network_name])[0]
+        self.docker_network = self.docker_client.networks.create(
+            "%s-net" % self.bundle.uuid, internal=self.resources.network
+        )
         self.UPDATE_INTERVAL = 5
         self.finished = False
         self.killed = False
@@ -344,6 +334,7 @@ class SlurmRun(object):
                 remove_path(child_path)
             except Exception:
                 traceback.print_exc()
+        self.docker_network.remove()
         # TODO: Clean up docker image cache
 
 
