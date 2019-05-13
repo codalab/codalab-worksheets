@@ -53,17 +53,30 @@ class SlurmRunManager(BaseRunManager):
         """
         pass
 
+    def _get_job_id(self, uuid):
+        if uuid in self.run_jobs:
+            job_name = self.run_jobs[uuid]
+            squeue_command = 'squeue -o \%A -h -n {}'.format(job_name)
+            job_id = subprocess.check_output(squeue_command)
+            return jobid
+        return None
+
+    def get_host(self, uuid):
+        if uuid in self.run_jobs:
+            job_name = self.run_jobs[uuid]
+            squeue_command = 'squeue -o \%B -h -n {}'.format(jobname)
+            job_host = subprocess.check_output(squeue_command)
+            return job_host
+        return None
+
     def stop(self):
         for uuid in self.runs:
-            if uuid in self.run_jobs:
-                jobname = self.run_jobs[uuid]
-                squeue_command = 'squeue -o \%A -h -n {}'.format(jobname)
-                try:
-                    jobid = subprocess.check_output(squeue_command)
-                except subprocess.CalledProcessError as ex:
-                    print(ex)
-                else:
-                    subprocess.check_call('scancel {}'.format(jobid))
+            try:
+                job_id = self._get_job_id(uuid)
+            except subprocess.CalledProcessError as ex:
+                print(ex)
+            else:
+                subprocess.check_call('scancel {}'.format(job_id))
 
     def save_state(self):
         """

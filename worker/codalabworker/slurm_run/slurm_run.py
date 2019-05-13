@@ -48,6 +48,8 @@ class KilledException(Exception):
 
 
 class SlurmRun(object):
+    # Default cache size is 30GB
+    CACHE_SIZE = 1024 * 1024 * 1024 * 30
     def __init__(self, args):
         with open(args.bundle_file, "r") as infile:
             bundle_dict = json.load(infile)
@@ -132,18 +134,18 @@ class SlurmRun(object):
             self.run_state.info['failure_message'] = "Error while %s: %s" % (self.run_state.run_status, self.kill_message)
             self.run_state.state = State.FINALIZING
             self.finished = True
-            self.write_state()
+            self.write_state(no_except=True)
             print("Run failed: {}".format(ex))
         self.run_state.run_status = "Execution finished. Cleaning up."
         print(self.run_state.run_status)
-        self.write_state()
+        self.write_state(no_except=True)
         self.cleanup()
         self.run_state.run_status = "Run finished, finalizing"
         print(self.run_state.run_status)
         self.run_state.state = State.FINALIZING
-        self.write_state()
+        self.write_state(no_except=True)
 
-    def write_state(self):
+    def write_state(self, no_except=False):
         with open(self.state_file, "wb") as f:
             json.dump(self.run_state.__dict__, f)
         if not self.killed:
@@ -152,7 +154,7 @@ class SlurmRun(object):
                     print("Kill message received")
                     self.killed = True
                     self.kill_message = 'Kill requested by server'
-        if self.killed:
+        if self.killed and not no_except:
             self.run_state.info['exitcode'] = 1
             raise KilledException()
 
@@ -318,6 +320,33 @@ class SlurmRun(object):
                         traceback.print_exc()
         disk_utilization_thread.join()
 
+    def clean_docker_cache(self):
+        """
+        1. Untag your own image with your dependency
+        2. Get all images with tag "codalab-image-cache"
+        3. While their sum > 30G:
+            4. Delete oldest image whose tags don't include dependents
+        """
+        # 1
+        self.docker_client.images.remove("codalab-image-cache/dependents:{}".format(self.bundle.uuid))
+        # 2
+        def last_used(image):
+            for tag in image.tags:
+                if tag.split(":")[0] == "codalab-image-cache/last-used":
+                    return float(tag.split(":")[1])
+        all_images = self.docker_client.images.list("codalab-image-cache/last-used")
+        for image in sorted(all_images, key=last_used):
+            cache_use = sum(float(image.attrs['VirtualSize']) for image in all_images)
+            if cache_use > self.CACHE_SIZE:
+                for tag in image.tags:
+                    if tag.split(":")[0] == "codalab-image-cache/dependents":
+                        # This image still has dependents, don't attempt to delete
+                        continue
+                    for tag in image.tags:
+                        self.docker_client.images.remove(tag)
+
+
+
     def cleanup(self):
         # Make sure the container is removed
         if self.container:
@@ -335,7 +364,7 @@ class SlurmRun(object):
             except Exception:
                 traceback.print_exc()
         self.docker_network.remove()
-        # TODO: Clean up docker image cache
+        self.clean_docker_cache()
 
 
 if __name__ == "__main__":
