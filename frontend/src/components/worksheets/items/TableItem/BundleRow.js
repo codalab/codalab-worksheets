@@ -16,6 +16,14 @@ class BundleRow extends Component {
 
     state = {
         showInsertButtons: 0,
+        bundleInfoUpdates: {},
+    }
+
+    receiveBundleInfoUpdates = (update) => {
+        let { bundleInfoUpdates } = this.state;
+        // Use object spread to update.
+        bundleInfoUpdates = {...bundleInfoUpdates, ...update};
+        this.setState({ bundleInfoUpdates });
     }
 
     handleClick = () => {
@@ -62,9 +70,10 @@ class BundleRow extends Component {
     }
 
     render() {
-        const { showInsertButtons, showDetail } = this.state;
-        const { bundleInfo, classes, onMouseMove } = this.props;
-        var rowItems = this.props.item;
+        const { showInsertButtons, showDetail, bundleInfoUpdates } = this.state;
+        const { classes, onMouseMove } = this.props;
+        const bundleInfo = { ...this.props.bundleInfo, ...bundleInfoUpdates };
+        const rowItems = {...this.props.item, ...bundleInfoUpdates};
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
@@ -147,12 +156,14 @@ class BundleRow extends Component {
                     >
                         <IconButton
                             onClick={ this.showMore }
+                            classes={ { root: classes.iconButtonRoot } }
                         >
                             <MoreIcon />
                         </IconButton>
                         &nbsp;&nbsp;
                         <IconButton
                             onClick={ this.deleteItem }
+                            classes={ { root: classes.iconButtonRoot } }
                         >
                             <DeleteIcon />
                         </IconButton>
@@ -162,11 +173,12 @@ class BundleRow extends Component {
             {
                 showDetail &&
                 <TableRow>
-                    <TableCell colspan="100%" classes={ { root: classes.rootNoPad  } } >
+                    <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
                         <BundleDetail
                             uuid={ bundleInfo.uuid }
                             bundleMetadataChanged={ this.props.reloadWorksheet }
                             ref='bundleDetail'
+                            onUpdate={ this.receiveBundleInfoUpdates }
                             onClose={ () => {
                                 this.setState({
                                     showDetail: false,
@@ -200,15 +212,11 @@ const styles = (theme) => ({
     panelContainer: {
         display: 'block',
         height: '0px !important',
-        padding: 0,
-        margin: 0,
         border: 'none !important',
         overflow: 'visible',
     },
     panelCellContainer: {
-        padding: 0,
-        padding: 0,
-        margin: 0,
+        padding: '0 !important',
         border: 'none !important',
         overflow: 'visible',
     },
@@ -232,11 +240,21 @@ const styles = (theme) => ({
         verticalAlign: 'middle !important',
         border: 'none !important',
     },
+    '@keyframes expandY': {
+        from: { transform: 'scaleY(0.5)' },
+        to: { transform: 'scaleY(1.0)' },
+    },
     rootNoPad: {
         verticalAlign: 'middle !important',
         border: 'none !important',
         padding: '0px !important',
-    }
+        animationName: 'expandY',
+        animationDuration: '0.6s',
+        transformOrigin: 'top',
+    },
+    iconButtonRoot: {
+        backgroundColor: theme.color.grey.light,
+    },
 });
 
 export default withStyles(styles)(BundleRow);
