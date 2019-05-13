@@ -63,7 +63,7 @@ class SideBar extends React.Component<
 > {
   
     render() {
-        const { bundleInfo, classes } = this.props;
+        const { bundleInfo, classes, onUpdate } = this.props;
         const { metadata, editableMetadataFields=[], metadataType } = bundleInfo;
         const hasEditPermission = bundleInfo.permission > 1;
 
@@ -88,6 +88,7 @@ class SideBar extends React.Component<
                         uuid={ bundleInfo.uuid }
                         value={ metadata.name }
                         canEdit={ hasEditPermission && editableMetadataFields.includes("name") }
+                        onChange={ (name) => onUpdate({ name }) }
                     />
                 </Grid>
                 <Grid item xs={ 12 }>
@@ -98,6 +99,7 @@ class SideBar extends React.Component<
                         uuid={ bundleInfo.uuid }
                         value={ metadata.description }
                         canEdit={ hasEditPermission && editableMetadataFields.includes("description") }
+                        onChange={ (description) => onUpdate({ description }) }
                     />
                 </Grid>
                 { isRunBundle && <Grid item xs={12}>

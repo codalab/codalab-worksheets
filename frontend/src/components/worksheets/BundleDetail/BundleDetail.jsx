@@ -175,7 +175,7 @@ class BundleDetail extends React.Component<
     }
   
     render(): React.Node {
-        const { uuid, onClose } = this.props;
+        const { uuid, onUpdate, onClose } = this.props;
         const {
             bundleInfo,
             stdout,
@@ -186,12 +186,10 @@ class BundleDetail extends React.Component<
             return null;
         }
 
-        console.log(bundleInfo);
-
         return (
             <ConfigurationPanel
                 buttons={ <BundleActions bundleInfo={ bundleInfo } /> }
-                sidebar={ <SideBar bundleInfo={ bundleInfo } /> }
+                sidebar={ <SideBar bundleInfo={ bundleInfo } onUpdate={ onUpdate } /> }
             >
                 <MainContent
                     bundleInfo={ bundleInfo }
