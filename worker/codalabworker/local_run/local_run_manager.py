@@ -323,6 +323,7 @@ class LocalRunManager(BaseRunManager):
                     'docker_image': run_state.docker_image,
                     'info': run_state.info,
                     'state': LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
+                    'remote': self._worker.id
                 }
                 for bundle_uuid, run_state in self._runs.items()
             }
