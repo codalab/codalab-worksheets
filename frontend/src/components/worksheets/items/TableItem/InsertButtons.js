@@ -20,17 +20,21 @@ class InsertButtons extends React.Component{
                 className={ classes.buttonsPanel }
             >
                 <Button
+                    size="small"
                     variant="outlined"
                     color="primary"
                     onClick={ this.newRun }
+                    classes={ { root: classes.buttonRoot } }
                 >
                     New Run
                 </Button>
                 &nbsp;&nbsp;
                 <Button
+                    size="small"
                     variant="outlined" 
                     color="primary"
                     onClick={ this.upload }
+                    classes={ { root: classes.buttonRoot } }
                 >
                     Upload
                 </Button>
@@ -47,6 +51,9 @@ const styles = (theme) => ({
         justifyContent: 'center',
         width: '100%',
         transform: 'translateY(-50%)',
+    },
+    buttonRoot: {
+        backgroundColor: theme.color.grey.light,
     },
 });
 
