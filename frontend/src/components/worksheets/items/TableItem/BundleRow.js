@@ -71,9 +71,10 @@ class BundleRow extends Component {
 
     render() {
         const { showInsertButtons, showDetail, bundleInfoUpdates } = this.state;
-        const { classes, onMouseMove } = this.props;
-        const bundleInfo = { ...this.props.bundleInfo, ...bundleInfoUpdates };
+        const { classes, onMouseMove, bundleInfo } = this.props;
+        console.log('bundleInfo===>', bundleInfo);
         const rowItems = {...this.props.item, ...bundleInfoUpdates};
+        console.log('row===>', rowItems);
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
