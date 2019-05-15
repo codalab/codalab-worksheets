@@ -4,7 +4,7 @@ import * as $ from 'jquery';
 // import Drawer from '@material-ui/core/Drawer';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 
-import ConfigurationPanel from '../ConfigurationPanel';
+import ConfigurationPanel from '../ConfigPanel';
 import MainContent from './MainContent';
 import SideBar from './SideBar';
 import BundleActions from './BundleActions';

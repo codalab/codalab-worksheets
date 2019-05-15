@@ -1316,7 +1316,8 @@ class BundleModel(object):
             result = connection.execute(cl_worksheet.insert().values(worksheet_value))
             worksheet.id = result.lastrowid
 
-    def add_worksheet_item(self, worksheet_uuid, item):
+    # after_sort_key is the sort_key of the item that we are inserting after.
+    def add_worksheet_item(self, worksheet_uuid, item, after_sort_key=None):
         """
         Appends a new item to the end of the given worksheet. The item should be
         a (bundle_uuid, value, type) pair, where the bundle_uuid may be None and the
@@ -1334,7 +1335,37 @@ class BundleModel(object):
             'sort_key': None,
         }
         with self.engine.begin() as connection:
-            connection.execute(cl_worksheet_item.insert().values(item_value))
+            if after_sort_key is not None:
+                # Find all the items that originally come after this after_sort_key.
+                clause = and_(
+                    cl_worksheet_item.c.worksheet_uuid == worksheet_uuid,
+                    cl_worksheet_item.c.sort_key > after_sort_key,
+                )
+                query = select().where(clause)
+                after_items = connection.execute(query)
+                # check if there are gaps between the smallest sort_key among the
+                # after_items and our after_sort_key
+                max_sort_key = max(item_sort_key(item) for item in after_items)
+                if max_sort_key - after_sort_key == 1:
+                    # There is no gap, space out the sort_keys to make some room
+                    clause = 
+                    cl_worksheet_item.delete().where(clause)
+                    new_after_items = [{
+                        'worksheet_uuid': item.worksheet_uuid,
+                        'bundle_uuid': item.bundle_uuid,
+                        'subworksheet_uuid': item.subworksheet_uuid,
+                        'value': item.value,
+                        'type': item.type,
+                        'sort_key': item.sort_key * 10,
+                    } for item in after_items]
+                    item_value['sort_key'] = after_sort_key + 5
+                    self.do_multirow_insert(connection, cl_worksheet_item, new_after_items)
+                else:
+                    # There is a gap, just increment sort_key by 1.
+                    item_value['sort_key'] = after_sort_key + 1
+            
+            connection.execute(cl_worksheet_item.insert().values(item_value))    
+
 
     def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):
         """
