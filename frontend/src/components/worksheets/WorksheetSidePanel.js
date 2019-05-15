@@ -6,6 +6,8 @@ import { renderPermissions, shorten_uuid } from '../../util/worksheet_utils';
 import { WorksheetEditableField } from '../EditableField';
 import Bundle from '../Bundle';
 import BundleDetail from './BundleDetail';
+import NewUpload from './NewUpload';
+import NewRun from './NewRun';
 import RunBundleBuilder from './RunBundleBuilder';
 import NewWorksheet from './NewWorksheet';
 import BundleUploader from './BundleUploader';
@@ -136,31 +138,6 @@ class WorksheetSidePanel extends React.Component {
             clickAction = 'DISABLED';
         }
 
-        var bundle_uploader = (
-            <BundleUploader
-                clickAction={clickAction}
-                ws={this.props.ws}
-                reloadWorksheet={this.props.bundleMetadataChanged}
-            />
-        );
-
-        var run_bundle_builder = (
-            <RunBundleBuilder
-                clickAction={clickAction}
-                ws={this.props.ws}
-                escCount={this.props.escCount}
-            />
-        );
-
-        var new_worksheet = (
-            <NewWorksheet
-                clickAction={clickAction == 'DISABLED' ? 'DEFAULT' : clickAction}
-                escCount={this.props.escCount}
-                userInfo={this.props.userInfo}
-                ws={this.props.ws}
-            />
-        );
-
         var focus = this.getFocus();
         var side_panel_details = null;
         if (focus) {
@@ -199,9 +176,24 @@ class WorksheetSidePanel extends React.Component {
         return (
             <div className='ws-panel'>
                 <div className='ws-button-group'>
-                    {bundle_uploader}
-                    {run_bundle_builder}
-                    {new_worksheet}
+                    <NewUpload />
+                    <NewRun />
+                    <BundleUploader
+                        clickAction={clickAction}
+                        ws={this.props.ws}
+                        reloadWorksheet={this.props.bundleMetadataChanged}
+                    />
+                    <RunBundleBuilder
+                        clickAction={clickAction}
+                        ws={this.props.ws}
+                        escCount={this.props.escCount}
+                    />
+                    <NewWorksheet
+                        clickAction={clickAction == 'DISABLED' ? 'DEFAULT' : clickAction}
+                        escCount={this.props.escCount}
+                        userInfo={this.props.userInfo}
+                        ws={this.props.ws}
+                    />
                 </div>
                 {side_panel_details}
             </div>

@@ -1,1 +1,1 @@
-export { default } from './UploadBundle';
+export { default } from './NewUpload';
