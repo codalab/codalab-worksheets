@@ -9,9 +9,6 @@ import MainContent from './MainContent';
 import SideBar from './SideBar';
 import BundleActions from './BundleActions';
 
-const fakestdout = "Lorem ipsum luctus non nulla accumsan eu rhoncus ut velit sagittis aliquet, morbi posuere interdum bibendum sollicitudin nisi nulla vulputate fringilla augue, etiam felis mauris feugiat massa eu leo torquent sapien aliquam luctus semper dapibus inceptos per quis aliquet urna, facilisis fusce dui placerat potenti taciti, rhoncus iaculis imperdiet venenatis sociosqu id suspendisse condimentum nulla vehicula lacinia et laoreet viverra class vehicula, sollicitudin quisque primis habitant nisi aenean placerat vehicula platea commodo ligula arcu aliquam ad.Lorem ipsum luctus non nulla accumsan eu rhoncus ut velit sagittis aliquet, morbi posuere interdum bibendum sollicitudin nisi nulla vulputate fringilla augue, etiam felis mauris feugiat massa eu leo torquent sapien aliquam luctus semper dapibus inceptos per quis aliquet urna, facilisis fusce dui placerat potenti taciti, rhoncus iaculis imperdiet venenatis sociosqu id suspendisse condimentum nulla vehicula lacinia et laoreet viverra class vehicula, sollicitudin quisque primis habitant nisi aenean placerat vehicula platea commodo ligula arcu aliquam ad.Lorem ipsum luctus non nulla accumsan eu rhoncus ut velit sagittis aliquet, morbi posuere interdum bibendum sollicitudin nisi nulla vulputate fringilla augue, etiam felis mauris feugiat massa eu leo torquent sapien aliquam luctus semper dapibus inceptos per quis aliquet urna, facilisis fusce dui placerat potenti taciti, rhoncus iaculis imperdiet venenatis sociosqu id suspendisse condimentum nulla vehicula lacinia et laoreet viverra class vehicula, sollicitudin quisque primis habitant nisi aenean placerat vehicula platea commodo ligula arcu aliquam ad.";
-const fakestderr = "Lorem ipsum luctus non nulla accumsan eu rhoncus ut velit sagittis aliquet, morbi posuere interdum bibendum sollicitudin nisi nulla vulputate fringilla augue, etiam felis mauris feugiat massa eu leo torquent sapien aliquam luctus semper dapibus inceptos per quis aliquet urna, facilisis fusce dui placerat potenti taciti, rhoncus iaculis imperdiet venenatis sociosqu id suspendisse condimentum nulla vehicula lacinia et laoreet viverra class vehicula, sollicitudin quisque primis habitant nisi aenean placerat vehicula platea commodo ligula arcu aliquam ad.";
-
 class BundleDetail extends React.Component<
     {
         uuid: string,
@@ -193,8 +190,8 @@ class BundleDetail extends React.Component<
             >
                 <MainContent
                     bundleInfo={ bundleInfo }
-                    stdout={ stdout || fakestdout }
-                    stderr={ stderr || fakestderr }
+                    stdout={ stdout }
+                    stderr={ stderr }
                     fileContents={ fileContents }
                 />
             </ConfigurationPanel>
