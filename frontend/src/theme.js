@@ -9,24 +9,24 @@ export default createMuiTheme({
             contrastText: '#EFF8FF',
         },
         secondary: {
-            light: '#D4DDE9',
-            main: '#617691',
-            dark: '#12263F',
+            light: '#B8C4CF',
+            main: '#8895A7',
+            dark: '#5F6B7A',
             contrastText: '#EDF1F5',
         }
     },
     color: {
         primary: {
-            darkest: '#1A4971',  // headings
+            darkest: '#194971',  // headings
             dark: '#2368A2',     // text
             base: '#3183C8',     // icons, buttons
             light: '#AAD4F6',    // outlines
             lightest: '#EFF8FF', // boxes
         },
         grey: {
-            darkest: '#12263F',
-            dark: '#617691',
-            base: '#D4DDE9',
+            darkest: '#5F6B7A',
+            dark: '#8895A7',
+            base: '#B8C4CF',
             light: '#EDF1F5',
             lightest: '#F5F7FA',
         },
@@ -62,6 +62,7 @@ export default createMuiTheme({
     typography: {
         htmlFontSize: 16,
         useNextVariants: true,
+        fontFamilyMonospace: '"Roboto Mono", "Menlo", "Monaco", "Courier", monospace'
     },
     spacing: {
         smallest: 1,
@@ -71,4 +72,11 @@ export default createMuiTheme({
         larger: 16,
         largest: 32,
     },
+    overrides: {
+        MuiIconButton: {
+            root: {
+                padding: 6,
+            }
+        }
+    }
 });

@@ -860,7 +860,7 @@ class Worksheet extends React.Component {
                         {context_menu_display}
                         <HelpButton />
                         <div id='worksheet_panel' className='actionbar-focus'>
-                            {worksheet_side_panel}
+                            {/*{worksheet_side_panel}*/}
                             <div className='ws-container'>
                                 <div className='container-fluid'>
                                     <div id='worksheet_content' className={editableClassName}>
