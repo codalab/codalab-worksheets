@@ -104,7 +104,7 @@ class CodalabArgs(argparse.Namespace):
             cmd.add_argument('--docker-user', type=str, help='DockerHub username to push images from', default=argparse.SUPPRESS)
             cmd.add_argument('--docker-pwd', type=str, help='DockerHub password to push images from', default=argparse.SUPPRESS)
 
-        build_cmd.add_argument('image', default='all', help='Images to build', choices=['bundleserver', 'frontend', 'worker', 'default-cpu', 'default-gpu', 'all'], required=False)
+        build_cmd.add_argument('image', default='all', help='Images to build', choices=['bundleserver', 'frontend', 'worker', 'default-cpu', 'default-gpu', 'all'], nargs='?')
 
         #  DEPLOYMENT SETTINGS
 
