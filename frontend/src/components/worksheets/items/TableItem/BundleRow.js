@@ -5,18 +5,27 @@ import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import IconButton from '@material-ui/core/IconButton';
+import Button from '@material-ui/core/Button';
+
 import DeleteIcon from '@material-ui/icons/Delete';
 import MoreIcon from '@material-ui/icons/MoreVert';
+import UploadIcon from '@material-ui/icons/CloudUpload';
+import AddIcon from '@material-ui/icons/PlayCircleFilled';
 
 import BundleDetail from '../../BundleDetail';
-import InsertButtons from './InsertButtons';
+import NewRun from '../../NewRun';
+import NewUpload from '../../NewUpload';
 import { buildTerminalCommand } from '../../../../util/worksheet_utils';
+
 
 class BundleRow extends Component {
 
     state = {
         showInsertButtons: 0,
         bundleInfoUpdates: {},
+        showDetail: false,
+        showNewRun: false,
+        showNewUpload: false,
     }
 
     receiveBundleInfoUpdates = (update) => {
@@ -70,7 +79,7 @@ class BundleRow extends Component {
     }
 
     render() {
-        const { showInsertButtons, showDetail, bundleInfoUpdates } = this.state;
+        const { showInsertButtons, showDetail, showNewUpload, showNewRun, bundleInfoUpdates } = this.state;
         const { classes, onMouseMove, bundleInfo } = this.props;
         console.log('bundleInfo===>', bundleInfo);
         const rowItems = {...this.props.item, ...bundleInfoUpdates};
@@ -115,6 +124,34 @@ class BundleRow extends Component {
             );
         });
 
+        const edgeButtons = [
+            // New Upload =============================================
+            <Button
+                key="upload"
+                variant="outlined"
+                size="small"
+                color="primary"
+                aria-label="New Upload"
+                onClick={ () => this.setState({ showNewUpload: !showNewUpload }) }
+            >
+                <UploadIcon className={classes.buttonIcon} />
+                Upload
+            </Button>,
+
+            // New Run ================================================
+            <Button
+                key="run"
+                variant="outlined"
+                size="small"
+                color="primary"
+                aria-label="New Run"
+                onClick={ () => this.setState({ showNewRun: !showNewRun }) }
+            >
+                <AddIcon className={classes.buttonIcon} />
+                Run
+            </Button>,
+        ];
+
         return <TableBody
             classes={ { root: classes.tableBody } }
             onMouseMove={ this.showButtons }
@@ -131,7 +168,12 @@ class BundleRow extends Component {
                 >
                     {
                         (showInsertButtons < 0) &&
-                        <InsertButtons />
+                        <div
+                            onMouseMove={ (ev) => { ev.stopPropagation(); } }
+                            className={ classes.buttonsPanel }
+                        >
+                            {edgeButtons}
+                        </div>
                     }
                 </TableCell>
             </TableRow>
@@ -189,6 +231,22 @@ class BundleRow extends Component {
                     </TableCell>
                 </TableRow>
             }
+            {
+                showNewUpload &&
+                <TableRow>
+                    <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
+                        <NewUpload ws={this.props.ws}/>
+                    </TableCell>
+                </TableRow>
+            }
+            {
+                showNewRun &&
+                <TableRow>
+                    <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
+                        <NewRun ws={this.props.ws} onSubmit={() => this.setState({ showNewRun: false })}/>
+                    </TableCell>
+                </TableRow>
+            }
             <TableRow classes={ { root: classes.panelContainer } }>
                 <TableCell
                     colSpan="100%"
@@ -196,7 +254,12 @@ class BundleRow extends Component {
                 >
                     {
                         (showInsertButtons > 0) &&
-                        <InsertButtons />
+                        <div
+                            onMouseMove={ (ev) => { ev.stopPropagation(); } }
+                            className={ classes.buttonsPanel }
+                        >
+                            {edgeButtons}
+                        </div>
                     }
                 </TableCell>
             </TableRow>
@@ -255,6 +318,17 @@ const styles = (theme) => ({
     },
     iconButtonRoot: {
         backgroundColor: theme.color.grey.light,
+    },
+    buttonsPanel: {
+        display: 'flex',
+        flexDirection: 'row',
+        position: 'absolute',
+        justifyContent: 'center',
+        width: '100%',
+        transform: 'translateY(-50%)',
+    },
+    buttonIcon: {
+        marginRight: theme.spacing.large,
     },
 });
 
