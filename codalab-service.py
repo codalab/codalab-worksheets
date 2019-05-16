@@ -379,7 +379,7 @@ class CodalabServiceManager(object):
                 self.push_image(image)
 
     def test(self):
-        test_cli.cl = 'cl'
+        test_cli.cl = 'codalab/bin/cl'
         test_cli.TestModule.run(self.args.tests, 'localhost')
 
 
