@@ -88,6 +88,7 @@ class CodalabArgs(argparse.Namespace):
         logs_cmd = subparsers.add_parser('logs', help='View logs for existing CodaLab instance')
         test_cmd = subparsers.add_parser('test', help='Run tests against an existing CodaLab instance')
         build_cmd = subparsers.add_parser('build', help='Build CodaLab docker images using the local codebase')
+        run_cmd = subparsers.add_parser('run', help='Run a command inside a service container')
 
         subparsers.add_parser('stop', help='Stop any existing CodaLab backend instance')
         subparsers.add_parser('down', help='Bring down any existing CodaLab backend instance')
@@ -103,6 +104,7 @@ class CodalabArgs(argparse.Namespace):
             cmd.add_argument('--docker-user', type=str, help='DockerHub username to push images from', default=argparse.SUPPRESS)
             cmd.add_argument('--docker-pwd', type=str, help='DockerHub password to push images from', default=argparse.SUPPRESS)
 
+        build_cmd.add_argument('images', nargs='*', default='all', help='Images to build', choices=['bundleserver', 'frontend', 'worker', 'default-cpu', 'default-gpu', 'all'])
         #  DEPLOYMENT SETTINGS
 
         start_cmd.add_argument('--build-locally', '-b', action='store_true', help='If specified build VERSION using local code.', default=argparse.SUPPRESS)
@@ -151,6 +153,12 @@ class CodalabArgs(argparse.Namespace):
         #  TESTS SETTINGS
 
         test_cmd.add_argument('tests', metavar='TEST', nargs='+', type=str, choices=test_cli.TestModule.modules.keys() + ['all', 'default'], default=['default'], help='Tests to run')
+
+        #  RUN SETTINGS
+
+        run_cmd.add_argument('service', metavar='SERVICE', type=str, choices=['mysql', 'rest-server', 'bundle-manager', 'frontend', 'nginx', 'worker', 'all'], help='Service container to run command on')
+        run_cmd.add_argument('cmd', metavar='CMD', type=str, help='Command to run')
+        run_cmd.add_argument('--no-root', action='store_true', help='If specified run as current user')
         return parser
 
     @classmethod
@@ -286,6 +294,8 @@ class CodalabServiceManager(object):
             self.start_service()
             if self.args.test_build:
                 self.test()
+        elif self.command == 'run':
+            self.run_service_cmd(self.args.cmd, root=not self.args.no_root, service=self.args.service)
         elif self.command == 'logs':
             self._run_compose_cmd('logs')
         elif self.command == 'stop':
@@ -327,18 +337,18 @@ class CodalabServiceManager(object):
         self.bring_up_service('mysql')
 
         print("[CODALAB] ==> Configuring the service")
-        self.run_service_cmd("data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://%s:%s@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0" % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD']), root=(not self.args.service_home))
+        self.run_service_cmd("/data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://%s:%s@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0" % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD']), root=(not self.args.service_home))
 
         if self.args.initial_config:
             print("[CODALAB] ==> Creating root user")
-            self.run_service_cmd("/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh mysql:3306 -- opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py %s" % self.compose_env['CODALAB_ROOT_PWD'], root=True)
+            self.run_service_cmd("/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && /data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py %s" % self.compose_env['CODALAB_ROOT_PWD'], root=True)
 
         print("[CODALAB] ==> Starting rest server")
         self.bring_up_service('rest-server')
 
         if self.args.initial_config:
             print("[CODALAB] ==> Creating initial worksheets")
-            self.run_service_cmd("data/bin/wait-for-it.sh rest-server:2900 -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard", root=(not self.args.service_home))
+            self.run_service_cmd("/data/bin/wait-for-it.sh rest-server:2900 -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard", root=(not self.args.service_home))
 
         print("[CODALAB] ==> Starting bundle manager")
         self.bring_up_service('bundle-manager')
@@ -352,18 +362,20 @@ class CodalabServiceManager(object):
 
     def build(self):
         print("[CODALAB] => Building Docker images")
-        self.build_image('bundleserver', 'server')
-        self.build_image('frontend', 'frontend')
-        self.build_image('worker', 'worker')
-        self.build_image('default-cpu', 'cpu')
-        self.build_image('default-gpu', 'gpu')
+        IMAGE_TO_SUFFIX = {
+            'bundleserver': 'server',
+            'frontend': 'frontend',
+            'worker': 'worker',
+            'default-cpu': 'cpu',
+            'default-gpu': 'gpu',
+        }
+        images_to_build  = self.args.images
+        for image in images_to_build:
+            self.build_image(image, IMAGE_TO_SUFFIX[image])
         if self.args.push:
             self._run_docker_cmd('login -u %s -p %s' % (self.args.docker_user, self.args.docker_pwd))
-            self.push_image('bundleserver')
-            self.push_image('frontend')
-            self.push_image('worker')
-            self.push_image('default-cpu')
-            self.push_image('default-gpu')
+            for image in images_to_build:
+                self.push_image(image)
 
     def test(self):
         test_cli.cl = '/u/nlp/bin/cl'
