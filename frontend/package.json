@@ -21,7 +21,7 @@
     "jquery.terminal": "^2.1.2",
     "jsonapi-datastore": "^0.4.0-beta",
     "marked": "^0.6.0",
-    "material-ui-chip-input": "^1.0.0-beta.15",
+    "material-ui-chip-input": "^1.0.0-beta.16",
     "query-string": "^6.2.0",
     "react": "^16.6.3",
     "react-cookie": "^3.0.8",
