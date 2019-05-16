@@ -21,12 +21,13 @@ class CodalabArgs(argparse.Namespace):
         'docker_user': None,
         'docker_pwd': None,
         'build_locally': False,
-        'cache_from_images': False,
+        'image': 'all',
         'test_build': False,
         'user_compose_file': None,
         'start_worker': False,
         'initial_config': False,
         'root_dir': None,
+        'instance_name': 'codalab',
         'mysql_root_pwd': 'mysql_root_pwd',
         'mysql_user': 'codalab',
         'mysql_pwd': 'mysql_pwd',
@@ -90,9 +91,9 @@ class CodalabArgs(argparse.Namespace):
         build_cmd = subparsers.add_parser('build', help='Build CodaLab docker images using the local codebase')
         run_cmd = subparsers.add_parser('run', help='Run a command inside a service container')
 
-        subparsers.add_parser('stop', help='Stop any existing CodaLab backend instance')
-        subparsers.add_parser('down', help='Bring down any existing CodaLab backend instance')
-        subparsers.add_parser('restart', help='Restart any existing CodaLab backend instance')
+        stop_cmd = subparsers.add_parser('stop', help='Stop any existing CodaLab backend instance')
+        down_cmd = subparsers.add_parser('down', help='Bring down any existing CodaLab backend instance')
+        restart_cmd = subparsers.add_parser('restart', help='Restart any existing CodaLab backend instance')
 
         #  BUILD SETTINGS
 
@@ -104,9 +105,11 @@ class CodalabArgs(argparse.Namespace):
             cmd.add_argument('--docker-user', type=str, help='DockerHub username to push images from', default=argparse.SUPPRESS)
             cmd.add_argument('--docker-pwd', type=str, help='DockerHub password to push images from', default=argparse.SUPPRESS)
 
-        build_cmd.add_argument('image', default='all', help='Images to build', choices=['bundleserver', 'frontend', 'worker', 'default-cpu', 'default-gpu', 'all'], nargs='?')
+        build_cmd.add_argument('image', default=argparse.SUPPRESS, help='Images to build', choices=['bundleserver', 'frontend', 'worker', 'default-cpu', 'default-gpu', 'all'], nargs='?')
 
         #  DEPLOYMENT SETTINGS
+        for cmd in [start_cmd, stop_cmd, restart_cmd, down_cmd, logs_cmd]:
+            cmd.add_argument('--instance-name', type=str, help='Docker compose name to use for instance', default=argparse.SUPPRESS)
 
         start_cmd.add_argument('--build-locally', '-b', action='store_true', help='If specified build VERSION using local code.', default=argparse.SUPPRESS)
         start_cmd.add_argument('--test-build', '-t', action='store_true', help='If specified run tests on the build.', default=argparse.SUPPRESS)
@@ -320,7 +323,7 @@ class CodalabServiceManager(object):
 
     def _run_compose_cmd(self, cmd):
         files_string = ' -f '.join(self.compose_files)
-        command_string = 'docker-compose -f %s %s' % (files_string, cmd)
+        command_string = 'docker-compose -p %s -f %s %s' % (self.instance_name, files_string, cmd)
         subprocess.check_call(command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True)
 
     def bring_up_service(self, service):

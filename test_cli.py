@@ -254,90 +254,25 @@ def temp_instance():
             s.close()
         return ports
 
-    ports = get_free_ports(4)
-    remote_env = {
-        'CODALAB_VERSION': os.environ.get('CODALAB_VERSION', 'latest'),
-        'CODALAB_MYSQL_USER': os.environ.get('CODALAB_MYSQL_USER', 'codalab'),
-        'CODALAB_MYSQL_PWD': os.environ.get('CODALAB_MYSQL_PWD', 'testpwd'),
-        'CODALAB_MYSQL_ROOT_PWD': os.environ.get('CODALAB_MYSQL_ROOT_PWD', 'rootpwd'),
-        'CODALAB_ROOT_USER': os.environ.get('CODALAB_ROOT_USER', 'codalab'),
-        'CODALAB_ROOT_PWD': os.environ.get('CODALAB_ROOT_PWD', 'testpwd'),
-        'CODALAB_SERVICE_HOME': temp_path('-home', tmp=True),
-        'CODALAB_BUNDLE_STORE': temp_path('-mysql', tmp=True),
-        'CODALAB_MYSQL_MOUNT': temp_path('-bundles', tmp=True),
-        'CODALAB_WORKER_DIR': temp_path('-worker-dir', tmp=True),
-        'CODALAB_WORKER_NETWORK_NAME': random_name(),
-        'CODALAB_HTTP_PORT': ports[0],
-        'CODALAB_REST_PORT': ports[1],
-        'CODALAB_MYSQL_PORT': ports[2],
-        'CODALAB_FRONTEND_PORT': ports[3],
-    }
+    rest_port = get_free_ports(1)
+    temp_instance_name = random_name()
+    subprocess.check_call(['./codalab-service.py', 'start', '-i',  '--instance-name %s' % temp_instance_name, '--rest-port %s' % rest_port])
 
-    for dirpath in [
-        remote_env['CODALAB_SERVICE_HOME'],
-        remote_env['CODALAB_BUNDLE_STORE'],
-        remote_env['CODALAB_MYSQL_MOUNT'],
-        remote_env['CODALAB_WORKER_DIR'],
-    ]:
-        os.makedirs(dirpath)
+    # Switch to new host and log in to cache auth token
+    remote_host = 'http://localhost:%s' % rest_port
+    remote_worksheet = '%s::' % remote_host
+    run_command([cl, 'logout', remote_worksheet[:-2]])
 
-    docker_service_dir = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), 'docker', 'service'
+    env = {'CODALAB_USERNAME': 'codalab', 'CODALAB_PASSWORD': 'testpassword'}
+    run_command([cl, 'work', remote_worksheet], env=env)
+
+    yield CodaLabInstance(
+        remote_host, remote_worksheet, env['CODALAB_USER'], env['CODALAB_PASSWORD']
     )
-    try:
-        command = 'docker-compose run -d --name temp-mysql --no-deps --service-ports mysql mysqld'
-        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
 
-        command = 'docker-compose run --rm --no-deps --entrypoint "" rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh temp-mysql:3306 -- opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://$CODALAB_MYSQL_USER:$CODALAB_MYSQL_PWD@temp-mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://temp-rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"'
-        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
+    subprocess.check_call(['./codalab-service.py', 'down', '--instance-name temp-%s' % temp_instance_name, '--rest-port %s' % rest_port])
 
-        command = 'docker-compose run --rm --no-deps --entrypoint "" rest-server bash -c "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && data/bin/wait-for-it.sh temp-mysql:3306 -- opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py $CODALAB_ROOT_PWD"'
-        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
-
-        command = 'docker-compose run -d --name temp-rest-server --no-deps --service-ports rest-server server'
-        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
-
-        command = 'docker-compose run --rm --no-deps --entrypoint "" rest-server bash -c "data/bin/wait-for-it.sh temp-rest-server:2900 -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard"'
-        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
-
-        command = 'docker-compose run -d --name temp-bundle-manager --no-deps --service-ports bundle-manager bundle-manager'
-        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
-
-        command = 'docker-compose run -d --name temp-worker --no-deps worker --server http://temp-rest-server:2900 --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_NAME}'
-        subprocess.check_call(command, cwd=docker_service_dir, env=remote_env, shell=True)
-
-        # Switch to new host and log in to cache auth token
-        remote_host = 'http://localhost:%s' % remote_env['CODALAB_REST_PORT']
-        remote_worksheet = '%s::' % remote_host
-        run_command([cl, 'logout', remote_worksheet[:-2]])
-
-        env = os.environ.copy()
-        env['CODALAB_USER'] = remote_env['CODALAB_ROOT_USER']
-        env['CODALAB_PASSWORD'] = remote_env['CODALAB_ROOT_PWD']
-
-        run_command([cl, 'work', remote_worksheet], env=env)
-
-        yield CodaLabInstance(
-            remote_host, remote_worksheet, env['CODALAB_USER'], env['CODALAB_PASSWORD']
-        )
-
-    except Exception as ex:
-        print(ex)
-        error_occurred = True
-        raise
-
-    finally:
-        subprocess.call(['docker', 'stop', 'temp-worker'])
-        subprocess.call(['docker', 'stop', 'temp-bundle-manager'])
-        subprocess.call(['docker', 'stop', 'temp-rest-server'])
-        subprocess.call(['docker', 'stop', 'temp-mysql'])
-
-        subprocess.call(['docker', 'rm', 'temp-worker'])
-        subprocess.call(['docker', 'rm', 'temp-bundle-manager'])
-        subprocess.call(['docker', 'rm', 'temp-rest-server'])
-        subprocess.call(['docker', 'rm', 'temp-mysql'])
-
-        run_command([cl, 'work', original_worksheet])
+    run_command([cl, 'work', original_worksheet])
 
 
 class ModuleContext(object):
