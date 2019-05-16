@@ -114,6 +114,7 @@ class TableItem extends React.Component {
                     columnWithHyperlinks={columnWithHyperlinks}
                     handleContextMenu={this.props.handleContextMenu}
                     reloadWorksheet={ this.props.reloadWorksheet }
+                    ws={this.props.ws}
                 />
             );
         });
