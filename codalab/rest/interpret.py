@@ -546,6 +546,9 @@ def resolve_items_into_infos(items):
             if i['bundle_uuid']
             else None
         )
+        print 'hiiiii', i['sort_key']
+        if bundle_info is not None:
+            bundle_info['sort_key'] = i['sort_key']
         if i['subworksheet_uuid']:
             try:
                 subworksheet_info = local.model.get_worksheet(
