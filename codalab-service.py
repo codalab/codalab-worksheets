@@ -216,6 +216,8 @@ class CodalabServiceManager(object):
         if args.use_ssl:
             environment['CODALAB_SSL_CERT_FILE'] = args.ssl_cert_file
             environment['CODALAB_SSL_KEY_FILE'] = args.ssl_key_file
+        if 'DOCKER_HOST' in os.environ:
+            environment['DOCKER_HOST'] = os.environ['DOCKER_HOST']
         return environment
 
     @staticmethod
