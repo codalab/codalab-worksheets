@@ -196,6 +196,7 @@ class WorksheetItemList extends React.Component {
                         openWorksheet: this.props.openWorksheet,
                         handleContextMenu: this.handleContextMenu,
                         reloadWorksheet: this.props.reloadWorksheet,
+                        ws: this.props.ws,
                     };
                     addWorksheetItems(props, worksheet_items);
                 }.bind(this),
