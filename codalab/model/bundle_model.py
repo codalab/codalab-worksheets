@@ -1348,7 +1348,6 @@ class BundleModel(object):
                 max_sort_key = max(item_sort_key(item) for item in after_items)
                 if max_sort_key - after_sort_key == 1:
                     # There is no gap, space out the sort_keys to make some room
-                    clause = 
                     cl_worksheet_item.delete().where(clause)
                     new_after_items = [{
                         'worksheet_uuid': item.worksheet_uuid,
