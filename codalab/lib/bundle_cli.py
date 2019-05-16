@@ -1490,6 +1490,12 @@ class BundleCLI(object):
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
+            Commands.Argument(
+                '-a',
+                '--after_sort_key',
+                help='Insert after this sort_key',
+                completer=NullCompleter,
+            ),
         )
         + Commands.metadata_arguments([RunBundle])
         + EDIT_ARGUMENTS
@@ -1504,7 +1510,7 @@ class BundleCLI(object):
         new_bundle = client.create(
             'bundles',
             self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
-            params={'worksheet': worksheet_uuid},
+            params={'worksheet': worksheet_uuid, 'after_sort_key': args.after_sort_key},
         )
 
         print >>self.stdout, new_bundle['uuid']

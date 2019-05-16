@@ -74,7 +74,16 @@ def fetch_worksheet(uuid):
             for item in worksheet['items']
             if item['type'] == worksheet_util.TYPE_BUNDLE and item['bundle_uuid'] is not None
         }
-        bundle_infos = get_bundle_infos(bundle_uuids).values()
+        sort_keys = {
+            item['bundle_uuid']: item.get('sort_key')
+            for item in worksheet['items']
+            if item['type'] == worksheet_util.TYPE_BUNDLE and item['bundle_uuid'] is not None
+        }
+        bundle_infos = []
+        for bundle_uuid, bundle_info in get_bundle_infos(bundle_uuids).iteritems():
+            # Add sort_key to bundle_info.
+            bundle_info['sort_key'] = sort_keys[bundle_uuid]
+            bundle_infos.push(bundle_info)
         json_api_include(document, BundleSchema(), bundle_infos)
         if 'items.bundle.owner' in include_set:
             user_ids.update({b['owner_id'] for b in bundle_infos})
