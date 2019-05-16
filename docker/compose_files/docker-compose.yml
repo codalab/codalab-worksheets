@@ -30,8 +30,6 @@ services:
     command: server
     environment:
       *codalab-env
-    volumes:
-      - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - mysql
     networks:
@@ -44,8 +42,6 @@ services:
     command: bundle-manager
     environment:
       *codalab-env
-    volumes:
-      - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - rest-server
     networks:
