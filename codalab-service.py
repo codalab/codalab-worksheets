@@ -104,7 +104,7 @@ class CodalabArgs(argparse.Namespace):
             cmd.add_argument('--docker-user', type=str, help='DockerHub username to push images from', default=argparse.SUPPRESS)
             cmd.add_argument('--docker-pwd', type=str, help='DockerHub password to push images from', default=argparse.SUPPRESS)
 
-        build_cmd.add_argument('images', nargs='*', default='all', help='Images to build', choices=['bundleserver', 'frontend', 'worker', 'default-cpu', 'default-gpu', 'all'])
+        build_cmd.add_argument('images', nargs='*', default=['all'], help='Images to build', choices=['bundleserver', 'frontend', 'worker', 'default-cpu', 'default-gpu', 'all'])
         #  DEPLOYMENT SETTINGS
 
         start_cmd.add_argument('--build-locally', '-b', action='store_true', help='If specified build VERSION using local code.', default=argparse.SUPPRESS)
@@ -369,7 +369,7 @@ class CodalabServiceManager(object):
             'default-cpu': 'cpu',
             'default-gpu': 'gpu',
         }
-        images_to_build  = self.args.images
+        images_to_build  = IMAGE_TO_SUFFIX.keys() if self.args.images == 'all' else self.args.images
         for image in images_to_build:
             self.build_image(image, IMAGE_TO_SUFFIX[image])
         if self.args.push:
