@@ -6,7 +6,7 @@ jobs:
       services:
         - docker
       env:
-        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CODALAB_ROOT_PASSWORD=testpassword CI=false CODALAB_WORKER_DIR=/home/travis/codalab/worker-dir/ CODALAB_VERSION=${TRAVIS_BRANCH}
+        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CODALAB_ROOT_PASSWORD=testpassword CI=false CODALAB_WORKER_DIR=/home/travis/codalab/worker-dir/ CODALAB_VERSION=${TRAVIS_BRANCH} CODALAB_REST_PORT=2900
       python: 2.7
       before_install:
         - sudo rm /usr/local/bin/docker-compose
