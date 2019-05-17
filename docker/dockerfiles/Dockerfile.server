@@ -18,7 +18,7 @@ RUN apt-get update; apt-get install -y \
     zip;
 
 # Install dependencies
-COPY docker/compose_files/files/wait-for-it.sh /data/bin/wait-for-it.sh
+COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
 RUN mkdir /opt/codalab-worksheets
 COPY worker /opt/codalab-worksheets/worker
 COPY requirements.txt /opt/codalab-worksheets

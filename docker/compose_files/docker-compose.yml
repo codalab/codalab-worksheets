@@ -60,12 +60,12 @@ services:
 
   nginx:
     image: nginx:1.12.0
-    command: /data/bin/wait-for-it.sh rest-server:2900 -- nginx
+    command: /opt/wait-for-it.sh rest-server:2900 -- nginx
     ports:
       - ${CODALAB_HTTP_PORT}:80
     volumes:
       - ./files/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
+      - ./files/wait-for-it.sh:/opt/wait-for-it.sh
     depends_on:
       - frontend
     networks:

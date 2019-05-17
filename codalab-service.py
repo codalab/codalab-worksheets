@@ -19,7 +19,7 @@ class CodalabArgs(argparse.Namespace):
         'dev': False,
         'push': False,
         'docker_user': None,
-        'docker_pwd': None,
+        'docker_password': None,
         'build_locally': False,
         'image': 'all',
         'test_build': False,
@@ -30,11 +30,11 @@ class CodalabArgs(argparse.Namespace):
         'instance_name': 'codalab',
         'mysql_codalab_password': 'codalab',
         'mysql_user': 'codalab',
-        'mysql_pwd': 'codalab',
+        'mysql_password': 'codalab',
         'codalab_user': 'codalab',
         'codalab_password': 'codalab',
         'uid': None,
-        'service_home': None,
+        'codalab_home': None,
         'mysql_mount': None,
         'worker_dir': None,
         'bundle_stores': [],
@@ -56,17 +56,17 @@ class CodalabArgs(argparse.Namespace):
         'dev': 'CODALAB_DEV',
         'push': 'CODALAB_PUSH',
         'docker_user': 'DOCKER_USER',
-        'docker_pwd': 'DOCKER_PWD',
+        'docker_password': 'DOCKER_PWD',
         'user_compose_file': 'CODALAB_USER_COMPOSE_FILE',
         'start_worker': 'CODALAB_START_WORKER',
         'initial_config': 'CODALAB_INITIAL_CONFIG',
         'mysql_codalab_password': 'CODALAB_MYSQL_ROOT_PWD',
         'mysql_user': 'CODALAB_MYSQL_USER',
-        'mysql_pwd': 'CODALAB_MYSQL_PWD',
+        'mysql_password': 'CODALAB_MYSQL_PWD',
         'codalab_user': 'CODALAB_ROOT_USER',
         'codalab_password': 'CODALAB_ROOT_PWD',
         'uid': 'CODALAB_UID',
-        'service_home': 'CODALAB_SERVICE_HOME',
+        'codalab_home': 'CODALAB_SERVICE_HOME',
         'mysql_mount': 'CODALAB_MYSQL_MOUNT',
         'worker_dir': 'CODALAB_WORKER_DIR',
         'worker_docker_network_name': 'CODALAB_WORKER_DOCKER_NETWORK_NAME',
@@ -102,9 +102,9 @@ class CodalabArgs(argparse.Namespace):
             cmd.add_argument('--dev', action='store_true', help='If specified, use dev versions of images', default=argparse.SUPPRESS)
             cmd.add_argument('--push', action='store_true', help='If specified, push the images to Dockerhub', default=argparse.SUPPRESS)
             cmd.add_argument('--docker-user', type=str, help='DockerHub username to push images from', default=argparse.SUPPRESS)
-            cmd.add_argument('--docker-pwd', type=str, help='DockerHub password to push images from', default=argparse.SUPPRESS)
+            cmd.add_argument('--docker-password', type=str, help='DockerHub password to push images from', default=argparse.SUPPRESS)
 
-        build_cmd.add_argument('image', default=argparse.SUPPRESS, help='Images to build', choices=['bundleserver', 'frontend', 'worker', 'default-cpu', 'default-gpu', 'all'], nargs='?')
+        build_cmd.add_argument('image', default=argparse.SUPPRESS, help='Images to build', choices=CodalabServiceManager.ALL_IMAGES + ['all'], nargs='?')
 
         #  DEPLOYMENT SETTINGS
         for cmd in [start_cmd, stop_cmd, restart_cmd, down_cmd, logs_cmd]:
@@ -118,16 +118,16 @@ class CodalabArgs(argparse.Namespace):
 
         #  USER CREDENTIALS
 
-        start_cmd.add_argument('--mysql-root-pwd', type=str, help='Root password for the database', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--mysql-root-password', type=str, help='Root password for the database', default=argparse.SUPPRESS)
         start_cmd.add_argument('--mysql-user', type=str, help='MYSQL username for the Codalab MYSQL client', default=argparse.SUPPRESS)
-        start_cmd.add_argument('--mysql-pwd', type=str, help='MYSQL password for the Codalab MYSQL client', default=argparse.SUPPRESS)
-        start_cmd.add_argument('--root-user', type=str, help='Codalab username for the Codalab admin user', default=argparse.SUPPRESS)
-        start_cmd.add_argument('--root-pwd', type=str, help='Codalab password for the Codalab admin user', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--mysql-password', type=str, help='MYSQL password for the Codalab MYSQL client', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--codalab-user', type=str, help='Codalab username for the Codalab admin user', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--codalab-password', type=str, help='Codalab password for the Codalab admin user', default=argparse.SUPPRESS)
 
         #  HOST FILESYSTEM MOUNTS
 
         start_cmd.add_argument('--uid', type=str, help='Linux UID that owns the files created by Codalab. default=(ID of the user running this script)', default=argparse.SUPPRESS)
-        start_cmd.add_argument('--service-home', type=str, help='Path on the host machine to store home directory of the Codalab server (by default nothing is stored', default=argparse.SUPPRESS)
+        start_cmd.add_argument('--codalab-home', type=str, help='Path on the host machine to store home directory of the Codalab server (by default nothing is stored', default=argparse.SUPPRESS)
         start_cmd.add_argument('--mysql-mount', type=str, help='Path on the host machine to store mysql data files, by default the database is ephemeral', default=argparse.SUPPRESS)
         start_cmd.add_argument('--worker-dir', type=str, help='Path on the host machine to store worker data files, by default these are ephemeral', default=argparse.SUPPRESS)
         start_cmd.add_argument('--bundle-store', type=str, help='Path on the host machine to store bundle data files, by default these are ephemeral', default=[], dest='bundle_stores', action='append')
@@ -194,12 +194,14 @@ class CodalabArgs(argparse.Namespace):
 
 class CodalabServiceManager(object):
 
+    ALL_IMAGES = ['server', 'frontend', 'worker', 'default-cpu', 'default-gpu']
+
     @staticmethod
     def resolve_env_vars(args):
         environment = {
             'CODALAB_MYSQL_ROOT_PWD': args.mysql_codalab_password,
             'CODALAB_MYSQL_USER': args.mysql_user,
-            'CODALAB_MYSQL_PWD': args.mysql_pwd,
+            'CODALAB_MYSQL_PWD': args.mysql_password,
             'CODALAB_ROOT_USER': args.codalab_user,
             'CODALAB_ROOT_PWD': args.codalab_password,
             'CODALAB_HTTP_PORT': args.http_port,
@@ -210,8 +212,8 @@ class CodalabServiceManager(object):
             environment['CODALAB_UID'] = args.uid
         else:
             environment['CODALAB_UID'] = '%s:%s' % (os.getuid(), os.getgid())
-        if args.service_home:
-            environment['CODALAB_SERVICE_HOME'] = args.service_home
+        if args.codalab_home:
+            environment['CODALAB_SERVICE_HOME'] = args.codalab_home
         else:
             environment['CODALAB_SERVICE_HOME'] = '/home/codalab'
         if args.mysql_mount:
@@ -236,7 +238,7 @@ class CodalabServiceManager(object):
         compose_files = ['docker-compose.yml']
         if args.dev:
             compose_files.append('docker-compose.dev.yml')
-        if args.service_home:
+        if args.codalab_home:
             compose_files.append('docker-compose.home_mount.yml')
         else:
             compose_files.append('docker-compose.no_home_mount.yml')
@@ -265,9 +267,9 @@ class CodalabServiceManager(object):
         self.compose_cwd = os.path.join(self.root_dir, 'docker', 'compose_files')
         self.compose_files = self.resolve_compose_files(args)
         self.compose_env = self.resolve_env_vars(args)
-        if self.args.service_home:
+        if self.args.codalab_home:
             try:
-                os.makedirs(self.args.service_home)
+                os.makedirs(self.args.codalab_home)
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
@@ -340,18 +342,18 @@ class CodalabServiceManager(object):
         self.bring_up_service('mysql')
 
         print("[CODALAB] ==> Configuring the service")
-        self.run_service_cmd("/data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://%s:%s@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0" % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD']), root=(not self.args.service_home))
+        self.run_service_cmd("/opt/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://%s:%s@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0" % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD']), root=(not self.args.codalab_home))
 
         if self.args.initial_config:
             print("[CODALAB] ==> Creating root user")
-            self.run_service_cmd("/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && /data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py %s" % self.compose_env['CODALAB_ROOT_PWD'], root=True)
+            self.run_service_cmd("/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && /opt/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py %s" % self.compose_env['CODALAB_ROOT_PWD'], root=True)
 
         print("[CODALAB] ==> Starting rest server")
         self.bring_up_service('rest-server')
 
         if self.args.initial_config:
             print("[CODALAB] ==> Creating initial worksheets")
-            self.run_service_cmd("/data/bin/wait-for-it.sh rest-server:2900 -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard", root=(not self.args.service_home))
+            self.run_service_cmd("/opt/wait-for-it.sh rest-server:2900 -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard", root=(not self.args.codalab_home))
 
         print("[CODALAB] ==> Starting bundle manager")
         self.bring_up_service('bundle-manager')
@@ -365,18 +367,11 @@ class CodalabServiceManager(object):
 
     def build(self):
         print("[CODALAB] => Building Docker images")
-        IMAGE_TO_SUFFIX = {
-            'bundleserver': 'server',
-            'frontend': 'frontend',
-            'worker': 'worker',
-            'default-cpu': 'cpu',
-            'default-gpu': 'gpu',
-        }
-        images_to_build  = IMAGE_TO_SUFFIX.keys() if self.args.image == 'all' else [self.args.image]
+        images_to_build  = self.ALL_IMAEGS if self.args.image == 'all' else [self.args.image]
         for image in images_to_build:
-            self.build_image(image, IMAGE_TO_SUFFIX[image])
+            self.build_image(image)
         if self.args.push:
-            self._run_docker_cmd('login -u %s -p %s' % (self.args.docker_user, self.args.docker_pwd))
+            self._run_docker_cmd('login -u %s -p %s' % (self.args.docker_user, self.args.docker_password))
             for image in images_to_build:
                 self.push_image(image)
 

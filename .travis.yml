@@ -13,6 +13,7 @@ jobs:
         - curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
         - chmod +x docker-compose
         - sudo mv docker-compose /usr/local/bin
+        - sudo service mysql stop
       install:
         - pip install --upgrade pip MySQL-python
         - ./codalab-service.py build bundleserver -v ${TRAVIS_BRANCH} --push
