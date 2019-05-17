@@ -16,13 +16,13 @@ jobs:
         - sudo service mysql stop
       install:
         - pip install --upgrade pip MySQL-python
-        - ./codalab-service.py build server -v ${TRAVIS_BRANCH} --push
-        - ./codalab-service.py build worker -v ${TRAVIS_BRANCH} --push
-        - ./codalab-service.py build frontend -v ${TRAVIS_BRANCH} --push
+        - ./codalab_service.py build server -v ${TRAVIS_BRANCH} --push
+        - ./codalab_service.py build worker -v ${TRAVIS_BRANCH} --push
+        - ./codalab_service.py build frontend -v ${TRAVIS_BRANCH} --push
         - ./setup.sh server
         - codalab/bin/cl config server/engine_url:mysql://codalab:codalab@127.0.0.1:3306/codalab_bundles
       script:
-        - ./codalab-service.py start -i -w -t --worker-dir /home/travis/codalab/worker-dir --rest-port 2900 --mysql-port 3306 --version ${TRAVIS_BRANCH}
+        - ./codalab_service.py start -i -w -t --worker-dir /home/travis/codalab/worker-dir --rest-port 2900 --mysql-port 3306 --version ${TRAVIS_BRANCH}
     - stage: style
       language: python
       python: 3.6
