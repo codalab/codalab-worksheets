@@ -256,7 +256,15 @@ def temp_instance():
 
     rest_port = get_free_ports(1)[0]
     temp_instance_name = random_name()
-    subprocess.check_call(['./codalab-service.py', 'start', '-i',  '--instance-name %s' % temp_instance_name, '--rest-port %s' % rest_port])
+    subprocess.check_call(
+        [
+            './codalab-service.py',
+            'start',
+            '-i',
+            '--instance-name %s' % temp_instance_name,
+            '--rest-port %s' % rest_port,
+        ]
+    )
 
     # Switch to new host and log in to cache auth token
     remote_host = 'http://localhost:%s' % rest_port
@@ -270,7 +278,14 @@ def temp_instance():
         remote_host, remote_worksheet, env['CODALAB_USER'], env['CODALAB_PASSWORD']
     )
 
-    subprocess.check_call(['./codalab-service.py', 'down', '--instance-name temp-%s' % temp_instance_name, '--rest-port %s' % rest_port])
+    subprocess.check_call(
+        [
+            './codalab-service.py',
+            'down',
+            '--instance-name temp-%s' % temp_instance_name,
+            '--rest-port %s' % rest_port,
+        ]
+    )
 
     run_command([cl, 'work', original_worksheet])
 
