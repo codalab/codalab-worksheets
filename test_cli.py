@@ -263,7 +263,7 @@ def temp_instance():
     remote_worksheet = '%s::' % remote_host
     run_command([cl, 'logout', remote_worksheet[:-2]])
 
-    env = {'CODALAB_USERNAME': 'codalab', 'CODALAB_PASSWORD': 'testpassword'}
+    env = {'CODALAB_USERNAME': 'codalab', 'CODALAB_PASSWORD': 'codalab'}
     run_command([cl, 'work', remote_worksheet], env=env)
 
     yield CodaLabInstance(

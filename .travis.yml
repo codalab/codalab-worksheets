@@ -6,7 +6,7 @@ jobs:
       services:
         - docker
       env:
-        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CI=false
+        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
       python: 2.7
       before_install:
         - sudo rm /usr/local/bin/docker-compose
@@ -20,7 +20,7 @@ jobs:
         - ./codalab-service.py build frontend -v ${TRAVIS_BRANCH} --push
         - ./setup.sh server
       script:
-        - ./codalab-service.py start -i -w -t --root-user codalab --root-pwd testpassword --worker-dir /home/travis/codalab/worker-dir --rest-port 2900 --mysql-port 3306 --version ${TRAVIS_BRANCH}
+        - ./codalab-service.py start -i -w -t --worker-dir /home/travis/codalab/worker-dir --rest-port 2900 --mysql-port 3306 --version ${TRAVIS_BRANCH}
     - stage: style
       language: python
       python: 3.6
@@ -33,7 +33,7 @@ jobs:
       services:
         - docker
       env:
-        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CI=false
+        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
       python: 2.7
       after_success: echo "skipped"
       before_deploy:
