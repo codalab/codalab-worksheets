@@ -26,7 +26,7 @@ services:
       *non-blocking-logging
 
   rest-server:
-    image: codalab/bundleserver:${CODALAB_VERSION}
+    image: codalab/server:${CODALAB_VERSION}
     command: server
     environment:
       *codalab-env
@@ -38,7 +38,7 @@ services:
       *non-blocking-logging
 
   bundle-manager:
-    image: codalab/bundleserver:${CODALAB_VERSION}
+    image: codalab/server:${CODALAB_VERSION}
     command: bundle-manager
     environment:
       *codalab-env
@@ -86,7 +86,7 @@ services:
       *non-blocking-logging
 
   tests:
-    image: codalab/bundleserver:${CODALAB_VERSION}
+    image: codalab/server:${CODALAB_VERSION}
     working_dir: /opt/codalab-worksheets/
     entrypoint: ./venv/bin/python ./test-cli.py
     command: all --instance http://rest-server:2900
