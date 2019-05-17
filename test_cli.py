@@ -254,7 +254,7 @@ def temp_instance():
             s.close()
         return ports
 
-    rest_port = get_free_ports(1)
+    rest_port = get_free_ports(1)[0]
     temp_instance_name = random_name()
     subprocess.check_call(['./codalab-service.py', 'start', '-i',  '--instance-name %s' % temp_instance_name, '--rest-port %s' % rest_port])
 
