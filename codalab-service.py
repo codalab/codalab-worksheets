@@ -313,11 +313,9 @@ class CodalabServiceManager(object):
     def _run_docker_cmd(self, cmd):
         subprocess.check_call('docker ' + cmd, shell=True, cwd=self.root_dir)
 
-    def build_image(self, image, dockerfile):
+    def build_image(self, image):
         print("[CODALAB] ==> Building %s image " % image)
-        cache_str = '--cache-from codalab/%s:%s' % (image, self.args.version) if self.args.cache_from_images else ''
-        command_str = 'build -t codalab/%s:%s -f docker/dockerfiles/Dockerfile.%s %s .' % (image, self.args.version, dockerfile, cache_str)
-        self._run_docker_cmd(command_str)
+        self._run_docker_cmd('build -t codalab/%s:%s -f docker/dockerfiles/Dockerfile.%s .' % (image, self.args.version, image))
 
     def push_image(self, image):
         self._run_docker_cmd('push codalab/%s:%s' % (image, self.args.version))
