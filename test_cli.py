@@ -266,7 +266,8 @@ def temp_instance():
                     '--instance-name %s' % temp_instance_name,
                     '--rest-port %s' % rest_port,
                 ]
-            )
+            ),
+            shell=True
         )
 
     except Exception as ex:
@@ -292,7 +293,8 @@ def temp_instance():
                 '--instance-name temp-%s' % temp_instance_name,
                 '--rest-port %s' % rest_port,
             ]
-        )
+        ),
+        shell=True
     )
 
     run_command([cl, 'work', original_worksheet])
