@@ -256,18 +256,22 @@ def temp_instance():
 
     rest_port = get_free_ports(1)[0]
     temp_instance_name = random_name()
-    subprocess.check_call(
-        ' '.join(
-            [
-                './codalab_service.py',
-                'start',
-                '-i',
-                '--instance-name %s' % temp_instance_name,
-                '--rest-port %s' % rest_port,
-            ]
+    try:
+        subprocess.check_call(
+            ' '.join(
+                [
+                    './codalab_service.py',
+                    'start',
+                    '-i',
+                    '--instance-name %s' % temp_instance_name,
+                    '--rest-port %s' % rest_port,
+                ]
+            )
         )
-    )
 
+    except Exception as ex:
+        print("Temp instance exception: %s" % ex)
+        raise
     # Switch to new host and log in to cache auth token
     remote_host = 'http://localhost:%s' % rest_port
     remote_worksheet = '%s::' % remote_host
