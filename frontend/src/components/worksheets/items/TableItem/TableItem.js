@@ -1,3 +1,4 @@
+// @flow
 import * as React from 'react';
 import { withStyles } from '@material-ui/core';
 import Paper from '@material-ui/core/Paper';
@@ -13,7 +14,14 @@ import $ from 'jquery';
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleRow from './BundleRow';
 
-class TableItem extends React.Component {
+class TableItem extends React.Component<
+    {
+        worksheetUUID: string,
+        item: {},
+        handleContextMenu: () => any,
+        reloadWorksheet: () => any,
+    }
+>{
     /** Constructor. */
     constructor(props) {
         super(props);
@@ -74,6 +82,7 @@ class TableItem extends React.Component {
     }
 
     render() {
+        const { worksheetUUID } = this.props;
         if (this.props.active && this.props.focused) this.capture_keys();
 
         var tableClassName = this.props.focused ? 'table focused' : 'table';
@@ -101,12 +110,14 @@ class TableItem extends React.Component {
                 <BundleRow
                     key={rowIndex}
                     ref={ rowRef }
+                    worksheetUUID={ worksheetUUID }
                     item={rowItem}
                     rowIndex={rowIndex}
                     focused={rowFocused}
                     focusIndex={this.props.focusIndex}
                     url={url}
                     bundleInfo={bundleInfos[rowIndex]}
+                    prevBundleInfo={ rowIndex > 0 ? bundleInfos[rowIndex - 1] : null }
                     uuid={bundleInfos[rowIndex].uuid}
                     headerItems={headerItems}
                     canEdit={canEdit}

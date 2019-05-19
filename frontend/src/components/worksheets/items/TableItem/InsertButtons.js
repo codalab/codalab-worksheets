@@ -4,16 +4,8 @@ import Button from '@material-ui/core/Button';
 
 class InsertButtons extends React.Component{
 
-    upload = (ev) => {
-        ev.stopPropagation();
-    };
-
-    newRun = (ev) => {
-        ev.stopPropagation();
-    };
-
     render() {
-        const { classes } = this.props;
+        const { classes, clickUpload, clickNewRun } = this.props;
         return (
             <div
                 onMouseMove={ (ev) => { ev.stopPropagation(); } }
@@ -23,7 +15,7 @@ class InsertButtons extends React.Component{
                     size="small"
                     variant="outlined"
                     color="primary"
-                    onClick={ this.newRun }
+                    onClick={ clickNewRun }
                     classes={ { root: classes.buttonRoot } }
                 >
                     New Run
@@ -33,7 +25,7 @@ class InsertButtons extends React.Component{
                     size="small"
                     variant="outlined" 
                     color="primary"
-                    onClick={ this.upload }
+                    onClick={ clickUpload }
                     classes={ { root: classes.buttonRoot } }
                 >
                     Upload
