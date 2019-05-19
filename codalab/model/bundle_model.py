@@ -7,6 +7,7 @@ import datetime
 import json
 import re
 import time
+import sys
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, not_, select, union, desc, func
@@ -1336,16 +1337,19 @@ class BundleModel(object):
         }
         with self.engine.begin() as connection:
             if after_sort_key is not None:
+                after_sort_key = int(after_sort_key)
                 # Find all the items that originally come after this after_sort_key.
                 clause = and_(
                     cl_worksheet_item.c.worksheet_uuid == worksheet_uuid,
                     cl_worksheet_item.c.sort_key > after_sort_key,
                 )
-                query = select().where(clause)
+                query = select(['*']).where(clause)
                 after_items = connection.execute(query)
                 # check if there are gaps between the smallest sort_key among the
                 # after_items and our after_sort_key
                 max_sort_key = max(item_sort_key(item) for item in after_items)
+                print >>sys.stderr, 'max_sort_key: {}, after_sort_key: {}'.format(max_sort_key, after_sort_key)
+                print >>sys.stderr, '===> {}'.format(str(after_items))
                 if max_sort_key - after_sort_key == 1:
                     # There is no gap, space out the sort_keys to make some room
                     cl_worksheet_item.delete().where(clause)
