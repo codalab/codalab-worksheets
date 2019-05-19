@@ -184,6 +184,7 @@ class WorksheetItemList extends React.Component {
                 function(item, index) {
                     var focused = index === this.props.focusIndex;
                     var props = {
+                        worksheetUUID: info.uuid,
                         item: item,
                         version: this.props.version,
                         active: this.props.active,
