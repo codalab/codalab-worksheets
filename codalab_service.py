@@ -38,7 +38,6 @@ class CodalabArgs(argparse.Namespace):
         'mysql_mount': None,
         'worker_dir': None,
         'bundle_stores': [],
-        'worker_docker_network_name': 'codalab_worker_network',
         'http_port': '80',
         'rest_port': None,
         'frontend_port': None,
@@ -69,7 +68,6 @@ class CodalabArgs(argparse.Namespace):
         'codalab_home': 'CODALAB_SERVICE_HOME',
         'mysql_mount': 'CODALAB_MYSQL_MOUNT',
         'worker_dir': 'CODALAB_WORKER_DIR',
-        'worker_docker_network_name': 'CODALAB_WORKER_DOCKER_NETWORK_NAME',
         'http_port': 'CODALAB_HTTP_PORT',
         'rest_port': 'CODALAB_REST_PORT',
         'frontend_port': 'CODALAB_FRONTEND_PORT',
@@ -260,13 +258,6 @@ class CodalabArgs(argparse.Namespace):
             action='append',
         )
 
-        start_cmd.add_argument(
-            '--worker-docker-network-name',
-            type=str,
-            help='Name of the docker network that includes the worker and runs',
-            default=argparse.SUPPRESS,
-        )
-
         #  HOST PORT MOUNTS
 
         start_cmd.add_argument(
@@ -424,7 +415,7 @@ class CodalabServiceManager(object):
             'CODALAB_ROOT_PWD': args.codalab_password,
             'CODALAB_HTTP_PORT': args.http_port,
             'CODALAB_VERSION': args.version,
-            'CODALAB_WORKER_NETWORK_NAME': args.worker_docker_network_name,
+            'CODALAB_WORKER_NETWORK_NAME': '%s-worker-network' % args.instance_name,
         }
         if args.uid:
             environment['CODALAB_UID'] = args.uid
