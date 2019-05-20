@@ -149,11 +149,11 @@ class TableItem extends React.Component<
 class TableContainerBase extends React.Component {
     render() {
         const { classes, children, ...others } = this.props;
-        return <Paper className={ classes.tableContainer } {...others}>
+        return <div className={ classes.tableContainer } {...others}>
             {
                 children
             }
-        </Paper>
+        </div>
     }
 }
 
