@@ -18,9 +18,50 @@ import NewUpload from '../../NewUpload';
 import { buildTerminalCommand } from '../../../../util/worksheet_utils';
 
 
+class InsertButtons extends Component<{
+    showNewUpload: () => void,
+    showNewRun: () => void,
+}> {
+    render() {
+        return (
+            <div onMouseMove={ (ev) => { ev.stopPropagation(); } }
+                 className={ classes.buttonsPanel }
+            >
+                <Button
+                    key="upload"
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                    aria-label="New Upload"
+                    onClick={ () => this.props.showNewUpload() }
+                >
+                    <UploadIcon className={classes.buttonIcon} />
+                    Upload
+                </Button>
+                <Button
+                    key="run"
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                    aria-label="New Run"
+                    onClick={ () => this.props.showNewRun() }
+                >
+                    <AddIcon className={classes.buttonIcon} />
+                    Run
+                </Button>
+            </div>
+        );
+
+
+    }
+}
+
 class BundleRow extends Component {
 
     state = {
+        showDetail: false,
+        showNewUpload: 0,
+        showNewRun: 0,
         showInsertButtons: 0,
         bundleInfoUpdates: {},
         showDetail: false,
@@ -41,6 +82,15 @@ class BundleRow extends Component {
         this.setState({
             showDetail: !showDetail,
         });
+    }
+
+    showNewUpload = (val) => () => {
+        console.log('===>', val, this.props.prevBundleInfo, this.props.bundleInfo);
+        this.setState({ showNewUpload: val });
+    }
+
+    showNewRun = (val) => () => {
+        this.setState({ showNewRun: val })
     }
 
     showButtons = (ev) => {
@@ -80,8 +130,8 @@ class BundleRow extends Component {
 
     render() {
         const { showInsertButtons, showDetail, showNewUpload, showNewRun, bundleInfoUpdates } = this.state;
+        const { classes, onMouseMove, bundleInfo, prevBundleInfo, item, worksheetUUID, reloadWorksheet } = this.props;
         const rowItems = {...item, ...bundleInfoUpdates};
-        const { classes, onMouseMove, bundleInfo, item } = this.props;
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
@@ -122,34 +172,6 @@ class BundleRow extends Component {
             );
         });
 
-        const edgeButtons = [
-            // New Upload =============================================
-            <Button
-                key="upload"
-                variant="outlined"
-                size="small"
-                color="primary"
-                aria-label="New Upload"
-                onClick={ () => this.setState({ showNewUpload: !showNewUpload }) }
-            >
-                <UploadIcon className={classes.buttonIcon} />
-                Upload
-            </Button>,
-
-            // New Run ================================================
-            <Button
-                key="run"
-                variant="outlined"
-                size="small"
-                color="primary"
-                aria-label="New Run"
-                onClick={ () => this.setState({ showNewRun: !showNewRun }) }
-            >
-                <AddIcon className={classes.buttonIcon} />
-                Run
-            </Button>,
-        ];
-
         return <TableBody
             classes={ { root: classes.tableBody } }
             onMouseMove={ this.showButtons }
@@ -166,15 +188,25 @@ class BundleRow extends Component {
                 >
                     {
                         (showInsertButtons < 0) &&
-                        <div
-                            onMouseMove={ (ev) => { ev.stopPropagation(); } }
-                            className={ classes.buttonsPanel }
-                        >
-                            {edgeButtons}
-                        </div>
+                        <InsertButtons
+                            showNewUpload={ this.showNewUpload(-1) }
+                            showNewRun={ this.showNewRun(-1) }
+                        />
                     }
                 </TableCell>
             </TableRow>
+            {
+                (showNewUpload === -1) &&
+                <TableRow>
+                    <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
+                        <NewUpload
+                            after_sort_key={ prevBundleInfo ? prevBundleInfo.sort_key : bundleInfo.sort_key - 10 }
+                            worksheetUUID={ worksheetUUID }
+                            reloadWorksheet={ reloadWorksheet }
+                        />
+                    </TableCell>
+                </TableRow>
+            }
             <TableRow
                 onClick={this.handleClick}
                 onContextMenu={this.props.handleContextMenu.bind(
@@ -230,10 +262,15 @@ class BundleRow extends Component {
                 </TableRow>
             }
             {
-                showNewUpload &&
+                (showNewUpload === 1) &&
                 <TableRow>
                     <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
-                        <NewUpload ws={this.props.ws}/>
+                        <NewUpload
+                            after_sort_key={ bundleInfo.sort_key }
+                            worksheetUUID={ worksheetUUID }
+                            reloadWorksheet={ reloadWorksheet }
+                            ws={this.props.ws}
+                        />
                     </TableCell>
                 </TableRow>
             }
@@ -241,7 +278,10 @@ class BundleRow extends Component {
                 showNewRun &&
                 <TableRow>
                     <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
-                        <NewRun ws={this.props.ws} onSubmit={() => this.setState({ showNewRun: false })}/>
+                        <NewRun
+                            ws={this.props.ws}
+                            onSubmit={() => this.setState({ showNewRun: false })}
+                        />
                     </TableCell>
                 </TableRow>
             }
@@ -252,12 +292,10 @@ class BundleRow extends Component {
                 >
                     {
                         (showInsertButtons > 0) &&
-                        <div
-                            onMouseMove={ (ev) => { ev.stopPropagation(); } }
-                            className={ classes.buttonsPanel }
-                        >
-                            {edgeButtons}
-                        </div>
+                        <InsertButtons
+                            showNewUpload={ this.showNewUpload(1) }
+                            showNewRun={ this.showNewRun(1) }
+                        />
                     }
                 </TableCell>
             </TableRow>
