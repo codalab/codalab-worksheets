@@ -1350,7 +1350,7 @@ class BundleModel(object):
                 # after_items and our after_sort_key
                 if len(after_items) > 0 and min(item_sort_key(item) for item in after_items) - after_sort_key == 1:
                     # There is no gap, space out the sort_keys to make some room
-                    cl_worksheet_item.delete().where(clause)
+                    connection.execute(cl_worksheet_item.delete().where(clause))
                     new_after_items = [{
                         'worksheet_uuid': item.worksheet_uuid,
                         'bundle_uuid': item.bundle_uuid,
