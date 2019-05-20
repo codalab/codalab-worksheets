@@ -36,6 +36,7 @@ class InsertButtons extends Component<{
                     color="primary"
                     aria-label="New Upload"
                     onClick={ () => showNewUpload() }
+                    classes={ { root: classes.buttonRoot } }
                 >
                     <UploadIcon className={classes.buttonIcon} />
                     Upload
@@ -47,6 +48,7 @@ class InsertButtons extends Component<{
                     color="primary"
                     aria-label="New Run"
                     onClick={ () => showNewRun() }
+                    classes={ { root: classes.buttonRoot } }
                 >
                     <AddIcon className={classes.buttonIcon} />
                     Run
@@ -87,7 +89,6 @@ class BundleRow extends Component {
     }
 
     showNewUpload = (val) => () => {
-        console.log('===>', val, this.props.prevBundleInfo, this.props.bundleInfo);
         this.setState({ showNewUpload: val });
     }
 
@@ -210,6 +211,18 @@ class BundleRow extends Component {
                     </TableCell>
                 </TableRow>
             }
+            {
+                (showNewRun === -1) &&
+                <TableRow>
+                    <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
+                        <NewRun
+                            ws={this.props.ws}
+                            onSubmit={() => this.setState({ showNewRun: false })}
+                            after_sort_key={ prevBundleInfo ? prevBundleInfo.sort_key : bundleInfo.sort_key - 10 }
+                        />
+                    </TableCell>
+                </TableRow>
+            }
             <TableRow
                 onClick={this.handleClick}
                 onContextMenu={this.props.handleContextMenu.bind(
@@ -278,12 +291,13 @@ class BundleRow extends Component {
                 </TableRow>
             }
             {
-                showNewRun &&
+                (showNewRun === 1) &&
                 <TableRow>
                     <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
                         <NewRun
                             ws={this.props.ws}
                             onSubmit={() => this.setState({ showNewRun: false })}
+                            after_sort_key={ bundleInfo.sort_key }
                         />
                     </TableCell>
                 </TableRow>
@@ -366,6 +380,11 @@ const styles = (theme) => ({
         justifyContent: 'center',
         width: '100%',
         transform: 'translateY(-50%)',
+    },
+    buttonRoot: {
+        width: 120,
+        marginLeft: theme.spacing.unit,
+        marginRight: theme.spacing.unit,
     },
     buttonIcon: {
         marginRight: theme.spacing.large,

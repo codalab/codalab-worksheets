@@ -277,14 +277,14 @@ export function createDefaultBundleName(name) {
     return name;
 }
 
-export function getDefaultBundleMetadata(name) {
+export function getDefaultBundleMetadata(name, description='') {
     return {
         data: [
             {
                 attributes: {
                     bundle_type: 'dataset',
                     metadata: {
-                        description: '',
+                        description,
                         license: '',
                         name: createDefaultBundleName(name),
                         source_url: '',

@@ -7,6 +7,7 @@ import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
 import Input from '@material-ui/core/Input';
 import UploadIcon from '@material-ui/icons/CloudUpload';
+import CircularProgress from '@material-ui/core/CircularProgress';
 
 import {
     createDefaultBundleName,
@@ -77,9 +78,10 @@ class NewUpload extends React.Component<{
 }> {
 
     defaultConfig = {
-        name: 'untitled-upload',
+        name: '',
         description: '',
         tags: [],
+        file: null,
     }
 
     /**
@@ -93,25 +95,17 @@ class NewUpload extends React.Component<{
         };
     }
 
-    dropFile = (e) => {
+    dropDone = (e) => {
         e.target.style.opacity = 1.0;
         e.preventDefault();
         e.stopPropagation();
-
-        const files = this.inputFile.files;
-        const { after_sort_key, worksheetUUID } = this.props;
-        console.log('===>', worksheetUUID, after_sort_key, files);
-        this.uploadFile(files[0]);
     }
 
-    dropDir = (e) => {
-        let dt = e.dataTransfer;
-        let files = dt.files;
-
-        // TODO: actually post files to BE
-        e.target.style.opacity = 1.0;
-        e.preventDefault();
-        e.stopPropagation();
+    setFile = (_) => {
+        const files = this.inputFile.files;
+        this.setState({
+            file: files[0],
+        });
     }
 
     highlight = (e) => {
@@ -126,12 +120,17 @@ class NewUpload extends React.Component<{
         e.stopPropagation();
     }
 
-    uploadFile = (file) => {
+    uploadFile = () => {
+        const { file } = this.state;
         if (!file) {
             return;
         }
         const { worksheetUUID, after_sort_key } = this.props;
-        const createBundleData = getDefaultBundleMetadata(file.name);
+        const { name, description } = this.state;
+        const createBundleData = getDefaultBundleMetadata(name || file.name, description);
+        this.setState({
+            uploading: true,
+        });
         $.ajax({
             url: `/rest/bundles?worksheet=${ worksheetUUID }&after_sort_key=${ after_sort_key }`,
             data: JSON.stringify(createBundleData),
@@ -139,33 +138,6 @@ class NewUpload extends React.Component<{
             type: 'POST',
             success: (data, status, jqXHR) => {
                 var bundleUuid = data.data[0].id;
-                // var fileEntryKey = this.addUploading(file.name, bundleUuid);
-                // var progressbar = $('#' + PROGRESS_BAR_ID + bundleUuid);
-                // var progressLabel = $('#' + PROGRESS_LABEL_ID + bundleUuid);
-                // progressbar.progressbar({
-                //     value: 0,
-                //     max: 100,
-                //     create: function() {
-                //         progressLabel.text(
-                //             'Uploading ' +
-                //                 createDefaultBundleName(file.name) +
-                //                 '.\n' +
-                //                 '0% completed.',
-                //         );
-                //     },
-                //     change: function() {
-                //         progressLabel.text(
-                //             'Uploading ' +
-                //                 createDefaultBundleName(file.name) +
-                //                 '.\n' +
-                //                 progressbar.progressbar('value') +
-                //                 '% completed.',
-                //         );
-                //     },
-                //     complete: function() {
-                //         progressLabel.text('Waiting for server to finish processing bundle.');
-                //     },
-                // });
                 var reader = new FileReader();
                 reader.onload = () => {
                     var arrayBuffer = reader.result,
@@ -181,28 +153,28 @@ class NewUpload extends React.Component<{
                         contentType: 'application/octet-stream',
                         data: new Blob([bytesArray]),
                         processData: false,
-                        xhr: function() {
+                        xhr: () => {
                             var xhr = new window.XMLHttpRequest();
                             xhr.upload.addEventListener(
                                 'progress',
-                                function(evt) {
-                                    // if (evt.lengthComputable) {
-                                    //     var percentComplete = parseInt(
-                                    //         (evt.loaded / evt.total) * 100,
-                                    //     );
-                                    //     progressbar.progressbar('value', percentComplete);
-                                    // }
+                                (evt) => {
+                                    if (evt.lengthComputable) {
+                                        const percentComplete = parseInt(
+                                            (evt.loaded / evt.total) * 100,
+                                        );
+                                        this.setState({ percentComplete });
+                                    }
                                 },
                                 false,
                             );
                             return xhr;
                         },
                         success: (data, status, jqXHR) => {
-                            // this.clearUploading(fileEntryKey);
+                            this.clearProgress();
                             this.props.reloadWorksheet();
                         },
                         error: (jqHXR, status, error) => {
-                            // this.clearUploading(fileEntryKey);
+                            this.clearProgress();
                             alert(
                                 createAlertText(
                                     reader.url,
@@ -216,13 +188,20 @@ class NewUpload extends React.Component<{
                 reader.readAsArrayBuffer(file);
             },
             error: (jqHXR, status, error) => {
+                this.clearProgress();
                 alert(createAlertText(this.url, jqHXR.responseText));
             },
         });
     }
 
+    clearProgress = () => {
+        this.setState({ percentComplete: 0, uploading: false });
+    }
+
     render() {
         const { classes } = this.props;
+        const { file, percentComplete, uploading } = this.state;
+
         return (
             <ConfigPanel
                 buttons={(
@@ -235,7 +214,7 @@ class NewUpload extends React.Component<{
                         <Button
                             variant='contained'
                             color='primary'
-                            onClick={() => alert("New Upload Confirmed")}
+                            onClick={ this.uploadFile }
                         >Confirm</Button>
                     </div>
                 )}
@@ -288,90 +267,112 @@ class NewUpload extends React.Component<{
                 {/* Main Content ------------------------------------------------------- */}
                 <Typography variant='subtitle1' gutterBottom>New Upload</Typography>
 
-                <ConfigLabel
-                    label="Upload directory"
-                    tooltip="Create a bundle from a directory/folder from your filesystem."
-                />
-                <div
-                    style={ {
-                        ...styles.inputBoxStyle,
-                        backgroundColor: 'rgba(85, 128, 168, 0.2)',
-                        borderColor: 'rgba(85, 128, 168, 0.2)',
-                            padding: 16,
-                    } }
-                    onClick={ () => { this.inputDir.click(); } }
-                    onDrop={ this.dropDir }
-                    onDragOver={ this.highlight }
-                    onDragLeave={ this.unhighlight }
-                >
-                    <InputDir
-                        eleref={ (ele) => { this.inputDir = ele; } }
-                        style={ { visibility: 'hidden', position: 'absolute' } }
+                { uploading && <CircularProgress
+                        className={classes.progress}
+                        variant="determinate"
+                        value={this.state.completed}
                     />
-                    <div style={ styles.greyText }>Click or drag & drop here</div>
-                </div>
+                }
 
-                <div className={classes.spacer}/>
-                <ConfigLabel
-                    label="Upload file"
-                    tooltip="Upload a bundle with a single file from your filesystem."
-                />
-                <div
-                    style={ {
-                        ...styles.inputBoxStyle,
-                        backgroundColor: 'rgba(255, 175, 125, 0.2)',
-                        borderColor: 'rgba(255, 175, 125, 0.2)',
-                        padding: 16,
-                    } }
-                    onClick={ () => { this.inputFile.click(); } }
-                    onDrop={ this.dropFile }
-                    onDragOver={ this.highlight }
-                    onDragLeave={ this.unhighlight }
-                >
-                    <input
-                        type="file"
-                        style={ { visibility: 'hidden', position: 'absolute' } }
-                        ref={ (ele) => { this.inputFile = ele; } }
-                        onChange={ this.dropFile }
-                    />
-                    <div style={ styles.greyText }>Click or drag & drop here</div>
-                </div>
+                {
+                    file
+                    ? <div className={ classes.blueText } >
+                        {
+                            file.name
+                        }
+                    </div>
+                    : <React.Fragment>
+                        <ConfigLabel
+                            label="Upload directory"
+                            tooltip="Create a bundle from a directory/folder from your filesystem."
+                        />
+                        <div
+                            style={ {
+                                ...styles.inputBoxStyle,
+                                backgroundColor: 'rgba(85, 128, 168, 0.2)',
+                                borderColor: 'rgba(85, 128, 168, 0.2)',
+                                    padding: 16,
+                            } }
+                            onClick={ () => { this.inputDir.click(); } }
+                            onDrop={ this.dropDone }
+                            onDragOver={ this.highlight }
+                            onDragLeave={ this.unhighlight }
+                        >
+                            <InputDir
+                                eleref={ (ele) => { this.inputDir = ele; } }
+                                style={ { visibility: 'hidden', position: 'absolute' } }
+                            />
+                            <div style={ styles.greyText }>Click or drag & drop here</div>
+                        </div>
 
-                <div className={classes.spacer}/>
-                <ConfigLabel
-                    label="Clone from URL"
-                    tooltip="Clone an existing bundle on Codalab."
-                />
-                <ConfigTextInput
-                    value={this.state.url}
-                    onValueChange={(value) => this.setState({ url: value })}/>
+                        <div className={classes.spacer}/>
+                        <ConfigLabel
+                            label="Upload file"
+                            tooltip="Upload a bundle with a single file from your filesystem."
+                        />
+                        <div
+                            style={ {
+                                ...styles.inputBoxStyle,
+                                backgroundColor: 'rgba(255, 175, 125, 0.2)',
+                                borderColor: 'rgba(255, 175, 125, 0.2)',
+                                padding: 16,
+                            } }
+                            onClick={ () => { this.inputFile.click(); } }
+                            onDrop={ this.dropDone }
+                            onDragOver={ this.highlight }
+                            onDragLeave={ this.unhighlight }
+                        >
+                            <input
+                                type="file"
+                                style={ { visibility: 'hidden', position: 'absolute' } }
+                                ref={ (ele) => { this.inputFile = ele; } }
+                                onChange={ this.setFile }
+                            />
+                            <div style={ styles.greyText }>Click or drag & drop here</div>
+                        </div>
 
+                        <div className={classes.spacer}/>
+                        <ConfigLabel
+                            label="Clone from URL"
+                            tooltip="Clone an existing bundle on Codalab."
+                        />
+                        <ConfigTextInput
+                            value={this.state.url}
+                            onValueChange={(value) => this.setState({ url: value })}/>
+                    </React.Fragment>
+                }
             </ConfigPanel>
         );
     }
 }
 
 const styles = (theme) => ({
+    progress: {
+        position: 'absolute',
+        left: '50%',
+        top: '50%',
+        transform: 'translateX(-50%) translateY(-50%)',
+    },
     spacer: {
         marginTop: theme.spacing.larger,
     },
     blueText: {
-    color: '#225EA8',
+        color: '#225EA8',
     },
     greyText: {
-    color: '#666666',
+        color: '#666666',
     },
     inputBoxStyle: {
         textAlign: 'center',
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 200,
-    borderRadius: 8,
-    border: '2px dashed',
-    cursor: 'pointer',
-    }
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 200,
+        borderRadius: 8,
+        border: '2px dashed',
+        cursor: 'pointer',
+    },
 });
 
 export default withStyles(styles)(NewUpload);
