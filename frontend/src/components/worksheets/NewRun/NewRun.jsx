@@ -295,8 +295,8 @@ class NewRun extends React.Component<{
                         <Button
                             variant='text'
                             color='primary'
-                            onClick={() => this.setState(this.defaultConfig)}
-                        >Clear</Button>
+                            onClick={ this.props.onSubmit }
+                        >Cancel</Button>
                         <Button
                             variant='contained'
                             color='primary'
