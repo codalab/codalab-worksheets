@@ -207,6 +207,7 @@ class BundleRow extends Component {
                             after_sort_key={ prevBundleInfo ? prevBundleInfo.sort_key : bundleInfo.sort_key - 10 }
                             worksheetUUID={ worksheetUUID }
                             reloadWorksheet={ reloadWorksheet }
+                            onClose={ () => this.setState({ showNewUpload: 0 }) }
                         />
                     </TableCell>
                 </TableRow>
@@ -217,7 +218,7 @@ class BundleRow extends Component {
                     <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
                         <NewRun
                             ws={this.props.ws}
-                            onSubmit={() => this.setState({ showNewRun: false })}
+                            onSubmit={() => this.setState({ showNewRun: 0 })}
                             after_sort_key={ prevBundleInfo ? prevBundleInfo.sort_key : bundleInfo.sort_key - 10 }
                         />
                     </TableCell>
@@ -285,7 +286,7 @@ class BundleRow extends Component {
                             after_sort_key={ bundleInfo.sort_key }
                             worksheetUUID={ worksheetUUID }
                             reloadWorksheet={ reloadWorksheet }
-                            ws={this.props.ws}
+                            onClose={ () => this.setState({ showNewUpload: 0 }) }
                         />
                     </TableCell>
                 </TableRow>
@@ -296,7 +297,7 @@ class BundleRow extends Component {
                     <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
                         <NewRun
                             ws={this.props.ws}
-                            onSubmit={() => this.setState({ showNewRun: false })}
+                            onSubmit={() => this.setState({ showNewRun: 0 })}
                             after_sort_key={ bundleInfo.sort_key }
                         />
                     </TableCell>
