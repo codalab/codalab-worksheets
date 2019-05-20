@@ -18,6 +18,46 @@ import InsertButtons from './InsertButtons';
 import { buildTerminalCommand } from '../../../../util/worksheet_utils';
 
 
+class InsertButtons extends Component<{
+    classes: {},
+    showNewUpload: () => void,
+    showNewRun: () => void,
+}> {
+    render() {
+        const { classes, showNewUpload, showNewRun } = this.props;
+        return (
+            <div onMouseMove={ (ev) => { ev.stopPropagation(); } }
+                 className={ classes.buttonsPanel }
+            >
+                <Button
+                    key="upload"
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                    aria-label="New Upload"
+                    onClick={ () => showNewUpload() }
+                >
+                    <UploadIcon className={classes.buttonIcon} />
+                    Upload
+                </Button>
+                <Button
+                    key="run"
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                    aria-label="New Run"
+                    onClick={ () => showNewRun() }
+                >
+                    <AddIcon className={classes.buttonIcon} />
+                    Run
+                </Button>
+            </div>
+        );
+
+
+    }
+}
+
 class BundleRow extends Component {
 
     state = {
@@ -179,8 +219,9 @@ class BundleRow extends Component {
                     {
                         (showInsertButtons < 0) &&
                         <InsertButtons
-                            clickUpload={ this.showUpload(-1) }
-                            clickNewRun={ this.showNewRun(-1) }
+                            classes={classes}
+                            showNewUpload={ this.showNewUpload(-1) }
+                            showNewRun={ this.showNewRun(-1) }
                         />
                     }
                 </TableCell>
@@ -271,8 +312,9 @@ class BundleRow extends Component {
                     {
                         (showInsertButtons > 0) &&
                         <InsertButtons
-                            clickUpload={ this.showUpload(1) }
-                            clickNewRun={ this.showNewRun(1) }
+                            classes={classes}
+                            showNewUpload={ this.showNewUpload(1) }
+                            showNewRun={ this.showNewRun(1) }
                         />
                     }
                 </TableCell>
