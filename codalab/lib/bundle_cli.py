@@ -1490,7 +1490,7 @@ class BundleCLI(object):
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
-            Commands.Argument(
+            Commands.Argument( # Internal for web FE positioned insert.
                 '-a',
                 '--after_sort_key',
                 help='Insert after this sort_key',
