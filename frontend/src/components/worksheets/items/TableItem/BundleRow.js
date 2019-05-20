@@ -19,10 +19,12 @@ import { buildTerminalCommand } from '../../../../util/worksheet_utils';
 
 
 class InsertButtons extends Component<{
+    classes: {},
     showNewUpload: () => void,
     showNewRun: () => void,
 }> {
     render() {
+        const { classes, showNewUpload, showNewRun } = this.props;
         return (
             <div onMouseMove={ (ev) => { ev.stopPropagation(); } }
                  className={ classes.buttonsPanel }
@@ -33,7 +35,7 @@ class InsertButtons extends Component<{
                     size="small"
                     color="primary"
                     aria-label="New Upload"
-                    onClick={ () => this.props.showNewUpload() }
+                    onClick={ () => showNewUpload() }
                 >
                     <UploadIcon className={classes.buttonIcon} />
                     Upload
@@ -44,7 +46,7 @@ class InsertButtons extends Component<{
                     size="small"
                     color="primary"
                     aria-label="New Run"
-                    onClick={ () => this.props.showNewRun() }
+                    onClick={ () => showNewRun() }
                 >
                     <AddIcon className={classes.buttonIcon} />
                     Run
@@ -189,6 +191,7 @@ class BundleRow extends Component {
                     {
                         (showInsertButtons < 0) &&
                         <InsertButtons
+                            classes={classes}
                             showNewUpload={ this.showNewUpload(-1) }
                             showNewRun={ this.showNewRun(-1) }
                         />
@@ -293,6 +296,7 @@ class BundleRow extends Component {
                     {
                         (showInsertButtons > 0) &&
                         <InsertButtons
+                            classes={classes}
                             showNewUpload={ this.showNewUpload(1) }
                             showNewRun={ this.showNewRun(1) }
                         />
