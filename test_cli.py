@@ -288,7 +288,7 @@ def temp_instance():
     )
 
     subprocess.check_call(
-        ' '.join(['./codalab_service.py', 'down', '--instance-name temp-%s' % temp_instance_name]),
+        ' '.join(['./codalab_service.py', 'down', '--instance-name temp-%s' % temp_instance_name, '--worker-docker-network-name %s-worker-net' % temp_instance_name]),
         shell=True,
     )
 
