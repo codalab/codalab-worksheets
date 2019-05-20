@@ -243,15 +243,20 @@ class NewRun extends React.Component<{
             args.push(key + ':' + value);
         }
 
+        if(name) args.push(`--name ${name}`);
+        if(description) args.push(`--description ${description}`);
+        if(tags) args.push(`--tags ${tags.join(" ")}`);
+        if(disk) args.push(`--request-disk ${disk}`);
+        if(memory) args.push(`--request-memory ${memory}`);
+        if(cpu) args.push(`--request-cpus ${cpu}`);
+        if(gpu) args.push(`--request-gpus ${gpu}`);
+
         if(command) args.push(`"${command}"`);
 
-        if (after_sort_key) {
-            args.push(`-a ${ after_sort_key }`);
-        }
+        if (after_sort_key)  args.push(`-a ${ after_sort_key }`);
+        return args.join(" ");  // TODO: Make safe.
 
-        console.log('command ===>', buildTerminalCommand(args));
-
-        return buildTerminalCommand(args);
+        //return buildTerminalCommand(args);
     }
 
     runCommand() {
