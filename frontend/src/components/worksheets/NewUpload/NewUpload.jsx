@@ -147,6 +147,7 @@ class NewUpload extends React.Component<{
                         bundleUuid +
                         '/contents/blob/?' +
                         getQueryParams(file.name);
+                    console.log('folder ===>', url);
                     $.ajax({
                         url: url,
                         type: 'PUT',
@@ -172,6 +173,7 @@ class NewUpload extends React.Component<{
                         success: (data, status, jqXHR) => {
                             this.clearProgress();
                             this.props.reloadWorksheet();
+                            this.props.onClose();
                         },
                         error: (jqHXR, status, error) => {
                             this.clearProgress();
@@ -199,7 +201,7 @@ class NewUpload extends React.Component<{
     }
 
     render() {
-        const { classes } = this.props;
+        const { classes, onClose } = this.props;
         const { file, percentComplete, uploading } = this.state;
 
         return (
@@ -209,8 +211,8 @@ class NewUpload extends React.Component<{
                         <Button
                             variant='text'
                             color='primary'
-                            onClick={() => this.setState(this.defaultConfig)}
-                        >Clear</Button>
+                            onClick={ onClose }
+                        >Cancel</Button>
                         <Button
                             variant='contained'
                             color='primary'
@@ -266,13 +268,6 @@ class NewUpload extends React.Component<{
             >
                 {/* Main Content ------------------------------------------------------- */}
                 <Typography variant='subtitle1' gutterBottom>New Upload</Typography>
-
-                { uploading && <CircularProgress
-                        className={classes.progress}
-                        variant="determinate"
-                        value={this.state.completed}
-                    />
-                }
 
                 {
                     file
@@ -330,16 +325,15 @@ class NewUpload extends React.Component<{
                             />
                             <div style={ styles.greyText }>Click or drag & drop here</div>
                         </div>
-
-                        <div className={classes.spacer}/>
-                        <ConfigLabel
-                            label="Clone from URL"
-                            tooltip="Clone an existing bundle on Codalab."
-                        />
-                        <ConfigTextInput
-                            value={this.state.url}
-                            onValueChange={(value) => this.setState({ url: value })}/>
                     </React.Fragment>
+                }
+
+                { uploading && <CircularProgress
+                        className={ classes.progress }
+                        variant="determinate"
+                        value={ percentComplete }
+                        size={ 80 }
+                    />
                 }
             </ConfigPanel>
         );
@@ -360,6 +354,8 @@ const styles = (theme) => ({
         position: 'absolute',
         left: '50%',
         top: '50%',
+        width: 80,
+        height: 80,
         transform: 'translateX(-50%) translateY(-50%)',
     },
     spacer: {
@@ -367,6 +363,7 @@ const styles = (theme) => ({
     },
     blueText: {
         color: '#225EA8',
+        fontSize: '1.5rem',
     },
     greyText: {
         color: '#666666',
