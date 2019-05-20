@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import $ from 'jquery';
+import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -224,7 +225,12 @@ class BundleRow extends Component {
                     </TableCell>
                 </TableRow>
             }
+            {
+                (showDetail || showNewUpload == -1 || showNewRun == -1) &&
+                <TableRow className={classes.spacerAbove} />
+            }
             <TableRow
+                hover
                 onClick={this.handleClick}
                 onContextMenu={this.props.handleContextMenu.bind(
                     null,
@@ -233,6 +239,10 @@ class BundleRow extends Component {
                     this.props.rowIndex,
                     bundleInfo.bundle_type === 'run',
                 )}
+                className={classNames({
+                    [classes.contentRow]: true,
+                    [classes.detailPadding]: showDetail,
+                })}
             >
                 { rowCells }
             </TableRow>
@@ -277,6 +287,10 @@ class BundleRow extends Component {
                         />
                     </TableCell>
                 </TableRow>
+            }
+            {
+                (showDetail || showNewUpload == 1 || showNewRun == 1) &&
+                <TableRow className={classes.spacerBelow} />
             }
             {
                 (showNewUpload === 1) &&
@@ -386,9 +400,24 @@ const styles = (theme) => ({
         width: 120,
         marginLeft: theme.spacing.unit,
         marginRight: theme.spacing.unit,
+        backgroundColor: '#f7f7f7',
+        '&:hover': {
+            backgroundColor: '#f7f7f7',
+        }
     },
     buttonIcon: {
         marginRight: theme.spacing.large,
+    },
+    contentRow: {
+        height: 36,
+    },
+    spacerAbove: {
+        height: theme.spacing.larger,
+        borderBottom: `4px solid ${theme.color.grey.dark}`,
+    },
+    spacerBelow: {
+        height: theme.spacing.larger,
+        borderTop: `4px solid ${theme.color.grey.dark}`,
     },
 });
 
