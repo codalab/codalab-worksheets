@@ -7144,17 +7144,7 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   margin-left: 24px;
 }
 #worksheet_content textarea {
-  background: white;
-  color: #666;
-  box-shadow: none;
-  font-family: 'Roboto Mono', monospace;
-  font-size: 14px;
-  outline: none;
-  height: auto;
-  padding: 8px;
-  width: 100%;
-  line-height: 1.2em;
-  color: #333;
+
 }
 #worksheet_content textarea.raw-textarea {
   min-height: 480px;

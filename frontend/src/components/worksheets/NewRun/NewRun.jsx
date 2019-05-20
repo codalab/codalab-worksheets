@@ -1,8 +1,8 @@
 // @flow
 import * as React from 'react';
+import $ from 'jquery';
 
 import { withStyles } from '@material-ui/core/styles';
-import Drawer from '@material-ui/core/Drawer';
 import Button from '@material-ui/core/Button';
 import IconButton from '@material-ui/core/IconButton';
 import Grid from '@material-ui/core/Grid';
@@ -21,8 +21,15 @@ import ConfigPanel, {
     ConfigSwitchInput,
 } from '../ConfigPanel';
 
+import {
+    depEqual,
+    shorten_uuid,
+    buildTerminalCommand,
+    createHandleRedirectFn,
+} from '../../../util/worksheet_utils';
 
-type Bundle = { name: string, uuid: string };
+
+type Bundle = { name: string, uuid: string, path?: string };
 type Dependency = { target: Bundle, alias: string };
 
 // TODO: Remove dummy data!
@@ -66,7 +73,7 @@ class DependencyEditorRaw extends React.Component<{
                     <Grid item container direction="row" key={idx}>
                         <Grid item xs={4}>
                             <Typography variant="body1">
-                                {`${dep.target.name} (${dep.target.uuid})`}
+                                {`${dep.target.name} (${shorten_uuid(dep.target.uuid)})`}
                             </Typography>
                         </Grid>
                         <Grid item xs={1} container justify="center">
@@ -92,7 +99,7 @@ class DependencyEditorRaw extends React.Component<{
                     <Grid item xs={4}>
                         <Select
                             options={candidates.map((bundle) => ({
-                                label: `${bundle.name} (${bundle.uuid})`,
+                                label: `${bundle.name} (${shorten_uuid(bundle.uuid)})`,
                                 value: bundle,
                             }))}
                             value=""
@@ -131,16 +138,14 @@ const DependencyEditor = withStyles((theme) => ({
 class NewRun extends React.Component<{
     /** JSS styling object. */
     classes: {},
+
+    /** Worksheet info. */
+    ws: {},
+
+    onSubmit: () => void,
 }, {
-    /** Whether to show draw at bottom of the screen. */
-    isDrawerVisible: boolean,
-
-    /** Displayed as "[target.name]([target.uuid]) as [alias]". */
     dependencies: Dependency[],
-
     command: string,
-
-    /** Configuration info. */
     name: string,
     description: string,
     tags: string[],
@@ -175,7 +180,6 @@ class NewRun extends React.Component<{
     constructor(props) {
         super(props);
         this.state = {
-            isDrawerVisible: false,
             ...this.defaultConfig,
         };
     }
@@ -213,228 +217,249 @@ class NewRun extends React.Component<{
         this.setState({ dependencies });
     }
 
+    getCommand() {
+        const {
+            dependencies,
+            command,
+            name,
+            description,
+            tags,
+            disk,
+            memory,
+            cpu,
+            gpu,
+            docker,
+            networkAccess,
+            failedDependencies,
+        } = this.state;
+
+        let args = ['run'];
+
+        for (let dep of dependencies) {
+            const key = dep.alias;
+            let value = shorten_uuid(dep.target.uuid);
+            if(dep.target.path) value += '/' + dep.target.path;
+            args.push(key + ':' + value);
+        }
+
+        if(command) args.push(`"${command}"`);
+
+        return buildTerminalCommand(args);
+    }
+
+    runCommand() {
+        const cmd = this.getCommand();
+        const response = $('#command_line').terminal().exec(cmd);
+    }
+
     /**
      * Render.
      */
     render() {
-        const { classes } = this.props;
+        const { classes, ws } = this.props;
+
+        let candidates: Bundle[] = [];
+        if(ws && ws.info && ws.info.items) {
+            ws.info.items.forEach((item) => {
+                if(item.bundles_spec && item.bundles_spec.bundle_infos) {
+                    item.bundles_spec.bundle_infos.forEach((bundle) => {
+                        candidates.push({
+                            name: bundle.metadata.name,
+                            uuid: bundle.uuid,
+                            path: null,
+                        });
+                    });
+                }
+            });
+        }
+
         return (
-            <div>
-                {/* Button ===================================================================== */}
-                <Button
-                    variant="contained"
-                    size="medium"
-                    color="primary"
-                    aria-label="New Run"
-                    onClick={ () => this.setState({ isDrawerVisible: true }) }
-                >
-                    <AddIcon className={classes.buttonIcon} />
-                    Run
-                </Button>
+            <ConfigPanel
+                buttons={(
+                    <div>
+                        <Button
+                            variant='text'
+                            color='primary'
+                            onClick={() => this.setState(this.defaultConfig)}
+                        >Clear</Button>
+                        <Button
+                            variant='contained'
+                            color='primary'
+                            onClick={() => {
+                                this.runCommand();
+                                this.props.onSubmit();
+                            }}
+                        >Confirm</Button>
+                    </div>
+                )}
+                sidebar={(
+                    <div>
+                        <Typography variant='subtitle1'>Information</Typography>
 
-                {/* Drawer ===================================================================== */}
-                <Drawer
-                    anchor="bottom"
-                    open={ this.state.isDrawerVisible }
-                    onClose={ () => this.setState({ isDrawerVisible: false }) }
-                    classes={ { paper: classes.drawer } }
-                >
-                    <ConfigPanel
-                        buttons={(
-                            <div>
-                                <Button
-                                    variant='text'
-                                    color='primary'
-                                    onClick={() => this.setState(this.defaultConfig)}
-                                >Clear</Button>
-                                <Button
-                                    variant='contained'
-                                    color='primary'
-                                    onClick={() => alert("New Run Confirmed")}
-                                >Confirm</Button>
-                            </div>
-                        )}
-                        sidebar={(
-                            <div>
-                                <Typography variant='subtitle1'>Information</Typography>
-
-                                <ConfigLabel
-                                    label="Name"
-                                    tooltip="Short name (not necessarily unique) to provide an
-                                    easy, human-readable way to reference this bundle (e.g as a
-                                    dependency). May only use alphanumeric characters and dashes."
-                                />
-                                <ConfigTextInput
-                                    value={this.state.name}
-                                    onValueChange={(value) => this.setState({ name: value })}
-                                    placeholder="untitled-run"
-                                />
-
-                                <ConfigLabel
-                                    label="Description"
-                                    tooltip="Text description or notes about this bundle."
-                                    optional
-                                />
-                                <ConfigTextInput
-                                    value={this.state.description}
-                                    onValueChange={(value) => this.setState({ description: value })}
-                                    multiline
-                                    maxRows={3}
-                                />
-
-                                <ConfigLabel
-                                    label="Tags"
-                                    tooltip="Keywords that can be used to search for and categorize
-                                    this bundle."
-                                    optional
-                                />
-                                <ConfigChipInput
-                                    values={this.state.tags}
-                                    onValueAdd={(value) => this.setState(
-                                        (state) => ({ tags: [...state.tags, value] })
-                                    )}
-                                    onValueDelete={(value, idx) => this.setState(
-                                        (state) => ({ tags: [...state.tags.slice(0, idx), ...state.tags.slice(idx+1)] })
-                                    )}
-                                />
-
-                                <div className={classes.spacer}/>
-                                <Typography variant='subtitle1'>Resources</Typography>
-
-                                <Grid container>
-                                    <Grid item xs={6}>
-                                        <ConfigLabel
-                                            label="Disk"
-                                            tooltip="Amount of disk space allocated for this run.
-                                            Defaults to amount of user quota left."
-                                        />
-                                        <ConfigTextInput
-                                            value={this.state.disk}
-                                            onValueChange={(value) => this.setState({ disk: value })}
-                                            placeholder="5g"
-                                        />
-                                    </Grid>
-                                    <Grid item xs={6}>
-                                        <ConfigLabel
-                                            label="Memory"
-                                            tooltip="Amount of memory allocated for this run."
-                                        />
-                                        <ConfigTextInput
-                                            value={this.state.memory}
-                                            onValueChange={(value) => this.setState({ memory: value })}
-                                            placeholder="5g"
-                                        />
-                                    </Grid>
-                                    <Grid item xs={6}>
-                                        <ConfigLabel
-                                            label="CPUs"
-                                            tooltip="Number of CPUs allocated for this run."
-                                        />
-                                        <ConfigTextInput
-                                            value={this.state.cpu}
-                                            onValueChange={(value) => this.setState({ cpu: value })}
-                                            placeholder="1"
-                                        />
-                                    </Grid>
-                                    <Grid item xs={6}>
-                                        <ConfigLabel
-                                            label="GPUs"
-                                            tooltip="Number of GPUs allocated for this run."
-                                        />
-                                        <ConfigTextInput
-                                            value={this.state.gpu}
-                                            onValueChange={(value) => this.setState({ gpu: value })}
-                                            placeholder="1"
-                                        />
-                                    </Grid>
-                                    <Grid item xs={12}>
-                                        <ConfigLabel
-                                            label="Docker Image"
-                                            tooltip="Tag or digest of Docker image to serve as the
-                                            virtual run environment."
-                                        />
-                                        <ConfigTextInput
-                                            value={this.state.docker}
-                                            onValueChange={(value) => this.setState({ docker: value })}
-                                            placeholder="codalab/default-cpu:latest"
-                                        />
-                                    </Grid>
-                                    <Grid item xs={12}>
-                                        <ConfigSwitchInput
-                                            value={this.state.networkAccess}
-                                            onValueChange={(value) => this.setState({ networkAccess: value })}
-                                        />
-                                        <ConfigLabel
-                                            label="Network Access"
-                                            tooltip="Whether the bundle can open any external
-                                            network ports."
-                                            inline
-                                        />
-                                    </Grid>
-                                    <Grid item xs={12}>
-                                        <ConfigSwitchInput
-                                            value={this.state.failedDependencies}
-                                            onValueChange={(value) => this.setState({ failedDependencies: value })}
-                                        />
-                                        <ConfigLabel
-                                            label="Failed Dependencies"
-                                            tooltip="Whether the bundle can depend on failed/killed
-                                            dependencies."
-                                            inline
-                                        />
-                                    </Grid>
-                                </Grid>
-                            </div>
-                        )}
-                    >
-                        {/* Main Content ------------------------------------------------------- */}
-                        <Typography variant='subtitle1' gutterBottom>New Run</Typography>
                         <ConfigLabel
-                            label="Dependencies"
-                            tooltip="Map an entire bundle or a file/directory inside to a name that
-                            can be referenced in the terminal command."
+                            label="Name"
+                            tooltip="Short name (not necessarily unique) to provide an
+                            easy, human-readable way to reference this bundle (e.g as a
+                            dependency). May only use alphanumeric characters and dashes."
                         />
-                        <DependencyEditor
-                            addDependency={(dep) => this.addDependency(dep)}
-                            updateDependency={(idx, alias) => this.updateDependency(idx, alias)}
-                            removeDependency={(idx) => this.removeDependency(idx)}
-                            dependencies={this.state.dependencies}
-                            candidates={kDummyCandidates}
+                        <ConfigTextInput
+                            value={this.state.name}
+                            onValueChange={(value) => this.setState({ name: value })}
+                            placeholder="untitled-run"
+                        />
+
+                        <ConfigLabel
+                            label="Description"
+                            tooltip="Text description or notes about this bundle."
+                            optional
+                        />
+                        <ConfigTextInput
+                            value={this.state.description}
+                            onValueChange={(value) => this.setState({ description: value })}
+                            multiline
+                            maxRows={3}
+                        />
+
+                        <ConfigLabel
+                            label="Tags"
+                            tooltip="Keywords that can be used to search for and categorize
+                            this bundle."
+                            optional
+                        />
+                        <ConfigChipInput
+                            values={this.state.tags}
+                            onValueAdd={(value) => this.setState(
+                                (state) => ({ tags: [...state.tags, value] })
+                            )}
+                            onValueDelete={(value, idx) => this.setState(
+                                (state) => ({ tags: [...state.tags.slice(0, idx), ...state.tags.slice(idx+1)] })
+                            )}
                         />
 
                         <div className={classes.spacer}/>
-                        <ConfigLabel
-                            label="Command"
-                            tooltip="Terminal command to run within the Docker container. It can use
-                            data from other bundles by referencing the aliases specified in the
-                            dependencies section."
-                        />
-                        <ConfigCodeInput
-                            value={this.state.command}
-                            onValueChange={(value) => this.setState({ command: value })}
-                            multiline
-                            placeholder="python train.py --data mydataset.txt"
-                            maxRows={4}
-                        />
-                    </ConfigPanel>
-                </Drawer>
-            </div>
+                        <Typography variant='subtitle1'>Resources</Typography>
+
+                        <Grid container>
+                            <Grid item xs={6}>
+                                <ConfigLabel
+                                    label="Disk"
+                                    tooltip="Amount of disk space allocated for this run.
+                                    Defaults to amount of user quota left."
+                                />
+                                <ConfigTextInput
+                                    value={this.state.disk}
+                                    onValueChange={(value) => this.setState({ disk: value })}
+                                    placeholder="5g"
+                                />
+                            </Grid>
+                            <Grid item xs={6}>
+                                <ConfigLabel
+                                    label="Memory"
+                                    tooltip="Amount of memory allocated for this run."
+                                />
+                                <ConfigTextInput
+                                    value={this.state.memory}
+                                    onValueChange={(value) => this.setState({ memory: value })}
+                                    placeholder="5g"
+                                />
+                            </Grid>
+                            <Grid item xs={6}>
+                                <ConfigLabel
+                                    label="CPUs"
+                                    tooltip="Number of CPUs allocated for this run."
+                                />
+                                <ConfigTextInput
+                                    value={this.state.cpu}
+                                    onValueChange={(value) => this.setState({ cpu: value })}
+                                    placeholder="1"
+                                />
+                            </Grid>
+                            <Grid item xs={6}>
+                                <ConfigLabel
+                                    label="GPUs"
+                                    tooltip="Number of GPUs allocated for this run."
+                                />
+                                <ConfigTextInput
+                                    value={this.state.gpu}
+                                    onValueChange={(value) => this.setState({ gpu: value })}
+                                    placeholder="1"
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <ConfigLabel
+                                    label="Docker Image"
+                                    tooltip="Tag or digest of Docker image to serve as the
+                                    virtual run environment."
+                                />
+                                <ConfigTextInput
+                                    value={this.state.docker}
+                                    onValueChange={(value) => this.setState({ docker: value })}
+                                    placeholder="codalab/default-cpu:latest"
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <ConfigSwitchInput
+                                    value={this.state.networkAccess}
+                                    onValueChange={(value) => this.setState({ networkAccess: value })}
+                                />
+                                <ConfigLabel
+                                    label="Network Access"
+                                    tooltip="Whether the bundle can open any external
+                                    network ports."
+                                    inline
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <ConfigSwitchInput
+                                    value={this.state.failedDependencies}
+                                    onValueChange={(value) => this.setState({ failedDependencies: value })}
+                                />
+                                <ConfigLabel
+                                    label="Failed Dependencies"
+                                    tooltip="Whether the bundle can depend on failed/killed
+                                    dependencies."
+                                    inline
+                                />
+                            </Grid>
+                        </Grid>
+                    </div>
+                )}
+            >
+                {/* Main Content ------------------------------------------------------- */}
+                <Typography variant='subtitle1' gutterBottom>New Run</Typography>
+                <ConfigLabel
+                    label="Dependencies"
+                    tooltip="Map an entire bundle or a file/directory inside to a name that
+                    can be referenced in the terminal command."
+                />
+                <DependencyEditor
+                    addDependency={(dep) => this.addDependency(dep)}
+                    updateDependency={(idx, alias) => this.updateDependency(idx, alias)}
+                    removeDependency={(idx) => this.removeDependency(idx)}
+                    dependencies={this.state.dependencies}
+                    candidates={candidates}
+                />
+
+                <div className={classes.spacer}/>
+                <ConfigLabel
+                    label="Command"
+                    tooltip="Terminal command to run within the Docker container. It can use
+                    data from other bundles by referencing the aliases specified in the
+                    dependencies section."
+                />
+                <ConfigCodeInput
+                    value={this.state.command}
+                    onValueChange={(value) => this.setState({ command: value })}
+                    multiline
+                    placeholder="python train.py --data mydataset.txt"
+                    maxRows={4}
+                />
+            </ConfigPanel>
         );
     }
 }
 
 const styles = (theme) => ({
-    buttonIcon: {
-        marginRight: theme.spacing.large,
-    },
-    drawer: {
-        height: '70vh',
-        width: '70vw',
-        marginLeft: 'auto',
-        marginRight: 'auto',
-        borderTopLeftRadius: theme.spacing.unit,
-        borderTopRightRadius: theme.spacing.unit,
-    },
     spacer: {
         marginTop: theme.spacing.larger,
     },
