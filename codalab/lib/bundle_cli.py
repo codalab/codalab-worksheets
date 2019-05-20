@@ -1507,10 +1507,13 @@ class BundleCLI(object):
         metadata = self.get_missing_metadata(RunBundle, args)
 
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
+        params = { 'worksheet': worksheet_uuid }
+        if args.after_sort_key:
+            params['after_sort_key'] = args.after_sort_key
         new_bundle = client.create(
             'bundles',
             self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
-            params={'worksheet': worksheet_uuid, 'after_sort_key': args.after_sort_key},
+            params=params,
         )
 
         print >>self.stdout, new_bundle['uuid']
