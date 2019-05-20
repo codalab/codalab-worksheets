@@ -164,8 +164,8 @@ class NewRun extends React.Component<{
         name: 'untitled-run',
         description: '',
         tags: [],
-        disk: "10 GB",
-        memory: "2 GB",
+        disk: "10g",
+        memory: "2g",
         cpu: 1,
         gpu: 1,
         docker: "codalab/default-cpu:latest",
@@ -236,6 +236,18 @@ class NewRun extends React.Component<{
 
         let args = ['run'];
 
+        // if (after_sort_key) args.push(`-a ${ after_sort_key }`);
+        if(name) args.push(`--name ${name}`);
+        if(description) args.push(`--description ${description}`);
+        //if(tags) args.push(`--tags ${tags.map((tag) => `'${tag}'`).join(",")}`);
+        if(disk) args.push(`--request-disk ${disk}`);
+        if(memory) args.push(`--request-memory ${memory}`);
+        if(cpu) args.push(`--request-cpus ${cpu}`);
+        if(gpu) args.push(`--request-gpus ${gpu}`);
+        if(docker) args.push(`--request-docker-image ${docker}`);
+        if(networkAccess) args.push(`--request-network`);
+        if(failedDependencies) args.push(`--allow-failed-dependencies`);
+
         for (let dep of dependencies) {
             const key = dep.alias;
             let value = shorten_uuid(dep.target.uuid);
@@ -243,19 +255,9 @@ class NewRun extends React.Component<{
             args.push(key + ':' + value);
         }
 
-        if(name) args.push(`--name ${name}`);
-        if(description) args.push(`--description ${description}`);
-        if(tags) args.push(`--tags ${tags.join(" ")}`);
-        if(disk) args.push(`--request-disk ${disk}`);
-        if(memory) args.push(`--request-memory ${memory}`);
-        if(cpu) args.push(`--request-cpus ${cpu}`);
-        if(gpu) args.push(`--request-gpus ${gpu}`);
-
         if(command) args.push(`"${command}"`);
 
-        if (after_sort_key)  args.push(`-a ${ after_sort_key }`);
         return args.join(" ");  // TODO: Make safe.
-
         //return buildTerminalCommand(args);
     }
 
