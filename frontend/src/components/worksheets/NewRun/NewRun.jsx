@@ -236,17 +236,17 @@ class NewRun extends React.Component<{
 
         let args = ['run'];
 
-        // if (after_sort_key) args.push(`-a ${ after_sort_key }`);
-        if(name) args.push(`--name ${name}`);
-        if(description) args.push(`--description ${description}`);
-        //if(tags) args.push(`--tags ${tags.map((tag) => `'${tag}'`).join(",")}`);
-        if(disk) args.push(`--request-disk ${disk}`);
-        if(memory) args.push(`--request-memory ${memory}`);
-        if(cpu) args.push(`--request-cpus ${cpu}`);
-        if(gpu) args.push(`--request-gpus ${gpu}`);
-        if(docker) args.push(`--request-docker-image ${docker}`);
-        if(networkAccess) args.push(`--request-network`);
-        if(failedDependencies) args.push(`--allow-failed-dependencies`);
+        if (after_sort_key) args.push(`-a ${ after_sort_key }`);
+        if (name) args.push(`--name=${name}`);
+        if (description) args.push(`--description=${description}`);
+        if (tags) args.push(`--tags=${tags.map((tag) => `'${tag}'`).join(",")}`);
+        if (disk) args.push(`--request-disk=${disk}`);
+        if (memory) args.push(`--request-memory=${memory}`);
+        if (cpu) args.push(`--request-cpus=${cpu}`);
+        if (gpu) args.push(`--request-gpus=${gpu}`);
+        if (docker) args.push(`--request-docker-image=${docker}`);
+        if (networkAccess) args.push(`--request-network`);
+        if (failedDependencies) args.push(`--allow-failed-dependencies`);
 
         for (let dep of dependencies) {
             const key = dep.alias;
@@ -255,15 +255,16 @@ class NewRun extends React.Component<{
             args.push(key + ':' + value);
         }
 
-        if(command) args.push(`"${command}"`);
+        if (command) args.push(`"${command}"`);
 
-        return args.join(" ");  // TODO: Make safe.
-        //return buildTerminalCommand(args);
+        return buildTerminalCommand(args);
     }
 
     runCommand() {
         const cmd = this.getCommand();
-        const response = $('#command_line').terminal().exec(cmd);
+        if (cmd) {
+            const response = $('#command_line').terminal().exec(cmd);
+        }
     }
 
     /**
