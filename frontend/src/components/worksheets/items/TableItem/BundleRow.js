@@ -5,22 +5,70 @@ import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import IconButton from '@material-ui/core/IconButton';
+import Button from '@material-ui/core/Button';
+
 import DeleteIcon from '@material-ui/icons/Delete';
 import MoreIcon from '@material-ui/icons/MoreVert';
+import UploadIcon from '@material-ui/icons/CloudUpload';
+import AddIcon from '@material-ui/icons/PlayCircleFilled';
 
 import BundleDetail from '../../BundleDetail';
+import NewRun from '../../NewRun';
 import NewUpload from '../../NewUpload';
-import InsertButtons from './InsertButtons';
 import { buildTerminalCommand } from '../../../../util/worksheet_utils';
+
+
+class InsertButtons extends Component<{
+    classes: {},
+    showNewUpload: () => void,
+    showNewRun: () => void,
+}> {
+    render() {
+        const { classes, showNewUpload, showNewRun } = this.props;
+        return (
+            <div onMouseMove={ (ev) => { ev.stopPropagation(); } }
+                 className={ classes.buttonsPanel }
+            >
+                <Button
+                    key="upload"
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                    aria-label="New Upload"
+                    onClick={ () => showNewUpload() }
+                >
+                    <UploadIcon className={classes.buttonIcon} />
+                    Upload
+                </Button>
+                <Button
+                    key="run"
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                    aria-label="New Run"
+                    onClick={ () => showNewRun() }
+                >
+                    <AddIcon className={classes.buttonIcon} />
+                    Run
+                </Button>
+            </div>
+        );
+
+
+    }
+}
 
 class BundleRow extends Component {
 
     state = {
         showDetail: false,
-        showUpload: 0,
+        showNewUpload: 0,
         showNewRun: 0,
         showInsertButtons: 0,
         bundleInfoUpdates: {},
+        showDetail: false,
+        showNewRun: false,
+        showNewUpload: false,
     }
 
     receiveBundleInfoUpdates = (update) => {
@@ -38,9 +86,9 @@ class BundleRow extends Component {
         });
     }
 
-    showUpload = (val) => () => {
+    showNewUpload = (val) => () => {
         console.log('===>', val, this.props.prevBundleInfo, this.props.bundleInfo);
-        this.setState({ showUpload: val });
+        this.setState({ showNewUpload: val });
     }
 
     showNewRun = (val) => () => {
@@ -83,7 +131,7 @@ class BundleRow extends Component {
     }
 
     render() {
-        const { showInsertButtons, showDetail, showUpload, showNewRun, bundleInfoUpdates } = this.state;
+        const { showInsertButtons, showDetail, showNewUpload, showNewRun, bundleInfoUpdates } = this.state;
         const { classes, onMouseMove, bundleInfo, prevBundleInfo, item, worksheetUUID, reloadWorksheet } = this.props;
         const rowItems = {...item, ...bundleInfoUpdates};
         var baseUrl = this.props.url;
@@ -143,14 +191,15 @@ class BundleRow extends Component {
                     {
                         (showInsertButtons < 0) &&
                         <InsertButtons
-                            clickUpload={ this.showUpload(-1) }
-                            clickNewRun={ this.showNewRun(-1) }
+                            classes={classes}
+                            showNewUpload={ this.showNewUpload(-1) }
+                            showNewRun={ this.showNewRun(-1) }
                         />
                     }
                 </TableCell>
             </TableRow>
             {
-                (showUpload === -1) &&
+                (showNewUpload === -1) &&
                 <TableRow>
                     <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
                         <NewUpload
@@ -216,13 +265,25 @@ class BundleRow extends Component {
                 </TableRow>
             }
             {
-                (showUpload === 1) &&
+                (showNewUpload === 1) &&
                 <TableRow>
                     <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
                         <NewUpload
                             after_sort_key={ bundleInfo.sort_key }
                             worksheetUUID={ worksheetUUID }
                             reloadWorksheet={ reloadWorksheet }
+                            ws={this.props.ws}
+                        />
+                    </TableCell>
+                </TableRow>
+            }
+            {
+                showNewRun &&
+                <TableRow>
+                    <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
+                        <NewRun
+                            ws={this.props.ws}
+                            onSubmit={() => this.setState({ showNewRun: false })}
                         />
                     </TableCell>
                 </TableRow>
@@ -235,8 +296,9 @@ class BundleRow extends Component {
                     {
                         (showInsertButtons > 0) &&
                         <InsertButtons
-                            clickUpload={ this.showUpload(1) }
-                            clickNewRun={ this.showNewRun(1) }
+                            classes={classes}
+                            showNewUpload={ this.showNewUpload(1) }
+                            showNewRun={ this.showNewRun(1) }
                         />
                     }
                 </TableCell>
@@ -296,6 +358,17 @@ const styles = (theme) => ({
     },
     iconButtonRoot: {
         backgroundColor: theme.color.grey.light,
+    },
+    buttonsPanel: {
+        display: 'flex',
+        flexDirection: 'row',
+        position: 'absolute',
+        justifyContent: 'center',
+        width: '100%',
+        transform: 'translateY(-50%)',
+    },
+    buttonIcon: {
+        marginRight: theme.spacing.large,
     },
 });
 

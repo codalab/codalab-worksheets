@@ -352,17 +352,6 @@ class NewUpload extends React.Component<{
 }
 
 const styles = (theme) => ({
-    buttonIcon: {
-        marginRight: theme.spacing.large,
-    },
-    drawer: {
-        height: '70vh',
-        width: '70vw',
-        marginLeft: 'auto',
-        marginRight: 'auto',
-        borderTopLeftRadius: theme.spacing.unit,
-        borderTopRightRadius: theme.spacing.unit,
-    },
     spacer: {
         marginTop: theme.spacing.larger,
     },
