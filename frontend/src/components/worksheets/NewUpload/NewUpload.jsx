@@ -346,6 +346,15 @@ class NewUpload extends React.Component<{
     }
 }
 
+// <div className={classes.spacer}/>
+// <ConfigLabel
+//     label="Clone from URL"
+//     tooltip="Clone an existing bundle on Codalab."
+// />
+// <ConfigTextInput
+//     value={this.state.url}
+//     onValueChange={(value) => this.setState({ url: value })}/>
+
 const styles = (theme) => ({
     progress: {
         position: 'absolute',
