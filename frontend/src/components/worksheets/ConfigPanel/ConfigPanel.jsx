@@ -78,7 +78,8 @@ const styles = (theme) => ({
         '& button': {
             marginLeft: theme.spacing.larger,
         },
-        paddingBottom: theme.spacing.larger,
+        paddingBottom: theme.spacing.large,
+        paddingTop: theme.spacing.larger,
     }
 });
 
