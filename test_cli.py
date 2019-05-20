@@ -254,7 +254,8 @@ def temp_instance():
             s.close()
         return ports
 
-    rest_port = get_free_ports(1)[0]
+    ports = get_free_ports(2)
+    rest_port, http_port = ports[0], ports[1]
     temp_instance_name = random_name()
     try:
         subprocess.check_output(
@@ -265,6 +266,7 @@ def temp_instance():
                     '-i',
                     '--instance-name %s' % temp_instance_name,
                     '--rest-port %s' % rest_port,
+                    '--http-port %s' % http_port,
                 ]
             ),
             shell=True
@@ -273,7 +275,7 @@ def temp_instance():
         print("Temp instance exception: %s" % ex.output)
         raise
     # Switch to new host and log in to cache auth token
-    remote_host = 'http://localst:%s' % rest_port
+    remote_host = 'http://localhost:%s' % rest_port
     remote_worksheet = '%s::' % remote_host
     run_command([cl, 'logout', remote_worksheet[:-2]])
 
@@ -281,7 +283,7 @@ def temp_instance():
     run_command([cl, 'work', remote_worksheet], env=env)
 
     yield CodaLabInstance(
-        remote_host, remote_worksheet, env['CODALAB_USER'], env['CODALAB_PASSWORD']
+        remote_host, remote_worksheet, env['CODALAB_USERNAME'], env['CODALAB_PASSWORD']
     )
 
     subprocess.check_call(
@@ -290,7 +292,6 @@ def temp_instance():
                 './codalab_service.py',
                 'down',
                 '--instance-name temp-%s' % temp_instance_name,
-                '--rest-port %s' % rest_port,
             ]
         ),
         shell=True
