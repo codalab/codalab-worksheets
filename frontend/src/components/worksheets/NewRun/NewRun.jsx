@@ -232,6 +232,7 @@ class NewRun extends React.Component<{
             networkAccess,
             failedDependencies,
         } = this.state;
+        const { after_sort_key } = this.props;
 
         let args = ['run'];
 
@@ -243,6 +244,12 @@ class NewRun extends React.Component<{
         }
 
         if(command) args.push(`"${command}"`);
+
+        if (after_sort_key) {
+            args.push(`-a ${ after_sort_key }`);
+        }
+
+        console.log('command ===>', buildTerminalCommand(args));
 
         return buildTerminalCommand(args);
     }
