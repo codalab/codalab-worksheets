@@ -267,6 +267,7 @@ def temp_instance():
                     '--instance-name %s' % temp_instance_name,
                     '--rest-port %s' % rest_port,
                     '--http-port %s' % http_port,
+                    '--version %s' % cl_version,
                 ]
             ),
             shell=True,
@@ -1628,6 +1629,12 @@ if __name__ == '__main__':
         default='localhost',
     )
     parser.add_argument(
+        '--cl-version',
+        type=str,
+        help='Codalab version to use for multi-instance tests, defaults to "latest"',
+        default='latest',
+    )
+    parser.add_argument(
         'tests',
         metavar='TEST',
         nargs='+',
@@ -1637,6 +1644,7 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
     cl = args.cl_executable
+    cl_version = args.cl_version
     success = TestModule.run(args.tests, args.instance)
     if not success:
         sys.exit(1)
