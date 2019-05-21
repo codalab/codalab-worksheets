@@ -611,7 +611,9 @@ class CodalabServiceManager(object):
     def test(self):
         test_cli.cl = 'codalab/bin/cl'
         test_cli.cl_version = self.args.version
-        test_cli.TestModule.run(self.args.tests, 'localhost')
+        success = test_cli.TestModule.run(self.args.tests, 'localhost')
+        if not success:
+            sys.exit(1)
 
 
 if __name__ == '__main__':
