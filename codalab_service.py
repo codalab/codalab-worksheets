@@ -29,7 +29,7 @@ class CodalabArgs(argparse.Namespace):
         'initial_config': False,
         'root_dir': None,
         'instance_name': 'codalab',
-        'mysql_codalab_password': 'codalab',
+        'mysql_root_password': 'codalab',
         'mysql_user': 'codalab',
         'mysql_password': 'codalab',
         'codalab_user': 'codalab',
@@ -60,7 +60,7 @@ class CodalabArgs(argparse.Namespace):
         'user_compose_file': 'CODALAB_USER_COMPOSE_FILE',
         'start_worker': 'CODALAB_START_WORKER',
         'initial_config': 'CODALAB_INITIAL_CONFIG',
-        'mysql_codalab_password': 'CODALAB_MYSQL_ROOT_PWD',
+        'mysql_root_password': 'CODALAB_MYSQL_ROOT_PWD',
         'mysql_user': 'CODALAB_MYSQL_USER',
         'mysql_password': 'CODALAB_MYSQL_PWD',
         'codalab_user': 'CODALAB_ROOT_USER',
@@ -235,25 +235,25 @@ class CodalabArgs(argparse.Namespace):
         start_cmd.add_argument(
             '--codalab-home',
             type=str,
-            help='Path on the host machine to store home directory of the Codalab server (by default nothing is stored',
+            help='Path on the host machine to store home directory of the Codalab server (by default nothing is stored)',
             default=argparse.SUPPRESS,
         )
         start_cmd.add_argument(
             '--mysql-mount',
             type=str,
-            help='Path on the host machine to store mysql data files, by default the database is ephemeral',
+            help='Path on the host machine to store mysql data files (by default the database is ephemeral)',
             default=argparse.SUPPRESS,
         )
         start_cmd.add_argument(
             '--worker-dir',
             type=str,
-            help='Path on the host machine to store worker data files, by default these are ephemeral',
+            help='Path on the host machine to store worker data files (defaults to <repo root>/codalab-worker-scratch if worker started)',
             default=argparse.SUPPRESS,
         )
         start_cmd.add_argument(
             '--bundle-store',
             type=str,
-            help='Path on the host machine to store bundle data files, by default these are ephemeral',
+            help='Path on the host machine to store bundle data files (by default these are ephemeral)',
             default=[],
             dest='bundle_stores',
             action='append',
@@ -409,7 +409,7 @@ class CodalabServiceManager(object):
     @staticmethod
     def resolve_env_vars(args):
         environment = {
-            'CODALAB_MYSQL_ROOT_PWD': args.mysql_codalab_password,
+            'CODALAB_MYSQL_ROOT_PWD': args.mysql_root_password,
             'CODALAB_MYSQL_USER': args.mysql_user,
             'CODALAB_MYSQL_PWD': args.mysql_password,
             'CODALAB_ROOT_USER': args.codalab_user,
@@ -514,6 +514,11 @@ class CodalabServiceManager(object):
                 self.args.cmd, root=not self.args.no_root, service=self.args.service
             )
         elif self.command == 'logs':
+            cmd_str = 'logs'
+            if self.args.tail is not None:
+                cmd_str += ' --tail %s' % self.args.tail
+            if self.args.follow:
+                cmd_str += ' -f'
             self._run_compose_cmd('logs')
         elif self.command == 'stop':
             self._run_compose_cmd('stop')
