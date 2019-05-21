@@ -1,0 +1,6 @@
+version: '3.5'
+
+services:
+  rest-server:
+    ports:
+      - ${CODALAB_REST_PORT}:2900

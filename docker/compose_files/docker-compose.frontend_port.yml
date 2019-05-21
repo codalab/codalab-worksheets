@@ -1,0 +1,6 @@
+version: '3.5'
+
+services:
+  frontend:
+    ports:
+      - ${CODALAB_FRONTEND_PORT}:2700

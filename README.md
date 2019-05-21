@@ -34,9 +34,10 @@ If you're interested in contributing or setting up your own CodaLab Worksheets i
 
 We provide a convenience script that uses `docker-compose` to bring up a full fledged CodaLab server in this repo.
 To get started, make sure you have a recent version of Docker and docker-compose installed.
-Simply run `bash docker/codalab-service/start_service.sh -i` to bring up a fresh instance of CodaLab with the default configuration.
+Simply run `bash docker/codalab_service/start_service.sh -i` to bring up a fresh instance of CodaLab with the default configuration.
 If you've made local changes to the codebase and would like to rebuild docker images from the current state of the codebase, 
-use `bash docker/codalab-service/start_service.sh -i -b`.
-If you've previously started an instance and thus have the database and root account initialization done, omit the `-i` flag to just bring the service up like so: `bash docker/codalab-service/start_service.sh`
+use `bash docker/codalab_service/start_service.sh -i -b`.
+If you've previously started an instance and thus have the database and root account initialization done, omit the `-i` flag to just bring the service up like so: `bash docker/codalab_service/start_service.sh`
 
-You can customize variables such as the root account credentials, where the bundle store and home folder and mysql data are mounted in your local filesystem. To see a full list of these variables and their names, consult `docker/codalab-service/start_service.sh`.
+You can customize variables such as the root account credentials, where the bundle store and home folder and mysql data are mounted in your local filesystem. To see a full list of these variables and their names, consult `docker/codalab_service/start_service.sh`.
+

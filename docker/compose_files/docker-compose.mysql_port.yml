@@ -1,0 +1,6 @@
+version: '3.5'
+
+services:
+  mysql:
+    ports:
+      - ${CODALAB_MYSQL_PORT}:3306
