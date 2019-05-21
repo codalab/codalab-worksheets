@@ -1,0 +1,18 @@
+version: '3.5'
+
+x-codalab-home-mount:
+  &codalab-home-mount
+  type: bind
+  source: ${CODALAB_SERVICE_HOME}
+  target: ${CODALAB_SERVICE_HOME}
+
+services:
+  rest-server:
+    user: ${CODALAB_UID}
+    volumes:
+      - *codalab-home-mount
+
+  bundle-manager:
+    user: ${CODALAB_UID}
+    volumes:
+      - *codalab-home-mount
