@@ -140,7 +140,7 @@ class CodalabArgs(argparse.Namespace):
 
         build_cmd.add_argument(
             'image',
-            default=argparse.SUPPRESS,
+            default='all',
             help='Images to build',
             choices=CodalabServiceManager.ALL_IMAGES + ['all'],
             nargs='?',
