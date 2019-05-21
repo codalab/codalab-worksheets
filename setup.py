@@ -44,7 +44,7 @@ setup(
     include_package_data=True,
     install_requires=get_requirements('worker/requirements.txt'),
     entry_points={
-        'console_scripts': ['cl=codalab.bin.cl:main', 'codalab_service=codalab_service:main']
+        'console_scripts': ['cl=codalab.bin.cl:main', 'codalab-service=codalab_service:main']
     },
     zip_safe=False,
 ),
