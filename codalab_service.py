@@ -610,7 +610,7 @@ class CodalabServiceManager(object):
 
     def test(self):
         test_cli.cl = 'codalab/bin/cl'
-        test_cli.cl_version = args.version
+        test_cli.cl_version = self.args.version
         test_cli.TestModule.run(self.args.tests, 'localhost')
 
 
