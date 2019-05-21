@@ -4,6 +4,7 @@ import argparse
 import errno
 import os
 import subprocess
+import sys
 import test_cli
 
 
@@ -598,8 +599,10 @@ class CodalabServiceManager(object):
 
     def build(self):
         print("[CODALAB] => Building Docker images")
-        images_to_build = self.ALL_IMAEGS if self.args.image == 'all' else [self.args.image]
+        images_to_build = self.ALL_IMAGES if self.args.image == 'all' else [self.args.image]
         for image in images_to_build:
+            if image == 'frontend' and self.args.dev:
+                image = 'frontend-dev'
             self.build_image(image)
         if self.args.push:
             self._run_docker_cmd(
