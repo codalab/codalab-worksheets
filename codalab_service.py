@@ -116,6 +116,7 @@ class CodalabArgs(argparse.Namespace):
             )
             cmd.add_argument(
                 '--dev',
+                '-d',
                 action='store_true',
                 help='If specified, use dev versions of images',
                 default=argparse.SUPPRESS,
