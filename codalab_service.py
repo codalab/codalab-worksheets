@@ -22,7 +22,7 @@ class CodalabArgs(argparse.Namespace):
         'docker_user': None,
         'docker_password': None,
         'build_locally': False,
-        'image': 'all',
+        'image': 'service',
         'test_build': False,
         'user_compose_file': None,
         'start_worker': False,
@@ -142,9 +142,10 @@ class CodalabArgs(argparse.Namespace):
 
         build_cmd.add_argument(
             'image',
-            default='all',
-            help='Images to build',
-            choices=CodalabServiceManager.ALL_IMAGES + ['all'],
+            default='service',
+            help='Images to build. \'service\' for server-side images (server, frontend, worker) \
+                    \'all\' for those and the default execution images',
+            choices=CodalabServiceManager.ALL_IMAGES + ['all', 'service'],
             nargs='?',
         )
 
@@ -405,7 +406,8 @@ class CodalabArgs(argparse.Namespace):
 
 class CodalabServiceManager(object):
 
-    ALL_IMAGES = ['server', 'frontend', 'worker', 'default-cpu', 'default-gpu']
+    SERVICE_IMAGES = ['server', 'frontend', 'worker']
+    ALL_IMAGES = SERVICE_IMAGES + ['default-cpu', 'default-gpu']
 
     @staticmethod
     def resolve_env_vars(args):
@@ -605,7 +607,12 @@ class CodalabServiceManager(object):
 
     def build(self):
         print("[CODALAB] => Building Docker images")
-        images_to_build = self.ALL_IMAGES if self.args.image == 'all' else [self.args.image]
+        if self.args.image == 'all':
+            images_to_build = self.ALL_IMAGES
+        elif self.args.image == 'service':
+            images_to_build = self.SERVICE_IMAGES
+        else:
+            images_to_build = [self.args.image]
         for image in images_to_build:
             if image == 'frontend' and self.args.dev:
                 image = 'frontend-dev'
