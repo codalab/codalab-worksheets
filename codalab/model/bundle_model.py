@@ -568,7 +568,7 @@ class BundleModel(object):
                         cl_worksheet_item.c.worksheet_uuid, conditions['worksheet_uuid']
                     ),
                 )
-                clause = and_(clause, cl_worksheet_item.c.bundle_uuid is not None)
+                clause = and_(clause, cl_worksheet_item.c.bundle_uuid.isnot(None))
                 join = cl_worksheet_item.outerjoin(
                     cl_bundle_metadata,
                     cl_worksheet_item.c.bundle_uuid == cl_bundle_metadata.c.bundle_uuid,

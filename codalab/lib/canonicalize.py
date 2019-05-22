@@ -37,7 +37,7 @@ def _parse_relative_bundle_spec(bundle_spec):
         reverse_index = int(m.group(2)) if m.group(2) != '' else 1
         return (bundle_spec, reverse_index)
 
-    # ^3: 3rd to last bundle whose name starts with foo in this worksheet
+    # ^3: 3rd to last bundle
     m = spec_util.HISTORY_REGEX.match(bundle_spec)
     if m:
         bundle_spec = None
