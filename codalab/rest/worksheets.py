@@ -203,6 +203,30 @@ def delete_worksheets():
         delete_worksheet(uuid, force)
 
 
+@post('/worksheets/<worksheet_uuid:re:%s>/add-markup' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
+def create_worksheet_item_after(worksheet_uuid):
+    """
+    Add a worksheet item to a worksheet, either after a sort key or not.
+
+    |after_sort_key| - Add the item after an item with this sort_key value.
+    """
+    after_sort_key = request.query.get('after_sort_key')
+    if after_sort_key is not None:
+        after_sort_key = int(after_sort_key)
+
+    markup = decoded_body()
+
+    # Check all necessary permissions, etc.
+    worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
+    check_worksheet_has_all_permission(local.model, request.user, worksheet)
+    worksheet_util.check_worksheet_not_frozen(worksheet)
+
+    local.model.add_worksheet_item(
+        worksheet_uuid, worksheet_util.markup_item(markup), after_sort_key
+    )
+
+
+
 @post('/worksheet-items', apply=AuthenticatedPlugin())
 def create_worksheet_items():
     """
