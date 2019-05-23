@@ -21,7 +21,6 @@ class InsertButtons extends React.Component<{
                  className={ classes.buttonsPanel }
             >
                 <Button
-                    key="upload"
                     variant="outlined"
                     size="small"
                     color="primary"
@@ -33,7 +32,6 @@ class InsertButtons extends React.Component<{
                     Upload
                 </Button>
                 <Button
-                    key="upload"
                     variant="outlined"
                     size="small"
                     color="primary"
@@ -45,7 +43,6 @@ class InsertButtons extends React.Component<{
                     Run
                 </Button>
                 <Button
-                    key="run"
                     variant="outlined"
                     size="small"
                     color="primary"
@@ -140,7 +137,9 @@ class ItemWrapper extends React.Component {
                             reloadWorksheet={ reloadWorksheet }
                         />
 	            }
-				{ children }
+	            <div className={ classes.main }>
+					{ children }
+				</div>
 				{
 	                (showNewUpload === 1) &&
                         <NewUpload
@@ -183,6 +182,9 @@ const styles = (theme) => ({
 	container: {
 		position: 'relative',
 	},
+	main: {
+		zIndex: 10,
+	},
 	buttonsPanel: {
 		display: 'flex',
         flexDirection: 'row',
@@ -191,6 +193,7 @@ const styles = (theme) => ({
         width: '100%',
         height: 0,
         transform: 'translateY(-16px)',
+        zIndex: 20,
 	},
 	buttonRoot: {
 		width: 120,
