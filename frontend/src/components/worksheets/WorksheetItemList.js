@@ -11,6 +11,8 @@ import MarkdownItem from './items/MarkdownItem';
 import RecordItem from './items/RecordItem';
 import TableItem from './items/TableItem';
 import WorksheetItem from './items/WorksheetItem';
+import TextEditorItem from './items//TextEditorItem';
+import ItemWrapper from './items/ItemWrapper';
 
 ////////////////////////////////////////////////////////////
 
@@ -204,7 +206,16 @@ class WorksheetItemList extends React.Component {
             );
             items_display = worksheet_items;
         } else {
-            items_display = <p className='empty-worksheet'>(empty)</p>;
+            items_display = <ItemWrapper
+                reloadWorksheet={ this.props.reloadWorksheet }
+                worksheetUUID={ info && info.uuid }
+                ws={ this.props.ws }
+            >
+                <TextEditorItem
+                    worksheetUUID={ info && info.uuid }
+                    reloadWorksheet={ this.props.reloadWorksheet }
+                />
+            </ItemWrapper>;
         }
         if (info && info.error)
             items_display = <p className='alert-danger'>Error in worksheet: {info.error}</p>;

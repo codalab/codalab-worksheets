@@ -70,8 +70,6 @@ class BundleRow extends Component {
         showInsertButtons: 0,
         bundleInfoUpdates: {},
         showDetail: false,
-        showNewRun: false,
-        showNewUpload: false,
     }
 
     receiveBundleInfoUpdates = (update) => {
