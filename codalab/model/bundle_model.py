@@ -2095,7 +2095,7 @@ class BundleModel(object):
                         "is_verified": is_verified,
                         "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
-                        "time_quota": self.default_user_info['time_quota'],
+                        "parallel_job_quota": self.default_user_info['parallel_job_quota'],
                         "time_used": 0,
                         "disk_quota": self.default_user_info['disk_quota'],
                         "disk_used": 0,
@@ -2322,11 +2322,15 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
-    def get_user_time_quota_left(self, user_id):
+    def get_user_parallel_job_quota_left(self, user_id):
         user_info = self.get_user_info(user_id)
-        time_quota = user_info['time_quota']
-        time_used = user_info['time_used']
-        return time_quota - time_used
+        parallel_job_quota = user_info['parallel_job_quota']
+        with self.engine.begin() as connection:
+            run_rows = connection.execute(
+                select([cl_worker_run.c.run_uuid]).where(cl_worker_run.c.user_id == user_info['user_id'])
+            ).fetchall()
+        jobs_active = len(run_rows)
+        return parallel_job_quota > jobs_active
 
     def update_user_last_login(self, user_id):
         """

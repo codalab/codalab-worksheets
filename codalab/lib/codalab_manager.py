@@ -318,11 +318,11 @@ class CodaLabManager(object):
     @cached
     def default_user_info(self):
         info = self.config['server'].get(
-            'default_user_info', {'time_quota': '1y', 'disk_quota': '1t'}
+            'default_user_info', {'disk_quota': '1t', 'parallel_job_quota': '10'}
         )
         return {
-            'time_quota': formatting.parse_duration(info['time_quota']),
             'disk_quota': formatting.parse_size(info['disk_quota']),
+            'parallel_job_quota': int(info['parallel_job_quota']),
         }
 
     @cached

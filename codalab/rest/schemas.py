@@ -266,7 +266,7 @@ class UserSchema(Schema):
 class AuthenticatedUserSchema(UserSchema):
     email = fields.String()
     notifications = fields.Integer()
-    time_quota = fields.Integer()
+    parallel_job_quota = fields.Integer()
     time_used = fields.Integer()
     disk_quota = fields.Integer()
     disk_used = fields.Integer()
@@ -278,7 +278,7 @@ class AuthenticatedUserSchema(UserSchema):
 # some users (i.e. the admin) CAN use the API to update some of these fields.
 USER_READ_ONLY_FIELDS = (
     'email',
-    'time_quota',
+    'parallel_job_quota',
     'time_used',
     'disk_quota',
     'disk_used',

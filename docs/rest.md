@@ -142,7 +142,7 @@ Name | Type
 --- | ---
 `first_name` | String
 `last_name` | String
-`time_quota` | Integer
+`parallel_job_quota` | Integer
 `notifications` | Integer
 `url` | Url
 `disk_used` | Integer

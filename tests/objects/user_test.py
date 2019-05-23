@@ -18,7 +18,7 @@ user = User(
         "is_verified": True,
         "is_superuser": False,
         "password": "",
-        "time_quota": 0,
+        "parallel_job_quota": 0,
         "time_used": 0,
         "disk_quota": 0,
         "disk_used": 0,
