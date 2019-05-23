@@ -25,10 +25,12 @@ export default createMuiTheme({
         },
         grey: {
             darkest: '#5F6B7A',
-            dark: '#8895A7',
-            base: '#B8C4CF',
-            light: '#EDF1F5',
-            lightest: '#F5F7FA',
+            darker: '#8895A7',
+            dark: '#B8C4CF',
+            base: '#DEE2E6',
+            light: '#E9ECEE',
+            lighter: '#F1F3F5',
+            lightest: '#F8F9FA',
         },
         teal: {
             darkest: '#1B655E',

@@ -5,7 +5,10 @@ import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 import Grid from '@material-ui/core/Grid';
 
-class ConfigurationPanel extends React.Component<{
+
+/** This reusable components displays a panel with a main content area, control buttons (optional), and sidebar
+    (optional). Using this component ensures aesthetic consistency across parts of the UI. */
+class ConfigPanel extends React.Component<{
     /** CSS-in-JS styling object. */
     classes: {},
 
@@ -69,7 +72,7 @@ const styles = (theme) => ({
         overflow: 'auto',
     },
     sidebar: {
-        backgroundColor: theme.color.grey.light,
+        backgroundColor: theme.color.grey.lighter,
         padding: theme.spacing.larger,
         maxHeight: '100%',
         overflow: 'auto',
@@ -83,4 +86,4 @@ const styles = (theme) => ({
     }
 });
 
-export default withStyles(styles)(ConfigurationPanel);
+export default withStyles(styles)(ConfigPanel);
