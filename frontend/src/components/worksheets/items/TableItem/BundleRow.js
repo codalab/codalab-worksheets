@@ -95,6 +95,10 @@ class BundleRow extends Component {
         this.setState({ showNewRun: val })
     }
 
+    /**
+     * Mouse listener triggered when hovering a row. It decides whether to show the buttons above or below the row,
+     * based on the vertical position of where the user hovered.
+     */
     showButtons = (ev) => {
         const row = ev.currentTarget;
         const {
@@ -412,7 +416,7 @@ const styles = (theme) => ({
         transformOrigin: 'top',
     },
     iconButtonRoot: {
-        backgroundColor: theme.color.grey.light,
+        backgroundColor: theme.color.grey.lighter,
     },
     buttonsPanel: {
         display: 'flex',
@@ -439,11 +443,13 @@ const styles = (theme) => ({
     },
     spacerAbove: {
         height: theme.spacing.larger,
-        borderBottom: `4px solid ${theme.color.grey.dark}`,
+        borderBottom: `2px solid ${theme.color.grey.dark}`,
+        backgroundColor: 'white',
     },
     spacerBelow: {
         height: theme.spacing.larger,
-        borderTop: `4px solid ${theme.color.grey.dark}`,
+        borderTop: `2px solid ${theme.color.grey.dark}`,
+        backgroundColor: 'white',
     },
 });
 

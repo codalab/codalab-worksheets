@@ -55,7 +55,9 @@ class Dependency extends React.PureComponent<
   }
 }
 
-// Main class definition.
+/**
+ * Content to display in sidebar of a Bundle Detail expansion panel.
+ */
 class SideBar extends React.Component<
     {
       bundleInfo: {},

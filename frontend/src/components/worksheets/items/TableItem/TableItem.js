@@ -136,7 +136,7 @@ class TableItem extends React.Component<
                 >
                     <Table className={tableClassName}>
                         <TableHead>
-                            <TableRow>{headerHtml}</TableRow>
+                            <TableRow style={{ height: 36 }}>{headerHtml}</TableRow>
                         </TableHead>
                         { bodyRowsHtml }
                     </Table>
@@ -146,7 +146,7 @@ class TableItem extends React.Component<
     }
 }
 
-class TableContainerBase extends React.Component {
+class _TableContainer extends React.Component {
     render() {
         const { classes, children, ...others } = this.props;
         return <div className={ classes.tableContainer } {...others}>
@@ -157,14 +157,12 @@ class TableContainerBase extends React.Component {
     }
 }
 
-////////////////////////////////////////////////////////////
-
 const styles = (theme) => ({
     tableContainer: {
         position: 'relative',
     },
 });
 
-const TableContainer = withStyles(styles)(TableContainerBase);
+const TableContainer = withStyles(styles)(_TableContainer);
 
 export default TableItem;

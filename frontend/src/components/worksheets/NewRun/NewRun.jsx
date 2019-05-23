@@ -32,20 +32,7 @@ import {
 type Bundle = { name: string, uuid: string, path?: string };
 type Dependency = { target: Bundle, alias: string };
 
-// TODO: Remove dummy data!
-const kDummyCandidates: Bundle[] = [
-    { name: "bundle-1", uuid: "0x111111" },
-    { name: "bundle-2", uuid: "0x222222" },
-    { name: "bundle-3", uuid: "0x333333" },
-    { name: "bundle-4", uuid: "0x444444" },
-    { name: "bundle-5", uuid: "0x555555" },
-    { name: "bundle-6", uuid: "0x666666" },
-    { name: "bundle-7", uuid: "0x777777" },
-    { name: "bundle-8", uuid: "0x888888" },
-    { name: "bundle-9", uuid: "0x999999" },
-];
-
-class DependencyEditorRaw extends React.Component<{
+class _DependencyEditor extends React.Component<{
     /** JSS styling object. */
     classes: {},
 
@@ -132,7 +119,7 @@ const DependencyEditor = withStyles((theme) => ({
     container: {
         paddingBottom: theme.spacing.large,
     }
-}))(DependencyEditorRaw);
+}))(_DependencyEditor);
 
 
 class NewRun extends React.Component<{
@@ -210,6 +197,7 @@ class NewRun extends React.Component<{
 
     /**
      * @param idx
+     *     List index of dependency to be removed.
      */
     removeDependency(idx: number) {
         const { dependencies } = this.state;

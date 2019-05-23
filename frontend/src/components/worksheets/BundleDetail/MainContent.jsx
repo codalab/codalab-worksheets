@@ -37,7 +37,7 @@ class MainContent extends React.Component<
                     { bundleState }
                 </div>
     			<Grid container classes={ { container: classes.container } } spacing={16}>
-                    
+                    { /** Run bundle specific components =========================================================== */}
                     { isRunBundle &&
                         <Grid item xs={12} md="auto">
                             <Typography variant="body1">
@@ -63,6 +63,7 @@ class MainContent extends React.Component<
                             </CopyToClipboard>
                         </Grid>
                     }
+                    { /** Stdout/stderr components ================================================================= */}
                     <Grid item xs={12}>
                         <Grid container>
             				{ stdout &&
@@ -83,6 +84,7 @@ class MainContent extends React.Component<
             				}
                         </Grid>
                     </Grid>
+                    { /** Bundle contents browser ================================================================== */}
                     <Grid item xs={12}>
         				{ fileContents
         					? <div className={ classes.snippet }>
