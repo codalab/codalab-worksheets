@@ -79,6 +79,7 @@ const styles = (theme) => ({
 	},
 	input: {
 		flex: 1,
+		marginLeft: 8,
 	},
 
 });
