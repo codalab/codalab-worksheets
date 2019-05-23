@@ -2,11 +2,11 @@ import * as React from 'react';
 import classNames from 'classnames';
 import $ from 'jquery';
 import _ from 'underscore';
+import { withStyles } from '@material-ui/core/styles';
 import { keepPosInView } from '../../util/worksheet_utils';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import WorksheetActionBar from './WorksheetActionBar';
 import WorksheetItemList from './WorksheetItemList';
-import WorksheetSidePanel from './WorksheetSidePanel';
 import { WorksheetEditableField } from '../EditableField';
 import HelpButton from '../HelpButton';
 import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
@@ -738,6 +738,8 @@ class Worksheet extends React.Component {
     }
 
     render() {
+        const { classes } = this.props;
+
         this.setupEventHandlers();
         var info = this.state.ws.info;
         var rawWorksheet = info && info.raw.join('\n');
@@ -834,21 +836,6 @@ class Worksheet extends React.Component {
             <ContextMenu userInfo={this.state.userInfo} ws={this.state.ws} />
         );
 
-        var worksheet_side_panel = (
-            <WorksheetSidePanel
-                ref={'side_panel'}
-                active={this.state.activeComponent == 'side_panel'}
-                ws={this.state.ws}
-                focusIndex={this.state.focusIndex}
-                subFocusIndex={this.state.subFocusIndex}
-                uploadBundle={this.uploadBundle}
-                bundleMetadataChanged={this.reloadWorksheet}
-                escCount={this.state.escCount}
-                userInfo={this.state.userInfo}
-                deFocus={ () => this.setFocus(-1, 0) }
-            />
-        );
-
         var worksheet_display = this.state.editMode ? raw_display : items_display;
         var editButtons = this.state.editMode ? editModeFeatures : editFeatures;
 
@@ -859,10 +846,9 @@ class Worksheet extends React.Component {
                         {action_bar_display}
                         {context_menu_display}
                         <HelpButton />
-                        <div id='worksheet_panel' className='actionbar-focus'>
-                            {/*{worksheet_side_panel}*/}
-                            <div className='ws-container'>
-                                <div className='container-fluid'>
+                        <div id='worksheet_panel' className={classes.worksheetDesktop}>
+                            <div className={classes.worksheetOuter}>
+                                <div className={classes.worksheetInner}>
                                     <div id='worksheet_content' className={editableClassName}>
                                         <div className='header-row'>
                                             <div className='row'>
@@ -900,7 +886,6 @@ class Worksheet extends React.Component {
                                 </div>
                             </div>
                         </div>
-                        <div id='dragbar_vertical' className='dragbar' />
                     </div>
                 </div>
                 <ExtraWorksheetHTML />
@@ -909,4 +894,21 @@ class Worksheet extends React.Component {
     }
 }
 
-export default Worksheet;
+const styles = (theme) => ({
+    worksheetDesktop: {
+        backgroundColor: theme.color.grey.lightest,
+    },
+    worksheetOuter: {
+        maxWidth: 1000,  // Worksheet width
+        margin: '0 auto',  // Center page horizontally
+        backgroundColor: 'white',  // Paper color
+        border: `2px solid ${theme.color.grey.light}`
+    },
+    worksheetInner: {
+        padding: '0 30px 50px 30px',
+        height: '100%',
+        overflow: 'auto',
+    },
+});
+
+export default withStyles(styles)(Worksheet);

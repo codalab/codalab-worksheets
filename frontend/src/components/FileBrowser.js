@@ -89,7 +89,7 @@ export class FileBrowser extends React.Component<
             dataType: 'json',
             cache: false,
             success: (data) => {
-                if (data.data.type == 'directory') {
+                if (data.data.type === 'directory') {
                     this.setState({ fileBrowserData: data.data });
                     $('.file-browser').show();
                 } else {
@@ -131,7 +131,7 @@ export class FileBrowser extends React.Component<
 
             // Show directories
             entities.forEach(function(item) {
-                if (item.type == 'directory')
+                if (item.type === 'directory')
                     items.push(
                         <FileBrowserItem
                             bundle_uuid={self.props.uuid}
@@ -327,7 +327,7 @@ export class FileBrowserItem extends React.Component<{
             ) : null;
 
         let item;
-        if (this.props.type == 'directory' || this.props.type == '..') {
+        if (this.props.type === 'directory' || this.props.type === '..') {
             item = (
                 <span
                     className={this.props.type}
@@ -338,7 +338,7 @@ export class FileBrowserItem extends React.Component<{
                     <span className='pull-right'>{size}</span>
                 </span>
             );
-        } else if (this.props.type == 'file') {
+        } else if (this.props.type === 'file') {
             let file_link =
                 '/rest/bundles/' +
                 this.props.bundle_uuid +
@@ -353,11 +353,11 @@ export class FileBrowserItem extends React.Component<{
                     <span className='pull-right'>{size}</span>
                 </span>
             );
-        } else if (this.props.type == 'link') {
+        } else if (this.props.type === 'link') {
             item = (
                 <div className={this.props.type}>
                     <span className='glyphicon-file glyphicon' />
-                    {this.props.index + ' -> ' + this.props.link}
+                    {this.props.index + ' → ' + this.props.link}
                 </div>
             );
         }
@@ -407,7 +407,7 @@ class FileBrowserItemLite extends React.Component<
         if (this.props.hasOwnProperty('size')) size = renderSize(this.props.size);
 
         let item;
-        if (this.props.type == 'directory' || this.props.type == '..') {
+        if (this.props.type === 'directory' || this.props.type === '..') {
             item = (
                 <TableRow
                     onClick={() => this.props.updateFileBrowser(file_location)}
@@ -423,12 +423,8 @@ class FileBrowserItemLite extends React.Component<
                     </TableCell>
                 </TableRow>
             );
-        } else if (this.props.type == 'file') {
-            let file_link =
-                '/rest/bundles/' +
-                this.props.bundle_uuid +
-                '/contents/blob/' +
-                encodeBundleContentsPath(file_location);
+        } else if (this.props.type === 'file') {
+            const file_link = `/rest/bundles/${this.props.bundle_uuid}/contents/blob/${encodeBundleContentsPath(file_location)}`;
             item = (
                 <TableRow>
                     <TableCell>
@@ -444,13 +440,13 @@ class FileBrowserItemLite extends React.Component<
                     </TableCell>
                 </TableRow>
             );
-        } else if (this.props.type == 'link') {
+        } else if (this.props.type === 'link') {
             item = (
                 <TableRow>
                     <TableCell>
                         <div style={ rowCenter }>
                             <LinkIcon style={ iconStyle } />
-                            {this.props.index + ' -> ' + this.props.link}
+                            {this.props.index + ' → ' + this.props.link}
                         </div>
                     </TableCell>
                     <TableCell />
@@ -508,7 +504,7 @@ export class FileBrowserLite extends React.Component<
             dataType: 'json',
             cache: false,
             success: (data) => {
-                if (data.data.type == 'directory') {
+                if (data.data.type === 'directory') {
                     this.setState({ fileBrowserData: data.data });
                     $('.file-browser').show();
                 } else {
@@ -549,7 +545,7 @@ export class FileBrowserLite extends React.Component<
 
         // Show directories
         entities.forEach((item) => {
-            if (item.type == 'directory')
+            if (item.type === 'directory')
                 items.push(
                     <FileBrowserItemLite
                         bundle_uuid={uuid}
