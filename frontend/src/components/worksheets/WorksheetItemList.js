@@ -59,7 +59,15 @@ const addWorksheetItems = function(props, worksheet_items) {
             React.createElement('strong', null, 'Internal error: ', item.mode),
         );
     }
-    worksheet_items.push(elem);
+    worksheet_items.push((
+        <ItemWrapper
+            item={ item }
+            worksheetUUID={ props.worksheetUUID }
+            reloadWorksheet={ props.reloadWorksheet }
+        >
+            { elem }
+        </ItemWrapper>
+    ));
 };
 
 class WorksheetItemList extends React.Component {

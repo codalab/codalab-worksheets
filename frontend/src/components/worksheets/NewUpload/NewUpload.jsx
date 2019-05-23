@@ -131,8 +131,12 @@ class NewUpload extends React.Component<{
         this.setState({
             uploading: true,
         });
+        let url = `/rest/bundles?worksheet=${ worksheetUUID }`;
+        if (after_sort_key) {
+            url += `&after_sort_key=${ after_sort_key }`;
+        }
         $.ajax({
-            url: `/rest/bundles?worksheet=${ worksheetUUID }&after_sort_key=${ after_sort_key }`,
+            url,
             data: JSON.stringify(createBundleData),
             contentType: 'application/json',
             type: 'POST',
