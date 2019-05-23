@@ -6754,7 +6754,8 @@ body,
   padding: 10px 0;
   text-align: center;
   z-index: 1000;
-  background-color: rgba(239, 239, 239, 0.9);
+  background-color: #F8F9FA;
+  margin-top: -2px;
 }
 #worksheet.search-hidden {
   margin-top: -61px;
@@ -6800,14 +6801,6 @@ body,
 }
 #worksheet #worksheet_panel.actionbar-focus {
   padding-top: 45px !important;
-}
-#worksheet .ws-container {
-  position: absolute;
-  left: 0;
-  right: 25%;
-  padding: 0 30px 50px 30px;
-  height: 100%;
-  overflow: auto;
 }
 #worksheet .ws-button-group {
   white-space: nowrap;
@@ -7973,7 +7966,6 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
 .cmd {
   font-family: 'Roboto Mono', monospace;
   color: #223;
-  background-color: #EFEFEF;
   font-size: 12px;
   line-height: 14px;
 }

@@ -4,6 +4,8 @@ import classNames from 'classnames';
 
 import { withStyles } from '@material-ui/core/styles';
 
+
+/** This class is an template for how new React components should be structured. */
 class Example extends React.Component<
     {
         /** CSS-in-JS styling object. */

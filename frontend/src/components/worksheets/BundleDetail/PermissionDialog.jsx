@@ -26,7 +26,7 @@ class PermissionDialog extends React.Component<
         this.nGroupName = null;
         this.state = {
             showAddSection: false,
-        }
+        };
 	}
 
 	handlePermissionValueChange = (name, value) => {
@@ -87,6 +87,7 @@ class PermissionDialog extends React.Component<
 						</NativeSelect>
 					</div>)
 				}
+				{ /** Adding permissions editor ==================================================================== */}
                 {   showAddSection &&
                     <div className={ classes.row }>
                         <Input
