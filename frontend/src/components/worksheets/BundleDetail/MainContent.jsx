@@ -4,7 +4,7 @@ import Typography from '@material-ui/core/Typography';
 import CopyIcon from '@material-ui/icons/FileCopy';
 import Tooltip from '@material-ui/core/Tooltip';
 import Grid from '@material-ui/core/Grid';
-import { withStyles } from '@material-ui/core';
+import { withStyles } from '@material-ui/core/styles';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 import { FileBrowserLite } from '../../FileBrowser';

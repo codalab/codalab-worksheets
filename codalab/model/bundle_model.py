@@ -1365,7 +1365,18 @@ class BundleModel(object):
                     # There is a gap, just increment sort_key by 1.
                     item_value['sort_key'] = after_sort_key + 1
             
-            connection.execute(cl_worksheet_item.insert().values(item_value))    
+            # Default sort_key to id
+            if item_value['sort_key'] is None:
+                # TODO: Ideally should write a after_insert trigger for this.
+                # However, sqlalchemy documentation is very poor and I can't
+                # find anything compatiable with the non-ORM way we use it.
+                get_all = select(
+                    [cl_worksheet_item.c.id]
+                ).where(cl_worksheet_item.c.worksheet_uuid == worksheet_uuid)
+                ids = [item.id for item in connection.execute(get_all)]
+                item_value['sort_key'] = max(ids) + 1
+
+            connection.execute(cl_worksheet_item.insert().values(item_value))
 
 
     def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):

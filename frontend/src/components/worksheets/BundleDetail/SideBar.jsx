@@ -6,7 +6,7 @@ import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import Grid from '@material-ui/core/Grid';
-import { withStyles } from '@material-ui/core';
+import { withStyles } from '@material-ui/core/styles';
 
 import { BundleEditableField } from '../../EditableField';
 import PermissionDialog from './PermissionDialog';

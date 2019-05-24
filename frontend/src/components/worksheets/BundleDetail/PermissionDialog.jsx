@@ -8,7 +8,7 @@ import AddIcon from '@material-ui/icons/Add';
 import Popper from '@material-ui/core/Popper';
 import Paper from '@material-ui/core/Paper';
 import Input from '@material-ui/core/Input';
-import { withStyles } from '@material-ui/core';
+import { withStyles } from '@material-ui/core/styles';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
 
 class PermissionDialog extends React.Component<

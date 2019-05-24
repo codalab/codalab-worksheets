@@ -151,7 +151,6 @@ class NewUpload extends React.Component<{
                         bundleUuid +
                         '/contents/blob/?' +
                         getQueryParams(file.name);
-                    console.log('folder ===>', url);
                     $.ajax({
                         url: url,
                         type: 'PUT',
