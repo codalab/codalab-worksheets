@@ -106,7 +106,7 @@ class CodalabArgs(argparse.Namespace):
 
         #  BUILD SETTINGS
 
-        for cmd in [build_cmd, start_cmd]:
+        for cmd in [build_cmd, start_cmd, run_cmd]:
             cmd.add_argument(
                 '--version',
                 '-v',
@@ -555,7 +555,7 @@ class CodalabServiceManager(object):
         )
 
     def bring_up_service(self, service):
-        self._run_compose_cmd('up -d --no-deps --no-recreate %s' % service)
+        self._run_compose_cmd('up -d --no-deps %s' % service)
 
     def run_service_cmd(self, cmd, root=False, service='rest-server'):
         if root:

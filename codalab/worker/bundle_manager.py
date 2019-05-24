@@ -311,8 +311,8 @@ class BundleManager(object):
             if user_owned:
                 workers_list = workers.user_owned_workers(bundle.owner_id)
             else:
-                # TODO (parallel-job-quota)(bkgoksel): Skip if parallel_job_quota hit
                 if not self._model.get_user_parallel_job_quota_left(bundle.owner_id):
+                    logger.info("User %s has no parallel job quota left, skipping job for now", bundle.owner_id)
                     continue  # Don't start this bundle yet
                 workers_list = workers.user_owned_workers(self._model.root_user_id)
 
