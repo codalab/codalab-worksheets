@@ -3467,7 +3467,9 @@ class BundleCLI(object):
             Commands.Argument('--affiliation', help='Affiliation'),
             Commands.Argument('--url', help='Website URL'),
             Commands.Argument(
-                '-p', '--parallel-job-quota', help='Total amount of jobs the user may running have at a time'
+                '-p',
+                '--parallel-job-quota',
+                help='Total amount of jobs the user may running have at a time',
             ),
             Commands.Argument(
                 '-d', '--disk-quota', help='Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)'

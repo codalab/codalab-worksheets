@@ -2326,7 +2326,13 @@ class BundleModel(object):
         user_info = self.get_user_info(user_id)
         parallel_job_quota = user_info['parallel_job_quota']
         with self.engine.begin() as connection:
-            run_rows = connection.execute(select([cl_worker_run.c.run_uuid]).where(cl_worker_run.c.run_uuid.in_(select([cl_bundle.c.uuid]).where(cl_bundle.c.owner_id == user_id)))).fetchall()
+            run_rows = connection.execute(
+                select([cl_worker_run.c.run_uuid]).where(
+                    cl_worker_run.c.run_uuid.in_(
+                        select([cl_bundle.c.uuid]).where(cl_bundle.c.owner_id == user_id)
+                    )
+                )
+            ).fetchall()
         jobs_active = len(run_rows)
         return parallel_job_quota > jobs_active
 
