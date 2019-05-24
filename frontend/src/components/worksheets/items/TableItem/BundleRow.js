@@ -14,8 +14,8 @@ import UploadIcon from '@material-ui/icons/CloudUpload';
 import AddIcon from '@material-ui/icons/PlayCircleFilled';
 
 import BundleDetail from '../../BundleDetail';
+import NewRun from '../../NewRun';
 import NewUpload from '../../NewUpload';
-import InsertButtons from './InsertButtons';
 import { buildTerminalCommand } from '../../../../util/worksheet_utils';
 
 
@@ -65,7 +65,7 @@ class BundleRow extends Component {
 
     state = {
         showDetail: false,
-        showUpload: 0,
+        showNewUpload: 0,
         showNewRun: 0,
         showInsertButtons: 0,
         bundleInfoUpdates: {},
@@ -135,7 +135,7 @@ class BundleRow extends Component {
     }
 
     render() {
-        const { showInsertButtons, showDetail, showUpload, showNewRun, bundleInfoUpdates } = this.state;
+        const { showInsertButtons, showDetail, showNewUpload, showNewRun, bundleInfoUpdates } = this.state;
         const { classes, onMouseMove, bundleInfo, prevBundleInfo, item, worksheetUUID, reloadWorksheet } = this.props;
         const rowItems = {...item, ...bundleInfoUpdates};
         var baseUrl = this.props.url;
@@ -178,34 +178,6 @@ class BundleRow extends Component {
             );
         });
 
-        const edgeButtons = [
-            // New Upload =============================================
-            <Button
-                key="upload"
-                variant="outlined"
-                size="small"
-                color="primary"
-                aria-label="New Upload"
-                onClick={ () => this.setState({ showNewUpload: !showNewUpload }) }
-            >
-                <UploadIcon className={classes.buttonIcon} />
-                Upload
-            </Button>,
-
-            // New Run ================================================
-            <Button
-                key="run"
-                variant="outlined"
-                size="small"
-                color="primary"
-                aria-label="New Run"
-                onClick={ () => this.setState({ showNewRun: !showNewRun }) }
-            >
-                <AddIcon className={classes.buttonIcon} />
-                Run
-            </Button>,
-        ];
-
         return <TableBody
             classes={ { root: classes.tableBody } }
             onMouseMove={ this.showButtons }
@@ -231,14 +203,14 @@ class BundleRow extends Component {
                 </TableCell>
             </TableRow>
             {
-                (showUpload === -1) &&
+                (showNewUpload === -1) &&
                 <TableRow>
                     <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
                         <NewUpload
                             after_sort_key={ prevBundleInfo ? prevBundleInfo.sort_key : bundleInfo.sort_key - 10 }
                             worksheetUUID={ worksheetUUID }
                             reloadWorksheet={ reloadWorksheet }
-                            onClose={ () => this.setState({ showNewUpload: 0 }) }
+                            onClose={ () => { this.setState({ showNewUpload: 0 }); } }
                         />
                     </TableCell>
                 </TableRow>
