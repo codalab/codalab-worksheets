@@ -242,7 +242,7 @@ user = Table(
     Column('affiliation', String(255, convert_unicode=True), nullable=True),
     Column('url', String(255, convert_unicode=True), nullable=True),
     # Quotas
-    Column('parallel_job_quota', Integer, nullable=False),  # Number of parallel jobs allowed
+    Column('parallel_run_quota', Integer, nullable=False),  # Number of parallel jobs allowed
     Column('time_used', Float, nullable=False),  # Number of seconds already used
     Column('disk_quota', Float, nullable=False),  # Number of bytes allowed
     Column('disk_used', Float, nullable=False),  # Number of bytes already used

@@ -171,7 +171,7 @@ with model.engine.begin() as bundle_db:
         default_user_info = manager.default_user_info()
 
         insert_query = cl_user.insert().values(
-            parallel_job_quota=default_user_info['parallel_job_quota'],
+            parallel_run_quota=default_user_info['parallel_run_quota'],
             disk_quota=default_user_info['disk_quota'],
             time_used=0,
             disk_used=0,

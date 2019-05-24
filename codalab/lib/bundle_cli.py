@@ -3468,8 +3468,9 @@ class BundleCLI(object):
             Commands.Argument('--url', help='Website URL'),
             Commands.Argument(
                 '-p',
-                '--parallel-job-quota',
-                help='Total amount of jobs the user may running have at a time',
+                '--parallel-run-quota',
+                type=int,
+                help='Total amount of jobs the user may running have at a time on shared public workers',
             ),
             Commands.Argument(
                 '-d', '--disk-quota', help='Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)'
@@ -3488,8 +3489,8 @@ class BundleCLI(object):
             for key in ('first_name', 'last_name', 'affiliation', 'url')
             if getattr(args, key) is not None
         }
-        if args.parallel_job_quota is not None:
-            user_info['parallel_job_quota'] = args.parallel_job_quota
+        if args.parallel_run_quota is not None:
+            user_info['parallel_run_quota'] = args.parallel_run_quota
         if args.disk_quota is not None:
             user_info['disk_quota'] = formatting.parse_size(args.disk_quota)
         if not user_info:
