@@ -46,6 +46,8 @@ class MarkdownItem extends React.Component {
         // Order is important!
         contents = this.processMarkdown(contents);
 
+        console.log(this.props.item);
+
         // create a string of html for innerHTML rendering
         // more info about dangerouslySetInnerHTML
         // http://facebook.github.io/react/docs/special-non-dom-attributes.html
