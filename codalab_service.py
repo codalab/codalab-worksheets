@@ -23,6 +23,7 @@ class CodalabArgs(argparse.Namespace):
         'docker_password': None,
         'build_locally': False,
         'image': 'service',
+        'external_db_url': None, 
         'test_build': False,
         'user_compose_file': None,
         'start_worker': False,
@@ -55,6 +56,7 @@ class CodalabArgs(argparse.Namespace):
         'version': 'CODALAB_VERSION',
         'dev': 'CODALAB_DEV',
         'push': 'CODALAB_PUSH',
+        'external_db_url': 'CODALAB_EXTERNAL_DB_URL',
         'docker_user': 'DOCKER_USER',
         'docker_password': 'DOCKER_PWD',
         'user_compose_file': 'CODALAB_USER_COMPOSE_FILE',
@@ -163,6 +165,11 @@ class CodalabArgs(argparse.Namespace):
             '-b',
             action='store_true',
             help='If specified, build VERSION using local code.',
+            default=argparse.SUPPRESS,
+        )
+        start_cmd.add_argument(
+            '--external-db-url',
+            help='If specified, use this database URI instead of starting a local mysql container',
             default=argparse.SUPPRESS,
         )
         start_cmd.add_argument(
@@ -455,6 +462,8 @@ class CodalabServiceManager(object):
             compose_files.append('docker-compose.home_mount.yml')
         else:
             compose_files.append('docker-compose.no_home_mount.yml')
+        if args.external_db_url is None:
+            compose_files.append('docker-compose.mysql.yml')
         if args.mysql_mount:
             compose_files.append('docker-compose.mysql_mount.yml')
         if args.bundle_stores:
@@ -555,7 +564,7 @@ class CodalabServiceManager(object):
         )
 
     def bring_up_service(self, service):
-        self._run_compose_cmd('up -d --no-deps --no-recreate %s' % service)
+        self._run_compose_cmd('up -d --no-deps %s' % service)
 
     def run_service_cmd(self, cmd, root=False, service='rest-server'):
         if root:
@@ -567,21 +576,26 @@ class CodalabServiceManager(object):
         )
 
     def start_service(self):
-        print("[CODALAB] ==> Starting MySQL")
-        self.bring_up_service('mysql')
-
+        if self.args.external_db_url is None:
+            print("[CODALAB] ==> Starting MySQL")
+            self.bring_up_service('mysql')
+            cmd_prefix = '/opt/wait-for-it.sh mysql:3306 -- '
+            mysql_url = 'mysql://%s:%s@mysql:3306/codalab_bundles' % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD'])
+        else:
+            cmd_prefix = ''
+            mysql_url = 'mysql://%s:%s@%s/codalab_bundles' % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD'], self.args.external_db_url)
         print("[CODALAB] ==> Configuring the service")
         self.run_service_cmd(
-            "/opt/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://%s:%s@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
-            % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD']),
+            "%s/opt/codalab-worksheets/codalab/bin/cl config server/engine_url %s && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
+            % (cmd_prefix, mysql_url),
             root=(not self.args.codalab_home),
         )
 
         if self.args.initial_config:
             print("[CODALAB] ==> Creating root user")
             self.run_service_cmd(
-                "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && /opt/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py %s"
-                % self.compose_env['CODALAB_ROOT_PWD'],
+                "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && %s/opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py %s"
+                % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
                 root=True,
             )
 
