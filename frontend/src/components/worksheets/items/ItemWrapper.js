@@ -58,6 +58,41 @@ class InsertButtons extends React.Component<{
     }
 }
 
+function getMinMaxKeys(item) {
+    if (!item) {
+        return { minKey: null, maxKey: null };
+    }
+    let minKey = null;
+    let maxKey = null;
+    if (item.mode === 'markup_block') {
+        if (item.sort_keys && item.sort_keys.length > 0) {
+            const { sort_keys, ids } = item;
+            const keys = [];
+            sort_keys.forEach((k, idx) => {
+                const key = k || ids[idx];
+                if (key !== null) {
+                    keys.push(key);
+                }
+            });
+            minKey = Math.min(...keys);
+            maxKey = Math.max(...keys);
+        }
+    } else if (item.mode === 'table_block') {
+        if (item.bundles_spec && item.bundles_spec.bundle_infos) {
+            const keys = [];
+            item.bundles_spec.bundle_infos.forEach(info => {
+                const key = info.sort_key || info.id;
+                if (key !== null) {
+                    keys.push(key);
+                }
+            });
+            minKey = Math.min(...keys);
+            maxKey = Math.max(...keys);
+        }
+    }
+    return { minKey, maxKey };
+}
+
 class ItemWrapper extends React.Component {
 
 	state = {
@@ -82,17 +117,64 @@ class ItemWrapper extends React.Component {
             this.setState({
                 showInsertButtons: -1,
             });
-        }
-        if (onBotttom) {
+        } else if (onBotttom) {
             this.setState({
                 showInsertButtons: 1,
+            });
+        } else {
+            this.setState({
+                showInsertButtons: 0,
             });
         }
     }
 
 	render() {
-		const { children, classes, bundleInfo={}, worksheetUUID, reloadWorksheet } = this.props;
-		const { showInsertButtons, showNewUpload, showNewRun, showNewText } = this.state;
+		const {
+            children,
+            classes,
+            prevItem,
+            item,
+            afterItem,
+            worksheetUUID,
+            reloadWorksheet,
+        } = this.props;
+		const {
+            showInsertButtons,
+            showNewUpload,
+            showNewRun,
+            showNewText } = this.state;
+
+        const itemKeys = getMinMaxKeys(item);
+        const prevItemKeys = getMinMaxKeys(prevItem);
+
+        if (!item) {
+            return null;
+        }
+
+        let aroundTextBlock = item.mode === 'markup_block';
+        let textBlockId = aroundTextBlock ? item.ids[0] : null;
+        let defaultText = aroundTextBlock ? item.text : '';
+        let showDefault = 0;
+        if (showNewText === -1 && prevItem) {
+            // Check if prevItem or item is text block.
+            aroundTextBlock = (aroundTextBlock || prevItem.mode === 'markup_block');
+            if (textBlockId === null && aroundTextBlock) {
+                textBlockId = prevItem.ids[0];
+                defaultText = prevItem.text;
+                // Effectively appending text.
+                showDefault = 1;
+            }
+        }
+        if (showNewText === 1 && afterItem) {
+            // Check if item or afterItem is text block.
+            aroundTextBlock = (aroundTextBlock || afterItem.mode === 'markup_block');
+            if (textBlockId === null && aroundTextBlock) {
+                textBlockId = afterItem.ids[0];
+                defaultText = afterItem.text;
+                // Effectively prepending text.
+                showDefault = -1;
+            }
+        }
 
 		return (
 			<div
@@ -115,7 +197,7 @@ class ItemWrapper extends React.Component {
 				{
 	                (showNewUpload === -1) &&
                         <NewUpload
-                            after_sort_key={ bundleInfo.sort_key }
+                            after_sort_key={ prevItemKeys.maxKey || itemKeys.minKey - 10 }
                             worksheetUUID={ worksheetUUID }
                             reloadWorksheet={ reloadWorksheet }
                             onClose={ () => this.setState({ showNewUpload: 0 }) }
@@ -124,17 +206,24 @@ class ItemWrapper extends React.Component {
 	            {
 	                (showNewRun === -1) &&
                         <NewRun
+                            after_sort_key={ prevItemKeys.maxKey || itemKeys.minKey - 10 }
                             ws={this.props.ws}
                             onSubmit={() => this.setState({ showNewRun: 0 })}
-                            after_sort_key={ bundleInfo.sort_key }
                         />
 	            }
 	            {
 	                (showNewText === -1) &&
                         <TextEditorItem
-                            after_sort_key={ bundleInfo.sort_key }
+                            id={ textBlockId }
+                            mode={ aroundTextBlock ? 'edit': 'create' }
+                            defaultValue={ defaultText }
+                            showDefault={ showDefault || -1 }
+                            after_sort_key={ prevItemKeys.maxKey || itemKeys.minKey - 10 }
                             worksheetUUID={ worksheetUUID }
                             reloadWorksheet={ reloadWorksheet }
+                            closeEditor={ () => {
+                                this.setState({ showNewText: 0 });
+                            } }
                         />
 	            }
 	            <div className={ classes.main }>
@@ -143,7 +232,7 @@ class ItemWrapper extends React.Component {
 				{
 	                (showNewUpload === 1) &&
                         <NewUpload
-                            after_sort_key={ bundleInfo.sort_key }
+                            after_sort_key={ itemKeys.maxKey }
                             worksheetUUID={ worksheetUUID }
                             reloadWorksheet={ reloadWorksheet }
                             onClose={ () => this.setState({ showNewUpload: 0 }) }
@@ -152,17 +241,24 @@ class ItemWrapper extends React.Component {
 	            {
 	                (showNewRun === 1) &&
                         <NewRun
+                            after_sort_key={ itemKeys.maxKey }
                             ws={this.props.ws}
                             onSubmit={() => this.setState({ showNewRun: 0 })}
-                            after_sort_key={ bundleInfo.sort_key }
                         />
 	            }
 	            {
 	                (showNewText === 1) &&
                         <TextEditorItem
-                            after_sort_key={ bundleInfo.sort_key }
+                            id={ textBlockId }
+                            mode={ aroundTextBlock ? 'edit': 'create' }
+                            defaultValue={ defaultText }
+                            showDefault={ showDefault || 1 }
+                            after_sort_key={ itemKeys.maxKey }
                             worksheetUUID={ worksheetUUID }
                             reloadWorksheet={ reloadWorksheet }
+                            closeEditor={ () => {
+                                this.setState({ showNewText: 0 });
+                            } }
                         />
 	            }
 				{

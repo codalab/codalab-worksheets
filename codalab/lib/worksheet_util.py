@@ -137,7 +137,7 @@ def get_worksheet_lines(worksheet_info):
     """
     lines = []
     for item in worksheet_info['items']:
-        (bundle_info, subworksheet_info, value_obj, item_type) = item
+        (bundle_info, subworksheet_info, value_obj, item_type) = item[:4]
 
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
@@ -862,7 +862,7 @@ def interpret_items(schemas, raw_items):
     for raw_index, item in enumerate(raw_items):
         new_last_was_empty_line = True
         try:
-            (bundle_info, subworksheet_info, value_obj, item_type) = item
+            (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = item
 
             is_bundle = item_type == TYPE_BUNDLE
             is_search = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search'
@@ -899,10 +899,19 @@ def interpret_items(schemas, raw_items):
                 ):
                     # Join with previous markup item
                     blocks[-1]['text'] += '\n' + value_obj
+                    # Ids
+                    blocks[-1]['ids'] = blocks[-1].get('ids', [])
+                    blocks[-1]['ids'].append(id)
+                    blocks[-1]['sort_keys'] = blocks[-1].get('sort_keys', [])
+                    blocks[-1]['sort_keys'].append(sort_key)
                 elif not new_last_was_empty_line:
-                    blocks.append(
-                        MarkupBlockSchema().load({'id': len(blocks), 'text': value_obj}).data
-                    )
+                    block = MarkupBlockSchema().load({
+                            'id': len(blocks),
+                            'text': value_obj,
+                            'ids': [id],
+                            'sort_keys': [sort_key]
+                        }).data
+                    blocks.append(block)
                 # Important: set raw_to_block after so we can focus on current item.
                 if new_last_was_empty_line:
                     raw_to_block.append(None)

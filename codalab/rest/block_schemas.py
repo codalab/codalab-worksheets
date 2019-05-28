@@ -48,6 +48,8 @@ class WorksheetBlockSchema(PlainSchema):
 
 
 class MarkupBlockSchema(WorksheetBlockSchema):
+    ids = fields.List(fields.Integer())
+    sort_keys = fields.List(fields.Integer())
     mode = fields.Constant(BlockModes.MARKUP_MODE)
     is_refined = fields.Bool(validate=validate.Equal(True))  # always refined
     text = fields.String()

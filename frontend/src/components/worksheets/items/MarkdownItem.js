@@ -1,14 +1,22 @@
 import * as React from 'react';
+import $ from 'jquery';
 import Immutable from 'seamless-immutable';
 import { worksheetItemPropsChanged } from '../../../util/worksheet_utils';
 import marked from 'marked';
 import ReactDOM from 'react-dom';
+import { withStyles } from '@material-ui/core/styles';
+import IconButton from '@material-ui/core/IconButton';
+import EditIcon from '@material-ui/icons/Edit';
+import DeleteIcon from '@material-ui/icons/Delete';
+
+import TextEditorItem from './TextEditorItem';
+import { createAlertText } from '../../../util/worksheet_utils';
 
 class MarkdownItem extends React.Component {
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = Immutable({});
+        this.state = Immutable({ showEdit: false });
         this.placeholderText = '@MATH@';
     }
 
@@ -24,7 +32,8 @@ class MarkdownItem extends React.Component {
         this.processMathJax();
     }
     shouldComponentUpdate(nextProps, nextState) {
-        return worksheetItemPropsChanged(this.props, nextProps);
+        return worksheetItemPropsChanged(this.props, nextProps) ||
+            this.state.showEdit !== nextState.showEdit;
     }
     handleClick = (event) => {
         this.props.setFocus(this.props.focusIndex, 0);
@@ -41,26 +50,82 @@ class MarkdownItem extends React.Component {
         return text;
     };
 
+    toggleEdit = (ev) => {
+        ev.stopPropagation();
+        const { showEdit } = this.state;
+        this.setState({
+            showEdit: !showEdit,
+        });
+    }
+
+    deleteItem = () => {
+        const { reloadWorksheet, item, worksheetUUID } = this.props;
+        const url = `/rest/worksheets/${ worksheetUUID }/update-markup?id=${ item.id }`;
+
+        $.ajax({
+            url,
+            data: '',
+            contentType: 'text/plain',
+            type: 'POST',
+            success: (data, status, jqXHR) => {
+                reloadWorksheet();
+            },
+            error: (jqHXR, status, error) => {
+                alert(createAlertText(this.url, jqHXR.responseText));
+            },
+        });
+    }
+
     render() {
-        var contents = this.props.item.text;
+        const { classes, item } = this.props;
+        const { showEdit } = this.state;
+        var contents = item.text;
         // Order is important!
         contents = this.processMarkdown(contents);
-
-        console.log(this.props.item);
 
         // create a string of html for innerHTML rendering
         // more info about dangerouslySetInnerHTML
         // http://facebook.github.io/react/docs/special-non-dom-attributes.html
         // http://facebook.github.io/react/docs/tags-and-attributes.html#html-attributes
         var className = 'type-markup ' + (this.props.focused ? ' focused' : '');
-        return React.createElement(
-            'div',
-            { className: 'ws-item', onClick: this.handleClick },
-            React.createElement('div', {
-                className: className,
-                dangerouslySetInnerHTML: { __html: contents },
-            }),
-        );
+        
+        return showEdit
+            ? <TextEditorItem
+                id={ item.ids && item.ids[0] }
+                mode="edit"
+                defaultValue={ item.text }
+                reloadWorksheet={ this.props.reloadWorksheet }
+                worksheetUUID={ this.props.worksheetUUID }
+                closeEditor={ () => {
+                    this.setState({ showEdit: false });
+                } }
+            />
+            : (
+                <div
+                    className={ "ws-item " + classes.textContainer }
+                    onClick={ this.handleClick }
+                >
+                    <div
+                        className={ className }
+                        dangerouslySetInnerHTML={ { __html: contents } }
+                    />
+                    <div className={ classes.buttonsPanel }>
+                        <IconButton
+                            onClick={ this.toggleEdit }
+                            classes={ { root: classes.iconButtonRoot } }
+                        >
+                            <EditIcon />
+                        </IconButton>
+                        &nbsp;&nbsp;
+                        <IconButton
+                            onClick={ this.deleteItem }
+                            classes={ { root: classes.iconButtonRoot } }
+                        >
+                            <DeleteIcon />
+                        </IconButton>
+                    </div>
+                </div>
+            );
     }
 
     /// helper functions for making markdown and mathjax work together
@@ -113,4 +178,18 @@ class MarkdownItem extends React.Component {
     }
 }
 
-export default MarkdownItem;
+const styles = (theme) => ({
+    textContainer: {
+        position: 'relative',
+    },
+    buttonsPanel: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+    },
+    iconButtonRoot: {
+        backgroundColor: theme.color.grey.lighter,
+    },
+});
+
+export default withStyles(styles)(MarkdownItem);
