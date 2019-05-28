@@ -13,25 +13,11 @@ x-codalab-env:
   - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
 
 services:
-  mysql:
-    image: mysql:5.5.53
-    environment:
-      - MYSQL_ROOT_PASSWORD=${CODALAB_MYSQL_ROOT_PWD}
-      - MYSQL_DATABASE=codalab_bundles
-      - MYSQL_USER=${CODALAB_MYSQL_USER}
-      - MYSQL_PASSWORD=${CODALAB_MYSQL_PWD}
-    networks:
-      - service
-    logging:
-      *non-blocking-logging
-
   rest-server:
     image: codalab/server:${CODALAB_VERSION}
     command: server
     environment:
       *codalab-env
-    depends_on:
-      - mysql
     networks:
       - service
     logging:
