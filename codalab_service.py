@@ -23,7 +23,7 @@ class CodalabArgs(argparse.Namespace):
         'docker_password': None,
         'build_locally': False,
         'image': 'service',
-        'external_db_url': None, 
+        'external_db_url': None,
         'test_build': False,
         'user_compose_file': None,
         'start_worker': False,
@@ -580,10 +580,17 @@ class CodalabServiceManager(object):
             print("[CODALAB] ==> Starting MySQL")
             self.bring_up_service('mysql')
             cmd_prefix = '/opt/wait-for-it.sh mysql:3306 -- '
-            mysql_url = 'mysql://%s:%s@mysql:3306/codalab_bundles' % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD'])
+            mysql_url = 'mysql://%s:%s@mysql:3306/codalab_bundles' % (
+                self.compose_env['CODALAB_MYSQL_USER'],
+                self.compose_env['CODALAB_MYSQL_PWD'],
+            )
         else:
             cmd_prefix = ''
-            mysql_url = 'mysql://%s:%s@%s/codalab_bundles' % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD'], self.args.external_db_url)
+            mysql_url = 'mysql://%s:%s@%s/codalab_bundles' % (
+                self.compose_env['CODALAB_MYSQL_USER'],
+                self.compose_env['CODALAB_MYSQL_PWD'],
+                self.args.external_db_url,
+            )
         print("[CODALAB] ==> Configuring the service")
         self.run_service_cmd(
             "%s/opt/codalab-worksheets/codalab/bin/cl config server/engine_url %s && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
