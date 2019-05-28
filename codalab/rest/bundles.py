@@ -223,7 +223,7 @@ def _create_bundles():
     worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     worksheet_util.check_worksheet_not_frozen(worksheet)
-    request.user.check_quota(need_time=True, need_disk=True)
+    request.user.check_quota(need_disk=True)
 
     created_uuids = []
     for bundle in bundles:

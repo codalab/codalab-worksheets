@@ -311,6 +311,12 @@ class BundleManager(object):
             if user_owned:
                 workers_list = workers.user_owned_workers(bundle.owner_id)
             else:
+                if not self._model.get_user_parallel_run_quota_left(bundle.owner_id):
+                    logger.info(
+                        "User %s has no parallel run quota left, skipping job for now",
+                        bundle.owner_id,
+                    )
+                    continue  # Don't start this bundle yet
                 workers_list = workers.user_owned_workers(self._model.root_user_id)
 
             workers_list = self._filter_and_sort_workers(workers_list, bundle)
@@ -477,9 +483,7 @@ class BundleManager(object):
         The default is min(time quota the user has left, global max)
         """
         if not bundle.metadata.request_time:
-            return min(
-                self._model.get_user_time_quota_left(bundle.owner_id) - 1, self._max_request_time
-            )
+            return self._max_request_time
         return formatting.parse_duration(bundle.metadata.request_time)
 
     def _get_docker_image(self, bundle):
