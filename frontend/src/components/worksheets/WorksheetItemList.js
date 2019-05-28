@@ -23,7 +23,7 @@ import ItemWrapper from './items/ItemWrapper';
 // - canEdit: whether we're allowed to edit this item
 // - setFocus: call back to select this item
 // - updateWorksheetSubFocusIndex: call back to notify parent of which row is selected (for tables)
-const addWorksheetItems = function(props, worksheet_items) {
+const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) {
     var item = props.item;
 
     // Determine URL corresponding to item.
@@ -61,7 +61,9 @@ const addWorksheetItems = function(props, worksheet_items) {
     }
     worksheet_items.push((
         <ItemWrapper
+            prevItem={ prevItem }
             item={ item }
+            afterItem={ afterItem }
             worksheetUUID={ props.worksheetUUID }
             reloadWorksheet={ props.reloadWorksheet }
         >
@@ -209,7 +211,12 @@ class WorksheetItemList extends React.Component {
                         reloadWorksheet: this.props.reloadWorksheet,
                         ws: this.props.ws,
                     };
-                    addWorksheetItems(props, worksheet_items);
+                    addWorksheetItems(
+                        props,
+                        worksheet_items,
+                        index > 0 ? info.items[index - 1] : null,
+                        index < info.items.length - 1 ? info.items[index + 1] : null
+                    );
                 }.bind(this),
             );
             items_display = worksheet_items;

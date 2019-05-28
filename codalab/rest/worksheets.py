@@ -226,6 +226,26 @@ def create_worksheet_item_after(worksheet_uuid):
     )
 
 
+@post('/worksheets/<worksheet_uuid:re:%s>/update-markup' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
+def update_worksheet_item(worksheet_uuid):
+    """
+    Add a worksheet item to a worksheet, either after a sort key or not.
+
+    |after_sort_key| - Add the item after an item with this sort_key value.
+    """
+    id = request.query.get('id')
+    if id is not None:
+        id = int(id)
+
+    markup = decoded_body()
+
+    # Check all necessary permissions, etc.
+    worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
+    check_worksheet_has_all_permission(local.model, request.user, worksheet)
+    worksheet_util.check_worksheet_not_frozen(worksheet)
+
+    local.model.update_worksheet_item_value(id, markup)
+
 
 @post('/worksheet-items', apply=AuthenticatedPlugin())
 def create_worksheet_items():

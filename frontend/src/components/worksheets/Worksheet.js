@@ -47,6 +47,7 @@ var WorksheetContent = (function() {
             dataType: 'json',
             cache: false,
             success: function(info) {
+                console.log('info ===>', info);
                 this.info = info;
                 props.success(this.info);
             }.bind(this),

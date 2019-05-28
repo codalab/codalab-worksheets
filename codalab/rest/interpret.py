@@ -14,6 +14,7 @@ import types
 from contextlib import closing
 from itertools import chain
 import json
+import sys
 
 import yaml
 from bottle import get, post, local, request
@@ -297,7 +298,6 @@ def resolve_interpreted_blocks(interpreted_blocks):
     appropriate information, replacing the 'interpreted' field in each item.
     The result can be serialized via JSON.
     """
-
     def set_error_data(block_index, message):
         interpreted_blocks[block_index] = (
             MarkupBlockSchema().load({'id': block_index, 'text': 'ERROR: ' + message}).data
@@ -548,6 +548,7 @@ def resolve_items_into_infos(items):
         )
         if bundle_info is not None:
             bundle_info['sort_key'] = i['sort_key']
+            bundle_info['id'] = i['id']
         if i['subworksheet_uuid']:
             try:
                 subworksheet_info = local.model.get_worksheet(
@@ -563,7 +564,7 @@ def resolve_items_into_infos(items):
         value_obj = (
             formatting.string_to_tokens(i['value']) if i['type'] == TYPE_DIRECTIVE else i['value']
         )
-        new_items.append((bundle_info, subworksheet_info, value_obj, i['type']))
+        new_items.append((bundle_info, subworksheet_info, value_obj, i['type'], i['id'], i['sort_key']))
     return new_items
 
 
@@ -581,7 +582,7 @@ def expand_raw_item(raw_item):
     resolve_items_into_infos on the returned raw_items.
     """
 
-    (bundle_info, subworksheet_info, value_obj, item_type) = raw_item
+    (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = raw_item
 
     is_search = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search'
     is_wsearch = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'wsearch'
