@@ -48,15 +48,7 @@ export function renderDate(epochSeconds) {
     var hour = dt.getHours();
     var min = dt.getMinutes();
     var sec = dt.getSeconds();
-    return (
-        dt.toDateString() +
-        ' ' +
-        padInt(hour, 2) +
-        ':' +
-        padInt(min, 2) +
-        ':' +
-        padInt(sec, 2)
-    );
+    return dt.toDateString() + ' ' + padInt(hour, 2) + ':' + padInt(min, 2) + ':' + padInt(sec, 2);
 }
 
 export function renderSize(size) {
@@ -277,7 +269,7 @@ export function createDefaultBundleName(name) {
     return name;
 }
 
-export function getDefaultBundleMetadata(name, description='') {
+export function getDefaultBundleMetadata(name, description = '') {
     return {
         data: [
             {
