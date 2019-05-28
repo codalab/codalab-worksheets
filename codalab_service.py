@@ -108,7 +108,7 @@ class CodalabArgs(argparse.Namespace):
 
         #  BUILD SETTINGS
 
-        for cmd in [build_cmd, start_cmd]:
+        for cmd in [build_cmd, start_cmd, run_cmd]:
             cmd.add_argument(
                 '--version',
                 '-v',

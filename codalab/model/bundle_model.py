@@ -2095,7 +2095,7 @@ class BundleModel(object):
                         "is_verified": is_verified,
                         "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
-                        "time_quota": self.default_user_info['time_quota'],
+                        "parallel_run_quota": self.default_user_info['parallel_run_quota'],
                         "time_used": 0,
                         "disk_quota": self.default_user_info['disk_quota'],
                         "disk_used": 0,
@@ -2322,11 +2322,26 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
-    def get_user_time_quota_left(self, user_id):
+    def get_user_parallel_run_quota_left(self, user_id):
         user_info = self.get_user_info(user_id)
-        time_quota = user_info['time_quota']
-        time_used = user_info['time_used']
-        return time_quota - time_used
+        parallel_run_quota = user_info['parallel_run_quota']
+        if user_id == self.root_user_id:
+            # Root user has no parallel run quota
+            return parallel_run_quota
+        with self.engine.begin() as connection:
+            # Get all the runs belonging to this user whose workers are not personal workers
+            # of the user themselves
+            active_runs = connection.execute(
+                select([cl_worker_run.c.run_uuid]).where(
+                    and_(
+                        cl_worker_run.c.run_uuid.in_(
+                            select([cl_bundle.c.uuid]).where(cl_bundle.c.owner_id == user_id)
+                        ),
+                        cl_worker_run.c.user_id != user_id,
+                    )
+                )
+            ).fetchall()
+        return parallel_run_quota - len(active_runs)
 
     def update_user_last_login(self, user_id):
         """
