@@ -67,25 +67,22 @@ class HomePage extends React.Component<{
                                 className={classes.textBox}
                                 alignContent='center'
                             >
-                                    <Typography variant='h4' className={classes.tagline}>
-                                        A collaborative platform for reproducible research.
-                                    </Typography>
-                                    <div className={classes.buttons}>
-                                        {!auth.isAuthenticated && [
-                                            this.renderButton('Sign Up', '/account/signup'),
-                                            this.renderButton('Sign In', '/account/login'),
-                                        ]}
-                                        {auth.isAuthenticated && [
-                                            this.renderButton(
-                                                'My Home',
-                                                '/rest/worksheets/?name=%2F',
-                                            ),
-                                            this.renderButton(
-                                                'My Dashboard',
-                                                '/rest/worksheets/?name=dashboard',
-                                            ),
-                                        ]}
-                                    </div>
+                                <Typography variant='h4' className={classes.tagline}>
+                                    A collaborative platform for reproducible research.
+                                </Typography>
+                                <div className={classes.buttons}>
+                                    {!auth.isAuthenticated && [
+                                        this.renderButton('Sign Up', '/account/signup'),
+                                        this.renderButton('Sign In', '/account/login'),
+                                    ]}
+                                    {auth.isAuthenticated && [
+                                        this.renderButton('My Home', '/rest/worksheets/?name=%2F'),
+                                        this.renderButton(
+                                            'My Dashboard',
+                                            '/rest/worksheets/?name=dashboard',
+                                        ),
+                                    ]}
+                                </div>
                             </Grid>
                             <Grid item xs={12} sm={6} container>
                                 <div className={classes.video}>
@@ -110,10 +107,19 @@ class HomePage extends React.Component<{
                             </Typography>
                         </Grid>
 
-                        <Grid item xs={12} sm={5} className={classes.textBox} container alignContent='center'>
+                        <Grid
+                            item
+                            xs={12}
+                            sm={5}
+                            className={classes.textBox}
+                            container
+                            alignContent='center'
+                        >
                             <div className={classes.titleBox}>
-                                <UploadIcon className={classes.titleIcon}/>
-                                <Typography variant='h6' inline>Upload</Typography>
+                                <UploadIcon className={classes.titleIcon} />
+                                <Typography variant='h6' inline>
+                                    Upload
+                                </Typography>
                             </div>
                             <Typography>
                                 Upload code (in any programming language) and datasets (in any
@@ -128,10 +134,19 @@ class HomePage extends React.Component<{
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={5} className={classes.textBox} container alignContent='center'>
+                        <Grid
+                            item
+                            xs={12}
+                            sm={5}
+                            className={classes.textBox}
+                            container
+                            alignContent='center'
+                        >
                             <div className={classes.titleBox}>
-                                <ExperimentIcon className={classes.titleIcon}/>
-                                <Typography variant='h6' inline>Experiment</Typography>
+                                <ExperimentIcon className={classes.titleIcon} />
+                                <Typography variant='h6' inline>
+                                    Experiment
+                                </Typography>
                             </div>
                             <Typography>
                                 Run your code in the cloud by specifying an arbitrary command along
@@ -146,10 +161,19 @@ class HomePage extends React.Component<{
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={5} className={classes.textBox} container alignContent='center'>
+                        <Grid
+                            item
+                            xs={12}
+                            sm={5}
+                            className={classes.textBox}
+                            container
+                            alignContent='center'
+                        >
                             <div className={classes.titleBox}>
-                                <PublishIcon className={classes.titleIcon}/>
-                                <Typography variant='h6' inline>Publish</Typography>
+                                <PublishIcon className={classes.titleIcon} />
+                                <Typography variant='h6' inline>
+                                    Publish
+                                </Typography>
                             </div>
                             <Typography>
                                 Organize your experiments in a worksheet (a digital lab notebook)

@@ -18,7 +18,6 @@ import NewRun from '../../NewRun';
 import NewUpload from '../../NewUpload';
 import { buildTerminalCommand } from '../../../../util/worksheet_utils';
 
-
 class InsertButtons extends Component<{
     classes: {},
     showNewUpload: () => void,
@@ -27,42 +26,42 @@ class InsertButtons extends Component<{
     render() {
         const { classes, showNewUpload, showNewRun } = this.props;
         return (
-            <div onMouseMove={ (ev) => { ev.stopPropagation(); } }
-                 className={ classes.buttonsPanel }
+            <div
+                onMouseMove={(ev) => {
+                    ev.stopPropagation();
+                }}
+                className={classes.buttonsPanel}
             >
                 <Button
-                    key="upload"
-                    variant="outlined"
-                    size="small"
-                    color="primary"
-                    aria-label="New Upload"
-                    onClick={ () => showNewUpload() }
-                    classes={ { root: classes.buttonRoot } }
+                    key='upload'
+                    variant='outlined'
+                    size='small'
+                    color='primary'
+                    aria-label='New Upload'
+                    onClick={() => showNewUpload()}
+                    classes={{ root: classes.buttonRoot }}
                 >
                     <UploadIcon className={classes.buttonIcon} />
                     Upload
                 </Button>
                 <Button
-                    key="run"
-                    variant="outlined"
-                    size="small"
-                    color="primary"
-                    aria-label="New Run"
-                    onClick={ () => showNewRun() }
-                    classes={ { root: classes.buttonRoot } }
+                    key='run'
+                    variant='outlined'
+                    size='small'
+                    color='primary'
+                    aria-label='New Run'
+                    onClick={() => showNewRun()}
+                    classes={{ root: classes.buttonRoot }}
                 >
                     <AddIcon className={classes.buttonIcon} />
                     Run
                 </Button>
             </div>
         );
-
-
     }
 }
 
 class BundleRow extends Component {
-
     state = {
         showDetail: false,
         showNewUpload: 0,
@@ -70,14 +69,14 @@ class BundleRow extends Component {
         showInsertButtons: 0,
         bundleInfoUpdates: {},
         showDetail: false,
-    }
+    };
 
     receiveBundleInfoUpdates = (update) => {
         let { bundleInfoUpdates } = this.state;
         // Use object spread to update.
-        bundleInfoUpdates = {...bundleInfoUpdates, ...update};
+        bundleInfoUpdates = { ...bundleInfoUpdates, ...update };
         this.setState({ bundleInfoUpdates });
-    }
+    };
 
     handleClick = () => {
         this.props.updateRowIndex(this.props.rowIndex);
@@ -85,15 +84,15 @@ class BundleRow extends Component {
         this.setState({
             showDetail: !showDetail,
         });
-    }
+    };
 
     showNewUpload = (val) => () => {
         this.setState({ showNewUpload: val });
-    }
+    };
 
     showNewRun = (val) => () => {
-        this.setState({ showNewRun: val })
-    }
+        this.setState({ showNewRun: val });
+    };
 
     /**
      * Mouse listener triggered when hovering a row. It decides whether to show the buttons above or below the row,
@@ -101,15 +100,10 @@ class BundleRow extends Component {
      */
     showButtons = (ev) => {
         const row = ev.currentTarget;
-        const {
-            top,
-            height,
-        } = row.getBoundingClientRect();
+        const { top, height } = row.getBoundingClientRect();
         const { clientY } = ev;
-        const onTop = (clientY >= top
-                && clientY <= top + 0.25 * height);
-        const onBotttom = (clientY >= top + 0.75 * height
-                && clientY <= top + height);
+        const onTop = clientY >= top && clientY <= top + 0.25 * height;
+        const onBotttom = clientY >= top + 0.75 * height && clientY <= top + height;
         if (onTop) {
             this.setState({
                 showInsertButtons: -1,
@@ -120,7 +114,7 @@ class BundleRow extends Component {
                 showInsertButtons: 1,
             });
         }
-    }
+    };
 
     deleteItem = (ev) => {
         ev.stopPropagation();
@@ -128,16 +122,30 @@ class BundleRow extends Component {
         $('#command_line')
             .terminal()
             .exec(buildTerminalCommand(['rm', uuid]));
-    }
+    };
 
     showMore = (ev) => {
         ev.stopPropagation();
-    }
+    };
 
     render() {
-        const { showInsertButtons, showDetail, showNewUpload, showNewRun, bundleInfoUpdates } = this.state;
-        const { classes, onMouseMove, bundleInfo, prevBundleInfo, item, worksheetUUID, reloadWorksheet } = this.props;
-        const rowItems = {...item, ...bundleInfoUpdates};
+        const {
+            showInsertButtons,
+            showDetail,
+            showNewUpload,
+            showNewRun,
+            bundleInfoUpdates,
+        } = this.state;
+        const {
+            classes,
+            onMouseMove,
+            bundleInfo,
+            prevBundleInfo,
+            item,
+            worksheetUUID,
+            reloadWorksheet,
+        } = this.props;
+        const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
@@ -169,172 +177,164 @@ class BundleRow extends Component {
             return (
                 <TableCell
                     key={col}
-                    classes={ {
-                        root: classes.root
-                    } }
+                    classes={{
+                        root: classes.root,
+                    }}
                 >
                     {rowContent}
                 </TableCell>
             );
         });
 
-        return <TableBody
-            classes={ { root: classes.tableBody } }
-            onMouseMove={ this.showButtons }
-            onMouseLeave={ () => {
-                this.setState({
-                    showInsertButtons: 0,
-                });
-            } }
-        >
-            <TableRow classes={ { root: classes.panelContainer } }>
-                <TableCell
-                    colSpan="100%"
-                    classes={ { root: classes.panelCellContainer } }
-                >
-                    {
-                        (showInsertButtons < 0) &&
-                        <InsertButtons
-                            classes={classes}
-                            showNewUpload={ this.showNewUpload(-1) }
-                            showNewRun={ this.showNewRun(-1) }
-                        />
-                    }
-                </TableCell>
-            </TableRow>
-            {
-                (showNewUpload === -1) &&
-                <TableRow>
-                    <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
-                        <NewUpload
-                            after_sort_key={ prevBundleInfo ? prevBundleInfo.sort_key : bundleInfo.sort_key - 10 }
-                            worksheetUUID={ worksheetUUID }
-                            reloadWorksheet={ reloadWorksheet }
-                            onClose={ () => { this.setState({ showNewUpload: 0 }); } }
-                        />
-                    </TableCell>
-                </TableRow>
-            }
-            {
-                (showNewRun === -1) &&
-                <TableRow>
-                    <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
-                        <NewRun
-                            ws={this.props.ws}
-                            onSubmit={() => this.setState({ showNewRun: 0 })}
-                            after_sort_key={ prevBundleInfo ? prevBundleInfo.sort_key : bundleInfo.sort_key - 10 }
-                        />
-                    </TableCell>
-                </TableRow>
-            }
-            {
-                (showDetail || showNewUpload == -1 || showNewRun == -1) &&
-                <TableRow className={classes.spacerAbove} />
-            }
-            <TableRow
-                hover
-                onClick={this.handleClick}
-                onContextMenu={this.props.handleContextMenu.bind(
-                    null,
-                    bundleInfo.uuid,
-                    this.props.focusIndex,
-                    this.props.rowIndex,
-                    bundleInfo.bundle_type === 'run',
-                )}
-                className={classNames({
-                    [classes.contentRow]: true,
-                    [classes.detailPadding]: showDetail,
-                })}
+        return (
+            <TableBody
+                classes={{ root: classes.tableBody }}
+                onMouseMove={this.showButtons}
+                onMouseLeave={() => {
+                    this.setState({
+                        showInsertButtons: 0,
+                    });
+                }}
             >
-                { rowCells }
-            </TableRow>
-            <TableRow classes={ { root: classes.panelContainer } }>
-                <TableCell
-                    colSpan="100%"
-                    classes={ { root: classes.panelCellContainer } }
+                <TableRow classes={{ root: classes.panelContainer }}>
+                    <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
+                        {showInsertButtons < 0 && (
+                            <InsertButtons
+                                classes={classes}
+                                showNewUpload={this.showNewUpload(-1)}
+                                showNewRun={this.showNewRun(-1)}
+                            />
+                        )}
+                    </TableCell>
+                </TableRow>
+                {showNewUpload === -1 && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
+                            <NewUpload
+                                after_sort_key={
+                                    prevBundleInfo
+                                        ? prevBundleInfo.sort_key
+                                        : bundleInfo.sort_key - 10
+                                }
+                                worksheetUUID={worksheetUUID}
+                                reloadWorksheet={reloadWorksheet}
+                                onClose={() => {
+                                    this.setState({ showNewUpload: 0 });
+                                }}
+                            />
+                        </TableCell>
+                    </TableRow>
+                )}
+                {showNewRun === -1 && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
+                            <NewRun
+                                ws={this.props.ws}
+                                onSubmit={() => this.setState({ showNewRun: 0 })}
+                                after_sort_key={
+                                    prevBundleInfo
+                                        ? prevBundleInfo.sort_key
+                                        : bundleInfo.sort_key - 10
+                                }
+                            />
+                        </TableCell>
+                    </TableRow>
+                )}
+                {(showDetail || showNewUpload == -1 || showNewRun == -1) && (
+                    <TableRow className={classes.spacerAbove} />
+                )}
+                <TableRow
+                    hover
+                    onClick={this.handleClick}
+                    onContextMenu={this.props.handleContextMenu.bind(
+                        null,
+                        bundleInfo.uuid,
+                        this.props.focusIndex,
+                        this.props.rowIndex,
+                        bundleInfo.bundle_type === 'run',
+                    )}
+                    className={classNames({
+                        [classes.contentRow]: true,
+                        [classes.detailPadding]: showDetail,
+                    })}
                 >
-                    <div
-                        className={ classes.rightButtonStripe }
-                    >
-                        <IconButton
-                            onClick={ this.showMore }
-                            classes={ { root: classes.iconButtonRoot } }
-                        >
-                            <MoreIcon />
-                        </IconButton>
-                        &nbsp;&nbsp;
-                        <IconButton
-                            onClick={ this.deleteItem }
-                            classes={ { root: classes.iconButtonRoot } }
-                        >
-                            <DeleteIcon />
-                        </IconButton>
-                    </div>
-                </TableCell>
-            </TableRow>
-            {
-                showDetail &&
-                <TableRow>
-                    <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
-                        <BundleDetail
-                            uuid={ bundleInfo.uuid }
-                            bundleMetadataChanged={ this.props.reloadWorksheet }
-                            ref='bundleDetail'
-                            onUpdate={ this.receiveBundleInfoUpdates }
-                            onClose={ () => {
-                                this.setState({
-                                    showDetail: false,
-                                });
-                            } }
-                        />
+                    {rowCells}
+                </TableRow>
+                <TableRow classes={{ root: classes.panelContainer }}>
+                    <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
+                        <div className={classes.rightButtonStripe}>
+                            <IconButton
+                                onClick={this.showMore}
+                                classes={{ root: classes.iconButtonRoot }}
+                            >
+                                <MoreIcon />
+                            </IconButton>
+                            &nbsp;&nbsp;
+                            <IconButton
+                                onClick={this.deleteItem}
+                                classes={{ root: classes.iconButtonRoot }}
+                            >
+                                <DeleteIcon />
+                            </IconButton>
+                        </div>
                     </TableCell>
                 </TableRow>
-            }
-            {
-                (showDetail || showNewUpload == 1 || showNewRun == 1) &&
-                <TableRow className={classes.spacerBelow} />
-            }
-            {
-                (showNewUpload === 1) &&
-                <TableRow>
-                    <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
-                        <NewUpload
-                            after_sort_key={ bundleInfo.sort_key }
-                            worksheetUUID={ worksheetUUID }
-                            reloadWorksheet={ reloadWorksheet }
-                            onClose={ () => this.setState({ showNewUpload: 0 }) }
-                        />
+                {showDetail && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
+                            <BundleDetail
+                                uuid={bundleInfo.uuid}
+                                bundleMetadataChanged={this.props.reloadWorksheet}
+                                ref='bundleDetail'
+                                onUpdate={this.receiveBundleInfoUpdates}
+                                onClose={() => {
+                                    this.setState({
+                                        showDetail: false,
+                                    });
+                                }}
+                            />
+                        </TableCell>
+                    </TableRow>
+                )}
+                {(showDetail || showNewUpload == 1 || showNewRun == 1) && (
+                    <TableRow className={classes.spacerBelow} />
+                )}
+                {showNewUpload === 1 && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
+                            <NewUpload
+                                after_sort_key={bundleInfo.sort_key}
+                                worksheetUUID={worksheetUUID}
+                                reloadWorksheet={reloadWorksheet}
+                                onClose={() => this.setState({ showNewUpload: 0 })}
+                            />
+                        </TableCell>
+                    </TableRow>
+                )}
+                {showNewRun === 1 && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
+                            <NewRun
+                                ws={this.props.ws}
+                                onSubmit={() => this.setState({ showNewRun: 0 })}
+                                after_sort_key={bundleInfo.sort_key}
+                            />
+                        </TableCell>
+                    </TableRow>
+                )}
+                <TableRow classes={{ root: classes.panelContainer }}>
+                    <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
+                        {showInsertButtons > 0 && (
+                            <InsertButtons
+                                classes={classes}
+                                showNewUpload={this.showNewUpload(1)}
+                                showNewRun={this.showNewRun(1)}
+                            />
+                        )}
                     </TableCell>
                 </TableRow>
-            }
-            {
-                (showNewRun === 1) &&
-                <TableRow>
-                    <TableCell colSpan="100%" classes={ { root: classes.rootNoPad  } } >
-                        <NewRun
-                            ws={this.props.ws}
-                            onSubmit={() => this.setState({ showNewRun: 0 })}
-                            after_sort_key={ bundleInfo.sort_key }
-                        />
-                    </TableCell>
-                </TableRow>
-            }
-            <TableRow classes={ { root: classes.panelContainer } }>
-                <TableCell
-                    colSpan="100%"
-                    classes={ { root: classes.panelCellContainer } }
-                >
-                    {
-                        (showInsertButtons > 0) &&
-                        <InsertButtons
-                            classes={classes}
-                            showNewUpload={ this.showNewUpload(1) }
-                            showNewRun={ this.showNewRun(1) }
-                        />
-                    }
-                </TableCell>
-            </TableRow>
-        </TableBody>        
+            </TableBody>
+        );
     }
 }
 
@@ -405,7 +405,7 @@ const styles = (theme) => ({
         backgroundColor: '#f7f7f7',
         '&:hover': {
             backgroundColor: '#f7f7f7',
-        }
+        },
     },
     buttonIcon: {
         marginRight: theme.spacing.large,

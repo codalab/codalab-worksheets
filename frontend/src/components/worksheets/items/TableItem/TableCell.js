@@ -5,16 +5,16 @@ import TableCellBase from '@material-ui/core/TableCell';
 class TableCell extends React.Component {
     render() {
         const { classes, children, ...others } = this.props;
-        return <TableCellBase classes={ { root: classes.root } } {...others}>
-            {
-                children
-            }
-        </TableCellBase>
+        return (
+            <TableCellBase classes={{ root: classes.root }} {...others}>
+                {children}
+            </TableCellBase>
+        );
     }
 }
 
 const styles = (theme) => ({
-	root: {
+    root: {
         verticalAlign: 'middle !important',
     },
 });

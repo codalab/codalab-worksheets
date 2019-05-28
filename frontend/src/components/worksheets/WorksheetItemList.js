@@ -59,17 +59,17 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             React.createElement('strong', null, 'Internal error: ', item.mode),
         );
     }
-    worksheet_items.push((
+    worksheet_items.push(
         <ItemWrapper
-            prevItem={ prevItem }
-            item={ item }
-            afterItem={ afterItem }
-            worksheetUUID={ props.worksheetUUID }
-            reloadWorksheet={ props.reloadWorksheet }
+            prevItem={prevItem}
+            item={item}
+            afterItem={afterItem}
+            worksheetUUID={props.worksheetUUID}
+            reloadWorksheet={props.reloadWorksheet}
         >
-            { elem }
-        </ItemWrapper>
-    ));
+            {elem}
+        </ItemWrapper>,
+    );
 };
 
 class WorksheetItemList extends React.Component {
@@ -215,22 +215,24 @@ class WorksheetItemList extends React.Component {
                         props,
                         worksheet_items,
                         index > 0 ? info.items[index - 1] : null,
-                        index < info.items.length - 1 ? info.items[index + 1] : null
+                        index < info.items.length - 1 ? info.items[index + 1] : null,
                     );
                 }.bind(this),
             );
             items_display = worksheet_items;
         } else {
-            items_display = <ItemWrapper
-                reloadWorksheet={ this.props.reloadWorksheet }
-                worksheetUUID={ info && info.uuid }
-                ws={ this.props.ws }
-            >
-                <TextEditorItem
-                    worksheetUUID={ info && info.uuid }
-                    reloadWorksheet={ this.props.reloadWorksheet }
-                />
-            </ItemWrapper>;
+            items_display = (
+                <ItemWrapper
+                    reloadWorksheet={this.props.reloadWorksheet}
+                    worksheetUUID={info && info.uuid}
+                    ws={this.props.ws}
+                >
+                    <TextEditorItem
+                        worksheetUUID={info && info.uuid}
+                        reloadWorksheet={this.props.reloadWorksheet}
+                    />
+                </ItemWrapper>
+            );
         }
         if (info && info.error)
             items_display = <p className='alert-danger'>Error in worksheet: {info.error}</p>;
