@@ -2329,6 +2329,8 @@ class BundleModel(object):
             # Root user has no parallel run quota
             return parallel_run_quota
         with self.engine.begin() as connection:
+            # Get all the runs belonging to this user whose workers are not personal workers
+            # of the user themselves
             active_runs = connection.execute(
                 select([cl_worker_run.c.run_uuid]).where(
                     and_(
