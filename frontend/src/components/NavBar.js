@@ -3,6 +3,24 @@ import classNames from 'classnames';
 import $ from 'jquery';
 import Immutable from 'seamless-immutable';
 
+import { withStyles } from '@material-ui/core/styles';
+import { MuiThemeProvider } from '@material-ui/core/styles';
+import Typography from '@material-ui/core/Typography';
+import AppBar from '@material-ui/core/AppBar';
+import Toolbar from '@material-ui/core/Toolbar';
+import Button from '@material-ui/core/Button';
+import Menu from '@material-ui/core/Menu';
+import MenuItem from '@material-ui/core/MenuItem';
+import ListSubheader from '@material-ui/core/ListSubheader';
+import IconButton from '@material-ui/core/IconButton';
+import Tooltip from '@material-ui/core/Tooltip';
+import DashboardIcon from '@material-ui/icons/Home';  // Dashboard
+import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
+import GalleryIcon from '@material-ui/icons/Public';  // FindInPage
+import HowToIcon from '@material-ui/icons/Help';  // Info
+import ContactIcon from '@material-ui/icons/Feedback';
+import AccountIcon from '@material-ui/icons/AccountCircle';
+
 class NavBar extends React.Component<{
     auth: {
         isAuthenticated: boolean,
@@ -12,7 +30,9 @@ class NavBar extends React.Component<{
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = {};
+        this.state = {
+            accountEl: null,
+        };
     }
 
     componentDidMount() {
@@ -43,130 +63,108 @@ class NavBar extends React.Component<{
 
     /** Renderer. */
     render() {
+        const { classes } = this.props;
+        const { accountEl } = this.state;
+
         if (this.props.auth.isAuthenticated && this.state.userInfo === undefined) {
             this.fetchName();
         }
 
         return (
-            <nav className='navbar navbar-default navbar-fixed-top' role='navigation'>
-                <div className='container-fluid'>
-                    <div className='navbar-header'>
-                        <button
-                            type='button'
-                            className='navbar-toggle collapsed'
-                            data-toggle='collapse'
-                            data-target='#navbar_collapse'
-                        >
-                            <span className='sr-only'>Toggle Navigation</span>
-                            <span className='icon-bar' />
-                            <span className='icon-bar' />
-                            <span className='icon-bar' />
-                        </button>
-                        <a className='navbar-brand' href='/' tabIndex={1} target='_self'>
+            <MuiThemeProvider theme={{
+                overrides: {
+                    MuiIconButton: {
+                        root: {
+                            padding: 12,
+                        }
+                    }
+                }
+            }}>
+            <AppBar color="default">
+                <Toolbar>
+                    <div className={classes.logoContainer}>
+                        <a href='/' target='_self'>
                             <img
-                                src={process.env.PUBLIC_URL + '/img/codalab-logo.png'}
-                                alt='Home'
+                                src={`${process.env.PUBLIC_URL}/img/codalab-logo.png`}
+                                className={classes.logo}
+                                alt='CodaLab'
                             />
                         </a>
                     </div>
-                    <div className='collapse navbar-collapse' id='navbar_collapse'>
-                        <ul className='nav navbar-nav navbar-right'>
-                            <li>
-                                <a href='/rest/worksheets/?name=home' tabIndex={2} target='_self'>
-                                    Gallery
-                                </a>
-                            </li>
-                            {this.props.auth.isAuthenticated && (
-                                <React.Fragment>
-                                    <li className='user-authenticated'>
-                                        <a
-                                            href='/rest/worksheets/?name=%2F'
-                                            tabIndex={2}
-                                            target='_self'
-                                        >
-                                            My Home
-                                        </a>
-                                    </li>
-                                    <li className='user-authenticated'>
-                                        <a
-                                            href='/rest/worksheets/?name=dashboard'
-                                            tabIndex={2}
-                                            target='_self'
-                                        >
-                                            My Dashboard
-                                        </a>
-                                    </li>
-                                </React.Fragment>
-                            )}
-                            <li>
-                                <a
-                                    href='https://github.com/codalab/codalab-worksheets/wiki'
-                                    target='_blank'
+                    {!this.props.auth.isAuthenticated && (
+                            <React.Fragment>
+                                <Button color="inherit" href="/account/signup">Sign Up</Button>
+                                <Button color="inherit" href="/account/login">Login</Button>
+                            </React.Fragment>
+                    )}
+                    {this.props.auth.isAuthenticated && (
+                        <React.Fragment>
+                            <Tooltip title="Dashboard">
+                                <IconButton href="/rest/worksheets/?name=dashboard">
+                                    <DashboardIcon />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title="New Worksheet">
+                                <IconButton>
+                                    <NewWorksheetIcon />
+                                </IconButton>
+                            </Tooltip>
+                        </React.Fragment>
+                    )}
+                    <Tooltip title="Gallery">
+                        <IconButton href="/rest/worksheets/?name=home">
+                            <GalleryIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="How-To Guides">
+                        <IconButton href="https://github.com/codalab/codalab-worksheets/wiki">
+                            <HowToIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Contact">
+                        <IconButton href="mailto://codalab.worksheets@gmail.com">
+                            <ContactIcon />
+                        </IconButton>
+                    </Tooltip>
+                    {this.props.auth.isAuthenticated && (
+                        <React.Fragment>
+                            <Tooltip title="Account">
+                                <IconButton
+                                    aria-owns={accountEl ? 'account-menu' : undefined}
+                                    aria-haspopup="true"
+                                    onClick={(e) => this.setState({ accountEl: e.currentTarget })}
                                 >
-                                    Help
-                                </a>
-                            </li>
-                            {this.props.auth.isAuthenticated && (
-                                <li
-                                    className={
-                                        'user-authenticated dropdown ' +
-                                        (this.props.location.pathname.includes('/account/') &&
-                                            'active')
-                                    }
-                                >
-                                    <a>
-                                        <img
-                                            src={
-                                                process.env.PUBLIC_URL + '/img/icon_mini_avatar.png'
-                                            }
-                                            className='mini-avatar'
-                                        />{' '}
-                                        <span className='user-name' />
-                                        {this.state.userInfo && this.state.userInfo.user_name}
-                                        <span className='caret' />
-                                    </a>
-                                    <ul className='dropdown-menu' role='menu'>
-                                        <li>
-                                            <a href='/account/profile' target='_self'>
-                                                My Account
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a
-                                                onClick={this.props.auth.signout}
-                                                href='#'
-                                                // href={
-                                                //     '/rest/account/logout?redirect_uri=' +
-                                                //     encodeURIComponent(this.props.location.pathname)
-                                                // }
-                                                // target='_self'
-                                            >
-                                                Sign Out
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </li>
-                            )}
-                            {!this.props.auth.isAuthenticated && (
-                                <React.Fragment>
-                                    <li className='user-not-authenticated'>
-                                        <a href='/account/signup' target='_self'>
-                                            Sign Up
-                                        </a>
-                                    </li>
-                                    <li className='user-not-authenticated'>
-                                        <a href='/account/login' target='_self'>
-                                            Sign In
-                                        </a>
-                                    </li>
-                                </React.Fragment>
-                            )}
-                        </ul>
-                    </div>
-                </div>
-            </nav>
+                                    <AccountIcon />
+                                </IconButton>
+                            </Tooltip>
+                            <Menu
+                                id="account-menu"
+                                anchorEl={accountEl}
+                                open={Boolean(accountEl)}
+                                onClose={() => this.setState({ accountEl: null })}
+                            >
+                                <ListSubheader>
+                                    {this.state.userInfo && this.state.userInfo.user_name}
+                                </ListSubheader>
+                                <MenuItem href="/account/profile">My Account</MenuItem>
+                                <MenuItem onClick={this.props.auth.signout} href='#'>Logout</MenuItem>
+                            </Menu>
+                        </React.Fragment>
+                    )}
+                </Toolbar>
+            </AppBar>
+            </MuiThemeProvider>
         );
     }
 }
 
-export default NavBar;
+const styles = (theme) => ({
+    logoContainer: {
+        flexGrow: 1,
+    },
+    logo: {
+        maxHeight: 64,
+    },
+});
+
+export default withStyles(styles)(NavBar);
