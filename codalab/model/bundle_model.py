@@ -1406,6 +1406,27 @@ class BundleModel(object):
                 connection.execute(cl_worksheet_item.insert().values(new_item))
             # sqlite doesn't support batch insertion
 
+    
+    def update_worksheet_item_value(self, id, value):
+        """
+        Update the value of a worksheet item, aka updating a markdown item.
+        When the value is falsy, delete this item.
+        """
+        with self.engine.begin() as connection:
+            if value:
+                connection.execute(
+                    cl_worksheet_item.update().where(
+                        cl_worksheet_item.c.id == id
+                    ).values({ 'value': value })
+                )
+            else:
+                connection.execute(
+                    cl_worksheet_item.delete().where(
+                        cl_worksheet_item.c.id == id
+                    )
+                )
+
+
     def update_worksheet_items(self, worksheet_uuid, last_item_id, length, new_items):
         """
         Updates the worksheet with the given uuid. If there were exactly
