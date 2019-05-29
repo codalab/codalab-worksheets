@@ -596,16 +596,18 @@ def expand_raw_item(raw_item):
             keywords = rest_util.resolve_owner_in_keywords(keywords)
             search_result = local.model.search_bundles(request.user.user_id, keywords)
             if search_result['is_aggregate']:
-                raw_items.append(markup_item(str(search_result['result'])))
+                # Add None's for the 'id' and 'sort_key' of the tuple, since these
+                # items are not really worksheet items.
+                raw_items.append(markup_item(str(search_result['result'])) + (None, None))
             else:
                 bundle_uuids = search_result['result']
                 bundle_infos = rest_util.get_bundle_infos(bundle_uuids)
                 for bundle_uuid in bundle_uuids:
-                    raw_items.append(bundle_item(bundle_infos[bundle_uuid]))
+                    raw_items.append(bundle_item(bundle_infos[bundle_uuid]) + (None, None))
         elif is_wsearch:
             worksheet_infos = search_worksheets(keywords)
             for worksheet_info in worksheet_infos:
-                raw_items.append(subworksheet_item(worksheet_info))
+                raw_items.append(subworksheet_item(worksheet_info) + (None, None))
 
         return raw_items
     else:

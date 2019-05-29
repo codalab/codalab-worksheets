@@ -70,28 +70,34 @@ function getMinMaxKeys(item) {
             const keys = [];
             sort_keys.forEach((k, idx) => {
                 const key = k || ids[idx];
-                if (key !== null) {
+                if (key !== null && key !== undefined) {
                     keys.push(key);
                 }
             });
-            minKey = Math.min(...keys);
-            maxKey = Math.max(...keys);
+            if (keys.length > 0) {
+                minKey = Math.min(...keys);
+                maxKey = Math.max(...keys);
+            }
         }
     } else if (item.mode === 'table_block') {
         if (item.bundles_spec && item.bundles_spec.bundle_infos) {
             const keys = [];
             item.bundles_spec.bundle_infos.forEach(info => {
                 const key = info.sort_key || info.id;
-                if (key !== null) {
+                if (key !== null && key !== undefined) {
                     keys.push(key);
                 }
             });
-            minKey = Math.min(...keys);
-            maxKey = Math.max(...keys);
+            if (keys.length > 0) {
+                minKey = Math.min(...keys);
+                maxKey = Math.max(...keys);
+            }
         }
     }
     return { minKey, maxKey };
 }
+
+const SENSOR_HEIGHT = 12;
 
 class ItemWrapper extends React.Component {
 
@@ -110,8 +116,8 @@ class ItemWrapper extends React.Component {
         } = row.getBoundingClientRect();
         const { clientY } = ev;
         const onTop = (clientY >= top
-                && clientY <= top + 8);
-        const onBotttom = (clientY >= top + height - 8
+                && clientY <= top + SENSOR_HEIGHT);
+        const onBotttom = (clientY >= top + height - SENSOR_HEIGHT
                 && clientY <= top + height);
         if (onTop) {
             this.setState({
@@ -144,12 +150,19 @@ class ItemWrapper extends React.Component {
             showNewRun,
             showNewText } = this.state;
 
-        const itemKeys = getMinMaxKeys(item);
-        const prevItemKeys = getMinMaxKeys(prevItem);
-
         if (!item) {
             return null;
         }
+
+        const itemKeys = getMinMaxKeys(item);
+        const prevItemKeys = getMinMaxKeys(prevItem);
+
+        let isWorkSheetItem = true;
+        if (itemKeys.minKey === null && itemKeys.maxKey === null) {
+            // This item isn't really a worksheet item.
+            isWorkSheetItem = false;
+        }
+        console.log('===>', item.mode, itemKeys);
 
         let aroundTextBlock = item.mode === 'markup_block';
         let textBlockId = aroundTextBlock ? item.ids[0] : null;
@@ -187,7 +200,7 @@ class ItemWrapper extends React.Component {
 	            } }
 			>
 				{
-					(showInsertButtons === -1) && <InsertButtons
+					(showInsertButtons === -1 && isWorkSheetItem) && <InsertButtons
 						classes={ classes }
 						showNewUpload={ () => { this.setState({ showNewUpload: -1 }); } }
 						showNewRun={ () => { this.setState({ showNewRun: -1 }); } }
@@ -262,7 +275,7 @@ class ItemWrapper extends React.Component {
                         />
 	            }
 				{
-					(showInsertButtons === 1) && <InsertButtons
+					(showInsertButtons === 1 && isWorkSheetItem) && <InsertButtons
 						classes={ classes }
 						showNewUpload={ () => { this.setState({ showNewUpload: 1 }); } }
 						showNewRun={ () => { this.setState({ showNewRun: 1 }); } }
@@ -277,6 +290,7 @@ class ItemWrapper extends React.Component {
 const styles = (theme) => ({
 	container: {
 		position: 'relative',
+        marginBottom: 20,
 	},
 	main: {
 		zIndex: 10,
