@@ -32,8 +32,10 @@ class MarkdownItem extends React.Component {
         this.processMathJax();
     }
     shouldComponentUpdate(nextProps, nextState) {
-        return worksheetItemPropsChanged(this.props, nextProps) ||
-            this.state.showEdit !== nextState.showEdit;
+        return (
+            worksheetItemPropsChanged(this.props, nextProps) ||
+            this.state.showEdit !== nextState.showEdit
+        );
     }
     handleClick = (event) => {
         this.props.setFocus(this.props.focusIndex, 0);
@@ -56,7 +58,7 @@ class MarkdownItem extends React.Component {
         this.setState({
             showEdit: !showEdit,
         });
-    }
+    };
 
     deleteItem = () => {
         const { reloadWorksheet, item, worksheetUUID } = this.props;
@@ -74,7 +76,7 @@ class MarkdownItem extends React.Component {
                 alert(createAlertText(this.url, jqHXR.responseText));
             },
         });
-    }
+    };
 
     render() {
         const { classes, item } = this.props;
@@ -88,44 +90,38 @@ class MarkdownItem extends React.Component {
         // http://facebook.github.io/react/docs/special-non-dom-attributes.html
         // http://facebook.github.io/react/docs/tags-and-attributes.html#html-attributes
         var className = 'type-markup ' + (this.props.focused ? ' focused' : '');
-        
-        return showEdit
-            ? <TextEditorItem
-                id={ item.ids && item.ids[0] }
-                mode="edit"
-                defaultValue={ item.text }
-                reloadWorksheet={ this.props.reloadWorksheet }
-                worksheetUUID={ this.props.worksheetUUID }
-                closeEditor={ () => {
+
+        return showEdit ? (
+            <TextEditorItem
+                id={item.ids && item.ids[0]}
+                mode='edit'
+                defaultValue={item.text}
+                reloadWorksheet={this.props.reloadWorksheet}
+                worksheetUUID={this.props.worksheetUUID}
+                closeEditor={() => {
                     this.setState({ showEdit: false });
-                } }
+                }}
             />
-            : (
-                <div
-                    className={ "ws-item " + classes.textContainer }
-                    onClick={ this.handleClick }
-                >
-                    <div
-                        className={ className }
-                        dangerouslySetInnerHTML={ { __html: contents } }
-                    />
-                    <div className={ classes.buttonsPanel }>
-                        <IconButton
-                            onClick={ this.toggleEdit }
-                            classes={ { root: classes.iconButtonRoot } }
-                        >
-                            <EditIcon />
-                        </IconButton>
-                        &nbsp;&nbsp;
-                        <IconButton
-                            onClick={ this.deleteItem }
-                            classes={ { root: classes.iconButtonRoot } }
-                        >
-                            <DeleteIcon />
-                        </IconButton>
-                    </div>
+        ) : (
+            <div className={'ws-item ' + classes.textContainer} onClick={this.handleClick}>
+                <div className={className} dangerouslySetInnerHTML={{ __html: contents }} />
+                <div className={classes.buttonsPanel}>
+                    <IconButton
+                        onClick={this.toggleEdit}
+                        classes={{ root: classes.iconButtonRoot }}
+                    >
+                        <EditIcon />
+                    </IconButton>
+                    &nbsp;&nbsp;
+                    <IconButton
+                        onClick={this.deleteItem}
+                        classes={{ root: classes.iconButtonRoot }}
+                    >
+                        <DeleteIcon />
+                    </IconButton>
                 </div>
-            );
+            </div>
+        );
     }
 
     /// helper functions for making markdown and mathjax work together

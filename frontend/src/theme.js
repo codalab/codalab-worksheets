@@ -13,14 +13,14 @@ export default createMuiTheme({
             main: '#8895A7',
             dark: '#5F6B7A',
             contrastText: '#EDF1F5',
-        }
+        },
     },
     color: {
         primary: {
-            darkest: '#194971',  // headings
-            dark: '#2368A2',     // text
-            base: '#3183C8',     // icons, buttons
-            light: '#AAD4F6',    // outlines
+            darkest: '#194971', // headings
+            dark: '#2368A2', // text
+            base: '#3183C8', // icons, buttons
+            light: '#AAD4F6', // outlines
             lightest: '#EFF8FF', // boxes
         },
         grey: {
@@ -64,7 +64,7 @@ export default createMuiTheme({
     typography: {
         htmlFontSize: 16,
         useNextVariants: true,
-        fontFamilyMonospace: '"Roboto Mono", "Menlo", "Monaco", "Courier", monospace'
+        fontFamilyMonospace: '"Roboto Mono", "Menlo", "Monaco", "Courier", monospace',
     },
     spacing: {
         smallest: 1,
@@ -78,7 +78,7 @@ export default createMuiTheme({
         MuiIconButton: {
             root: {
                 padding: 6,
-            }
-        }
-    }
+            },
+        },
+    },
 });

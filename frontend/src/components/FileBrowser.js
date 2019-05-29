@@ -384,13 +384,11 @@ const iconStyle = {
     marginRight: 4,
 };
 
-class FileBrowserItemLite extends React.Component<
-    {
-        bundle_uuid: string,
-        updateFileBrowser: (string) => void,
-        currentWorkingDirectory: string,
-    }
-> {
+class FileBrowserItemLite extends React.Component<{
+    bundle_uuid: string,
+    updateFileBrowser: (string) => void,
+    currentWorkingDirectory: string,
+}> {
     render() {
         let size = '';
         let file_location = '';
@@ -409,43 +407,39 @@ class FileBrowserItemLite extends React.Component<
         let item;
         if (this.props.type === 'directory' || this.props.type === '..') {
             item = (
-                <TableRow
-                    onClick={() => this.props.updateFileBrowser(file_location)}
-                >
+                <TableRow onClick={() => this.props.updateFileBrowser(file_location)}>
                     <TableCell>
-                        <div style={ rowCenter }>
-                            <FolderIcon style={ iconStyle } />
+                        <div style={rowCenter}>
+                            <FolderIcon style={iconStyle} />
                             <a target='_blank'>{this.props.index}</a>
                         </div>
                     </TableCell>
-                    <TableCell align="right">
-                        {size}
-                    </TableCell>
+                    <TableCell align='right'>{size}</TableCell>
                 </TableRow>
             );
         } else if (this.props.type === 'file') {
-            const file_link = `/rest/bundles/${this.props.bundle_uuid}/contents/blob/${encodeBundleContentsPath(file_location)}`;
+            const file_link = `/rest/bundles/${
+                this.props.bundle_uuid
+            }/contents/blob/${encodeBundleContentsPath(file_location)}`;
             item = (
                 <TableRow>
                     <TableCell>
-                        <div style={ rowCenter }>
-                            <FileIcon style={ iconStyle } />
+                        <div style={rowCenter}>
+                            <FileIcon style={iconStyle} />
                             <a href={file_link} target='_blank'>
                                 {this.props.index}
                             </a>
                         </div>
                     </TableCell>
-                    <TableCell align="right">
-                        {size}
-                    </TableCell>
+                    <TableCell align='right'>{size}</TableCell>
                 </TableRow>
             );
         } else if (this.props.type === 'link') {
             item = (
                 <TableRow>
                     <TableCell>
-                        <div style={ rowCenter }>
-                            <LinkIcon style={ iconStyle } />
+                        <div style={rowCenter}>
+                            <LinkIcon style={iconStyle} />
                             {this.props.index + ' → ' + this.props.link}
                         </div>
                     </TableCell>
@@ -466,9 +460,8 @@ export class FileBrowserLite extends React.Component<
         currentDirectory: string,
         fileBrowserData: {},
         isVisible: boolean,
-    }
+    },
 > {
-
     constructor(props) {
         super(props);
         this.state = {
@@ -577,10 +570,9 @@ export class FileBrowserLite extends React.Component<
                 );
         });
 
-            
         return (
             <Paper>
-                <Table style={ { backgroundColor: 'white' } }>
+                <Table style={{ backgroundColor: 'white' }}>
                     <TableBody>{items}</TableBody>
                 </Table>
             </Paper>
