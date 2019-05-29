@@ -2050,7 +2050,7 @@ th {
 .table {
   width: 100%;
   max-width: 100%;
-  margin-bottom: 25px;
+  /*margin-bottom: 25px;*/
 }
 .table > thead > tr > th,
 .table > tbody > tr > th,
@@ -7120,7 +7120,7 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
 }
 #worksheet_content .ws-item {
   position: relative;
-  margin-bottom: 20px;
+  /*margin-bottom: 20px;*/
 }
 #worksheet_content .ws-item .ws-checkbox {
   margin: 0;
