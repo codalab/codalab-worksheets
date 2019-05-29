@@ -7,21 +7,17 @@ import TableHead from '@material-ui/core/TableHead';
 import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import Immutable from 'seamless-immutable';
-import {
-    worksheetItemPropsChanged,
-} from '../../../../util/worksheet_utils';
+import { worksheetItemPropsChanged } from '../../../../util/worksheet_utils';
 import $ from 'jquery';
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleRow from './BundleRow';
 
-class TableItem extends React.Component<
-    {
-        worksheetUUID: string,
-        item: {},
-        handleContextMenu: () => any,
-        reloadWorksheet: () => any,
-    }
->{
+class TableItem extends React.Component<{
+    worksheetUUID: string,
+    item: {},
+    handleContextMenu: () => any,
+    reloadWorksheet: () => any,
+}> {
     /** Constructor. */
     constructor(props) {
         super(props);
@@ -92,7 +88,7 @@ class TableItem extends React.Component<
         var headerItems = item.header;
         var headerHtml = headerItems.map(function(item, index) {
             return (
-                <TableCell component="th" key={index}>
+                <TableCell component='th' key={index}>
                     {item}
                 </TableCell>
             );
@@ -109,36 +105,34 @@ class TableItem extends React.Component<
             return (
                 <BundleRow
                     key={rowIndex}
-                    ref={ rowRef }
-                    worksheetUUID={ worksheetUUID }
+                    ref={rowRef}
+                    worksheetUUID={worksheetUUID}
                     item={rowItem}
                     rowIndex={rowIndex}
                     focused={rowFocused}
                     focusIndex={this.props.focusIndex}
                     url={url}
                     bundleInfo={bundleInfos[rowIndex]}
-                    prevBundleInfo={ rowIndex > 0 ? bundleInfos[rowIndex - 1] : null }
+                    prevBundleInfo={rowIndex > 0 ? bundleInfos[rowIndex - 1] : null}
                     uuid={bundleInfos[rowIndex].uuid}
                     headerItems={headerItems}
                     canEdit={canEdit}
                     updateRowIndex={this.updateRowIndex}
                     columnWithHyperlinks={columnWithHyperlinks}
                     handleContextMenu={this.props.handleContextMenu}
-                    reloadWorksheet={ this.props.reloadWorksheet }
+                    reloadWorksheet={this.props.reloadWorksheet}
                     ws={this.props.ws}
                 />
             );
         });
         return (
             <div className='ws-item'>
-                <TableContainer
-                    onMouseLeave={ this.removeButtons }
-                >
+                <TableContainer onMouseLeave={this.removeButtons}>
                     <Table className={tableClassName}>
                         <TableHead>
                             <TableRow style={{ height: 36 }}>{headerHtml}</TableRow>
                         </TableHead>
-                        { bodyRowsHtml }
+                        {bodyRowsHtml}
                     </Table>
                 </TableContainer>
             </div>
@@ -149,11 +143,11 @@ class TableItem extends React.Component<
 class _TableContainer extends React.Component {
     render() {
         const { classes, children, ...others } = this.props;
-        return <div className={ classes.tableContainer } {...others}>
-            {
-                children
-            }
-        </div>
+        return (
+            <div className={classes.tableContainer} {...others}>
+                {children}
+            </div>
+        );
     }
 }
 

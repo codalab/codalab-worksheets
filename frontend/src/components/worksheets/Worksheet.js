@@ -900,10 +900,10 @@ const styles = (theme) => ({
         backgroundColor: theme.color.grey.lightest,
     },
     worksheetOuter: {
-        maxWidth: 1000,  // Worksheet width
-        margin: '0 auto',  // Center page horizontally
-        backgroundColor: 'white',  // Paper color
-        border: `2px solid ${theme.color.grey.light}`
+        maxWidth: 1000, // Worksheet width
+        margin: '0 auto', // Center page horizontally
+        backgroundColor: 'white', // Paper color
+        border: `2px solid ${theme.color.grey.light}`,
     },
     worksheetInner: {
         padding: '0 30px 50px 30px',

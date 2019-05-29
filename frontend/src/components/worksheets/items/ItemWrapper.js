@@ -17,38 +17,41 @@ class InsertButtons extends React.Component<{
     render() {
         const { classes, showNewUpload, showNewRun, showNewText } = this.props;
         return (
-            <div onMouseMove={ (ev) => { ev.stopPropagation(); } }
-                 className={ classes.buttonsPanel }
+            <div
+                onMouseMove={(ev) => {
+                    ev.stopPropagation();
+                }}
+                className={classes.buttonsPanel}
             >
                 <Button
-                    variant="outlined"
-                    size="small"
-                    color="primary"
-                    aria-label="Upload"
-                    onClick={ showNewUpload }
-                    classes={ { root: classes.buttonRoot } }
+                    variant='outlined'
+                    size='small'
+                    color='primary'
+                    aria-label='Upload'
+                    onClick={showNewUpload}
+                    classes={{ root: classes.buttonRoot }}
                 >
                     <AddIcon className={classes.buttonIcon} />
                     Upload
                 </Button>
                 <Button
-                    variant="outlined"
-                    size="small"
-                    color="primary"
-                    aria-label="Add New Run"
-                    onClick={ showNewRun }
-                    classes={ { root: classes.buttonRoot } }
+                    variant='outlined'
+                    size='small'
+                    color='primary'
+                    aria-label='Add New Run'
+                    onClick={showNewRun}
+                    classes={{ root: classes.buttonRoot }}
                 >
                     <AddIcon className={classes.buttonIcon} />
                     Run
                 </Button>
                 <Button
-                    variant="outlined"
-                    size="small"
-                    color="primary"
-                    aria-label="Add Text"
-                    onClick={ showNewText }
-                    classes={ { root: classes.buttonRoot } }
+                    variant='outlined'
+                    size='small'
+                    color='primary'
+                    aria-label='Add Text'
+                    onClick={showNewText}
+                    classes={{ root: classes.buttonRoot }}
                 >
                     <AddIcon className={classes.buttonIcon} />
                     Text
@@ -82,7 +85,7 @@ function getMinMaxKeys(item) {
     } else if (item.mode === 'table_block') {
         if (item.bundles_spec && item.bundles_spec.bundle_infos) {
             const keys = [];
-            item.bundles_spec.bundle_infos.forEach(info => {
+            item.bundles_spec.bundle_infos.forEach((info) => {
                 const key = info.sort_key || info.id;
                 if (key !== null && key !== undefined) {
                     keys.push(key);
@@ -100,20 +103,16 @@ function getMinMaxKeys(item) {
 const SENSOR_HEIGHT = 12;
 
 class ItemWrapper extends React.Component {
-
-	state = {
+    state = {
         showNewUpload: 0,
         showNewRun: 0,
         showNewText: 0,
         showInsertButtons: 0,
-    }
+    };
 
-	showButtons = (ev) => {
+    showButtons = (ev) => {
         const row = ev.currentTarget;
-        const {
-            top,
-            height,
-        } = row.getBoundingClientRect();
+        const { top, height } = row.getBoundingClientRect();
         const { clientY } = ev;
         const onTop = (clientY >= top
                 && clientY <= top + SENSOR_HEIGHT);
@@ -132,10 +131,10 @@ class ItemWrapper extends React.Component {
                 showInsertButtons: 0,
             });
         }
-    }
+    };
 
-	render() {
-		const {
+    render() {
+        const {
             children,
             classes,
             prevItem,
@@ -144,11 +143,7 @@ class ItemWrapper extends React.Component {
             worksheetUUID,
             reloadWorksheet,
         } = this.props;
-		const {
-            showInsertButtons,
-            showNewUpload,
-            showNewRun,
-            showNewText } = this.state;
+        const { showInsertButtons, showNewUpload, showNewRun, showNewText } = this.state;
 
         if (!item) {
             return null;
@@ -162,7 +157,6 @@ class ItemWrapper extends React.Component {
             // This item isn't really a worksheet item.
             isWorkSheetItem = false;
         }
-        console.log('===>', item.mode, itemKeys);
 
         let aroundTextBlock = item.mode === 'markup_block';
         let textBlockId = aroundTextBlock ? item.ids[0] : null;
@@ -170,7 +164,7 @@ class ItemWrapper extends React.Component {
         let showDefault = 0;
         if (showNewText === -1 && prevItem) {
             // Check if prevItem or item is text block.
-            aroundTextBlock = (aroundTextBlock || prevItem.mode === 'markup_block');
+            aroundTextBlock = aroundTextBlock || prevItem.mode === 'markup_block';
             if (textBlockId === null && aroundTextBlock) {
                 textBlockId = prevItem.ids[0];
                 defaultText = prevItem.text;
@@ -180,7 +174,7 @@ class ItemWrapper extends React.Component {
         }
         if (showNewText === 1 && afterItem) {
             // Check if item or afterItem is text block.
-            aroundTextBlock = (aroundTextBlock || afterItem.mode === 'markup_block');
+            aroundTextBlock = aroundTextBlock || afterItem.mode === 'markup_block';
             if (textBlockId === null && aroundTextBlock) {
                 textBlockId = afterItem.ids[0];
                 defaultText = afterItem.text;
@@ -304,17 +298,17 @@ const styles = (theme) => ({
         height: 0,
         transform: 'translateY(-16px)',
         zIndex: 20,
-	},
-	buttonRoot: {
-		width: 120,
-		height: 32,
+    },
+    buttonRoot: {
+        width: 120,
+        height: 32,
         marginLeft: theme.spacing.unit,
         marginRight: theme.spacing.unit,
         backgroundColor: '#f7f7f7',
         '&:hover': {
             backgroundColor: '#f7f7f7',
-        }
-	}
+        },
+    },
 });
 
 export default withStyles(styles)(ItemWrapper);

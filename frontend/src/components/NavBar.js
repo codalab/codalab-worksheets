@@ -14,10 +14,10 @@ import MenuItem from '@material-ui/core/MenuItem';
 import ListSubheader from '@material-ui/core/ListSubheader';
 import IconButton from '@material-ui/core/IconButton';
 import Tooltip from '@material-ui/core/Tooltip';
-import DashboardIcon from '@material-ui/icons/Home';  // Dashboard
+import DashboardIcon from '@material-ui/icons/Home'; // Dashboard
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
-import GalleryIcon from '@material-ui/icons/Public';  // FindInPage
-import HowToIcon from '@material-ui/icons/Help';  // Info
+import GalleryIcon from '@material-ui/icons/Public'; // FindInPage
+import HowToIcon from '@material-ui/icons/Help'; // Info
 import ContactIcon from '@material-ui/icons/Feedback';
 import AccountIcon from '@material-ui/icons/AccountCircle';
 
@@ -71,88 +71,98 @@ class NavBar extends React.Component<{
         }
 
         return (
-            <MuiThemeProvider theme={{
-                overrides: {
-                    MuiIconButton: {
-                        root: {
-                            padding: 12,
-                        }
-                    }
-                }
-            }}>
-            <AppBar color="default">
-                <Toolbar>
-                    <div className={classes.logoContainer}>
-                        <a href='/' target='_self'>
-                            <img
-                                src={`${process.env.PUBLIC_URL}/img/codalab-logo.png`}
-                                className={classes.logo}
-                                alt='CodaLab'
-                            />
-                        </a>
-                    </div>
-                    {!this.props.auth.isAuthenticated && (
+            <MuiThemeProvider
+                theme={{
+                    overrides: {
+                        MuiIconButton: {
+                            root: {
+                                padding: 12,
+                            },
+                        },
+                    },
+                }}
+            >
+                <AppBar color='default'>
+                    <Toolbar>
+                        <div className={classes.logoContainer}>
+                            <a href='/' target='_self'>
+                                <img
+                                    src={`${process.env.PUBLIC_URL}/img/codalab-logo.png`}
+                                    className={classes.logo}
+                                    alt='CodaLab'
+                                />
+                            </a>
+                        </div>
+                        {!this.props.auth.isAuthenticated && (
                             <React.Fragment>
-                                <Button color="inherit" href="/account/signup">Sign Up</Button>
-                                <Button color="inherit" href="/account/login">Login</Button>
+                                <Button color='inherit' href='/account/signup'>
+                                    Sign Up
+                                </Button>
+                                <Button color='inherit' href='/account/login'>
+                                    Login
+                                </Button>
                             </React.Fragment>
-                    )}
-                    {this.props.auth.isAuthenticated && (
-                        <React.Fragment>
-                            <Tooltip title="Dashboard">
-                                <IconButton href="/rest/worksheets/?name=dashboard">
-                                    <DashboardIcon />
-                                </IconButton>
-                            </Tooltip>
-                            <Tooltip title="New Worksheet">
-                                <IconButton>
-                                    <NewWorksheetIcon />
-                                </IconButton>
-                            </Tooltip>
-                        </React.Fragment>
-                    )}
-                    <Tooltip title="Gallery">
-                        <IconButton href="/rest/worksheets/?name=home">
-                            <GalleryIcon />
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title="How-To Guides">
-                        <IconButton href="https://github.com/codalab/codalab-worksheets/wiki">
-                            <HowToIcon />
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Contact">
-                        <IconButton href="mailto://codalab.worksheets@gmail.com">
-                            <ContactIcon />
-                        </IconButton>
-                    </Tooltip>
-                    {this.props.auth.isAuthenticated && (
-                        <React.Fragment>
-                            <Tooltip title="Account">
-                                <IconButton
-                                    aria-owns={accountEl ? 'account-menu' : undefined}
-                                    aria-haspopup="true"
-                                    onClick={(e) => this.setState({ accountEl: e.currentTarget })}
+                        )}
+                        {this.props.auth.isAuthenticated && (
+                            <React.Fragment>
+                                <Tooltip title='Dashboard'>
+                                    <IconButton href='/rest/worksheets/?name=dashboard'>
+                                        <DashboardIcon />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title='New Worksheet'>
+                                    <IconButton>
+                                        <NewWorksheetIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </React.Fragment>
+                        )}
+                        <Tooltip title='Gallery'>
+                            <IconButton href='/rest/worksheets/?name=home'>
+                                <GalleryIcon />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title='How-To Guides'>
+                            <IconButton href='https://github.com/codalab/codalab-worksheets/wiki'>
+                                <HowToIcon />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title='Contact'>
+                            <IconButton href='mailto://codalab.worksheets@gmail.com'>
+                                <ContactIcon />
+                            </IconButton>
+                        </Tooltip>
+                        {this.props.auth.isAuthenticated && (
+                            <React.Fragment>
+                                <Tooltip title='Account'>
+                                    <IconButton
+                                        aria-owns={accountEl ? 'account-menu' : undefined}
+                                        aria-haspopup='true'
+                                        onClick={(e) =>
+                                            this.setState({ accountEl: e.currentTarget })
+                                        }
+                                    >
+                                        <AccountIcon />
+                                    </IconButton>
+                                </Tooltip>
+                                <Menu
+                                    id='account-menu'
+                                    anchorEl={accountEl}
+                                    open={Boolean(accountEl)}
+                                    onClose={() => this.setState({ accountEl: null })}
                                 >
-                                    <AccountIcon />
-                                </IconButton>
-                            </Tooltip>
-                            <Menu
-                                id="account-menu"
-                                anchorEl={accountEl}
-                                open={Boolean(accountEl)}
-                                onClose={() => this.setState({ accountEl: null })}
-                            >
-                                <ListSubheader>
-                                    {this.state.userInfo && this.state.userInfo.user_name}
-                                </ListSubheader>
-                                <MenuItem href="/account/profile">My Account</MenuItem>
-                                <MenuItem onClick={this.props.auth.signout} href='#'>Logout</MenuItem>
-                            </Menu>
-                        </React.Fragment>
-                    )}
-                </Toolbar>
-            </AppBar>
+                                    <ListSubheader>
+                                        {this.state.userInfo && this.state.userInfo.user_name}
+                                    </ListSubheader>
+                                    <MenuItem href='/account/profile'>My Account</MenuItem>
+                                    <MenuItem onClick={this.props.auth.signout} href='#'>
+                                        Logout
+                                    </MenuItem>
+                                </Menu>
+                            </React.Fragment>
+                        )}
+                    </Toolbar>
+                </AppBar>
             </MuiThemeProvider>
         );
     }
