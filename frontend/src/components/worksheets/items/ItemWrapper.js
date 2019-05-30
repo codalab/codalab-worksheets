@@ -114,10 +114,8 @@ class ItemWrapper extends React.Component {
         const row = ev.currentTarget;
         const { top, height } = row.getBoundingClientRect();
         const { clientY } = ev;
-        const onTop = (clientY >= top
-                && clientY <= top + SENSOR_HEIGHT);
-        const onBotttom = (clientY >= top + height - SENSOR_HEIGHT
-                && clientY <= top + height);
+        const onTop = clientY >= top && clientY <= top + SENSOR_HEIGHT;
+        const onBotttom = clientY >= top + height - SENSOR_HEIGHT && clientY <= top + height;
         if (onTop) {
             this.setState({
                 showInsertButtons: -1,
@@ -183,114 +181,118 @@ class ItemWrapper extends React.Component {
             }
         }
 
-		return (
-			<div
-				className={ classes.container }
-				onMouseMove={ this.showButtons }
-				onMouseLeave={ () => {
-	                this.setState({
-	                    showInsertButtons: 0,
-	                });
-	            } }
-			>
-				{
-					(showInsertButtons === -1 && isWorkSheetItem) && <InsertButtons
-						classes={ classes }
-						showNewUpload={ () => { this.setState({ showNewUpload: -1 }); } }
-						showNewRun={ () => { this.setState({ showNewRun: -1 }); } }
-						showNewText={ () => { this.setState({ showNewText: -1 }); } }
-					/>
-				}
-				{
-	                (showNewUpload === -1) &&
-                        <NewUpload
-                            after_sort_key={ prevItemKeys.maxKey || itemKeys.minKey - 10 }
-                            worksheetUUID={ worksheetUUID }
-                            reloadWorksheet={ reloadWorksheet }
-                            onClose={ () => this.setState({ showNewUpload: 0 }) }
-                        />
-		            }
-	            {
-	                (showNewRun === -1) &&
-                        <NewRun
-                            after_sort_key={ prevItemKeys.maxKey || itemKeys.minKey - 10 }
-                            ws={this.props.ws}
-                            onSubmit={() => this.setState({ showNewRun: 0 })}
-                        />
-	            }
-	            {
-	                (showNewText === -1) &&
-                        <TextEditorItem
-                            id={ textBlockId }
-                            mode={ aroundTextBlock ? 'edit': 'create' }
-                            defaultValue={ defaultText }
-                            showDefault={ showDefault || -1 }
-                            after_sort_key={ prevItemKeys.maxKey || itemKeys.minKey - 10 }
-                            worksheetUUID={ worksheetUUID }
-                            reloadWorksheet={ reloadWorksheet }
-                            closeEditor={ () => {
-                                this.setState({ showNewText: 0 });
-                            } }
-                        />
-	            }
-	            <div className={ classes.main }>
-					{ children }
-				</div>
-				{
-	                (showNewUpload === 1) &&
-                        <NewUpload
-                            after_sort_key={ itemKeys.maxKey }
-                            worksheetUUID={ worksheetUUID }
-                            reloadWorksheet={ reloadWorksheet }
-                            onClose={ () => this.setState({ showNewUpload: 0 }) }
-                        />
-		            }
-	            {
-	                (showNewRun === 1) &&
-                        <NewRun
-                            after_sort_key={ itemKeys.maxKey }
-                            ws={this.props.ws}
-                            onSubmit={() => this.setState({ showNewRun: 0 })}
-                        />
-	            }
-	            {
-	                (showNewText === 1) &&
-                        <TextEditorItem
-                            id={ textBlockId }
-                            mode={ aroundTextBlock ? 'edit': 'create' }
-                            defaultValue={ defaultText }
-                            showDefault={ showDefault || 1 }
-                            after_sort_key={ itemKeys.maxKey }
-                            worksheetUUID={ worksheetUUID }
-                            reloadWorksheet={ reloadWorksheet }
-                            closeEditor={ () => {
-                                this.setState({ showNewText: 0 });
-                            } }
-                        />
-	            }
-				{
-					(showInsertButtons === 1 && isWorkSheetItem) && <InsertButtons
-						classes={ classes }
-						showNewUpload={ () => { this.setState({ showNewUpload: 1 }); } }
-						showNewRun={ () => { this.setState({ showNewRun: 1 }); } }
-						showNewText={ () => { this.setState({ showNewText: 1 }); } }
-					/>
-				}
-			</div>
-		)
-	}
+        return (
+            <div
+                className={classes.container}
+                onMouseMove={this.showButtons}
+                onMouseLeave={() => {
+                    this.setState({
+                        showInsertButtons: 0,
+                    });
+                }}
+            >
+                {showInsertButtons === -1 && isWorkSheetItem && (
+                    <InsertButtons
+                        classes={classes}
+                        showNewUpload={() => {
+                            this.setState({ showNewUpload: -1 });
+                        }}
+                        showNewRun={() => {
+                            this.setState({ showNewRun: -1 });
+                        }}
+                        showNewText={() => {
+                            this.setState({ showNewText: -1 });
+                        }}
+                    />
+                )}
+                {showNewUpload === -1 && (
+                    <NewUpload
+                        after_sort_key={prevItemKeys.maxKey || itemKeys.minKey - 10}
+                        worksheetUUID={worksheetUUID}
+                        reloadWorksheet={reloadWorksheet}
+                        onClose={() => this.setState({ showNewUpload: 0 })}
+                    />
+                )}
+                {showNewRun === -1 && (
+                    <NewRun
+                        after_sort_key={prevItemKeys.maxKey || itemKeys.minKey - 10}
+                        ws={this.props.ws}
+                        onSubmit={() => this.setState({ showNewRun: 0 })}
+                    />
+                )}
+                {showNewText === -1 && (
+                    <TextEditorItem
+                        id={textBlockId}
+                        mode={aroundTextBlock ? 'edit' : 'create'}
+                        defaultValue={defaultText}
+                        showDefault={showDefault || -1}
+                        after_sort_key={prevItemKeys.maxKey || itemKeys.minKey - 10}
+                        worksheetUUID={worksheetUUID}
+                        reloadWorksheet={reloadWorksheet}
+                        closeEditor={() => {
+                            this.setState({ showNewText: 0 });
+                        }}
+                    />
+                )}
+                <div className={classes.main}>{children}</div>
+                {showNewUpload === 1 && (
+                    <NewUpload
+                        after_sort_key={itemKeys.maxKey}
+                        worksheetUUID={worksheetUUID}
+                        reloadWorksheet={reloadWorksheet}
+                        onClose={() => this.setState({ showNewUpload: 0 })}
+                    />
+                )}
+                {showNewRun === 1 && (
+                    <NewRun
+                        after_sort_key={itemKeys.maxKey}
+                        ws={this.props.ws}
+                        onSubmit={() => this.setState({ showNewRun: 0 })}
+                    />
+                )}
+                {showNewText === 1 && (
+                    <TextEditorItem
+                        id={textBlockId}
+                        mode={aroundTextBlock ? 'edit' : 'create'}
+                        defaultValue={defaultText}
+                        showDefault={showDefault || 1}
+                        after_sort_key={itemKeys.maxKey}
+                        worksheetUUID={worksheetUUID}
+                        reloadWorksheet={reloadWorksheet}
+                        closeEditor={() => {
+                            this.setState({ showNewText: 0 });
+                        }}
+                    />
+                )}
+                {showInsertButtons === 1 && isWorkSheetItem && (
+                    <InsertButtons
+                        classes={classes}
+                        showNewUpload={() => {
+                            this.setState({ showNewUpload: 1 });
+                        }}
+                        showNewRun={() => {
+                            this.setState({ showNewRun: 1 });
+                        }}
+                        showNewText={() => {
+                            this.setState({ showNewText: 1 });
+                        }}
+                    />
+                )}
+            </div>
+        );
+    }
 }
 
 const styles = (theme) => ({
-	container: {
-		position: 'relative',
+    container: {
+        position: 'relative',
         marginBottom: 20,
-	},
-	main: {
-		zIndex: 10,
-	},
-	buttonsPanel: {
-		display: 'flex',
+    },
+    main: {
+        zIndex: 10,
+    },
+    buttonsPanel: {
+        display: 'flex',
         flexDirection: 'row',
         overflow: 'visible',
         justifyContent: 'center',
