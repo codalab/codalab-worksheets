@@ -99,7 +99,7 @@ class BundleRow extends Component {
      * based on the vertical position of where the user hovered.
      */
     showButtons = (ev) => {
-        const { bundleInfo={} } = this.props;
+        const { bundleInfo = {} } = this.props;
         const { sort_key, id } = bundleInfo;
         // If this bundle has no id nor sort_key, then it's not really a worksheet_item.
         // Don't show the insert buttons.

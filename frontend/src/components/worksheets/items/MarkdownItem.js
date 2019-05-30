@@ -62,7 +62,7 @@ class MarkdownItem extends React.Component {
 
     deleteItem = () => {
         const { reloadWorksheet, item, worksheetUUID } = this.props;
-        const url = `/rest/worksheets/${ worksheetUUID }/update-markup?id=${ item.ids[0] }`;
+        const url = `/rest/worksheets/${worksheetUUID}/update-markup?id=${item.ids[0]}`;
 
         $.ajax({
             url,
