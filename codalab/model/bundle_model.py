@@ -1374,7 +1374,10 @@ class BundleModel(object):
                     [cl_worksheet_item.c.id]
                 ).where(cl_worksheet_item.c.worksheet_uuid == worksheet_uuid)
                 ids = [item.id for item in connection.execute(get_all)]
-                item_value['sort_key'] = max(ids) + 1
+                if len(ids) > 0:
+                    item_value['sort_key'] = max(ids) + 1
+                else:
+                    item_value['sort_key'] = 0
 
             connection.execute(cl_worksheet_item.insert().values(item_value))
 

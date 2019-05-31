@@ -13,6 +13,7 @@ import TableItem from './items/TableItem';
 import WorksheetItem from './items/WorksheetItem';
 import TextEditorItem from './items//TextEditorItem';
 import ItemWrapper from './items/ItemWrapper';
+import ColdStartItem from './items/ColdStartItem';
 
 ////////////////////////////////////////////////////////////
 
@@ -222,16 +223,11 @@ class WorksheetItemList extends React.Component {
             items_display = worksheet_items;
         } else {
             items_display = (
-                <ItemWrapper
+                <ColdStartItem
                     reloadWorksheet={this.props.reloadWorksheet}
                     worksheetUUID={info && info.uuid}
                     ws={this.props.ws}
-                >
-                    <TextEditorItem
-                        worksheetUUID={info && info.uuid}
-                        reloadWorksheet={this.props.reloadWorksheet}
-                    />
-                </ItemWrapper>
+                />
             );
         }
         if (info && info.error)
