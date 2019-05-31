@@ -2,8 +2,9 @@ import * as React from 'react';
 import classNames from 'classnames';
 import $ from 'jquery';
 import _ from 'underscore';
+import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
-import { keepPosInView } from '../../util/worksheet_utils';
+import { keepPosInView, renderPermissions } from '../../util/worksheet_utils';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import WorksheetActionBar from './WorksheetActionBar';
 import WorksheetItemList from './WorksheetItemList';
@@ -752,7 +753,7 @@ class Worksheet extends React.Component {
         var viewClass = !canEdit && !this.state.editMode ? 'active' : '';
         var rawClass = this.state.editMode ? 'active' : '';
         var disableWorksheetEditing = this.canEdit() ? '' : 'disabled';
-        var sourceStr = editPermission ? 'Edit source' : 'View source';
+        var sourceStr = editPermission ? 'Edit Source' : 'View Source';
         var editFeatures = (
             <div className='edit-features'>
                 <div className='btn-group'>
@@ -851,37 +852,67 @@ class Worksheet extends React.Component {
                             <div className={classes.worksheetOuter}>
                                 <div className={classes.worksheetInner}>
                                     <div id='worksheet_content' className={editableClassName}>
-                                        <div className='header-row'>
-                                            <div className='row'>
-                                                <div className='col-sm-6 col-md-8'>
-                                                    <h4 className='worksheet-title'>
-                                                        {/*TODO: hack, take out ASAP*/}
-                                                        <WorksheetEditableField
-                                                            key={'title' + this.canEdit()}
-                                                            canEdit={this.canEdit()}
-                                                            fieldName='title'
-                                                            value={info && info.title}
-                                                            uuid={info && info.uuid}
-                                                            onChange={() => this.reloadWorksheet()}
-                                                        />
-                                                    </h4>
-                                                </div>
-                                                <div className='col-sm-6 col-md-4'>
-                                                    <div className='controls'>
-                                                        <a
-                                                            href='#'
-                                                            data-toggle='modal'
-                                                            data-target='#glossaryModal'
-                                                            className='glossary-link'
-                                                        >
-                                                            <code>?</code> Keyboard Shortcuts
-                                                        </a>
-                                                        {editButtons}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <hr />
+                                        <div className='header-row '>
+                                        <Grid container alignItems="flex-end">
+                                            <Grid item sm={12} md={7}>
+                                                <h4 className='worksheet-title'>
+                                                    {/*TODO: hack, take out ASAP*/}
+                                                    <WorksheetEditableField
+                                                        key={'title' + this.canEdit()}
+                                                        canEdit={this.canEdit()}
+                                                        fieldName='title'
+                                                        value={(info && info.title) || "untitled"}
+                                                        uuid={info && info.uuid}
+                                                        onChange={() => this.reloadWorksheet()}
+                                                    />
+                                                </h4>
+                                            </Grid>
+                                            <Grid item sm={12} md={5} container direction="column" justify="flex-end">
+                                                <Grid item sm={12}>
+                                                    {info && <div className={classes.uuid}>{info.uuid}</div>}
+                                                </Grid>
+                                                <Grid item sm={12} container direction="row">
+                                                    <Grid item container sm={6} direction="column" alignItems="flex-end" justify="flex-end">
+                                                        {!info ? null : (
+                                                            <React.Fragment>
+                                                                <Grid item>
+                                                                    <span className={classes.label}>name:</span>
+                                                                    <WorksheetEditableField
+                                                                        canEdit={this.canEdit()}
+                                                                        fieldName='name'
+                                                                        value={info && info.name}
+                                                                        uuid={info && info.uuid}
+                                                                        onChange={() => this.reloadWorksheet()}
+                                                                    />
+                                                                </Grid>
+                                                                <Grid item>
+                                                                    <span className={classes.label}>owner:</span>
+                                                                    {info.owner_name ? info.owner_name : '<anonymous>'}
+                                                                </Grid>
+                                                                <Grid item>
+                                                                    {renderPermissions(info)}
+                                                                </Grid>
+                                                            </React.Fragment>
+                                                        )}
+                                                    </Grid>
+                                                    <Grid item container sm={6} direction="column" alignItems="flex-end">
+                                                        <div className='controls'>
+                                                            <a
+                                                                href='#'
+                                                                data-toggle='modal'
+                                                                data-target='#glossaryModal'
+                                                                className='glossary-link'
+                                                            >
+                                                                <code>?</code> Keyboard Shortcuts
+                                                            </a>
+                                                            {editButtons}
+                                                        </div>
+                                                    </Grid>
+                                                </Grid>
+                                            </Grid>
+                                        </Grid>
                                         </div>
+                                        <hr />
                                         {worksheet_display}
                                     </div>
                                 </div>
@@ -909,6 +940,15 @@ const styles = (theme) => ({
         padding: '0 30px 50px 30px',
         height: '100%',
         overflow: 'auto',
+    },
+    uuid: {
+        fontFamily: theme.typography.fontFamilyMonospace,
+        fontSize: 10,
+        textAlign: 'right',
+    },
+    label: {
+        paddingRight: theme.spacing.unit,
+        fontWeight: 500,
     },
 });
 
