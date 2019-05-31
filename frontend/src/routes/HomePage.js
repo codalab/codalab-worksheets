@@ -71,17 +71,15 @@ class HomePage extends React.Component<{
                                     A collaborative platform for reproducible research.
                                 </Typography>
                                 <div className={classes.buttons}>
-                                    {!auth.isAuthenticated && [
-                                        this.renderButton('Sign Up', '/account/signup'),
-                                        this.renderButton('Sign In', '/account/login'),
-                                    ]}
-                                    {auth.isAuthenticated && [
-                                        this.renderButton('My Home', '/rest/worksheets/?name=%2F'),
-                                        this.renderButton(
-                                            'My Dashboard',
-                                            '/rest/worksheets/?name=dashboard',
-                                        ),
-                                    ]}
+                                    {!auth.isAuthenticated &&
+                                        <React.Fragment>
+                                            {this.renderButton('Sign Up', '/account/signup')}
+                                            {this.renderButton('Login', '/account/login')}
+                                        </React.Fragment>
+                                    }
+                                    {auth.isAuthenticated &&
+                                        this.renderButton('My Dashboard', '/rest/worksheets/?name=dashboard')
+                                    }
                                 </div>
                             </Grid>
                             <Grid item xs={12} sm={6} container>
