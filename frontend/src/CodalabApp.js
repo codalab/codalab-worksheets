@@ -7,7 +7,6 @@ import CodalabTheme from './theme';
 
 // Components
 import UserInfo from './components/UserInfo';
-import HomePage from './components/HomePage';
 import $ from 'jquery';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
@@ -25,6 +24,7 @@ import {
 } from './components/PasswordReset';
 
 // Routes
+import HomePage from './routes/HomePage';
 import BundleRoute from './routes/BundleRoute';
 
 import history from './history';

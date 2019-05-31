@@ -14,7 +14,7 @@ import MenuItem from '@material-ui/core/MenuItem';
 import ListSubheader from '@material-ui/core/ListSubheader';
 import IconButton from '@material-ui/core/IconButton';
 import Tooltip from '@material-ui/core/Tooltip';
-import DashboardIcon from '@material-ui/icons/Home'; // Dashboard
+import DashboardIcon from '@material-ui/icons/Dashboard'; // Home
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
 import GalleryIcon from '@material-ui/icons/Public'; // FindInPage
 import HowToIcon from '@material-ui/icons/Help'; // Info
@@ -128,7 +128,7 @@ class NavBar extends React.Component<{
                             </IconButton>
                         </Tooltip>
                         <Tooltip title='Contact'>
-                            <IconButton href='mailto://codalab.worksheets@gmail.com'>
+                            <IconButton href='mailto:codalab.worksheets@gmail.com'>
                                 <ContactIcon />
                             </IconButton>
                         </Tooltip>
