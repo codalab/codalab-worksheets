@@ -6,6 +6,7 @@ import Button from '@material-ui/core/Button';
 import InputBase from '@material-ui/core/InputBase';
 import { withStyles } from '@material-ui/core/styles';
 import { createAlertText } from '../../../../util/worksheet_utils';
+import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 
 /*
 This component has to mode:
@@ -45,6 +46,14 @@ class TextEditorItem extends React.Component<{
         super(props);
         this.text = null;
     }
+
+    capture_keys = () => {
+        Mousetrap.bind(
+            ['ctrl+enter'],
+            this.saveText,
+            'keydown',
+        );
+    };
 
     updateText = (ev) => {
         this.text = ev.target.value;
@@ -101,6 +110,7 @@ class TextEditorItem extends React.Component<{
 
     render() {
         const { classes, defaultValue, showDefault } = this.props;
+        this.capture_keys();
 
         return (
             <Paper className={classes.container}>
@@ -109,10 +119,9 @@ class TextEditorItem extends React.Component<{
                     className={classes.input}
                     onChange={this.updateText}
                     multiline
-                    rows='4'
                 />
                 <Button variant='text' color='primary' onClick={this.saveText}>
-                    Done
+                    Save
                 </Button>
             </Paper>
         );
@@ -125,10 +134,12 @@ const styles = (theme) => ({
         display: 'flex',
         flexDirection: 'row',
         margin: '8px 0px',
+        minHeight: 100,
     },
     input: {
         flex: 1,
         marginLeft: 8,
+        alignItems: 'flex-start',
     },
 });
 

@@ -177,8 +177,12 @@ class MarkdownItem extends React.Component {
 const styles = (theme) => ({
     textContainer: {
         position: 'relative',
+        '&:hover $buttonsPanel': {
+            display: 'flex',
+        },
     },
     buttonsPanel: {
+        display: 'none',
         position: 'absolute',
         top: 0,
         right: 0,

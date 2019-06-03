@@ -7,6 +7,9 @@ import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import IconButton from '@material-ui/core/IconButton';
 import Button from '@material-ui/core/Button';
+import Modal from '@material-ui/core/Modal';
+import Paper from '@material-ui/core/Paper';
+import Typography from '@material-ui/core/Typography';
 
 import DeleteIcon from '@material-ui/icons/Delete';
 import MoreIcon from '@material-ui/icons/MoreVert';
@@ -69,6 +72,7 @@ class BundleRow extends Component {
         showInsertButtons: 0,
         bundleInfoUpdates: {},
         showDetail: false,
+        openDelete: false,
     };
 
     receiveBundleInfoUpdates = (update) => {
@@ -126,15 +130,19 @@ class BundleRow extends Component {
 
     deleteItem = (ev) => {
         ev.stopPropagation();
+        this.toggleDeletePopup();
         const { uuid } = this.props.bundleInfo;
         $('#command_line')
             .terminal()
             .exec(buildTerminalCommand(['rm', uuid]));
     };
 
-    showMore = (ev) => {
-        ev.stopPropagation();
-    };
+    toggleDeletePopup = () => {
+        const { openDelete } = this.state;
+        this.setState({
+            openDelete: !openDelete,
+        });
+    }
 
     render() {
         const {
@@ -143,6 +151,7 @@ class BundleRow extends Component {
             showNewUpload,
             showNewRun,
             bundleInfoUpdates,
+            openDelete,
         } = this.state;
         const {
             classes,
@@ -152,6 +161,7 @@ class BundleRow extends Component {
             item,
             worksheetUUID,
             reloadWorksheet,
+            isLast,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
@@ -272,18 +282,36 @@ class BundleRow extends Component {
                     <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
                         <div className={classes.rightButtonStripe}>
                             <IconButton
-                                onClick={this.showMore}
-                                classes={{ root: classes.iconButtonRoot }}
-                            >
-                                <MoreIcon />
-                            </IconButton>
-                            &nbsp;&nbsp;
-                            <IconButton
-                                onClick={this.deleteItem}
+                                onClick={this.toggleDeletePopup}
                                 classes={{ root: classes.iconButtonRoot }}
                             >
                                 <DeleteIcon />
                             </IconButton>
+                            <Modal
+                                aria-labelledby="deletion-confirmation"
+                                aria-describedby="deletion-confirmation"
+                                open={openDelete}
+                                onClose={this.toggleDeletePopup}
+                            >
+                                <Paper className={classes.modal}>
+                                    <Typography variant="h6">
+                                        Delete this bundle?
+                                    </Typography>
+                                    <div className={ classes.flexRow } >
+                                        <Button variant='text' color='primary'
+                                            onClick={ this.toggleDeletePopup }
+                                        >
+                                            Cancel
+                                        </Button>
+                                        &nbsp;&nbsp;
+                                        <Button variant='contained' color='primary'
+                                            onClick={ this.deleteItem }
+                                        >
+                                            Yes
+                                        </Button>
+                                    </div>
+                                </Paper>
+                            </Modal>
                         </div>
                     </TableCell>
                 </TableRow>
@@ -332,7 +360,7 @@ class BundleRow extends Component {
                 )}
                 <TableRow classes={{ root: classes.panelContainer }}>
                     <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
-                        {showInsertButtons > 0 && (
+                        {(showInsertButtons > 0 && !isLast) && (
                             <InsertButtons
                                 classes={classes}
                                 showNewUpload={this.showNewUpload(1)}
@@ -404,7 +432,7 @@ const styles = (theme) => ({
         position: 'absolute',
         justifyContent: 'center',
         width: '100%',
-        transform: 'translateY(-50%)',
+        transform: 'translateY(-18px)',
     },
     buttonRoot: {
         width: 120,
@@ -430,6 +458,20 @@ const styles = (theme) => ({
         height: theme.spacing.larger,
         borderTop: `2px solid ${theme.color.grey.dark}`,
         backgroundColor: 'white',
+    },
+    modal: {
+        position: 'absolute',
+        width: 300,
+        top: '50vh',
+        left: '50vw',
+        padding: theme.spacing.larger,
+        transform: 'translateY(-50%) translateX(-50%)',
+    },
+    flexRow: {
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
     },
 });
 
