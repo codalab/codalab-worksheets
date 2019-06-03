@@ -28,6 +28,8 @@ import {
     createHandleRedirectFn,
 } from '../../../util/worksheet_utils';
 
+import { executeCommand } from '../../../util/cli_utils';
+
 
 type Bundle = { name: string, uuid: string, path?: string };
 type Dependency = { target: Bundle, alias: string };
@@ -251,7 +253,7 @@ class NewRun extends React.Component<{
     runCommand() {
         const cmd = this.getCommand();
         if (cmd) {
-            const response = $('#command_line').terminal().exec(cmd);
+            const response = executeCommand(cmd, this.props.ws.info.uuid);
         }
     }
 
