@@ -122,6 +122,7 @@ class TableItem extends React.Component<{
                     handleContextMenu={this.props.handleContextMenu}
                     reloadWorksheet={this.props.reloadWorksheet}
                     ws={this.props.ws}
+                    isLast={rowIndex === rowItems.length - 1}
                 />
             );
         });

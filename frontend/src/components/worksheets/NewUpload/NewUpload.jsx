@@ -67,61 +67,27 @@ class NewUpload extends React.Component<{
 
     /** Insert after this bundle **/
     after_sort_key: string,
-}, {
-    /** Uploaded data. */
-    url: string,
-
-    /** Configuration info. */
-    name: string,
-    description: string,
-    tags: string[],
 }> {
 
-    defaultConfig = {
-        name: '',
-        description: '',
-        tags: [],
-        file: null,
+    state = {
+        /* Whether the upload is in progress */
+        uploading: false,
+        percentComplete: 0,
     }
 
-    /**
-     * Constructor.
-     * @param props
-     */
-    constructor(props) {
-        super(props);
-        this.state = {
-            ...this.defaultConfig,
-        };
-    }
-
-    dropDone = (e) => {
-        e.target.style.opacity = 1.0;
-        e.preventDefault();
-        e.stopPropagation();
+    componentDidMount() {
+        this.inputFile.click();
     }
 
     setFile = (_) => {
         const files = this.inputFile.files;
-        this.setState({
-            file: files[0],
-        });
+        if (!files.length) {
+            this.props.onClose();
+        }
+        this.uploadFile(files[0]);
     }
 
-    highlight = (e) => {
-        e.target.style.opacity = .5;
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
-    unhighlight = (e) => {
-        e.target.style.opacity = 1.0;
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
-    uploadFile = () => {
-        const { file } = this.state;
+    uploadFile = (file) => {
         if (!file) {
             return;
         }
@@ -194,7 +160,7 @@ class NewUpload extends React.Component<{
             },
             error: (jqHXR, status, error) => {
                 this.clearProgress();
-                alert(createAlertText(this.url, jqHXR.responseText));
+                alert(createAlertText(url, jqHXR.responseText));
             },
         });
     }
@@ -204,133 +170,17 @@ class NewUpload extends React.Component<{
     }
 
     render() {
-        const { classes, onClose } = this.props;
-        const { file, percentComplete, uploading } = this.state;
+        const { classes } = this.props;
+        const { percentComplete, uploading } = this.state;
 
         return (
-            <ConfigPanel
-                buttons={(
-                    <div>
-                        <Button
-                            variant='text'
-                            color='primary'
-                            onClick={ onClose }
-                        >Cancel</Button>
-                        <Button
-                            variant='contained'
-                            color='primary'
-                            onClick={ this.uploadFile }
-                        >Confirm</Button>
-                    </div>
-                )}
-                sidebar={(
-                    <div>
-                        <Typography variant='subtitle1'>Information</Typography>
-
-                        <ConfigLabel
-                            label="Name"
-                            tooltip="Short name (not necessarily unique) to provide an
-                            easy, human-readable way to reference this bundle (e.g as a
-                            dependency). May only use alphanumeric characters and dashes."
-                        />
-                        <ConfigTextInput
-                            value={this.state.name}
-                            onValueChange={(value) => this.setState({ name: value })}
-                            placeholder="untitled-upload"
-                        />
-
-                        <ConfigLabel
-                            label="Description"
-                            tooltip="Text description or notes about this bundle."
-                            optional
-                        />
-                        <ConfigTextInput
-                            value={this.state.description}
-                            onValueChange={(value) => this.setState({ description: value })}
-                            multiline
-                            maxRows={3}
-                        />
-
-                        <ConfigLabel
-                            label="Tags"
-                            tooltip="Keywords that can be used to search for and categorize
-                            this bundle."
-                            optional
-                        />
-                        <ConfigChipInput
-                            values={this.state.tags}
-                            onValueAdd={(value) => this.setState(
-                                (state) => ({ tags: [...state.tags, value] })
-                            )}
-                            onValueDelete={(value, idx) => this.setState(
-                                (state) => ({ tags: [...state.tags.slice(0, idx), ...state.tags.slice(idx+1)] })
-                            )}
-                        />
-                    </div>
-                )}
-            >
-                {/* Main Content ------------------------------------------------------- */}
-                <Typography variant='subtitle1' gutterBottom>New Upload</Typography>
-
-                {
-                    file
-                    ? <div className={ classes.blueText } >
-                        {
-                            file.name
-                        }
-                    </div>
-                    : <React.Fragment>
-                        <ConfigLabel
-                            label="Upload directory"
-                            tooltip="Create a bundle from a directory/folder from your filesystem."
-                        />
-                        <div
-                            style={ {
-                                ...styles.inputBoxStyle,
-                                backgroundColor: 'rgba(85, 128, 168, 0.2)',
-                                borderColor: 'rgba(85, 128, 168, 0.2)',
-                                    padding: 16,
-                            } }
-                            onClick={ () => { this.inputDir.click(); } }
-                            onDrop={ this.dropDone }
-                            onDragOver={ this.highlight }
-                            onDragLeave={ this.unhighlight }
-                        >
-                            <InputDir
-                                eleref={ (ele) => { this.inputDir = ele; } }
-                                style={ { visibility: 'hidden', position: 'absolute' } }
-                            />
-                            <div style={ styles.greyText }>Click or drag & drop here</div>
-                        </div>
-
-                        <div className={classes.spacer}/>
-                        <ConfigLabel
-                            label="Upload file"
-                            tooltip="Upload a bundle with a single file from your filesystem."
-                        />
-                        <div
-                            style={ {
-                                ...styles.inputBoxStyle,
-                                backgroundColor: 'rgba(255, 175, 125, 0.2)',
-                                borderColor: 'rgba(255, 175, 125, 0.2)',
-                                padding: 16,
-                            } }
-                            onClick={ () => { this.inputFile.click(); } }
-                            onDrop={ this.dropDone }
-                            onDragOver={ this.highlight }
-                            onDragLeave={ this.unhighlight }
-                        >
-                            <input
-                                type="file"
-                                style={ { visibility: 'hidden', position: 'absolute' } }
-                                ref={ (ele) => { this.inputFile = ele; } }
-                                onChange={ this.setFile }
-                            />
-                            <div style={ styles.greyText }>Click or drag & drop here</div>
-                        </div>
-                    </React.Fragment>
-                }
-
+            <React.Fragment>
+                <input
+                    type="file"
+                    style={ { visibility: 'hidden', position: 'absolute' } }
+                    ref={ (ele) => { this.inputFile = ele; } }
+                    onChange={ this.setFile }
+                />
                 { uploading && <CircularProgress
                         className={ classes.progress }
                         variant="determinate"
@@ -338,7 +188,7 @@ class NewUpload extends React.Component<{
                         size={ 80 }
                     />
                 }
-            </ConfigPanel>
+            </React.Fragment>
         );
     }
 }
@@ -354,33 +204,12 @@ class NewUpload extends React.Component<{
 
 const styles = (theme) => ({
     progress: {
-        position: 'absolute',
-        left: '50%',
-        top: '50%',
+        position: 'fixed',
+        left: '50vw',
+        top: '50vh',
         width: 80,
         height: 80,
         transform: 'translateX(-50%) translateY(-50%)',
-    },
-    spacer: {
-        marginTop: theme.spacing.larger,
-    },
-    blueText: {
-        color: '#225EA8',
-        fontSize: '1.5rem',
-    },
-    greyText: {
-        color: '#666666',
-    },
-    inputBoxStyle: {
-        textAlign: 'center',
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: 200,
-        borderRadius: 8,
-        border: '2px dashed',
-        cursor: 'pointer',
     },
 });
 

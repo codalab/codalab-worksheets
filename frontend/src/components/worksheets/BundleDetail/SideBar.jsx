@@ -34,7 +34,7 @@ class Dependency extends React.PureComponent<
                 <TableCell>
                     <Typography variant="body1">
                         &rarr; { dep.parent_name }(
-                        <a href={ dep_bundle_url }>
+                        <a href={ dep_bundle_url } target="_blank">
                           { shorten_uuid(dep.parent_uuid) }
                         </a>)
                         { dep.parent_path ? '/' + dep.parent_path : '' }
@@ -136,6 +136,7 @@ class SideBar extends React.Component<
                                 <a
                                     href={ `/worksheets/${ worksheet.uuid }`}
                                     className={ classes.uuidLink }
+                                    target="_blank"
                                 >
                                     { worksheet.name }
                                 </a>
@@ -144,7 +145,7 @@ class SideBar extends React.Component<
                     }
                 </Grid>
                 <Grid item xs={12}>
-                    <Typography variant="body1"></Typography>
+                    <Typography variant="body1">Permissions</Typography>
                     <PermissionDialog
                         uuid={ bundleInfo.uuid }
                         permission_spec={ bundleInfo.permission_spec }
@@ -155,6 +156,7 @@ class SideBar extends React.Component<
                     <a
                         href={ `/bundles/${ bundleInfo.uuid }` }
                         className={ classes.uuidLink }
+                        target="_blank"
                     >
                         More about bundle { shorten_uuid(bundleInfo.uuid) }
                     </a>
