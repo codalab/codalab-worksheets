@@ -3533,7 +3533,7 @@ class BundleCLI(object):
         def print_attribute(key, user, should_pretty_print):
             # These fields will not be returned by the server if the
             # authenticated user is not root, so don't crash if you can't read them
-            if key in ('last_login', 'email', 'time_used', 'disk'):
+            if key in ('last_login', 'email', 'time_used', 'disk', 'parallel_run_quota'):
                 try:
                     if key == 'time_used':
                         value = formatting.duration_str(user['time_used'])
@@ -3565,6 +3565,7 @@ class BundleCLI(object):
             'email',
             'time_used',
             'disk',
+            'parallel_run_quota',
         )
         if fields:
             should_pretty_print = False
