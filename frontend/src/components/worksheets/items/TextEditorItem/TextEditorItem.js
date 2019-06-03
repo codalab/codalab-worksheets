@@ -66,7 +66,6 @@ class TextEditorItem extends React.Component<{
     };
 
     saveText = () => {
-        console.log('called...');
         if (this.text === null) {
             // Nothing to save.
             return;
@@ -126,6 +125,7 @@ class TextEditorItem extends React.Component<{
                     onChange={this.updateText}
                     onKeyUp={this.capture_keys}
                     onKeyDown={this.capture_keys}
+                    autoFocus={true}
                     multiline
                 />
                 <Button variant='text' color='primary' onClick={this.saveText}>
