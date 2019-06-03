@@ -6,7 +6,6 @@ import Button from '@material-ui/core/Button';
 import InputBase from '@material-ui/core/InputBase';
 import { withStyles } from '@material-ui/core/styles';
 import { createAlertText } from '../../../../util/worksheet_utils';
-import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 
 /*
 This component has to mode:
@@ -45,14 +44,21 @@ class TextEditorItem extends React.Component<{
     constructor(props) {
         super(props);
         this.text = null;
+        this.keymap = {};
     }
 
-    capture_keys = () => {
-        Mousetrap.bind(
-            ['ctrl+enter'],
-            this.saveText,
-            'keydown',
-        );
+    capture_keys = (ev) => {
+        this.keymap[ev.keyCode] = ev.type == 'keydown';
+        const pressed = [];
+        Object.keys(this.keymap).forEach((key) => {
+            if (this.keymap[key]) {
+                pressed.push(key);
+            }
+        });
+        if (pressed.includes('17') && (pressed.includes('13') || pressed.includes('83'))) {
+            /* Pressed ctrl+enter or ctrl+s */
+            this.saveText();
+        }
     };
 
     updateText = (ev) => {
@@ -60,6 +66,7 @@ class TextEditorItem extends React.Component<{
     };
 
     saveText = () => {
+        console.log('called...');
         if (this.text === null) {
             // Nothing to save.
             return;
@@ -110,7 +117,6 @@ class TextEditorItem extends React.Component<{
 
     render() {
         const { classes, defaultValue, showDefault } = this.props;
-        this.capture_keys();
 
         return (
             <Paper className={classes.container}>
@@ -118,6 +124,8 @@ class TextEditorItem extends React.Component<{
                     defaultValue={showDefault === 0 ? defaultValue : ''}
                     className={classes.input}
                     onChange={this.updateText}
+                    onKeyUp={this.capture_keys}
+                    onKeyDown={this.capture_keys}
                     multiline
                 />
                 <Button variant='text' color='primary' onClick={this.saveText}>
