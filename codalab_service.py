@@ -668,7 +668,9 @@ class CodalabServiceManager(object):
             )
         else:
             if not self.args.mysql_port:
-                raise('ERROR: Tests fired without an external DB URL or MYSQL port exposed to host, "events" tests will fail.')
+                raise (
+                    'ERROR: Tests fired without an external DB URL or MYSQL port exposed to host, "events" tests will fail.'
+                )
             mysql_url = 'mysql://%s:%s@127.0.0.1:%s/codalab_bundles' % (
                 self.args.mysql_user,
                 self.args.mysql_password,
@@ -680,9 +682,7 @@ class CodalabServiceManager(object):
             shell=True,
         )
         subprocess.check_call(
-            '%s work %s::' % (test_cli.cl, instance),
-            env=codalab_client_env,
-            shell=True,
+            '%s work %s::' % (test_cli.cl, instance), env=codalab_client_env, shell=True
         )
         success = test_cli.TestModule.run(self.args.tests, instance)
         if not success:
