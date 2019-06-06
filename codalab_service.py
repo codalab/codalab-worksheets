@@ -477,8 +477,6 @@ class CodalabServiceManager(object):
             compose_files.append('docker-compose.bundle_mounts.yml')
         if args.start_worker:
             compose_files.append('docker-compose.worker.yml')
-        if args.rest_port:
-            compose_files.append('docker-compose.rest_port.yml')
         if args.frontend_port:
             compose_files.append('docker-compose.frontend_port.yml')
         if args.mysql_port:
