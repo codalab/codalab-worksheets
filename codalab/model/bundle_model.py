@@ -744,7 +744,7 @@ class BundleModel(object):
 
             return True
 
-    def start_bundle(self, bundle, user_id, worker_id, start_time):
+    def start_bundle(self, bundle, user_id, worker_id, start_time, remote):
         """
         Marks the bundle as running but only if it is still scheduled to run
         on the given worker (done by checking the worker_run table). Returns
@@ -760,7 +760,7 @@ class BundleModel(object):
 
             bundle_update = {
                 'state': State.PREPARING,
-                'metadata': {'started': start_time, 'last_updated': start_time},
+                'metadata': {'started': start_time, 'last_updated': start_time, 'remote': remote},
             }
             self.update_bundle(bundle, bundle_update, connection)
 
@@ -789,9 +789,7 @@ class BundleModel(object):
 
             if state == State.FINALIZING:
                 # update bundle metadata using resume_bundle one last time before finalizing it
-                self.resume_bundle(
-                    bundle, bundle_update, row, user_id, worker_id, connection
-                )
+                self.resume_bundle(bundle, bundle_update, row, user_id, worker_id, connection)
                 return self.finalize_bundle(
                     bundle,
                     user_id,
