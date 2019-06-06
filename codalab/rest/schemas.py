@@ -48,7 +48,7 @@ def validate_child_path(path):
 
 
 def validate_ascii(value):
-    if isinstance(value, basestring):
+    if isinstance(value, str):
         try:
             value.encode("ascii")
         except UnicodeError:
@@ -57,7 +57,7 @@ def validate_ascii(value):
         for v in value:
             validate_ascii(v)
     elif isinstance(value, dict):
-        for v in value.itervalues():
+        for v in value.values():
             validate_ascii(v)
 
 

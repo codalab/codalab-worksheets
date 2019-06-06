@@ -1,4 +1,4 @@
-from httplib import INTERNAL_SERVER_ERROR, BAD_REQUEST
+from http.client import INTERNAL_SERVER_ERROR, BAD_REQUEST
 import datetime
 import json
 import os
@@ -110,7 +110,7 @@ class LoggingPlugin(object):
 
             # Use explicitly defined route name or 'METHOD /rule'
             command = route.name or (route.method + ' ' + route.rule)
-            query_dict = dict(map(lambda k: (k, request.query[k]), request.query))
+            query_dict = dict([(k, request.query[k]) for k in request.query])
             args = [request.path, query_dict]
             # if (route.method == 'POST'
             #     and request.content_type == 'application/json'):
@@ -172,7 +172,7 @@ class ErrorAdapter(object):
         )
         body = formatting.verbose_pretty_json(request.json)
         local_vars = formatting.key_value_list(
-            self._censor_passwords(server_util.exc_frame_locals().items())
+            self._censor_passwords(list(server_util.exc_frame_locals().items()))
         )
         aux_info = textwrap.dedent(
             """\
@@ -208,14 +208,14 @@ class ErrorAdapter(object):
         ).format(request, aux_info, traceback.format_exc())
 
         # Both print to console and send email
-        print >>sys.stderr, message
+        print(message, file=sys.stderr)
         self.send_email(exc, message)
 
     @server_util.rate_limited(max_calls_per_hour=6)
     def send_email(self, exc, message):
         # Caller is responsible for logging message anyway if desired
         if 'admin_email' not in local.config['server']:
-            print >>sys.stderr, 'Warning: No admin_email configured, so no email sent.'
+            print('Warning: No admin_email configured, so no email sent.', file=sys.stderr)
             return
 
         # Subject should be "ExceptionType: message"
@@ -281,7 +281,7 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     # dicts before they are serialized into JSON
     install(JsonApiPlugin())
 
-    for code in xrange(100, 600):
+    for code in range(100, 600):
         default_app().error(code)(error_handler)
 
     root_app = Bottle()

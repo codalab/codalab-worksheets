@@ -78,7 +78,7 @@ if django_config['database']['ENGINE'] == 'django.db.backends.mysql':
         db_params['host'] = django_config['database']['HOST']
     if django_config['database'].get('PORT', None):
         db_params['port'] = django_config['database']['PORT']
-        if isinstance(db_params['port'], unicode):
+        if isinstance(db_params['port'], str):
             db_params['port'] = int(db_params['port'])
     django_db = MySQLdb.connect(**db_params)
 elif django_config['database']['ENGINE'] == 'django.db.backends.sqlite3':
@@ -145,8 +145,8 @@ with model.engine.begin() as bundle_db:
     to_update = django_user_ids & bundle_user_ids
     to_insert = django_user_ids - bundle_user_ids
 
-    print("Users to update:", ', '.join(list(to_update)))
-    print("Users to insert:", ', '.join(list(to_insert)))
+    print(("Users to update:", ', '.join(list(to_update))))
+    print(("Users to insert:", ', '.join(list(to_insert))))
 
     to_update = [user for user in django_users if (str(user['b_user_id']) in to_update)]
     to_insert = [user for user in django_users if (str(user['b_user_id']) in to_insert)]

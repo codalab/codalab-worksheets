@@ -36,7 +36,7 @@ def expand_specs(specs):
         m = HISTORY_RANGE_REGEX.match(spec)
         if m:
             a, b = int(m.group(2)), int(m.group(3))
-            for i in range(a, b + 1) if a <= b else range(a, b - 1, -1):
+            for i in list(range(a, b + 1)) if a <= b else list(range(a, b - 1, -1)):
                 new_specs.append(m.group(1) + str(i))
         else:
             new_specs.append(spec)

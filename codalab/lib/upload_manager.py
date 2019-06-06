@@ -119,7 +119,7 @@ class UploadManager(object):
 
     def _interpret_source(self, source):
         is_url, is_local_path, is_fileobj = False, False, False
-        if isinstance(source, basestring):
+        if isinstance(source, str):
             if path_util.path_is_url(source):
                 is_url = True
             else:

@@ -223,7 +223,7 @@ def fetch_interpreted_worksheet(uuid):
             continue
         if item['mode'] == 'table':
             for row_map in item['rows']:
-                for k, v in row_map.iteritems():
+                for k, v in row_map.items():
                     if v is None:
                         row_map[k] = formatting.contents_str(v)
         if 'bundle_info' in item:
@@ -281,7 +281,7 @@ def head_target(target, max_num_lines, replace_non_unicode=False):
     ).splitlines(True)
 
     if replace_non_unicode:
-        lines = map(formatting.verbose_contents_str, lines)
+        lines = list(map(formatting.verbose_contents_str, lines))
 
     return lines
 
@@ -388,7 +388,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
         except UsageError as e:
             set_error_data(block_index, e.message)
 
-        except StandardError:
+        except Exception:
             import traceback
 
             traceback.print_exc()
@@ -401,7 +401,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
 
 def is_bundle_genpath_triple(value):
     # if called after an RPC call tuples may become lists
-    need_gen_types = (types.TupleType, types.ListType)
+    need_gen_types = (tuple, list)
 
     return isinstance(value, need_gen_types) and len(value) == 3
 
@@ -415,7 +415,7 @@ def interpret_genpath_table_contents(contents):
     # Request information
     requests = []
     for r, row in enumerate(contents):
-        for key, value in row.items():
+        for key, value in list(row.items()):
             # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
             if is_bundle_genpath_triple(value):
                 requests.append(value)
@@ -426,7 +426,7 @@ def interpret_genpath_table_contents(contents):
     ri = 0
     for r, row in enumerate(contents):
         new_row = {}
-        for key, value in row.items():
+        for key, value in list(row.items()):
             if is_bundle_genpath_triple(value):
                 value = responses[ri]
                 ri += 1

@@ -104,7 +104,7 @@ def _check_permissions(model, table, user, object_uuids, owner_ids, need_permiss
             user_str,
             object_type,
             ' '.join(object_uuids),
-            ' '.join(map(permission_str, have_permissions.values())),
+            ' '.join(map(permission_str, list(have_permissions.values()))),
             permission_str(need_permission),
         )
     )

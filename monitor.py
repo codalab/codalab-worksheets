@@ -56,18 +56,18 @@ config = json.loads(open(config_path).read())
 engine_url = config['server']['engine_url']
 m = re.match('mysql://(.+):(.+)@([^:]+)(:(\d+))?/(.+)', engine_url)
 if not m:
-    print('Can\'t extract server.engine_url from %s' % config_path)
+    print(('Can\'t extract server.engine_url from %s' % config_path))
     sys.exit(1)
 bundles_user = m.group(1)
 bundles_password = m.group(2)
 bundles_host = m.group(3)
 bundles_port = m.group(5) or 3306
 bundles_db = m.group(6)
-print(
+print((
     'user = {}, password = {}, db = {}, host = {}, port = {}'.format(
         bundles_user, '*' * len(bundles_password), bundles_db, bundles_host, bundles_port
     )
-)
+))
 
 hostname = config['server'].get('instance_name', socket.gethostname())
 
@@ -85,7 +85,7 @@ report = []  # Build up the current report to send in an email
 def send_email(subject, message):
     # Not enough information to send email?
     if not recipient or not sender_info:
-        print('send_email; subject: %s; message contains %d lines' % (subject, len(message)))
+        print(('send_email; subject: %s; message contains %d lines' % (subject, len(message))))
         return
 
     sender_host = sender_info['host']
@@ -96,10 +96,10 @@ def send_email(subject, message):
     sender_user = sender_info.get('user', 'noreply@codalab.org')
     sender_password = sender_info.get('password', None)
     do_login = sender_password != None
-    print(
+    print((
         'send_email to %s from %s@%s; subject: %s; message contains %d lines'
         % (recipient, sender_user, sender_host, subject, len(message))
-    )
+    ))
     s = SMTP(sender_host, 587)
     s.ehlo()
     s.starttls()
@@ -128,7 +128,7 @@ def log(line, newline=True):
         print(line)
     report.append(line)
     out = open(args.log_path, 'a')
-    print >> out, line
+    print(line, file=out)
     out.close()
 
 
@@ -229,11 +229,11 @@ def backup_db():
     date = get_date()
     mysql_conf_path = os.path.join(args.codalab_home, 'monitor-mysql.cnf')
     with open(mysql_conf_path, 'w') as f:
-        print >> f, '[client]'
-        print >> f, 'host="%s"' % bundles_host
-        print >> f, 'port="%s"' % bundles_port
-        print >> f, 'user="%s"' % bundles_user
-        print >> f, 'password="%s"' % bundles_password
+        print('[client]', file=f)
+        print('host="%s"' % bundles_host, file=f)
+        print('port="%s"' % bundles_port, file=f)
+        print('user="%s"' % bundles_user, file=f)
+        print('password="%s"' % bundles_password, file=f)
     path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_db, date)
     run_command(
         [
@@ -327,7 +327,7 @@ while True:
         send_email('report', report)
 
     if ping_time():
-        print
+        print()
 
     # Update timer
     time.sleep(1)

@@ -131,7 +131,7 @@ class LocalRunStateMachine(StateTransitioner):
         self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
 
     def stop(self):
-        for uuid in self.disk_utilization.keys():
+        for uuid in list(self.disk_utilization.keys()):
             self.disk_utilization[uuid]['running'] = False
         self.disk_utilization.stop()
         self.uploading.stop()

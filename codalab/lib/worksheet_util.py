@@ -30,7 +30,7 @@ import copy
 import os
 import re
 import sys
-from itertools import izip
+
 
 
 from codalab.common import PermissionError, UsageError
@@ -238,7 +238,7 @@ def get_metadata_types(cls):
     formatting/serialization is necessary.
     """
     return {
-        spec.key: (not issubclass(spec.type, basestring) and spec.formatting) or spec.type.__name__
+        spec.key: (not issubclass(spec.type, str) and spec.formatting) or spec.type.__name__
         for spec in cls.METADATA_SPECS
     }
 
@@ -288,17 +288,17 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
         if line_types[i] == TYPE_BUNDLE
     ]
     # bundle_specs = (line_indices, bundle_specs)
-    bundle_specs = zip(*bundle_lines) if len(bundle_lines) > 0 else [(), ()]
+    bundle_specs = list(zip(*bundle_lines)) if len(bundle_lines) > 0 else [(), ()]
     # bundle_uuids = {line_i: bundle_uuid, ...}
     bundle_uuids = dict(
-        zip(
+        list(zip(
             bundle_specs[0],
             canonicalize.get_bundle_uuids(model, user, worksheet_uuid, bundle_specs[1]),
-        )
+        ))
     )
 
     items = []
-    for line_i, (line_type, line) in enumerate(izip(line_types, form_result)):
+    for line_i, (line_type, line) in enumerate(zip(line_types, form_result)):
         if line_type == 'comment':
             comment = line[2:]
             items.append(directive_item([DIRECTIVE_CHAR, comment]))
@@ -387,7 +387,7 @@ def interpret_genpath(bundle_info, genpath):
             args.append(formatting.quote(bundle_info['command']))
         # Add request arguments from metadata
         metadata = bundle_info['metadata']
-        for key, value in metadata.items():
+        for key, value in list(metadata.items()):
             if key.startswith('request_') and value:
                 key = key.replace('_', '-')
                 if isinstance(value, bool):
@@ -960,7 +960,7 @@ def interpret_items(schemas, raw_items):
 
             raw_to_block.append((len(blocks) - 1, 0))
 
-        except StandardError:
+        except Exception:
             current_schema = None
             bundle_infos[:] = []
             worksheet_infos[:] = []
@@ -980,7 +980,7 @@ def interpret_items(schemas, raw_items):
 
     # TODO: fix inconsistencies resulting from UsageErrors thrown in flush_bundles()
     if len(raw_to_block) != len(raw_items):
-        print >>sys.stderr, "WARNING: Length of raw_to_block does not match length of raw_items"
+        print("WARNING: Length of raw_to_block does not match length of raw_items", file=sys.stderr)
 
     # Package the result
     block_to_raw = {}

@@ -1,7 +1,7 @@
 import tempfile
 import os
 import shutil
-import pyjson
+from . import pyjson
 
 
 class BaseStateCommitter(object):

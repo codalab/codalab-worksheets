@@ -2,12 +2,12 @@ import logging
 import time
 import traceback
 import socket
-import httplib
+import http.client
 import sys
 
-from bundle_service_client import BundleServiceException
-from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
-from state_committer import JsonStateCommitter
+from .bundle_service_client import BundleServiceException
+from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
+from .state_committer import JsonStateCommitter
 
 VERSION = 20
 
@@ -124,7 +124,7 @@ class Worker(object):
         if self._bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
             self._run_manager.create_run(bundle, resources)
         else:
-            print >>sys.stdout, 'Bundle {} no longer assigned to this worker'.format(bundle['uuid'])
+            print('Bundle {} no longer assigned to this worker'.format(bundle['uuid']), file=sys.stdout)
 
     def _read(self, socket_id, uuid, path, read_args):
         def reply(err, message={}, data=None):
@@ -138,7 +138,7 @@ class Worker(object):
             traceback.print_exc()
         except Exception as e:
             traceback.print_exc()
-            err = (httplib.INTERNAL_SERVER_ERROR, e.message)
+            err = (http.client.INTERNAL_SERVER_ERROR, e.message)
             reply(err)
 
     def _netcat(self, socket_id, uuid, port, message):
@@ -152,7 +152,7 @@ class Worker(object):
             traceback.print_exc()
         except Exception as e:
             traceback.print_exc()
-            err = (httplib.INTERNAL_SERVER_ERROR, e.message)
+            err = (http.client.INTERNAL_SERVER_ERROR, e.message)
             reply(err)
 
     def _write(self, uuid, subpath, string):
@@ -176,7 +176,7 @@ class Worker(object):
 
     def read_run_missing(self, socket_id):
         message = {
-            'error_code': httplib.INTERNAL_SERVER_ERROR,
+            'error_code': http.client.INTERNAL_SERVER_ERROR,
             'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
         }
         self._bundle_service.reply(self.id, socket_id, message)

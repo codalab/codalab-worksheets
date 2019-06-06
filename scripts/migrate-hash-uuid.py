@@ -12,6 +12,7 @@ import os
 import sys
 import shlex
 from subprocess import Popen
+from functools import reduce
 
 sys.path.append('.')
 
@@ -53,7 +54,7 @@ for data_hash in data_hashes:
             cmd = Popen(exec_str)
             exit_code = cmd.wait()
             if exit_code != 0:
-                print >>sys.stderr, 'command \'%s\' failed(status=%d), aborting...'
+                print('command \'%s\' failed(status=%d), aborting...', file=sys.stderr)
                 break
 
 
@@ -68,4 +69,4 @@ This was a dry run, no migration occurred. To perform full migration, run again 
 
 explain_str = "Migration complete!"
 
-print >>sys.stderr, dry_run_str if dry_run else explain_str
+print(dry_run_str if dry_run else explain_str, file=sys.stderr)

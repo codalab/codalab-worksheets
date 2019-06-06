@@ -10,7 +10,7 @@ import logging
 import os
 import docker
 
-from formatting import parse_size
+from .formatting import parse_size
 
 
 MIN_API_VERSION = '1.17'
@@ -46,7 +46,7 @@ class DockerException(Exception):
 @wrap_exception('Unable to use Docker')
 def test_version():
     version_info = client.version()
-    if map(int, version_info['ApiVersion'].split('.')) < map(int, MIN_API_VERSION.split('.')):
+    if list(map(int, version_info['ApiVersion'].split('.'))) < list(map(int, MIN_API_VERSION.split('.'))):
         raise DockerException('Please upgrade your version of Docker')
 
 
@@ -78,7 +78,7 @@ def get_nvidia_devices():
         cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
     )
     # Get newline delimited gpu-index, gpu-uuid list
-    print(output.split('\n')[:-1])
+    print((output.split('\n')[:-1]))
     return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}
 
 

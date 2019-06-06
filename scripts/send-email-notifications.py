@@ -39,7 +39,7 @@ def get_to_send_list(model, threshold):
                 ]
             ).where(cl_user.c.notifications >= threshold)
         ).fetchall()
-        return [dict(zip(HEADER, row)) for row in rows if row.email]
+        return [dict(list(zip(HEADER, row))) for row in rows if row.email]
 
 
 def get_sent_list(sent_file):
@@ -67,7 +67,7 @@ def main(args):
     sent_list = get_sent_list(args.sent_file)
     sent_emails = set(info['email'] for info in sent_list)
     pending_to_send_list = [info for info in to_send_list if info['email'] not in sent_emails]
-    print('Already sent %d emails, %d to go' % (len(sent_list), len(pending_to_send_list)))
+    print(('Already sent %d emails, %d to go' % (len(sent_list), len(pending_to_send_list))))
 
     for i, info in enumerate(pending_to_send_list):
         if args.only_email and args.only_email != info['email']:
@@ -81,7 +81,7 @@ def main(args):
         )
         info['sent_time'] = time.time()
 
-        print(
+        print((
             'Sending %s/%s (%s>=%s, doit=%s): [%s] %s'
             % (
                 i,
@@ -92,16 +92,16 @@ def main(args):
                 info['user_name'],
                 info['email_description'],
             )
-        )
+        ))
 
         # Apply template to get body of message
         body = body_template
-        for field, value in info.items():
-            body = body.replace('{{' + field + '}}', unicode(value or ''))
+        for field, value in list(info.items()):
+            body = body.replace('{{' + field + '}}', str(value or ''))
 
         if args.verbose >= 1:
-            print('To      : %s' % info['email_description'])
-            print('Subject : %s' % subject)
+            print(('To      : %s' % info['email_description']))
+            print(('Subject : %s' % subject))
             print(body)
             print('-------')
 
@@ -115,7 +115,7 @@ def main(args):
 
         # Record that we sent
         with open(args.sent_file, 'a') as f:
-            print >> f, json.dumps(info)
+            print(json.dumps(info), file=f)
             f.flush()
 
 

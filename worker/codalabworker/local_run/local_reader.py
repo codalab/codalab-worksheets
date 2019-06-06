@@ -1,5 +1,5 @@
 from contextlib import closing
-import httplib
+import http.client
 import os
 import threading
 
@@ -38,7 +38,7 @@ class LocalReader(Reader):
         try:
             final_path = get_target_path(run_state.bundle_path, run_state.bundle['uuid'], path)
         except PathException as e:
-            reply_fn((httplib.NOT_FOUND, e.message), None, None)
+            reply_fn((http.client.NOT_FOUND, e.message), None, None)
         read_thread = threading.Thread(target=stream_fn, args=[final_path])
         read_thread.start()
         self.read_threads.append(read_thread)
@@ -52,7 +52,7 @@ class LocalReader(Reader):
 
         # if path is a dependency raise an error
         if path and os.path.normpath(path) in dep_paths:
-            err = (httplib.NOT_FOUND, '{} not found in bundle {}'.format(path, bundle_uuid))
+            err = (http.client.NOT_FOUND, '{} not found in bundle {}'.format(path, bundle_uuid))
             reply_fn(err, None, None)
             return
         else:
@@ -61,7 +61,7 @@ class LocalReader(Reader):
                     run_state.bundle_path, bundle_uuid, path, args['depth']
                 )
             except PathException as e:
-                err = (httplib.NOT_FOUND, e.message)
+                err = (http.client.NOT_FOUND, e.message)
                 reply_fn(err, None, None)
                 return
 

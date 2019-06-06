@@ -355,7 +355,7 @@ class CodalabArgs(argparse.Namespace):
             metavar='TEST',
             nargs='+',
             type=str,
-            choices=test_cli.TestModule.modules.keys() + ['all', 'default'],
+            choices=list(test_cli.TestModule.modules.keys()) + ['all', 'default'],
             default=['default'],
             help='Tests to run',
         )
@@ -392,12 +392,12 @@ class CodalabArgs(argparse.Namespace):
         return args
 
     def __init__(self):
-        for arg in self.DEFAULT_ARGS.keys():
+        for arg in list(self.DEFAULT_ARGS.keys()):
             setattr(self, arg, None)
         self.root_dir = os.path.dirname(os.path.realpath(__file__))
 
     def _apply_defaults(self):
-        for arg, default in self.DEFAULT_ARGS.items():
+        for arg, default in list(self.DEFAULT_ARGS.items()):
             if getattr(self, arg) is None:
                 setattr(self, arg, default)
 
@@ -405,7 +405,7 @@ class CodalabArgs(argparse.Namespace):
             self.worker_dir = os.path.join(self.root_dir, 'codalab-worker-scratch')
 
     def apply_environment(self, env):
-        for arg, var in self.ARG_TO_ENV_VAR.items():
+        for arg, var in list(self.ARG_TO_ENV_VAR.items()):
             if var in env:
                 setattr(self, arg, env[var])
         self._apply_defaults()
@@ -543,7 +543,7 @@ class CodalabServiceManager(object):
         subprocess.check_call('docker ' + cmd, shell=True, cwd=self.root_dir)
 
     def build_image(self, image):
-        print("[CODALAB] ==> Building %s image " % image)
+        print(("[CODALAB] ==> Building %s image " % image))
         self._run_docker_cmd(
             'build -t codalab/%s:%s -f docker/dockerfiles/Dockerfile.%s .'
             % (image, self.args.version, image)

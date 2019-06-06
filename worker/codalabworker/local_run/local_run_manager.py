@@ -11,8 +11,8 @@ import codalabworker.docker_utils as docker_utils
 
 from codalabworker.state_committer import JsonStateCommitter
 from codalabworker.run_manager import BaseRunManager
-from local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
-from local_reader import LocalReader
+from .local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
+from .local_reader import LocalReader
 
 logger = logging.getLogger(__name__)
 
@@ -91,13 +91,13 @@ class LocalRunManager(BaseRunManager):
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved
-        simple_runs = {uuid: state._replace(container=None) for uuid, state in self._runs.items()}
+        simple_runs = {uuid: state._replace(container=None) for uuid, state in list(self._runs.items())}
         self._state_committer.commit(simple_runs)
 
     def load_state(self):
         runs = self._state_committer.load()
         # Retrieve the complex container objects from the Docker API
-        for uuid, run_state in runs.iteritems():
+        for uuid, run_state in runs.items():
             if run_state.container_id:
                 try:
                     run_state = run_state._replace(
@@ -143,7 +143,7 @@ class LocalRunManager(BaseRunManager):
         logger.debug("Killing all bundles")
         # Set all bundle statuses to killed
         with self._lock:
-            for uuid in self._runs.keys():
+            for uuid in list(self._runs.keys()):
                 run_state = self._runs[uuid]
                 run_state.info['kill_message'] = 'Worker stopped'
                 run_state = run_state._replace(info=run_state.info, is_killed=True)
@@ -152,7 +152,7 @@ class LocalRunManager(BaseRunManager):
         for attempt in range(LocalRunManager.KILL_TIMEOUT):
             with self._lock:
                 self._runs = {
-                    k: v for k, v in self._runs.items() if v.stage != LocalRunStage.FINISHED
+                    k: v for k, v in list(self._runs.items()) if v.stage != LocalRunStage.FINISHED
                 }
                 if len(self._runs) > 0:
                     logger.debug(
@@ -166,14 +166,14 @@ class LocalRunManager(BaseRunManager):
         """ Transition each run then filter out finished runs """
         with self._lock:
             # transition all runs
-            for bundle_uuid in self._runs.keys():
+            for bundle_uuid in list(self._runs.keys()):
                 run_state = self._runs[bundle_uuid]
                 self._runs[bundle_uuid] = self._run_state_manager.transition(run_state)
 
             # filter out finished runs
             finished_container_ids = [
                 run.container
-                for run in self._runs.values()
+                for run in list(self._runs.values())
                 if (run.stage == LocalRunStage.FINISHED or run.stage == LocalRunStage.FINALIZING)
                 and run.container_id is not None
             ]
@@ -183,7 +183,7 @@ class LocalRunManager(BaseRunManager):
                     container.remove(force=True)
                 except (docker.errors.NotFound, docker.errors.NullResource):
                     pass
-            self._runs = {k: v for k, v in self._runs.items() if v.stage != LocalRunStage.FINISHED}
+            self._runs = {k: v for k, v in list(self._runs.items()) if v.stage != LocalRunStage.FINISHED}
 
     def create_run(self, bundle, resources):
         """
@@ -236,7 +236,7 @@ class LocalRunManager(BaseRunManager):
         cpuset, gpuset = set(self._cpuset), set(self._gpuset)
 
         with self._lock:
-            for run_state in self._runs.values():
+            for run_state in list(self._runs.values()):
                 if run_state.stage == LocalRunStage.RUNNING:
                     cpuset -= run_state.cpuset
                     gpuset -= run_state.gpuset
@@ -324,7 +324,7 @@ class LocalRunManager(BaseRunManager):
                     'info': run_state.info,
                     'state': LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
                 }
-                for bundle_uuid, run_state in self._runs.items()
+                for bundle_uuid, run_state in list(self._runs.items())
             }
             return result
 

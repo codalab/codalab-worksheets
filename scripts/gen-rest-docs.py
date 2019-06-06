@@ -59,7 +59,7 @@ def get_api_routes():
 def get_codalab_schemas():
     from codalab.rest import schemas as schemas_module
 
-    for k, v in vars(schemas_module).iteritems():
+    for k, v in vars(schemas_module).items():
         if not isclass(v):
             continue
         if not issubclass(v, Schema):

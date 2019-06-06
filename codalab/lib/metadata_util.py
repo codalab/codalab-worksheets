@@ -31,7 +31,7 @@ def fill_missing_metadata(bundle_subclass, args, initial_metadata):
             default = MetadataDefaults.get_default(spec, bundle_subclass, args)
             new_initial_metadata[spec.key] = default
         final_value = new_initial_metadata[spec.key]
-        is_unicode_string = isinstance(final_value, basestring) and unicode_util.contains_unicode(
+        is_unicode_string = isinstance(final_value, str) and unicode_util.contains_unicode(
             final_value
         )
         is_unicode_list = isinstance(final_value, list) and any(
@@ -101,7 +101,7 @@ def parse_metadata_form(bundle_subclass, form_result):
                         'Metadata cannot contain unicode: %s = %s'
                         % (metadata_key, result[metadata_key])
                     )
-            elif metadata_type == basestring:
+            elif metadata_type == str:
                 if remainder is not None and unicode_util.contains_unicode(remainder):
                     raise UsageError(
                         'Metadata cannot contain unicode: %s = %s' % (metadata_key, remainder)

@@ -16,7 +16,7 @@ Things not tested:
 - Interactive modes (cl edit, cl wedit)
 - Permissions
 """
-from __future__ import print_function
+
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
 
@@ -419,11 +419,11 @@ class TestModule(object):
 
     @classmethod
     def all_modules(cls):
-        return cls.modules.values()
+        return list(cls.modules.values())
 
     @classmethod
     def default_modules(cls):
-        return filter(lambda m: m.default, cls.modules.itervalues())
+        return [m for m in iter(cls.modules.values()) if m.default]
 
     @classmethod
     def run(cls, tests, instance):
@@ -451,7 +451,7 @@ class TestModule(object):
                 modules_to_run.append(cls.modules[name])
             else:
                 print(Colorizer.yellow("[!] Could not find module %s" % name))
-                print(Colorizer.yellow("[*] Modules: all %s" % " ".join(cls.modules.keys())))
+                print(Colorizer.yellow("[*] Modules: all %s" % " ".join(list(cls.modules.keys()))))
                 sys.exit(1)
 
         print(
@@ -663,7 +663,7 @@ def test(ctx):
 def test(ctx):
     # Uploads a pair of archives at the same time. Makes sure they're named correctly when unpacked.
     archive_paths = [temp_path(''), temp_path('')]
-    archive_exts = map(lambda p: p + '.tar.gz', archive_paths)
+    archive_exts = [p + '.tar.gz' for p in archive_paths]
     contents_paths = [test_path('dir1'), test_path('a.txt')]
     for (archive, content) in zip(archive_exts, contents_paths):
         run_command(
@@ -1087,7 +1087,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'wait', uuid], 1)
-    check_equals(str([u'kill']), get_info(uuid, 'actions'))
+    check_equals(str(['kill']), get_info(uuid, 'actions'))
 
 
 @TestModule.register('write')
@@ -1099,7 +1099,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'write', target, 'hello world']))
     run_command([cl, 'wait', uuid])
     check_equals('hello world', run_command([cl, 'cat', target]))
-    check_equals(str([u'write\tmessage\thello world']), get_info(uuid, 'actions'))
+    check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
 
 
 @TestModule.register('mimic')
@@ -1639,7 +1639,7 @@ if __name__ == '__main__':
         metavar='TEST',
         nargs='+',
         type=str,
-        choices=TestModule.modules.keys() + ['all', 'default'],
+        choices=list(TestModule.modules.keys()) + ['all', 'default'],
         help='Tests to run from: {%(choices)s}',
     )
     args = parser.parse_args()

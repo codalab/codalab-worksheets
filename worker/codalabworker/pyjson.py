@@ -16,11 +16,11 @@ class PyJSONEncoder(json.JSONEncoder):
         """
         Encodes a dict key. Currently only supports encoding tuples and strings as keys
         """
-        if not (isinstance(key, tuple) or isinstance(key, str) or isinstance(key, unicode)):
+        if not (isinstance(key, tuple) or isinstance(key, str) or isinstance(key, str)):
             raise Exception('PyJSON can only encode dicts with str, unicode or tuple keys')
         if isinstance(key, tuple):
             if not all(
-                isinstance(tuple_el, str) or isinstance(tuple_el, unicode) for tuple_el in key
+                isinstance(tuple_el, str) or isinstance(tuple_el, str) for tuple_el in key
             ):
                 raise Exception(
                     'Tuple elements need to be all strings (or unicode) for PyJSON to work'
@@ -47,13 +47,13 @@ class PyJSONEncoder(json.JSONEncoder):
             odct = obj._asdict()
             return dict(
                 _namedtuple_name=type(obj).__name__,
-                _namedtuple_fields=odct.keys(),
-                _namedtuple_values=list(self.default(o) for o in odct.values()),
+                _namedtuple_fields=list(odct.keys()),
+                _namedtuple_values=list(self.default(o) for o in list(odct.values())),
             )
         elif isinstance(obj, set):
             return dict(_set_object=list(self.default(o) for o in obj))
         elif isinstance(obj, dict):
-            return {self.encode_key(k): self.default(v) for k, v in obj.items()}
+            return {self.encode_key(k): self.default(v) for k, v in list(obj.items())}
         elif isinstance(obj, tuple):
             return dict(_tuple_object=list(self.default(o) for o in obj))
         else:
@@ -73,7 +73,7 @@ class PyJSONDecoder(json.JSONDecoder):
         """
         Should do the opposite of what encode_key does
         """
-        if isinstance(key, basestring) and key.startswith(PyJSONEncoder.TUPLE_KEY_STR):
+        if isinstance(key, str) and key.startswith(PyJSONEncoder.TUPLE_KEY_STR):
             key_str = key[len(PyJSONEncoder.TUPLE_KEY_STR) :]
             return tuple(key_str.split(PyJSONEncoder.TUPLE_ELEM_STR))
         return key
@@ -89,7 +89,7 @@ class PyJSONDecoder(json.JSONDecoder):
             elif '_tuple_object' in dct:
                 return tuple(self.json_as_python(item) for item in dct['_tuple_object'])
             else:
-                return {self.decode_key(k): self.json_as_python(v) for k, v in dct.items()}
+                return {self.decode_key(k): self.json_as_python(v) for k, v in list(dct.items())}
         return dct
 
 

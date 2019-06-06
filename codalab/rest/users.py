@@ -1,7 +1,7 @@
 """
 Worksheets REST API Users Views.
 """
-import httplib
+import http.client
 
 from bottle import abort, get, request, local, delete
 
@@ -25,7 +25,7 @@ def update_authenticated_user():
     user_info = AuthenticatedUserSchema(strict=True).load(request.json, partial=False).data
 
     if any(k in user_info for k in USER_READ_ONLY_FIELDS):
-        abort(httplib.FORBIDDEN, "These fields are read-only: " + ', '.join(USER_READ_ONLY_FIELDS))
+        abort(http.client.FORBIDDEN, "These fields are read-only: " + ', '.join(USER_READ_ONLY_FIELDS))
 
     # Patch in user_id manually (do not allow requests to change id)
     user_info['user_id'] = request.user.user_id
@@ -34,12 +34,12 @@ def update_authenticated_user():
     if user_info.get(
         'user_name', request.user.user_name
     ) != request.user.user_name and local.model.user_exists(user_info['user_name'], None):
-        abort(httplib.BAD_REQUEST, "User name %s is already taken." % user_info['user_name'])
+        abort(http.client.BAD_REQUEST, "User name %s is already taken." % user_info['user_name'])
 
     # Validate user name
     if not NAME_REGEX.match(user_info.get('user_name', request.user.user_name)):
         abort(
-            httplib.BAD_REQUEST,
+            http.client.BAD_REQUEST,
             "User name characters must be alphanumeric, underscores, periods, or dashes.",
         )
 
@@ -64,7 +64,7 @@ def fetch_user(user_spec):
     user = local.model.get_user(user_id=user_spec)
     user = user or local.model.get_user(username=user_spec)
     if user is None:
-        abort(httplib.NOT_FOUND, "User %s not found" % user_spec)
+        abort(http.client.NOT_FOUND, "User %s not found" % user_spec)
     return allowed_user_schema()().dump(user).data
 
 
@@ -76,14 +76,14 @@ def delete_user():
     request_user_id = request.user.user_id
 
     if request_user_id != local.model.root_user_id:
-        abort(httplib.UNAUTHORIZED, 'Only root user can delete other users.')
+        abort(http.client.UNAUTHORIZED, 'Only root user can delete other users.')
 
     for user_id in user_ids:
         if user_id == local.model.root_user_id:
-            abort(httplib.UNAUTHORIZED, 'Cannot delete root user.')
+            abort(http.client.UNAUTHORIZED, 'Cannot delete root user.')
         user = local.model.get_user(user_id=user_id)
         if user is None:
-            abort(httplib.NOT_FOUND, 'User %s not found' % user_id)
+            abort(http.client.NOT_FOUND, 'User %s not found' % user_id)
 
         '''
         Check for owned bundles, worksheets, and groups.
@@ -115,7 +115,7 @@ def delete_user():
             )
 
         if error_messages:
-            abort(httplib.NOT_FOUND, '\n'.join(error_messages))
+            abort(http.client.NOT_FOUND, '\n'.join(error_messages))
 
         local.model.delete_user(user_id=user.user_id)
 
@@ -153,12 +153,12 @@ def update_users():
     allows one update at a time.
     """
     if request.user.user_id != local.model.root_user_id:
-        abort(httplib.FORBIDDEN, "Only root user can update other users.")
+        abort(http.client.FORBIDDEN, "Only root user can update other users.")
 
     users = AuthenticatedUserSchema(strict=True, many=True).load(request.json, partial=True).data
 
     if len(users) != 1:
-        abort(httplib.BAD_REQUEST, "Users can only be updated on at a time.")
+        abort(http.client.BAD_REQUEST, "Users can only be updated on at a time.")
 
     local.model.update_user_info(users[0])
 

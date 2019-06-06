@@ -28,7 +28,7 @@ import time
 import textwrap
 from collections import defaultdict
 from contextlib import closing
-from StringIO import StringIO
+from io import StringIO
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -281,7 +281,7 @@ class Commands(object):
                 name += ' (%s)' % ', '.join(list(aliases))
             return name
 
-        available_other_commands = filter(lambda command: command in cls.commands, OTHER_COMMANDS)
+        available_other_commands = [command for command in OTHER_COMMANDS if command in cls.commands]
 
         indent = 2
         max_length = max(
@@ -388,7 +388,7 @@ class Commands(object):
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         # Build subparser for each subcommand
-        for command in cls.commands.itervalues():
+        for command in cls.commands.values():
             help = '\n'.join(command.help)
             subparser = subparsers.add_parser(
                 command.name,
@@ -468,7 +468,7 @@ class Commands(object):
                     kwargs['type'] = str
                     kwargs['nargs'] = '*'
                     kwargs['metavar'] = spec.metavar
-                elif issubclass(spec.type, basestring):
+                elif issubclass(spec.type, str):
                     kwargs['type'] = str
                     kwargs['metavar'] = spec.metavar
                 elif spec.type is bool:
@@ -495,7 +495,7 @@ class BundleCLI(object):
         print >>self.stdout, the message to stderr and exit with the given error code.
         """
         precondition(error_code, 'exit called with error_code == 0')
-        print >>self.stderr, message
+        print(message, file=self.stderr)
         sys.exit(error_code)
 
     @staticmethod
@@ -654,11 +654,11 @@ class BundleCLI(object):
             rows.append(row)
 
         # Display the table
-        lengths = [max(len(unicode(value)) for value in col) for col in zip(*rows)]
+        lengths = [max(len(str(value)) for value in col) for col in zip(*rows)]
         for (i, row) in enumerate(rows):
             row_strs = []
             for (j, value) in enumerate(row):
-                value = unicode(value)
+                value = str(value)
                 length = lengths[j]
                 padding = (length - len(value)) * ' '
                 if justify.get(columns[j], -1) < 0:
@@ -666,9 +666,9 @@ class BundleCLI(object):
                 else:
                     row_strs.append(padding + value)
             if show_header or i > 0:
-                print >>self.stdout, indent + '  '.join(row_strs)
+                print(indent + '  '.join(row_strs), file=self.stdout)
             if i == 0:
-                print >>self.stdout, indent + (sum(lengths) + 2 * (len(columns) - 1)) * '-'
+                print(indent + (sum(lengths) + 2 * (len(columns) - 1)) * '-', file=self.stdout)
 
     def parse_spec(self, spec):
         """
@@ -724,7 +724,7 @@ class BundleCLI(object):
         """
         return {
             metadata_util.metadata_argument_to_key(key): value
-            for key, value in vars(args).iteritems()
+            for key, value in vars(args).items()
             if key.startswith('md_') and value is not None
         }
 
@@ -813,9 +813,9 @@ class BundleCLI(object):
             clean = lambda s: shlex.split(s.strip())[0] if s else ''
         except ValueError as e:
             raise UsageError(e.message)
-        return map(
+        return list(map(
             clean, cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos)
-        )
+        ))
 
     def do_command(self, argv, stdout=None, stderr=None):
         parser = Commands.build_parser(self)
@@ -849,7 +849,7 @@ class BundleCLI(object):
         return structured_result
 
     def print_version(self):
-        print >>self.stdout, 'CodaLab CLI version %s' % CODALAB_VERSION
+        print('CodaLab CLI version %s' % CODALAB_VERSION, file=self.stdout)
 
     @Commands.command(
         'help',
@@ -871,7 +871,7 @@ class BundleCLI(object):
         if args.command:
             self.do_command([args.command, '--help'])
             return
-        print >>self.stdout, Commands.help_text(args.verbose)
+        print(Commands.help_text(args.verbose), file=self.stdout)
 
     @Commands.command('status', aliases=('st',), help='Show current client status.')
     def do_status_command(self, args):
@@ -879,18 +879,18 @@ class BundleCLI(object):
         worksheet_info = client.fetch('worksheets', worksheet_uuid)
 
         if not self.headless:
-            print >>self.stdout, "codalab_home: %s" % self.manager.codalab_home
-            print >>self.stdout, "session: %s" % self.manager.session_name()
+            print("codalab_home: %s" % self.manager.codalab_home, file=self.stdout)
+            print("session: %s" % self.manager.session_name(), file=self.stdout)
             address = self.manager.session()['address']
-            print >>self.stdout, "client_version: %s" % CODALAB_VERSION
-            print >>self.stdout, "server_version: %s" % worksheet_info['meta']['version']
-            print >>self.stdout, "address: %s" % address
+            print("client_version: %s" % CODALAB_VERSION, file=self.stdout)
+            print("server_version: %s" % worksheet_info['meta']['version'], file=self.stdout)
+            print("address: %s" % address, file=self.stdout)
             state = self.manager.state['auth'].get(address, {})
             if 'username' in state:
-                print >>self.stdout, "username: %s" % state['username']
+                print("username: %s" % state['username'], file=self.stdout)
 
-        print >>self.stdout, "current_worksheet: %s" % self.simple_worksheet_str(worksheet_info)
-        print >>self.stdout, "user: %s" % self.simple_user_str(client.fetch('user'))
+        print("current_worksheet: %s" % self.simple_worksheet_str(worksheet_info), file=self.stdout)
+        print("user: %s" % self.simple_user_str(client.fetch('user')), file=self.stdout)
 
     @Commands.command(
         'logout',
@@ -946,10 +946,10 @@ class BundleCLI(object):
                 aliases[args.name] = args.instance
                 self.manager.save_config()
             else:
-                print >>self.stdout, args.name + ': ' + formatting.verbose_contents_str(instance)
+                print(args.name + ': ' + formatting.verbose_contents_str(instance), file=self.stdout)
         else:
-            for name, instance in aliases.items():
-                print >>self.stdout, name + ': ' + instance
+            for name, instance in list(aliases.items()):
+                print(name + ': ' + instance, file=self.stdout)
 
     @Commands.command(
         'config',
@@ -1008,7 +1008,7 @@ class BundleCLI(object):
             config[key] = auto_convert_type(args.value)
             self.manager.save_config()
         else:  # Print out value
-            print(config[key])
+            print((config[key]))
 
     @Commands.command(
         'workers',
@@ -1037,7 +1037,7 @@ class BundleCLI(object):
                 }
             )
 
-        print >>self.stdout, 'Workers Info:'
+        print('Workers Info:', file=self.stdout)
         self.print_table(columns, data)
 
     @Commands.command(
@@ -1163,7 +1163,7 @@ class BundleCLI(object):
             # Canonicalize paths (e.g., removing trailing /)
             sources = [path_util.normalize(path) for path in args.path]
 
-            print >>self.stderr, "Preparing upload archive..."
+            print("Preparing upload archive...", file=self.stderr)
             packed = zip_util.pack_files_for_upload(
                 sources,
                 should_unpack=(not args.pack),
@@ -1183,11 +1183,11 @@ class BundleCLI(object):
                 bundle_info,
                 params={'worksheet': worksheet_uuid, 'wait_for_upload': True},
             )
-            print >>self.stderr, u'Uploading %s (%s) to %s' % (
+            print('Uploading %s (%s) to %s' % (
                 packed['filename'].decode('UTF-8'),
                 new_bundle['id'],
                 client.address,
-            )
+            ), file=self.stderr)
             progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
             with closing(packed['fileobj']), progress:
                 client.upload_contents_blob(
@@ -1203,7 +1203,7 @@ class BundleCLI(object):
                     progress_callback=progress.update,
                 )
 
-        print >>self.stdout, new_bundle['id']
+        print(new_bundle['id'], file=self.stdout)
 
     @Commands.command(
         'download',
@@ -1246,7 +1246,7 @@ class BundleCLI(object):
             )
         final_path = os.path.join(os.getcwd(), local_path)
         if os.path.exists(final_path):
-            print >>self.stdout, 'Local file/directory \'%s\' already exists.' % local_path
+            print('Local file/directory \'%s\' already exists.' % local_path, file=self.stdout)
             return
 
         # Do the download.
@@ -1254,11 +1254,11 @@ class BundleCLI(object):
         if target_info['type'] == 'link':
             raise UsageError('Downloading symlinks is not allowed.')
 
-        print >>self.stdout, 'Downloading %s/%s => %s' % (
+        print('Downloading %s/%s => %s' % (
             self.simple_bundle_str(info),
             subpath,
             final_path,
-        )
+        ), file=self.stdout)
 
         progress = FileTransferProgress('Received ', f=self.stderr)
         contents = file_util.tracked(
@@ -1334,18 +1334,18 @@ class BundleCLI(object):
 
         source_info = source_client.fetch('bundles', source_bundle_uuid)
         if source_info is None:
-            print >>self.stdout, 'Unable to read bundle %s' % source_bundle_uuid
+            print('Unable to read bundle %s' % source_bundle_uuid, file=self.stdout)
             return
 
         source_desc = self.simple_bundle_str(source_info)
         if source_info['state'] not in [State.READY, State.FAILED]:
-            print >>self.stdout, 'Not copying %s because it has non-final state %s' % (
+            print('Not copying %s because it has non-final state %s' % (
                 source_desc,
                 source_info['state'],
-            )
+            ), file=self.stdout)
             return
 
-        print >>self.stdout, "Copying %s..." % source_desc
+        print("Copying %s..." % source_desc, file=self.stdout)
 
         # Create the bundle, copying over metadata from the source bundle
         dest_bundle = dest_client.create(
@@ -1433,7 +1433,7 @@ class BundleCLI(object):
             params={'worksheet': worksheet_uuid},
         )
 
-        print >>self.stdout, new_bundle['uuid']
+        print(new_bundle['uuid'], file=self.stdout)
 
     def wait(self, client, args, uuid):
         """Wait for a run bundle to finish. Called by run and mimic."""
@@ -1507,7 +1507,7 @@ class BundleCLI(object):
             params={'worksheet': worksheet_uuid},
         )
 
-        print >>self.stdout, new_bundle['uuid']
+        print(new_bundle['uuid'], file=self.stdout)
         self.wait(client, args, new_bundle['uuid'])
 
     @Commands.command(
@@ -1551,7 +1551,7 @@ class BundleCLI(object):
         bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
         target_specs = [parse_key_target(spec) for spec in args.target_spec]
         dependencies = [
-            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, _ in target_specs
+            ('{}'.format(key), '/{}_dependencies/{}'.format(uuid, key)) for key, _ in target_specs
         ]
 
         # Set up a directory to store the bundle.
@@ -1572,11 +1572,11 @@ class BundleCLI(object):
             tty=True,
             runtime=get_available_runtime(),
         ).id
-        print >>self.stdout, '===='
-        print >>self.stdout, 'Container ID: ', container_id[:12]
-        print >>self.stdout, 'Local Bundle UUID: ', uuid
-        print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
-        print >>self.stdout, '===='
+        print('====', file=self.stdout)
+        print('Container ID: ', container_id[:12], file=self.stdout)
+        print('Local Bundle UUID: ', uuid, file=self.stdout)
+        print('You can find local bundle contents in: ', bundle_path, file=self.stdout)
+        print('====', file=self.stdout)
         os.system('docker attach {}'.format(container_id))
 
     @Commands.command(
@@ -1653,7 +1653,7 @@ class BundleCLI(object):
                 bundle_update['metadata'] = metadata_update
 
             client.update('bundles', bundle_update)
-            print >>self.stdout, "Saved metadata for bundle %s." % (info['id'])
+            print("Saved metadata for bundle %s." % (info['id']), file=self.stdout)
 
     @Commands.command(
         'detach',
@@ -1791,11 +1791,11 @@ class BundleCLI(object):
 
         if args.dry_run:
             bundles = client.fetch('bundles', params={'specs': deleted_uuids, 'include': ['owner']})
-            print >>self.stdout, 'This command would permanently remove the following bundles (not doing so yet):'
+            print('This command would permanently remove the following bundles (not doing so yet):', file=self.stdout)
             self.print_bundle_info_list(bundles, uuid_only=False, print_ref=False)
         else:
             for uuid in deleted_uuids:
-                print >>self.stdout, uuid
+                print(uuid, file=self.stdout)
 
     @Commands.command(
         'search',
@@ -1841,7 +1841,7 @@ class BundleCLI(object):
 
         # Print direct numeric result
         if 'meta' in bundles:
-            print >>self.stdout, bundles['meta']['result']
+            print(bundles['meta']['result'], file=self.stdout)
             return
 
         # Print table
@@ -1862,10 +1862,10 @@ class BundleCLI(object):
                 ],
             )
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
-            print >>self.stdout, 'Added %d bundles to %s' % (
+            print('Added %d bundles to %s' % (
                 len(bundles),
                 self.worksheet_str(worksheet_info),
-            )
+            ), file=self.stdout)
 
         return {'refs': self.create_reference_map('bundle', bundles)}
 
@@ -1914,7 +1914,7 @@ class BundleCLI(object):
             },
         )
         if not args.uuid_only:
-            print >>self.stdout, self._worksheet_description(worksheet_info)
+            print(self._worksheet_description(worksheet_info), file=self.stdout)
         bundle_info_list = [
             item['bundle'] for item in worksheet_info['items'] if item['type'] == 'bundle'
         ]
@@ -1945,7 +1945,7 @@ class BundleCLI(object):
         """
         if uuid_only:
             for bundle_info in bundle_info_list:
-                print >>self.stdout, bundle_info['uuid']
+                print(bundle_info['uuid'], file=self.stdout)
         else:
 
             def get(i, info, col):
@@ -2029,11 +2029,11 @@ class BundleCLI(object):
                     else:
                         value = worksheet_util.interpret_genpath(info, genpath)
                     values.append(value)
-                print >>self.stdout, '\t'.join(map(str, values))
+                print('\t'.join(map(str, values)), file=self.stdout)
             else:
                 # Display all the fields
                 if i > 0:
-                    print
+                    print()
                 self.print_basic_info(client, info, args.raw)
                 if args.verbose:
                     self.print_children(info)
@@ -2049,7 +2049,7 @@ class BundleCLI(object):
     def key_value_str(key, value):
         return '%-26s: %s' % (
             key,
-            formatting.verbose_contents_str(unicode(value) if value is not None else None),
+            formatting.verbose_contents_str(str(value) if value is not None else None),
         )
 
     def print_basic_info(self, client, info, raw):
@@ -2077,7 +2077,7 @@ class BundleCLI(object):
 
         # Metadata fields (non-standard)
         standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
-        for key, value in metadata.items():
+        for key, value in list(metadata.items()):
             if key in standard_keys:
                 continue
             lines.append(self.key_value_str(key, value))
@@ -2097,35 +2097,35 @@ class BundleCLI(object):
             deps = info['dependencies']
             display_dependencies('dependencies', deps)
 
-        print >>self.stdout, '\n'.join(lines)
+        print('\n'.join(lines), file=self.stdout)
 
     def print_children(self, info):
-        print >>self.stdout, 'children:'
+        print('children:', file=self.stdout)
         for child in info['children']:
-            print >>self.stdout, "  %s" % self.simple_bundle_str(child)
+            print("  %s" % self.simple_bundle_str(child), file=self.stdout)
 
     def print_host_worksheets(self, info):
-        print >>self.stdout, 'host_worksheets:'
+        print('host_worksheets:', file=self.stdout)
         for host_worksheet_info in info['host_worksheets']:
-            print >>self.stdout, "  %s" % self.simple_worksheet_str(host_worksheet_info)
+            print("  %s" % self.simple_worksheet_str(host_worksheet_info), file=self.stdout)
 
     def print_permissions(self, info):
-        print >>self.stdout, 'permission: %s' % permission_str(info['permission'])
-        print >>self.stdout, 'group_permissions:'
-        print >>self.stdout, '  %s' % group_permissions_str(info['group_permissions'])
+        print('permission: %s' % permission_str(info['permission']), file=self.stdout)
+        print('group_permissions:', file=self.stdout)
+        print('  %s' % group_permissions_str(info['group_permissions']), file=self.stdout)
 
     def print_contents(self, client, info):
         def wrap(string):
             return '=== ' + string + ' preview ==='
 
-        print >>self.stdout, wrap('contents')
+        print(wrap('contents'), file=self.stdout)
         bundle_uuid = info['uuid']
         info = self.print_target_info(client, bundle_uuid, '', head=10)
         if info is not None and info['type'] == 'directory':
             for item in info['contents']:
                 if item['name'] not in ['stdout', 'stderr']:
                     continue
-                print >>self.stdout, wrap(item['name'])
+                print(wrap(item['name']), file=self.stdout)
                 self.print_target_info(client, bundle_uuid, item['name'], head=10)
 
     @Commands.command(
@@ -2162,12 +2162,12 @@ class BundleCLI(object):
 
             mountpoint = path_util.normalize(args.mountpoint)
             path_util.check_isvalid(mountpoint, 'mount')
-            print >>self.stdout, 'BundleFUSE mounting bundle {} on {}'.format(uuid, mountpoint)
-            print >>self.stdout, 'BundleFUSE will run and maintain the mounted filesystem in the foreground. CTRL-C to cancel.'
+            print('BundleFUSE mounting bundle {} on {}'.format(uuid, mountpoint), file=self.stdout)
+            print('BundleFUSE will run and maintain the mounted filesystem in the foreground. CTRL-C to cancel.', file=self.stdout)
             bundle_fuse.bundle_mount(client, mountpoint, uuid, args.verbose)
-            print >>self.stdout, 'BundleFUSE shutting down.'
+            print('BundleFUSE shutting down.', file=self.stdout)
         else:
-            print >>self.stdout, 'fuse is not installed'
+            print('fuse is not installed', file=self.stdout)
 
     @Commands.command(
         'netcat',
@@ -2200,7 +2200,7 @@ class BundleCLI(object):
             client, worksheet_uuid, args.bundle_spec
         )
         info = client.netcat(bundle_uuid, port=args.port, data={"message": args.message})
-        print >>self.stdout, info['data']
+        print(info['data'], file=self.stdout)
 
     @Commands.command(
         'cat',
@@ -2241,7 +2241,7 @@ class BundleCLI(object):
         try:
             info = client.fetch_contents_info(bundle_uuid, subpath, 1)
         except NotFoundError:
-            print >>self.stdout, formatting.verbose_contents_str(None)
+            print(formatting.verbose_contents_str(None), file=self.stdout)
             return None
 
         info_type = info.get('type')
@@ -2263,7 +2263,7 @@ class BundleCLI(object):
                 shutil.copyfileobj(contents, self.stdout)
 
             if self.headless:
-                print >>self.stdout, '--Web CLI detected, truncated output to first 50 and last 50 lines.--'
+                print('--Web CLI detected, truncated output to first 50 and last 50 lines.--', file=self.stdout)
 
         def size(x):
             t = x.get('type', '???')
@@ -2287,7 +2287,7 @@ class BundleCLI(object):
             self.print_table(('name', 'perm', 'size'), contents, justify={'size': 1}, indent='')
 
         if info_type == 'link':
-            print >>self.stdout, ' -> ' + info['link']
+            print(' -> ' + info['link'], file=self.stdout)
 
         return info
 
@@ -2330,7 +2330,7 @@ class BundleCLI(object):
         state = self.follow_targets(client, bundle_uuid, subpaths)
         if state != State.READY:
             self.exit(state)
-        print >>self.stdout, bundle_uuid
+        print(bundle_uuid, file=self.stdout)
 
     def follow_targets(self, client, bundle_uuid, subpaths, from_start=False):
         """
@@ -2365,7 +2365,7 @@ class BundleCLI(object):
                 run_state = client.fetch('bundles', bundle_uuid)['state']
 
             # Read data.
-            for i in xrange(0, len(subpaths)):
+            for i in range(0, len(subpaths)):
                 # If the subpath we're interested in appears, check if it's a
                 # file and if so, initialize the offset.
                 if subpath_is_file[i] is None:
@@ -2535,16 +2535,16 @@ class BundleCLI(object):
             metadata_override=metadata,
         )
         for (old, new) in plan:
-            print >>self.stderr, '%s => %s' % (
+            print('%s => %s' % (
                 self.simple_bundle_str(old),
                 self.simple_bundle_str(new),
-            )
+            ), file=self.stderr)
         if len(plan) > 0:
             new_uuid = plan[-1][1]['uuid']  # Last new uuid to be created
             self.wait(client, args, new_uuid)
-            print >>self.stdout, new_uuid
+            print(new_uuid, file=self.stdout)
         else:
-            print >>self.stdout, 'Nothing to be done.'
+            print('Nothing to be done.', file=self.stdout)
 
     @Commands.command(
         'kill',
@@ -2567,7 +2567,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         for bundle_uuid in bundle_uuids:
-            print >>self.stdout, bundle_uuid
+            print(bundle_uuid, file=self.stdout)
         client.create('bundle-actions', [{'type': 'kill', 'uuid': uuid} for uuid in bundle_uuids])
 
     @Commands.command(
@@ -2595,7 +2595,7 @@ class BundleCLI(object):
             'bundle-actions',
             {'type': 'write', 'uuid': bundle_uuid, 'subpath': subpath, 'string': args.string},
         )
-        print >>self.stdout, bundle_uuid
+        print(bundle_uuid, file=self.stdout)
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
@@ -2635,7 +2635,7 @@ class BundleCLI(object):
     def do_new_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         new_worksheet = client.create('worksheets', data={'name': args.name})
-        print >>self.stdout, new_worksheet['uuid']
+        print(new_worksheet['uuid'], file=self.stdout)
         if self.headless:
             return ui_actions.serialize([ui_actions.OpenWorksheet(new_worksheet['uuid'])])
 
@@ -2775,20 +2775,20 @@ class BundleCLI(object):
         worksheet_info = client.fetch('worksheets', worksheet_uuid)
         if args.worksheet_spec:
             if args.uuid_only:
-                print >>self.stdout, worksheet_info['uuid']
+                print(worksheet_info['uuid'], file=self.stdout)
             return self.change_current_worksheet(
                 client, worksheet_uuid, verbose=(not args.uuid_only)
             )
         else:
             if worksheet_info:
                 if args.uuid_only:
-                    print >>self.stdout, worksheet_info['uuid']
+                    print(worksheet_info['uuid'], file=self.stdout)
                 else:
-                    print >>self.stdout, 'Currently on worksheet: %s' % (
+                    print('Currently on worksheet: %s' % (
                         self.worksheet_url(worksheet_info)
-                    )
+                    ), file=self.stdout)
             else:
-                print >>self.stdout, 'Not on any worksheet. Use `cl new` or `cl work` to switch to one.'
+                print('Not on any worksheet. Use `cl new` or `cl work` to switch to one.', file=self.stdout)
 
     def change_current_worksheet(self, client, worksheet_uuid, verbose=False):
         """
@@ -2808,7 +2808,7 @@ class BundleCLI(object):
 
         if verbose:
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
-            print >>self.stdout, 'Switched to worksheet: %s' % (self.worksheet_url(worksheet_info))
+            print('Switched to worksheet: %s' % (self.worksheet_url(worksheet_info)), file=self.stdout)
 
     @Commands.command(
         'wedit',
@@ -2892,10 +2892,10 @@ class BundleCLI(object):
                 info['is_anonymous'] = args.anonymous
 
             client.update('worksheets', info)
-            print >>self.stdout, 'Saved worksheet metadata for %s(%s).' % (
+            print('Saved worksheet metadata for %s(%s).' % (
                 worksheet_info['name'],
                 worksheet_info['uuid'],
-            )
+            ), file=self.stdout)
         else:
             if self.headless:
                 return ui_actions.serialize([ui_actions.SetEditMode(True)])
@@ -2909,15 +2909,15 @@ class BundleCLI(object):
                         lines = infile.readlines()
                 lines = [line.rstrip() for line in lines]
             else:
-                worksheet_info['items'] = map(self.unpack_item, worksheet_info['items'])
+                worksheet_info['items'] = list(map(self.unpack_item, worksheet_info['items']))
                 lines = worksheet_util.request_lines(worksheet_info)
 
             # Update worksheet
             client.update_worksheet_raw(worksheet_info['id'], lines)
-            print >>self.stdout, 'Saved worksheet items for %s(%s).' % (
+            print('Saved worksheet items for %s(%s).' % (
                 worksheet_info['name'],
                 worksheet_info['uuid'],
-            )
+            ), file=self.stdout)
 
     @staticmethod
     def unpack_item(item):
@@ -2971,23 +2971,23 @@ class BundleCLI(object):
                 ]
             },
         )
-        worksheet_info['items'] = map(self.unpack_item, worksheet_info['items'])
+        worksheet_info['items'] = list(map(self.unpack_item, worksheet_info['items']))
 
         if args.raw:
             lines = worksheet_util.get_worksheet_lines(worksheet_info)
             for line in lines:
-                print >>self.stdout, line
+                print(line, file=self.stdout)
         else:
-            print >>self.stdout, self._worksheet_description(worksheet_info)
+            print(self._worksheet_description(worksheet_info), file=self.stdout)
             interpreted_blocks = client.fetch_interpreted_worksheet(worksheet_uuid)['items']
             self.display_blocks(client, worksheet_info, interpreted_blocks)
 
     def display_blocks(self, client, worksheet_info, interpreted_blocks):
         for block in interpreted_blocks:
             mode = block['mode']
-            print >>self.stdout, ''  # Separate interpreted items
+            print('', file=self.stdout)  # Separate interpreted items
             if mode == BlockModes.markup_block:
-                print >>self.stdout, block['text']
+                print(block['text'], file=self.stdout)
             elif mode == BlockModes.contents_block:
                 bundle_info = block['bundles_spec']['bundle_infos'][0]
                 maxlines = block['max_lines']
@@ -2998,7 +2998,7 @@ class BundleCLI(object):
                         client, bundle_info['uuid'], block['target_genpath'], head=maxlines
                     )
                 except UsageError as e:
-                    print >>self.stdout, 'ERROR:', e
+                    print('ERROR:', e, file=self.stdout)
             elif mode == BlockModes.record_block or mode == BlockModes.table_block:
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, rows = (block['header'], block['rows'])
@@ -3009,15 +3009,15 @@ class BundleCLI(object):
                 )
             elif mode == BlockModes.image_block:
                 # Placeholder
-                print >>self.stdout, '[Image]'
+                print('[Image]', file=self.stdout)
             elif mode == BlockModes.graph_block:
                 # Placeholder
-                print >>self.stdout, '[Graph]'
+                print('[Graph]', file=self.stdout)
             elif mode == BlockModes.subworksheets_block:
                 for worksheet_info in block['subworksheet_infos']:
-                    print >>self.stdout, '[Worksheet ' + self.simple_worksheet_str(
+                    print('[Worksheet ' + self.simple_worksheet_str(
                         worksheet_info
-                    ) + ']'
+                    ) + ']', file=self.stdout)
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
 
@@ -3052,7 +3052,7 @@ class BundleCLI(object):
         )
         if args.uuid_only:
             for row in worksheet_dicts:
-                print >>self.stdout, row['uuid']
+                print(row['uuid'], file=self.stdout)
         else:
             if worksheet_dicts:
                 for row in worksheet_dicts:
@@ -3150,10 +3150,10 @@ class BundleCLI(object):
                     add_to_worksheet=False,
                 )
 
-        print >>self.stdout, 'Copied %s worksheet items to %s.' % (
+        print('Copied %s worksheet items to %s.' % (
             len(source_items),
             dest_worksheet_uuid,
-        )
+        ), file=self.stdout)
 
     #############################################################################
     # CLI methods for commands related to groups and permissions follow!
@@ -3192,7 +3192,7 @@ class BundleCLI(object):
 
             self.print_table(('name', 'uuid', 'owner', 'role'), groups)
         else:
-            print >>self.stdout, 'No groups found.'
+            print('No groups found.', file=self.stdout)
 
     @Commands.command(
         'gnew',
@@ -3206,7 +3206,7 @@ class BundleCLI(object):
     def do_gnew_command(self, args):
         client = self.manager.current_client()
         group = client.create('groups', {'name': args.name})
-        print >>self.stdout, 'Created new group %s(%s).' % (group['name'], group['id'])
+        print('Created new group %s(%s).' % (group['name'], group['id']), file=self.stdout)
 
     @Commands.command(
         'grm',
@@ -3223,7 +3223,7 @@ class BundleCLI(object):
         client = self.manager.current_client()
         group = client.fetch('groups', args.group_spec)
         client.delete('groups', group['id'])
-        print >>self.stdout, 'Deleted group %s(%s).' % (group['name'], group['id'])
+        print('Deleted group %s(%s).' % (group['name'], group['id']), file=self.stdout)
 
     @Commands.command(
         'ginfo',
@@ -3258,7 +3258,7 @@ class BundleCLI(object):
                 {'role': 'member', 'user': '%s(%s)' % (member['user_name'], member['id'])}
             )
 
-        print >>self.stdout, 'Members of group %s(%s):' % (group['name'], group['id'])
+        print('Members of group %s(%s):' % (group['name'], group['id']), file=self.stdout)
         self.print_table(('user', 'role'), members)
 
     @Commands.command(
@@ -3291,11 +3291,11 @@ class BundleCLI(object):
             JsonApiRelationship('users', user['id']),
         )
 
-        print >>self.stdout, '%s in group %s as %s' % (
+        print('%s in group %s as %s' % (
             user['user_name'],
             group['name'],
             'admin' if args.admin else 'member',
-        )
+        ), file=self.stdout)
 
     @Commands.command(
         'urm',
@@ -3316,20 +3316,20 @@ class BundleCLI(object):
 
         # Get the first member that matches the target user ID
         member = next(
-            itertools.ifilter(lambda m: m['id'] == user['id'], group['members'] + group['admins']),
+            filter(lambda m: m['id'] == user['id'], group['members'] + group['admins']),
             None,
         )
 
         if member is None:
-            print >>self.stdout, '%s is not a member of group %s.' % (
+            print('%s is not a member of group %s.' % (
                 user['user_name'],
                 group['name'],
-            )
+            ), file=self.stdout)
         else:
             client.delete_relationship(
                 'groups', group['id'], 'members', JsonApiRelationship('users', user['id'])
             )
-            print >>self.stdout, 'Removed %s from group %s.' % (user['user_name'], group['name'])
+            print('Removed %s from group %s.' % (user['user_name'], group['name']), file=self.stdout)
 
     @Commands.command(
         'perm',
@@ -3373,12 +3373,12 @@ class BundleCLI(object):
             ],
         )
 
-        print >>self.stdout, "Group %s(%s) has %s permission on %d bundles." % (
+        print("Group %s(%s) has %s permission on %d bundles." % (
             group['name'],
             group['id'],
             permission_str(new_permission),
             len(bundle_uuids),
-        )
+        ), file=self.stdout)
 
     @Commands.command(
         'wperm',
@@ -3407,11 +3407,11 @@ class BundleCLI(object):
             },
         )
 
-        print >>self.stdout, "Group %s has %s permission on worksheet %s." % (
+        print("Group %s has %s permission on worksheet %s." % (
             self.simple_group_str(group),
             permission_str(new_permission),
             self.simple_worksheet_str(worksheet),
-        )
+        ), file=self.stdout)
 
     @Commands.command(
         'chown',
@@ -3444,7 +3444,7 @@ class BundleCLI(object):
             [{'id': id_, 'owner': JsonApiRelationship('users', owner_id)} for id_ in bundle_uuids],
         )
         for uuid in bundle_uuids:
-            print >>self.stdout, uuid
+            print(uuid, file=self.stdout)
 
     #############################################################################
     # CLI methods for commands related to users follow!
@@ -3549,9 +3549,9 @@ class BundleCLI(object):
                 value = user[key]
 
             if should_pretty_print:
-                print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
+                print('{:<15}: {}'.format(key, value).encode('utf-8'), file=self.stdout)
             else:
-                print >>self.stdout, value.encode('utf-8')
+                print(value.encode('utf-8'), file=self.stdout)
 
         default_fields = (
             'id',
@@ -3593,7 +3593,7 @@ class BundleCLI(object):
         user = client.fetch('users', args.user_spec)
 
         client.delete('users', user['id'])
-        print >>self.stdout, 'Deleted user %s(%s).' % (user['user_name'], user['id'])
+        print('Deleted user %s(%s).' % (user['user_name'], user['id']), file=self.stdout)
 
     #############################################################################
     # Local-only commands follow!
@@ -3633,7 +3633,7 @@ class BundleCLI(object):
         info = self.manager.model().get_events_log_info(query_info, args.offset, args.limit)
         if 'counts' in info:
             for row in info['counts']:
-                print >>self.stdout, '\t'.join(map(str, list(row)))
+                print('\t'.join(map(str, list(row))), file=self.stdout)
         if 'events' in info:
             for event in info['events']:
                 row = [
@@ -3643,7 +3643,7 @@ class BundleCLI(object):
                     event.command,
                     event.args,
                 ]
-                print >>self.stdout, '\t'.join(row)
+                print('\t'.join(row), file=self.stdout)
 
     @Commands.command(
         'reset',
@@ -3662,7 +3662,7 @@ class BundleCLI(object):
         self._fail_if_not_local(args)
         if not args.commit:
             raise UsageError('If you really want to delete EVERYTHING, use --commit')
-        print >>self.stdout, 'Deleting entire database...'
+        print('Deleting entire database...', file=self.stdout)
         self.manager.model()._reset()
 
     @Commands.command(
@@ -3693,7 +3693,7 @@ class BundleCLI(object):
         self._fail_if_not_local(args)
         # This operation only allowed if we're using MultiDiskBundleStore
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
-            print >>sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
+            print("This command can only be run when MultiDiskBundleStore is in use.", file=sys.stderr)
             sys.exit(1)
         self.manager.bundle_store().add_partition(args.path, args.name)
 
@@ -3706,7 +3706,7 @@ class BundleCLI(object):
         self._fail_if_headless(args)
         self._fail_if_not_local(args)
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
-            print >>sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
+            print("This command can only be run when MultiDiskBundleStore is in use.", file=sys.stderr)
             sys.exit(1)
         self.manager.bundle_store().rm_partition(args.partition)
 
@@ -3719,7 +3719,7 @@ class BundleCLI(object):
         self._fail_if_headless(args)
         self._fail_if_not_local(args)
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
-            print >>sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
+            print("This command can only be run when MultiDiskBundleStore is in use.", file=sys.stderr)
             sys.exit(1)
         self.manager.bundle_store().ls_partitions()
 
@@ -3750,7 +3750,7 @@ class BundleCLI(object):
     def do_bs_health_check(self, args):
         self._fail_if_headless(args)
         self._fail_if_not_local(args)
-        print >>sys.stderr, 'Performing Health Check...'
+        print('Performing Health Check...', file=sys.stderr)
         self.manager.bundle_store().health_check(
             self.manager.model(), args.force, args.data_hash, args.repair
         )

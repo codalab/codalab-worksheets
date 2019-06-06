@@ -81,7 +81,7 @@ def mimic_bundles(
         # dictionary along the way.
         result = bundle_uuids
         visited = set()
-        for _ in xrange(depth):
+        for _ in range(depth):
             next_bundle_uuids = []
             for bundle_uuid in bundle_uuids:
                 if bundle_uuid in visited:
@@ -108,7 +108,7 @@ def mimic_bundles(
             bundle_uuids = next_bundle_uuids
         return result
 
-    all_bundle_uuids = get_self_and_ancestors(infos.keys())
+    all_bundle_uuids = get_self_and_ancestors(list(infos.keys()))
 
     # Now go recursively create the bundles.
     old_to_new = {}  # old_uuid -> new_uuid
@@ -298,7 +298,7 @@ def mimic_bundles(
         for info, new_info in plan:
             new_bundle_uuid = new_info['uuid']
             if new_bundle_uuid not in new_bundle_uuids_added:
-                print('adding: ' + new_bundle_uuid)
+                print(('adding: ' + new_bundle_uuid))
                 client.create(
                     'worksheet-items',
                     data={

@@ -74,7 +74,7 @@ def fetch_worksheet(uuid):
             for item in worksheet['items']
             if item['type'] == worksheet_util.TYPE_BUNDLE and item['bundle_uuid'] is not None
         }
-        bundle_infos = get_bundle_infos(bundle_uuids).values()
+        bundle_infos = list(get_bundle_infos(bundle_uuids).values())
         json_api_include(document, BundleSchema(), bundle_infos)
         if 'items.bundle.owner' in include_set:
             user_ids.update({b['owner_id'] for b in bundle_infos})
@@ -218,7 +218,7 @@ def create_worksheet_items():
     for item in new_items:
         worksheet_to_items.setdefault(item['worksheet_uuid'], []).append(item)
 
-    for worksheet_uuid, items in worksheet_to_items.iteritems():
+    for worksheet_uuid, items in worksheet_to_items.items():
         worksheet_info = get_worksheet_info(worksheet_uuid, fetch_items=True)
         if replace:
             # Replace items in the worksheet
@@ -346,7 +346,7 @@ def update_worksheet_metadata(uuid, info):
     worksheet = local.model.get_worksheet(uuid, fetch_items=False)
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     metadata = {}
-    for key, value in info.items():
+    for key, value in list(info.items()):
         if key == 'name':
             ensure_unused_worksheet_name(value)
         elif key == 'frozen' and value and not worksheet.frozen:
