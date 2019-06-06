@@ -197,7 +197,7 @@ const styles = (theme) => ({
         backgroundColor: theme.color.grey.lighter,
     },
     textRender: {
-        'p': {
+        '& p': {
             whiteSpace: 'pre-line',
         },
     },
