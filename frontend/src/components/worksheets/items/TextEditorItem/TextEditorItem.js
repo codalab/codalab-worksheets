@@ -99,6 +99,8 @@ class TextEditorItem extends React.Component<{
             }
         }
 
+        console.log('text ===>', mode, url);
+
         $.ajax({
             url,
             data: nText,

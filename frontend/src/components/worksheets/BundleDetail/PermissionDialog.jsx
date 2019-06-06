@@ -11,6 +11,13 @@ import Input from '@material-ui/core/Input';
 import { withStyles } from '@material-ui/core/styles';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
 
+function parseGlsOutput(output) {
+	const lines = output.split(/[\n]+/);
+	const records = lines.splice(4);
+	const names = records.map(record => record.split(/[\s\t]+/)[0]);
+	return names;
+}
+
 class PermissionDialog extends React.Component<
 	{
 		/* self permission */
@@ -26,7 +33,19 @@ class PermissionDialog extends React.Component<
         this.nGroupName = null;
         this.state = {
             showAddSection: false,
+            groupNames: [],
         };
+        this.getGroups();
+	}
+
+	getGroups = () => {
+		$('#command_line')
+            .terminal()
+            .exec('gls')
+            .then((resp) => {
+            	const groupNames = parseGlsOutput(resp.get_output());
+            	this.setState({ groupNames });
+            });
 	}
 
 	handlePermissionValueChange = (name, value) => {
@@ -54,11 +73,13 @@ class PermissionDialog extends React.Component<
 
 	render() {
 		const { classes, permission_spec, group_permissions } = this.props;
-        const { showAddSection } = this.state;
+        const { showAddSection, groupNames } = this.state;
 		const permissions = [
 			{ group_name: 'you', permission_spec },
 			...(group_permissions || [])
 		];
+		const assignedGroups = permissions.map(permission => permission.group_name);
+		const unassignedGroups = groupNames.filter(groupName => !assignedGroups.includes(groupName));
 
 		return (
 			<div>
@@ -88,16 +109,22 @@ class PermissionDialog extends React.Component<
 					</div>)
 				}
 				{ /** Adding permissions editor ==================================================================== */}
-                {   showAddSection &&
-                    <div className={ classes.row }>
-                        <Input
-                            className={ classes.textIsolate }
-                            onChange={ (event) => { this.nGroupName = event.target.value; } }
-                            placeholder="group name"
-                            inputProps={{
-                                'aria-label': 'Group Name',
-                            }}
-                        />
+                {   (showAddSection && unassignedGroups.length)
+                    ? <div className={ classes.row }>
+                    	<NativeSelect
+                            onChange={ (event) => { if (event.target.value) this.nGroupName = event.target.value; } }
+                            input={
+                                <Input
+                                    className={ classes.textField }
+                                />
+                            }
+                        >
+                            {/* Set to 'none' = removing all permission */}
+                            <option value="" disabled selected>Select a group</option>
+                            {
+                            	unassignedGroups.map(group => <option key={ group } value={ group }>{ group }</option>)
+                            }
+                        </NativeSelect>
                         <NativeSelect
                             defaultValue="none"
                             onChange={ (event) => this.handleAddPermission(
@@ -114,14 +141,16 @@ class PermissionDialog extends React.Component<
                             <option value="all">all</option>
                         </NativeSelect>
                     </div>
+                    : null
                 }
-                <IconButton
-                    onClick={ () => {
-                        this.setState({ showAddSection: true });
-                    } }
-                >
-                    <AddIcon />
-                </IconButton>
+                { Boolean(unassignedGroups.length) && <IconButton
+	                    onClick={ () => {
+	                        this.setState({ showAddSection: true });
+	                    } }
+	                >
+	                    <AddIcon />
+	                </IconButton>
+            	}
 			</div>
 		);
 	}

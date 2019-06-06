@@ -129,12 +129,16 @@ class BundleRow extends Component {
     };
 
     deleteItem = (ev) => {
+        const { setFocus } = this.props;
         ev.stopPropagation();
         this.toggleDeletePopup();
         const { uuid } = this.props.bundleInfo;
         $('#command_line')
             .terminal()
             .exec(buildTerminalCommand(['rm', uuid]));
+        if (this.props.focused) {
+            setFocus(-1, 0);
+        }
     };
 
     toggleDeletePopup = () => {
@@ -274,6 +278,7 @@ class BundleRow extends Component {
                     className={classNames({
                         [classes.contentRow]: true,
                         [classes.detailPadding]: showDetail,
+                        [classes.highlight]: this.props.focused,
                     })}
                 >
                     {rowCells}
@@ -472,6 +477,9 @@ const styles = (theme) => ({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
+    },
+    highlight: {
+        backgroundColor: `${ theme.color.primary.lightest } !important`,
     },
 });
 
