@@ -12,15 +12,17 @@ class ConfigCodeInput extends React.Component<{
     maxRows?: number,
     value: string,
     onValueChange?: (string) => void,
+    autoFocus?: boolean,
 }> {
     render() {
-        const { classes, placeholder, multiline, maxRows, value, onValueChange } = this.props;
+        const { classes, placeholder, multiline, maxRows, value, onValueChange, autoFocus } = this.props;
         return (
             <TextField
                 value={value}
                 onChange={(e) => onValueChange(e.target.value)}
                 placeholder={placeholder}
                 multiline={multiline}
+                autoFocus={autoFocus}
                 margin="dense"
                 variant="filled"
                 fullWidth

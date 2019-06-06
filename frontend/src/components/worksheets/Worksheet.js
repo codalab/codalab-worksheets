@@ -6,11 +6,9 @@ import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
 import { keepPosInView, renderPermissions } from '../../util/worksheet_utils';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
-import WorksheetActionBar from './WorksheetActionBar';
 import WorksheetItemList from './WorksheetItemList';
 import { WorksheetEditableField } from '../EditableField';
 import HelpButton from '../HelpButton';
-import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
 import ContentWrapper from '../ContentWrapper';
 import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from './ExtraWorksheetHTML';
@@ -94,7 +92,6 @@ class Worksheet extends React.Component {
             activeComponent: 'list', // Where the focus is (action, list, or side_panel)
             editMode: false, // Whether we're editing the worksheet
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind editMode)
-            showActionBar: true, // Whether the action bar is shown
             focusIndex: -1, // Which worksheet items to be on (-1 is none)
             subFocusIndex: 0, // For tables, which row in the table
             numOfBundles: -1, // Number of bundles in this worksheet (-1 is just the initial value)
@@ -251,26 +248,6 @@ class Worksheet extends React.Component {
     editMode = () => {
         this.toggleEditMode(true);
     };
-    handleActionBarFocus = (event) => {
-        this.setState({ activeComponent: 'action' });
-        // just scroll to the top of the page.
-        // Add the stop() to keep animation events from building up in the queue
-        $('#worksheet_panel').addClass('actionbar-focus');
-        $('#command_line').data('resizing', null);
-        $('body')
-            .stop(true)
-            .animate({ scrollTop: 0 }, 250);
-    };
-    handleActionBarBlur = (event) => {
-        // explicitly close terminal because we're leaving the action bar
-        // $('#command_line').terminal().focus(false);
-        this.setState({ activeComponent: 'list' });
-        $('#command_line').data('resizing', null);
-        $('#worksheet_panel')
-            .removeClass('actionbar-focus')
-            .removeAttr('style');
-        $('#ws_search').removeAttr('style');
-    };
     setupEventHandlers() {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
@@ -306,7 +283,6 @@ class Worksheet extends React.Component {
             if ($('#glossaryModal').hasClass('in')) {
                 $('#glossaryModal').modal('hide');
             }
-            ContextMenuMixin.closeContextMenu();
         });
 
         Mousetrap.bind(
@@ -314,22 +290,6 @@ class Worksheet extends React.Component {
             function(e) {
                 this.reloadWorksheet();
                 return false;
-            }.bind(this),
-        );
-
-        // Show/hide web terminal (action bar)
-        Mousetrap.bind(
-            ['shift+c'],
-            function(e) {
-                this.toggleActionBar();
-            }.bind(this),
-        );
-
-        // Focus on web terminal (action bar)
-        Mousetrap.bind(
-            ['c'],
-            function(e) {
-                this.focusActionBar();
             }.bind(this),
         );
 
@@ -567,18 +527,6 @@ class Worksheet extends React.Component {
         }
     }
 
-    toggleActionBar() {
-        this.setState({ showActionBar: !this.state.showActionBar });
-    }
-
-    focusActionBar() {
-        this.setState({ activeComponent: 'action' });
-        this.setState({ showActionBar: true });
-        $('#command_line')
-            .terminal()
-            .focus();
-    }
-
     ensureIsArray(bundle_info) {
         if (!bundle_info) return null;
         if (!Array.isArray(bundle_info)) {
@@ -748,7 +696,7 @@ class Worksheet extends React.Component {
         var editPermission = info && info.edit_permission;
         var canEdit = this.canEdit() && this.state.editMode;
 
-        var searchClassName = !this.state.showActionBar ? 'search-hidden' : '';
+        var searchClassName = 'search-hidden';
         var editableClassName = canEdit ? 'editable' : '';
         var viewClass = !canEdit && !this.state.editMode ? 'active' : '';
         var rawClass = this.state.editMode ? 'active' : '';
@@ -803,20 +751,6 @@ class Worksheet extends React.Component {
             </div>
         );
 
-        var action_bar_display = (
-            <WorksheetActionBar
-                ref={'action'}
-                ws={this.state.ws}
-                handleFocus={this.handleActionBarFocus}
-                handleBlur={this.handleActionBarBlur}
-                active={this.state.activeComponent == 'action'}
-                reloadWorksheet={this.reloadWorksheet}
-                openWorksheet={this.openWorksheet}
-                editMode={this.editMode}
-                setFocus={this.setFocus}
-            />
-        );
-
         var items_display = (
             <WorksheetItemList
                 ref={'list'}
@@ -829,13 +763,8 @@ class Worksheet extends React.Component {
                 setFocus={this.setFocus}
                 reloadWorksheet={this.reloadWorksheet}
                 openWorksheet={this.openWorksheet}
-                focusActionBar={this.focusActionBar}
                 ensureIsArray={this.ensureIsArray}
             />
-        );
-
-        var context_menu_display = (
-            <ContextMenu userInfo={this.state.userInfo} ws={this.state.ws} />
         );
 
         var worksheet_display = this.state.editMode ? raw_display : items_display;
@@ -845,10 +774,8 @@ class Worksheet extends React.Component {
             <React.Fragment>
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
-                        {action_bar_display}
-                        {context_menu_display}
                         <HelpButton />
-                        <div id='worksheet_panel' className={classes.worksheetDesktop}>
+                        <div className={classes.worksheetDesktop}>
                             <div className={classes.worksheetOuter}>
                                 <div className={classes.worksheetInner}>
                                     <div id='worksheet_content' className={editableClassName}>
@@ -861,7 +788,7 @@ class Worksheet extends React.Component {
                                                         key={'title' + this.canEdit()}
                                                         canEdit={this.canEdit()}
                                                         fieldName='title'
-                                                        value={(info && info.title) || "untitled"}
+                                                        value={(info && info.title) || "Untitled"}
                                                         uuid={info && info.uuid}
                                                         onChange={() => this.reloadWorksheet()}
                                                     />
@@ -929,10 +856,12 @@ class Worksheet extends React.Component {
 const styles = (theme) => ({
     worksheetDesktop: {
         backgroundColor: theme.color.grey.lightest,
+        paddingTop: 60,  // Height of NavBar
+        paddingBottom: 25,  // Height of Footer
     },
     worksheetOuter: {
-        maxWidth: 1000, // Worksheet width
-        margin: '0 auto', // Center page horizontally
+        maxWidth: 1200, // Worksheet width
+        margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
         border: `2px solid ${theme.color.grey.light}`,
     },
