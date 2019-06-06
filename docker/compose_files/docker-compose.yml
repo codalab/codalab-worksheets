@@ -20,6 +20,8 @@ services:
       *codalab-env
     networks:
       - service
+    ports:
+      - ${CODALAB_REST_PORT}:2900
     logging:
       *non-blocking-logging
 
