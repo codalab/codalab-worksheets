@@ -21,6 +21,7 @@ class StateTransitioner(object):
     def __init__(self):
         self._transition_functions = {}  # stage_name -> transition_function
         self._terminal_states = []  # stage_name
+        self._exception_handler = None  # If specified gets called with (state, exception)
 
     def add_terminal(self, stage_name):
         if stage_name not in self._transition_functions and stage_name not in self._terminal_states:
@@ -32,13 +33,22 @@ class StateTransitioner(object):
         """ Return the updated state """
         if state.stage in self._terminal_states:
             return state
-        return self._transition_functions[state.stage](state)
+        try:
+            return self._transition_functions[state.stage](state)
+        except Exception as ex:
+            if self._exception_handler:
+                return self._exception_handler(state, ex)
+            else:
+                raise
 
     def add_transition(self, stage_name, transition_function):
         if stage_name not in self._transition_functions and stage_name not in self._terminal_states:
             self._transition_functions[stage_name] = transition_function
         else:
             raise Exception('Stage name already exists!')
+
+    def add_exception_handler(self, handler_fn):
+        self._exception_handler = handler_fn
 
 
 class BaseDependencyManager(object):
