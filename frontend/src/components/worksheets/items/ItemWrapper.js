@@ -288,15 +288,17 @@ class ItemWrapper extends React.Component {
 const styles = (theme) => ({
     container: {
         position: 'relative',
-        border: `2px solid transparent`,
+
         marginBottom: 20,
+
+    },
+    main: {
+        zIndex: 10,
+        border: `2px solid transparent`,
         '&:hover': {
             backgroundColor: theme.color.grey.lightest,
             border: `2px solid ${theme.color.grey.base}`,
         }
-    },
-    main: {
-        zIndex: 10,
     },
     buttonsPanel: {
         display: 'flex',
