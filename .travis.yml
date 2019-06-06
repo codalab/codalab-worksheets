@@ -7,7 +7,7 @@ jobs:
         - docker
       env:
         - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
-      python: 2.7
+      python: 3.8
       before_install:
         - sudo rm /usr/local/bin/docker-compose
         - curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
@@ -34,7 +34,7 @@ jobs:
         - docker
       env:
         - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
-      python: 2.7
+      python: 3.8
       after_success: echo "skipped"
       before_deploy:
         - pip install twine

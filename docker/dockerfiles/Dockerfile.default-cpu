@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     iputils-ping \
     git \
-    python2.7 \
+    python3.8 \
     python-pip \
     python-dev \
     python-software-properties \

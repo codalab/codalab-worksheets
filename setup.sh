@@ -39,7 +39,7 @@ env=$codalabdir/venv
 
 if [ ! -e $env ]; then
   echo -e "${info}[*] Setting up a Python virtual environment (in $env)...${reset}"
-  virtualenv -p /usr/bin/python2.7 $env
+  virtualenv -p /usr/bin/python3.8 $env
   echo
 fi
 
