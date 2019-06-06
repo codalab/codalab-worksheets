@@ -31,7 +31,7 @@ setup(
         "Programming Language :: Python :: 2.7",
         "License :: OSI Approved :: Apache Software License",
     ],
-    python_requires='~=3.8',
+    python_requires='~=3.6',
     package_data={'': 'requirements.txt'},
     include_package_data=True,
     install_requires=get_requirements('./requirements.txt'),

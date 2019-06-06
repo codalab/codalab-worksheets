@@ -37,10 +37,10 @@ setup(
     packages=find_packages(exclude=["tests*"]),
     classifiers=[
         "Programming Language :: Python :: 2 :: Only",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: Apache Software License",
     ],
-    python_requires='~=3.8',
+    python_requires='~=3.6',
     include_package_data=True,
     install_requires=get_requirements('worker/requirements.txt'),
     entry_points={
