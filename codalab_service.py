@@ -646,11 +646,18 @@ class CodalabServiceManager(object):
                 self.push_image(image)
 
     def test(self):
+        instance = 'http://localhost:%s' % self.args.rest_port
         test_cli.cl = 'codalab/bin/cl'
         test_cli.cl_version = self.args.version
-        success = test_cli.TestModule.run(
-            self.args.tests, 'http://localhost:%s' % self.args.rest_port
+        subprocess.check_call(
+            '%s work %s::' % (test_cli.cl, instance),
+            env={
+                'CODALAB_USERNAME': self.args.codalab_user,
+                'CODALAB_PASSWORD': self.args.codalab_password,
+            },
+            shell=True,
         )
+        success = test_cli.TestModule.run(self.args.tests, instance)
         if not success:
             sys.exit(1)
 
