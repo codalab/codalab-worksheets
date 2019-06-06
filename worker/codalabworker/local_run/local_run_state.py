@@ -96,14 +96,14 @@ class LocalRunStateMachine(StateTransitioner):
 
     def __init__(
         self,
-        docker_image_manager,
-        dependency_manager,
-        worker_docker_network,
-        docker_network_internal,
-        docker_network_external,
-        docker_runtime,
-        upload_bundle_callback,
-        assign_cpu_and_gpu_sets_fn,
+        docker_image_manager,  # Component to request docker images from
+        dependency_manager,  # Component to request dependency downloads from
+        worker_docker_network,  # Docker network to add all bundles to
+        docker_network_internal,  # Docker network to add non-net connected bundles to
+        docker_network_external,  # Docker network to add internet connected bundles to
+        docker_runtime,  # Docker runtime to use for containers (nvidia or runc)
+        upload_bundle_callback,  # Function to call to upload bundle results to the server
+        assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
     ):
         super(LocalRunStateMachine, self).__init__()
         self.add_transition(LocalRunStage.PREPARING, self._transition_from_PREPARING)
@@ -114,6 +114,7 @@ class LocalRunStateMachine(StateTransitioner):
         )
         self.add_transition(LocalRunStage.FINALIZING, self._transition_from_FINALIZING)
         self.add_terminal(LocalRunStage.FINISHED)
+        self.add_exception_handler(self._handle_exception)
 
         self.dependency_manager = dependency_manager
         self.docker_image_manager = docker_image_manager
@@ -136,6 +137,22 @@ class LocalRunStateMachine(StateTransitioner):
         self.disk_utilization.stop()
         self.uploading.stop()
 
+    def _handle_exception(self, run_state, exception):
+        """
+        Default exception handler that gets called by the state machine
+        if an otherwise unhandled exception occurs during state transitions.
+        All states get failed and moved to CLEANING_UP
+        If exception occurs during upload, it is moved to CLEANING_UP, but with
+        has_contents set to False so UPLOAD is not retried at the end.
+        """
+        if run_state.stage == LocalRunStage.UPLOADING_RESULTS and run_state.has_contents:
+            run_state.info['failure_message'] = "Unhandled exception during result upload: %s" % (
+                exception
+            )
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info, has_contents=False)
+        run_state.info['failure_message'] = "Unhandled exception during run: %s" % (exception)
+        return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
+
     def _transition_from_PREPARING(self, run_state):
         """
         1- Request the docker image from docker image manager
@@ -150,7 +167,7 @@ class LocalRunStateMachine(StateTransitioner):
         4- If all is successful, move to RUNNING state
         """
         if run_state.is_killed:
-            return run_state._replace(stage=LocalRunStage.CLEANING_UP, container_id=None)
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP)
 
         dependencies_ready = True
         status_messages = []
@@ -355,14 +372,15 @@ class LocalRunStateMachine(StateTransitioner):
         run_state = check_resource_utilization(run_state)
 
         if run_state.is_killed:
-            try:
-                run_state.container.kill()
-            except docker.errors.APIError:
-                finished, _, _ = docker_utils.check_finished(run_state.container)
-                if not finished:
-                    # If we can't kill a Running container, something is wrong
-                    # Otherwise all well
-                    traceback.print_exc()
+            if docker_utils.container_exists(run_state.container):
+                try:
+                    run_state.container.kill()
+                except docker.errors.APIError:
+                    finished, _, _ = docker_utils.check_finished(run_state.container)
+                    if not finished:
+                        # If we can't kill a Running container, something is wrong
+                        # Otherwise all well
+                        traceback.print_exc()
             self.disk_utilization[bundle_uuid]['running'] = False
             self.disk_utilization.remove(bundle_uuid)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP)
@@ -392,12 +410,18 @@ class LocalRunStateMachine(StateTransitioner):
         """
         bundle_uuid = run_state.bundle['uuid']
         if run_state.container_id is not None:
-            while True:
+            while docker_utils.container_exists(run_state.container):
                 try:
                     finished, _, _ = docker_utils.check_finished(run_state.container)
                     if finished:
                         run_state.container.remove(force=True)
+                        run_state = run_state._replace(container=None, container_id=None)
                         break
+                    else:
+                        try:
+                            run_state.container.kill()
+                        except docker.errors.APIError:
+                            traceback.print_exc()
                 except docker.errors.APIError:
                     traceback.print_exc()
                     time.sleep(1)
