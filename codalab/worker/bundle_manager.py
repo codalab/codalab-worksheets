@@ -205,8 +205,8 @@ class BundleManager(object):
                         'Invalid dependency %s'
                         % (path_util.safe_join(dep.parent_uuid, dep.parent_path))
                     )
-                child_suffix = '' if dep.child_path is None else dep.child_path
-                child_path = os.path.normpath(os.path.join(path, child_suffix))
+
+                child_path = os.path.normpath(os.path.join(path, dep.child_path))
                 if not child_path.startswith(path):
                     raise Exception('Invalid key for dependency: %s' % (dep.child_path))
 
