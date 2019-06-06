@@ -10,4 +10,4 @@ alembic==1.0.0
 futures==3.2.0
 gunicorn==19.9.0
 oauthlib==2.1.0
-MySQL-python==1.2.5
+mysqlclient==1.2.5

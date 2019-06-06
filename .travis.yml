@@ -15,7 +15,7 @@ jobs:
         - sudo mv docker-compose /usr/local/bin
         - sudo service mysql stop
       install:
-        - pip install --upgrade pip MySQL-python
+        - pip install --upgrade pip mysqlclient
         - ./codalab_service.py build service -v ${TRAVIS_BRANCH} --push
         - ./setup.sh server
         - codalab/bin/cl config server/engine_url mysql://codalab:codalab@127.0.0.1:3306/codalab_bundles
