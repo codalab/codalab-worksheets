@@ -648,7 +648,9 @@ class CodalabServiceManager(object):
     def test(self):
         test_cli.cl = 'codalab/bin/cl'
         test_cli.cl_version = self.args.version
-        success = test_cli.TestModule.run(self.args.tests, 'localhost')
+        success = test_cli.TestModule.run(
+            self.args.tests, 'http://localhost:%s' % self.args.rest_port
+        )
         if not success:
             sys.exit(1)
 
