@@ -149,7 +149,9 @@ class LocalRunStateMachine(StateTransitioner):
             run_state.info['failure_message'] = "Unhandled exception during result upload: %s" % (
                 exception
             )
-            return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info, has_contents=False)
+            return run_state._replace(
+                stage=LocalRunStage.CLEANING_UP, info=run_state.info, has_contents=False
+            )
         run_state.info['failure_message'] = "Unhandled exception during run: %s" % (exception)
         return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
