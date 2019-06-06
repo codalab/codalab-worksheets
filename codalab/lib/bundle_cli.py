@@ -1409,10 +1409,7 @@ class BundleCLI(object):
         ],
         arguments=(
             Commands.Argument(
-                'target_spec',
-                help=MAKE_TARGET_SPEC_FORMAT,
-                nargs='+',
-                completer=BundlesCompleter,
+                'target_spec', help=MAKE_TARGET_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
             ),
             Commands.Argument(
                 '-w',
@@ -1476,10 +1473,7 @@ class BundleCLI(object):
         help='Create a bundle by running a program bundle on an input bundle.',
         arguments=(
             Commands.Argument(
-                'target_spec',
-                help=RUN_TARGET_SPEC_FORMAT,
-                nargs='*',
-                completer=TargetsCompleter,
+                'target_spec', help=RUN_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter
             ),
             Commands.Argument(
                 'command',
@@ -1518,10 +1512,7 @@ class BundleCLI(object):
         help='Beta feature. Simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.',
         arguments=(
             Commands.Argument(
-                'target_spec',
-                help=RUN_TARGET_SPEC_FORMAT,
-                nargs='*',
-                completer=TargetsCompleter,
+                'target_spec', help=RUN_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter
             ),
             Commands.Argument(
                 'command',
