@@ -124,6 +124,13 @@ const DependencyEditor = withStyles((theme) => ({
 }))(_DependencyEditor);
 
 
+const kDefaultCpu = 1;
+const kDefaultGpu = 0;
+const kDefaultDockerCpu = "codalab/default-cpu:latest";
+const kDefaultDockerGpu = "codalab/default-gpu:latest";
+const kDefaultDisk = "10g";
+const kDefaultMemory = "4g";
+
 class NewRun extends React.Component<{
     /** JSS styling object. */
     classes: {},
@@ -153,11 +160,11 @@ class NewRun extends React.Component<{
         name: 'untitled-run',
         description: '',
         tags: [],
-        disk: "10g",
-        memory: "2g",
-        cpu: 1,
-        gpu: 1,
-        docker: "codalab/default-cpu:latest",
+        disk: kDefaultDisk,
+        memory: kDefaultMemory,
+        cpu: kDefaultCpu,
+        gpu: kDefaultGpu,
+        docker: kDefaultDockerCpu,
         networkAccess: false,
         failedDependencies: false,
     }
@@ -354,7 +361,7 @@ class NewRun extends React.Component<{
                                 <ConfigTextInput
                                     value={this.state.disk}
                                     onValueChange={(value) => this.setState({ disk: value })}
-                                    placeholder="5g"
+                                    placeholder={`${kDefaultDisk}`}
                                 />
                             </Grid>
                             <Grid item xs={6}>
@@ -365,7 +372,7 @@ class NewRun extends React.Component<{
                                 <ConfigTextInput
                                     value={this.state.memory}
                                     onValueChange={(value) => this.setState({ memory: value })}
-                                    placeholder="5g"
+                                    placeholder={`${kDefaultMemory}`}
                                 />
                             </Grid>
                             <Grid item xs={6}>
@@ -375,8 +382,15 @@ class NewRun extends React.Component<{
                                 />
                                 <ConfigTextInput
                                     value={this.state.cpu}
-                                    onValueChange={(value) => this.setState({ cpu: value })}
-                                    placeholder="1"
+                                    onValueChange={(value) => {
+                                        const cpu = parseInt(value);
+                                        if(isNaN(cpu)) {
+                                            this.setState({ cpu: value });
+                                            return;
+                                        }
+                                        this.setState({ cpu: cpu });
+                                    }}
+                                    placeholder={`${kDefaultCpu}`}
                                 />
                             </Grid>
                             <Grid item xs={6}>
@@ -386,8 +400,21 @@ class NewRun extends React.Component<{
                                 />
                                 <ConfigTextInput
                                     value={this.state.gpu}
-                                    onValueChange={(value) => this.setState({ gpu: value })}
-                                    placeholder="1"
+                                    onValueChange={(value) => {
+                                        const gpu = parseInt(value);
+                                        if(isNaN(gpu)) {
+                                            this.setState({ gpu: value });
+                                            return;
+                                        }
+                                        this.setState({ gpu: gpu });
+
+                                        if (gpu > 0 && this.state.docker === kDefaultDockerCpu) {
+                                            this.setState({ docker: kDefaultDockerGpu });
+                                        } else if (gpu === 0 && this.state.docker === kDefaultDockerGpu) {
+                                            this.setState({ docker: kDefaultDockerCpu });
+                                        }
+                                    }}
+                                    placeholder={`${kDefaultGpu}`}
                                 />
                             </Grid>
                             <Grid item xs={12}>
@@ -399,7 +426,7 @@ class NewRun extends React.Component<{
                                 <ConfigTextInput
                                     value={this.state.docker}
                                     onValueChange={(value) => this.setState({ docker: value })}
-                                    placeholder="codalab/default-cpu:latest"
+                                    placeholder={`${kDefaultDockerCpu}`}
                                 />
                             </Grid>
                             <Grid item xs={12}>
@@ -456,6 +483,7 @@ class NewRun extends React.Component<{
                     value={this.state.command}
                     onValueChange={(value) => this.setState({ command: value })}
                     multiline
+                    autoFocus
                     placeholder="python train.py --data mydataset.txt"
                     maxRows={4}
                 />
