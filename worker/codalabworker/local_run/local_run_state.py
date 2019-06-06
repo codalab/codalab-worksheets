@@ -434,8 +434,7 @@ class LocalRunStateMachine(StateTransitioner):
                     finished, _, _ = docker_utils.check_finished(run_state.container)
                     if finished:
                         run_state.container.remove(force=True)
-                        run_state.container_id = None
-                        run_state.container = None
+                        run_state = run_state._replace(container_id=None, container=None)
                         break
                     else:
                         run_state.container.kill()
