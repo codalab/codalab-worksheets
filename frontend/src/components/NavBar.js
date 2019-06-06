@@ -14,12 +14,24 @@ import MenuItem from '@material-ui/core/MenuItem';
 import ListSubheader from '@material-ui/core/ListSubheader';
 import IconButton from '@material-ui/core/IconButton';
 import Tooltip from '@material-ui/core/Tooltip';
+import TextField from '@material-ui/core/TextField';
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
+import DialogTitle from '@material-ui/core/DialogTitle';
+
 import DashboardIcon from '@material-ui/icons/Dashboard'; // Home
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
 import GalleryIcon from '@material-ui/icons/Public'; // FindInPage
 import HowToIcon from '@material-ui/icons/Help'; // Info
 import ContactIcon from '@material-ui/icons/Feedback';
 import AccountIcon from '@material-ui/icons/AccountCircle';
+
+import { executeCommand } from '../util/cli_utils';
+
+
+const kDefaultWorksheetName = "unnamed";
 
 class NavBar extends React.Component<{
     auth: {
@@ -32,6 +44,8 @@ class NavBar extends React.Component<{
         super(props);
         this.state = {
             accountEl: null,
+            newWorksheetShowDialog: false,
+            newWorksheetName: kDefaultWorksheetName,
         };
     }
 
@@ -111,7 +125,7 @@ class NavBar extends React.Component<{
                                     </IconButton>
                                 </Tooltip>
                                 <Tooltip title='New Worksheet'>
-                                    <IconButton>
+                                    <IconButton onClick={() => this.setState({ newWorksheetShowDialog: true })}>
                                         <NewWorksheetIcon />
                                     </IconButton>
                                 </Tooltip>
@@ -163,6 +177,45 @@ class NavBar extends React.Component<{
                         )}
                     </Toolbar>
                 </AppBar>
+                <Dialog
+                  open={this.state.newWorksheetShowDialog}
+                  onClose={() => this.setState({ newWorksheetShowDialog: false,newWorksheetName: kDefaultWorksheetName, })}
+                  aria-labelledby="form-dialog-title"
+                >
+                  <DialogTitle id="form-dialog-title">New Worksheet</DialogTitle>
+                  <DialogContent>
+                    <DialogContentText>
+                      To create a new worksheet, give it a name.
+                    </DialogContentText>
+                    <TextField
+                      autoFocus
+                      margin="dense"
+                      id="name"
+                      label="Name"
+                      fullWidth
+                      placeholder={kDefaultWorksheetName}
+                      onChange={(e) => this.setState({ newWorksheetName: e.target.value })}
+                    />
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={() => this.setState({
+                            newWorksheetShowDialog: false,
+                            newWorksheetName: kDefaultWorksheetName,
+                        })} color="primary">
+                      Cancel
+                    </Button>
+                    <Button onClick={() => {
+                        this.setState({
+                            newWorksheetShowDialog: false,
+                            newWorksheetName: kDefaultWorksheetName,
+                        });
+                        executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`);
+                        // Change to page?
+                    }} color="primary">
+                      Confirm
+                    </Button>
+                  </DialogActions>
+                </Dialog>
             </MuiThemeProvider>
         );
     }

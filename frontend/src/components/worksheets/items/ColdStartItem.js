@@ -2,7 +2,9 @@
 import * as React from 'react';
 import Button from '@material-ui/core/Button';
 import { withStyles } from '@material-ui/core/styles';
-import AddIcon from '@material-ui/icons/PlayCircleFilled';
+import RunIcon from '@material-ui/icons/PlayCircleFilled';
+import UploadIcon from '@material-ui/icons/CloudUpload';
+import TextIcon from '@material-ui/icons/FontDownload';
 
 import NewRun from '../NewRun';
 import NewUpload from '../NewUpload';
@@ -22,11 +24,11 @@ class InsertButtons extends React.Component<{
                     variant='outlined'
                     size='small'
                     color='primary'
-                    aria-label='Upload'
+                    aria-label='Add New Upload'
                     onClick={showNewUpload}
                     classes={{ root: classes.buttonRoot }}
                 >
-                    <AddIcon className={classes.buttonIcon} />
+                    <UploadIcon className={classes.buttonIcon} />
                     Upload
                 </Button>
                 <Button
@@ -37,7 +39,7 @@ class InsertButtons extends React.Component<{
                     onClick={showNewRun}
                     classes={{ root: classes.buttonRoot }}
                 >
-                    <AddIcon className={classes.buttonIcon} />
+                    <RunIcon className={classes.buttonIcon} />
                     Run
                 </Button>
                 <Button
@@ -48,7 +50,7 @@ class InsertButtons extends React.Component<{
                     onClick={showNewText}
                     classes={{ root: classes.buttonRoot }}
                 >
-                    <AddIcon className={classes.buttonIcon} />
+                    <TextIcon className={classes.buttonIcon} />
                     Text
                 </Button>
             </div>
@@ -86,13 +88,13 @@ class ColdStartItem extends React.Component {
 	                <NewUpload
 	                    worksheetUUID={worksheetUUID}
 	                    reloadWorksheet={reloadWorksheet}
-	                    onClose={() => this.setState({ showNewUpload: 0 })}
+	                    onClose={() => this.setState({ showNewUpload: false })}
 	                />
 	            )}
 	            {showNewRun && (
 	                <NewRun
 	                    ws={ws}
-	                    onSubmit={() => this.setState({ showNewRun: 0 })}
+	                    onSubmit={() => this.setState({ showNewRun: false })}
 	                />
 	            )}
 	            {showNewText && (
@@ -101,7 +103,7 @@ class ColdStartItem extends React.Component {
 	                    worksheetUUID={worksheetUUID}
 	                    reloadWorksheet={reloadWorksheet}
 	                    closeEditor={() => {
-	                        this.setState({ showNewText: 0 });
+	                        this.setState({ showNewText: false });
 	                    }}
 	                />
 	            )}
@@ -129,6 +131,9 @@ const styles = (theme) => ({
         '&:hover': {
             backgroundColor: '#f7f7f7',
         },
+    },
+    buttonIcon: {
+        marginRight: theme.spacing.large,
     },
 });
 

@@ -136,18 +136,13 @@ class TableWorksheetRow extends React.Component {
 
     render() {
         var item = this.props.item;
-        var worksheet_display = item.name;
-        if (item.title) {
-            worksheet_display = item.title + ' [' + item.name + ']';
-        }
-
         var className = /*'type-worksheet' + */ this.props.focused ? ' focused' : '';
         return (
             <tr className={className}>
                 <td>
                     <div onClick={this.handleRowClick}>
                         <a href='javascript:void(0)' onClick={this.handleTextClick}>
-                            {worksheet_display}
+                            {`${item.title + " "}[${item.name}]`}
                         </a>
                     </div>
                 </td>
