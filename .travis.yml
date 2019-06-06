@@ -18,7 +18,6 @@ jobs:
         - pip install --upgrade pip MySQL-python
         - ./codalab_service.py build service -v ${TRAVIS_BRANCH} --push
         - ./setup.sh server
-        - codalab/bin/cl config server/engine_url mysql://codalab:codalab@127.0.0.1:3306/codalab_bundles
       script:
         - ./codalab_service.py start -i -w -t --worker-dir /home/travis/codalab/worker-dir --rest-port 2900 --mysql-port 3306 --version ${TRAVIS_BRANCH}
     - stage: style

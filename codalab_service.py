@@ -669,7 +669,7 @@ class CodalabServiceManager(object):
         else:
             if not self.args.mysql_port:
                 raise('ERROR: Tests fired without an external DB URL or MYSQL port exposed to host, "events" tests will fail.')
-            mysql_url = 'mysql://%s:%s@localhost:%s/codalab_bundles' % (
+            mysql_url = 'mysql://%s:%s@127.0.0.1:%s/codalab_bundles' % (
                 self.args.mysql_user,
                 self.args.mysql_password,
                 self.args.mysql_port,
