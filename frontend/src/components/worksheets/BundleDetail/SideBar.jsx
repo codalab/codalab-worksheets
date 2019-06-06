@@ -112,19 +112,14 @@ class SideBar extends React.Component<
                 }
                 <Grid item xs={12}>
                     <Typography variant="body1">
-                        { metadata.data_size && <span>Size:<u>
-                                &nbsp;({ renderFormat(metadata.data_size, metadataType.data_size) })
-                            </u><br/></span>
+                        { metadata.data_size && <span>Size:
+                                &nbsp;{ renderFormat(metadata.data_size, metadataType.data_size) }
+                            <br/></span>
                         }
-                        Created on&nbsp;
-                        <u>
-                            ({ renderFormat(metadata.created, metadataType.created) })
-                        </u>
+                        Created on:&nbsp;
+                        { renderFormat(metadata.created, metadataType.created) }
                         <br/>
-                        Owned by &nbsp;
-                        <u>
-                            { bundleInfo.owner.user_name }
-                        </u>
+                        Owned by:&nbsp;{ bundleInfo.owner.user_name }
                         <br />
                         Hosted within worksheets:
                     </Typography>
