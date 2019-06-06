@@ -78,7 +78,7 @@ class TableItem extends React.Component<{
     }
 
     render() {
-        const { worksheetUUID } = this.props;
+        const { worksheetUUID, setFocus } = this.props;
         if (this.props.active && this.props.focused) this.capture_keys();
 
         var tableClassName = this.props.focused ? 'table focused' : 'table';
@@ -111,6 +111,7 @@ class TableItem extends React.Component<{
                     rowIndex={rowIndex}
                     focused={rowFocused}
                     focusIndex={this.props.focusIndex}
+                    setFocus={setFocus}
                     url={url}
                     bundleInfo={bundleInfos[rowIndex]}
                     prevBundleInfo={rowIndex > 0 ? bundleInfos[rowIndex - 1] : null}

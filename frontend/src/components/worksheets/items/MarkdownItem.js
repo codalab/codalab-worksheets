@@ -61,7 +61,7 @@ class MarkdownItem extends React.Component {
     };
 
     deleteItem = () => {
-        const { reloadWorksheet, item, worksheetUUID } = this.props;
+        const { reloadWorksheet, item, worksheetUUID, setFocus } = this.props;
         const url = `/rest/worksheets/${worksheetUUID}/update-markup?id=${item.ids[0]}`;
 
         $.ajax({
@@ -71,6 +71,9 @@ class MarkdownItem extends React.Component {
             type: 'POST',
             success: (data, status, jqXHR) => {
                 reloadWorksheet();
+                if (this.props.focused) {
+                    setFocus(-1, 0);
+                }
             },
             error: (jqHXR, status, error) => {
                 alert(createAlertText(this.url, jqHXR.responseText));
@@ -104,7 +107,10 @@ class MarkdownItem extends React.Component {
             />
         ) : (
             <div className={'ws-item ' + classes.textContainer} onClick={this.handleClick}>
-                <div className={className} dangerouslySetInnerHTML={{ __html: contents }} />
+                <div
+                    className={`${ className } ${ classes.textRender }`}
+                    dangerouslySetInnerHTML={{ __html: contents }}
+                />
                 <div className={classes.buttonsPanel}>
                     <IconButton
                         onClick={this.toggleEdit}
@@ -184,11 +190,16 @@ const styles = (theme) => ({
     buttonsPanel: {
         display: 'none',
         position: 'absolute',
-        top: 0,
+        top: -theme.spacing.unit,
         right: 0,
     },
     iconButtonRoot: {
         backgroundColor: theme.color.grey.lighter,
+    },
+    textRender: {
+        'p': {
+            whiteSpace: 'pre-line',
+        },
     },
 });
 
