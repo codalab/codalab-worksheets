@@ -20,6 +20,7 @@ class DependencyStage(object):
 class StateTransitioner(object):
     def __init__(self):
         self._transition_functions = {}  # stage_name -> transition_function
+        self._exception_handlers = {}  # stage_name -> exception_handling_function
         self._terminal_states = []  # stage_name
 
     def add_terminal(self, stage_name):
@@ -32,11 +33,19 @@ class StateTransitioner(object):
         """ Return the updated state """
         if state.stage in self._terminal_states:
             return state
-        return self._transition_functions[state.stage](state)
+        try:
+            self._transition_functions[state.stage](state)
+        except Exception as ex:
+            if state.stage in self._exception_handlers:
+                return self._exception_handlers[state.stage](state, ex)
+            else:
+                raise
 
-    def add_transition(self, stage_name, transition_function):
+    def add_transition(self, stage_name, transition_function, exception_handler_function=None):
         if stage_name not in self._transition_functions and stage_name not in self._terminal_states:
             self._transition_functions[stage_name] = transition_function
+            if exception_handler_function:
+                self._exception_handlers[stage_name] = exception_handler_function
         else:
             raise Exception('Stage name already exists!')
 
