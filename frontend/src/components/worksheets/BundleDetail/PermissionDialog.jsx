@@ -10,10 +10,12 @@ import Paper from '@material-ui/core/Paper';
 import Input from '@material-ui/core/Input';
 import { withStyles } from '@material-ui/core/styles';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
+import { executeCommand } from '../../../util/cli_utils';
 
 function parseGlsOutput(output) {
 	const lines = output.split(/[\n]+/);
-	const records = lines.splice(4);
+	// Remove empty lines.
+	const records = lines.splice(2).filter(record => Boolean(record));
 	const names = records.map(record => record.split(/[\s\t]+/)[0]);
 	return names;
 }
@@ -39,21 +41,19 @@ class PermissionDialog extends React.Component<
 	}
 
 	getGroups = () => {
-		$('#command_line')
-            .terminal()
-            .exec('gls')
-            .then((resp) => {
-            	const groupNames = parseGlsOutput(resp.get_output());
-            	this.setState({ groupNames });
-            });
+		executeCommand('gls')
+        .done((resp) => {
+        	const groupNames = parseGlsOutput(resp.output);
+        	this.setState({ groupNames });
+        });
 	}
 
 	handlePermissionValueChange = (name, value) => {
 		const { uuid } = this.props;
 
-		$('#command_line')
-				.terminal()
-				.exec(buildTerminalCommand(['perm', uuid, name, value]));
+		executeCommand(buildTerminalCommand(['perm', uuid, name, value])).done(() => {
+			this.props.onChange();
+		});
 	}
 
     handleAddPermission = (value) => {
@@ -63,12 +63,11 @@ class PermissionDialog extends React.Component<
         }
         const { uuid } = this.props;
 
-        $('#command_line')
-            .terminal()
-            .exec(buildTerminalCommand(['perm', uuid, this.nGroupName, value]))
-            .then(() => {
-                this.setState({ showAddSection: false });
-            });
+        executeCommand(buildTerminalCommand(['perm', uuid, this.nGroupName, value]))
+        .done(() => {
+            this.setState({ showAddSection: false });
+            this.props.onChange();
+        });
     }
 
 	render() {

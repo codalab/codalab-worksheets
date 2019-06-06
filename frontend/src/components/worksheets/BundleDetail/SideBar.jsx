@@ -60,7 +60,9 @@ class Dependency extends React.PureComponent<
  */
 class SideBar extends React.Component<
     {
-      bundleInfo: {},
+        classes: {},
+        bundleInfo: {},
+        onUpdate: () => any,
     }
 > {
   
@@ -145,6 +147,7 @@ class SideBar extends React.Component<
                         uuid={ bundleInfo.uuid }
                         permission_spec={ bundleInfo.permission_spec }
                         group_permissions={ bundleInfo.group_permissions }
+                        onChange={ this.props.onMetaDataChange }
                     />
                 </Grid>
                 <Grid item xs={12}>
