@@ -1424,8 +1424,6 @@ class BundleCLI(object):
     def do_make_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
-        # Support anonymous make calls by replacing None keys with ''
-        targets = [('' if key is None else key, val) for key, val in targets]
         metadata = self.get_missing_metadata(MakeBundle, args)
         new_bundle = client.create(
             'bundles',
