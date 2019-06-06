@@ -34,7 +34,7 @@ class StateTransitioner(object):
         if state.stage in self._terminal_states:
             return state
         try:
-            self._transition_functions[state.stage](state)
+            return self._transition_functions[state.stage](state)
         except Exception as ex:
             if state.stage in self._exception_handlers:
                 return self._exception_handlers[state.stage](state, ex)
