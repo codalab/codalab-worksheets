@@ -209,6 +209,15 @@ def get_container_stats(container):
     return stats
 
 
+@wrap_exception('Unable to check Docker API for container')
+def container_exists(container):
+    try:
+        client.containers.get(container.id)
+        return True
+    except docker.errors.NotFound:
+        return False
+
+
 @wrap_exception('Unable to check Docker container status')
 def check_finished(container):
     # Unfortunately docker SDK doesn't update the status of Container objects
