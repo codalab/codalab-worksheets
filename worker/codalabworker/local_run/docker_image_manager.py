@@ -125,7 +125,7 @@ class DockerImageManager:
 
     def get(self, image_spec):
         """
-        Request the docker image for the run with uuid, registering uuid as a dependent of this docker image
+        Request the docker image, starting its download if it's not available on the system
         :param image_spec: Repo image_spec of docker image being requested
         :returns: A DockerAvailabilityState object with the state of the docker image
         """
