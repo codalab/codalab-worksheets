@@ -41,7 +41,7 @@ class CodalabArgs(argparse.Namespace):
         'worker_dir': None,
         'bundle_stores': [],
         'http_port': '80',
-        'rest_port': None,
+        'rest_port': '2900',
         'frontend_port': None,
         'mysql_port': None,
         'use_ssl': False,
