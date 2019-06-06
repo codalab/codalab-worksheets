@@ -29,7 +29,7 @@ class InsertButtons extends React.Component<{
                     variant='outlined'
                     size='small'
                     color='primary'
-                    aria-label='Upload'
+                    aria-label='Add New Upload'
                     onClick={showNewUpload}
                     classes={{ root: classes.buttonRoot }}
                 >

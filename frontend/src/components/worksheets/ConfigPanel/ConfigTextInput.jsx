@@ -13,9 +13,10 @@ class ConfigTextInput extends React.Component<{
     value: string,
     onValueChange: (string) => void,
     disabled?: boolean,
+    autoFocus?: boolean,
 }> {
     render() {
-        const { classes, placeholder, multiline, maxRows, value, onValueChange, disabled } = this.props;
+        const { classes, placeholder, multiline, maxRows, value, onValueChange, disabled, autoFocus } = this.props;
         return (
             <TextField
                 className={classes.textInput}
@@ -23,6 +24,7 @@ class ConfigTextInput extends React.Component<{
                 onChange={(e) => onValueChange(e.target.value)}
                 placeholder={placeholder}
                 multiline={multiline}
+                autoFocus={autoFocus}
                 disabled={disabled}
                 margin="none"
                 fullWidth
