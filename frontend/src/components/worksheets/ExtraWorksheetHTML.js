@@ -30,18 +30,6 @@ let ExtraWorksheetHTML = () => (
                             <tbody>
                                 <tr>
                                     <td>
-                                        <kbd>c</kbd>
-                                    </td>
-                                    <td>Focus on web terminal</td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <kbd>esc</kbd>
-                                    </td>
-                                    <td>Focus on worksheet</td>
-                                </tr>
-                                <tr>
-                                    <td>
                                         <kbd>shift+c</kbd>
                                     </td>
                                     <td>Show/hide web terminal</td>
