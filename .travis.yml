@@ -24,7 +24,7 @@ jobs:
       language: python
       python: 3.6
       install: pip install --upgrade black==18.9b0
-      script: black . --check
+      script: black . --check --diff
     - stage: deploy
       script: echo "Deploying"
       language: python
