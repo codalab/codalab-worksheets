@@ -100,7 +100,8 @@ BUNDLE_SPEC_FORMAT = '[%s%s]%s' % (
 WORKSHEETS_URL_SEPARATOR = '/worksheets/'
 
 TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (BUNDLE_SPEC_FORMAT, os.sep)
-ALIASED_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
+RUN_TARGET_SPEC_FORMAT = '[<key>]:' + TARGET_SPEC_FORMAT
+MAKE_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
 GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
 PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
 UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
@@ -585,10 +586,11 @@ class BundleCLI(object):
         Helper: target_specs is a list of strings which are [<key>]:<target>
         Returns: [(key, (bundle_uuid, subpath)), ...]
         """
+        keys = set()
         targets = []
         target_keys_values = [parse_key_target(spec) for spec in target_specs]
         for key, target_spec in target_keys_values:
-            if key in targets:
+            if key in keys:
                 if key:
                     raise UsageError('Duplicate key: %s' % (key,))
                 else:
@@ -597,6 +599,7 @@ class BundleCLI(object):
                 client, worksheet_uuid, target_spec, allow_remote=False
             )
             targets.append((key, (bundle_uuid, subpath)))
+            keys.add(key)
         return targets
 
     @staticmethod
@@ -1406,10 +1409,7 @@ class BundleCLI(object):
         ],
         arguments=(
             Commands.Argument(
-                'target_spec',
-                help=ALIASED_TARGET_SPEC_FORMAT,
-                nargs='+',
-                completer=BundlesCompleter,
+                'target_spec', help=MAKE_TARGET_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
             ),
             Commands.Argument(
                 '-w',
@@ -1473,10 +1473,7 @@ class BundleCLI(object):
         help='Create a bundle by running a program bundle on an input bundle.',
         arguments=(
             Commands.Argument(
-                'target_spec',
-                help=ALIASED_TARGET_SPEC_FORMAT,
-                nargs='*',
-                completer=TargetsCompleter,
+                'target_spec', help=RUN_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter
             ),
             Commands.Argument(
                 'command',
@@ -1515,10 +1512,7 @@ class BundleCLI(object):
         help='Beta feature. Simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.',
         arguments=(
             Commands.Argument(
-                'target_spec',
-                help=ALIASED_TARGET_SPEC_FORMAT,
-                nargs='*',
-                completer=TargetsCompleter,
+                'target_spec', help=RUN_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter
             ),
             Commands.Argument(
                 'command',
