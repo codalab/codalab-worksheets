@@ -434,6 +434,7 @@ class CodalabServiceManager(object):
             'CODALAB_HTTP_PORT': args.http_port,
             'CODALAB_VERSION': args.version,
             'CODALAB_WORKER_NETWORK_NAME': '%s-worker-network' % args.instance_name,
+            'PATH': os.environ['PATH']
         }
         if args.uid:
             environment['CODALAB_UID'] = args.uid
