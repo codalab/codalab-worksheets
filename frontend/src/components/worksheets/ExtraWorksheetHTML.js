@@ -11,7 +11,7 @@ let ExtraWorksheetHTML = () => (
         <div id='save_error' className='progress-message'>
             <i className='glyphicon glyphicon-remove-circle' /> Error saving...
         </div>
-        <div id='glossaryModal' className='modal' data-keyboard='true'>
+        <div id='glossaryModal' className='modal' data-keyboard='true' tabIndex='-1'>
             <div className='modal-dialog'>
                 <div className='modal-content'>
                     <div className='modal-header'>
@@ -28,18 +28,6 @@ let ExtraWorksheetHTML = () => (
                         </a>
                         <table className='table table-striped'>
                             <tbody>
-                                <tr>
-                                    <td>
-                                        <kbd>c</kbd>
-                                    </td>
-                                    <td>Focus on web terminal</td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <kbd>esc</kbd>
-                                    </td>
-                                    <td>Focus on worksheet</td>
-                                </tr>
                                 <tr>
                                     <td>
                                         <kbd>shift+c</kbd>
