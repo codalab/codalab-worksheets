@@ -138,6 +138,7 @@ class BundleRow extends Component {
             if (this.props.focused) {
                 setFocus(-1, 0);
             }
+            this.props.reloadWorksheet();
         });
     };
 
@@ -258,6 +259,7 @@ class BundleRow extends Component {
                                         ? prevBundleInfo.sort_key
                                         : bundleInfo.sort_key - 10
                                 }
+                                reloadWorksheet={reloadWorksheet}
                             />
                         </TableCell>
                     </TableRow>
@@ -359,6 +361,7 @@ class BundleRow extends Component {
                                 ws={this.props.ws}
                                 onSubmit={() => this.setState({ showNewRun: 0 })}
                                 after_sort_key={bundleInfo.sort_key}
+                                reloadWorksheet={reloadWorksheet}
                             />
                         </TableCell>
                     </TableRow>

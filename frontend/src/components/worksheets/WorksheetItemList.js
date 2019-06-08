@@ -65,6 +65,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             prevItem={prevItem}
             item={item}
             afterItem={afterItem}
+            ws={props.ws}
             worksheetUUID={props.worksheetUUID}
             reloadWorksheet={props.reloadWorksheet}
         >

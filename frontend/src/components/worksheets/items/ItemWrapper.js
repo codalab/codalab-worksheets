@@ -206,6 +206,7 @@ class ItemWrapper extends React.Component {
                     <NewRun
                         after_sort_key={prevItemKeys.maxKey || itemKeys.minKey - 10}
                         ws={this.props.ws}
+                        reloadWorksheet={reloadWorksheet}
                         onSubmit={() => this.setState({ showNewRun: 0 })}
                     />
                 )}
@@ -235,6 +236,7 @@ class ItemWrapper extends React.Component {
                         after_sort_key={itemKeys.maxKey}
                         ws={this.props.ws}
                         onSubmit={() => this.setState({ showNewRun: 0 })}
+                        reloadWorksheet={reloadWorksheet}
                     />
                 )}
                 {showNewText === 1 && (
