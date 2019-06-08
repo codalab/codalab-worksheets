@@ -1328,6 +1328,7 @@ class BundleModel(object):
                 # Nothing to insert, return
                 return
             if after_sort_key is not None:
+                after_sort_key = int(after_sort_key)
                 # Shift existing items' sort_keys for items that original came after
                 # the after_sort_key
                 offset = len(items)

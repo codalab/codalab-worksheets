@@ -20,6 +20,7 @@ import BundleDetail from '../../BundleDetail';
 import NewRun from '../../NewRun';
 import NewUpload from '../../NewUpload';
 import { buildTerminalCommand } from '../../../../util/worksheet_utils';
+import { executeCommand } from '../../../../util/cli_utils';
 
 class InsertButtons extends Component<{
     classes: {},
@@ -133,12 +134,11 @@ class BundleRow extends Component {
         ev.stopPropagation();
         this.toggleDeletePopup();
         const { uuid } = this.props.bundleInfo;
-        $('#command_line')
-            .terminal()
-            .exec(buildTerminalCommand(['rm', uuid]));
-        if (this.props.focused) {
-            setFocus(-1, 0);
-        }
+        executeCommand(buildTerminalCommand(['rm', uuid])).done(() => {
+            if (this.props.focused) {
+                setFocus(-1, 0);
+            }
+        });
     };
 
     toggleDeletePopup = () => {

@@ -260,7 +260,9 @@ class NewRun extends React.Component<{
     runCommand() {
         const cmd = this.getCommand();
         if (cmd) {
-            const response = executeCommand(cmd, this.props.ws.info.uuid);
+            const response = executeCommand(cmd, this.props.ws.info.uuid).done(() => {
+                this.props.reloadWorksheet();
+            });
         }
     }
 
