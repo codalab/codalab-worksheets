@@ -72,7 +72,7 @@ class TextEditorItem extends React.Component<{
         }
 
         const {
-            id,
+            ids,
             mode,
             showDefault,
             defaultValue,
@@ -82,29 +82,26 @@ class TextEditorItem extends React.Component<{
             closeEditor,
         } = this.props;
 
-        let url = `/rest/worksheets/${worksheetUUID}/add-markup`;
-        let nText = this.text;
+        let url = `/rest/worksheets/${worksheetUUID}/add-items`;
+        const items = this.text.split(/[\n]+/);
+
+        console.log('items ===>', items);
+
+        const data = { items };
 
         if (after_sort_key) {
-            url += `?after_sort_key=${after_sort_key}`;
+            data['after_sort_key'] = after_sort_key;
         }
 
         if (mode === 'edit') {
             // Updating an existing item.
-            url = `/rest/worksheets/${worksheetUUID}/update-markup?id=${id}`;
-            if (showDefault === 1) {
-                nText = `${defaultValue}\n${nText}`;
-            } else if (showDefault === -1) {
-                nText += `\n${defaultValue}`;
-            }
+            data['ids'] = ids;
         }
-
-        console.log('text ===>', mode, url);
 
         $.ajax({
             url,
-            data: nText,
-            contentType: 'text/plain',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
             type: 'POST',
             success: (data, status, jqXHR) => {
                 reloadWorksheet();
@@ -122,7 +119,7 @@ class TextEditorItem extends React.Component<{
         return (
             <Paper className={classes.container}>
                 <InputBase
-                    defaultValue={showDefault === 0 ? defaultValue : ''}
+                    defaultValue={defaultValue || ''}
                     className={classes.input}
                     onChange={this.updateText}
                     onKeyUp={this.capture_keys}

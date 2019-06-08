@@ -269,8 +269,8 @@ def _create_bundles():
         # Add as item to worksheet
         if not detached:
             if shadow_parent_uuid is None:
-                local.model.add_worksheet_item(
-                    worksheet_uuid, worksheet_util.bundle_item(bundle_uuid), after_sort_key
+                local.model.add_worksheet_items(
+                    worksheet_uuid, [worksheet_util.bundle_item(bundle_uuid)], after_sort_key
                 )
             else:
                 local.model.add_shadow_worksheet_items(shadow_parent_uuid, bundle_uuid)

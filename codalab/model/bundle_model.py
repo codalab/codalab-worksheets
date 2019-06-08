@@ -1317,39 +1317,35 @@ class BundleModel(object):
             result = connection.execute(cl_worksheet.insert().values(worksheet_value))
             worksheet.id = result.lastrowid
 
-    # after_sort_key is the sort_key of the item that we are inserting after.
-    def add_worksheet_item(self, worksheet_uuid, item, after_sort_key=None):
-        """
-        Appends a new item to the end of the given worksheet. The item should be
-        a (bundle_uuid, value, type) pair, where the bundle_uuid may be None and the
-        value must be a string.
-        """
-        (bundle_uuid, subworksheet_uuid, value, type) = item
-        if value is None:
-            value = ''  # TODO: change tables.py to allow nulls
-        item_value = {
-            'worksheet_uuid': worksheet_uuid,
-            'bundle_uuid': bundle_uuid,
-            'subworksheet_uuid': subworksheet_uuid,
-            'value': self.encode_str(value),
-            'type': type,
-            'sort_key': None,
-        }
+    
+    def add_worksheet_items(self, worksheet_uuid, items, after_sort_key=None, replace=[]):
         with self.engine.begin() as connection:
+            if len(replace) > 0:
+                # Remove the old items.
+                connection.execute(
+                    cl_worksheet_item.delete().where(cl_worksheet_item.c.id.in_(replace)))
+            if len(items) == 0:
+                # Nothing to insert, return
+                return
             if after_sort_key is not None:
-                after_sort_key = int(after_sort_key)
-                # Find all the items that originally come after this after_sort_key.
+                # Shift existing items' sort_keys for items that original came after
+                # the after_sort_key
+                offset = len(items)
                 clause = and_(
                     cl_worksheet_item.c.worksheet_uuid == worksheet_uuid,
-                    cl_worksheet_item.c.sort_key > after_sort_key,
-                )
+                    or_(
+                        cl_worksheet_item.c.sort_key > after_sort_key,
+                        and_(cl_worksheet_item.c.sort_key == None,
+                            cl_worksheet_item.c.id > after_sort_key)
+                    ))
                 query = select(['*']).where(clause)
-                # Get results in list format.
+                # Get result in a list
                 after_items = [item for item in connection.execute(query)]
-                # check if there are gaps between the smallest sort_key among the
-                # after_items and our after_sort_key
-                if len(after_items) > 0 and min(item_sort_key(item) for item in after_items) - after_sort_key == 1:
-                    # There is no gap, space out the sort_keys to make some room
+                if len(after_items) > 0 and \
+                    min(item_sort_key(item) for item in after_items) - after_sort_key <= offset:
+                    # Shift the keys of the original items if the gap between after_sort_key
+                    # and the next smallest key is not sufficient for inserting items.
+                    # In actuality, delete these items and re-insert.
                     connection.execute(cl_worksheet_item.delete().where(clause))
                     new_after_items = [{
                         'worksheet_uuid': item.worksheet_uuid,
@@ -1357,29 +1353,19 @@ class BundleModel(object):
                         'subworksheet_uuid': item.subworksheet_uuid,
                         'value': item.value,
                         'type': item.type,
-                        'sort_key': item.sort_key * 10,
+                        'sort_key': item_sort_key(item) * 2 + offset,
                     } for item in after_items]
-                    item_value['sort_key'] = after_sort_key + 5
                     self.do_multirow_insert(connection, cl_worksheet_item, new_after_items)
-                else:
-                    # There is a gap, just increment sort_key by 1.
-                    item_value['sort_key'] = after_sort_key + 1
-            
-            # Default sort_key to id
-            if item_value['sort_key'] is None:
-                # TODO: Ideally should write a after_insert trigger for this.
-                # However, sqlalchemy documentation is very poor and I can't
-                # find anything compatiable with the non-ORM way we use it.
-                get_all = select(
-                    [cl_worksheet_item.c.id]
-                ).where(cl_worksheet_item.c.worksheet_uuid == worksheet_uuid)
-                ids = [item.id for item in connection.execute(get_all)]
-                if len(ids) > 0:
-                    item_value['sort_key'] = max(ids) + 1
-                else:
-                    item_value['sort_key'] = 0
-
-            connection.execute(cl_worksheet_item.insert().values(item_value))
+            # Insert new items
+            items_2_insert = [{
+                'worksheet_uuid': worksheet_uuid,
+                'bundle_uuid': bundle_uuid,
+                'subworksheet_uuid': subworksheet_uuid,
+                'value': self.encode_str(value),
+                'type': type,
+                'sort_key': after_sort_key + idx + 1 if after_sort_key is not None else None,
+            } for idx, (bundle_uuid, subworksheet_uuid, value, type) in enumerate(items)]
+            self.do_multirow_insert(connection, cl_worksheet_item, items_2_insert)
 
 
     def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):

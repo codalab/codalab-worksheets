@@ -203,48 +203,18 @@ def delete_worksheets():
         delete_worksheet(uuid, force)
 
 
-@post('/worksheets/<worksheet_uuid:re:%s>/add-markup' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
-def create_worksheet_item_after(worksheet_uuid):
+@post('/worksheets/<worksheet_uuid:re:%s>/add-items' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
+def replace_items(worksheet_uuid):
     """
-    Add a worksheet item to a worksheet, either after a sort key or not.
-
-    |after_sort_key| - Add the item after an item with this sort_key value.
+    Replace worksheet items with 'ids' with new 'items'.
+    The new items will be inserted after the after_sort_key
     """
-    after_sort_key = request.query.get('after_sort_key')
-    if after_sort_key is not None:
-        after_sort_key = int(after_sort_key)
+    ids = request.json.get('ids', [])
+    after_sort_key = request.json.get('after_sort_key')
+    # Default to process only markup items.
+    items = [worksheet_util.markup_item(item) for item in request.json.get('items', [])]
 
-    markup = decoded_body()
-
-    # Check all necessary permissions, etc.
-    worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
-    check_worksheet_has_all_permission(local.model, request.user, worksheet)
-    worksheet_util.check_worksheet_not_frozen(worksheet)
-
-    local.model.add_worksheet_item(
-        worksheet_uuid, worksheet_util.markup_item(markup), after_sort_key
-    )
-
-
-@post('/worksheets/<worksheet_uuid:re:%s>/update-markup' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
-def update_worksheet_item(worksheet_uuid):
-    """
-    Add a worksheet item to a worksheet, either after a sort key or not.
-
-    |after_sort_key| - Add the item after an item with this sort_key value.
-    """
-    id = request.query.get('id')
-    if id is not None:
-        id = int(id)
-
-    markup = decoded_body()
-
-    # Check all necessary permissions, etc.
-    worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
-    check_worksheet_has_all_permission(local.model, request.user, worksheet)
-    worksheet_util.check_worksheet_not_frozen(worksheet)
-
-    local.model.update_worksheet_item_value(id, markup)
+    local.model.add_worksheet_items(worksheet_uuid, items, after_sort_key, ids)
 
 
 @post('/worksheet-items', apply=AuthenticatedPlugin())
@@ -272,7 +242,7 @@ def create_worksheet_items():
         else:
             # Append items to the worksheet
             for item in items:
-                add_worksheet_item(worksheet_uuid, Worksheet.Item.as_tuple(item))
+                add_worksheet_items(worksheet_uuid, [Worksheet.Item.as_tuple(item)])
 
     return WorksheetItemSchema(many=True).dump(new_items).data
 
@@ -492,7 +462,7 @@ def add_worksheet_item(worksheet_uuid, item):
     worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     worksheet_util.check_worksheet_not_frozen(worksheet)
-    local.model.add_worksheet_item(worksheet_uuid, item)
+    local.model.add_worksheet_items(worksheet_uuid, [item])
 
 
 def delete_worksheet(uuid, force):
