@@ -94,8 +94,6 @@ class TextEditorItem extends React.Component<{
             }
         });
 
-        console.log('items ===>', items);
-
         const data = { items };
 
         if (after_sort_key) {
