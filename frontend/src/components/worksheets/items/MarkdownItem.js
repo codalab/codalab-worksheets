@@ -62,12 +62,12 @@ class MarkdownItem extends React.Component {
 
     deleteItem = () => {
         const { reloadWorksheet, item, worksheetUUID, setFocus } = this.props;
-        const url = `/rest/worksheets/${worksheetUUID}/update-markup?id=${item.ids[0]}`;
+        const url = `/rest/worksheets/${worksheetUUID}/add-items`;
 
         $.ajax({
             url,
-            data: '',
-            contentType: 'text/plain',
+            data: JSON.stringify({ ids: item.ids }),
+            contentType: 'application/json',
             type: 'POST',
             success: (data, status, jqXHR) => {
                 reloadWorksheet();
@@ -96,7 +96,7 @@ class MarkdownItem extends React.Component {
 
         return showEdit ? (
             <TextEditorItem
-                id={item.ids && item.ids[0]}
+                ids={item.ids}
                 mode='edit'
                 defaultValue={item.text}
                 reloadWorksheet={this.props.reloadWorksheet}

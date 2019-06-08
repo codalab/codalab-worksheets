@@ -63,6 +63,17 @@ class InsertButtons extends React.Component<{
     }
 }
 
+function getIds(item) {
+   if (item.mode === 'markup_block') {
+    return item.ids;
+   } else if (item.mode === 'table_block') {
+        if (item.bundles_spec && item.bundles_spec.bundle_infos) {
+            return item.bundles_spec.bundle_infos.map((info) => info.id);
+        }
+   }
+   return [];
+}
+
 function getMinMaxKeys(item) {
     if (!item) {
         return { minKey: null, maxKey: null };
@@ -149,6 +160,7 @@ class ItemWrapper extends React.Component {
             return null;
         }
 
+        const ids = getIds(item);
         const itemKeys = getMinMaxKeys(item);
         const prevItemKeys = getMinMaxKeys(prevItem);
 
@@ -156,31 +168,6 @@ class ItemWrapper extends React.Component {
         if (itemKeys.minKey === null && itemKeys.maxKey === null) {
             // This item isn't really a worksheet item.
             isWorkSheetItem = false;
-        }
-
-        let aroundTextBlock = item.mode === 'markup_block';
-        let textBlockId = aroundTextBlock ? item.ids[0] : null;
-        let defaultText = aroundTextBlock ? item.text : '';
-        let showDefault = 0;
-        if (showNewText === -1 && prevItem) {
-            // Check if prevItem or item is text block.
-            aroundTextBlock = aroundTextBlock || prevItem.mode === 'markup_block';
-            if (textBlockId === null && aroundTextBlock) {
-                textBlockId = prevItem.ids[0];
-                defaultText = prevItem.text;
-                // Effectively appending text.
-                showDefault = 1;
-            }
-        }
-        if (showNewText === 1 && afterItem) {
-            // Check if item or afterItem is text block.
-            aroundTextBlock = aroundTextBlock || afterItem.mode === 'markup_block';
-            if (textBlockId === null && aroundTextBlock) {
-                textBlockId = afterItem.ids[0];
-                defaultText = afterItem.text;
-                // Effectively prepending text.
-                showDefault = -1;
-            }
         }
 
         return (
@@ -224,10 +211,8 @@ class ItemWrapper extends React.Component {
                 )}
                 {showNewText === -1 && (
                     <TextEditorItem
-                        id={textBlockId}
-                        mode={aroundTextBlock ? 'edit' : 'create'}
-                        defaultValue={defaultText}
-                        showDefault={showDefault || -1}
+                        ids={ids}
+                        mode="create"
                         after_sort_key={prevItemKeys.maxKey || itemKeys.minKey - 10}
                         worksheetUUID={worksheetUUID}
                         reloadWorksheet={reloadWorksheet}
@@ -254,10 +239,8 @@ class ItemWrapper extends React.Component {
                 )}
                 {showNewText === 1 && (
                     <TextEditorItem
-                        id={textBlockId}
-                        mode={aroundTextBlock ? 'edit' : 'create'}
-                        defaultValue={defaultText}
-                        showDefault={showDefault || 1}
+                        ids={ids}
+                        mode="create"
                         after_sort_key={itemKeys.maxKey}
                         worksheetUUID={worksheetUUID}
                         reloadWorksheet={reloadWorksheet}
