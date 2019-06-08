@@ -94,11 +94,27 @@ class MarkdownItem extends React.Component {
         // http://facebook.github.io/react/docs/tags-and-attributes.html#html-attributes
         var className = 'type-markup ' + (this.props.focused ? ' focused' : '');
 
+        let after_sort_key = null;
+        if (item.sort_keys && item.sort_keys.length > 0) {
+            const { sort_keys, ids } = item;
+            const keys = [];
+            sort_keys.forEach((k, idx) => {
+                const key = k || ids[idx];
+                if (key !== null && key !== undefined) {
+                    keys.push(key);
+                }
+            });
+            if (keys.length > 0) {
+                after_sort_key = Math.min(...keys);
+            }
+        }
+
         return showEdit ? (
             <TextEditorItem
                 ids={item.ids}
                 mode='edit'
                 defaultValue={item.text}
+                after_sort_key={after_sort_key}
                 reloadWorksheet={this.props.reloadWorksheet}
                 worksheetUUID={this.props.worksheetUUID}
                 closeEditor={() => {
