@@ -31,11 +31,10 @@ class PermissionDialog extends React.Component<
 
 	constructor(props) {
 		super(props);
-		this.anchorEl = null;
-        this.nGroupName = null;
         this.state = {
             showAddSection: false,
             groupNames: [],
+            nGroupName: '',
         };
         this.getGroups();
 	}
@@ -57,13 +56,13 @@ class PermissionDialog extends React.Component<
 	}
 
     handleAddPermission = (value) => {
-        if (!this.nGroupName) {
+        if (!this.state.nGroupName) {
             // Group name not inputted.
             return;
         }
         const { uuid } = this.props;
 
-        executeCommand(buildTerminalCommand(['perm', uuid, this.nGroupName, value]))
+        executeCommand(buildTerminalCommand(['perm', uuid, this.state.nGroupName, value]))
         .done(() => {
             this.setState({ showAddSection: false });
             this.props.onChange();
@@ -72,16 +71,21 @@ class PermissionDialog extends React.Component<
 
 	render() {
 		const { classes, permission_spec, group_permissions } = this.props;
-        const { showAddSection, groupNames } = this.state;
+        const { showAddSection, groupNames, nGroupName } = this.state;
 		const permissions = [
 			{ group_name: 'you', permission_spec },
 			...(group_permissions || [])
 		];
 		const assignedGroups = permissions.map(permission => permission.group_name);
-		const unassignedGroups = groupNames.filter(groupName => !assignedGroups.includes(groupName));
+		const unassignedGroups = groupNames.filter(
+			groupName => !assignedGroups.includes(groupName)
+		);
+		const candidates = unassignedGroups.filter(
+			group => group.toLowerCase().includes(nGroupName.toLowerCase() && group !== nGroupName)
+		);
 
 		return (
-			<div>
+			<div className={ classes.container }>
 				{
 					permissions.map((entry, idx) => <div
 						key={ idx }
@@ -110,20 +114,30 @@ class PermissionDialog extends React.Component<
 				{ /** Adding permissions editor ==================================================================== */}
                 {   (showAddSection && unassignedGroups.length)
                     ? <div className={ classes.row }>
-                    	<NativeSelect
-                            onChange={ (event) => { if (event.target.value) this.nGroupName = event.target.value; } }
-                            input={
-                                <Input
-                                    className={ classes.textField }
-                                />
-                            }
-                        >
-                            {/* Set to 'none' = removing all permission */}
-                            <option value="" disabled selected>Select a group</option>
-                            {
-                            	unassignedGroups.map(group => <option key={ group } value={ group }>{ group }</option>)
-                            }
-                        </NativeSelect>
+                    	<Input
+                    		value={ nGroupName }
+                            className={ classes.textIsolate }
+                            onChange={ (event) => { this.setState({ nGroupName: event.target.value }); } }
+                            placeholder="group name"
+                            inputProps={{
+                                'aria-label': 'Group Name',
+                            }}
+                        />
+                        {	Boolean(candidates.length) &&
+	                    	<Paper className={ classes.menuList }>
+		                    	{
+		                        	candidates.map(
+		                        		group => <div
+		                        			className={classes.menuItem}
+		                        			key={ group }
+		                        			onClick={ () => { this.setState({ nGroupName: group }); } }
+		                        		>
+		                        			{ group }
+		                        		</div>
+		                        	)
+		                        }
+	                        </Paper>
+                        }
                         <NativeSelect
                             defaultValue="none"
                             onChange={ (event) => this.handleAddPermission(
@@ -156,10 +170,15 @@ class PermissionDialog extends React.Component<
 }
 
 const styles = (theme) => ({
+	container: {
+		zIndex: 5,
+	},	
 	row: {
 		display: 'flex',
 		flexDirection: 'row',
 		alignItems: 'center',
+		position: 'relative',
+		zIndex: 20,
 	},
 	textField: {
 		marginTop: 0,
@@ -169,6 +188,17 @@ const styles = (theme) => ({
 	textIsolate: {
 		marginRight: theme.spacing.large,
         width: 60,
+	},
+	menuList: {
+		position: 'absolute',
+		top: '100%',
+		left: 0,
+	},
+	menuItem: {
+		padding: '8px 16px',
+		'&:hover': {
+			backgroundColor: theme.color.primary.lightest,
+		},
 	},
 });
 
