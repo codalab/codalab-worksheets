@@ -112,7 +112,7 @@ class PermissionDialog extends React.Component<
 					</div>)
 				}
 				{ /** Adding permissions editor ==================================================================== */}
-                {   (showAddSection && unassignedGroups.length)
+                {   (showAddSection)
                     ? <div className={ classes.row }>
                     	<Input
                     		value={ nGroupName }
