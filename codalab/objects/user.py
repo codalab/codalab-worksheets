@@ -24,6 +24,7 @@ class User(ORMObject):
         'is_verified',
         'is_superuser',
         'password',
+        'time_quota',
         'parallel_run_quota',
         'time_used',
         'disk_quota',
@@ -106,7 +107,13 @@ class User(ORMObject):
         encoded = self.encode_password(password, salt, int(iterations))
         return constant_time_compare(force_bytes(self.password), force_bytes(encoded))
 
-    def check_quota(self, need_disk=False):
+    def check_quota(self, need_time=False, need_disk=False):
+        if need_time:
+            if self.time_used >= self.time_quota:
+                raise UsageError(
+                    'Out of time quota: %s'
+                    % formatting.ratio_str(formatting.duration_str, self.time_used, self.time_quota)
+                )
         if need_disk:
             if self.disk_used >= self.disk_quota:
                 raise UsageError(
@@ -132,6 +139,7 @@ PUBLIC_USER = User(
         "is_verified": True,
         "is_superuser": False,
         "password": None,
+        "time_quota": 0,
         "parallel_run_quota": 0,
         "time_used": 0,
         "disk_quota": 0,

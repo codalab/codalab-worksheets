@@ -104,6 +104,7 @@ class DefaultBundleManager(BundleManager):
                 self._check_resource_failure(
                     self._compute_request_time(bundle),
                     user_fail_string='Requested more time (%s) than user time quota left (%s)',
+                    user_max=self._model.get_user_time_quota_left(bundle.owner_id),
                     global_fail_string='Maximum job time (%s) exceeded (%s)',
                     global_max=self._max_request_time,
                     pretty_print=duration_str,
