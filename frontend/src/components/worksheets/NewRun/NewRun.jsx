@@ -137,7 +137,7 @@ class NewRun extends React.Component<{
 
     /** Worksheet info. */
     ws: {},
-
+    reloadWorksheet: () => void,
     onSubmit: () => void,
 }, {
     dependencies: Dependency[],
@@ -153,7 +153,10 @@ class NewRun extends React.Component<{
     networkAccess: boolean,
     failedDependencies: boolean,
 }> {
-
+    static defaultProps: {
+        onSubmit: () => undefined,
+        reloadWorksheet: () => undefined,
+    }
     defaultConfig = {
         dependencies: [],
         command: "",
@@ -261,6 +264,7 @@ class NewRun extends React.Component<{
         const cmd = this.getCommand();
         if (cmd) {
             const response = executeCommand(cmd, this.props.ws.info.uuid).done(() => {
+                console.log("asdfasdfasdf", this.props);
                 this.props.reloadWorksheet();
             });
         }
@@ -294,7 +298,7 @@ class NewRun extends React.Component<{
                         <Button
                             variant='text'
                             color='primary'
-                            onClick={ this.props.onSubmit }
+                            onClick={ () => this.props.onSubmit() }
                         >Cancel</Button>
                         <Button
                             variant='contained'
@@ -488,6 +492,14 @@ class NewRun extends React.Component<{
                     autoFocus
                     placeholder="python train.py --data mydataset.txt"
                     maxRows={4}
+                    onKeyDown={(e) => {
+                         if(e.keyCode == 18 && (e.ctrlKey || e.shiftKey || e.metaKey)) {
+                            // Press control enter
+                            e.preventDefault();
+                            this.runCommand();
+                            this.props.onSubmit();
+                         }
+                    }}
                 />
             </ConfigPanel>
         );
