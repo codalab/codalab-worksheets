@@ -641,8 +641,11 @@ class CodalabServiceManager(object):
         else:
             images_to_build = [self.args.image]
         for image in images_to_build:
-            if image == 'frontend' and self.args.dev:
-                image = 'frontend-dev'
+            if self.args.dev:
+                if image == 'frontend':
+                    image = 'frontend-dev'
+                elif image == 'server':
+                    image = 'server-dev'
             self.build_image(image)
         if self.args.push:
             self._run_docker_cmd(

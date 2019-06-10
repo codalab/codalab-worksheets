@@ -1,6 +1,22 @@
 version: '3.5'
 
 services:
+  rest-server:
+    build:
+      context: ./../..
+      dockerfile: docker/dockerfiles/Dockerfile.server-dev
+    image: codalab/server-dev:${CODALAB_VERSION}
+    volumes:
+      - ./../..:/opt/codalab-worksheets
+
+  bundle-manager:
+    build:
+      context: ./../..
+      dockerfile: docker/dockerfiles/Dockerfile.server-dev
+    image: codalab/server-dev:${CODALAB_VERSION}
+    volumes:
+      - ./../..:/opt/codalab-worksheets
+
   frontend:
     build:
       context: ./../..
