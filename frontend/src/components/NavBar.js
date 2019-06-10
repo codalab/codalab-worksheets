@@ -20,6 +20,7 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import Link from '@material-ui/core/Link';
 
 import DashboardIcon from '@material-ui/icons/Dashboard'; // Home
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
@@ -83,6 +84,15 @@ class NavBar extends React.Component<{
         if (this.props.auth.isAuthenticated && this.state.userInfo === undefined) {
             this.fetchName();
         }
+
+        const createNewWorksheet = () => {
+            this.setState({
+                newWorksheetShowDialog: false,
+                newWorksheetName: kDefaultWorksheetName,
+            });
+            executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`);
+        }
+
 
         return (
             <MuiThemeProvider
@@ -168,8 +178,8 @@ class NavBar extends React.Component<{
                                     <ListSubheader>
                                         {this.state.userInfo && this.state.userInfo.user_name}
                                     </ListSubheader>
-                                    <MenuItem href='/account/profile'>My Account</MenuItem>
-                                    <MenuItem onClick={this.props.auth.signout} href='#'>
+                                    <MenuItem onClick={() => window.location.href = '/account/profile'}>My Account</MenuItem>
+                                    <MenuItem onClick={this.props.auth.signout}>
                                         Logout
                                     </MenuItem>
                                 </Menu>
@@ -195,6 +205,13 @@ class NavBar extends React.Component<{
                       fullWidth
                       placeholder={kDefaultWorksheetName}
                       onChange={(e) => this.setState({ newWorksheetName: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.keyCode === 13) {
+                            // ENTER shortcut
+                            e.preventDefault();
+                            createNewWorksheet();
+                        }
+                      }}
                     />
                   </DialogContent>
                   <DialogActions>
@@ -205,12 +222,8 @@ class NavBar extends React.Component<{
                       Cancel
                     </Button>
                     <Button onClick={() => {
-                        this.setState({
-                            newWorksheetShowDialog: false,
-                            newWorksheetName: kDefaultWorksheetName,
-                        });
-                        executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`);
-                        // Change to page?
+                        createNewWorksheet();
+                        // TODO: Change to page?
                     }} color="primary">
                       Confirm
                     </Button>
