@@ -156,14 +156,13 @@ class PermissionDialog extends React.Component<
                     </div>
                     : null
                 }
-                { Boolean(unassignedGroups.length) && <IconButton
-	                    onClick={ () => {
-	                        this.setState({ showAddSection: true });
-	                    } }
-	                >
-	                    <AddIcon />
-	                </IconButton>
-            	}
+                <IconButton
+                    onClick={ () => {
+                        this.setState({ showAddSection: true });
+                    } }
+                >
+                    <AddIcon />
+                </IconButton>
 			</div>
 		);
 	}
