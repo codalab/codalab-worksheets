@@ -37,9 +37,7 @@ def checkin(worker_id):
     for uuid, run in request.json["runs"].items():
         try:
             bundle = local.model.get_bundle(uuid)
-            local.model.bundle_checkin(
-                bundle, run, request.user.user_id, worker_id, request.json["hostname"]
-            )
+            local.model.bundle_checkin(bundle, run, request.user.user_id, worker_id)
         except Exception:
             pass
 
@@ -124,8 +122,8 @@ def start_bundle(worker_id, uuid):
         bundle,
         request.user.user_id,
         worker_id,
-        request.json["hostname"],
-        request.json["start_time"],
+        start_time=request.json["start_time"],
+        remote=request.json["hostname"],
     ):
         print("Started bundle %s" % uuid)
         return json.dumps(True)
