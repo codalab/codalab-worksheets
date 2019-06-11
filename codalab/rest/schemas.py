@@ -10,7 +10,7 @@ from marshmallow_jsonapi import Schema, fields
 from codalab.common import UsageError
 from codalab.bundles import BUNDLE_SUBCLASSES
 from codalab.lib.bundle_action import BundleAction
-from codalab.lib.spec_util import CHILD_PATH_REGEX, NAME_REGEX, UUID_REGEX
+from codalab.lib.spec_util import SUB_PATH_REGEX, NAME_REGEX, UUID_REGEX
 from codalab.lib.worksheet_util import WORKSHEET_ITEM_TYPES
 from codalab.objects.permission import parse_permission, permission_str
 
@@ -42,8 +42,8 @@ def validate_name(name):
         raise ValidationError('Names must match %s, was %s' % (NAME_REGEX.pattern, name))
 
 
-def validate_child_path(path):
-    if not CHILD_PATH_REGEX.match(path):
+def validate_sub_path(path):
+    if not SUB_PATH_REGEX.match(path):
         raise ValidationError('Child path must match %s, was %s' % (NAME_REGEX.pattern, path))
 
 
@@ -243,7 +243,7 @@ class BundleActionSchema(Schema):
     id = fields.Integer(dump_only=True, default=None)
     uuid = fields.String(validate=validate_uuid)
     type = fields.String(validate=validate.OneOf({BundleAction.KILL, BundleAction.WRITE}))
-    subpath = fields.String(validate=validate_child_path)
+    subpath = fields.String(validate=validate_sub_path)
     string = fields.String()
 
     class Meta:
@@ -266,7 +266,7 @@ class UserSchema(Schema):
 class AuthenticatedUserSchema(UserSchema):
     email = fields.String()
     notifications = fields.Integer()
-    time_quota = fields.Integer()
+    parallel_run_quota = fields.Integer()
     time_used = fields.Integer()
     disk_quota = fields.Integer()
     disk_used = fields.Integer()
@@ -278,7 +278,7 @@ class AuthenticatedUserSchema(UserSchema):
 # some users (i.e. the admin) CAN use the API to update some of these fields.
 USER_READ_ONLY_FIELDS = (
     'email',
-    'time_quota',
+    'parallel_run_quota',
     'time_used',
     'disk_quota',
     'disk_used',

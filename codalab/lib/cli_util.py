@@ -52,7 +52,7 @@ def parse_key_target(spec):
     """
 
     match = re.match(TARGET_KEY_REGEX, spec)
-    return match.groups() if match else (None, None)
+    return match.groups()
 
 
 def parse_target_spec(spec):
