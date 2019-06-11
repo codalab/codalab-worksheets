@@ -23,6 +23,7 @@ class CodalabArgs(argparse.Namespace):
         'docker_password': None,
         'build_locally': False,
         'image': 'service',
+        'external_db_url': None,
         'test_build': False,
         'user_compose_file': None,
         'start_worker': False,
@@ -40,7 +41,7 @@ class CodalabArgs(argparse.Namespace):
         'worker_dir': None,
         'bundle_stores': [],
         'http_port': '80',
-        'rest_port': None,
+        'rest_port': '2900',
         'frontend_port': None,
         'mysql_port': None,
         'use_ssl': False,
@@ -55,6 +56,7 @@ class CodalabArgs(argparse.Namespace):
         'version': 'CODALAB_VERSION',
         'dev': 'CODALAB_DEV',
         'push': 'CODALAB_PUSH',
+        'external_db_url': 'CODALAB_EXTERNAL_DB_URL',
         'docker_user': 'DOCKER_USER',
         'docker_password': 'DOCKER_PWD',
         'user_compose_file': 'CODALAB_USER_COMPOSE_FILE',
@@ -104,9 +106,57 @@ class CodalabArgs(argparse.Namespace):
             'restart', help='Restart any existing CodaLab service instances'
         )
 
+        #  CLIENT SETTINGS
+
+        for cmd in [start_cmd, run_cmd, test_cmd]:
+            cmd.add_argument(
+                '--codalab-user',
+                type=str,
+                help='Codalab username for the Codalab admin user',
+                default=argparse.SUPPRESS,
+            )
+            cmd.add_argument(
+                '--codalab-password',
+                type=str,
+                help='Codalab password for the Codalab admin user',
+                default=argparse.SUPPRESS,
+            )
+            cmd.add_argument(
+                '--rest-port',
+                type=str,
+                help='Port for the REST server to listen on (by default it is not exposed to the host machine)',
+                default=argparse.SUPPRESS,
+            )
+
+            # MYSQL SETTINGS
+
+            cmd.add_argument(
+                '--external-db-url',
+                help='if specified, use this database uri instead of starting a local mysql container',
+                default=argparse.SUPPRESS,
+            )
+            cmd.add_argument(
+                '--mysql-port',
+                type=str,
+                help='Port for the MYSQL database to listen on (by default it is not exposed to the host machine)',
+                default=argparse.SUPPRESS,
+            )
+            cmd.add_argument(
+                '--mysql-user',
+                type=str,
+                help='MYSQL username for the Codalab MYSQL client',
+                default=argparse.SUPPRESS,
+            )
+            cmd.add_argument(
+                '--mysql-password',
+                type=str,
+                help='MYSQL password for the Codalab MYSQL client',
+                default=argparse.SUPPRESS,
+            )
+
         #  BUILD SETTINGS
 
-        for cmd in [build_cmd, start_cmd]:
+        for cmd in [build_cmd, start_cmd, run_cmd]:
             cmd.add_argument(
                 '--version',
                 '-v',
@@ -201,30 +251,6 @@ class CodalabArgs(argparse.Namespace):
             help='Root password for the database',
             default=argparse.SUPPRESS,
         )
-        start_cmd.add_argument(
-            '--mysql-user',
-            type=str,
-            help='MYSQL username for the Codalab MYSQL client',
-            default=argparse.SUPPRESS,
-        )
-        start_cmd.add_argument(
-            '--mysql-password',
-            type=str,
-            help='MYSQL password for the Codalab MYSQL client',
-            default=argparse.SUPPRESS,
-        )
-        start_cmd.add_argument(
-            '--codalab-user',
-            type=str,
-            help='Codalab username for the Codalab admin user',
-            default=argparse.SUPPRESS,
-        )
-        start_cmd.add_argument(
-            '--codalab-password',
-            type=str,
-            help='Codalab password for the Codalab admin user',
-            default=argparse.SUPPRESS,
-        )
 
         #  HOST FILESYSTEM MOUNTS
 
@@ -270,21 +296,9 @@ class CodalabArgs(argparse.Namespace):
             default=argparse.SUPPRESS,
         )
         start_cmd.add_argument(
-            '--rest-port',
-            type=str,
-            help='Port for the REST server to listen on (by default it is not exposed to the host machine)',
-            default=argparse.SUPPRESS,
-        )
-        start_cmd.add_argument(
             '--frontend-port',
             type=str,
             help='Port for the React server to listen on (by default it is not exposed to the host machine)',
-            default=argparse.SUPPRESS,
-        )
-        start_cmd.add_argument(
-            '--mysql-port',
-            type=str,
-            help='Port for the MYSQL database to listen on (by default it is not exposed to the host machine)',
             default=argparse.SUPPRESS,
         )
 
@@ -420,6 +434,7 @@ class CodalabServiceManager(object):
             'CODALAB_HTTP_PORT': args.http_port,
             'CODALAB_VERSION': args.version,
             'CODALAB_WORKER_NETWORK_NAME': '%s-worker-network' % args.instance_name,
+            'PATH': os.environ['PATH'],
         }
         if args.uid:
             environment['CODALAB_UID'] = args.uid
@@ -455,14 +470,14 @@ class CodalabServiceManager(object):
             compose_files.append('docker-compose.home_mount.yml')
         else:
             compose_files.append('docker-compose.no_home_mount.yml')
+        if args.external_db_url is None:
+            compose_files.append('docker-compose.mysql.yml')
         if args.mysql_mount:
             compose_files.append('docker-compose.mysql_mount.yml')
         if args.bundle_stores:
             compose_files.append('docker-compose.bundle_mounts.yml')
         if args.start_worker:
             compose_files.append('docker-compose.worker.yml')
-        if args.rest_port:
-            compose_files.append('docker-compose.rest_port.yml')
         if args.frontend_port:
             compose_files.append('docker-compose.frontend_port.yml')
         if args.mysql_port:
@@ -567,21 +582,33 @@ class CodalabServiceManager(object):
         )
 
     def start_service(self):
-        print("[CODALAB] ==> Starting MySQL")
-        self.bring_up_service('mysql')
-
+        if self.args.external_db_url is None:
+            print("[CODALAB] ==> Starting MySQL")
+            self.bring_up_service('mysql')
+            cmd_prefix = '/opt/wait-for-it.sh mysql:3306 -- '
+            mysql_url = 'mysql://%s:%s@mysql:3306/codalab_bundles' % (
+                self.compose_env['CODALAB_MYSQL_USER'],
+                self.compose_env['CODALAB_MYSQL_PWD'],
+            )
+        else:
+            cmd_prefix = ''
+            mysql_url = 'mysql://%s:%s@%s/codalab_bundles' % (
+                self.compose_env['CODALAB_MYSQL_USER'],
+                self.compose_env['CODALAB_MYSQL_PWD'],
+                self.args.external_db_url,
+            )
         print("[CODALAB] ==> Configuring the service")
         self.run_service_cmd(
-            "/opt/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/codalab/bin/cl config server/engine_url mysql://%s:%s@mysql:3306/codalab_bundles && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
-            % (self.compose_env['CODALAB_MYSQL_USER'], self.compose_env['CODALAB_MYSQL_PWD']),
+            "%s/opt/codalab-worksheets/codalab/bin/cl config server/engine_url %s && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
+            % (cmd_prefix, mysql_url),
             root=(not self.args.codalab_home),
         )
 
         if self.args.initial_config:
             print("[CODALAB] ==> Creating root user")
             self.run_service_cmd(
-                "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && /opt/wait-for-it.sh mysql:3306 -- /opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py %s"
-                % self.compose_env['CODALAB_ROOT_PWD'],
+                "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && %s/opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py %s"
+                % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
                 root=True,
             )
 
@@ -625,9 +652,38 @@ class CodalabServiceManager(object):
                 self.push_image(image)
 
     def test(self):
+        instance = 'http://localhost:%s' % self.args.rest_port
         test_cli.cl = 'codalab/bin/cl'
         test_cli.cl_version = self.args.version
-        success = test_cli.TestModule.run(self.args.tests, 'localhost')
+        codalab_client_env = {
+            'CODALAB_USERNAME': self.args.codalab_user,
+            'CODALAB_PASSWORD': self.args.codalab_password,
+        }
+        if self.args.external_db_url:
+            mysql_url = 'mysql://%s:%s@%s/codalab_bundles' % (
+                self.args.mysql_user,
+                self.args.mysql_password,
+                self.args.external_db_url,
+            )
+        else:
+            if not self.args.mysql_port:
+                raise (
+                    'ERROR: Tests fired without an external DB URL or MYSQL port exposed to host, "events" tests will fail.'
+                )
+            mysql_url = 'mysql://%s:%s@127.0.0.1:%s/codalab_bundles' % (
+                self.args.mysql_user,
+                self.args.mysql_password,
+                self.args.mysql_port,
+            )
+        subprocess.check_call(
+            '%s config server/engine_url %s' % (test_cli.cl, mysql_url),
+            env=codalab_client_env,
+            shell=True,
+        )
+        subprocess.check_call(
+            '%s work %s::' % (test_cli.cl, instance), env=codalab_client_env, shell=True
+        )
+        success = test_cli.TestModule.run(self.args.tests, instance)
         if not success:
             sys.exit(1)
 
