@@ -39,6 +39,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
 
     props.key = props.ref = 'item' + props.focusIndex;
     props.url = url;
+    props.prevItem = prevItem;
 
     var constructor = {
         markup_block: MarkdownItem,

@@ -7,7 +7,7 @@ import TableHead from '@material-ui/core/TableHead';
 import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import Immutable from 'seamless-immutable';
-import { worksheetItemPropsChanged } from '../../../../util/worksheet_utils';
+import { worksheetItemPropsChanged, getMinMaxKeys } from '../../../../util/worksheet_utils';
 import $ from 'jquery';
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleRow from './BundleRow';
@@ -78,8 +78,14 @@ class TableItem extends React.Component<{
     }
 
     render() {
-        const { worksheetUUID, setFocus } = this.props;
+        const { worksheetUUID, setFocus, prevItem } = this.props;
         if (this.props.active && this.props.focused) this.capture_keys();
+
+        let prevItemProcessed = null;
+        if (prevItem) {
+            const { maxKey } = getMinMaxKeys(prevItem);
+            prevItemProcessed = { sort_key: maxKey };
+        }
 
         var tableClassName = this.props.focused ? 'table focused' : 'table';
         var item = this.props.item;
@@ -114,7 +120,9 @@ class TableItem extends React.Component<{
                     setFocus={setFocus}
                     url={url}
                     bundleInfo={bundleInfos[rowIndex]}
-                    prevBundleInfo={rowIndex > 0 ? bundleInfos[rowIndex - 1] : null}
+                    prevBundleInfo={rowIndex > 0
+                        ? bundleInfos[rowIndex - 1]
+                        : prevItemProcessed }
                     uuid={bundleInfos[rowIndex].uuid}
                     headerItems={headerItems}
                     canEdit={canEdit}
