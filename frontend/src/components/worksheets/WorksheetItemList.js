@@ -78,7 +78,9 @@ class WorksheetItemList extends React.Component {
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = Immutable({});
+        this.state = Immutable({
+            showBottomButtons: false,
+        });
     }
 
     static displayName = 'WorksheetItemList';
@@ -186,13 +188,28 @@ class WorksheetItemList extends React.Component {
         );
     };
 
+    detectBottom = (ev) => {
+        const ele = ev.currentTarget;
+        const { top, height } = ele.getBoundingClientRect();
+        const { clientY } = ev;
+        // Sensentive height is 36px
+        const onBotttom = clientY >= top + height - 36 && clientY <= top + height;
+        if (onBotttom) {
+            this.setState({ showBottomButtons: true });
+        } else {
+            this.setState({ showBottomButtons: false });
+        }
+    }
+
     render() {
         this.capture_keys(); // each item capture keys are handled dynamically after this call
-
+        const { showBottomButtons } = this.state;
         // Create items
         var items_display;
         var info = this.props.ws.info;
+        let hasItems = false;
         if (info && info.items.length > 0) {
+            hasItems = true;
             var worksheet_items = [];
             info.items.forEach(
                 function(item, index) {
@@ -234,9 +251,28 @@ class WorksheetItemList extends React.Component {
         if (info && info.error)
             items_display = <p className='alert-danger'>Error in worksheet: {info.error}</p>;
         return (<div id='worksheet_items'
-            onMouseMove={ () => {} }
+            onMouseLeave={ () => {
+                this.setState({ showBottomButtons: false });
+            } }
+            onMouseMove={ hasItems ? this.detectBottom : () => {} }
         >
             {items_display}
+            {   showBottomButtons &&
+                <div
+                    style={ {
+                        position: 'absolute',
+                        top: 'calc(100% - 36px)',
+                        left: 0,
+                        width: '100%',
+                    } }
+                >
+                    <ColdStartItem
+                        reloadWorksheet={this.props.reloadWorksheet}
+                        worksheetUUID={info && info.uuid}
+                        ws={this.props.ws}
+                    />
+                </div>
+            }
         </div>);
     }
 }
