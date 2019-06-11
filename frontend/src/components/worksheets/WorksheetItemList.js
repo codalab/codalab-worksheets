@@ -233,7 +233,11 @@ class WorksheetItemList extends React.Component {
         }
         if (info && info.error)
             items_display = <p className='alert-danger'>Error in worksheet: {info.error}</p>;
-        return <div id='worksheet_items'>{items_display}</div>;
+        return (<div id='worksheet_items'
+            onMouseMove={ () => {} }
+        >
+            {items_display}
+        </div>);
     }
 }
 

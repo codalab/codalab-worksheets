@@ -3,6 +3,7 @@ import classNames from 'classnames';
 import $ from 'jquery';
 import _ from 'underscore';
 import Grid from '@material-ui/core/Grid';
+import Popover from '@material-ui/core/Popover';
 import { withStyles } from '@material-ui/core/styles';
 import { keepPosInView, renderPermissions } from '../../util/worksheet_utils';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
@@ -12,6 +13,7 @@ import HelpButton from '../HelpButton';
 import ContentWrapper from '../ContentWrapper';
 import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from './ExtraWorksheetHTML';
+import PermissionDialog from './PermissionDialog';
 import 'bootstrap';
 import 'jquery-ui-bundle';
 
@@ -688,6 +690,7 @@ class Worksheet extends React.Component {
 
     render() {
         const { classes } = this.props;
+        const { anchorEl } = this.state;
 
         this.setupEventHandlers();
         var info = this.state.ws.info;
@@ -816,7 +819,34 @@ class Worksheet extends React.Component {
                                                                     {info.owner_name ? info.owner_name : '<anonymous>'}
                                                                 </Grid>
                                                                 <Grid item>
-                                                                    {renderPermissions(info)}
+                                                                    <div
+                                                                        onClick={ (ev) => {
+                                                                            this.setState({ anchorEl: ev.currentTarget });
+                                                                        } }
+                                                                    >
+                                                                        {renderPermissions(info)}
+                                                                    </div>
+                                                                    <Popover
+                                                                        open={ Boolean(anchorEl) }
+                                                                        anchorEl={ anchorEl }
+                                                                        onClose={ () => { this.setState({ anchorEl: null }); } }
+                                                                        anchorOrigin={{
+                                                                          vertical: 'bottom',
+                                                                          horizontal: 'center',
+                                                                        }}
+                                                                        transformOrigin={{
+                                                                          vertical: 'top',
+                                                                          horizontal: 'center',
+                                                                        }}
+                                                                    >
+                                                                        <PermissionDialog
+                                                                            uuid={ info.uuid }
+                                                                            permission_spec={ info.permission_spec }
+                                                                            group_permissions={ info.group_permissions }
+                                                                            onChange={ () => { this.setState({ ws: new WorksheetContent(info.uuid) }); } }
+                                                                            wperm
+                                                                        />
+                                                                    </Popover>
                                                                 </Grid>
                                                             </React.Fragment>
                                                         )}
