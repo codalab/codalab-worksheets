@@ -5,7 +5,7 @@ import _ from 'underscore';
 import Grid from '@material-ui/core/Grid';
 import Popover from '@material-ui/core/Popover';
 import { withStyles } from '@material-ui/core/styles';
-import { keepPosInView, renderPermissions } from '../../util/worksheet_utils';
+import { keepPosInView, renderPermissions, getMinMaxKeys } from '../../util/worksheet_utils';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import WorksheetItemList from './WorksheetItemList';
 import { WorksheetEditableField } from '../EditableField';
@@ -750,8 +750,10 @@ class Worksheet extends React.Component {
             </div>
         );
 
+        let last_key = null;
         if (info && info.items.length) {
             // Non-empty worksheet
+            last_key = getMinMaxKeys(info.items[info.items.length - 1]).maxKey;
         } else {
             $('.empty-worksheet').fadeIn();
         }
@@ -895,11 +897,20 @@ class Worksheet extends React.Component {
                                         {worksheet_display}
                                     </div>
                                     {   showBottomButtons &&
-                                        <div className={ classes.bottomButtons }>
+                                        <div className={ classes.bottomButtons }
+                                            onMouseMove={ (ev) => { ev.stopPropagation(); } }
+                                            onMouseLeave={ (ev) => { ev.stopPropagation(); } }
+                                        >
                                             <ColdStartItem
+                                                after_sort_key={ last_key }
                                                 reloadWorksheet={this.reloadWorksheet}
                                                 worksheetUUID={info && info.uuid}
                                                 ws={this.state.ws}
+                                                buttonStyle={ {
+                                                    position: 'absolute',
+                                                    top: 'calc(100% - 36px)',
+                                                    left: 0,
+                                                } }
                                             />
                                         </div>
                                     }
@@ -942,11 +953,9 @@ const styles = (theme) => ({
         fontWeight: 500,
     },
     bottomButtons: {
-        position: 'absolute',
-        top: 'calc(100% - 36px)',
-        left: 0,
-        width: '100%',
-    }
+        width: 'calc(100% - 60px)',
+        paddingButton: theme.spacing.unit,
+    },
 });
 
 export default withStyles(styles)(Worksheet);
