@@ -49,9 +49,9 @@ class PermissionDialog extends React.Component<
 	}
 
 	handlePermissionValueChange = (name, value) => {
-		const { uuid } = this.props;
+		const { uuid, wperm } = this.props;
 
-		executeCommand(buildTerminalCommand(['perm', uuid, name, value])).done(() => {
+		executeCommand(buildTerminalCommand([wperm ? 'wperm' : 'perm', uuid, name, value])).done(() => {
 			this.props.onChange();
 		});
 	}
