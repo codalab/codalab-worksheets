@@ -839,13 +839,15 @@ class Worksheet extends React.Component {
                                                                           horizontal: 'center',
                                                                         }}
                                                                     >
-                                                                        <PermissionDialog
-                                                                            uuid={ info.uuid }
-                                                                            permission_spec={ info.permission_spec }
-                                                                            group_permissions={ info.group_permissions }
-                                                                            onChange={ () => { this.setState({ ws: new WorksheetContent(info.uuid) }); } }
-                                                                            wperm
-                                                                        />
+                                                                        <div style={ { padding: 16 } }>
+                                                                            <PermissionDialog
+                                                                                uuid={ info.uuid }
+                                                                                permission_spec={ info.permission_spec }
+                                                                                group_permissions={ info.group_permissions }
+                                                                                onChange={ () => { this.setState({ ws: new WorksheetContent(info.uuid) }); } }
+                                                                                wperm
+                                                                            />
+                                                                        </div>
                                                                     </Popover>
                                                                 </Grid>
                                                             </React.Fragment>
