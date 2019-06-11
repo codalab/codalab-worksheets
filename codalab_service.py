@@ -599,7 +599,7 @@ class CodalabServiceManager(object):
             )
         print("[CODALAB] ==> Configuring the service")
         self.run_service_cmd(
-            "%s/opt/codalab-worksheets/codalab/bin/cl config server/engine_url %s && /opt/codalab-worksheets/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-worksheets/codalab/bin/cl config server/rest_host 0.0.0.0"
+            "%scl config server/engine_url %s && cl config cli/default_address http://rest-server:2900 && cl config server/rest_host 0.0.0.0"
             % (cmd_prefix, mysql_url),
             root=(not self.args.codalab_home),
         )
@@ -607,7 +607,7 @@ class CodalabServiceManager(object):
         if self.args.initial_config:
             print("[CODALAB] ==> Creating root user")
             self.run_service_cmd(
-                "/opt/codalab-worksheets/venv/bin/pip install /opt/codalab-worksheets && %s/opt/codalab-worksheets/venv/bin/python /opt/codalab-worksheets/scripts/create-root-user.py %s"
+                "%spip install /opt/codalab-worksheets && python /opt/codalab-worksheets/scripts/create-root-user.py %s"
                 % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
                 root=True,
             )
@@ -618,7 +618,7 @@ class CodalabServiceManager(object):
         if self.args.initial_config:
             print("[CODALAB] ==> Creating initial worksheets")
             self.run_service_cmd(
-                "/opt/wait-for-it.sh rest-server:2900 -- opt/codalab-worksheets/codalab/bin/cl logout && /opt/codalab-worksheets/codalab/bin/cl new home && /opt/codalab-worksheets/codalab/bin/cl new dashboard",
+                "/opt/wait-for-it.sh rest-server:2900 -- cl logout && cl new home && cl new dashboard",
                 root=(not self.args.codalab_home),
             )
 

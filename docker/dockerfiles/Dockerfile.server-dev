@@ -20,8 +20,15 @@ RUN apt-get update; apt-get install -y \
 # Install dependencies
 COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
 WORKDIR /opt/codalab-worksheets
-COPY worker ./worker
-COPY requirements.txt ./
-COPY requirements-server.txt ,/
-COPY setup.sh ./
-RUN  ./setup.sh server
+RUN pip  install -U setuptools pip
+COPY . /opt/codalab-server/
+COPY ./worker /opt/codalab-worker/
+RUN cd /opt/codalab-server && pip install -r requirements-server.txt
+RUN pip install -e /opt/codalab-worker/
+RUN pip install -e /opt/codalab-server/
+
+ENV CODALAB_HOME=/home/codalab
+
+EXPOSE 2900
+
+ENTRYPOINT ["cl"]

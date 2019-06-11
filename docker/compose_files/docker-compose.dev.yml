@@ -16,6 +16,7 @@ services:
     image: codalab/server-dev:${CODALAB_VERSION}
     volumes:
       - ./../..:/opt/codalab-worksheets
+      - ./../../worker/codalabworker:/opt/codalab-worker/codalabworker
 
   frontend:
     build:
@@ -24,7 +25,7 @@ services:
     image: codalab/frontend-dev:${CODALAB_VERSION}
     command: npm run start
     volumes:
-      - ./../../frontend:/opt/frontend
+      - ./../../frontend/src:/opt/frontend/src
     depends_on:
       - rest-server
     networks:
