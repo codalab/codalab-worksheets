@@ -14,6 +14,7 @@ import ContentWrapper from '../ContentWrapper';
 import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from './ExtraWorksheetHTML';
 import PermissionDialog from './PermissionDialog';
+import ColdStartItem from './items/ColdStartItem';
 import 'bootstrap';
 import 'jquery-ui-bundle';
 
@@ -100,6 +101,8 @@ class Worksheet extends React.Component {
             userInfo: null, // User info of the current user. (null is the default)
             updatingBundleUuids: {},
             isUpdatingBundles: false,
+            anchorEl: null,
+            showBottomButtons: false,
         };
     }
 
@@ -688,9 +691,22 @@ class Worksheet extends React.Component {
         });
     }
 
+    detectBottom = (ev) => {
+        const ele = ev.currentTarget;
+        const { top, height } = ele.getBoundingClientRect();
+        const { clientY } = ev;
+        // Sensentive height is 36px
+        const onBotttom = clientY >= top + height - 36 && clientY <= top + height;
+        if (onBotttom) {
+            this.setState({ showBottomButtons: true });
+        } else {
+            this.setState({ showBottomButtons: false });
+        }
+    }
+
     render() {
         const { classes } = this.props;
-        const { anchorEl } = this.state;
+        const { anchorEl, showBottomButtons } = this.state;
 
         this.setupEventHandlers();
         var info = this.state.ws.info;
@@ -779,7 +795,12 @@ class Worksheet extends React.Component {
                         <HelpButton />
                         <div className={classes.worksheetDesktop}>
                             <div className={classes.worksheetOuter}>
-                                <div className={classes.worksheetInner}>
+                                <div className={classes.worksheetInner}
+                                    onMouseLeave={ () => {
+                                        this.setState({ showBottomButtons: false });
+                                    } }
+                                    onMouseMove={ this.detectBottom }
+                                >
                                     <div id='worksheet_content' className={editableClassName}>
                                         <div className='header-row '>
                                         <Grid container alignItems="flex-end">
@@ -844,7 +865,7 @@ class Worksheet extends React.Component {
                                                                                 uuid={ info.uuid }
                                                                                 permission_spec={ info.permission_spec }
                                                                                 group_permissions={ info.group_permissions }
-                                                                                onChange={ () => { this.setState({ ws: new WorksheetContent(info.uuid) }); } }
+                                                                                onChange={ this.reloadWorksheet }
                                                                                 wperm
                                                                             />
                                                                         </div>
@@ -873,6 +894,15 @@ class Worksheet extends React.Component {
                                         <hr />
                                         {worksheet_display}
                                     </div>
+                                    {   showBottomButtons &&
+                                        <div className={ classes.bottomButtons }>
+                                            <ColdStartItem
+                                                reloadWorksheet={this.reloadWorksheet}
+                                                worksheetUUID={info && info.uuid}
+                                                ws={this.state.ws}
+                                            />
+                                        </div>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -900,6 +930,7 @@ const styles = (theme) => ({
         padding: '0 30px 50px 30px',
         height: '100%',
         overflow: 'auto',
+        position: 'relative',
     },
     uuid: {
         fontFamily: theme.typography.fontFamilyMonospace,
@@ -910,6 +941,12 @@ const styles = (theme) => ({
         paddingRight: theme.spacing.unit,
         fontWeight: 500,
     },
+    bottomButtons: {
+        position: 'absolute',
+        top: 'calc(100% - 36px)',
+        left: 0,
+        width: '100%',
+    }
 });
 
 export default withStyles(styles)(Worksheet);
