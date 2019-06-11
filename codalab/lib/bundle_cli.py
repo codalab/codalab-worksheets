@@ -3461,10 +3461,13 @@ class BundleCLI(object):
             Commands.Argument('--affiliation', help='Affiliation'),
             Commands.Argument('--url', help='Website URL'),
             Commands.Argument(
+                '-t', '--time-quota', help='Total amount of time allowed (e.g., 3, 3m, 3h, 3d)'
+            ),
+            Commands.Argument(
                 '-p',
                 '--parallel-run-quota',
                 type=int,
-                help='Total amount of jobs the user may running have at a time on shared public workers',
+                help='Total amount of runs the user may have running at a time on shared public workers',
             ),
             Commands.Argument(
                 '-d', '--disk-quota', help='Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)'
@@ -3483,6 +3486,8 @@ class BundleCLI(object):
             for key in ('first_name', 'last_name', 'affiliation', 'url')
             if getattr(args, key) is not None
         }
+        if args.time_quota is not None:
+            user_info['time_quota'] = formatting.parse_duration(args.time_quota)
         if args.parallel_run_quota is not None:
             user_info['parallel_run_quota'] = args.parallel_run_quota
         if args.disk_quota is not None:
@@ -3527,10 +3532,12 @@ class BundleCLI(object):
         def print_attribute(key, user, should_pretty_print):
             # These fields will not be returned by the server if the
             # authenticated user is not root, so don't crash if you can't read them
-            if key in ('last_login', 'email', 'time_used', 'disk', 'parallel_run_quota'):
+            if key in ('last_login', 'email', 'time', 'disk', 'parallel_run_quota'):
                 try:
-                    if key == 'time_used':
-                        value = formatting.duration_str(user['time_used'])
+                    if key == 'time':
+                        value = formatting.ratio_str(
+                            formatting.duration_str, user['time_used'], user['time_quota']
+                        )
                     elif key == 'disk':
                         value = formatting.ratio_str(
                             formatting.size_str, user['disk_used'], user['disk_quota']
@@ -3557,7 +3564,7 @@ class BundleCLI(object):
             'date_joined',
             'last_login',
             'email',
-            'time_used',
+            'time',
             'disk',
             'parallel_run_quota',
         )
