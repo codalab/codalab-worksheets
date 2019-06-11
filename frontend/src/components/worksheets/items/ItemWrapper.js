@@ -273,9 +273,8 @@ class ItemWrapper extends React.Component {
 const styles = (theme) => ({
     container: {
         position: 'relative',
-
         marginBottom: 20,
-
+        zIndex: 5,
     },
     main: {
         zIndex: 10,
