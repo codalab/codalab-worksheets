@@ -99,6 +99,7 @@ class MarkupBlockSchema(WorksheetBlockSchema):
     Schema for blocks that contain markup.
     Does not need refining, contains markup text as payload.
     """
+
     ids = fields.List(fields.Integer())
     sort_keys = fields.List(fields.Integer())
     mode = fields.Constant(BlockModes.markup_block)

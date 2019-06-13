@@ -1317,13 +1317,13 @@ class BundleModel(object):
             result = connection.execute(cl_worksheet.insert().values(worksheet_value))
             worksheet.id = result.lastrowid
 
-    
     def add_worksheet_items(self, worksheet_uuid, items, after_sort_key=None, replace=[]):
         with self.engine.begin() as connection:
             if len(replace) > 0:
                 # Remove the old items.
                 connection.execute(
-                    cl_worksheet_item.delete().where(cl_worksheet_item.c.id.in_(replace)))
+                    cl_worksheet_item.delete().where(cl_worksheet_item.c.id.in_(replace))
+                )
             if len(items) == 0:
                 # Nothing to insert, return
                 return
@@ -1336,38 +1336,48 @@ class BundleModel(object):
                     cl_worksheet_item.c.worksheet_uuid == worksheet_uuid,
                     or_(
                         cl_worksheet_item.c.sort_key > after_sort_key,
-                        and_(cl_worksheet_item.c.sort_key == None,
-                            cl_worksheet_item.c.id > after_sort_key)
-                    ))
+                        and_(
+                            cl_worksheet_item.c.sort_key == None,
+                            cl_worksheet_item.c.id > after_sort_key,
+                        ),
+                    ),
+                )
                 query = select(['*']).where(clause)
                 # Get result in a list
                 after_items = [item for item in connection.execute(query)]
-                if len(after_items) > 0 and \
-                    min(item_sort_key(item) for item in after_items) - after_sort_key <= offset:
+                if (
+                    len(after_items) > 0
+                    and min(item_sort_key(item) for item in after_items) - after_sort_key <= offset
+                ):
                     # Shift the keys of the original items if the gap between after_sort_key
                     # and the next smallest key is not sufficient for inserting items.
                     # In actuality, delete these items and re-insert.
                     connection.execute(cl_worksheet_item.delete().where(clause))
-                    new_after_items = [{
-                        'worksheet_uuid': item.worksheet_uuid,
-                        'bundle_uuid': item.bundle_uuid,
-                        'subworksheet_uuid': item.subworksheet_uuid,
-                        'value': item.value,
-                        'type': item.type,
-                        'sort_key': item_sort_key(item) * 2 + offset,
-                    } for item in after_items]
+                    new_after_items = [
+                        {
+                            'worksheet_uuid': item.worksheet_uuid,
+                            'bundle_uuid': item.bundle_uuid,
+                            'subworksheet_uuid': item.subworksheet_uuid,
+                            'value': item.value,
+                            'type': item.type,
+                            'sort_key': item_sort_key(item) * 2 + offset,
+                        }
+                        for item in after_items
+                    ]
                     self.do_multirow_insert(connection, cl_worksheet_item, new_after_items)
             # Insert new items
-            items_2_insert = [{
-                'worksheet_uuid': worksheet_uuid,
-                'bundle_uuid': bundle_uuid,
-                'subworksheet_uuid': subworksheet_uuid,
-                'value': self.encode_str(value),
-                'type': type,
-                'sort_key': after_sort_key + idx + 1 if after_sort_key is not None else None,
-            } for idx, (bundle_uuid, subworksheet_uuid, value, type) in enumerate(items)]
+            items_2_insert = [
+                {
+                    'worksheet_uuid': worksheet_uuid,
+                    'bundle_uuid': bundle_uuid,
+                    'subworksheet_uuid': subworksheet_uuid,
+                    'value': self.encode_str(value),
+                    'type': type,
+                    'sort_key': after_sort_key + idx + 1 if after_sort_key is not None else None,
+                }
+                for idx, (bundle_uuid, subworksheet_uuid, value, type) in enumerate(items)
+            ]
             self.do_multirow_insert(connection, cl_worksheet_item, items_2_insert)
-
 
     def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):
         """
@@ -1396,7 +1406,6 @@ class BundleModel(object):
                 connection.execute(cl_worksheet_item.insert().values(new_item))
             # sqlite doesn't support batch insertion
 
-    
     def update_worksheet_item_value(self, id, value):
         """
         Update the value of a worksheet item, aka updating a markdown item.
@@ -1405,17 +1414,12 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             if value:
                 connection.execute(
-                    cl_worksheet_item.update().where(
-                        cl_worksheet_item.c.id == id
-                    ).values({ 'value': value })
+                    cl_worksheet_item.update()
+                    .where(cl_worksheet_item.c.id == id)
+                    .values({'value': value})
                 )
             else:
-                connection.execute(
-                    cl_worksheet_item.delete().where(
-                        cl_worksheet_item.c.id == id
-                    )
-                )
-
+                connection.execute(cl_worksheet_item.delete().where(cl_worksheet_item.c.id == id))
 
     def update_worksheet_items(self, worksheet_uuid, last_item_id, length, new_items):
         """
