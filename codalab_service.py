@@ -607,7 +607,7 @@ class CodalabServiceManager(object):
         if self.args.initial_config:
             print("[CODALAB] ==> Creating root user")
             self.run_service_cmd(
-                "%spip install /opt/codalab-worksheets && python /opt/codalab-worksheets/scripts/create-root-user.py %s"
+                "%spython /opt/codalab-worksheets/scripts/create-root-user.py %s"
                 % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
                 root=True,
             )
