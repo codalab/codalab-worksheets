@@ -9,7 +9,8 @@ let ExtraWorksheetHTML = () => (
             <img src='/img/Preloader_Small.gif' /> Updating...
         </div>
         <div id='save_error' className='progress-message'>
-            <i className='glyphicon glyphicon-remove-circle' /> Error saving...
+            <i className='glyphicon glyphicon-remove-circle' />
+            <span>Error saving...</span>
         </div>
         <div id='glossaryModal' className='modal' data-keyboard='true' tabIndex='-1'>
             <div className='modal-dialog'>

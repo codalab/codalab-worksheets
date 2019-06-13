@@ -49,8 +49,10 @@ export function executeCommand(command: string, worksheet_uuid?: string) {
             command: command,
         }),
     })
-    .fail((jqXHR, status, error) => {
+    .fail((xhr, status, error) => {
         // Some exception occurred outside of the CLI
-        console.error(jqXHR.responseText);
+        console.error(xhr.responseText);
+        $("#save_error span").text("Execute Command Error: " + xhr.statusText);
+        $('#save_error').show();
     });
 }

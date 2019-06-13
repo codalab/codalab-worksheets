@@ -6727,6 +6727,7 @@ body,
   left: 20px;
   top: 100px;
   padding: 20px;
+  z-index: 999;
 }
 #worksheet-message.alert {
   padding: 10px;
@@ -7632,6 +7633,9 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   color: red;
   vertical-align: -3px;
   margin-right: 2px;
+}
+.progress-message#save_error {
+  width: auto;
 }
 .file-browser-table {
   width: 100%;

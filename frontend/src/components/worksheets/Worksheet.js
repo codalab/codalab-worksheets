@@ -679,6 +679,7 @@ class Worksheet extends React.Component {
             error: function(xhr, status, err) {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
+                $("#save_error span").text("Error saving: " + xhr.statusText);
                 $('#save_error').show();
                 $('#worksheet-message')
                     .html(xhr.responseText)
