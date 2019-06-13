@@ -942,6 +942,7 @@ const styles = (theme) => ({
         height: '100%',
         overflow: 'auto',
         position: 'relative',
+        overflowX: 'hidden'
     },
     uuid: {
         fontFamily: theme.typography.fontFamilyMonospace,
