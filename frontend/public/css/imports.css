@@ -6727,7 +6727,6 @@ body,
   left: 20px;
   top: 100px;
   padding: 20px;
-  z-index: 999;
 }
 #worksheet-message.alert {
   padding: 10px;
