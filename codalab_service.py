@@ -100,15 +100,18 @@ class CodalabArgs(argparse.Namespace):
 
         stop_cmd = subparsers.add_parser('stop', help='Stop any existing CodaLab service instances')
         down_cmd = subparsers.add_parser(
-            'down', help='Bring down any existing CodaLab service instances'
+            'down', help='Bring down any existing CodaLab service instances (and delete all non-external data!)'
         )
         restart_cmd = subparsers.add_parser(
             'restart', help='Restart any existing CodaLab service instances'
         )
 
         #  CLIENT SETTINGS
+        for cmd in [start_cmd, logs_cmd, test_cmd, build_cmd, run_cmd, stop_cmd, down_cmd, restart_cmd]:
+            cmd.add_argument('--dry-run', action='store_true', help='Just print out the commands that will be run and not execute anything')
 
         for cmd in [start_cmd, run_cmd, test_cmd]:
+
             cmd.add_argument(
                 '--codalab-user',
                 type=str,
@@ -165,7 +168,7 @@ class CodalabArgs(argparse.Namespace):
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
-                '--dev',
+                '--dev-images',
                 '-d',
                 action='store_true',
                 help='If specified, use dev versions of images',
@@ -174,19 +177,19 @@ class CodalabArgs(argparse.Namespace):
             cmd.add_argument(
                 '--push',
                 action='store_true',
-                help='If specified, push the images to Dockerhub',
+                help='If specified, push the images to Docker Hub',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
                 '--docker-user',
                 type=str,
-                help='DockerHub username to push images from',
+                help='Docker Hub username to push images from',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
                 '--docker-password',
                 type=str,
-                help='DockerHub password to push images from',
+                help='Docker Hub password to push images from',
                 default=argparse.SUPPRESS,
             )
 
@@ -545,9 +548,6 @@ class CodalabServiceManager(object):
         elif self.command == 'test':
             self.test()
 
-    def _run_docker_cmd(self, cmd):
-        subprocess.check_call('docker ' + cmd, shell=True, cwd=self.root_dir)
-
     def build_image(self, image):
         print("[CODALAB] ==> Building %s image " % image)
         self._run_docker_cmd(
@@ -558,6 +558,13 @@ class CodalabServiceManager(object):
     def push_image(self, image):
         self._run_docker_cmd('push codalab/%s:%s' % (image, self.args.version))
 
+    def _run_docker_cmd(self, cmd):
+        command_string = 'docker ' + cmd
+        print('cd {}; {}'.format(self.root_dir, command_string))
+        if not self.args.dry_run:
+            subprocess.check_call(command_string, shell=True, cwd=self.root_dir)
+        print('')
+
     def _run_compose_cmd(self, cmd):
         files_string = ' -f '.join(self.compose_files)
         command_string = 'docker-compose -p %s -f %s %s' % (
@@ -565,9 +572,11 @@ class CodalabServiceManager(object):
             files_string,
             cmd,
         )
-        subprocess.check_call(
-            command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True
-        )
+        compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in self.compose_env.items())
+        print('cd {}; {} {}'.format(self.compose_cwd, compose_env_string, command_string))
+        if not self.args.dry_run:
+            subprocess.check_call(command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True)
+        print('')
 
     def bring_up_service(self, service):
         self._run_compose_cmd('up -d --no-deps %s' % service)
