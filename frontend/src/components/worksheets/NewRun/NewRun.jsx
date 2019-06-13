@@ -252,7 +252,7 @@ class NewRun extends React.Component<{
             args.push(key + ':' + value);
         }
 
-        if (command) args.push(`"${command}"`);
+        if (command) args.push(command);
 
         return buildTerminalCommand(args);
     }
