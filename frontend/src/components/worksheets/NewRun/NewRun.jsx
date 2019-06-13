@@ -312,8 +312,6 @@ class NewRun extends React.Component<{
                 )}
                 sidebar={(
                     <div>
-                        <Typography variant='subtitle1'>Information</Typography>
-
                         <ConfigLabel
                             label="Name"
                             tooltip="Short name (not necessarily unique) to provide an
