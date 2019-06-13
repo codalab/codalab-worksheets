@@ -242,7 +242,7 @@ def create_worksheet_items():
         else:
             # Append items to the worksheet
             for item in items:
-                add_worksheet_items(worksheet_uuid, [Worksheet.Item.as_tuple(item)])
+                local.model.add_worksheet_items(worksheet_uuid, [Worksheet.Item.as_tuple(item)])
 
     return WorksheetItemSchema(many=True).dump(new_items).data
 
