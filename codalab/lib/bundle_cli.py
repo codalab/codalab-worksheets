@@ -1487,11 +1487,8 @@ class BundleCLI(object):
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
-            Commands.Argument( # Internal for web FE positioned insert.
-                '-a',
-                '--after_sort_key',
-                help='Insert after this sort_key',
-                completer=NullCompleter,
+            Commands.Argument(  # Internal for web FE positioned insert.
+                '-a', '--after_sort_key', help='Insert after this sort_key', completer=NullCompleter
             ),
         )
         + Commands.metadata_arguments([RunBundle])
@@ -1504,7 +1501,7 @@ class BundleCLI(object):
         metadata = self.get_missing_metadata(RunBundle, args)
 
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
-        params = { 'worksheet': worksheet_uuid }
+        params = {'worksheet': worksheet_uuid}
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
         new_bundle = client.create(

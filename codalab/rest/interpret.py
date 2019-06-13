@@ -298,6 +298,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
     appropriate information, replacing the 'interpreted' field in each item.
     The result can be serialized via JSON.
     """
+
     def set_error_data(block_index, message):
         interpreted_blocks[block_index] = (
             MarkupBlockSchema().load({'id': block_index, 'text': 'ERROR: ' + message}).data
@@ -564,7 +565,9 @@ def resolve_items_into_infos(items):
         value_obj = (
             formatting.string_to_tokens(i['value']) if i['type'] == TYPE_DIRECTIVE else i['value']
         )
-        new_items.append((bundle_info, subworksheet_info, value_obj, i['type'], i['id'], i['sort_key']))
+        new_items.append(
+            (bundle_info, subworksheet_info, value_obj, i['type'], i['id'], i['sort_key'])
+        )
     return new_items
 
 
