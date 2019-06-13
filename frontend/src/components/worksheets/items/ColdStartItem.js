@@ -17,9 +17,9 @@ class InsertButtons extends React.Component<{
     showNewText: () => void,
 }> {
     render() {
-        const { classes, showNewUpload, showNewRun, showNewText } = this.props;
+        const { classes, showNewUpload, showNewRun, showNewText, style } = this.props;
         return (
-            <div className={classes.buttonsPanel}>
+            <div className={classes.buttonsPanel} style={ style } >
                 <Button
                     variant='outlined'
                     size='small'
@@ -67,7 +67,7 @@ class ColdStartItem extends React.Component {
 	}
 
 	render() {
-		const { classes, ws, worksheetUUID, reloadWorksheet } = this.props;
+		const { classes, ws, worksheetUUID, after_sort_key, reloadWorksheet, buttonStyle } = this.props;
 		const { showNewText, showNewRun, showNewUpload } = this.state;
 
 		return (
@@ -83,9 +83,11 @@ class ColdStartItem extends React.Component {
 		            showNewText={() => {
 		                this.setState({ showNewText: true });
 		            }}
+                    style={ buttonStyle }
 		        />
 				{showNewUpload && (
 	                <NewUpload
+                        after_sort_key={ after_sort_key }
 	                    worksheetUUID={worksheetUUID}
 	                    reloadWorksheet={reloadWorksheet}
 	                    onClose={() => this.setState({ showNewUpload: false })}
@@ -93,6 +95,7 @@ class ColdStartItem extends React.Component {
 	            )}
 	            {showNewRun && (
 	                <NewRun
+                        after_sort_key={ after_sort_key }
 	                    ws={ws}
 	                    onSubmit={() => this.setState({ showNewRun: false })}
 	                />
@@ -100,6 +103,7 @@ class ColdStartItem extends React.Component {
 	            {showNewText && (
 	                <TextEditorItem
 	                    mode="create"
+                        after_sort_key={ after_sort_key }
 	                    worksheetUUID={worksheetUUID}
 	                    reloadWorksheet={reloadWorksheet}
 	                    closeEditor={() => {
