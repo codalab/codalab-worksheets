@@ -794,7 +794,6 @@ class Worksheet extends React.Component {
             <React.Fragment>
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
-                        <HelpButton />
                         <div className={classes.worksheetDesktop}>
                             <div className={classes.worksheetOuter}>
                                 <div className={classes.worksheetInner}
