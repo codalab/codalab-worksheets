@@ -264,7 +264,7 @@ class BundleRow extends Component {
                         </TableCell>
                     </TableRow>
                 )}
-                {(showDetail || showNewUpload == -1 || showNewRun == -1) && (
+                {(showNewUpload == -1 || showNewRun == -1) && (
                     <TableRow className={classes.spacerAbove} />
                 )}
                 <TableRow
@@ -339,7 +339,7 @@ class BundleRow extends Component {
                         </TableCell>
                     </TableRow>
                 )}
-                {(showDetail || showNewUpload == 1 || showNewRun == 1) && (
+                {(showNewUpload == 1 || showNewRun == 1) && (
                     <TableRow className={classes.spacerBelow} />
                 )}
                 {showNewUpload === 1 && (
