@@ -9,7 +9,7 @@ import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
 
 import { BundleEditableField } from '../../EditableField';
-import PermissionDialog from './PermissionDialog';
+import PermissionDialog from '../PermissionDialog';
 import { renderFormat, shorten_uuid } from '../../../util/worksheet_utils';
 
 class Dependency extends React.PureComponent<
