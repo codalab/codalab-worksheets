@@ -74,6 +74,7 @@ class BundleRow extends Component {
         bundleInfoUpdates: {},
         showDetail: false,
         openDelete: false,
+        runProp: {},
     };
 
     receiveBundleInfoUpdates = (update) => {
@@ -149,6 +150,14 @@ class BundleRow extends Component {
         });
     }
 
+    rerunItem = (runProp) => {
+        this.setState({
+            showDetail: false,
+            showNewRun: 1,
+            runProp: runProp,
+        });
+    }
+
     render() {
         const {
             showInsertButtons,
@@ -157,6 +166,7 @@ class BundleRow extends Component {
             showNewRun,
             bundleInfoUpdates,
             openDelete,
+            runProp,
         } = this.state;
         const {
             classes,
@@ -335,6 +345,7 @@ class BundleRow extends Component {
                                         showDetail: false,
                                     });
                                 }}
+                                rerunItem={ this.rerunItem }
                             />
                         </TableCell>
                     </TableRow>
@@ -362,6 +373,7 @@ class BundleRow extends Component {
                                 onSubmit={() => this.setState({ showNewRun: 0 })}
                                 after_sort_key={bundleInfo.sort_key}
                                 reloadWorksheet={reloadWorksheet}
+                                defaultRun={ runProp }
                             />
                         </TableCell>
                     </TableRow>

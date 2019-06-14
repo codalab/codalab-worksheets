@@ -16,6 +16,21 @@ class BundleActions extends React.Component<
 		onComplete: () => undefined,
 	};
 
+	rerun = () => {
+		const { bundleInfo } = this.props;
+		const run = {};
+		run.command = bundleInfo.command;
+		const dependencies = [];
+		bundleInfo.dependencies.forEach((dep) => {
+			dependencies.push({
+				target: { name: dep.parent_name, uuid: dep.parent_uuid, path: dep.parent_path },
+				alias: dep.child_path,
+			});
+		});
+		run.dependencies = dependencies;
+		this.props.rerunItem(run);
+	}
+
 	kill = () => {
 		const { bundleInfo } = this.props;
 		executeCommand(buildTerminalCommand(['kill', bundleInfo.uuid])).done(() => {
@@ -31,10 +46,14 @@ class BundleActions extends React.Component<
 		return (
 			isRunBundle
 			? <div style={ { display: 'flex', flexDirection: 'row', alignItems: 'center' } }>
-	            <Button variant='text' color='primary'>
+	            <Button variant='text' color='primary'
+	            	onClick={ this.kill }
+	            >
 	            	Kill
 	            </Button>
-	            <Button variant='contained' color='primary'>
+	            <Button variant='contained' color='primary'
+	            	onClick={ this.rerun }
+	            >
 	            	Rerun
 	            </Button>
 	        </div>
