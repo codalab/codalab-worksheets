@@ -19,7 +19,7 @@ jobs:
         - ./codalab_service.py build service -v ${TRAVIS_BRANCH} --push
         - ./setup.sh server
       script:
-        - ./codalab_service.py start -i -w -t --mysql-port 3306 --version ${TRAVIS_BRANCH}
+        - ./codalab_service.py start -w -t --mysql-port 3306 --version ${TRAVIS_BRANCH}
     - stage: style
       language: python
       python: 3.6
