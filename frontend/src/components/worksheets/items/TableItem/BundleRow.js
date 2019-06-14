@@ -229,6 +229,9 @@ class BundleRow extends Component {
                     });
                 }}
             >
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  Insert Buttons (above)
+                  */}
                 <TableRow classes={{ root: classes.panelContainer }}>
                     <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
                         {showInsertButtons < 0 && (
@@ -240,6 +243,9 @@ class BundleRow extends Component {
                         )}
                     </TableCell>
                 </TableRow>
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  New Upload (above)
+                  */}
                 {showNewUpload === -1 && (
                     <TableRow>
                         <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
@@ -258,6 +264,9 @@ class BundleRow extends Component {
                         </TableCell>
                     </TableRow>
                 )}
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  New Run (above)
+                  */}
                 {showNewRun === -1 && (
                     <TableRow>
                         <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
@@ -274,9 +283,17 @@ class BundleRow extends Component {
                         </TableCell>
                     </TableRow>
                 )}
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  Spacer (above)
+                  */}
                 {(showDetail || showNewUpload == -1 || showNewRun == -1) && (
-                    <TableRow className={classes.spacerAbove} />
+                    <TableRow className={classes.spacerAbove}>
+                        <TableCell colSpan='100%'/>
+                    </TableRow>
                 )}
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  Main Content
+                  */}
                 <TableRow
                     hover
                     onClick={this.handleClick}
@@ -295,6 +312,9 @@ class BundleRow extends Component {
                 >
                     {rowCells}
                 </TableRow>
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  Deletion Modal (floating)
+                  */}
                 <TableRow classes={{ root: classes.panelContainer }}>
                     <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
                         <div className={classes.rightButtonStripe}>
@@ -332,6 +352,9 @@ class BundleRow extends Component {
                         </div>
                     </TableCell>
                 </TableRow>
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  Bundle Detail (below)
+                  */}
                 {showDetail && (
                     <TableRow>
                         <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
@@ -350,9 +373,17 @@ class BundleRow extends Component {
                         </TableCell>
                     </TableRow>
                 )}
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  Spacer (below)
+                  */}
                 {(showDetail || showNewUpload == 1 || showNewRun == 1) && (
-                    <TableRow className={classes.spacerBelow} />
+                    <TableRow className={classes.spacerBelow}>
+                        <TableCell colSpan='100%'/>
+                    </TableRow>
                 )}
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  New Upload (below)
+                  */}
                 {showNewUpload === 1 && (
                     <TableRow>
                         <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
@@ -365,6 +396,9 @@ class BundleRow extends Component {
                         </TableCell>
                     </TableRow>
                 )}
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  New Run (below)
+                  */}
                 {showNewRun === 1 && (
                     <TableRow>
                         <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
@@ -378,6 +412,9 @@ class BundleRow extends Component {
                         </TableCell>
                     </TableRow>
                 )}
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  Insert Buttons (below)
+                  */}
                 <TableRow classes={{ root: classes.panelContainer }}>
                     <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
                         {(showInsertButtons > 0 && !isLast) && (
@@ -418,7 +455,6 @@ const styles = (theme) => ({
         justifyContent: 'center',
         width: '100%',
         transform: 'translateY(-18px)',
-        pointerEvents: 'none',
     },
     rightButtonStripe: {
         display: 'none',
@@ -466,11 +502,15 @@ const styles = (theme) => ({
         height: theme.spacing.larger,
         borderBottom: `2px solid ${theme.color.grey.dark}`,
         backgroundColor: 'white',
+        borderLeft: '4px solid white',
+        borderRight: '4px solid white',
     },
     spacerBelow: {
         height: theme.spacing.larger,
         borderTop: `2px solid ${theme.color.grey.dark}`,
         backgroundColor: 'white',
+        borderLeft: '4px solid white',
+        borderRight: '4px solid white',
     },
     modal: {
         position: 'absolute',
@@ -488,6 +528,7 @@ const styles = (theme) => ({
     },
     highlight: {
         backgroundColor: `${ theme.color.primary.lightest } !important`,
+        borderLeft: '#1d91c0 solid 3px',
     },
 });
 

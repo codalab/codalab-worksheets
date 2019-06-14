@@ -157,13 +157,12 @@ class NavBar extends React.Component<{
                         )}
                         {this.props.auth.isAuthenticated && (
                             <React.Fragment>
-                                <Tooltip title='Dashboard'>
-                                    <IconButton href='/rest/worksheets/?name=dashboard'>
-                                        <DashboardIcon />
-                                    </IconButton>
-                                </Tooltip>
+                                <Button color="primary" href='/rest/worksheets/?name=dashboard'>
+                                    Dashboard
+                                </Button>
                                 <Tooltip title='New Worksheet'>
-                                    <IconButton onClick={() => this.setState({ newWorksheetShowDialog: true })}>
+                                    <IconButton
+                                        onClick={() => this.setState({ newWorksheetShowDialog: true })}>
                                         <NewWorksheetIcon />
                                     </IconButton>
                                 </Tooltip>
@@ -179,7 +178,7 @@ class NavBar extends React.Component<{
                                 <HowToIcon />
                             </IconButton>
                         </Tooltip>
-                        <Tooltip title='Contact'>
+                        <Tooltip title='Bugs/Issues'>
                             <IconButton href='https://github.com/codalab/codalab-worksheets/issues' target='_blank'>
                                 <ContactIcon />
                             </IconButton>
@@ -190,9 +189,7 @@ class NavBar extends React.Component<{
                                     <IconButton
                                         aria-owns={accountEl ? 'account-menu' : undefined}
                                         aria-haspopup='true'
-                                        onClick={(e) =>
-                                            this.setState({ accountEl: e.currentTarget })
-                                        }
+                                        onClick={(e) => this.setState({ accountEl: e.currentTarget })}
                                     >
                                         <AccountIcon />
                                     </IconButton>
