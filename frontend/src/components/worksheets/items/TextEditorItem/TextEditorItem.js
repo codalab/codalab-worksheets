@@ -8,7 +8,7 @@ import { withStyles } from '@material-ui/core/styles';
 import { createAlertText } from '../../../../util/worksheet_utils';
 
 /*
-This component has to mode:
+This component has 2 modes:
 	1. edit: to update an existing markdown item.
 	2. create: to create a new markdown item.
 Special Note:

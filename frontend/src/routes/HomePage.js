@@ -78,7 +78,7 @@ class HomePage extends React.Component<{
                                         </React.Fragment>
                                     }
                                     {auth.isAuthenticated &&
-                                        this.renderButton('My Dashboard', '/rest/worksheets/?name=dashboard')
+                                        this.renderButton('Dashboard', '/rest/worksheets/?name=dashboard')
                                     }
                                 </div>
                             </Grid>

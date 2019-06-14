@@ -886,11 +886,6 @@ class Worksheet extends React.Component {
                                             reloadWorksheet={this.reloadWorksheet}
                                             worksheetUUID={info && info.uuid}
                                             ws={this.state.ws}
-                                            buttonStyle={ {
-                                                position: 'absolute',
-                                                top: 'calc(100% - 36px)',
-                                                left: 0,
-                                            } }
                                         />
                                     </div>
                                 </div>
@@ -912,14 +907,14 @@ const styles = (theme) => ({
     },
     worksheetOuter: {
         maxWidth: 1200, // Worksheet width
+        minHeight: 600,  // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
         border: `2px solid ${theme.color.grey.light}`,
     },
     worksheetInner: {
-        padding: '0 30px 50px 30px',
+        padding: '0px 30px',  // Horizonal padding, no vertical
         height: '100%',
-        overflow: 'auto',
         position: 'relative',
     },
     uuid: {
@@ -932,8 +927,8 @@ const styles = (theme) => ({
         fontWeight: 500,
     },
     bottomButtons: {
-        width: 'calc(100% - 60px)',
-        paddingButton: theme.spacing.unit,
+        paddingTop: theme.spacing.largest,
+        paddingBottom: theme.spacing.largest,
     },
     permissions: {
         cursor: 'pointer',

@@ -2041,9 +2041,6 @@ pre code {
     margin-left: 0%;
   }
 }
-table {
-  background-color: #f7f7f7;
-}
 th {
   text-align: left;
 }
@@ -6914,10 +6911,9 @@ body,
   padding: 8px;
 }
 #worksheet_content {
-  margin-top: 12px;
+  margin-top: 24px;
   margin-bottom: 24px;
   line-height: 1.2;
-  min-height: 480px;
   display: none;
 }
 #worksheet_content hr {
@@ -7131,7 +7127,8 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
 }
 #worksheet_content .ws-item > .focused {
   background-color: #e2f0f5;
-  box-shadow: 0 0 5px 5px #e2f0f5;
+  border-left: #1d91c0 solid 3px;
+  padding-left: 4px;
 }
 #worksheet_content.editable .ws-item {
   margin-left: 24px;
