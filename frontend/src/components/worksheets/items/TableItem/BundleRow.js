@@ -405,7 +405,8 @@ const styles = (theme) => ({
         position: 'absolute',
         justifyContent: 'center',
         width: '100%',
-        transform: 'translateY(-50%)',
+        transform: 'translateY(-18px)',
+        pointerEvents: 'none',
     },
     rightButtonStripe: {
         display: 'none',
@@ -433,14 +434,6 @@ const styles = (theme) => ({
     },
     iconButtonRoot: {
         backgroundColor: theme.color.grey.lighter,
-    },
-    buttonsPanel: {
-        display: 'flex',
-        flexDirection: 'row',
-        position: 'absolute',
-        justifyContent: 'center',
-        width: '100%',
-        transform: 'translateY(-18px)',
     },
     buttonRoot: {
         width: 120,

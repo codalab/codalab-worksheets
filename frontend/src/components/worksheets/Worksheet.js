@@ -102,7 +102,6 @@ class Worksheet extends React.Component {
             updatingBundleUuids: {},
             isUpdatingBundles: false,
             anchorEl: null,
-            showBottomButtons: false,
         };
     }
 
@@ -691,22 +690,9 @@ class Worksheet extends React.Component {
         });
     }
 
-    detectBottom = (ev) => {
-        const ele = ev.currentTarget;
-        const { top, height } = ele.getBoundingClientRect();
-        const { clientY } = ev;
-        // Sensentive height is 36px
-        const onBotttom = clientY >= top + height - 36 && clientY <= top + height;
-        if (onBotttom) {
-            this.setState({ showBottomButtons: true });
-        } else {
-            this.setState({ showBottomButtons: false });
-        }
-    }
-
     render() {
         const { classes } = this.props;
-        const { anchorEl, showBottomButtons } = this.state;
+        const { anchorEl } = this.state;
 
         this.setupEventHandlers();
         var info = this.state.ws.info;
@@ -796,12 +782,7 @@ class Worksheet extends React.Component {
                     <div id='worksheet' className={searchClassName}>
                         <div className={classes.worksheetDesktop}>
                             <div className={classes.worksheetOuter}>
-                                <div className={classes.worksheetInner}
-                                    onMouseLeave={ () => {
-                                        this.setState({ showBottomButtons: false });
-                                    } }
-                                    onMouseMove={ this.detectBottom }
-                                >
+                                <div className={classes.worksheetInner}>
                                     <div id='worksheet_content' className={editableClassName}>
                                         <div className='header-row '>
                                         <Grid container alignItems="flex-end">
@@ -845,6 +826,7 @@ class Worksheet extends React.Component {
                                                                         onClick={ (ev) => {
                                                                             this.setState({ anchorEl: ev.currentTarget });
                                                                         } }
+                                                                        className={classes.permissions}
                                                                     >
                                                                         {renderPermissions(info)}
                                                                     </div>
@@ -895,24 +877,22 @@ class Worksheet extends React.Component {
                                         <hr />
                                         {worksheet_display}
                                     </div>
-                                    {   showBottomButtons &&
-                                        <div className={ classes.bottomButtons }
-                                            onMouseMove={ (ev) => { ev.stopPropagation(); } }
-                                            onMouseLeave={ (ev) => { ev.stopPropagation(); } }
-                                        >
-                                            <ColdStartItem
-                                                after_sort_key={ last_key }
-                                                reloadWorksheet={this.reloadWorksheet}
-                                                worksheetUUID={info && info.uuid}
-                                                ws={this.state.ws}
-                                                buttonStyle={ {
-                                                    position: 'absolute',
-                                                    top: 'calc(100% - 36px)',
-                                                    left: 0,
-                                                } }
-                                            />
-                                        </div>
-                                    }
+                                    <div className={ classes.bottomButtons }
+                                        onMouseMove={ (ev) => { ev.stopPropagation(); } }
+                                        onMouseLeave={ (ev) => { ev.stopPropagation(); } }
+                                    >
+                                        <ColdStartItem
+                                            after_sort_key={ last_key }
+                                            reloadWorksheet={this.reloadWorksheet}
+                                            worksheetUUID={info && info.uuid}
+                                            ws={this.state.ws}
+                                            buttonStyle={ {
+                                                position: 'absolute',
+                                                top: 'calc(100% - 36px)',
+                                                left: 0,
+                                            } }
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -954,6 +934,12 @@ const styles = (theme) => ({
     bottomButtons: {
         width: 'calc(100% - 60px)',
         paddingButton: theme.spacing.unit,
+    },
+    permissions: {
+        cursor: 'pointer',
+        '&:hover': {
+            backgroundColor: theme.color.primary.lightest,
+        },
     },
 });
 

@@ -224,13 +224,7 @@ class WorksheetItemList extends React.Component {
             );
             items_display = worksheet_items;
         } else {
-            items_display = (
-                <ColdStartItem
-                    reloadWorksheet={this.props.reloadWorksheet}
-                    worksheetUUID={info && info.uuid}
-                    ws={this.props.ws}
-                />
-            );
+            items_display = null;
         }
         if (info && info.error)
             items_display = <p className='alert-danger'>Error in worksheet: {info.error}</p>;
