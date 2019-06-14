@@ -139,6 +139,7 @@ class NewRun extends React.Component<{
     ws: {},
     reloadWorksheet: () => void,
     onSubmit: () => void,
+    defaultRun: {},
 }, {
     dependencies: Dependency[],
     command: string,
@@ -156,6 +157,7 @@ class NewRun extends React.Component<{
     static defaultProps: {
         onSubmit: () => undefined,
         reloadWorksheet: () => undefined,
+        defaultRun: {},
     }
     defaultConfig = {
         dependencies: [],
@@ -179,7 +181,7 @@ class NewRun extends React.Component<{
     constructor(props) {
         super(props);
         this.state = {
-            ...this.defaultConfig,
+            ...Object.assign(this.defaultConfig, props.defaultRun),
         };
     }
 
