@@ -27,7 +27,6 @@ class CodalabArgs(argparse.Namespace):
         'test_build': False,
         'user_compose_file': None,
         'start_worker': False,
-        'initial_config': False,
         'root_dir': None,
         'instance_name': 'codalab',
         'mysql_root_password': 'codalab',
@@ -61,7 +60,6 @@ class CodalabArgs(argparse.Namespace):
         'docker_password': 'DOCKER_PWD',
         'user_compose_file': 'CODALAB_USER_COMPOSE_FILE',
         'start_worker': 'CODALAB_START_WORKER',
-        'initial_config': 'CODALAB_INITIAL_CONFIG',
         'mysql_root_password': 'CODALAB_MYSQL_ROOT_PWD',
         'mysql_user': 'CODALAB_MYSQL_USER',
         'mysql_password': 'CODALAB_MYSQL_PWD',
@@ -233,13 +231,6 @@ class CodalabArgs(argparse.Namespace):
             '-w',
             action='store_true',
             help='If specified, start a CodaLab worker on this machine.',
-            default=argparse.SUPPRESS,
-        )
-        start_cmd.add_argument(
-            '--initial-config',
-            '-i',
-            action='store_true',
-            help='If specified, save the initial configuration of the instance (defaults to true if the service home or the database mounts are ephemeral)',
             default=argparse.SUPPRESS,
         )
 
@@ -604,23 +595,21 @@ class CodalabServiceManager(object):
             root=(not self.args.codalab_home),
         )
 
-        if self.args.initial_config:
-            print("[CODALAB] ==> Creating root user")
-            self.run_service_cmd(
-                "%spython /opt/codalab-worksheets/scripts/create-root-user.py %s"
-                % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
-                root=True,
-            )
+        print("[CODALAB] ==> Creating root user")
+        self.run_service_cmd(
+            "%spython /opt/codalab-worksheets/scripts/create-root-user.py %s"
+            % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
+            root=True,
+        )
 
         print("[CODALAB] ==> Starting rest server")
         self.bring_up_service('rest-server')
 
-        if self.args.initial_config:
-            print("[CODALAB] ==> Creating initial worksheets")
-            self.run_service_cmd(
-                "/opt/wait-for-it.sh rest-server:2900 -- cl logout && cl new home && cl new dashboard",
-                root=(not self.args.codalab_home),
-            )
+        print("[CODALAB] ==> Creating initial worksheets")
+        self.run_service_cmd(
+            "/opt/wait-for-it.sh rest-server:2900 -- cl logout && cl status && ((cl new home && cl new dashboard) || exit 0)",
+            root=(not self.args.codalab_home),
+        )
 
         print("[CODALAB] ==> Starting bundle manager")
         self.bring_up_service('bundle-manager')
