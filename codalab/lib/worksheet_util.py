@@ -905,12 +905,18 @@ def interpret_items(schemas, raw_items):
                     blocks[-1]['sort_keys'] = blocks[-1].get('sort_keys', [])
                     blocks[-1]['sort_keys'].append(sort_key)
                 elif not new_last_was_empty_line:
-                    block = MarkupBlockSchema().load({
-                            'id': len(blocks),
-                            'text': value_obj,
-                            'ids': [id],
-                            'sort_keys': [sort_key]
-                        }).data
+                    block = (
+                        MarkupBlockSchema()
+                        .load(
+                            {
+                                'id': len(blocks),
+                                'text': value_obj,
+                                'ids': [id],
+                                'sort_keys': [sort_key],
+                            }
+                        )
+                        .data
+                    )
                     blocks.append(block)
                 # Important: set raw_to_block after so we can focus on current item.
                 if new_last_was_empty_line:

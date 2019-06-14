@@ -203,7 +203,9 @@ def delete_worksheets():
         delete_worksheet(uuid, force)
 
 
-@post('/worksheets/<worksheet_uuid:re:%s>/add-items' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
+@post(
+    '/worksheets/<worksheet_uuid:re:%s>/add-items' % spec_util.UUID_STR, apply=AuthenticatedPlugin()
+)
 def replace_items(worksheet_uuid):
     """
     Replace worksheet items with 'ids' with new 'items'.
