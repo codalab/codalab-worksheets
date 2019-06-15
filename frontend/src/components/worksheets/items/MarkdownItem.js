@@ -202,11 +202,14 @@ const styles = (theme) => ({
         '&:hover $buttonsPanel': {
             display: 'flex',
         },
+        minHeight: 36,
+        display: 'flex',
+        alignItems: 'center',
     },
     buttonsPanel: {
         display: 'none',
         position: 'absolute',
-        top: -theme.spacing.unit,
+        top: 0,
         right: 0,
     },
     iconButtonRoot: {
