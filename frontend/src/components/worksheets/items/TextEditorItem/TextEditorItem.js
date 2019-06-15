@@ -8,7 +8,7 @@ import { withStyles } from '@material-ui/core/styles';
 import { createAlertText } from '../../../../util/worksheet_utils';
 
 /*
-This component has to mode:
+This component has 2 modes:
 	1. edit: to update an existing markdown item.
 	2. create: to create a new markdown item.
 Special Note:
@@ -124,7 +124,7 @@ class TextEditorItem extends React.Component<{
         const { classes, defaultValue, showDefault } = this.props;
 
         return (
-            <Paper className={classes.container}>
+            <div className={classes.container}>
                 <InputBase
                     defaultValue={defaultValue || ''}
                     className={classes.input}
@@ -137,7 +137,7 @@ class TextEditorItem extends React.Component<{
                 <Button variant='text' color='primary' onClick={this.saveText}>
                     Save
                 </Button>
-            </Paper>
+            </div>
         );
     }
 }
@@ -147,8 +147,9 @@ const styles = (theme) => ({
         width: '100%',
         display: 'flex',
         flexDirection: 'row',
-        margin: '8px 0px',
+        margin: '32px 0px',
         minHeight: 100,
+        border: `2px solid ${theme.color.primary.base}`,
     },
     input: {
         flex: 1,
