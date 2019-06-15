@@ -165,12 +165,14 @@ class ItemWrapper extends React.Component {
                     />
                 )}
                 {showNewRun === -1 && (
-                    <NewRun
-                        after_sort_key={prevItemKeys.maxKey || itemKeys.minKey - 10}
-                        ws={this.props.ws}
-                        reloadWorksheet={reloadWorksheet}
-                        onSubmit={() => this.setState({ showNewRun: 0 })}
-                    />
+                    <div className={classes.insertBox}>
+                        <NewRun
+                            after_sort_key={prevItemKeys.maxKey || itemKeys.minKey - 10}
+                            ws={this.props.ws}
+                            reloadWorksheet={reloadWorksheet}
+                            onSubmit={() => this.setState({ showNewRun: 0 })}
+                        />
+                    </div>
                 )}
                 {showNewText === -1 && (
                     <TextEditorItem
@@ -194,12 +196,14 @@ class ItemWrapper extends React.Component {
                     />
                 )}
                 {showNewRun === 1 && (
-                    <NewRun
-                        after_sort_key={itemKeys.maxKey}
-                        ws={this.props.ws}
-                        onSubmit={() => this.setState({ showNewRun: 0 })}
-                        reloadWorksheet={reloadWorksheet}
-                    />
+                    <div className={classes.insertBox}>
+                        <NewRun
+                            after_sort_key={itemKeys.maxKey}
+                            ws={this.props.ws}
+                            onSubmit={() => this.setState({ showNewRun: 0 })}
+                            reloadWorksheet={reloadWorksheet}
+                        />
+                    </div>
                 )}
                 {showNewText === 1 && (
                     <TextEditorItem
@@ -268,6 +272,10 @@ const styles = (theme) => ({
     },
     buttonIcon: {
         marginRight: theme.spacing.large,
+    },
+    insertBox: {
+        border: `2px solid ${theme.color.primary.base}`,
+        margin: '32px 64px !important',
     },
 });
 

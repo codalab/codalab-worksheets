@@ -16,11 +16,16 @@ import MoreIcon from '@material-ui/icons/MoreVert';
 import UploadIcon from '@material-ui/icons/CloudUpload';
 import AddIcon from '@material-ui/icons/PlayCircleFilled';
 
+import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleDetail from '../../BundleDetail';
 import NewRun from '../../NewRun';
 import NewUpload from '../../NewUpload';
 import { buildTerminalCommand } from '../../../../util/worksheet_utils';
 import { executeCommand } from '../../../../util/cli_utils';
+
+// The approach taken in this design is to hack the HTML `Table` element by using one `TableBody` for each `BundleRow`.
+// We need the various columns to be aligned for all `BundleRow` within a `Table`, therefore using `div` is not an
+// option. Instead, we must make use of zero-height rows.
 
 class InsertButtons extends Component<{
     classes: {},
@@ -219,6 +224,13 @@ class BundleRow extends Component {
             );
         });
 
+         // Keyboard opening/closing
+         if (this.props.focused) {
+             Mousetrap.bind(['enter'], (e) => this.setState((state) => ({ showDetail: !state.showDetail })), 'keydown');
+             Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
+         }
+
+
         return (
             <TableBody
                 classes={{ root: classes.tableBody }}
@@ -247,8 +259,8 @@ class BundleRow extends Component {
                   *  New Upload (above)
                   */}
                 {showNewUpload === -1 && (
-                    <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
+                    <TableRow classes={{ root: classes.panelContainer }}>
+                        <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
                             <NewUpload
                                 after_sort_key={
                                     prevBundleInfo
@@ -269,26 +281,20 @@ class BundleRow extends Component {
                   */}
                 {showNewRun === -1 && (
                     <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
-                            <NewRun
-                                ws={this.props.ws}
-                                onSubmit={() => this.setState({ showNewRun: 0 })}
-                                after_sort_key={
-                                    prevBundleInfo
-                                        ? prevBundleInfo.sort_key
-                                        : bundleInfo.sort_key - 10
-                                }
-                                reloadWorksheet={reloadWorksheet}
-                            />
+                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                            <div className={classes.insertBox}>
+                                <NewRun
+                                    ws={this.props.ws}
+                                    onSubmit={() => this.setState({ showNewRun: 0 })}
+                                    after_sort_key={
+                                        prevBundleInfo
+                                            ? prevBundleInfo.sort_key
+                                            : bundleInfo.sort_key - 10
+                                    }
+                                    reloadWorksheet={reloadWorksheet}
+                                />
+                            </div>
                         </TableCell>
-                    </TableRow>
-                )}
-                {/** ---------------------------------------------------------------------------------------------------
-                  *  Spacer (above)
-                  */}
-                {(showDetail || showNewUpload == -1 || showNewRun == -1) && (
-                    <TableRow className={classes.spacerAbove}>
-                        <TableCell colSpan='100%'/>
                     </TableRow>
                 )}
                 {/** ---------------------------------------------------------------------------------------------------
@@ -306,8 +312,9 @@ class BundleRow extends Component {
                     )}
                     className={classNames({
                         [classes.contentRow]: true,
-                        [classes.detailPadding]: showDetail,
                         [classes.highlight]: this.props.focused,
+                        [classes.cursor]: this.props.focused,
+                        [classes.lowlight]: !this.props.focused && this.state.showDetail,
                     })}
                 >
                     {rowCells}
@@ -357,7 +364,12 @@ class BundleRow extends Component {
                   */}
                 {showDetail && (
                     <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
+                        <TableCell colSpan='100%' classes={{ root: classNames({
+                            [classes.rootNoPad]: true,
+                            [classes.bundleDetail]: true,
+                            [classes.highlight]: this.props.focused,
+                            [classes.lowlight]: !this.props.focused,
+                        })}}>
                             <BundleDetail
                                 uuid={bundleInfo.uuid}
                                 bundleMetadataChanged={this.props.reloadWorksheet}
@@ -374,19 +386,11 @@ class BundleRow extends Component {
                     </TableRow>
                 )}
                 {/** ---------------------------------------------------------------------------------------------------
-                  *  Spacer (below)
-                  */}
-                {(showDetail || showNewUpload == 1 || showNewRun == 1) && (
-                    <TableRow className={classes.spacerBelow}>
-                        <TableCell colSpan='100%'/>
-                    </TableRow>
-                )}
-                {/** ---------------------------------------------------------------------------------------------------
                   *  New Upload (below)
                   */}
                 {showNewUpload === 1 && (
-                    <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
+                    <TableRow classes={{ root: classes.panelContainer }}>
+                        <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
                             <NewUpload
                                 after_sort_key={bundleInfo.sort_key}
                                 worksheetUUID={worksheetUUID}
@@ -401,14 +405,16 @@ class BundleRow extends Component {
                   */}
                 {showNewRun === 1 && (
                     <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.rootNoPad }}>
-                            <NewRun
-                                ws={this.props.ws}
-                                onSubmit={() => this.setState({ showNewRun: 0 })}
-                                after_sort_key={bundleInfo.sort_key}
-                                reloadWorksheet={reloadWorksheet}
-                                defaultRun={ runProp }
-                            />
+                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                            <div className={classes.insertBox}>
+                                <NewRun
+                                    ws={this.props.ws}
+                                    onSubmit={() => this.setState({ showNewRun: 0 })}
+                                    after_sort_key={bundleInfo.sort_key}
+                                    reloadWorksheet={reloadWorksheet}
+                                    defaultRun={ runProp }
+                                />
+                            </div>
                         </TableCell>
                     </TableRow>
                 )}
@@ -468,17 +474,24 @@ const styles = (theme) => ({
         verticalAlign: 'middle !important',
         border: 'none !important',
     },
-    '@keyframes expandY': {
-        from: { transform: 'scaleY(0.5)' },
-        to: { transform: 'scaleY(1.0)' },
-    },
     rootNoPad: {
         verticalAlign: 'middle !important',
         border: 'none !important',
         padding: '0px !important',
-        animationName: 'expandY',
-        animationDuration: '0.6s',
-        transformOrigin: 'top',
+    },
+    insertPanel: {
+        verticalAlign: 'middle !important',
+        padding: '32px 64px !important',
+        backgroundColor: 'white',
+        borderLeft: '4px solid white !important',  // Erase highlight border.
+        borderRight: '4px solid white !important',  // Erase highlight border.
+    },
+    insertBox: {
+        border: `2px solid ${theme.color.primary.base}`,
+    },
+    bundleDetail: {
+        paddingLeft: `${theme.spacing.largest}px !important`,
+        paddingRight: `${theme.spacing.largest}px !important`,
     },
     iconButtonRoot: {
         backgroundColor: theme.color.grey.lighter,
@@ -498,20 +511,6 @@ const styles = (theme) => ({
     contentRow: {
         height: 36,
     },
-    spacerAbove: {
-        height: theme.spacing.larger,
-        borderBottom: `2px solid ${theme.color.grey.dark}`,
-        backgroundColor: 'white',
-        borderLeft: '4px solid white',
-        borderRight: '4px solid white',
-    },
-    spacerBelow: {
-        height: theme.spacing.larger,
-        borderTop: `2px solid ${theme.color.grey.dark}`,
-        backgroundColor: 'white',
-        borderLeft: '4px solid white',
-        borderRight: '4px solid white',
-    },
     modal: {
         position: 'absolute',
         width: 300,
@@ -527,7 +526,12 @@ const styles = (theme) => ({
         justifyContent: 'flex-end',
     },
     highlight: {
-        backgroundColor: `${ theme.color.primary.lightest } !important`,
+        backgroundColor: `${theme.color.primary.lightest} !important`,
+    },
+    lowlight: {
+        backgroundColor: `${theme.color.grey.light} !important`,
+    },
+    cursor: {
         borderLeft: '#1d91c0 solid 3px',
     },
 });

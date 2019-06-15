@@ -2058,7 +2058,7 @@ th {
   padding: 4px 6px;
   line-height: 1.6;
   vertical-align: top;
-  border-top: 1px solid #ddd;
+  border-top: 2px solid #ddd;
 }
 .table > thead > tr > th {
   vertical-align: bottom;

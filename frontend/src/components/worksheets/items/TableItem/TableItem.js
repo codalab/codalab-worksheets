@@ -9,7 +9,6 @@ import TableRow from '@material-ui/core/TableRow';
 import Immutable from 'seamless-immutable';
 import { worksheetItemPropsChanged, getMinMaxKeys } from '../../../../util/worksheet_utils';
 import $ from 'jquery';
-import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleRow from './BundleRow';
 
 class TableItem extends React.Component<{
@@ -29,46 +28,6 @@ class TableItem extends React.Component<{
         });
     }
 
-    capture_keys() {
-        // Open worksheet in new window/tab
-        Mousetrap.bind(
-            ['enter'],
-            function(e) {
-                window.open(this.refs['row' + this.props.subFocusIndex].props.url, '_blank');
-            }.bind(this),
-            'keydown',
-        );
-
-        // Paste uuid of focused bundle into console
-        Mousetrap.bind(
-            ['u'],
-            function(e) {
-                var uuid = this.refs['row' + this.props.subFocusIndex].props.uuid;
-                $('#command_line')
-                    .terminal()
-                    .insert(uuid + ' ');
-                //this.props.focusActionBar();
-            }.bind(this),
-            'keydown',
-        );
-
-        // Paste args of focused bundle into console
-        Mousetrap.bind(
-            ['a'],
-            function(e) {
-                var bundleInfo = this.refs['row' + this.props.subFocusIndex].props.bundleInfo;
-                if (bundleInfo.args != null) {
-                    $('#command_line')
-                        .terminal()
-                        .insert(bundleInfo.args);
-                    e.preventDefault();
-                    this.props.focusActionBar();
-                }
-            }.bind(this),
-            'keydown',
-        );
-    }
-
     updateRowIndex = (rowIndex) => {
         this.props.setFocus(this.props.focusIndex, rowIndex);
     };
@@ -79,7 +38,6 @@ class TableItem extends React.Component<{
 
     render() {
         const { worksheetUUID, setFocus, prevItem } = this.props;
-        if (this.props.active && this.props.focused) this.capture_keys();
 
         let prevItemProcessed = null;
         if (prevItem) {
