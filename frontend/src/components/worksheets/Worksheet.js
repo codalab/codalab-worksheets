@@ -842,6 +842,7 @@ class Worksheet extends React.Component {
                                                                           vertical: 'top',
                                                                           horizontal: 'center',
                                                                         }}
+                                                                        classes={ { paper: classes.noTransform } }
                                                                     >
                                                                         <div style={ { padding: 16 } }>
                                                                             <PermissionDialog
@@ -940,6 +941,9 @@ const styles = (theme) => ({
         '&:hover': {
             backgroundColor: theme.color.primary.lightest,
         },
+    },
+    noTransform: {
+        transform: 'none !important',
     },
 });
 

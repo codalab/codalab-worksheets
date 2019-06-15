@@ -4,10 +4,14 @@ import $ from 'jquery';
 import Typography from '@material-ui/core/Typography';
 import NativeSelect from '@material-ui/core/NativeSelect';
 import IconButton from '@material-ui/core/IconButton';
+import CloseIcon from '@material-ui/icons/Close';
 import AddIcon from '@material-ui/icons/Add';
 import Popper from '@material-ui/core/Popper';
 import Paper from '@material-ui/core/Paper';
 import Input from '@material-ui/core/Input';
+import ErrorIcon from '@material-ui/icons/Error';
+import Snackbar from '@material-ui/core/Snackbar';
+import SnackbarContent from '@material-ui/core/SnackbarContent';
 import { withStyles } from '@material-ui/core/styles';
 import { buildTerminalCommand } from '../../util/worksheet_utils';
 import { executeCommand } from '../../util/cli_utils';
@@ -36,6 +40,7 @@ class PermissionDialog extends React.Component<
             showAddSection: false,
             groupNames: [],
             nGroupName: '',
+            snackbarMessage: null,
         };
         this.getGroups();
 	}
@@ -64,9 +69,12 @@ class PermissionDialog extends React.Component<
         const { uuid, wperm } = this.props;
 
         executeCommand(buildTerminalCommand([wperm ? 'wperm' : 'perm', uuid, this.state.nGroupName, value]))
-        .done(() => {
+        .done((resp) => {
             this.setState({ showAddSection: false });
             this.props.onChange();
+        }).fail((err) => {
+        	this.setState({ snackbarMessage: err.responseText });
+        	this.props.onChange();
         });
     }
 
@@ -164,6 +172,37 @@ class PermissionDialog extends React.Component<
                 >
                     <AddIcon />
                 </IconButton>
+                <Snackbar
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'left',
+                    }}
+                    open={Boolean(this.state.snackbarMessage)}
+                    autoHideDuration={5000}
+                    onClose={(e, reason) => {
+                        if(reason !== "clickaway") this.setState({ snackbarShow: false });
+                    }}
+                >
+                    <SnackbarContent
+                        className={classes.snackbarError}
+                        message={
+                            <span className={classes.snackbarMessage}>
+                                <ErrorIcon className={classes.snackbarIcon}/>
+                                {this.state.snackbarMessage}
+                            </span>
+                        }
+                        action={[
+                          <IconButton
+                            key="close"
+                            aria-label="Close"
+                            color="inherit"
+                            onClick={() => this.setState({ snackbarMessage: null })}
+                          >
+                            <CloseIcon />
+                          </IconButton>,
+                        ]}
+                    />
+                 </Snackbar>
 			</div>
 		);
 	}
@@ -200,6 +239,16 @@ const styles = (theme) => ({
 			backgroundColor: theme.color.primary.lightest,
 		},
 	},
+	snackbarError: {
+        backgroundColor: theme.color.red.base,
+    },
+    snackbarMessage: {
+        display: 'flex',
+        alignItems: 'center',
+    },
+    snackbarIcon: {
+        marginRight: theme.spacing.large,
+    },
 });
 
 export default withStyles(styles)(PermissionDialog);
