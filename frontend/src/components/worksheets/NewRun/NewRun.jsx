@@ -257,7 +257,7 @@ class NewRun extends React.Component<{
             args.push(key + ':' + value);
         }
 
-        if (command) args.push(`"${command}"`);
+        if (command) args.push(command);
 
         return buildTerminalCommand(args);
     }
@@ -266,7 +266,6 @@ class NewRun extends React.Component<{
         const cmd = this.getCommand();
         if (cmd) {
             const response = executeCommand(cmd, this.props.ws.info.uuid).done(() => {
-                console.log("asdfasdfasdf", this.props);
                 this.props.reloadWorksheet();
             });
         }
