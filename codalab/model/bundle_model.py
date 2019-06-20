@@ -1,9 +1,6 @@
 """
 BundleModel is a wrapper around database calls to save and load bundle metadata.
 """
-
-from __future__ import absolute_import  # Needed to import from codalabworker.
-
 import collections
 import datetime
 import json
@@ -78,7 +75,6 @@ from codalab.objects.oauth2 import (
 from codalab.objects.user import (
     User,
 )
-from codalabworker.rest_client import RestClient
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -785,14 +781,14 @@ class BundleModel(object):
             self.increment_user_time_used(bundle.owner_id,
                                           getattr(bundle.metadata, 'time', 0))
 
-        # Post message to Slack alerts channel if SLACK_WEBHOOK_URL env var is specified.
-        slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
-        if failure_message is not None and slack_webhook_url is not None:
-            message = {
-                "text": ":x: Codalab job failed for bundle {}: {}! TODO: Add more details here."
-                    .format(bundle.uuid, failure_message)
-            }
-            RestClient(slack_webhook_url)._make_request('POST', '', data=message, authorized=False)
+        # Post event  to Applciation Insights if APPLICATION_INSIGHTS_INSTRUMENTATION_KEY env var is specified.
+        application_insights_instrumentation_key = os.environ.get('APPLICATION_INSIGHTS_INSTRUMENTATION_KEY')
+        if failure_message is not None and application_insights_instrumentation_key is not None:
+            from applicationinsights import TelemetryClient
+            tc = TelemetryClient(application_insights_instrumentation_key)
+            msg = ":x: Codalab job failed for bundle {}: {}! TODO: Add more details here.".format(bundle.uuid, failure_message)
+            tc.track_event('Codalab job failed', { 'msg': msg })
+            tc.flush()
 
         self.update_events_log(
             user_id=bundle.owner_id,
