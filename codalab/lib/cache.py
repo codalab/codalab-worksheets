@@ -14,7 +14,7 @@ def init(redis_connection_pool):
 
 def get_or_compute(namespace, key, f):
     if redis_connection:
-        redis_key = namespace + str(key)
+        redis_key = "{}/{}".format(namespace, key)
         redis_value = redis_connection.get(redis_key)
         if redis_value:
             return pickle.loads(redis_value)

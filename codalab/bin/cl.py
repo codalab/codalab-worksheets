@@ -2,12 +2,12 @@
 # Main entry point for CodaLab.
 # Run 'cl' rather than this script.
 import os
-import redis
 import signal
 import sys
 import time
 import subprocess
 
+import redis
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 

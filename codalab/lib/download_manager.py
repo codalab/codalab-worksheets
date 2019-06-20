@@ -44,9 +44,9 @@ class DownloadManager(object):
         self.cache_init()
 
     def cache_init(self):
-        self._bundle_state_cache = {}
-        self._bundle_worker_cache = {}
-        self._bundle_location_cache = {}
+        self._bundle_state_cache = {}  # dict of <bundle uuid> => <bundle state>
+        self._bundle_worker_cache = {}  # dict of <bundle uuid> => { user_id, worker_id, socket_id }
+        self._bundle_location_cache = {}  # dict of <bundle uuid> => <bundle path on disk>
 
     @retry_if_no_longer_running
     def get_target_info(self, *args, **kwargs):
