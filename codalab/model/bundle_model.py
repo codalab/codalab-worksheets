@@ -4,7 +4,6 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 import collections
 import datetime
 import json
-import os
 import re
 import time
 import uuid
