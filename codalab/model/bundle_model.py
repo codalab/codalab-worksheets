@@ -1,6 +1,7 @@
 """
 BundleModel is a wrapper around database calls to save and load bundle metadata.
 """
+
 import collections
 import datetime
 import json
@@ -780,7 +781,7 @@ class BundleModel(object):
             self.increment_user_time_used(bundle.owner_id,
                                           getattr(bundle.metadata, 'time', 0))
 
-        # Post event  to Applciation Insights if APPLICATION_INSIGHTS_INSTRUMENTATION_KEY env var is specified.
+        # Post event to Applciation Insights if APPLICATION_INSIGHTS_INSTRUMENTATION_KEY env var is specified.
         application_insights_instrumentation_key = os.environ.get('APPLICATION_INSIGHTS_INSTRUMENTATION_KEY')
         if failure_message is not None and application_insights_instrumentation_key is not None:
             from applicationinsights import TelemetryClient
