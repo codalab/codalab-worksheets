@@ -263,7 +263,6 @@ def temp_instance():
                 [
                     './codalab_service.py',
                     'start',
-                    '-i',
                     '--instance-name %s' % temp_instance_name,
                     '--rest-port %s' % rest_port,
                     '--http-port %s' % http_port,
