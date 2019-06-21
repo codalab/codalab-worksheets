@@ -18,19 +18,17 @@ RUN apt-get update; apt-get install -y \
     zip;
 
 # Install dependencies
-RUN mkdir /opt/codalab-worksheets
-COPY worker /opt/codalab-worksheets/worker
-COPY requirements.txt /opt/codalab-worksheets
-COPY requirements-server.txt /opt/codalab-worksheets
-COPY setup.sh /opt/codalab-worksheets
-RUN cd /opt/codalab-worksheets && ./setup.sh server
+COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
+WORKDIR /opt/codalab-worksheets
+RUN pip  install -U setuptools pip
+COPY . /opt/codalab-server/
+COPY ./worker /opt/codalab-worker/
+RUN cd /opt/codalab-server && pip install -r requirements-server.txt
+RUN pip install -e /opt/codalab-worker/
+RUN pip install -e /opt/codalab-server/
 
-# Install code
-COPY . /opt/codalab-worksheets
-
-ENV PATH="/opt/codalab-worksheets/codalab/bin:${PATH}"
 ENV CODALAB_HOME=/home/codalab
 
 EXPOSE 2900
 
-ENTRYPOINT ["/opt/codalab-worksheets/codalab/bin/cl"]
+ENTRYPOINT ["cl"]

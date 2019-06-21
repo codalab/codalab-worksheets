@@ -49,6 +49,7 @@ Thumbs.db
 *.pyproj
 *.suo
 .idea/
+.vscode/
 
 # Codalab-cli #
 ###############
