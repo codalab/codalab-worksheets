@@ -403,6 +403,7 @@ class CodalabArgs(argparse.Namespace):
         parser = cls._get_parser()
         args = cls()
         args.apply_environment(os.environ)
+        args.apply_defaults()
         parser.parse_args(namespace=args)
         return args
 
@@ -411,7 +412,7 @@ class CodalabArgs(argparse.Namespace):
             setattr(self, arg, None)
         self.root_dir = os.path.dirname(os.path.realpath(__file__))
 
-    def _apply_defaults(self):
+    def apply_defaults(self):
         for arg, default in self.DEFAULT_ARGS.items():
             if getattr(self, arg) is None:
                 setattr(self, arg, default)
@@ -423,7 +424,6 @@ class CodalabArgs(argparse.Namespace):
         for arg, var in self.ARG_TO_ENV_VAR.items():
             if var in env:
                 setattr(self, arg, env[var])
-        self._apply_defaults()
 
 
 class CodalabServiceManager(object):
@@ -439,6 +439,8 @@ class CodalabServiceManager(object):
             'CODALAB_MYSQL_PWD': args.mysql_password,
             'CODALAB_ROOT_USER': args.codalab_user,
             'CODALAB_ROOT_PWD': args.codalab_password,
+            'CODALAB_USERNAME': args.codalab_user,
+            'CODALAB_PASSWORD': args.codalab_password,
             'CODALAB_HTTP_PORT': args.http_port,
             'CODALAB_VERSION': args.version,
             'CODALAB_WORKER_NETWORK_NAME': '%s-worker-network' % args.instance_name,
@@ -632,7 +634,7 @@ class CodalabServiceManager(object):
 
         print("[CODALAB] ==> Creating initial worksheets")
         self.run_service_cmd(
-            "/opt/wait-for-it.sh rest-server:2900 -- cl logout && cl status && ((cl new home && cl new dashboard) || exit 0)",
+            "/opt/wait-for-it.sh rest-server:2900 -- cl logout && cl work localhost:: && ((cl new home && cl new dashboard) || exit 0)",
             root=(not self.args.codalab_home),
         )
 
