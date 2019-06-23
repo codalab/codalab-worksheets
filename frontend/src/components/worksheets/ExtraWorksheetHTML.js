@@ -14,14 +14,14 @@ let ExtraWorksheetHTML = () => (
         <div id='glossaryModal' className='modal' data-keyboard='true' tabIndex='-1'>
             <div className='modal-dialog'>
                 <div className='modal-content'>
-                    <div className='modal-header'>
+                    <div className='modal-header' style={{borderBottom: 0}}>
                         <button type='button' className='close' data-dismiss='modal'>
                             <span aria-hidden='true'>&times;</span>
                             <span className='sr-only'>Close</span>
                         </button>
                         <h4>Keyboard Shortcuts</h4>
                     </div>
-                    <div className='modal-body'>
+                    <div className='modal-body' style={{paddingTop: 0}}>
                         <table className='table table-striped'>
                             <tbody>
                                 <tr>
