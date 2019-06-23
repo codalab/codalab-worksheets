@@ -483,7 +483,9 @@ class BundleManager(object):
         The default is min(time quota the user has left, global max)
         """
         if not bundle.metadata.request_time:
-            return self._max_request_time
+            return min(
+                self._model.get_user_time_quota_left(bundle.owner_id) - 1, self._max_request_time
+            )
         return formatting.parse_duration(bundle.metadata.request_time)
 
     def _get_docker_image(self, bundle):

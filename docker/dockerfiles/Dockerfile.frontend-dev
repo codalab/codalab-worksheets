@@ -7,6 +7,9 @@ WORKDIR /opt/frontend
 RUN npm install react-scripts@1.1.1 -g
 
 COPY frontend/package*.json ./
+COPY frontend/graphics ./graphics
+COPY frontend/public ./public
+
 RUN npm install
 
 CMD [ "npm", "start" ]
