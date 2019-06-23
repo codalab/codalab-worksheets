@@ -22,18 +22,8 @@ let ExtraWorksheetHTML = () => (
                         <h4>Keyboard Shortcuts</h4>
                     </div>
                     <div className='modal-body'>
-                        <a href='http://terminal.jcubic.pl/api_reference.php' target='_blank'>
-                            {' '}
-                            More shortcuts for web terminal (see Keyboard shortcuts section){' '}
-                        </a>
                         <table className='table table-striped'>
                             <tbody>
-                                <tr>
-                                    <td>
-                                        <kbd>shift+c</kbd>
-                                    </td>
-                                    <td>Show/hide web terminal</td>
-                                </tr>
                                 <tr>
                                     <td>
                                         <kbd>e</kbd>
