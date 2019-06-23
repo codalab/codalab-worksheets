@@ -1,11 +1,9 @@
 import * as React from 'react';
 import classNames from 'classnames';
 import $ from 'jquery';
-import Immutable from 'seamless-immutable';
 
 import { withStyles } from '@material-ui/core/styles';
 import { MuiThemeProvider } from '@material-ui/core/styles';
-import Typography from '@material-ui/core/Typography';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Button from '@material-ui/core/Button';
@@ -20,11 +18,9 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import Link from '@material-ui/core/Link';
 import Snackbar from '@material-ui/core/Snackbar';
 import SnackbarContent from '@material-ui/core/SnackbarContent';
 
-import DashboardIcon from '@material-ui/icons/Dashboard'; // Home
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
 import GalleryIcon from '@material-ui/icons/Public'; // FindInPage
 import HowToIcon from '@material-ui/icons/Help'; // Info

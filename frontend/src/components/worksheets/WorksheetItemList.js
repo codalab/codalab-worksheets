@@ -11,9 +11,7 @@ import MarkdownItem from './items/MarkdownItem';
 import RecordItem from './items/RecordItem';
 import TableItem from './items/TableItem';
 import WorksheetItem from './items/WorksheetItem';
-import TextEditorItem from './items//TextEditorItem';
 import ItemWrapper from './items/ItemWrapper';
-import ColdStartItem from './items/ColdStartItem';
 
 ////////////////////////////////////////////////////////////
 

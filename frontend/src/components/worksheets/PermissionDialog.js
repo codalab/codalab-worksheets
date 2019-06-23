@@ -1,12 +1,10 @@
 // @flow
 import * as React from 'react';
-import $ from 'jquery';
 import Typography from '@material-ui/core/Typography';
 import NativeSelect from '@material-ui/core/NativeSelect';
 import IconButton from '@material-ui/core/IconButton';
 import CloseIcon from '@material-ui/icons/Close';
 import AddIcon from '@material-ui/icons/Add';
-import Popper from '@material-ui/core/Popper';
 import Paper from '@material-ui/core/Paper';
 import Input from '@material-ui/core/Input';
 import ErrorIcon from '@material-ui/icons/Error';
