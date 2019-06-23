@@ -23,7 +23,6 @@ services:
       context: ./../..
       dockerfile: docker/dockerfiles/Dockerfile.frontend-dev
     image: codalab/frontend-dev:${CODALAB_VERSION}
-    command: npm run start
     volumes:
       - ./../../frontend/src:/opt/frontend/src
     depends_on:
