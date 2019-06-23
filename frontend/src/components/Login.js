@@ -1,5 +1,4 @@
 import * as React from 'react';
-import classNames from 'classnames';
 import Immutable from 'seamless-immutable';
 import { Redirect } from 'react-router-dom';
 import SubHeader from './SubHeader';

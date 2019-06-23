@@ -1,7 +1,6 @@
 // @flow
 import * as React from 'react';
 import $ from 'jquery';
-import Paper from '@material-ui/core/Paper';
 import Button from '@material-ui/core/Button';
 import InputBase from '@material-ui/core/InputBase';
 import { withStyles } from '@material-ui/core/styles';

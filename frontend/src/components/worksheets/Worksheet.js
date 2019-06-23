@@ -1,5 +1,4 @@
 import * as React from 'react';
-import classNames from 'classnames';
 import $ from 'jquery';
 import _ from 'underscore';
 import Grid from '@material-ui/core/Grid';
@@ -9,8 +8,6 @@ import { keepPosInView, renderPermissions, getMinMaxKeys } from '../../util/work
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import WorksheetItemList from './WorksheetItemList';
 import { WorksheetEditableField } from '../EditableField';
-import HelpButton from '../HelpButton';
-import ContentWrapper from '../ContentWrapper';
 import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from './ExtraWorksheetHTML';
 import PermissionDialog from './PermissionDialog';
