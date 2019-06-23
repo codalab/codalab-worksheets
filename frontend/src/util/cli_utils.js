@@ -2,7 +2,7 @@
  * This module allows easy access with the server's CLI to run commands.
  */
 
-import $, { jQuery } from 'jquery';
+import $ from 'jquery';
 
 /**
  * @param command
