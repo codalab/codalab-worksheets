@@ -3,7 +3,6 @@
  */
 
 import $, { jQuery } from 'jquery';
-import _ from 'underscore';
 
 /**
  * @param command

@@ -1,14 +1,12 @@
 // @flow
 import * as React from 'react';
 import { withStyles } from '@material-ui/core';
-import Paper from '@material-ui/core/Paper';
 import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
 import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import Immutable from 'seamless-immutable';
 import { worksheetItemPropsChanged, getMinMaxKeys } from '../../../../util/worksheet_utils';
-import $ from 'jquery';
 import BundleRow from './BundleRow';
 
 class TableItem extends React.Component<{
