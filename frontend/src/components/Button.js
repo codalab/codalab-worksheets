@@ -1,5 +1,4 @@
 import * as React from 'react';
-import classNames from 'classnames';
 
 class Button extends React.Component {
     render() {

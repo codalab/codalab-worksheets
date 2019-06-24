@@ -1,14 +1,30 @@
 version: '3.5'
 
 services:
+  rest-server:
+    build:
+      context: ./../..
+      dockerfile: docker/dockerfiles/Dockerfile.server-dev
+    image: codalab/server-dev:${CODALAB_VERSION}
+    volumes:
+      - ./../..:/opt/codalab-worksheets
+
+  bundle-manager:
+    build:
+      context: ./../..
+      dockerfile: docker/dockerfiles/Dockerfile.server-dev
+    image: codalab/server-dev:${CODALAB_VERSION}
+    volumes:
+      - ./../..:/opt/codalab-worksheets
+      - ./../../worker/codalabworker:/opt/codalab-worker/codalabworker
+
   frontend:
     build:
       context: ./../..
       dockerfile: docker/dockerfiles/Dockerfile.frontend-dev
     image: codalab/frontend-dev:${CODALAB_VERSION}
-    command: npm run start
     volumes:
-      - ./../../frontend:/opt/frontend
+      - ./../../frontend/src:/opt/frontend/src
     depends_on:
       - rest-server
     networks:

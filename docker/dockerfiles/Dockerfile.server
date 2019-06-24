@@ -18,6 +18,7 @@ RUN apt-get update; apt-get install -y \
     zip;
 
 # Install dependencies
+RUN pip install --upgrade pip MySQL-python
 COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
 RUN mkdir /opt/codalab-worksheets
 COPY worker /opt/codalab-worksheets/worker
@@ -28,6 +29,9 @@ RUN cd /opt/codalab-worksheets && ./setup.sh server
 
 # Install code
 COPY . /opt/codalab-worksheets
+
+RUN pip install -e /opt/codalab-worksheets/worker/
+RUN pip install -e /opt/codalab-worksheets/
 
 ENV PATH="/opt/codalab-worksheets/codalab/bin:${PATH}"
 ENV CODALAB_HOME=/home/codalab
