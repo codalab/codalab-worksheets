@@ -299,6 +299,7 @@ class WorkerModel(object):
         """
         start_time = time.time()
         while time.time() - start_time < timeout_secs:
+            backoff = 0.003
             with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
                 sock.settimeout(timeout_secs)
 
@@ -323,8 +324,8 @@ class WorkerModel(object):
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
-                    # TODO: maybe exponential backoff
-                    time.sleep(0.3) # changed from 0.003 to keep from rate-limiting due to dead workers
+                    time.sleep(backoff)
+                    backoff *= 2
                     continue
 
                 if not autoretry:
