@@ -745,7 +745,7 @@ class BundleModel(object):
 
             return True
 
-    def start_bundle(self, bundle, user_id, worker_id, hostname, start_time):
+    def start_bundle(self, bundle, user_id, worker_id, start_time, remote):
         """
         Marks the bundle as running but only if it is still scheduled to run
         on the given worker (done by checking the worker_run table). Returns
@@ -761,7 +761,7 @@ class BundleModel(object):
 
             bundle_update = {
                 'state': State.PREPARING,
-                'metadata': {'remote': hostname, 'started': start_time, 'last_updated': start_time},
+                'metadata': {'started': start_time, 'last_updated': start_time, 'remote': remote},
             }
             self.update_bundle(bundle, bundle_update, connection)
 
@@ -775,7 +775,7 @@ class BundleModel(object):
 
         return True
 
-    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id, hostname):
+    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id):
         '''
         Updates the database tables with the most recent bundle information from worker
         '''
@@ -790,9 +790,7 @@ class BundleModel(object):
 
             if state == State.FINALIZING:
                 # update bundle metadata using resume_bundle one last time before finalizing it
-                self.resume_bundle(
-                    bundle, bundle_update, row, user_id, worker_id, hostname, connection
-                )
+                self.resume_bundle(bundle, bundle_update, row, user_id, worker_id, connection)
                 return self.finalize_bundle(
                     bundle,
                     user_id,
@@ -802,13 +800,13 @@ class BundleModel(object):
                 )
             elif state in [State.PREPARING, State.RUNNING]:
                 return self.resume_bundle(
-                    bundle, bundle_update, row, user_id, worker_id, hostname, connection
+                    bundle, bundle_update, row, user_id, worker_id, connection
                 )
             else:
                 # State isn't one we can check in for
                 return False
 
-    def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, hostname, connection):
+    def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, connection):
         '''
         Marks the bundle as running. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
         Updates a few metadata fields and the events log.
@@ -831,6 +829,7 @@ class BundleModel(object):
             'run_status': bundle_update['run_status'],
             'last_updated': int(time.time()),
             'time': time.time() - bundle_update['start_time'],
+            'remote': bundle_update['remote'],
         }
 
         if bundle_update['docker_image'] is not None:
@@ -2153,6 +2152,7 @@ class BundleModel(object):
                         "is_verified": is_verified,
                         "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
+                        "time_quota": self.default_user_info['time_quota'],
                         "parallel_run_quota": self.default_user_info['parallel_run_quota'],
                         "time_used": 0,
                         "disk_quota": self.default_user_info['disk_quota'],
@@ -2379,6 +2379,12 @@ class BundleModel(object):
         user_info = self.get_user_info(user_id)
         user_info['time_used'] += amount
         self.update_user_info(user_info)
+
+    def get_user_time_quota_left(self, user_id):
+        user_info = self.get_user_info(user_id)
+        time_quota = user_info['time_quota']
+        time_used = user_info['time_used']
+        return time_quota - time_used
 
     def get_user_parallel_run_quota_left(self, user_id):
         user_info = self.get_user_info(user_id)

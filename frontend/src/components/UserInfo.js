@@ -1,5 +1,4 @@
 import * as React from 'react';
-import classNames from 'classnames';
 import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import _ from 'underscore';
