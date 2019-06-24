@@ -26,7 +26,7 @@ def get_target_info(bundle_path, uuid, path, depth):
     """
     final_path = _get_normalized_target_path(bundle_path, uuid, path)
 
-    if not os.path.islink(final_path) and not os.path.exists(final_path):
+    if not os.path.exists(final_path):
         return None
 
     return _compute_target_info(final_path, depth)

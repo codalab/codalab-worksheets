@@ -3,6 +3,7 @@ import sys
 from contextlib import closing
 
 from codalab.common import http_error_to_exception, precondition, State, UsageError, NotFoundError
+from codalab.lib import cache
 from codalabworker import download_util
 from codalabworker import file_util
 
@@ -36,14 +37,22 @@ class DownloadManager(object):
     Note, this class does not check permissions in any way. The caller is
     responsible for doing all required permissions checks.
     """
-
     def __init__(self, bundle_model, worker_model, bundle_store):
         self._bundle_model = bundle_model
         self._worker_model = worker_model
         self._bundle_store = bundle_store
+        self.cache_init()
+
+    def cache_init(self):
+        self._bundle_state_cache = {}  # dict of <bundle uuid> => <bundle state>
+        self._bundle_worker_cache = {}  # dict of <bundle uuid> => { user_id, worker_id, socket_id }
+        self._bundle_location_cache = {}  # dict of <bundle uuid> => <bundle path on disk>
 
     @retry_if_no_longer_running
-    def get_target_info(self, uuid, path, depth):
+    def get_target_info(self, *args, **kwargs):
+        return self._get_target_info(*args, **kwargs)
+
+    def _get_target_info(self, uuid, path, depth):
         """
         Returns information about an individual target inside the bundle, or
         None if the target or bundle doesn't exist.
@@ -52,25 +61,24 @@ class DownloadManager(object):
         worker.download_util.get_target_info.
         """
         try:
-            bundle_state = self._bundle_model.get_bundle_state(uuid)
+            bundle_state = self.get_bundle_state(uuid)
         except NotFoundError:
             bundle_state = None
 
         # Return None if invalid bundle reference
         if bundle_state is None:
             return None
-        elif bundle_state != State.RUNNING:
-            bundle_path = self._bundle_store.get_bundle_location(uuid)
+
+        if self._is_available_locally(uuid):
+            bundle_path = self.get_bundle_location(uuid)
             try:
-                return download_util.get_target_info(bundle_path, uuid, path, depth)
+                key = (bundle_path, uuid, path, depth)
+                return self._cached_if_stable(uuid, 'target_info', key, lambda: download_util.get_target_info(*key))
             except download_util.PathException as e:
                 raise UsageError(e.message)
         else:
-            # get_target_info calls are sent to the worker even on a shared file
-            # system since 1) due to NFS caching the worker has more up to date
-            # information on directory contents, and 2) the logic of hiding
-            # the dependency paths doesn't need to be re-implemented here.
-            worker = self._worker_model.get_bundle_worker(uuid)
+            # TODO: validate that this is a reasonable approach
+            worker = self.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
                 read_args = {
@@ -90,7 +98,10 @@ class DownloadManager(object):
                 self._worker_model.deallocate_socket(response_socket_id)
 
     @retry_if_no_longer_running
-    def stream_tarred_gzipped_directory(self, uuid, path):
+    def stream_tarred_gzipped_directory(self, *args, **kwargs):
+        return self._stream_tarred_gzipped_directory(*args, **kwargs)
+
+    def _stream_tarred_gzipped_directory(self, uuid, path):
         """
         Returns a file-like object containing a tarred and gzipped archive
         of the given directory.
@@ -99,7 +110,7 @@ class DownloadManager(object):
             directory_path = self._get_target_path(uuid, path)
             return file_util.tar_gzip_directory(directory_path)
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
                 read_args = {
@@ -113,7 +124,10 @@ class DownloadManager(object):
                 raise
 
     @retry_if_no_longer_running
-    def stream_file(self, uuid, path, gzipped):
+    def stream_file(self, *args, **kwargs):
+        return self._stream_file(*args, **kwargs)
+
+    def _stream_file(self, uuid, path, gzipped):
         """
         Returns a file-like object reading the given file. This file is gzipped
         if gzipped is True.
@@ -125,7 +139,7 @@ class DownloadManager(object):
             else:
                 return open(file_path)
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
                 read_args = {
@@ -141,7 +155,10 @@ class DownloadManager(object):
                 raise
 
     @retry_if_no_longer_running
-    def read_file_section(self, uuid, path, offset, length, gzipped):
+    def read_file_section(self, *args, **kwargs):
+        return self._read_file_section(*args, **kwargs)
+
+    def _read_file_section(self, uuid, path, offset, length, gzipped):
         """
         Reads length bytes of the file at the given path in the bundle.
         The result is gzipped if gzipped is True.
@@ -153,7 +170,7 @@ class DownloadManager(object):
                 string = file_util.gzip_string(string)
             return string
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
                 read_args = {
@@ -171,7 +188,10 @@ class DownloadManager(object):
             return string
 
     @retry_if_no_longer_running
-    def summarize_file(self, uuid, path, num_head_lines, num_tail_lines, max_line_length, truncation_text, gzipped):
+    def summarize_file(self, *args, **kwargs):
+        return self._summarize_file(*args, **kwargs)
+
+    def _summarize_file(self, uuid, path, num_head_lines, num_tail_lines, max_line_length, truncation_text, gzipped):
         """
         Summarizes the file at the given path in the bundle, returning a string
         containing the given numbers of lines from beginning and end of the file.
@@ -181,12 +201,17 @@ class DownloadManager(object):
         """
         if self._is_available_locally(uuid):
             file_path = self._get_target_path(uuid, path)
-            string = file_util.summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text)
+
+            # If the bundle is not running, the contents are immutable and we can save time by going to the cache
+            key = (file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text)
+            summarize = lambda: file_util.summarize_file(*key)
+            string = self._cached_if_stable(uuid, 'summarize_file', key, summarize)
+
             if gzipped:
                 string = file_util.gzip_string(string)
             return string
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
                 read_args = {
@@ -209,7 +234,7 @@ class DownloadManager(object):
         """
         Sends a raw bytestring into the specified port of a running bundle, then return the response.
         """
-        worker = self._worker_model.get_bundle_worker(uuid)
+        worker = self.get_bundle_worker(uuid)
         response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
         try:
             self._send_netcat_message(worker, response_socket_id, uuid, port, message)
@@ -220,9 +245,9 @@ class DownloadManager(object):
         return string
 
     def _is_available_locally(self, uuid):
-        if self._bundle_model.get_bundle_state(uuid) == State.RUNNING:
+        if self.get_bundle_state(uuid) == State.RUNNING:
             if self._worker_model.shared_file_system:
-                worker = self._worker_model.get_bundle_worker(uuid)
+                worker = self.get_bundle_worker(uuid)
                 return worker['user_id'] == self._bundle_model.root_user_id
             else:
                 return False
@@ -230,9 +255,11 @@ class DownloadManager(object):
         return True
 
     def _get_target_path(self, uuid, path):
-        bundle_path = self._bundle_store.get_bundle_location(uuid)
+        bundle_path = self.get_bundle_location(uuid)
         try:
-            return download_util.get_target_path(bundle_path, uuid, path)
+            key = (bundle_path, uuid, path)
+            get_target_path = lambda: download_util.get_target_path(*key)
+            return self._cached_if_stable(uuid, 'target_path', key, get_target_path)
         except download_util.PathException as e:
             raise UsageError(e.message)
 
@@ -272,6 +299,28 @@ class DownloadManager(object):
     def _get_read_response_string(self, response_socket_id):
         with closing(self._get_read_response_stream(response_socket_id)) as fileobj:
             return fileobj.read()
+
+    def get_bundle_location(self, uuid):
+        return self._cached_by_session(self._bundle_location_cache, uuid, lambda: self._bundle_store.get_bundle_location(uuid))
+
+    def get_bundle_state(self, uuid):
+        return self._cached_by_session(self._bundle_state_cache, uuid, lambda: self._bundle_model.get_bundle_state(uuid))
+
+    def get_bundle_worker(self, uuid):
+        return self._cached_by_session(self._bundle_worker_cache, uuid, lambda: self._worker_model.get_bundle_worker(uuid))
+
+    def _cached_if_stable(self, uuid, namespace, key, f):
+        # If the bundle is in a final state, the contents are immutable and we
+        # can save time by going to the cache
+        if self.get_bundle_state(uuid) in State.FINAL_STATES:
+            return cache.get_or_compute(namespace, key, f)
+        else:
+            return f()
+
+    def _cached_by_session(self, session_cache, key, f):
+        if key not in session_cache:
+            session_cache[key] = f()
+        return session_cache[key]
 
 
 class Deallocating(object):
