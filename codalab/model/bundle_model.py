@@ -789,8 +789,9 @@ class BundleModel(object):
             if application_insights_instrumentation_key:
                 from applicationinsights import TelemetryClient
                 tc = TelemetryClient(application_insights_instrumentation_key)
-                msg = "Codalab job failed for bundle {}: {}! TODO: Add more details here.".format(bundle.uuid, failure_message)
-                tc.track_event('Codalab job failed', { 'msg': msg })
+                msg = "Codalab job failed for bundle {} ({}): {}!".format(bundle.uuid, bundle.metadata.name, failure_message)
+                url = "https://codalab.semanticmachines.com/bundles/{}".format(bundle.uuid)
+                tc.track_event('Codalab job failed', { 'msg': msg, 'url': url })
                 tc.flush()
 
         self.update_events_log(
