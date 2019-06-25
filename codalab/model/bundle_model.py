@@ -789,7 +789,7 @@ class BundleModel(object):
             if application_insights_instrumentation_key:
                 from applicationinsights import TelemetryClient
                 tc = TelemetryClient(application_insights_instrumentation_key)
-                msg = ":x: Codalab job failed for bundle {}: {}! TODO: Add more details here.".format(bundle.uuid, failure_message)
+                msg = "Codalab job failed for bundle {}: {}! TODO: Add more details here.".format(bundle.uuid, failure_message)
                 tc.track_event('Codalab job failed', { 'msg': msg })
                 tc.flush()
 
