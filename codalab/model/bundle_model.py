@@ -6,6 +6,7 @@ import collections
 import datetime
 import json
 import re
+import os
 import time
 import uuid
 
@@ -780,6 +781,26 @@ class BundleModel(object):
         if user_id == self.root_user_id:
             self.increment_user_time_used(bundle.owner_id,
                                           getattr(bundle.metadata, 'time', 0))
+
+        application_insights_instrumentation_key = os.environ.get('APPLICATION_INSIGHTS_INSTRUMENTATION_KEY')
+        if failure_message is not None:
+            # Post event to Application Insights if APPLICATION_INSIGHTS_INSTRUMENTATION_KEY env var is specified.
+            application_insights_instrumentation_key = os.environ.get('APPLICATION_INSIGHTS_INSTRUMENTATION_KEY')
+            if application_insights_instrumentation_key:
+                from applicationinsights import TelemetryClient
+                tc = TelemetryClient(application_insights_instrumentation_key)
+                
+                msg = "Bundle {} ('{}') failed after {} sec: {} (exit code {})".format(
+                    bundle.uuid, 
+                    getattr(bundle.metadata, 'name', ''), 
+                    getattr(bundle.metadata, 'time', 0), 
+                    failure_message, 
+                    getattr(bundle.metadata, 'exitcode', '?')
+                )
+                url = "https://codalab.semanticmachines.com/bundles/{}".format(bundle.uuid)
+                
+                tc.track_event('Codalab job failed', { 'msg': msg, 'url': url })
+                tc.flush()
 
         self.update_events_log(
             user_id=bundle.owner_id,
