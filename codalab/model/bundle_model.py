@@ -784,13 +784,21 @@ class BundleModel(object):
 
         application_insights_instrumentation_key = os.environ.get('APPLICATION_INSIGHTS_INSTRUMENTATION_KEY')
         if failure_message is not None:
-            # Post event to Applciation Insights if APPLICATION_INSIGHTS_INSTRUMENTATION_KEY env var is specified.
+            # Post event to Application Insights if APPLICATION_INSIGHTS_INSTRUMENTATION_KEY env var is specified.
             application_insights_instrumentation_key = os.environ.get('APPLICATION_INSIGHTS_INSTRUMENTATION_KEY')
             if application_insights_instrumentation_key:
                 from applicationinsights import TelemetryClient
                 tc = TelemetryClient(application_insights_instrumentation_key)
-                msg = "Codalab job failed for bundle {} ({}): {}!".format(bundle.uuid, bundle.metadata.name, failure_message)
+                
+                msg = "Bundle {} ('{}') failed after {} sec: {} (exit code {})".format(
+                    bundle.uuid, 
+                    getattr(bundle.metadata, 'name', ''), 
+                    getattr(bundle.metadata, 'time', 0), 
+                    failure_message, 
+                    getattr(bundle.metadata, 'exitcode', '?')
+                )
                 url = "https://codalab.semanticmachines.com/bundles/{}".format(bundle.uuid)
+                
                 tc.track_event('Codalab job failed', { 'msg': msg, 'url': url })
                 tc.flush()
 
