@@ -23,26 +23,28 @@ def wrap_exception(message):
             except RestClientException as e:
                 raise BundleServiceException(message + ': ' + e.message, e.client_error)
             except urllib2.HTTPError as e:
-                client_error = json.load(e)
-
-                if client_error['error'] == 'invalid_grant':
-                    raise BundleAuthException(
-                        message
-                        + ': '
-                        + httplib.responses[e.code]
-                        + ' - '
-                        + json.dumps(client_error),
-                        True,
-                    )
-                else:
-                    raise BundleServiceException(
-                        message
-                        + ': '
-                        + httplib.responses[e.code]
-                        + ' - '
-                        + json.dumps(client_error),
-                        e.code >= 400 and e.code < 500,
-                    )
+                try:
+                    client_error = json.load(e)
+                    if client_error['error'] == 'invalid_grant':
+                        raise BundleAuthException(
+                            message
+                            + ': '
+                            + httplib.responses[e.code]
+                            + ' - '
+                            + json.dumps(client_error),
+                            True,
+                        )
+                    else:
+                        raise BundleServiceException(
+                            message
+                            + ': '
+                            + httplib.responses[e.code]
+                            + ' - '
+                            + json.dumps(client_error),
+                            e.code >= 400 and e.code < 500,
+                        )
+                except Exception:
+                    raise BundleServiceException(message + ': ' + str(e), False)
             except (urllib2.URLError, httplib.HTTPException, socket.error) as e:
                 raise BundleServiceException(message + ': ' + str(e), False)
 
