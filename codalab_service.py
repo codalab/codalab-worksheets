@@ -180,7 +180,7 @@ class CodalabArgs(argparse.Namespace):
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
-                '--dev-images',
+                '--dev',
                 '-d',
                 action='store_true',
                 help='If specified, use dev versions of images',
