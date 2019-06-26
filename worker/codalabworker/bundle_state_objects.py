@@ -154,13 +154,14 @@ class WorkerRun(object):
     Defines all the field the worker needs to check in with the server for its runs
     """
 
-    def __init__(self, uuid, run_status, start_time, docker_image, info, state):
+    def __init__(self, uuid, run_status, start_time, docker_image, info, state, remote):
         self.uuid = uuid
         self.run_status = run_status
         self.start_time = start_time
         self.docker_image = docker_image
         self.info = info
         self.state = state
+        self.remote = remote
 
     @classmethod
     def from_dict(cls, dct):
@@ -171,6 +172,7 @@ class WorkerRun(object):
             docker_image=dct['docker_image'],
             info=dct['info'],
             state=dct['state'],
+            remote=dct['remote'],
         )
 
     def to_dict(self):

@@ -70,6 +70,7 @@ class SlurmRun(object):
             docker_image=self.resources.docker_image,
             info={},  # should have 'exitcode' and 'failure_message' fields if run fails
             state=State.PREPARING,
+            remote='codalab',  # TODO: This should be node name, but for now that is set run manager-side
         )
         self.docker_client = docker.from_env()
         self.docker_runtime = "nvidia" if self.resources.gpus else "runc"

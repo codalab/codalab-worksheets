@@ -57,15 +57,17 @@ class SlurmRunManager(BaseRunManager):
         if uuid in self.run_jobs:
             job_name = self.run_jobs[uuid]
             squeue_command = 'squeue -o \%A -h -n {}'.format(job_name)
-            job_id = subprocess.check_output(squeue_command)
+            # Setting shell=True since squeue needs to be on PATH
+            job_id = subprocess.check_output(squeue_command, shell=True)
             return jobid
         return None
 
     def get_host(self, uuid):
         if uuid in self.run_jobs:
             job_name = self.run_jobs[uuid]
-            squeue_command = 'squeue -o \%B -h -n {}'.format(jobname)
-            job_host = subprocess.check_output(squeue_command)
+            squeue_command = 'squeue -o \%B -h -n {}'.format(job_name)
+            # Setting shell=True since squeue needs to be on PATH
+            job_host = subprocess.check_output(squeue_command, shell=True)
             return job_host
         return None
 
@@ -308,6 +310,7 @@ class SlurmRunManager(BaseRunManager):
             try:
                 with open(state_path, "r") as f:
                     run_state = WorkerRun.from_dict(json.load(f))
+                    run_state.remote = self.get_host(run_state.uuid)
                 return run_state
             except Exception as ex:
                 num_retries -= 1
