@@ -84,7 +84,7 @@ class CodalabArgs(argparse.Namespace):
         'http_port': '80',
         'rest_port': '2900',
         'frontend_port': None,
-        'mysql_port': '3306',
+        'mysql_port': None,
         'use_ssl': False,
         'ssl_cert_file': None,
         'ssl_key_file': None,
@@ -672,9 +672,10 @@ class CodalabServiceManager(object):
         self.bring_up_service('worker')
 
     def build_images(self):
-        for image in self.ALL_IMAGES:
-            if should_build_image(self.args, image):
-                self.build_image(image)
+        images_to_build = [image for image in self.ALL_IMAGES if should_build_image(self.args, image)]
+
+        for image in images_to_build:
+            self.build_image(image)
 
         if self.args.push:
             self._run_docker_cmd(
@@ -691,27 +692,6 @@ class CodalabServiceManager(object):
             'CODALAB_USERNAME': self.args.codalab_user,
             'CODALAB_PASSWORD': self.args.codalab_password,
         }
-        if self.args.external_db_url:
-            mysql_url = 'mysql://%s:%s@%s/codalab_bundles' % (
-                self.args.mysql_user,
-                self.args.mysql_password,
-                self.args.external_db_url,
-            )
-        else:
-            if not self.args.mysql_port:
-                raise Exception(
-                    'ERROR: Tests fired without an external DB URL or MySQL port exposed to host, "events" tests will fail.'
-                )
-            mysql_url = 'mysql://%s:%s@127.0.0.1:%s/codalab_bundles' % (
-                self.args.mysql_user,
-                self.args.mysql_password,
-                self.args.mysql_port,
-            )
-        subprocess.check_call(
-            '%s config server/engine_url %s' % (test_cli.cl, mysql_url),
-            env=codalab_client_env,
-            shell=True,
-        )
         subprocess.check_call(
             '%s work %s::' % (test_cli.cl, instance), env=codalab_client_env, shell=True
         )
