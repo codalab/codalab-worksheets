@@ -51,8 +51,8 @@ class DockerImageManager:
             self._image_cache = self._state_committer.load()
 
     def start(self):
+        logger.info("Starting docker image manager")
         if self._max_image_cache_size:
-
             def cleanup_loop(self):
                 while not self._stop:
                     try:
@@ -73,11 +73,11 @@ class DockerImageManager:
         if self._cleanup_thread:
             logger.debug("Stopping docker image manager: stop the cleanup thread")
             self._cleanup_thread.join()
-        logger.info("Stopped docker image manager.")
+        logger.info("Stopped docker image manager")
 
     def _cleanup(self):
         """
-        Prunes the image cache for runs
+        Prunes the image cache for runs.
         1. Only care about images we (this DockerImageManager) downloaded and know about
         2. We use sum of VirtualSize's, which is an upper bound on the disk use of our images:
             in case no images share any intermediate layers, this will be the real disk use,
@@ -90,7 +90,6 @@ class DockerImageManager:
             but because of (1) we don't want to use that.
         """
         while not self._stop:
-            time.sleep(self._sleep_secs)
             deletable_entries = set(self._image_cache.values())
             disk_use = sum(cache_entry.virtual_size for cache_entry in deletable_entries)
             while disk_use > self._max_image_cache_size:
@@ -194,7 +193,6 @@ class DockerImageManager:
                     self._downloading.remove(image_spec)
                     return status
         else:
-
             def download():
                 logger.debug('Downloading Docker image %s', image_spec)
                 try:

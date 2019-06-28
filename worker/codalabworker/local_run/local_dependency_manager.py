@@ -126,6 +126,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         )
 
     def start(self):
+        logger.info('Starting local dependency manager')
         def loop(self):
             while not self._stop:
                 try:
@@ -135,16 +136,17 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     self._save_state()
                 except Exception:
                     traceback.print_exc()
+                time.sleep(1)
 
         self._main_thread = threading.Thread(target=loop, args=[self])
         self._main_thread.start()
 
     def stop(self):
-        logger.info("Stopping local dependency manager")
+        logger.info('Stopping local dependency manager')
         self._stop = True
         self._downloading.stop()
         self._main_thread.join()
-        logger.info("Stopped local dependency manager. Exiting.")
+        logger.info('Stopped local dependency manager')
 
     def _process_dependencies(self):
         for entry, state in self._dependencies.items():
@@ -153,8 +155,8 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
     def _prune_failed_dependencies(self):
         """
-        Prune failed dependencies older than 10 seconds so that further runs
-        get to retry the download. Without pruning any future run depending on a
+        Prune failed dependencies older than DEPENDENCY_FAILURE_COOLDOWN seconds so that further runs
+        get to retry the download. Without pruning, any future run depending on a
         failed dependency would automatically fail indefinitely.
         """
         with self._global_lock:
@@ -172,7 +174,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
     def _cleanup(self):
         """
-        Prune failed dependencies older than 10 seconds
+        Prune failed dependencies older than DEPENDENCY_FAILURE_COOLDOWN seconds.
         Limit the disk usage of the dependencies (both the bundle files and the serialized state file size)
         Deletes oldest failed dependencies first and then oldest finished dependencies.
         Doesn't touch downloading dependencies.
