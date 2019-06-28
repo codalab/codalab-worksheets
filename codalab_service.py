@@ -84,7 +84,7 @@ class CodalabArgs(argparse.Namespace):
         'http_port': '80',
         'rest_port': '2900',
         'frontend_port': None,
-        'mysql_port': None,
+        'mysql_port': '3306',
         'use_ssl': False,
         'ssl_cert_file': None,
         'ssl_key_file': None,
@@ -194,19 +194,19 @@ class CodalabArgs(argparse.Namespace):
             cmd.add_argument(
                 '--mysql-port',
                 type=str,
-                help='Port for the MYSQL database to listen on (by default it is not exposed to the host machine)',
+                help='Port for the MySQL database to listen on (by default it is not exposed to the host machine)',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
                 '--mysql-user',
                 type=str,
-                help='MYSQL username for the Codalab MYSQL client',
+                help='MySQL username for the CodaLab MySQL client',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
                 '--mysql-password',
                 type=str,
-                help='MYSQL password for the Codalab MYSQL client',
+                help='MySQL password for the CodaLab MySQL client',
                 default=argparse.SUPPRESS,
             )
 
@@ -699,8 +699,8 @@ class CodalabServiceManager(object):
             )
         else:
             if not self.args.mysql_port:
-                raise (
-                    'ERROR: Tests fired without an external DB URL or MYSQL port exposed to host, "events" tests will fail.'
+                raise Exception(
+                    'ERROR: Tests fired without an external DB URL or MySQL port exposed to host, "events" tests will fail.'
                 )
             mysql_url = 'mysql://%s:%s@127.0.0.1:%s/codalab_bundles' % (
                 self.args.mysql_user,
