@@ -1,5 +1,10 @@
 #! /usr/bin/python2.7
 
+"""
+The main entry point for bringing up CodaLab services.  This is used for both
+local development and actual deployment.
+"""
+
 import argparse
 import errno
 import os
@@ -7,12 +12,49 @@ import subprocess
 import sys
 import test_cli
 
+SERVICES = [
+    'mysql',
+    'nginx',
+    'frontend',
+    'rest-server',
+    'bundle-manager',
+    'worker',
+]
+
+SERVICE_TO_IMAGE = {
+    'frontend': 'frontend',
+    'rest-server': 'server',
+    'bundle-manager': 'server',
+    'worker': 'worker',
+}
+
+def print_header(description):
+    print('[CodaLab] {}'.format(description))
+
+def should_run_service(args, service):
+    # `all` is generally used to bring up everything for local dev or quick testing.
+    # `all-but-worker` is generally used for real deployment since we don't
+    # want a worker running on the same machine.
+    return service in args.services or \
+           'all' in args.services or \
+           ('all-but-worker' in args.services and service != 'worker')
+
+def should_build_image(args, image):
+    if image in args.images:
+        return True
+    if 'all' in args.images:
+        return True
+    if 'services' in args.images:
+        # Build all images that are correspond to the services we're running
+        for service, service_image in SERVICE_TO_IMAGE.items():
+            if should_run_service(args, service) and image == service_image:
+                return True
+    return False
 
 def main():
     args = CodalabArgs.get_args()
     service_manager = CodalabServiceManager(args)
     service_manager.execute()
-
 
 class CodalabArgs(argparse.Namespace):
     DEFAULT_ARGS = {
@@ -21,12 +63,12 @@ class CodalabArgs(argparse.Namespace):
         'push': False,
         'docker_user': None,
         'docker_password': None,
-        'build_locally': False,
-        'image': 'service',
+        'build_images': False,
+        'images': ['services'],
         'external_db_url': None,
         'test_build': False,
         'user_compose_file': None,
-        'start_worker': False,
+        'services': ['all'],
         'root_dir': None,
         'instance_name': 'codalab',
         'mysql_root_password': 'codalab',
@@ -59,7 +101,6 @@ class CodalabArgs(argparse.Namespace):
         'docker_user': 'DOCKER_USER',
         'docker_password': 'DOCKER_PWD',
         'user_compose_file': 'CODALAB_USER_COMPOSE_FILE',
-        'start_worker': 'CODALAB_START_WORKER',
         'mysql_root_password': 'CODALAB_MYSQL_ROOT_PWD',
         'mysql_user': 'CODALAB_MYSQL_USER',
         'mysql_password': 'CODALAB_MYSQL_PWD',
@@ -183,7 +224,7 @@ class CodalabArgs(argparse.Namespace):
                 '--dev',
                 '-d',
                 action='store_true',
-                help='If specified, use dev versions of images',
+                help='If specified, mount local code for frontend so that changes are reflected right away',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
@@ -206,12 +247,12 @@ class CodalabArgs(argparse.Namespace):
             )
 
         build_cmd.add_argument(
-            'image',
-            default='service',
-            help='Images to build. \'service\' for server-side images (server, frontend, worker) \
+            'images',
+            default=['services'],
+            help='Images to build. \'services\' for server-side images (frontend, server, worker) \
                     \'all\' for those and the default execution images',
-            choices=CodalabServiceManager.ALL_IMAGES + ['all', 'service'],
-            nargs='?',
+            choices=CodalabServiceManager.ALL_IMAGES + ['all', 'services'],
+            nargs='*',
         )
 
         #  DEPLOYMENT SETTINGS
@@ -224,10 +265,10 @@ class CodalabArgs(argparse.Namespace):
             )
 
         start_cmd.add_argument(
-            '--build-locally',
+            '--build-images',
             '-b',
             action='store_true',
-            help='If specified, build VERSION using local code.',
+            help='If specified, build Docker images using local code.',
             default=argparse.SUPPRESS,
         )
         start_cmd.add_argument(
@@ -244,10 +285,11 @@ class CodalabArgs(argparse.Namespace):
             default=argparse.SUPPRESS,
         )
         start_cmd.add_argument(
-            '--start-worker',
-            '-w',
-            action='store_true',
-            help='If specified, start a CodaLab worker on this machine.',
+            '--services',
+            '-s',
+            nargs='*',
+            help='List of services to run',
+            choices=SERVICES + ['all', 'all-but-worker', 'init'],
             default=argparse.SUPPRESS,
         )
 
@@ -338,15 +380,7 @@ class CodalabArgs(argparse.Namespace):
             nargs='*',
             default='all',
             help='Services to print logs for',
-            choices=[
-                'mysql',
-                'rest-server',
-                'bundle-manager',
-                'frontend',
-                'nginx',
-                'worker',
-                'all',
-            ],
+            choices=SERVICES + ['all'],
         )
         logs_cmd.add_argument(
             '--follow',
@@ -381,15 +415,7 @@ class CodalabArgs(argparse.Namespace):
             'service',
             metavar='SERVICE',
             type=str,
-            choices=[
-                'mysql',
-                'rest-server',
-                'bundle-manager',
-                'frontend',
-                'nginx',
-                'worker',
-                'all',
-            ],
+            choices=SERVICES + ['all'],
             help='Service container to run command on',
         )
         run_cmd.add_argument('cmd', metavar='CMD', type=str, help='Command to run')
@@ -442,7 +468,7 @@ class CodalabServiceManager(object):
             'CODALAB_HTTP_PORT': args.http_port,
             'CODALAB_VERSION': args.version,
             'CODALAB_WORKER_NETWORK_NAME': '%s-worker-network' % args.instance_name,
-            'PATH': os.environ['PATH'],
+            #'PATH': os.environ['PATH'],
         }
         if args.uid:
             environment['CODALAB_UID'] = args.uid
@@ -454,7 +480,7 @@ class CodalabServiceManager(object):
             environment['CODALAB_SERVICE_HOME'] = '/home/codalab'
         if args.mysql_mount:
             environment['CODALAB_MYSQL_MOUNT'] = args.mysql_mount
-        if args.start_worker:
+        if should_run_service(args, 'worker'):
             environment['CODALAB_WORKER_DIR'] = args.worker_dir
         if args.rest_port:
             environment['CODALAB_REST_PORT'] = args.rest_port
@@ -484,7 +510,7 @@ class CodalabServiceManager(object):
             compose_files.append('docker-compose.mysql_mount.yml')
         if args.bundle_stores:
             compose_files.append('docker-compose.bundle_mounts.yml')
-        if args.start_worker:
+        if should_run_service(args, 'worker'):
             compose_files.append('docker-compose.worker.yml')
         if args.frontend_port:
             compose_files.append('docker-compose.frontend_port.yml')
@@ -509,7 +535,7 @@ class CodalabServiceManager(object):
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
-        if self.args.start_worker:
+        if should_run_service(self.args, 'worker'):
             try:
                 os.makedirs(self.args.worker_dir)
             except OSError as e:
@@ -529,10 +555,10 @@ class CodalabServiceManager(object):
                     raise
 
     def execute(self):
-        if self.command == 'build' or (self.command == 'start' and self.args.build_locally):
-            self.build()
+        if self.command == 'build' or (self.command == 'start' and self.args.build_images):
+            self.build_images()
         if self.command == 'start':
-            self.start_service()
+            self.start_services()
             if self.args.test_build:
                 self.test()
         elif self.command == 'run':
@@ -554,7 +580,7 @@ class CodalabServiceManager(object):
             self.test()
 
     def build_image(self, image):
-        print("[CODALAB] ==> Building %s image " % image)
+        print_header('Building {} image'.format(image))
         self._run_docker_cmd(
             'build -t codalab/%s:%s -f docker/dockerfiles/Dockerfile.%s .'
             % (image, self.args.version, image)
@@ -565,7 +591,7 @@ class CodalabServiceManager(object):
 
     def _run_docker_cmd(self, cmd):
         command_string = 'docker ' + cmd
-        print('cd {}; {}'.format(self.root_dir, command_string))
+        print('(cd {}; {})'.format(self.root_dir, command_string))
         if not self.args.dry_run:
             subprocess.check_call(command_string, shell=True, cwd=self.root_dir)
         print('')
@@ -578,7 +604,7 @@ class CodalabServiceManager(object):
             cmd,
         )
         compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in self.compose_env.items())
-        print('cd {}; {} {}'.format(self.compose_cwd, compose_env_string, command_string))
+        print('(cd {}; {} {})'.format(self.compose_cwd, compose_env_string, command_string))
         if not self.args.dry_run:
             subprocess.check_call(
                 command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True
@@ -586,7 +612,9 @@ class CodalabServiceManager(object):
         print('')
 
     def bring_up_service(self, service):
-        self._run_compose_cmd('up -d --no-deps %s' % service)
+        if should_run_service(self.args, service):
+            print_header('Bringing up {}'.format(service))
+            self._run_compose_cmd('up -d --no-deps %s' % service)
 
     def run_service_cmd(self, cmd, root=False, service='rest-server'):
         if root:
@@ -594,12 +622,11 @@ class CodalabServiceManager(object):
         else:
             uid = self.compose_env['CODALAB_UID']
         self._run_compose_cmd(
-            'run --no-deps --rm --entrypoint="" --user=%s ' % uid + service + ' bash -c "%s"' % cmd
+            ('run --no-deps --rm --entrypoint="" --user=%s ' % uid) + service + (' bash -c "%s"' % cmd)
         )
 
-    def start_service(self):
+    def start_services(self):
         if self.args.external_db_url is None:
-            print("[CODALAB] ==> Starting MySQL")
             self.bring_up_service('mysql')
             cmd_prefix = '/opt/wait-for-it.sh mysql:3306 -- '
             mysql_url = 'mysql://%s:%s@mysql:3306/codalab_bundles' % (
@@ -613,54 +640,42 @@ class CodalabServiceManager(object):
                 self.compose_env['CODALAB_MYSQL_PWD'],
                 self.args.external_db_url,
             )
-        print("[CODALAB] ==> Configuring the service")
-        self.run_service_cmd(
-            "%scl config server/engine_url %s && cl config cli/default_address http://rest-server:2900 && cl config server/rest_host 0.0.0.0"
-            % (cmd_prefix, mysql_url),
-            root=(not self.args.codalab_home),
-        )
 
-        print("[CODALAB] ==> Creating root user")
-        self.run_service_cmd(
-            "%spython /opt/codalab-worksheets/scripts/create-root-user.py %s"
-            % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
-            root=True,
-        )
+        if should_run_service(self.args, 'init'):
+            print_header('Configuring the service')
+            self.run_service_cmd(
+                "%scl config server/engine_url %s && cl config cli/default_address http://rest-server:2900 && cl config server/rest_host 0.0.0.0"
+                % (cmd_prefix, mysql_url),
+                root=(not self.args.codalab_home),
+            )
 
-        print("[CODALAB] ==> Starting rest server")
+        if should_run_service(self.args, 'init'):
+            print_header('Creating root user')
+            self.run_service_cmd(
+                "%svenv/bin/python scripts/create-root-user.py %s"
+                    % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
+                root=True,
+            )
+
         self.bring_up_service('rest-server')
 
-        print("[CODALAB] ==> Creating initial worksheets")
-        self.run_service_cmd(
-            "/opt/wait-for-it.sh rest-server:2900 -- cl logout && cl status && ((cl new home && cl new dashboard) || exit 0)",
-            root=(not self.args.codalab_home),
-        )
+        if should_run_service(self.args, 'init'):
+            print_header('Creating home and dashboard worksheets')
+            self.run_service_cmd(
+                "/opt/wait-for-it.sh rest-server:2900 -- cl logout && cl status && ((cl new home && cl new dashboard) || exit 0)",
+                root=(not self.args.codalab_home),
+            )
 
-        print("[CODALAB] ==> Starting bundle manager")
         self.bring_up_service('bundle-manager')
-        print("[CODALAB] ==> Starting frontend")
         self.bring_up_service('frontend')
-        print("[CODALAB] ==> Starting nginx")
         self.bring_up_service('nginx')
-        if self.args.start_worker:
-            print("[CODALAB] ==> Starting worker")
-            self.bring_up_service('worker')
+        self.bring_up_service('worker')
 
-    def build(self):
-        print("[CODALAB] => Building Docker images")
-        if self.args.image == 'all':
-            images_to_build = self.ALL_IMAGES
-        elif self.args.image == 'service':
-            images_to_build = self.SERVICE_IMAGES
-        else:
-            images_to_build = [self.args.image]
-        for image in images_to_build:
-            if self.args.dev:
-                if image == 'frontend':
-                    image = 'frontend-dev'
-                elif image == 'server':
-                    image = 'server-dev'
-            self.build_image(image)
+    def build_images(self):
+        for image in self.ALL_IMAGES:
+            if should_build_image(self.args, image):
+                self.build_image(image)
+
         if self.args.push:
             self._run_docker_cmd(
                 'login -u %s -p %s' % (self.args.docker_user, self.args.docker_password)

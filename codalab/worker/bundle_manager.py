@@ -62,7 +62,7 @@ class BundleManager(object):
         return self
 
     def run(self, sleep_time):
-        logger.info('Bundle manager running.')
+        logger.info('Bundle manager running!')
         while not self._is_exiting():
             try:
                 self._run_iteration()
