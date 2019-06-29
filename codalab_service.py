@@ -581,7 +581,7 @@ class CodalabServiceManager(object):
         print(('cd {}; {} {}'.format(self.compose_cwd, compose_env_string, command_string)))
         if not self.args.dry_run:
             try:
-                subprocess.check_call(
+                subprocess.check_output(
                     command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True
                 )
             except subprocess.CalledProcessError as e:
