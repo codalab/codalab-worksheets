@@ -5,11 +5,11 @@ from codalab.lib.formatting import pretty_json, ratio_str
 
 
 def open_line(s, f=sys.stderr):
-    print >> f, '\r\033[K%s' % s,
+    print('\r\033[K%s' % s, end=' ', file=f)
 
 
 def clear_line(f=sys.stderr):
-    print >> f, '\r\033[K',
+    print('\r\033[K', end=' ', file=f)
 
 
 def pretty_print_json(obj, f=sys.stdout):

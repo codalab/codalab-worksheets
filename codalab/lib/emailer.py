@@ -89,10 +89,10 @@ class ConsoleEmailer(Emailer):
         self.out = out
 
     def send_email(self, subject, body, recipient, sender=None):
-        print >>self.out, ("=" * 40)
-        print >>self.out, "From: %s" % (sender or 'console')
-        print >>self.out, "To: %s" % recipient
-        print >>self.out, "Subject: %s" % subject
-        print >>self.out
-        print >>self.out, body
-        print >>self.out, ("=" * 40)
+        print(("=" * 40), file=self.out)
+        print("From: %s" % (sender or 'console'), file=self.out)
+        print("To: %s" % recipient, file=self.out)
+        print("Subject: %s" % subject, file=self.out)
+        print(file=self.out)
+        print(body, file=self.out)
+        print(("=" * 40), file=self.out)

@@ -112,11 +112,11 @@ def main():
     logger.info('Connecting to %s' % args.server)
     if args.password_file:
         if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-            print >>sys.stderr, """
+            print("""
 Permissions on password file are too lax.
 Only the user should be allowed to access the file.
 On Linux, run:
-chmod 600 %s""" % args.password_file
+chmod 600 %s""" % args.password_file, file=sys.stderr)
             exit(1)
         with open(args.password_file) as f:
             username = f.readline().strip()
@@ -124,7 +124,7 @@ chmod 600 %s""" % args.password_file
     else:
         username = os.environ.get('CODALAB_USERNAME')
         if username is None:
-            username = input('Username: ')
+            username = eval(input('Username: '))
         password = os.environ.get('CODALAB_PASSWORD')
         if password is None:
             password = getpass.getpass()
@@ -251,7 +251,7 @@ def parse_gpuset_args(arg):
         return set(all_gpus.values())
     else:
         gpuset = arg.split(',')
-        if not all(gpu in all_gpus or gpu in all_gpus.values() for gpu in gpuset):
+        if not all(gpu in all_gpus or gpu in list(all_gpus.values()) for gpu in gpuset):
             raise ValueError("GPUSET_STR invalid: GPUs out of range")
         return set(all_gpus.get(gpu, gpu) for gpu in gpuset)
 

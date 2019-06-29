@@ -33,7 +33,7 @@ class ClFileWatcherEventHandler(FileSystemEventHandler):
         file_extension = os.path.splitext(event.src_path)[1]
 
         if file_extension in extensions_to_watch:
-            print("Saw file change: %s -- restarting!" % (os.path.basename(event.src_path)))
+            print(("Saw file change: %s -- restarting!" % (os.path.basename(event.src_path))))
             self.restart()
 
 

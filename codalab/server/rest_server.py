@@ -208,14 +208,14 @@ class ErrorAdapter(object):
         ).format(request, aux_info, traceback.format_exc())
 
         # Both print to console and send email
-        print >>sys.stderr, message
+        print(message, file=sys.stderr)
         self.send_email(exc, message)
 
     @server_util.rate_limited(max_calls_per_hour=6)
     def send_email(self, exc, message):
         # Caller is responsible for logging message anyway if desired
         if 'admin_email' not in local.config['server']:
-            print >>sys.stderr, 'Warning: No admin_email configured, so no email sent.'
+            print('Warning: No admin_email configured, so no email sent.', file=sys.stderr)
             return
 
         # Subject should be "ExceptionType: message"

@@ -125,7 +125,7 @@ def start_bundle(worker_id, uuid):
         start_time=request.json["start_time"],
         remote=request.json["hostname"],
     ):
-        print("Started bundle %s" % uuid)
+        print(("Started bundle %s" % uuid))
         return json.dumps(True)
     return json.dumps(False)
 
@@ -155,7 +155,7 @@ def update_bundle_metadata(worker_id, uuid):
         ]
     )
     metadata_update = {}
-    for key, value in request.json.items():
+    for key, value in list(request.json.items()):
         if key in allowed_keys:
             metadata_update[key] = value
     local.model.update_bundle(bundle, {"metadata": metadata_update})
