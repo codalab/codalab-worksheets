@@ -72,8 +72,8 @@ RUN python -m spacy download en
 
 ## Set up python3.6 environment
 
-RUN pip3 install -U pip
-RUN pip3 install -U \
+RUN python3 -m pip install -U pip
+RUN python3 -m pip install -U \
       numpy \
       scipy \
       matplotlib \
@@ -101,10 +101,10 @@ RUN pip2 install -U http://download.pytorch.org/whl/cpu/torch-0.4.1-cp27-cp27mu-
 RUN pip2 install torchvision
 
 
-RUN pip3 install -U \
+RUN python3 -m pip install -U \
       tensorflow==1.12.0 \
       tensorboard \
       keras
 
-RUN pip3 install http://download.pytorch.org/whl/cpu/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
-RUN pip3 install torchvision
+RUN python3 -m pip install http://download.pytorch.org/whl/cpu/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
+RUN python3 -m pip install torchvision
