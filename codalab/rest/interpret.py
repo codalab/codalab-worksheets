@@ -223,7 +223,7 @@ def fetch_interpreted_worksheet(uuid):
             continue
         if item['mode'] == 'table':
             for row_map in item['rows']:
-                for k, v in row_map.items():
+                for k, v in list(row_map.items()):
                     if v is None:
                         row_map[k] = formatting.contents_str(v)
         if 'bundle_info' in item:

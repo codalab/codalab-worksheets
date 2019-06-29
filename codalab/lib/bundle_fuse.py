@@ -183,7 +183,7 @@ if fuse_is_available:
 
         def verbose_print(self, msg):
             if self.verbose:
-                print('[BundleFUSE]:', msg)
+                print(('[BundleFUSE]:', msg))
 
         # Filesystem methods
         # ==================

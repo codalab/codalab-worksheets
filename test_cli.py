@@ -116,7 +116,7 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None):
     for a in args:
         assert isinstance(a, str)
     # Travis only prints ASCII
-    print('>> %s' % " ".join([a.decode("utf-8").encode("ascii", errors='replace') for a in args]))
+    print(('>> %s' % " ".join([a.decode("utf-8").encode("ascii", errors='replace') for a in args])))
 
     try:
         output = subprocess.check_output(args, env=env)
@@ -127,8 +127,8 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None):
     except Exception as e:
         output = traceback.format_exc()
         exitcode = 'test-cli exception'
-    print(Colorizer.cyan(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
-    print(sanitize(output, max_output_chars))
+    print((Colorizer.cyan(" (exit code %s, expected %s)" % (exitcode, expected_exit_code))))
+    print((sanitize(output, max_output_chars)))
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
 
@@ -272,7 +272,7 @@ def temp_instance():
             shell=True,
         )
     except subprocess.CalledProcessError as ex:
-        print("Temp instance exception: %s" % ex.output)
+        print(("Temp instance exception: %s" % ex.output))
         raise
     # Switch to new host and log in to cache auth token
     remote_host = 'http://localhost:%s' % rest_port
@@ -314,7 +314,7 @@ class ModuleContext(object):
 
     def __enter__(self):
         """Prepares clean environment for test module."""
-        print(Colorizer.yellow("[*][*] SWITCHING TO TEMPORARY WORKSHEET"))
+        print((Colorizer.yellow("[*][*] SWITCHING TO TEMPORARY WORKSHEET")))
 
         self.original_environ = os.environ.copy()
         self.original_worksheet = run_command([cl, 'work', '-u'])
@@ -322,7 +322,7 @@ class ModuleContext(object):
         self.worksheets.append(temp_worksheet)
         run_command([cl, 'work', temp_worksheet])
 
-        print(Colorizer.yellow("[*][*] BEGIN TEST"))
+        print((Colorizer.yellow("[*][*] BEGIN TEST")))
 
         return self
 
@@ -332,17 +332,17 @@ class ModuleContext(object):
         if exc_type is not None:
             self.error = (exc_type, exc_value, tb)
             if exc_type is AssertionError:
-                print(Colorizer.red("[!] ERROR: %s" % exc_value.message))
+                print((Colorizer.red("[!] ERROR: %s" % exc_value.message)))
             elif exc_type is KeyboardInterrupt:
-                print(Colorizer.yellow("[!] Caught interrupt! Quitting after cleanup."))
+                print((Colorizer.yellow("[!] Caught interrupt! Quitting after cleanup.")))
             else:
-                print(Colorizer.red("[!] ERROR: Test raised an exception!"))
+                print((Colorizer.red("[!] ERROR: Test raised an exception!")))
                 traceback.print_exception(exc_type, exc_value, tb)
         else:
-            print(Colorizer.green("[*] TEST PASSED"))
+            print((Colorizer.green("[*] TEST PASSED")))
 
         # Clean up and restore original worksheet
-        print(Colorizer.yellow("[*][*] CLEANING UP"))
+        print((Colorizer.yellow("[*][*] CLEANING UP")))
         os.environ.clear()
         os.environ.update(self.original_environ)
 
@@ -422,7 +422,7 @@ class TestModule(object):
 
     @classmethod
     def default_modules(cls):
-        return [m for m in iter(cls.modules.values()) if m.default]
+        return [m for m in iter(list(cls.modules.values())) if m.default]
 
     @classmethod
     def run(cls, tests, instance):
@@ -449,23 +449,23 @@ class TestModule(object):
             elif name in cls.modules:
                 modules_to_run.append(cls.modules[name])
             else:
-                print(Colorizer.yellow("[!] Could not find module %s" % name))
-                print(Colorizer.yellow("[*] Modules: all %s" % " ".join(list(cls.modules.keys()))))
+                print((Colorizer.yellow("[!] Could not find module %s" % name)))
+                print((Colorizer.yellow("[*] Modules: all %s" % " ".join(list(cls.modules.keys())))))
                 sys.exit(1)
 
-        print(
+        print((
             Colorizer.yellow(
                 "[*][*] Running modules %s" % " ".join([m.name for m in modules_to_run])
             )
-        )
+        ))
 
         # Run modules, continuing onto the next test module regardless of
         # failure
         failed = []
         for module in modules_to_run:
-            print(Colorizer.yellow("[*][*] BEGIN MODULE: %s" % module.name))
+            print((Colorizer.yellow("[*][*] BEGIN MODULE: %s" % module.name)))
             if module.description is not None:
-                print(Colorizer.yellow("[*][*] DESCRIPTION: %s" % module.description))
+                print((Colorizer.yellow("[*][*] DESCRIPTION: %s" % module.description)))
 
             with ModuleContext() as ctx:
                 module.func(ctx)
@@ -474,12 +474,12 @@ class TestModule(object):
                 failed.append(module.name)
 
         # Provide a (currently very rudimentary) summary
-        print(Colorizer.yellow("[*][*][*] SUMMARY"))
+        print((Colorizer.yellow("[*][*][*] SUMMARY")))
         if failed:
-            print(Colorizer.red("[!][!] Tests failed: %s" % ", ".join(failed)))
+            print((Colorizer.red("[!][!] Tests failed: %s" % ", ".join(failed))))
             return False
         else:
-            print(Colorizer.green("[*][*] All tests passed!"))
+            print((Colorizer.green("[*][*] All tests passed!")))
             return True
 
 
@@ -526,7 +526,7 @@ def test(ctx):
 
     # run and check the data_hash
     uuid = run_command([cl, 'run', 'echo hello'])
-    print('Waiting echo hello with uuid %s' % uuid)
+    print(('Waiting echo hello with uuid %s' % uuid))
     wait(uuid)
     #    run_command([cl, 'wait', uuid])
     check_contains('0x', get_info(uuid, 'data_hash'))

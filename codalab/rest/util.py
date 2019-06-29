@@ -69,10 +69,10 @@ def get_bundle_infos(
 
     # Implement permissions policies
     perms = _get_user_bundle_permissions(uuids)
-    readable = {u for u, perm in perms.items() if perm >= GROUP_OBJECT_PERMISSION_READ}
+    readable = {u for u, perm in list(perms.items()) if perm >= GROUP_OBJECT_PERMISSION_READ}
     anonymous = {
         u
-        for u, perm in perms.items()
+        for u, perm in list(perms.items())
         if u in bundle_infos
         and (perm < GROUP_OBJECT_PERMISSION_READ or bundle_infos[u]['is_anonymous'])
     }
@@ -107,7 +107,7 @@ def get_bundle_infos(
         child_names = local.model.get_bundle_names(child_uuids)
 
         # Set children infos
-        for parent_uuid, children in parent2children.items():
+        for parent_uuid, children in list(parent2children.items()):
             bundle_infos[parent_uuid]['children'] = [
                 {'uuid': child_uuid, 'metadata': {'name': child_names[child_uuid]}}
                 for child_uuid in children
@@ -118,7 +118,7 @@ def get_bundle_infos(
         # bundle_uuids -> list of worksheet_uuids
         host_worksheets = local.model.get_host_worksheet_uuids(readable)
         # Gather all worksheet uuids
-        worksheet_uuids = [uuid for l in host_worksheets.values() for uuid in l]
+        worksheet_uuids = [uuid for l in list(host_worksheets.values()) for uuid in l]
         wpermissions = local.model.get_user_worksheet_permissions(
             request.user.user_id,
             worksheet_uuids,
@@ -126,7 +126,7 @@ def get_bundle_infos(
         )
         readable_worksheet_uuids = set(
             uuid
-            for uuid, permission in wpermissions.items()
+            for uuid, permission in list(wpermissions.items())
             if permission >= GROUP_OBJECT_PERMISSION_READ
         )
         # Lookup names
@@ -137,7 +137,7 @@ def get_bundle_infos(
             )
         )
         # Fill the info
-        for bundle_uuid, host_uuids in host_worksheets.items():
+        for bundle_uuid, host_uuids in list(host_worksheets.items()):
             bundle_infos[bundle_uuid]['host_worksheets'] = [
                 {'uuid': host_uuid, 'name': worksheets[host_uuid].name}
                 for host_uuid in host_uuids

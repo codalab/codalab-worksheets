@@ -29,7 +29,7 @@ class BundleManager(object):
     def create(codalab_manager):
         config = codalab_manager.config.get('workers')
         if not config:
-            print >>sys.stderr, 'config.json file missing a workers section.'
+            print('config.json file missing a workers section.', file=sys.stderr)
             exit(1)
 
         from codalab.worker.default_bundle_manager import DefaultBundleManager
@@ -134,10 +134,10 @@ class BundleManager(object):
                 acceptable_states.append(State.KILLED)
             else:
                 failed_uuids = [
-                    uuid for uuid, state in parent_states.items() if state == State.FAILED
+                    uuid for uuid, state in list(parent_states.items()) if state == State.FAILED
                 ]
                 killed_uuids = [
-                    uuid for uuid, state in parent_states.items() if state == State.KILLED
+                    uuid for uuid, state in list(parent_states.items()) if state == State.KILLED
                 ]
                 failure_message = ''
                 if failed_uuids:
@@ -149,7 +149,7 @@ class BundleManager(object):
                     bundles_to_fail.append((bundle, failure_message))
                     continue
 
-            if all(state in acceptable_states for state in parent_states.values()):
+            if all(state in acceptable_states for state in list(parent_states.values())):
                 bundles_to_stage.append(bundle)
 
         for bundle, failure_message in bundles_to_fail:

@@ -130,7 +130,7 @@ class BundleModel(object):
         If a value is a LikeQuery, produce a LIKE clause on that column.
         """
         clauses = [true()]
-        for (key, value) in kwargs.items():
+        for (key, value) in list(kwargs.items()):
             clauses.append(self.make_clause(getattr(table.c, key), value))
         return and_(*clauses)
 
@@ -624,7 +624,7 @@ class BundleModel(object):
 
         # Make a dictionary for each bundle with both data and metadata.
         bundle_values = {row.uuid: str_key_dict(row) for row in bundle_rows}
-        for bundle_value in bundle_values.values():
+        for bundle_value in list(bundle_values.values()):
             bundle_value['dependencies'] = []
             bundle_value['metadata'] = []
         for dep_row in dependency_rows:
@@ -637,7 +637,7 @@ class BundleModel(object):
             bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
 
         # Construct and validate all of the retrieved bundles.
-        sorted_values = sorted(iter(bundle_values.values()), key=lambda r: r['id'])
+        sorted_values = sorted(iter(list(bundle_values.values())), key=lambda r: r['id'])
         bundles = [
             get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
             for bundle_value in sorted_values
@@ -940,7 +940,7 @@ class BundleModel(object):
         # Apply the column and metadata updates in memory and validate the result.
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
-        for (key, value) in metadata_update.items():
+        for (key, value) in list(metadata_update.items()):
             bundle.metadata.set_metadata_key(key, value)
         bundle.validate()
         # Construct clauses and update lists for updating certain bundle columns.
@@ -1074,12 +1074,12 @@ class BundleModel(object):
         # Make a dictionary for each worksheet with both its main row and its items.
         worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
         # Set tags
-        for value in worksheet_values.values():
+        for value in list(worksheet_values.values()):
             value['tags'] = []
         for row in tag_rows:
             worksheet_values[row.worksheet_uuid]['tags'].append(row.tag)
         if fetch_items:
-            for value in worksheet_values.values():
+            for value in list(worksheet_values.values()):
                 value['items'] = []
             for item_row in sorted(item_rows, key=item_sort_key):
                 if item_row.worksheet_uuid not in worksheet_values:
@@ -1087,7 +1087,7 @@ class BundleModel(object):
                 item_row = dict(item_row)
                 item_row['value'] = self.decode_str(item_row['value'])
                 worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
-        return [Worksheet(value) for value in worksheet_values.values()]
+        return [Worksheet(value) for value in list(worksheet_values.values())]
 
     def search_worksheets(self, user_id, keywords):
         """
@@ -1502,7 +1502,7 @@ class BundleModel(object):
             if not rows:
                 return []
         values = {row.uuid: str_key_dict(row) for row in rows}
-        return [value for value in values.values()]
+        return [value for value in list(values.values())]
 
     def batch_get_all_groups(self, spec_filters, group_filters, user_group_filters):
         """
@@ -1568,7 +1568,7 @@ class BundleModel(object):
                     row['owner_id'] = str(row['owner_id'])
                 rows[i] = row
             values = {row['uuid']: row for row in rows}
-            return [value for value in values.values()]
+            return [value for value in list(values.values())]
 
     def delete_group(self, uuid):
         """

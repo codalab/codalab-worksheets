@@ -218,7 +218,7 @@ def create_worksheet_items():
     for item in new_items:
         worksheet_to_items.setdefault(item['worksheet_uuid'], []).append(item)
 
-    for worksheet_uuid, items in worksheet_to_items.items():
+    for worksheet_uuid, items in list(worksheet_to_items.items()):
         worksheet_info = get_worksheet_info(worksheet_uuid, fetch_items=True)
         if replace:
             # Replace items in the worksheet

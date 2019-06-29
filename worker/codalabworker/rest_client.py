@@ -128,7 +128,7 @@ class RestClient(object):
                 'X-Requested-With': 'XMLHttpRequest',
             }
             headers.update(self._extra_headers)
-            for header_name, header_value in headers.items():
+            for header_name, header_value in list(headers.items()):
                 conn.putheader(header_name, header_value)
             conn.endheaders()
 

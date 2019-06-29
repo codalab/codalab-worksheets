@@ -981,7 +981,7 @@ def interpret_items(schemas, raw_items):
 
     # TODO: fix inconsistencies resulting from UsageErrors thrown in flush_bundles()
     if len(raw_to_block) != len(raw_items):
-        print >>sys.stderr, "WARNING: Length of raw_to_block does not match length of raw_items"
+        print("WARNING: Length of raw_to_block does not match length of raw_items", file=sys.stderr)
 
     # Package the result
     block_to_raw = {}

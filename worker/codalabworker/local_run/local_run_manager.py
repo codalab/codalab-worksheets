@@ -99,7 +99,7 @@ class LocalRunManager(BaseRunManager):
     def load_state(self):
         runs = self._state_committer.load()
         # Retrieve the complex container objects from the Docker API
-        for uuid, run_state in runs.items():
+        for uuid, run_state in list(runs.items()):
             if run_state.container_id:
                 try:
                     run_state = run_state._replace(
@@ -175,7 +175,7 @@ class LocalRunManager(BaseRunManager):
             # filter out finished runs
             finished_container_ids = [
                 run.container
-                for run in self._runs.values()
+                for run in list(self._runs.values())
                 if (run.stage == LocalRunStage.FINISHED or run.stage == LocalRunStage.FINALIZING)
                 and run.container_id is not None
             ]
@@ -185,7 +185,7 @@ class LocalRunManager(BaseRunManager):
                     container.remove(force=True)
                 except (docker.errors.NotFound, docker.errors.NullResource):
                     pass
-            self._runs = {k: v for k, v in self._runs.items() if v.stage != LocalRunStage.FINISHED}
+            self._runs = {k: v for k, v in list(self._runs.items()) if v.stage != LocalRunStage.FINISHED}
 
     def create_run(self, bundle, resources):
         """
