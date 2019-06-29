@@ -1,5 +1,5 @@
 *.pyc
-*.swp
+*.sw*
 
 # Eclipse files.
 .*project
@@ -49,6 +49,7 @@ Thumbs.db
 *.pyproj
 *.suo
 .idea/
+.vscode/
 
 # Codalab-cli #
 ###############
@@ -57,10 +58,20 @@ dist/
 build/
 codalab_env/
 *.egg-info
-venv/
+venv*/
 .git
 
 doc
 codalab/tests
 codalab/tags
 notes.otl
+codalab-worker-scratch/
+
+*.env
+*.override
+docker-compose.override.yml
+
+pip-wheel-metadata/
+
+frontend/node_modules
+frontend/package-lock.json

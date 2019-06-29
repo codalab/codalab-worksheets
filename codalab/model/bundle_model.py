@@ -568,7 +568,7 @@ class BundleModel(object):
                         cl_worksheet_item.c.worksheet_uuid, conditions['worksheet_uuid']
                     ),
                 )
-                clause = and_(clause, cl_worksheet_item.c.bundle_uuid is not None)
+                clause = and_(clause, cl_worksheet_item.c.bundle_uuid.isnot(None))
                 join = cl_worksheet_item.outerjoin(
                     cl_bundle_metadata,
                     cl_worksheet_item.c.bundle_uuid == cl_bundle_metadata.c.bundle_uuid,
@@ -744,7 +744,7 @@ class BundleModel(object):
 
             return True
 
-    def start_bundle(self, bundle, user_id, worker_id, hostname, start_time):
+    def start_bundle(self, bundle, user_id, worker_id, start_time, remote):
         """
         Marks the bundle as running but only if it is still scheduled to run
         on the given worker (done by checking the worker_run table). Returns
@@ -760,7 +760,7 @@ class BundleModel(object):
 
             bundle_update = {
                 'state': State.PREPARING,
-                'metadata': {'remote': hostname, 'started': start_time, 'last_updated': start_time},
+                'metadata': {'started': start_time, 'last_updated': start_time, 'remote': remote},
             }
             self.update_bundle(bundle, bundle_update, connection)
 
@@ -774,7 +774,7 @@ class BundleModel(object):
 
         return True
 
-    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id, hostname):
+    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id):
         '''
         Updates the database tables with the most recent bundle information from worker
         '''
@@ -789,9 +789,7 @@ class BundleModel(object):
 
             if state == State.FINALIZING:
                 # update bundle metadata using resume_bundle one last time before finalizing it
-                self.resume_bundle(
-                    bundle, bundle_update, row, user_id, worker_id, hostname, connection
-                )
+                self.resume_bundle(bundle, bundle_update, row, user_id, worker_id, connection)
                 return self.finalize_bundle(
                     bundle,
                     user_id,
@@ -801,13 +799,13 @@ class BundleModel(object):
                 )
             elif state in [State.PREPARING, State.RUNNING]:
                 return self.resume_bundle(
-                    bundle, bundle_update, row, user_id, worker_id, hostname, connection
+                    bundle, bundle_update, row, user_id, worker_id, connection
                 )
             else:
                 # State isn't one we can check in for
                 return False
 
-    def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, hostname, connection):
+    def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, connection):
         '''
         Marks the bundle as running. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
         Updates a few metadata fields and the events log.
@@ -830,6 +828,7 @@ class BundleModel(object):
             'run_status': bundle_update['run_status'],
             'last_updated': int(time.time()),
             'time': time.time() - bundle_update['start_time'],
+            'remote': bundle_update['remote'],
         }
 
         if bundle_update['docker_image'] is not None:
@@ -919,10 +918,13 @@ class BundleModel(object):
         # (Clients should check for this case ahead of time if they want to
         # silently skip over creating bundles that already exist.)
         with self.engine.begin() as connection:
-            result = connection.execute(cl_bundle.insert().values(bundle_value))
-            self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
-            self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-            bundle.id = result.lastrowid
+            try:
+                result = connection.execute(cl_bundle.insert().values(bundle_value))
+                self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
+                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+                bundle.id = result.lastrowid
+            except UnicodeError:
+                raise UsageError("Invalid character detected; use ascii characters only.")
 
     def update_bundle(self, bundle, update, connection=None):
         """
@@ -957,11 +959,14 @@ class BundleModel(object):
 
         # Perform the actual updates.
         def do_update(connection):
-            if update:
-                connection.execute(cl_bundle.update().where(clause).values(update))
-            if metadata_update:
-                connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
-                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            try:
+                if update:
+                    connection.execute(cl_bundle.update().where(clause).values(update))
+                if metadata_update:
+                    connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
+                    self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            except UnicodeError:
+                raise UsageError("Invalid character detected; use ascii characters only.")
 
         if connection:
             do_update(connection)
@@ -2090,6 +2095,7 @@ class BundleModel(object):
                         "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
                         "time_quota": self.default_user_info['time_quota'],
+                        "parallel_run_quota": self.default_user_info['parallel_run_quota'],
                         "time_used": 0,
                         "disk_quota": self.default_user_info['disk_quota'],
                         "disk_used": 0,
@@ -2321,6 +2327,27 @@ class BundleModel(object):
         time_quota = user_info['time_quota']
         time_used = user_info['time_used']
         return time_quota - time_used
+
+    def get_user_parallel_run_quota_left(self, user_id):
+        user_info = self.get_user_info(user_id)
+        parallel_run_quota = user_info['parallel_run_quota']
+        if user_id == self.root_user_id:
+            # Root user has no parallel run quota
+            return parallel_run_quota
+        with self.engine.begin() as connection:
+            # Get all the runs belonging to this user whose workers are not personal workers
+            # of the user themselves
+            active_runs = connection.execute(
+                select([cl_worker_run.c.run_uuid]).where(
+                    and_(
+                        cl_worker_run.c.run_uuid.in_(
+                            select([cl_bundle.c.uuid]).where(cl_bundle.c.owner_id == user_id)
+                        ),
+                        cl_worker_run.c.user_id != user_id,
+                    )
+                )
+            ).fetchall()
+        return parallel_run_quota - len(active_runs)
 
     def update_user_last_login(self, user_id):
         """

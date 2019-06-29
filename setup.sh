@@ -17,9 +17,9 @@ success="${bold}\033[32m"  # green
 # =======================================
 
 # Ensure proper command usage
-if [ "$#" -ne 1 ] || ( [ "$1" != "client" ] && [ "$1" != "server" ] ); then
+if [ "$#" -ne 1 ] || ( [ "$1" != "client" ] && [ "$1" != "server" ] && [ "$1" != "frontend" ] ); then
   echo "Usage:"
-  echo "  $0 [client | server]"
+  echo "  $0 [client | server | frontend]"
   exit 1
 fi
 
@@ -51,6 +51,25 @@ if [ "$1" == "server" ]; then
   $env/bin/pip install -e $codalabdir/worker
 elif [ "$1" == "client" ]; then
   $env/bin/pip install -r $codalabdir/requirements.txt
+elif [ "$1" == "frontend" ]; then
+  echo -e "${info}[*] Running npm build for frontend...${reset}"
+  if ! which npm; then
+    echo -e "${warning}[!] npm is not found.${reset}"
+    echo -e "${warning}[!] You need npm if you want to set up the front end web server.${reset}"
+    echo -e "${warning}[!] If you are using Ubuntu run the following to install:${reset}"
+    echo
+    echo -e "${warning}  sudo apt-get install ${reset}"
+    exit 1
+  else
+    cd frontend
+    npm install
+    npm install -g serve
+    npm run build
+    echo -e "${info}  Frontend server installed. You can start server with the following command:${reset}"
+    echo
+    echo -e "${info}  serve -s build -l 2700${reset}"
+    exit
+  fi
 fi
 
 ( # try

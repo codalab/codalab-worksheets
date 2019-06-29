@@ -1,0 +1,94 @@
+version: '3.5'
+
+x-non-blocking-logging:
+  &non-blocking-logging
+  driver: json-file
+  options:
+    mode: non-blocking
+
+x-codalab-env:
+  &codalab-env
+  - CODALAB_HOME=${CODALAB_SERVICE_HOME}
+  - CODALAB_USERNAME=${CODALAB_ROOT_USER}
+  - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+
+services:
+  rest-server:
+    image: codalab/server:${CODALAB_VERSION}
+    command: server
+    environment:
+      *codalab-env
+    networks:
+      - service
+    ports:
+      - ${CODALAB_REST_PORT}:2900
+    logging:
+      *non-blocking-logging
+
+  bundle-manager:
+    image: codalab/server:${CODALAB_VERSION}
+    command: bundle-manager
+    environment:
+      *codalab-env
+    depends_on:
+      - rest-server
+    networks:
+      - service
+    logging:
+      *non-blocking-logging
+
+  frontend:
+    image: codalab/frontend:${CODALAB_VERSION}
+    depends_on:
+      - rest-server
+    networks:
+      - service
+    logging:
+      *non-blocking-logging
+
+  nginx:
+    image: nginx:1.12.0
+    command: /opt/wait-for-it.sh rest-server:2900 -- nginx
+    ports:
+      - ${CODALAB_HTTP_PORT}:80
+    volumes:
+      - ./files/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./files/wait-for-it.sh:/opt/wait-for-it.sh
+    depends_on:
+      - frontend
+    networks:
+      - service
+    logging:
+      *non-blocking-logging
+
+  worker:
+    image: codalab/worker:${CODALAB_VERSION}
+    environment:
+      *codalab-env
+    depends_on:
+      - bundle-manager
+    networks:
+      - service
+      - worker
+    logging:
+      *non-blocking-logging
+
+  tests:
+    image: codalab/server:${CODALAB_VERSION}
+    working_dir: /opt/codalab-worksheets/
+    entrypoint: ./venv/bin/python ./test-cli.py
+    command: all --instance http://rest-server:2900
+    environment:
+      *codalab-env
+    depends_on:
+      - rest-server
+    networks:
+      - service
+    logging:
+      *non-blocking-logging
+
+networks:
+  worker:
+    name: ${CODALAB_WORKER_NETWORK_NAME}
+    internal: True
+  service:
