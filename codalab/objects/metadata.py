@@ -40,7 +40,7 @@ class Metadata(object):
                         elif spec.formatting == 'date':
                             formatting.parse_datetime(value)
                     except ValueError as e:
-                        raise UsageError(e.message)
+                        raise UsageError(str(e))
                 if value is not None and not isinstance(value, spec.type):
                     raise UsageError(
                         'Metadata value for %s should be of type %s, was %s (type %s)'

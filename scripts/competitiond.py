@@ -608,7 +608,7 @@ class Competition(object):
                     )
                 break
             except NotFoundError as e:
-                missing_submit_uuid = re.search(UUID_STR, e.message).group(0)
+                missing_submit_uuid = re.search(UUID_STR, str(e)).group(0)
                 eval_uuid = submit2eval[missing_submit_uuid]['id']
 
                 # If a submission bundle (missing_uuid) has been deleted...

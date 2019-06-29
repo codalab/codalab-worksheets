@@ -91,7 +91,7 @@ def do_signup():
     try:
         User.validate_password(password)
     except UsageError as e:
-        errors.append(e.message)
+        errors.append(str(e))
 
     # Only do a basic validation of email -- the only guaranteed way to check
     # whether an email address is valid is by sending an actual email.
@@ -246,7 +246,7 @@ def reset_password():
         User.validate_password(password)
     except UsageError as e:
         return redirect_with_query(
-            '/account/reset/verified', {'code_valid': True, 'code': code, 'error': e.message}
+            '/account/reset/verified', {'code_valid': True, 'code': code, 'error': str(e)}
         )
 
     # Verify reset code again and get user_id

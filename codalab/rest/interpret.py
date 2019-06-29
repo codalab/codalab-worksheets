@@ -386,7 +386,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 raise UsageError('Invalid display mode: %s' % mode)
 
         except UsageError as e:
-            set_error_data(block_index, e.message)
+            set_error_data(block_index, str(e))
 
         except Exception:
             import traceback

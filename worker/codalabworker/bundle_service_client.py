@@ -21,7 +21,7 @@ def wrap_exception(message):
             except BundleAuthException:
                 raise
             except RestClientException as e:
-                raise BundleServiceException(message + ': ' + e.message, e.client_error)
+                raise BundleServiceException(message + ': ' + str(e), e.client_error)
             except urllib.error.HTTPError as e:
                 client_error = json.load(e)
 

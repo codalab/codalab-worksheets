@@ -20,7 +20,7 @@ def retry_if_no_longer_running(f):
         try:
             return f(*args, **kwargs)
         except Exception as e:
-            if e.message == download_util.BUNDLE_NO_LONGER_RUNNING_MESSAGE:
+            if str(e) == download_util.BUNDLE_NO_LONGER_RUNNING_MESSAGE:
                 # Retry just once, since by now the state should already be set
                 # to READY / FAILED, unless there's some internal error.
                 return f(*args, **kwargs)
@@ -66,7 +66,7 @@ class DownloadManager(object):
             try:
                 return download_util.get_target_info(bundle_path, uuid, path, depth)
             except download_util.PathException as e:
-                raise NotFoundError(e.message)
+                raise NotFoundError(str(e))
         else:
             # get_target_info calls are sent to the worker even on a shared file
             # system since 1) due to NFS caching the worker has more up to date
@@ -245,7 +245,7 @@ class DownloadManager(object):
         try:
             return download_util.get_target_path(bundle_path, uuid, path)
         except download_util.PathException as e:
-            raise UsageError(e.message)
+            raise UsageError(str(e))
 
     def _send_read_message(self, worker, response_socket_id, uuid, path, read_args):
         message = {

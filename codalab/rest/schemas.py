@@ -20,13 +20,13 @@ class PermissionSpec(fields.Field):
         try:
             return permission_str(value)
         except UsageError as e:
-            raise ValidationError(e.message)
+            raise ValidationError(str(e))
 
     def _deserialize(self, value, attr, data):
         try:
             return parse_permission(value)
         except UsageError as e:
-            raise ValidationError(e.message)
+            raise ValidationError(str(e))
 
 
 def validate_uuid(uuid_str):

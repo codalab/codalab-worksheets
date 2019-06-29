@@ -134,7 +134,7 @@ class LocalRunManager(BaseRunManager):
             self.docker_network_internal.remove()
             self.docker_network_external.remove()
         except docker.errors.APIError as e:
-            logger.error("Cannot clear docker networks: {}".format(e.message))
+            logger.error("Cannot clear docker networks: {}".format(str(e)))
 
         logger.info("Stopped Local Run Manager. Exiting")
 
