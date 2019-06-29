@@ -622,7 +622,7 @@ class CodalabServiceManager(object):
 
         print("[CODALAB] ==> Creating root user")
         self.run_service_cmd(
-            "%spython /opt/codalab-worksheets/scripts/create-root-user.py %s"
+            "%spython3 /opt/codalab-worksheets/scripts/create-root-user.py %s"
             % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
             root=True,
         )
