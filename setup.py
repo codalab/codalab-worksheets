@@ -1,6 +1,8 @@
 from setuptools import setup, find_packages
 import setuptools
-from codalab.common import CODALAB_VERSION
+
+# should match codalab/common.py#CODALAB_VERSION
+CODALAB_VERSION = "0.3.2"
 
 if int(setuptools.__version__.split('.')[0]) < 25:
     print(
@@ -27,7 +29,7 @@ setup(
         'Visit https://worksheets.codalab.org/ or setup your own server by following the '
         'instructions in the Wiki (https://github.com/codalab/codalab-worksheets/wiki/Server-Setup).'
     ),
-    url='https://github.com/codalab/codalab-cli',
+    url='https://github.com/codalab/codalab-worksheets',
     author='CodaLab',
     author_email='codalab.worksheets@gmail.com',
     license='Apache License 2.0',
@@ -41,6 +43,8 @@ setup(
     python_requires='~=2.7',
     include_package_data=True,
     install_requires=get_requirements('worker/requirements.txt'),
-    entry_points={'console_scripts': ['cl=codalab.bin.cl:main']},
+    entry_points={
+        'console_scripts': ['cl=codalab.bin.cl:main', 'codalab-service=codalab_service:main']
+    },
     zip_safe=False,
 ),

@@ -98,8 +98,9 @@ class LocalRunStateMachine(StateTransitioner):
         self,
         docker_image_manager,
         dependency_manager,
-        docker_network_internal_name,
-        docker_network_external_name,
+        worker_docker_network,
+        docker_network_internal,
+        docker_network_external,
         docker_runtime,
         upload_bundle_callback,
         assign_cpu_and_gpu_sets_fn,
@@ -116,8 +117,9 @@ class LocalRunStateMachine(StateTransitioner):
 
         self.dependency_manager = dependency_manager
         self.docker_image_manager = docker_image_manager
-        self.docker_network_external_name = docker_network_external_name
-        self.docker_network_internal_name = docker_network_internal_name
+        self.worker_docker_network = worker_docker_network
+        self.docker_network_external = docker_network_external
+        self.docker_network_internal = docker_network_internal
         self.docker_runtime = docker_runtime
         # bundle_uuid -> {'thread': Thread, 'run_status': str}
         self.uploading = ThreadDict(fields={'run_status': 'Upload started', 'success': False})
@@ -223,9 +225,9 @@ class LocalRunStateMachine(StateTransitioner):
 
         # 3) Set up container
         if run_state.resources['request_network']:
-            docker_network = self.docker_network_external_name
+            docker_network = self.docker_network_external.name
         else:
-            docker_network = self.docker_network_internal_name
+            docker_network = self.docker_network_internal.name
 
         try:
             cpuset, gpuset = self.assign_cpu_and_gpu_sets_fn(
@@ -249,6 +251,7 @@ class LocalRunStateMachine(StateTransitioner):
                 memory_bytes=run_state.resources['request_memory'],
                 runtime=self.docker_runtime,
             )
+            self.worker_docker_network.connect(container)
         except docker_utils.DockerException as e:
             run_state.info['failure_message'] = 'Cannot start Docker container: {}'.format(e)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
@@ -306,10 +309,12 @@ class LocalRunStateMachine(StateTransitioner):
                     'Time limit %s exceeded.' % duration_str(run_state.resources['request_time'])
                 )
 
-            if run_state.max_memory > run_state.resources['request_memory']:
+            if (
+                run_state.max_memory > run_state.resources['request_memory']
+                or run_state.info.get('exitcode', '0') == '137'
+            ):
                 kill_messages.append(
-                    'Memory limit %s exceeded.'
-                    % duration_str(run_state.resources['request_memory'])
+                    'Memory limit %s exceeded.' % size_str(run_state.resources['request_memory'])
                 )
 
             if (
@@ -349,7 +354,7 @@ class LocalRunStateMachine(StateTransitioner):
         run_state = check_and_report_finished(run_state)
         run_state = check_resource_utilization(run_state)
 
-        if run_state.is_killed and run_state.container_id is not None:
+        if run_state.is_killed:
             try:
                 run_state.container.kill()
             except docker.errors.APIError:
@@ -360,7 +365,7 @@ class LocalRunStateMachine(StateTransitioner):
                     traceback.print_exc()
             self.disk_utilization[bundle_uuid]['running'] = False
             self.disk_utilization.remove(bundle_uuid)
-            return run_state._replace(stage=LocalRunStage.CLEANING_UP, container_id=None)
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP)
         if run_state.info['finished']:
             logger.debug(
                 'Finished run with UUID %s, exitcode %s, failure_message %s',

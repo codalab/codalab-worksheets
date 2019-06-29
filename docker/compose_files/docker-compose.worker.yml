@@ -1,0 +1,8 @@
+version: '3.5'
+
+services:
+  worker:
+    command: --server http://rest-server:2900 --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_NAME}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}

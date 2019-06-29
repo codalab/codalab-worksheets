@@ -47,7 +47,6 @@ class LocalRunManager(BaseRunManager):
         self._state_committer = JsonStateCommitter(commit_file)
         self._reader = LocalReader()
         self._docker = docker.from_env()
-        self._docker_network_prefix = docker_network_prefix
         self._bundles_dir = os.path.join(work_dir, LocalRunManager.BUNDLES_DIR_NAME)
         if not os.path.exists(self._bundles_dir):
             logger.info('{} doesn\'t exist, creating.'.format(self._bundles_dir))
@@ -61,36 +60,34 @@ class LocalRunManager(BaseRunManager):
 
         self._runs = {}  # bundle_uuid -> LocalRunState
         self._lock = threading.RLock()
-        self._init_docker_networks()
+        self._init_docker_networks(docker_network_prefix)
         self._run_state_manager = LocalRunStateMachine(
             docker_image_manager=self._image_manager,
             dependency_manager=self._dependency_manager,
-            docker_network_internal_name=self.docker_network_internal_name,
-            docker_network_external_name=self.docker_network_external_name,
+            worker_docker_network=self.worker_docker_network,
+            docker_network_internal=self.docker_network_internal,
+            docker_network_external=self.docker_network_external,
             docker_runtime=docker_runtime,
             upload_bundle_callback=self._worker.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
         )
 
-    def _init_docker_networks(self):
+    def _init_docker_networks(self, docker_network_prefix):
         """
         Set up docker networks for runs: one with external network access and one without
         """
 
         def create_or_get_network(name, internal):
             try:
+                logger.debug('Creating docker network %s', name)
                 return self._docker.networks.create(name, internal=internal, check_duplicate=True)
             except docker.errors.APIError:
+                logger.debug('Network %s already exists, reusing', name)
                 return self._docker.networks.list(names=[name])[0]
 
-        self.docker_network_external_name = self._docker_network_prefix + "_ext"
-        self.docker_network_internal_name = self._docker_network_prefix + "_int"
-        self.docker_network_external = create_or_get_network(
-            self.docker_network_external_name, False
-        )
-        self.docker_network_internal = create_or_get_network(
-            self.docker_network_internal_name, True
-        )
+        self.worker_docker_network = create_or_get_network(docker_network_prefix, True)
+        self.docker_network_external = create_or_get_network(docker_network_prefix + "_ext", False)
+        self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", True)
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved
@@ -176,9 +173,19 @@ class LocalRunManager(BaseRunManager):
                 self._runs[bundle_uuid] = self._run_state_manager.transition(run_state)
 
             # filter out finished runs
-            self._runs = {
-                k: v for k, v in list(self._runs.items()) if v.stage != LocalRunStage.FINISHED
-            }
+            finished_container_ids = [
+                run.container
+                for run in self._runs.values()
+                if (run.stage == LocalRunStage.FINISHED or run.stage == LocalRunStage.FINALIZING)
+                and run.container_id is not None
+            ]
+            for container_id in finished_container_ids:
+                try:
+                    container = self._docker.containers.get(container_id)
+                    container.remove(force=True)
+                except (docker.errors.NotFound, docker.errors.NullResource):
+                    pass
+            self._runs = {k: v for k, v in self._runs.items() if v.stage != LocalRunStage.FINISHED}
 
     def create_run(self, bundle, resources):
         """
@@ -281,12 +288,8 @@ class LocalRunManager(BaseRunManager):
         Returns a stream with the response contents
         """
         container_ip = docker_utils.get_container_ip(
-            self.docker_network_external_name, run_state.container
+            self.worker_docker_network.name, run_state.container
         )
-        if not container_ip:
-            container_ip = docker_utils.get_container_ip(
-                self.docker_network_internal_name, run_state.container
-            )
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((container_ip, port))
         s.sendall(message)
@@ -322,6 +325,7 @@ class LocalRunManager(BaseRunManager):
                     'docker_image': run_state.docker_image,
                     'info': run_state.info,
                     'state': LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
+                    'remote': self._worker.id,
                 }
                 for bundle_uuid, run_state in list(self._runs.items())
             }

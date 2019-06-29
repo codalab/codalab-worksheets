@@ -62,7 +62,7 @@ def get_faq():
         os.path.dirname(os.path.realpath(__file__)), '../objects/chat_box_qa.yaml'
     )
     with open(file_path, 'r') as stream:
-        content = yaml.load(stream)
+        content = yaml.safe_load(stream)
         return {'faq': content}
 
 

@@ -61,3 +61,8 @@ class RunBundle(DerivedBundle):
         return super(RunBundle, cls).construct(
             targets, command, metadata, owner_id, uuid, data_hash, state
         )
+
+    def validate(self):
+        super(RunBundle, self).validate()
+        for dep in self.dependencies:
+            dep.validate(require_child_path=True)
