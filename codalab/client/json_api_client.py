@@ -39,7 +39,7 @@ def wrap_exception(message):
                 six.reraise(
                     JsonApiException,
                     JsonApiException(
-                        message.format(*args, **kwargs) + ': ' + e.message, e.client_error
+                        message.format(*args, **kwargs) + ': ' + str(e), e.client_error
                     ),
                     sys.exc_info()[2],
                 )

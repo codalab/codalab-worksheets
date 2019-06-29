@@ -319,7 +319,7 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
                 }  # info doesn't need anything other than uuid
                 items.append(subworksheet_item(subworksheet_info))
             except UsageError as e:
-                items.append(markup_item(e.message + ': ' + line))
+                items.append(markup_item(str(e) + ': ' + line))
         elif line_type == TYPE_DIRECTIVE:
             directive = DIRECTIVE_REGEX.match(line).group(1)
             items.append(directive_item(formatting.string_to_tokens(directive)))
@@ -955,7 +955,7 @@ def interpret_items(schemas, raw_items):
             worksheet_infos[:] = []
             blocks.append(
                 MarkupBlockSchema()
-                .load({'text': 'Error on line %d: %s' % (raw_index, e.message)})
+                .load({'text': 'Error on line %d: %s' % (raw_index, str(e))})
                 .data
             )
 

@@ -29,7 +29,7 @@ def wrap_exception(message):
             try:
                 return f(*args, **kwargs)
             except DockerException as e:
-                raise DockerException(message + ': ' + e.message)
+                raise DockerException(message + ': ' + str(e))
             except (docker.errors.APIError, docker.errors.ImageNotFound) as e:
                 raise DockerException(message + ': ' + str(e))
 

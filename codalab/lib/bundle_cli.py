@@ -817,7 +817,7 @@ class BundleCLI(object):
         try:
             clean = lambda s: shlex.split(s.strip())[0] if s else ''
         except ValueError as e:
-            raise UsageError(e.message)
+            raise UsageError(str(e))
         return list(
             map(
                 clean,
@@ -849,7 +849,7 @@ class BundleCLI(object):
             except PermissionError as e:
                 if self.headless:
                     raise e
-                self.exit(e.message)
+                self.exit(str(e))
             except UsageError as e:
                 if self.headless:
                     raise e

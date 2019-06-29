@@ -135,7 +135,7 @@ def general_command(worksheet_uuid, command):
             lexer.whitespace_split = True
             args = list(lexer)
         except ValueError as e:
-            raise UsageError(e.message)
+            raise UsageError(str(e))
     else:
         args = list(command)
 

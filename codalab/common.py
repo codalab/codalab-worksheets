@@ -74,8 +74,8 @@ def exception_to_http_error(e):
     """
     for known_code, exception_type in http_codes_and_exceptions:
         if isinstance(e, exception_type):
-            return known_code, e.message
-    return http.client.INTERNAL_SERVER_ERROR, e.message
+            return known_code, str(e)
+    return http.client.INTERNAL_SERVER_ERROR, str(e)
 
 
 def http_error_to_exception(code, message):

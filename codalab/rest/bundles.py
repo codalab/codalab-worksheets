@@ -396,9 +396,9 @@ def _fetch_bundle_contents_info(uuid, path=''):
     try:
         info = local.download_manager.get_target_info(uuid, path, depth)
     except NotFoundError as e:
-        abort(http.client.NOT_FOUND, e.message)
+        abort(http.client.NOT_FOUND, str(e))
     except Exception as e:
-        abort(http.client.BAD_REQUEST, e.message)
+        abort(http.client.BAD_REQUEST, str(e))
 
     return {'data': info}
 
@@ -521,9 +521,9 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     try:
         target_info = local.download_manager.get_target_info(uuid, path, 0)
     except NotFoundError as e:
-        abort(http.client.NOT_FOUND, e.message)
+        abort(http.client.NOT_FOUND, str(e))
     except Exception as e:
-        abort(http.client.BAD_REQUEST, e.message)
+        abort(http.client.BAD_REQUEST, str(e))
 
     # Figure out the file name.
     if not path and bundle.metadata.name:
