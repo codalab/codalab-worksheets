@@ -1638,7 +1638,7 @@ if __name__ == '__main__':
         metavar='TEST',
         nargs='+',
         type=str,
-        choices=TestModule.modules.keys() + ['all', 'default'],
+        choices=list(TestModule.modules.keys()) + ['all', 'default'],
         help='Tests to run from: {%(choices)s}',
     )
     args = parser.parse_args()
