@@ -40,7 +40,7 @@ setup(
         "Programming Language :: Python :: 2.7",
         "License :: OSI Approved :: Apache Software License",
     ],
-    python_requires='~=2.7',
+    python_requires='~=3.0',
     include_package_data=True,
     install_requires=get_requirements('worker/requirements.txt'),
     entry_points={
