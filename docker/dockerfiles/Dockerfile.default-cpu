@@ -8,6 +8,11 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     iputils-ping \
     git \
+    python2.7 \	
+    python-pip \	
+    python-dev \	
+    python-software-properties \	
+    python-tk \
     software-properties-common \
     build-essential \
     cmake \
@@ -25,7 +30,7 @@ RUN add-apt-repository ppa:deadsnakes/ppa && \
         python3-pip \
         python3-software-properties
 
-RUN curl https://bootstrap.pypa.io/get-pip.py | python3.6
+RUN alias python3='/usr/bin/python3.6' 
 
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
