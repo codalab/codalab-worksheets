@@ -3,6 +3,8 @@ MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa 
+
 RUN apt-get update; apt-get install -y \
     build-essential \
     git \
@@ -10,22 +12,21 @@ RUN apt-get update; apt-get install -y \
     libjpeg-dev \
     libmysqlclient-dev \
     mysql-client \
-    python-dev \
-    python-pip \
-    python-software-properties \
-    python-virtualenv \
-    software-properties-common \
+    python3.6 \
+    python3-dev \
+    python3-pip \
+    python3-software-properties \
     zip;
 
 # Install dependencies
 COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
 WORKDIR /opt/codalab-worksheets
-RUN pip  install -U setuptools pip
+RUN python3 -m pip install -U setuptools pip
 COPY . /opt/codalab-server/
 COPY ./worker /opt/codalab-worker/
-RUN cd /opt/codalab-server && pip install -r requirements-server.txt
-RUN pip install -e /opt/codalab-worker/
-RUN pip install -e /opt/codalab-server/
+RUN cd /opt/codalab-server && pip3 install -r requirements-server.txt
+RUN python3 -m pip install -e /opt/codalab-worker/
+RUN python3 -m pip install -e /opt/codalab-server/
 
 ENV CODALAB_HOME=/home/codalab
 

@@ -3,19 +3,22 @@ MAINTAINER Percy Liang <pliang@cs.stanford.edu>
 
 ENV DEBIAN_FRONTEND noninteractive
 
+RUN add-apt-repository ppa:deadsnakes/ppa 
+
 # Install dependencies
 RUN apt-get update; apt-get install -y \
-  python-dev \
-  python-pip;
+  python3.6 \
+  python3-dev \
+  python3-pip;
 
 COPY worker/requirements.txt /opt
-RUN /usr/bin/env python -m pip install --user --upgrade pip; \
-    /usr/bin/env python -m pip install -r /opt/requirements.txt;
+RUN /usr/bin/env python3 -m pip install --user --upgrade pip; \
+    /usr/bin/env python3 -m pip install -r /opt/requirements.txt;
 
 # Install dependencies again
 COPY worker /opt/worker
 
-RUN /usr/bin/env python -m pip install --user --upgrade pip; \
-    /usr/bin/env python -m pip install -e /opt/worker;
+RUN /usr/bin/env python3 -m pip install --user --upgrade pip; \
+    /usr/bin/env python3 -m pip install -e /opt/worker;
 
 ENTRYPOINT ["cl-worker"]
