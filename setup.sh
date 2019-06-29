@@ -43,14 +43,14 @@ if [ ! -e $env ]; then
   echo
 fi
 
-$env/bin/pip install -U setuptools pip
+$env/bin/python -m pip install -U setuptools pip
 
 echo -e "${info}[*] Installing Python packages into $env...${reset}"
 if [ "$1" == "server" ]; then
-  $env/bin/pip install -r $codalabdir/requirements-server.txt
-  $env/bin/pip install -e $codalabdir/worker
+  $env/bin/python -m pip install -r $codalabdir/requirements-server.txt
+  $env/bin/python -m pip install -e $codalabdir/worker
 elif [ "$1" == "client" ]; then
-  $env/bin/pip install -r $codalabdir/requirements.txt
+  $env/bin/python -m pip install -r $codalabdir/requirements.txt
 elif [ "$1" == "frontend" ]; then
   echo -e "${info}[*] Running npm build for frontend...${reset}"
   if ! which npm; then
@@ -73,7 +73,7 @@ elif [ "$1" == "frontend" ]; then
 fi
 
 ( # try
-    $env/bin/pip install psutil || exit 1
+    $env/bin/python -m pip3 install psutil || exit 1
 ) || ( # catch
     echo
     echo -e "${warning}[!] psutil failed to install.${reset}"
