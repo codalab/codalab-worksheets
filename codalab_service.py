@@ -580,9 +580,13 @@ class CodalabServiceManager(object):
         compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in list(self.compose_env.items()))
         print(('cd {}; {} {}'.format(self.compose_cwd, compose_env_string, command_string)))
         if not self.args.dry_run:
-            subprocess.check_call(
-                command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True
-            )
+            try:
+                subprocess.check_call(
+                    command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True
+                )
+            except subprocess.CalledProcessError as e:
+                print("CalledProcessError: {}".format(e.output))
+                raise e
         print('')
 
     def bring_up_service(self, service):
