@@ -7,7 +7,7 @@ jobs:
         - docker
       env:
         - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
-      python: 3.7
+      python: 3.6
       before_install:
         - sudo rm /usr/local/bin/docker-compose
         - curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
@@ -22,7 +22,7 @@ jobs:
         - ./codalab_service.py start -w -t --mysql-port 3306 --version ${TRAVIS_BRANCH}
     - stage: style
       language: python
-      python: 3.7
+      python: 3.6
       install: pip install --upgrade black==18.9b0
       script: black . --check --diff
     - stage: deploy
