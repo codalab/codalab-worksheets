@@ -370,7 +370,7 @@ class CodalabArgs(argparse.Namespace):
             metavar='TEST',
             nargs='+',
             type=str,
-            choices=test_cli.TestModule.modules.keys() + ['all', 'default'],
+            choices=list(test_cli.TestModule.modules.keys()) + ['all', 'default'],
             default=['default'],
             help='Tests to run',
         )
