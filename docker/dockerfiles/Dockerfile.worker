@@ -14,13 +14,13 @@ RUN apt-get update; apt-get install -y \
 RUN alias python3='/usr/bin/python3.6' 
 
 COPY worker/requirements.txt /opt
-RUN /usr/bin/env python3 -m pip install --user --upgrade pip; \
-    /usr/bin/env python3 -m pip install -r /opt/requirements.txt;
+RUN python3 -m pip install --user --upgrade pip; \
+    python3 -m pip install -r /opt/requirements.txt;
 
 # Install dependencies again
 COPY worker /opt/worker
 
-RUN /usr/bin/env python3 -m pip install --user --upgrade pip; \
-    /usr/bin/env python3 -m pip install -e /opt/worker;
+RUN python3 -m pip install --user --upgrade pip; \
+    python3 -m pip install -e /opt/worker;
 
 ENTRYPOINT ["cl-worker"]
