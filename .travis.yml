@@ -33,7 +33,7 @@ jobs:
         - docker
       env:
         - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
-      python: 2.7
+      python: 3.6
       after_success: echo "skipped"
       before_deploy:
         - pip install twine
