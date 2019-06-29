@@ -3,7 +3,7 @@ MAINTAINER Percy Liang <pliang@cs.stanford.edu>
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN add-apt-repository ppa:deadsnakes/ppa 
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa 
 
 # Install dependencies
 RUN apt-get update; apt-get install -y \
