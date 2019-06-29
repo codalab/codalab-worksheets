@@ -70,8 +70,8 @@ RUN python -m spacy download en
 
 ## Set up python3.6 environment
 
-RUN pip3 install -U pip
-RUN pip3 install -U \
+RUN python3 -m pip install -U pip
+RUN python3 -m pip install -U \
       numpy \
       scipy \
       matplotlib \
@@ -100,11 +100,11 @@ RUN pip2 install -U \
       torchvision
 
 
-RUN pip3 install -U \
+RUN python3 -m pip install -U \
       tensorflow-gpu==1.12.0 \
       tensorboard \
       keras
 
-RUN pip3 install -U \
+RUN python3 -m pip install -U \
       torch \
       torchvision

@@ -13,7 +13,6 @@ RUN apt-get update; apt-get install -y \
     libmysqlclient-dev \
     mysql-client \
     python3.6 \
-    python3-dev \
     python3-pip \
     python3-software-properties \
     zip;
@@ -24,7 +23,7 @@ WORKDIR /opt/codalab-worksheets
 RUN python3 -m pip install -U setuptools pip
 COPY . /opt/codalab-server/
 COPY ./worker /opt/codalab-worker/
-RUN cd /opt/codalab-server && pip3 install -r requirements-server.txt
+RUN cd /opt/codalab-server && python3 -m pip install -r requirements-server.txt
 RUN python3 -m pip install -e /opt/codalab-worker/
 RUN python3 -m pip install -e /opt/codalab-server/
 
