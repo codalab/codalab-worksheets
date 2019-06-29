@@ -1,16 +1,13 @@
 FROM ubuntu:xenial
 MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 
+RUN add-apt-repository ppa:deadsnakes/ppa 
+
 # Begin common steps (Must be the same in the CPU and GPU images)
 RUN apt-get update && apt-get install -y \
     apt-transport-https \
     iputils-ping \
     git \
-    python2.7 \
-    python-pip \
-    python-dev \
-    python-software-properties \
-    python-tk \
     software-properties-common \
     build-essential \
     cmake \
@@ -25,6 +22,7 @@ RUN add-apt-repository ppa:deadsnakes/ppa && \
     apt-get install python3.6 -y \
         python3.6-venv \
         python3.6-dev \
+        python3-pip \
         python3-software-properties
 
 RUN curl https://bootstrap.pypa.io/get-pip.py | python3.6
