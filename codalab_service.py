@@ -585,7 +585,7 @@ class CodalabServiceManager(object):
                     command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True
                 )
             except subprocess.CalledProcessError as e:
-                print("CalledProcessError: {}".format(e.output))
+                print("CalledProcessError: {}, {}".format(str(e), e.output))
                 raise e
         print('')
 
