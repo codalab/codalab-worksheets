@@ -14,6 +14,7 @@ RUN apt-get update; apt-get install -y \
     mysql-client \
     python3.6 \
     python3-pip \
+    python3-venv \
     python3-software-properties \
     zip;
 
