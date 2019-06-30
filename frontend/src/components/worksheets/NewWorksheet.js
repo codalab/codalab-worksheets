@@ -25,10 +25,10 @@ class NewWorksheet extends React.Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        if (nextProps.escCount != this.props.escCount && this.state.showNewWorksheet) {
+        if (nextProps.escCount !== this.props.escCount && this.state.showNewWorksheet) {
             this.toggleNewWorksheet();
         }
-        if (nextProps.userInfo != this.props.userInfo) {
+        if (nextProps.userInfo !== this.props.userInfo) {
             this.setState({
                 newWorksheetName: nextProps.userInfo.user_name + SAMPLE_WORKSHEET_TEXT,
             });
@@ -56,7 +56,7 @@ class NewWorksheet extends React.Component {
 
     handleNameChange = (event) => {
         var name = event.target.value;
-        if (name.match(NAME_REGEX) != null || name === '') {
+        if (name.match(NAME_REGEX) !== null || name === '') {
             this.setState({ newWorksheetName: event.target.value });
         }
     };

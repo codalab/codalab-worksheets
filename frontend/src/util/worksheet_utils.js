@@ -7,24 +7,24 @@ export function renderDuration(s) {
     // s: number of seconds
     // Return a human-readable string.
     // Example: 100 => "1m40s", 10000 => "2h46m"
-    if (s == null) {
+    if (s === null) {
         return '<none>';
     }
 
     var m = Math.floor(s / 60);
-    if (m == 0) return Math.round(s * 10) / 10 + 's';
+    if (m === 0) return Math.round(s * 10) / 10 + 's';
 
     s -= m * 60;
     var h = Math.floor(m / 60);
-    if (h == 0) return Math.round(m) + 'm' + Math.round(s) + 's';
+    if (h === 0) return Math.round(m) + 'm' + Math.round(s) + 's';
 
     m -= h * 60;
     var d = Math.floor(h / 24);
-    if (d == 0) return Math.round(h) + 'h' + Math.round(m) + 'm';
+    if (d === 0) return Math.round(h) + 'h' + Math.round(m) + 'm';
 
     h -= d * 24;
     var y = Math.floor(d / 365);
-    if (y == 0) return Math.round(d) + 'd' + Math.round(h) + 'h';
+    if (y === 0) return Math.round(d) + 'd' + Math.round(h) + 'h';
 
     d -= y * 365;
     return Math.round(y) + 'y' + Math.round(d) + 'd';
@@ -175,15 +175,15 @@ export function keepPosInView(pos) {
 // Whether an interpreted item changed - used in shouldComponentUpdate.
 export function worksheetItemPropsChanged(props, nextProps) {
     /*console.log('worksheetItemPropsChanged',
-      props.active != nextProps.active,
-      props.focused != nextProps.focused,
-      props.subFocusIndex != nextProps.subFocusIndex,
-      props.version != nextProps.version);*/
+      props.active !== nextProps.active,
+      props.focused !== nextProps.focused,
+      props.subFocusIndex !== nextProps.subFocusIndex,
+      props.version !== nextProps.version);*/
     return (
-        props.active != nextProps.active ||
-        props.focused != nextProps.focused ||
-        (nextProps.focused && props.subFocusIndex != nextProps.subFocusIndex) ||
-        props.version != nextProps.version
+        props.active !== nextProps.active ||
+        props.focused !== nextProps.focused ||
+        (nextProps.focused && props.subFocusIndex !== nextProps.subFocusIndex) ||
+        props.version !== nextProps.version
     );
 }
 

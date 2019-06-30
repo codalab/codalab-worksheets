@@ -98,7 +98,7 @@ function CodalabApp() {
 
 function checkAuth() {
     let codalab_session = new Cookies().get('codalab_session');
-    return codalab_session != undefined;
+    return codalab_session !== undefined;
 }
 
 const fakeAuth = {
