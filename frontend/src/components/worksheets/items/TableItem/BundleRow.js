@@ -444,7 +444,6 @@ const styles = (theme) => ({
     panelContainer: {
         display: 'block',
         height: '0px !important',
-        border: 'none !important',
         overflow: 'visible',
     },
     panelCellContainer: {
@@ -508,6 +507,7 @@ const styles = (theme) => ({
     },
     contentRow: {
         height: 36,
+        borderBottom: '2px solid #ddd',
     },
     modal: {
         position: 'absolute',
