@@ -11,6 +11,7 @@ import { withStyles } from '@material-ui/core/styles';
 import { BundleEditableField } from '../../EditableField';
 import PermissionDialog from '../PermissionDialog';
 import { renderFormat, shorten_uuid } from '../../../util/worksheet_utils';
+import { ConfigLabel } from '../ConfigPanel';
 
 class Dependency extends React.PureComponent<
     {
@@ -76,90 +77,74 @@ class SideBar extends React.Component<
         const isRunBundle = bundleInfo.bundle_type === 'run';
 
         return (
-            <Grid container spacing={16}>
+            <div>
+                { metadata.failure_message && <Typography variant="body1">{ metadata.failure_message }</Typography> }
+                {/** ----------------------------------------------------------------------------------------------- */}
+                <ConfigLabel label="Name" />
+                <BundleEditableField
+                    dataType={ metadataType.name }
+                    fieldName="name"
+                    uuid={ bundleInfo.uuid }
+                    value={ metadata.name }
+                    canEdit={ hasEditPermission && editableMetadataFields.includes("name") }
+                    onChange={ (name) => onUpdate({ name }) }
+                />
+                {/** ----------------------------------------------------------------------------------------------- */}
+                <ConfigLabel label="Description" />
+                <BundleEditableField
+                    dataType={ metadataType.description }
+                    fieldName="description"
+                    uuid={ bundleInfo.uuid }
+                    value={ metadata.description }
+                    canEdit={ hasEditPermission && editableMetadataFields.includes("description") }
+                    onChange={ (description) => onUpdate({ description }) }
+                />
+                {/** ----------------------------------------------------------------------------------------------- */}
+                { isRunBundle && <Dependency bundleInfo={ bundleInfo }/> }
+                { metadata.data_size && <ConfigLabel label="Size" /> }
+                { metadata.data_size && renderFormat(metadata.data_size, metadataType.data_size) }
+                <ConfigLabel label="Created On" />
+                {renderFormat(metadata.created, metadataType.created)}
+                <ConfigLabel label="Owner" />
+                { bundleInfo.owner.user_name }
+                <ConfigLabel label="Attached to Worksheets" />
                 {
-                    metadata.failure_message && <Grid item xs={12}>
-                        <Typography variant="body1">
-                            { metadata.failure_message }
-                        </Typography>
-                    </Grid>
-                }
-                <Grid item xs={ 12 }>
-                    <Typography variant="body1">Name</Typography>
-                    <BundleEditableField
-                        dataType={ metadataType.name }
-                        fieldName="name"
-                        uuid={ bundleInfo.uuid }
-                        value={ metadata.name }
-                        canEdit={ hasEditPermission && editableMetadataFields.includes("name") }
-                        onChange={ (name) => onUpdate({ name }) }
-                    />
-                </Grid>
-                <Grid item xs={ 12 }>
-                    <Typography variant="body1">Description</Typography>
-                    <BundleEditableField
-                        dataType={ metadataType.description }
-                        fieldName="description"
-                        uuid={ bundleInfo.uuid }
-                        value={ metadata.description }
-                        canEdit={ hasEditPermission && editableMetadataFields.includes("description") }
-                        onChange={ (description) => onUpdate({ description }) }
-                    />
-                </Grid>
-                { isRunBundle && <Grid item xs={12}>
-                        <Dependency
-                            bundleInfo={ bundleInfo }
-                        />
-                    </Grid>
-                }
-                <Grid item xs={12}>
-                    <Typography variant="body1">
-                        { metadata.data_size && <span>Size:
-                                &nbsp;{ renderFormat(metadata.data_size, metadataType.data_size) }
-                            <br/></span>
-                        }
-                        Created on:&nbsp;
-                        { renderFormat(metadata.created, metadataType.created) }
-                        <br/>
-                        Owned by:&nbsp;{ bundleInfo.owner.user_name }
-                        <br />
-                        Hosted within worksheets:
-                    </Typography>
-                    {
-                        bundleInfo.host_worksheets.map((worksheet) =>
-                            <div
-                                key={ worksheet.uuid }
+                    bundleInfo.host_worksheets.map((worksheet) =>
+                        <div
+                            key={ worksheet.uuid }
+                        >
+                            <a
+                                href={ `/worksheets/${ worksheet.uuid }`}
+                                className={ classes.uuidLink }
+                                target="_blank"
                             >
-                                <a
-                                    href={ `/worksheets/${ worksheet.uuid }`}
-                                    className={ classes.uuidLink }
-                                    target="_blank"
-                                >
-                                    { worksheet.name }
-                                </a>
-                            </div>
-                        )
-                    }
-                </Grid>
-                <Grid item xs={12}>
-                    <Typography variant="body1">Permissions</Typography>
+                                { worksheet.name }
+                            </a>
+                        </div>
+                    )
+                }
+                {/** ----------------------------------------------------------------------------------------------- */}
+                <div className={classes.spacer}/>
+                <div>
+                    <Typography variant="subtitle1">Permissions</Typography>
                     <PermissionDialog
                         uuid={ bundleInfo.uuid }
                         permission_spec={ bundleInfo.permission_spec }
                         group_permissions={ bundleInfo.group_permissions }
                         onChange={ this.props.onMetaDataChange }
                     />
-                </Grid>
-                <Grid item xs={12}>
+                </div>
+                <div>
                     <a
                         href={ `/bundles/${ bundleInfo.uuid }` }
                         className={ classes.uuidLink }
                         target="_blank"
                     >
-                        More about bundle { shorten_uuid(bundleInfo.uuid) }
+                        More Information for Bundle { shorten_uuid(bundleInfo.uuid) }
                     </a>
-                </Grid>
-            </Grid>);
+                </div>
+            </div>
+        );
     }
 }
 
@@ -177,6 +162,9 @@ const styles = (theme) => ({
         '&:hover': {
             color: theme.color.primary.base,
         }
+    },
+    spacer: {
+        marginTop: theme.spacing.larger,
     },
 });
 

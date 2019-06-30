@@ -11,9 +11,7 @@ import MarkdownItem from './items/MarkdownItem';
 import RecordItem from './items/RecordItem';
 import TableItem from './items/TableItem';
 import WorksheetItem from './items/WorksheetItem';
-import TextEditorItem from './items//TextEditorItem';
 import ItemWrapper from './items/ItemWrapper';
-import ColdStartItem from './items/ColdStartItem';
 
 ////////////////////////////////////////////////////////////
 
@@ -224,13 +222,7 @@ class WorksheetItemList extends React.Component {
             );
             items_display = worksheet_items;
         } else {
-            items_display = (
-                <ColdStartItem
-                    reloadWorksheet={this.props.reloadWorksheet}
-                    worksheetUUID={info && info.uuid}
-                    ws={this.props.ws}
-                />
-            );
+            items_display = null;
         }
         if (info && info.error)
             items_display = <p className='alert-danger'>Error in worksheet: {info.error}</p>;

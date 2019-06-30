@@ -94,12 +94,14 @@ class ColdStartItem extends React.Component {
 	                />
 	            )}
 	            {showNewRun && (
-	                <NewRun
-                        after_sort_key={ after_sort_key }
-                        ws={ws}
-                        reloadWorksheet={reloadWorksheet}
-	                    onSubmit={() => this.setState({ showNewRun: false })}
-	                />
+	                <div className={classes.insertBox}>
+                        <NewRun
+                            after_sort_key={ after_sort_key }
+                            ws={ws}
+                            reloadWorksheet={reloadWorksheet}
+                            onSubmit={() => this.setState({ showNewRun: false })}
+                        />
+	                </div>
 	            )}
 	            {showNewText && (
 	                <TextEditorItem
@@ -139,6 +141,10 @@ const styles = (theme) => ({
     },
     buttonIcon: {
         marginRight: theme.spacing.large,
+    },
+    insertBox: {
+        border: `2px solid ${theme.color.primary.base}`,
+        margin: '32px 64px !important',
     },
 });
 

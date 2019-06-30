@@ -2,15 +2,15 @@
  * This module allows easy access with the server's CLI to run commands.
  */
 
-import $, { jQuery } from 'jquery';
-import _ from 'underscore';
+import $ from 'jquery';
 
 /**
  * @param command
  *     Codalab CLI command, without "cl". E.g. "run ...".
  * @param worksheet_uuid
- *     UUID of active worksheet. (6/3/2019: May be retrieved with ws.info.uuid). If
-executeCommand(command)
+ *     UUID of active worksheet. (6/3/2019: May be retrieved with ws.info.uuid).
+ * Example usage:
+    executeCommand(command)
     .then(function(data) {
         if (data.output) {
             terminal.echo(data.output.replace(/\n$/, ''));
@@ -48,9 +48,5 @@ export function executeCommand(command: string, worksheet_uuid?: string) {
             worksheet_uuid: worksheet_uuid || null,
             command: command,
         }),
-    })
-    .fail((jqXHR, status, error) => {
-        // Some exception occurred outside of the CLI
-        console.error(jqXHR.responseText);
     });
 }

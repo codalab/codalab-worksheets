@@ -1,11 +1,9 @@
 // @flow
 import * as React from 'react';
 import * as $ from 'jquery';
-import classNames from 'classnames';
 import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 import { renderFormat, serializeFormat } from '../util/worksheet_utils';
-import ReactDOM from 'react-dom';
 
 const KEYCODE_ESC = 27;
 

@@ -1,6 +1,4 @@
 import * as React from 'react';
-import SubHeader from '../components/SubHeader';
-import ContentWrapper from '../components/ContentWrapper';
 import Bundle from '../components/Bundle';
 
 /**

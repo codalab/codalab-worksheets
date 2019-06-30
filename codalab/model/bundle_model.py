@@ -745,7 +745,7 @@ class BundleModel(object):
 
             return True
 
-    def start_bundle(self, bundle, user_id, worker_id, hostname, start_time):
+    def start_bundle(self, bundle, user_id, worker_id, start_time, remote):
         """
         Marks the bundle as running but only if it is still scheduled to run
         on the given worker (done by checking the worker_run table). Returns
@@ -761,7 +761,7 @@ class BundleModel(object):
 
             bundle_update = {
                 'state': State.PREPARING,
-                'metadata': {'remote': hostname, 'started': start_time, 'last_updated': start_time},
+                'metadata': {'started': start_time, 'last_updated': start_time, 'remote': remote},
             }
             self.update_bundle(bundle, bundle_update, connection)
 
@@ -775,7 +775,7 @@ class BundleModel(object):
 
         return True
 
-    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id, hostname):
+    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id):
         '''
         Updates the database tables with the most recent bundle information from worker
         '''
@@ -790,9 +790,7 @@ class BundleModel(object):
 
             if state == State.FINALIZING:
                 # update bundle metadata using resume_bundle one last time before finalizing it
-                self.resume_bundle(
-                    bundle, bundle_update, row, user_id, worker_id, hostname, connection
-                )
+                self.resume_bundle(bundle, bundle_update, row, user_id, worker_id, connection)
                 return self.finalize_bundle(
                     bundle,
                     user_id,
@@ -802,13 +800,13 @@ class BundleModel(object):
                 )
             elif state in [State.PREPARING, State.RUNNING]:
                 return self.resume_bundle(
-                    bundle, bundle_update, row, user_id, worker_id, hostname, connection
+                    bundle, bundle_update, row, user_id, worker_id, connection
                 )
             else:
                 # State isn't one we can check in for
                 return False
 
-    def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, hostname, connection):
+    def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, connection):
         '''
         Marks the bundle as running. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
         Updates a few metadata fields and the events log.
@@ -831,6 +829,7 @@ class BundleModel(object):
             'run_status': bundle_update['run_status'],
             'last_updated': int(time.time()),
             'time': time.time() - bundle_update['start_time'],
+            'remote': bundle_update['remote'],
         }
 
         if bundle_update['docker_image'] is not None:
@@ -1317,13 +1316,13 @@ class BundleModel(object):
             result = connection.execute(cl_worksheet.insert().values(worksheet_value))
             worksheet.id = result.lastrowid
 
-    
     def add_worksheet_items(self, worksheet_uuid, items, after_sort_key=None, replace=[]):
         with self.engine.begin() as connection:
             if len(replace) > 0:
                 # Remove the old items.
                 connection.execute(
-                    cl_worksheet_item.delete().where(cl_worksheet_item.c.id.in_(replace)))
+                    cl_worksheet_item.delete().where(cl_worksheet_item.c.id.in_(replace))
+                )
             if len(items) == 0:
                 # Nothing to insert, return
                 return
@@ -1336,38 +1335,48 @@ class BundleModel(object):
                     cl_worksheet_item.c.worksheet_uuid == worksheet_uuid,
                     or_(
                         cl_worksheet_item.c.sort_key > after_sort_key,
-                        and_(cl_worksheet_item.c.sort_key == None,
-                            cl_worksheet_item.c.id > after_sort_key)
-                    ))
+                        and_(
+                            cl_worksheet_item.c.sort_key == None,
+                            cl_worksheet_item.c.id > after_sort_key,
+                        ),
+                    ),
+                )
                 query = select(['*']).where(clause)
                 # Get result in a list
                 after_items = [item for item in connection.execute(query)]
-                if len(after_items) > 0 and \
-                    min(item_sort_key(item) for item in after_items) - after_sort_key <= offset:
+                if (
+                    len(after_items) > 0
+                    and min(item_sort_key(item) for item in after_items) - after_sort_key <= offset
+                ):
                     # Shift the keys of the original items if the gap between after_sort_key
                     # and the next smallest key is not sufficient for inserting items.
                     # In actuality, delete these items and re-insert.
                     connection.execute(cl_worksheet_item.delete().where(clause))
-                    new_after_items = [{
-                        'worksheet_uuid': item.worksheet_uuid,
-                        'bundle_uuid': item.bundle_uuid,
-                        'subworksheet_uuid': item.subworksheet_uuid,
-                        'value': item.value,
-                        'type': item.type,
-                        'sort_key': item_sort_key(item) * 2 + offset,
-                    } for item in after_items]
+                    new_after_items = [
+                        {
+                            'worksheet_uuid': item.worksheet_uuid,
+                            'bundle_uuid': item.bundle_uuid,
+                            'subworksheet_uuid': item.subworksheet_uuid,
+                            'value': item.value,
+                            'type': item.type,
+                            'sort_key': item_sort_key(item) * 2 + offset,
+                        }
+                        for item in after_items
+                    ]
                     self.do_multirow_insert(connection, cl_worksheet_item, new_after_items)
             # Insert new items
-            items_2_insert = [{
-                'worksheet_uuid': worksheet_uuid,
-                'bundle_uuid': bundle_uuid,
-                'subworksheet_uuid': subworksheet_uuid,
-                'value': self.encode_str(value),
-                'type': type,
-                'sort_key': after_sort_key + idx + 1 if after_sort_key is not None else None,
-            } for idx, (bundle_uuid, subworksheet_uuid, value, type) in enumerate(items)]
+            items_2_insert = [
+                {
+                    'worksheet_uuid': worksheet_uuid,
+                    'bundle_uuid': bundle_uuid,
+                    'subworksheet_uuid': subworksheet_uuid,
+                    'value': self.encode_str(value),
+                    'type': type,
+                    'sort_key': after_sort_key + idx + 1 if after_sort_key is not None else None,
+                }
+                for idx, (bundle_uuid, subworksheet_uuid, value, type) in enumerate(items)
+            ]
             self.do_multirow_insert(connection, cl_worksheet_item, items_2_insert)
-
 
     def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):
         """
@@ -1396,7 +1405,6 @@ class BundleModel(object):
                 connection.execute(cl_worksheet_item.insert().values(new_item))
             # sqlite doesn't support batch insertion
 
-    
     def update_worksheet_item_value(self, id, value):
         """
         Update the value of a worksheet item, aka updating a markdown item.
@@ -1405,17 +1413,12 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             if value:
                 connection.execute(
-                    cl_worksheet_item.update().where(
-                        cl_worksheet_item.c.id == id
-                    ).values({ 'value': value })
+                    cl_worksheet_item.update()
+                    .where(cl_worksheet_item.c.id == id)
+                    .values({'value': value})
                 )
             else:
-                connection.execute(
-                    cl_worksheet_item.delete().where(
-                        cl_worksheet_item.c.id == id
-                    )
-                )
-
+                connection.execute(cl_worksheet_item.delete().where(cl_worksheet_item.c.id == id))
 
     def update_worksheet_items(self, worksheet_uuid, last_item_id, length, new_items):
         """
@@ -2149,6 +2152,7 @@ class BundleModel(object):
                         "is_verified": is_verified,
                         "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
+                        "time_quota": self.default_user_info['time_quota'],
                         "parallel_run_quota": self.default_user_info['parallel_run_quota'],
                         "time_used": 0,
                         "disk_quota": self.default_user_info['disk_quota'],
@@ -2375,6 +2379,12 @@ class BundleModel(object):
         user_info = self.get_user_info(user_id)
         user_info['time_used'] += amount
         self.update_user_info(user_info)
+
+    def get_user_time_quota_left(self, user_id):
+        user_info = self.get_user_info(user_id)
+        time_quota = user_info['time_quota']
+        time_used = user_info['time_used']
+        return time_quota - time_used
 
     def get_user_parallel_run_quota_left(self, user_id):
         user_info = self.get_user_info(user_id)

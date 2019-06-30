@@ -7,7 +7,6 @@ import CodalabTheme from './theme';
 
 // Components
 import UserInfo from './components/UserInfo';
-import $ from 'jquery';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import Login from './components/Login';

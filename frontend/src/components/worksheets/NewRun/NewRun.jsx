@@ -137,8 +137,9 @@ class NewRun extends React.Component<{
 
     /** Worksheet info. */
     ws: {},
-
+    reloadWorksheet: () => void,
     onSubmit: () => void,
+    defaultRun: {},
 }, {
     dependencies: Dependency[],
     command: string,
@@ -153,7 +154,11 @@ class NewRun extends React.Component<{
     networkAccess: boolean,
     failedDependencies: boolean,
 }> {
-
+    static defaultProps: {
+        onSubmit: () => undefined,
+        reloadWorksheet: () => undefined,
+        defaultRun: {},
+    }
     defaultConfig = {
         dependencies: [],
         command: "",
@@ -176,7 +181,7 @@ class NewRun extends React.Component<{
     constructor(props) {
         super(props);
         this.state = {
-            ...this.defaultConfig,
+            ...Object.assign(this.defaultConfig, props.defaultRun),
         };
     }
 
@@ -252,7 +257,7 @@ class NewRun extends React.Component<{
             args.push(key + ':' + value);
         }
 
-        if (command) args.push(`"${command}"`);
+        if (command) args.push(command);
 
         return buildTerminalCommand(args);
     }
@@ -294,7 +299,7 @@ class NewRun extends React.Component<{
                         <Button
                             variant='text'
                             color='primary'
-                            onClick={ this.props.onSubmit }
+                            onClick={ () => this.props.onSubmit() }
                         >Cancel</Button>
                         <Button
                             variant='contained'
@@ -308,8 +313,6 @@ class NewRun extends React.Component<{
                 )}
                 sidebar={(
                     <div>
-                        <Typography variant='subtitle1'>Information</Typography>
-
                         <ConfigLabel
                             label="Name"
                             tooltip="Short name (not necessarily unique) to provide an
@@ -488,6 +491,14 @@ class NewRun extends React.Component<{
                     autoFocus
                     placeholder="python train.py --data mydataset.txt"
                     maxRows={4}
+                    onKeyDown={(e) => {
+                         if(e.keyCode == 18 && (e.ctrlKey || e.shiftKey || e.metaKey)) {
+                            // Press control enter
+                            e.preventDefault();
+                            this.runCommand();
+                            this.props.onSubmit();
+                         }
+                    }}
                 />
             </ConfigPanel>
         );

@@ -1,11 +1,9 @@
 import * as React from 'react';
 import classNames from 'classnames';
 import $ from 'jquery';
-import Immutable from 'seamless-immutable';
 
 import { withStyles } from '@material-ui/core/styles';
 import { MuiThemeProvider } from '@material-ui/core/styles';
-import Typography from '@material-ui/core/Typography';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Button from '@material-ui/core/Button';
@@ -20,13 +18,19 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import Snackbar from '@material-ui/core/Snackbar';
+import SnackbarContent from '@material-ui/core/SnackbarContent';
 
-import DashboardIcon from '@material-ui/icons/Dashboard'; // Home
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
 import GalleryIcon from '@material-ui/icons/Public'; // FindInPage
 import HowToIcon from '@material-ui/icons/Help'; // Info
 import ContactIcon from '@material-ui/icons/Feedback';
 import AccountIcon from '@material-ui/icons/AccountCircle';
+import CloseIcon from '@material-ui/icons/Close';
+import SuccessIcon from '@material-ui/icons/CheckCircle';
+import ErrorIcon from '@material-ui/icons/Error';
+import InfoIcon from '@material-ui/icons/Info';
+import WarningIcon from '@material-ui/icons/Warning';
 
 import { executeCommand } from '../util/cli_utils';
 
@@ -45,7 +49,11 @@ class NavBar extends React.Component<{
         this.state = {
             accountEl: null,
             newWorksheetShowDialog: false,
-            newWorksheetName: kDefaultWorksheetName,
+            newWorksheetName: "",
+            userInfo: {},
+            snackbarShow: false,
+            snackbarMessage: "",
+            snackbarVariant: "",
         };
     }
 
@@ -60,19 +68,43 @@ class NavBar extends React.Component<{
             dataType: 'json',
             cache: false,
             type: 'GET',
-            success: function(data) {
-                var userInfo = data.data.attributes;
+            success: (data) => {
+                const userInfo = data.data.attributes;
                 userInfo.user_id = data.data.id;
-                this.setState(
-                    Immutable({
-                        userInfo: userInfo,
-                    }),
-                );
-            }.bind(this),
-            error: function(xhr, status, err) {
+                this.setState({ userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` });
+            },
+            error: (xhr, status, err) => {
                 console.error(xhr.responseText);
             },
         });
+    }
+
+    resetDialog() {
+        this.setState({
+            newWorksheetShowDialog: false,
+            newWorksheetName: `${this.state.userInfo.user_name}-`,
+        });
+    }
+
+    createNewWorksheet() {
+        this.resetDialog();
+        executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`)
+            .then((data) => {
+                if(data.structured_result && data.structured_result.ui_actions) {
+                    data.structured_result.ui_actions.forEach(([action, param]) => {
+                        if(action === "openWorksheet") {
+                            window.location.href = `/worksheets/${param}`;
+                        }
+                    });
+                }
+            })
+            .fail((error) => {
+                this.setState({
+                    snackbarShow: true,
+                    snackbarMessage: error.responseText,
+                    snackbarVariant: 'error',
+                });
+            });
     }
 
     /** Renderer. */
@@ -83,6 +115,8 @@ class NavBar extends React.Component<{
         if (this.props.auth.isAuthenticated && this.state.userInfo === undefined) {
             this.fetchName();
         }
+
+        let SnackbarIcon = {error: ErrorIcon, success: SuccessIcon, info: InfoIcon, warning: WarningIcon}[this.state.snackbarVariant];
 
         return (
             <MuiThemeProvider
@@ -119,13 +153,12 @@ class NavBar extends React.Component<{
                         )}
                         {this.props.auth.isAuthenticated && (
                             <React.Fragment>
-                                <Tooltip title='Dashboard'>
-                                    <IconButton href='/rest/worksheets/?name=dashboard'>
-                                        <DashboardIcon />
-                                    </IconButton>
-                                </Tooltip>
+                                <Button color="primary" href='/rest/worksheets/?name=dashboard'>
+                                    Dashboard
+                                </Button>
                                 <Tooltip title='New Worksheet'>
-                                    <IconButton onClick={() => this.setState({ newWorksheetShowDialog: true })}>
+                                    <IconButton
+                                        onClick={() => this.setState({ newWorksheetShowDialog: true })}>
                                         <NewWorksheetIcon />
                                     </IconButton>
                                 </Tooltip>
@@ -141,8 +174,8 @@ class NavBar extends React.Component<{
                                 <HowToIcon />
                             </IconButton>
                         </Tooltip>
-                        <Tooltip title='Contact'>
-                            <IconButton href='mailto:codalab.worksheets@gmail.com'>
+                        <Tooltip title='Bugs/Issues'>
+                            <IconButton href='https://github.com/codalab/codalab-worksheets/issues' target='_blank'>
                                 <ContactIcon />
                             </IconButton>
                         </Tooltip>
@@ -152,9 +185,7 @@ class NavBar extends React.Component<{
                                     <IconButton
                                         aria-owns={accountEl ? 'account-menu' : undefined}
                                         aria-haspopup='true'
-                                        onClick={(e) =>
-                                            this.setState({ accountEl: e.currentTarget })
-                                        }
+                                        onClick={(e) => this.setState({ accountEl: e.currentTarget })}
                                     >
                                         <AccountIcon />
                                     </IconButton>
@@ -168,8 +199,8 @@ class NavBar extends React.Component<{
                                     <ListSubheader>
                                         {this.state.userInfo && this.state.userInfo.user_name}
                                     </ListSubheader>
-                                    <MenuItem href='/account/profile'>My Account</MenuItem>
-                                    <MenuItem onClick={this.props.auth.signout} href='#'>
+                                    <MenuItem onClick={() => window.location.href = '/account/profile'}>My Account</MenuItem>
+                                    <MenuItem onClick={this.props.auth.signout}>
                                         Logout
                                     </MenuItem>
                                 </Menu>
@@ -177,9 +208,10 @@ class NavBar extends React.Component<{
                         )}
                     </Toolbar>
                 </AppBar>
+                {/** =============================================================================================== */}
                 <Dialog
                   open={this.state.newWorksheetShowDialog}
-                  onClose={() => this.setState({ newWorksheetShowDialog: false,newWorksheetName: kDefaultWorksheetName, })}
+                  onClose={() => this.resetDialog()}
                   aria-labelledby="form-dialog-title"
                 >
                   <DialogTitle id="form-dialog-title">New Worksheet</DialogTitle>
@@ -193,29 +225,70 @@ class NavBar extends React.Component<{
                       id="name"
                       label="Name"
                       fullWidth
-                      placeholder={kDefaultWorksheetName}
+                      value={this.state.newWorksheetName}
+                      placeholder={this.state.newWorksheetName}
                       onChange={(e) => this.setState({ newWorksheetName: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.keyCode === 13) {
+                            // ENTER shortcut
+                            e.preventDefault();
+                            this.createNewWorksheet();
+                        } else if (e.keyCode === 27) {
+                            // ESC shortcut
+                            e.preventDefault();
+                            this.resetDialog();
+                        }
+
+                      }}
                     />
                   </DialogContent>
                   <DialogActions>
-                    <Button onClick={() => this.setState({
-                            newWorksheetShowDialog: false,
-                            newWorksheetName: kDefaultWorksheetName,
-                        })} color="primary">
+                    <Button onClick={() => this.resetDialog()} color="primary">
                       Cancel
                     </Button>
-                    <Button onClick={() => {
-                        this.setState({
-                            newWorksheetShowDialog: false,
-                            newWorksheetName: kDefaultWorksheetName,
-                        });
-                        executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`);
-                        // Change to page?
-                    }} color="primary">
+                    <Button onClick={() => this.createNewWorksheet()} color="primary">
                       Confirm
                     </Button>
                   </DialogActions>
                 </Dialog>
+                {/** =============================================================================================== */}
+                <Snackbar
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'left',
+                    }}
+                    open={this.state.snackbarShow}
+                    autoHideDuration={5000}
+                    onClose={(e, reason) => {
+                        if(reason !== "clickaway") this.setState({ snackbarShow: false });
+                    }}
+                >
+                    <SnackbarContent
+                        className={classNames({
+                            [classes.snackbarError]: this.state.snackbarVariant === "error",
+                            [classes.snackbarWarning]: this.state.snackbarVariant === "warning",
+                            [classes.snackbarInfo]: this.state.snackbarVariant === "info",
+                            [classes.snackbarSuccess]: this.state.snackbarVariant === "success",
+                        })}
+                        message={
+                            <span className={classes.snackbarMessage}>
+                                <SnackbarIcon className={classes.snackbarIcon}/>
+                                {this.state.snackbarMessage}
+                            </span>
+                        }
+                        action={[
+                          <IconButton
+                            key="close"
+                            aria-label="Close"
+                            color="inherit"
+                            className={classes.close}
+                            onClick={() => this.setState({ snackbarShow: false })}
+                          >
+                            <CloseIcon />
+                          </IconButton>,
+                        ]}
+                    />
+                 </Snackbar>
             </MuiThemeProvider>
         );
     }
@@ -227,6 +300,25 @@ const styles = (theme) => ({
     },
     logo: {
         maxHeight: 64,
+    },
+    snackbarMessage: {
+        display: 'flex',
+        alignItems: 'center',
+    },
+    snackbarIcon: {
+        marginRight: theme.spacing.large,
+    },
+    snackbarError: {
+        backgroundColor: theme.color.red.base,
+    },
+    snackbarWarning: {
+        backgroundColor: theme.color.yellow.base,
+    },
+    snackbarInfo: {
+        backgroundColor: theme.color.primary.base,
+    },
+    snackbarSuccess: {
+        backgroundColor: theme.color.green.base,
     },
 });
 
