@@ -98,6 +98,7 @@ class ColdStartItem extends React.Component {
                         <NewRun
                             after_sort_key={ after_sort_key }
                             ws={ws}
+                            reloadWorksheet={reloadWorksheet}
                             onSubmit={() => this.setState({ showNewRun: false })}
                         />
 	                </div>
