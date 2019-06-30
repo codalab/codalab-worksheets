@@ -559,8 +559,8 @@ class Worksheet extends React.Component {
                         subIndex++
                     ) {
                         if (
-                            items[index].bundles_spec.bundle_infos[subIndex].uuid ==
-                            this.state.focusedBundleUuidList[i]
+                            items[index].bundles_spec.bundle_infos[subIndex].uuid ===
+                            this.state.focusedBundleUuidList[i] 
                         )
                             return [index, subIndex];
                     }

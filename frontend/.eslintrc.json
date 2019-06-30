@@ -8,7 +8,6 @@
         "no-shadow-restricted-names": "off",
         "no-useless-escape": "off",
         "jsx-a11y/alt-text": "off",
-        "eqeqeq": "off",
         "no-redeclare": "off",
         "react/no-direct-mutation-state": "off",
         "no-script-url": "off",
