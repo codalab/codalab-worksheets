@@ -8,7 +8,7 @@ import Table from '@material-ui/core/Table';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import ResponsiveEmbed from 'react-responsive-embed';
-
+import { Link } from 'react-router-dom';
 import UploadIcon from '@material-ui/icons/CloudUploadOutlined'; // insert_chart, cloud upload
 import ExperimentIcon from '@material-ui/icons/InsertChartOutlined'; // extension, barchart, score
 import PublishIcon from '@material-ui/icons/PublicOutlined'; // share, public
@@ -26,14 +26,15 @@ class HomePage extends React.Component<{
     renderButton(title, href) {
         const { classes } = this.props;
         return (
-            <Button
+            <Link to={href}>
+                <Button
                 variant='contained'
                 color='primary'
-                href={href}
                 classes={{ root: classes.buttonRoot, label: classes.buttonLabel }}
-            >
-                {title}
-            </Button>
+                >
+                    {title}
+                </Button>
+            </Link>
         );
     }
 
