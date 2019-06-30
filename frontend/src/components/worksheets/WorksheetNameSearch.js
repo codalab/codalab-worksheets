@@ -7,7 +7,7 @@ export default class extends React.Component {
         this.state = {
             loading: true,
             error: false
-        }
+        };
     }
     async componentDidMount() {
         const { name } = queryString.parse(this.props.location.search);
