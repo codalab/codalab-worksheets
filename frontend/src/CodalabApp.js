@@ -41,11 +41,8 @@ function CodalabApp() {
 
                         {/*Main Content.*/}
                         <Switch>
-                            <Route
-                                path='/'
-                                exact
-                                render={(props) => <HomePage {...props} auth={fakeAuth} />}
-                            />
+                            <Route path='/' exact render={(props) => <HomePage {...props} auth={fakeAuth} redirectAuthToDashboard={true} />} />
+                            <Route path='/home' exact render={(props) => <HomePage {...props} auth={fakeAuth} redirectAuthToDashboard={false} />} />
                             <Route path='/account/signup/success' component={SignUpSuccess} />
                             <Route path='/account/verify/error' component={VerifyError} />
                             <Route

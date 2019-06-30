@@ -134,7 +134,7 @@ class NavBar extends React.Component<{
                 <AppBar color='default'>
                     <Toolbar>
                         <div className={classes.logoContainer}>
-                            <Link to=''>
+                            <Link to='/home'>
                                 <img
                                     src={`${process.env.PUBLIC_URL}/img/codalab-logo.png`}
                                     className={classes.logo}

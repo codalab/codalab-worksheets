@@ -23,6 +23,14 @@ class HomePage extends React.Component<{
         signout: () => void,
     },
 }> {
+    constructor(props) {
+        super(props);
+        const {auth, redirectAuthToDashboard} = this.props;
+        if (auth.isAuthenticated && redirectAuthToDashboard) {
+            this.props.history.push("/worksheets?name=dashboard");
+        }
+    }
+
     renderButton(title, href) {
         const { classes } = this.props;
         return (
@@ -53,7 +61,6 @@ class HomePage extends React.Component<{
 
     render() {
         const { classes, auth } = this.props;
-
         return (
             <Grid container>
                 {/** Splash w/ tagline, primary buttons, and video.*/}
