@@ -78,6 +78,26 @@ var WorksheetContent = (function() {
         });
     };
 
+    WorksheetContent.prototype.deleteWorksheet = function(props) {
+        if (this.info === undefined) return;
+        $('#update_progress').show();
+        $('#save_error').hide();
+        $.ajax({
+            type: 'DELETE',
+            cache: false,
+            url: '/rest/worksheets?force=1',
+            contentType: 'application/json',
+            data: JSON.stringify({"data": [{"id": this.info.uuid, "type": "worksheets"}]}),
+            success: function(data) {
+                console.log('Deleted worksheet ' + this.info.uuid);
+                props.success && props.success(data);
+            }.bind(this),
+            error: function(xhr, status, err) {
+                props.error && props.error(xhr, status, err);
+            },
+        });
+    };
+
     return WorksheetContent;
 })();
 
@@ -687,6 +707,29 @@ class Worksheet extends React.Component {
         });
     }
 
+    delete() {
+        if (!window.confirm("Are you sure you want to delete this worksheet?")) {
+            return;
+        }
+        $('#worksheet-message').hide();
+        this.setState({ updating: true });
+        this.state.ws.deleteWorksheet({
+            success: function(data) {
+                this.setState({ updating: false });
+                window.location = "/rest/worksheets/?name=dashboard";
+            }.bind(this),
+            error: function(xhr, status, err) {
+                this.setState({ updating: false });
+                $('#update_progress').hide();
+                $('#save_error').show();
+                $('#worksheet-message')
+                    .html(xhr.responseText)
+                    .addClass('alert-danger alert')
+                    .show();
+            }.bind(this),
+        });
+    }
+
     render() {
         const { classes } = this.props;
         const { anchorEl } = this.state;
@@ -711,6 +754,9 @@ class Worksheet extends React.Component {
                     </button>
                     <button className={rawClass} onClick={this.editMode}>
                         {sourceStr}
+                    </button>
+                    <button className={rawClass} onClick={this.delete.bind(this)}>
+                        {"Delete"}
                     </button>
                 </div>
             </div>
