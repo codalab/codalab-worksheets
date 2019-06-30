@@ -116,7 +116,7 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None):
     for a in args:
         assert isinstance(a, str)
     # Travis only prints ASCII
-    print(('>> %s' % " ".join([a.decode("utf-8").encode("ascii", errors='replace') for a in args])))
+    print(('>> %s' % " ".join([a.encode("ascii", errors='replace') for a in args])))
 
     try:
         output = subprocess.check_output(args, env=env)
