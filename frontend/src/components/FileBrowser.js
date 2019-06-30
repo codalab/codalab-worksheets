@@ -55,7 +55,7 @@ export class FileBrowser extends React.Component<
     }
 
     componentDidUpdate(prevProps, prevState) {
-        if (prevProps.uuid != this.props.uuid) {
+        if (prevProps.uuid !== this.props.uuid) {
             // Reset and fire off an asynchronous fetch for new data
             this.setState({ fileBrowserData: {} });
             this.updateFileBrowser('');
@@ -148,7 +148,7 @@ export class FileBrowser extends React.Component<
 
             // Show files
             entities.forEach(function(item) {
-                if (item.type != 'directory')
+                if (item.type !== 'directory')
                     items.push(
                         <FileBrowserItem
                             bundle_uuid={self.props.uuid}
@@ -470,7 +470,7 @@ export class FileBrowserLite extends React.Component<
     }
 
     componentDidUpdate(prevProps, prevState) {
-        if (prevProps.uuid != this.props.uuid) {
+        if (prevProps.uuid !== this.props.uuid) {
             // Reset and fire off an asynchronous fetch for new data
             this.setState({ fileBrowserData: {} });
             this.updateFileBrowser('');
@@ -553,7 +553,7 @@ export class FileBrowserLite extends React.Component<
 
         // Show files
         entities.forEach((item) => {
-            if (item.type != 'directory')
+            if (item.type !== 'directory')
                 items.push(
                     <FileBrowserItemLite
                         bundle_uuid={uuid}

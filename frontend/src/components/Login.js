@@ -44,7 +44,7 @@ class Login extends React.Component {
             <React.Fragment>
                 <SubHeader title='Sign In' />
                 <ContentWrapper>
-                    {from != '/' && <p>You must log in to view the page at {from}</p>}
+                    {from !== '/' && <p>You must log in to view the page at {from}</p>}
                     {error && <div class='alert alert-error'>{error}</div>}
                     <form className='login' method='POST' action='/rest/account/login'>
                         <div className='form-group'>

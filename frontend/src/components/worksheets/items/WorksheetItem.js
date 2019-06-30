@@ -57,7 +57,7 @@ class WorksheetItem extends React.Component {
 
     _getItems() {
         var item = this.props.item;
-        if (item.mode == 'subworksheets_block') {
+        if (item.mode === 'subworksheets_block') {
             return item.subworksheet_infos;
         } else {
             throw 'Invalid: ' + item.mode;
@@ -78,7 +78,7 @@ class WorksheetItem extends React.Component {
 
         var body_rows_html = items.map(function(row_item, row_index) {
             var row_ref = 'row' + row_index;
-            var row_focused = self.props.focused && row_index == self.props.subFocusIndex;
+            var row_focused = self.props.focused && row_index === self.props.subFocusIndex;
             var url = '/worksheets/' + row_item.uuid;
             return (
                 <TableWorksheetRow

@@ -64,8 +64,8 @@ class EditableFieldBase extends React.Component<{
             context: this, // automatically bind `this` in all callbacks
             xhr: function() {
                 // Hack for IE < 9 to use PATCH method
-                return window.XMLHttpRequest == null ||
-                    new window.XMLHttpRequest().addEventListener == null
+                return window.XMLHttpRequest === null ||
+                    new window.XMLHttpRequest().addEventListener === null
                     ? new window.ActiveXObject('Microsoft.XMLHTTP')
                     : $.ajaxSettings.xhr();
             },

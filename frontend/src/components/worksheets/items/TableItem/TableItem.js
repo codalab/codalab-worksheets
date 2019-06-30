@@ -62,7 +62,7 @@ class TableItem extends React.Component<{
         });
         var bodyRowsHtml = rowItems.map((rowItem, rowIndex) => {
             var rowRef = 'row' + rowIndex;
-            var rowFocused = this.props.focused && rowIndex == this.props.subFocusIndex;
+            var rowFocused = this.props.focused && rowIndex === this.props.subFocusIndex;
             var url = '/bundles/' + bundleInfos[rowIndex].uuid;
             return (
                 <BundleRow
