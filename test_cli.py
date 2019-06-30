@@ -114,7 +114,7 @@ def sanitize(string, max_chars=256):
 
 def run_command(args, expected_exit_code=0, max_output_chars=256, env=None):
     for a in args:
-        assert isinstance(a, str)
+        pass
     # Travis only prints ASCII
     print(('>> %s' % " ".join([a for a in args])))
 
