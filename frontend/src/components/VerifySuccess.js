@@ -15,7 +15,7 @@ const VerifySuccess = (props) => {
                             <p className='user-authenticated'>
                                 Check out your{' '}
                                 <NavLink
-                                    href='/worksheets?name=dashboard'
+                                    to='/worksheets?name=dashboard'
                                     tabIndex={2}
                                 >
                                     dashboard

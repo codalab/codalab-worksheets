@@ -145,7 +145,7 @@ class NavBar extends React.Component<{
                         {!this.props.auth.isAuthenticated && (
                             <React.Fragment>
                                 <Link to='/account/signup'>
-                                    <Button color='inherit' href='/account/signup'>
+                                    <Button color='inherit'>
                                         Sign Up
                                     </Button>
                                 </Link>
