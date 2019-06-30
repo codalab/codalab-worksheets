@@ -708,7 +708,7 @@ class Worksheet extends React.Component {
     }
 
     delete() {
-        if (!window.confirm("Are you sure you want to delete this worksheet?")) {
+        if (!window.confirm("Are you sure you want to delete this worksheet? (Note that this does not delete the bundles, but just detaches them from the worksheet.)")) {
             return;
         }
         $('#worksheet-message').hide();
