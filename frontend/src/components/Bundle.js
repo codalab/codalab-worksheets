@@ -155,7 +155,7 @@ class Bundle extends React.Component<
             })
             .fail(function(xhr, status, err) {
                 // 404 Not Found errors are normal if contents aren't available yet, so ignore them
-                if (xhr.status != 404) {
+                if (xhr.status !== 404) {
                     this.setState({
                         bundleInfo: null,
                         fileContents: null,
@@ -244,7 +244,7 @@ function renderErrorMessages(messages) {
 
 function renderDependencies(bundleInfo) {
     let dependencies_table = [];
-    if (!bundleInfo.dependencies || bundleInfo.dependencies.length == 0) return <div />;
+    if (!bundleInfo.dependencies || bundleInfo.dependencies.length === 0) return <div />;
 
     bundleInfo.dependencies.forEach(function(dep, i) {
         let dep_bundle_url = '/bundles/' + dep.parent_uuid;
@@ -279,7 +279,7 @@ function createRow(bundleInfo, bundleMetadataChanged, key, value) {
     if (
         bundleInfo.permission > 1 &&
         editableMetadataFields &&
-        editableMetadataFields.indexOf(key) != -1
+        editableMetadataFields.indexOf(key) !== -1
     ) {
         return (
             <tr key={key}>
@@ -367,7 +367,7 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
             bundleInfo,
             bundleMetadataChanged,
             'owner',
-            bundleInfo.owner == null ? '<anonymous>' : bundleInfo.owner.user_name,
+            bundleInfo.owner === null ? '<anonymous>' : bundleInfo.owner.user_name,
         ),
     );
     rows.push(
@@ -385,7 +385,7 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
     rows.push(
         createRow(bundleInfo, bundleMetadataChanged, 'data_size', bundleInfo.metadata.data_size),
     );
-    if (bundleInfo.bundle_type == 'run') {
+    if (bundleInfo.bundle_type === 'run') {
         rows.push(createRow(bundleInfo, bundleMetadataChanged, 'command', bundleInfo.command));
     }
     if (bundleInfo.metadata.failure_message) {
@@ -398,8 +398,8 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
             ),
         );
     }
-    if (bundleInfo.bundle_type == 'run') {
-        if (bundleInfo.state == 'running' && bundleInfo.metadata.run_status != 'Running')
+    if (bundleInfo.bundle_type === 'run') {
+        if (bundleInfo.state === 'running' && bundleInfo.metadata.run_status !== 'Running')
             rows.push(
                 createRow(
                     bundleInfo,

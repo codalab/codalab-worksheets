@@ -112,8 +112,8 @@ class Worksheet extends React.Component {
     // Return the number of rows occupied by this item.
     _numTableRows(item) {
         if (item) {
-            if (item.mode == 'table_block') return item.bundles_spec.bundle_infos.length;
-            if (item.mode == 'subworksheets_block') return item.subworksheet_infos.length;
+            if (item.mode === 'table_block') return item.bundles_spec.bundle_infos.length;
+            if (item.mode === 'subworksheets_block') return item.subworksheet_infos.length;
         } else {
             return null;
         }
@@ -174,11 +174,11 @@ class Worksheet extends React.Component {
         var __innerScrollToItem = function(index, subIndex) {
             // Compute the current position of the focused item.
             var pos;
-            if (index == -1) {
+            if (index === -1) {
                 pos = -1000000; // Scroll all the way to the top
             } else {
                 var item = this.refs.list.refs['item' + index];
-                if (this._numTableRows(item.props.item) != null) item = item.refs['row' + subIndex]; // Specifically, the row
+                if (this._numTableRows(item.props.item) !== null) item = item.refs['row' + subIndex]; // Specifically, the row
                 var node = ReactDOM.findDOMNode(item);
                 pos = node.getBoundingClientRect().top;
             }
@@ -252,14 +252,14 @@ class Worksheet extends React.Component {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
         window.onpopstate = function(event) {
-            if (event.state == null) return;
+            if (event.state === null) return;
             this.setState({ ws: new WorksheetContent(event.state.uuid) });
             this.reloadWorksheet();
         }.bind(this);
 
         Mousetrap.reset();
 
-        if (this.state.activeComponent == 'action') {
+        if (this.state.activeComponent === 'action') {
             // no need for other keys, we have the action bar focused
             return;
         }
@@ -494,7 +494,7 @@ class Worksheet extends React.Component {
 
                 var rawIndex;
                 var cursorColumnPosition;
-                if (this.state.focusIndex == -1) {
+                if (this.state.focusIndex === -1) {
                     // Above the first item
                     rawIndex = 0;
                     cursorColumnPosition = 0;
@@ -504,7 +504,7 @@ class Worksheet extends React.Component {
                     var focusIndexPair =
                         this.state.focusIndex +
                         ',' +
-                        (item.mode == 'table_block' || item.mode == 'subworksheets_block'
+                        (item.mode === 'table_block' || item.mode === 'subworksheets_block'
                             ? this.state.subFocusIndex
                             : 0);
                     rawIndex = this.state.ws.info.block_to_raw[focusIndexPair];
@@ -757,7 +757,7 @@ class Worksheet extends React.Component {
         var items_display = (
             <WorksheetItemList
                 ref={'list'}
-                active={this.state.activeComponent == 'list'}
+                active={this.state.activeComponent === 'list'}
                 ws={this.state.ws}
                 version={this.state.version}
                 canEdit={canEdit}

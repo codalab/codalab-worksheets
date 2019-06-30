@@ -190,9 +190,9 @@ class BundleRow extends Component {
 
             // See if there's a link
             var url;
-            if (col == 0) {
+            if (col === 0) {
                 url = baseUrl;
-            } else if (columnWithHyperlinks.indexOf(headerKey) != -1) {
+            } else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
                 url = '/rest/bundles/' + uuid + '/contents/blob' + rowContent['path'];
                 if ('text' in rowContent) {
                     rowContent = rowContent['text'];
