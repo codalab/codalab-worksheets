@@ -79,7 +79,7 @@ class HomePage extends React.Component<{
                                         </React.Fragment>
                                     }
                                     {auth.isAuthenticated &&
-                                        this.renderButton('Dashboard', '/rest/worksheets/?name=dashboard')
+                                        this.renderButton('Dashboard', '/worksheets?name=dashboard')
                                     }
                                 </div>
                             </Grid>

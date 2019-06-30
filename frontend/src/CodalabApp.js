@@ -15,6 +15,7 @@ import { ChangeEmail, ChangeEmailSuccess } from './components/ChangeEmail';
 import VerifySuccess from './components/VerifySuccess';
 import VerifyError from './components/VerifyError';
 import Worksheet from './components/worksheets/Worksheet';
+import WorksheetNameSearch from './components/worksheets/WorksheetNameSearch';
 import {
     PasswordReset,
     PasswordResetSent,
@@ -84,6 +85,7 @@ function CodalabApp() {
                             />
                             <PrivateRoute path='/account/profile' component={UserInfo} />
                             <Route path='/worksheets/:uuid' component={Worksheet} />
+                            <Route path='/worksheets' component={WorksheetNameSearch} />
                             <Route path='/bundles/:uuid' component={BundleRoute} />
                             <Route component={PageNotFound} />
                         </Switch>

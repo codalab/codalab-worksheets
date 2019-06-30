@@ -158,9 +158,11 @@ class NavBar extends React.Component<{
                         )}
                         {this.props.auth.isAuthenticated && (
                             <React.Fragment>
-                                <Button color="primary" href='/rest/worksheets/?name=dashboard'>
-                                    Dashboard
-                                </Button>
+                                <Link to='/worksheets?name=dashboard'>
+                                    <Button color="primary">
+                                        Dashboard
+                                    </Button>
+                                </Link>
                                 <Tooltip title='New Worksheet'>
                                     <IconButton
                                         onClick={() => this.setState({ newWorksheetShowDialog: true })}>
@@ -170,9 +172,11 @@ class NavBar extends React.Component<{
                             </React.Fragment>
                         )}
                         <Tooltip title='Gallery'>
-                            <IconButton href='/rest/worksheets/?name=home'>
-                                <GalleryIcon />
-                            </IconButton>
+                            <Link to='/worksheets?name=home'>
+                                <IconButton>
+                                    <GalleryIcon />
+                                </IconButton>
+                            </Link>
                         </Tooltip>
                         <Tooltip title='How-To Guides'>
                             <IconButton href='https://github.com/codalab/codalab-worksheets/wiki'>
