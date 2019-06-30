@@ -1,0 +1,21 @@
+{
+    "extends": "react-app",
+    "rules": {
+        "no-unused-vars": "off",
+        "react/jsx-no-target-blank": "off",
+        "no-loop-func": "off",
+        "jsx-a11y/anchor-is-valid": "off",
+        "no-shadow-restricted-names": "off",
+        "no-useless-escape": "off",
+        "jsx-a11y/alt-text": "off",
+        "eqeqeq": "off",
+        "no-redeclare": "off",
+        "react/no-direct-mutation-state": "off",
+        "no-script-url": "off",
+        "no-throw-literal": "off",
+        "no-dupe-keys": "off",
+        "no-control-regex": "off",
+        "no-dupe-class-members": "off",
+        "no-template-curly-in-string": "off"
+    }
+}

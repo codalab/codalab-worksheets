@@ -54,6 +54,7 @@
     "test": "react-scripts test",
     "flow": "flow",
     "format": "prettier --config ./.prettierrc --write 'src/**/*.js'",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint --fix src"
   }
 }
