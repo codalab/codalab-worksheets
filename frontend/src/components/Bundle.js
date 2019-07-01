@@ -188,7 +188,7 @@ class Bundle extends React.Component<
             // Still loading
             return (
                 <div id='bundle-message' className='bundle-detail'>
-                    <img src={'${process.env.PUBLIC_URL}/img/Preloader_Small.gif'} /> Loading
+                    <img src={`${process.env.PUBLIC_URL}/img/Preloader_Small.gif`} /> Loading
                     bundle...
                 </div>
             );

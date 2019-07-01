@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Immutable from 'seamless-immutable';
-import { Redirect } from 'react-router-dom';
+import { Redirect, NavLink } from 'react-router-dom';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
 import queryString from 'query-string';
@@ -82,10 +82,10 @@ class Login extends React.Component {
                         {/* the above is almost certainly wrong, not sure how to fix*/}
                     </form>
                     <p>
-                        <a href='/account/signup'>Don't have an account? Sign up!</a>
+                        <NavLink to='/account/signup'>Don't have an account? Sign up!</NavLink>
                     </p>
                     <p>
-                        <a href='/account/reset'>Forgot your password?</a>
+                        <NavLink to='/account/reset'>Forgot your password?</NavLink>
                     </p>
                     <a
                         href=''
