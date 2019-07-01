@@ -15,8 +15,7 @@ export default class extends React.Component {
             const response = await fetch(`/rest/worksheets?specs=${name}`).then(e => e.json());
             const uuid = response.data[0].id;
             this.props.history.push(`/worksheets/${uuid}/`);
-        }
-        catch (e) {
+        } catch (e) {
             console.error(e);
             this.setState({ error: true, loading: false });
         }
