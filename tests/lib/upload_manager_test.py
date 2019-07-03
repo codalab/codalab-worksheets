@@ -123,10 +123,10 @@ class UploadManagerTest(unittest.TestCase):
         self.check_file_contains_string(os.path.join(self.bundle_location, 'source2'), 'testing2')
 
     def write_string_to_file(self, string, file_path):
-        with open(file_path, 'wb') as f:
+        with open(file_path, 'w') as f:
             f.write(string)
 
     def check_file_contains_string(self, file_path, string):
         self.assertTrue(os.path.isfile(file_path))
-        with open(file_path, 'rb') as f:
+        with open(file_path, 'r') as f:
             self.assertEqual(f.read(), string)

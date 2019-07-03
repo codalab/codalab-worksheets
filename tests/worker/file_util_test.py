@@ -44,7 +44,7 @@ class FileUtilTest(unittest.TestCase):
     def test_gzip_stream(self):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             self.addCleanup(lambda: os.remove(temp_file.name))
-            temp_file.write('contents')
+            temp_file.write('contents'.encode())
             name = temp_file.name
 
         self.assertEqual(un_gzip_stream(gzip_file(name)).read(), 'contents')
@@ -52,7 +52,7 @@ class FileUtilTest(unittest.TestCase):
     def test_bz2_file(self):
         source_write = tempfile.NamedTemporaryFile(delete=False)
         self.addCleanup(lambda: os.remove(source_write.name))
-        source_write.write(bz2.compress('contents'))
+        source_write.write(bz2.compress('contents').encode())
         source_write.flush()
         source_read = open(source_write.name, 'r')
         destination = tempfile.NamedTemporaryFile(delete=False)
