@@ -116,7 +116,7 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None):
     for a in args:
         pass
     # Travis only prints ASCII
-    print(('>> %s' % " ".join([a for a in args])))
+    # print(('>> %s' % " ".join([a for a in args])))
 
     try:
         output = subprocess.check_output(args, env=env)
