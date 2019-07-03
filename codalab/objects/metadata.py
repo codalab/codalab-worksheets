@@ -82,8 +82,7 @@ class Metadata(object):
             else:
                 if metadata_dict.get(key):
                     raise UsageError(
-                        'Got duplicate values %s and %s for key %s'
-                        % (metadata_dict[key], value, key)
+                        'Got duplicate values {} and {} for key {}. Args {},{},{}'.format(metadata_dict[key], value, key, maybe_unicode_key, metadata_specs, rows)
                     )
                 # Convert string to the right type (e.g., string to int)
                 metadata_dict[key] = spec.get_constructor()(value)
