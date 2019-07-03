@@ -1,5 +1,5 @@
 from contextlib import closing
-from io import StringIO
+from io import BytesIO
 import gzip
 import os
 import shutil
@@ -146,7 +146,7 @@ def gzip_string(string):
     """
     Gzips the given string.
     """
-    with closing(StringIO()) as output_fileobj:
+    with closing(BytesIO()) as output_fileobj:
         with gzip.GzipFile(None, 'wb', 6, output_fileobj) as fileobj:
             fileobj.write(string)
         return output_fileobj.getvalue()
@@ -158,7 +158,7 @@ def un_gzip_string(string):
 
     Raises an IOError if the archive is not valid.
     """
-    with closing(StringIO(string)) as input_fileobj:
+    with closing(BytesIO(string.encode())) as input_fileobj:
         with gzip.GzipFile(None, 'rb', fileobj=input_fileobj) as fileobj:
             return fileobj.read()
 
