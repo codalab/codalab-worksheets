@@ -104,7 +104,7 @@ def un_gzip_stream(fileobj):
         def __init__(self, fileobj):
             self._fileobj = fileobj
             self._decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
-            self._buffer = ''
+            self._buffer = ''.encode()
             self._finished = False
 
         def read(self, num_bytes=None):
@@ -148,7 +148,7 @@ def gzip_string(string):
     """
     with closing(BytesIO()) as output_fileobj:
         with gzip.GzipFile(None, 'wb', 6, output_fileobj) as fileobj:
-            fileobj.write(string)
+            fileobj.write(string.encode())
         return output_fileobj.getvalue()
 
 
