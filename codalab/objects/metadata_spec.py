@@ -22,8 +22,6 @@ def bool_constructor(x=False):
 def unicode_constructor(s=""):
     # Need this method so that any uninterpretable characters in the database will be
     # replaced with '?'.
-    if isinstance(s, str):
-        s = str(s, encoding='utf-8')
     cleaned = s.encode(encoding='ascii', errors='replace')
     return str(cleaned)
 
