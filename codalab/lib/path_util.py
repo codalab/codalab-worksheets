@@ -196,17 +196,17 @@ def hash_directory(path, dirs_and_files=None):
     directory_hash = hashlib.sha1()
     for directory in sorted(directories):
         relative_path = get_relative_path(path, directory)
-        directory_hash.update(hashlib.sha1(relative_path).hexdigest())
+        directory_hash.update(hashlib.sha1(relative_path.encode()).hexdigest().encode())
     # Use a similar two-level hashing scheme for all files, but incorporate a
     # hash of both the file name and contents.
     file_hash = hashlib.sha1()
     for file_name in sorted(files):
         relative_path = get_relative_path(path, file_name)
-        file_hash.update(hashlib.sha1(relative_path).hexdigest())
-        file_hash.update(hash_file_contents(file_name))
+        file_hash.update(hashlib.sha1(relative_path.encode()).hexdigest().encode())
+        file_hash.update(hash_file_contents(file_name).encode())
     # Return a hash of the two hashes.
-    overall_hash = hashlib.sha1(directory_hash.hexdigest())
-    overall_hash.update(file_hash.hexdigest())
+    overall_hash = hashlib.sha1(directory_hash.hexdigest().encode())
+    overall_hash.update(file_hash.hexdigest().encode())
     return overall_hash.hexdigest()
 
 
@@ -217,16 +217,16 @@ def hash_file_contents(path):
     message = 'hash_file called with relative path: %s' % (path,)
     precondition(os.path.isabs(path), message)
     if os.path.islink(path):
-        contents_hash = hashlib.sha1(LINK_PREFIX)
-        contents_hash.update(os.readlink(path))
+        contents_hash = hashlib.sha1(LINK_PREFIX.encode())
+        contents_hash.update(os.readlink(path).encode())
     else:
-        contents_hash = hashlib.sha1(FILE_PREFIX)
+        contents_hash = hashlib.sha1(FILE_PREFIX.encode())
         with open(path, 'rb') as file_handle:
             while True:
-                data = file_handle.read(BLOCK_SIZE)
+                data = file_handle.read(BLOCK_SIZE.encode())
                 if not data:
                     break
-                contents_hash.update(data)
+                contents_hash.update(data.encode())
     return contents_hash.hexdigest()
 
 

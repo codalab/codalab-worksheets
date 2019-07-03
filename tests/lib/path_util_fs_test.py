@@ -67,13 +67,13 @@ class PathUtilFSTest(unittest.TestCase):
         self.assertNotEqual(path_util.FILE_PREFIX, path_util.LINK_PREFIX)
         # Check that files are hashed with a file prefix.
         # TODO(skishore): Try this test with a much larger file.
-        expected_hash = hashlib.sha1(path_util.FILE_PREFIX + self.contents).hexdigest()
+        expected_hash = hashlib.sha1((path_util.FILE_PREFIX + self.contents).encode()).hexdigest()
         for path in self.bundle_files:
             file_hash = path_util.hash_file_contents(path)
             self.assertEqual(file_hash, expected_hash)
         # Check that links are hashed with a link prefix.
         link_target = '../some/random/thing/to/symlink/to'
-        expected_hash = hashlib.sha1(path_util.LINK_PREFIX + link_target).hexdigest()
+        expected_hash = hashlib.sha1((path_util.LINK_PREFIX + link_target).encode()).hexdigest()
         symlink_path = os.path.join(self.bundle_directories[-1], 'my_symlink')
         os.symlink(link_target, symlink_path)
         link_hash = path_util.hash_file_contents(symlink_path)

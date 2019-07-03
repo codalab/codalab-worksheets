@@ -38,16 +38,16 @@ class PathUtilTest(unittest.TestCase):
         # Compute the result of the the two-level hashing scheme on this bundle.
         directory_hash = hashlib.sha1()
         for directory in sorted(directories):
-            path_hash = hashlib.sha1(relative_prefix + directory).hexdigest()
-            directory_hash.update(path_hash)
+            path_hash = hashlib.sha1((relative_prefix + directory).encode()).hexdigest()
+            directory_hash.update(path_hash.encode())
         file_hash = hashlib.sha1()
         for file_name in sorted(files):
-            name_hash = hashlib.sha1(relative_prefix + file_name).hexdigest()
-            file_hash.update(name_hash)
+            name_hash = hashlib.sha1((relative_prefix + file_name).encode()).hexdigest()
+            file_hash.update(name_hash.encode())
             file_hash.update(contents_hash_prefix + file_name)
         overall_hash = hashlib.sha1()
-        overall_hash.update(directory_hash.hexdigest())
-        overall_hash.update(file_hash.hexdigest())
+        overall_hash.update(directory_hash.hexdigest().encode())
+        overall_hash.update(file_hash.hexdigest().encode())
         expected_hash = overall_hash.hexdigest()
 
         # Mock the recursive-listing and file-hashing operations in path_util.
