@@ -118,7 +118,7 @@ class UploadManagerTest(unittest.TestCase):
 
     def test_multiple_sources(self):
         self.do_upload([('source1', StringIO('testing1')), ('source2', StringIO('testing2'))])
-        self.assertItemsEqual(['source1', 'source2'], os.listdir(self.bundle_location))
+        self.assertEqual(['source1', 'source2'], os.listdir(self.bundle_location))
         self.check_file_contains_string(os.path.join(self.bundle_location, 'source1'), 'testing1')
         self.check_file_contains_string(os.path.join(self.bundle_location, 'source2'), 'testing2')
 

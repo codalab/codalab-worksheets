@@ -16,7 +16,7 @@ class JsonApiClientTest(unittest.TestCase):
         self.client = JsonApiClient('', {}, lambda: None)
 
     def test_pack_params(self):
-        self.assertItemsEqual(
+        self.assertEqual(
             self.client._pack_params(
                 {
                     'int': 2,
