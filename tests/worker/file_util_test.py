@@ -47,7 +47,7 @@ class FileUtilTest(unittest.TestCase):
             temp_file.write('contents'.encode())
             name = temp_file.name
 
-        self.assertEqual(un_gzip_stream(gzip_file(name)).read(), 'contents')
+        self.assertEqual(un_gzip_stream(gzip_file(name)).read(), b'contents')
 
     def test_bz2_file(self):
         source_write = tempfile.NamedTemporaryFile(delete=False)
