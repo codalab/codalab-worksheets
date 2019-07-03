@@ -152,13 +152,13 @@ def gzip_string(string):
         return output_fileobj.getvalue()
 
 
-def un_gzip_string(string):
+def un_gzip_string(bytestring):
     """
-    Gunzips the given string.
+    Gunzips the given bytestring.
 
     Raises an IOError if the archive is not valid.
     """
-    with closing(BytesIO(string.encode())) as input_fileobj:
+    with closing(BytesIO(bytestring)) as input_fileobj:
         with gzip.GzipFile(None, 'rb', fileobj=input_fileobj) as fileobj:
             return fileobj.read()
 
