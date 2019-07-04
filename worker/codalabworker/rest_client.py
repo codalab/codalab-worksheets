@@ -93,7 +93,7 @@ class RestClient(object):
             # Content-Type header, try to deserialize it and return the result.
             # Otherwise, just ignore the response body and return None.
             if response.headers.get('Content-Type') == 'application/json':
-                response_data = response.read()
+                response_data = response.read().decode()
                 try:
                     return json.loads(response_data)
                 except ValueError:

@@ -58,7 +58,7 @@ class RestOAuthHandler(object):
         )
         try:
             response = urllib.request.urlopen(request)
-            result = json.load(response)
+            result = json.loads(response.read().decode())
             return result
         except urllib.error.HTTPError as e:
             if e.code == 401:
