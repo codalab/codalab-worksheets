@@ -109,7 +109,7 @@ class BundleServiceClient(RestClient):
             headers=headers,
         )
         with closing(urllib.request.urlopen(request)) as response:
-            response_data = response.read()
+            response_data = response.read().decode()
         try:
             token = json.loads(response_data)
         except ValueError:
