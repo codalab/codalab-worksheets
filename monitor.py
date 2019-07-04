@@ -163,7 +163,7 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
     # We cap the running time to hard_time_limit, but print out an error if we exceed soft_time_limit.
     start_time = time.time()
     args = ['timeout', '%ss' % hard_time_limit] + args
-    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
     output, err_output = proc.communicate()
     exitcode = proc.returncode
     end_time = time.time()
