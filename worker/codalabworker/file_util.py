@@ -160,7 +160,7 @@ def un_gzip_string(bytestring):
     """
     with closing(BytesIO(bytestring)) as input_fileobj:
         with gzip.GzipFile(None, 'rb', fileobj=input_fileobj) as fileobj:
-            return fileobj.read()
+            return fileobj.read().decode()
 
 
 def read_file_section(file_path, offset, length):
