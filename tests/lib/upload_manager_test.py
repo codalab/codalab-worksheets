@@ -69,7 +69,7 @@ class UploadManagerTest(unittest.TestCase):
 
     def test_single_local_gzip_path(self):
         source = os.path.join(self.temp_dir, 'filename.gz')
-        self.write_string_to_file(gzip_string('testing'), source)
+        self.write_string_to_file(gzip_string('testing').decode(), source)
         self.do_upload([source], unpack=True)
         self.assertTrue(os.path.exists(source))
         self.check_file_contains_string(self.bundle_location, 'testing')
@@ -93,7 +93,7 @@ class UploadManagerTest(unittest.TestCase):
 
     def test_single_local_gzip_path_remove_sources(self):
         source = os.path.join(self.temp_dir, 'filename.gz')
-        self.write_string_to_file(gzip_string('testing'), source)
+        self.write_string_to_file(gzip_string('testing').decode(), source)
         self.do_upload([source], remove_sources=True)
         self.assertFalse(os.path.exists(source))
 
