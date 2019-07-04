@@ -219,7 +219,7 @@ class ErrorAdapter(object):
             return
 
         # Subject should be "ExceptionType: message"
-        subject = '%s: %s' % (type(exc).__name__, exc.message)
+        subject = '%s: %s' % (type(exc).__name__, str(exc))
 
         # Prepend server name to subject if available
         if 'instance_name' in local.config['server']:

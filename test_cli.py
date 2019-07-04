@@ -332,7 +332,7 @@ class ModuleContext(object):
         if exc_type is not None:
             self.error = (exc_type, exc_value, tb)
             if exc_type is AssertionError:
-                print((Colorizer.red("[!] ERROR: %s" % exc_value.message)))
+                print((Colorizer.red("[!] ERROR: %s" % str(exc_value) )))
             elif exc_type is KeyboardInterrupt:
                 print((Colorizer.yellow("[!] Caught interrupt! Quitting after cleanup.")))
             else:
