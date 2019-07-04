@@ -174,7 +174,7 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
     l.append(duration)
     while len(l) > 1000:  # Keep the list bounded
         l.pop(0)
-    average_duration = sum(l) / len(l)
+    average_duration = sum(l) // len(l)
     max_duration = max(l)
 
     # Abstract away the concrete uuids
@@ -260,7 +260,7 @@ def check_disk_space(paths):
     if total < 1000 * 1024:
         error_logs(
             'low disk space',
-            'Only %s MB of disk space left on %s!' % (total / 1024, ' '.join(paths)),
+            'Only %s MB of disk space left on %s!' % (total // 1024, ' '.join(paths)),
         )
 
 

@@ -69,7 +69,7 @@ def shorten_name(name, n=32):
     if len(name) <= 32:
         return name
     else:
-        return name[0 : n / 2 - 1] + '..' + name[len(name) - n / 2 + 1 :]
+        return name[0 : n // 2 - 1] + '..' + name[len(name) - n // 2 + 1 :]
 
 
 def create_default_name(bundle_type, raw_material):

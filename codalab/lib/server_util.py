@@ -64,7 +64,7 @@ def rate_limited(max_calls_per_hour):
 
                 # Increment the running count of allowed calls for the last
                 # hour at a steady rate
-                state['calls_left'] += seconds_since_last_call * (max_calls_per_hour / 3600)
+                state['calls_left'] += seconds_since_last_call * (max_calls_per_hour // 3600)
 
                 # Cap the count at the defined max
                 if state['calls_left'] > max_calls_per_hour:

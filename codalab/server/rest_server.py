@@ -191,9 +191,9 @@ class ErrorAdapter(object):
 
         if len(aux_info) > self.MAX_AUX_INFO_LENGTH:
             aux_info = (
-                aux_info[: (self.MAX_AUX_INFO_LENGTH / 2)]
+                aux_info[: (self.MAX_AUX_INFO_LENGTH // 2)]
                 + "(...truncated...)"
-                + aux_info[-(self.MAX_AUX_INFO_LENGTH / 2) :]
+                + aux_info[-(self.MAX_AUX_INFO_LENGTH // 2) :]
             )
 
         message = textwrap.dedent(
