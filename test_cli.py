@@ -119,7 +119,7 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None):
     # print(('>> %s' % " ".join([a for a in args])))
 
     try:
-        output = subprocess.check_output(args, env=env)
+        output = subprocess.check_output(args, env=env, encoding="utf-8")
         exitcode = 0
     except subprocess.CalledProcessError as e:
         output = e.output
