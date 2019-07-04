@@ -5,4 +5,5 @@ containing unicode characters.
 
 
 def contains_unicode(s):
-    return isinstance(s, str)
+    # TODO: use .isascii() for Python 3.7
+    return len(s) == len(s.encode())
