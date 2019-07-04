@@ -90,7 +90,7 @@ if fuse_is_available:
 
         def _get_chunk_id(self, offset):
             ''' Return chunk id given offset '''
-            return offset / self.chunk_size
+            return offset // self.chunk_size
 
     class MWT(object):
         """
