@@ -226,7 +226,7 @@ def hash_file_contents(path):
                 data = file_handle.read(BLOCK_SIZE)
                 if not data:
                     break
-                contents_hash.update(data.encode())
+                contents_hash.update(data)
     return contents_hash.hexdigest()
 
 
