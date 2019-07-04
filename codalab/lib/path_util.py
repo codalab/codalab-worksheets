@@ -223,7 +223,7 @@ def hash_file_contents(path):
         contents_hash = hashlib.sha1(FILE_PREFIX.encode())
         with open(path, 'rb') as file_handle:
             while True:
-                data = file_handle.read(BLOCK_SIZE.encode())
+                data = file_handle.read(BLOCK_SIZE)
                 if not data:
                     break
                 contents_hash.update(data.encode())
