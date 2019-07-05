@@ -138,13 +138,13 @@ class RestClient(object):
                 to_send = fileobj.read(CHUNK_SIZE)
                 if not to_send:
                     break
-                conn.send('%X\r\n%s\r\n' % (len(to_send), to_send))
+                conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
                 bytes_uploaded += len(to_send)
                 if progress_callback is not None:
                     should_resume = progress_callback(bytes_uploaded)
                     if not should_resume:
                         raise Exception('Upload aborted by client')
-            conn.send('0\r\n\r\n')
+            conn.send(b'0\r\n\r\n')
 
             # Read the response.
             response = conn.getresponse()
