@@ -127,7 +127,11 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None):
     except Exception as e:
         output = traceback.format_exc()
         exitcode = 'test-cli exception'
-    print(Colorizer.cyan(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
+    if exitcode != expected_exit_code:
+        colorize = Colorizer.red
+    else:
+        colorize = Colorizer.cyan
+    print(colorize(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
     print(sanitize(output, max_output_chars))
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
@@ -238,7 +242,7 @@ def temp_instance():
             run_command([cl, 'work', remote.home])
             ... do more stuff with new temp instance ...
     """
-    print('getting temp instance')
+    print('Setting up a temporary CodaLab instance')
     # Dockerized instance
     original_worksheet = current_worksheet()
 
@@ -254,9 +258,10 @@ def temp_instance():
             s.close()
         return ports
 
-    ports = get_free_ports(2)
-    rest_port, http_port = ports[0], ports[1]
+    rest_port, http_port, mysql_port = get_free_ports(3)
     temp_instance_name = random_name()
+    # TODO: not ideal that this script calls ./codalab_service.py, which
+    # introduces a circular dependency.  Just need a rest server.
     try:
         subprocess.check_output(
             ' '.join(
@@ -266,6 +271,7 @@ def temp_instance():
                     '--instance-name %s' % temp_instance_name,
                     '--rest-port %s' % rest_port,
                     '--http-port %s' % http_port,
+                    '--mysql-port %s' % mysql_port,
                     '--version %s' % cl_version,
                 ]
             ),
@@ -355,9 +361,11 @@ class ModuleContext(object):
         if len(self.bundles) > 0:
             for bundle in set(self.bundles):
                 try:
-                    run_command([cl, 'kill', bundle])
-                    run_command([cl, 'wait', bundle])
+                    if run_command([cl, 'info', '-f', 'state', bundle]) not in ('ready', 'failed'):
+                        run_command([cl, 'kill', bundle])
+                        run_command([cl, 'wait', bundle])
                 except AssertionError:
+                    print('CAUGHT')
                     pass
                 run_command([cl, 'rm', '--force', bundle])
 
@@ -1181,7 +1189,7 @@ def test(ctx):
     run_command([cl, 'help'])
 
 
-@TestModule.register('events')
+@TestModule.register('events', default=False)
 def test(ctx):
     if 'localhost' in run_command([cl, 'work']):
         run_command([cl, 'events'])
@@ -1275,6 +1283,7 @@ def test(ctx):
         expected_exit_code=0,
         expected_failure_message=None,
     )
+
     # Too much time
     stress(
         use_time=10,
@@ -1286,10 +1295,12 @@ def test(ctx):
         expected_exit_code=1,
         expected_failure_message='Time limit 1.0s exceeded.',
     )
+
     # Too much memory
     # TODO(klopyrev): CircleCI doesn't seem to support cgroups, so we can't get
     # the memory usage of a Docker container.
     # stress(use_time=2, request_time=10, use_memory=1000, request_memory=50, use_disk=10, request_disk=100, expected_exit_code=1, expected_failure_message='Memory limit 50mb exceeded.')
+
     # Too much disk
     stress(
         use_time=2,
@@ -1307,7 +1318,7 @@ def test(ctx):
     wait(run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)
 
 
-@TestModule.register('copy')
+@TestModule.register('copy', default=False)
 def test(ctx):
     """Test copying between instances."""
     source_worksheet = current_worksheet()
@@ -1518,75 +1529,64 @@ def test(ctx):
 
 @TestModule.register('competition')
 def test(ctx):
-    """
-    Sanity-check the competition script.
-    """
+    """Sanity-check the competition script."""
     submit_tag = 'submit'
     eval_tag = 'eval'
-    with temp_instance() as remote:
-        log_worksheet_uuid = run_command([cl, 'new', 'log'])
-        devset_uuid = run_command([cl, 'upload', test_path('a.txt')])
-        testset_uuid = run_command([cl, 'upload', test_path('b.txt')])
-        script_uuid = run_command([cl, 'upload', test_path('evaluate.sh')])
-        run_command(
-            [
-                cl,
-                'run',
-                'dataset.txt:' + devset_uuid,
-                'echo dataset.txt > predictions.txt',
-                '--tags',
-                submit_tag,
-            ]
+    log_worksheet_uuid = run_command([cl, 'work', '-u'])
+    devset_uuid = run_command([cl, 'upload', test_path('a.txt')])
+    testset_uuid = run_command([cl, 'upload', test_path('b.txt')])
+    script_uuid = run_command([cl, 'upload', test_path('evaluate.sh')])
+    run_command(
+        [
+            cl,
+            'run',
+            'dataset.txt:' + devset_uuid,
+            'echo dataset.txt > predictions.txt',
+            '--tags',
+            submit_tag,
+        ]
+    )
+
+    config_file = temp_path('-competition-config.json')
+    with open(config_file, 'wb') as fp:
+        json.dump(
+            {
+                "host": 'http://localhost:2900',
+                "username": 'codalab',
+                "password": 'codalab',
+                "log_worksheet_uuid": log_worksheet_uuid,
+                "submission_tag": submit_tag,
+                "predict": {"mimic": [{"old": devset_uuid, "new": testset_uuid}], "tag": "predict"},
+                "evaluate": {
+                    "dependencies": [
+                        {"parent_uuid": script_uuid, "child_path": "evaluate.sh"},
+                        {
+                            "parent_uuid": "{predict}",
+                            "parent_path": "predictions.txt",
+                            "child_path": "predictions.txt",
+                        },
+                    ],
+                    "command": "cat predictions.txt | bash evaluate.sh",
+                    "tag": eval_tag,
+                },
+                "score_specs": [{"name": "goodness", "key": "/stdout:goodness"}],
+                "metadata": {"name": "Cool Competition Leaderboard"},
+            },
+            fp,
         )
 
-        config_file = temp_path('-competition-config.json')
-        with open(config_file, 'wb') as fp:
-            json.dump(
-                {
-                    "host": remote.host,
-                    "username": remote.username,
-                    "password": remote.password,
-                    "log_worksheet_uuid": log_worksheet_uuid,
-                    "submission_tag": submit_tag,
-                    "predict": {
-                        "mimic": [{"old": devset_uuid, "new": testset_uuid}],
-                        "tag": "predict",
-                    },
-                    "evaluate": {
-                        "dependencies": [
-                            {"parent_uuid": script_uuid, "child_path": "evaluate.sh"},
-                            {
-                                "parent_uuid": "{predict}",
-                                "parent_path": "predictions.txt",
-                                "child_path": "predictions.txt",
-                            },
-                        ],
-                        "command": "cat predictions.txt | bash evaluate.sh",
-                        "tag": eval_tag,
-                    },
-                    "score_specs": [{"name": "goodness", "key": "/stdout:goodness"}],
-                    "metadata": {"name": "Cool Competition Leaderboard"},
-                },
-                fp,
-            )
+    out_file = temp_path('-competition-out.json')
+    try:
+        run_command(
+            [os.path.join(base_path, 'scripts/competitiond.py'), config_file, out_file, '--verbose']
+        )
 
-        out_file = temp_path('-competition-out.json')
-        try:
-            run_command(
-                [
-                    os.path.join(base_path, 'scripts/competitiond.py'),
-                    config_file,
-                    out_file,
-                    '--verbose',
-                ]
-            )
-
-            # Check that eval bundle gets created
-            results = run_command([cl, 'search', 'tags=' + eval_tag, '-u'])
-            check_equals(1, len(results.splitlines()))
-        finally:
-            os.remove(config_file)
-            os.remove(out_file)
+        # Check that eval bundle gets created
+        results = run_command([cl, 'search', 'tags=' + eval_tag, '-u'])
+        check_equals(1, len(results.splitlines()))
+    finally:
+        os.remove(config_file)
+        os.remove(out_file)
 
 
 @TestModule.register('unicode')
