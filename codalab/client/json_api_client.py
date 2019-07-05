@@ -17,6 +17,8 @@ def wrap_exception(message):
             except urllib.error.HTTPError as e:
                 # Translate known errors to the standard CodaLab errors
                 error_body = e.read()
+                if type(error_body) is not str:
+                    error_body = error_body.decode()
                 exc = http_error_to_exception(e.code, error_body)
                 # All standard CodaLab errors are subclasses of UsageError
                 if isinstance(exc, UsageError):
