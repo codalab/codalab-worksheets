@@ -22,8 +22,8 @@ def bool_constructor(x=False):
 def unicode_constructor(s=""):
     # Need this method so that any uninterpretable characters in the database will be
     # replaced with '?'.
-    cleaned = s.encode(encoding='ascii', errors='replace')
-    return str(cleaned)
+    cleaned = s.encode(encoding='ascii', errors='replace').decode()
+    return cleaned
 
 
 class MetadataSpec(object):
