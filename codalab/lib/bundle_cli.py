@@ -1192,7 +1192,7 @@ class BundleCLI(object):
                 params={'worksheet': worksheet_uuid, 'wait_for_upload': True},
             )
             print('Uploading %s (%s) to %s' % (
-                packed['filename'].decode('UTF-8'),
+                packed['filename'],
                 new_bundle['id'],
                 client.address,
             ), file=self.stderr)
@@ -1202,7 +1202,7 @@ class BundleCLI(object):
                     new_bundle['id'],
                     fileobj=packed['fileobj'],
                     params={
-                        'filename': packed['filename'].decode('UTF-8').encode('ascii', 'replace'),
+                        'filename': packed['filename'].encode('ascii', 'replace').decode(),
                         'unpack': packed['should_unpack'],
                         'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
