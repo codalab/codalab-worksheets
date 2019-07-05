@@ -4,6 +4,8 @@
 # Exit immediately if any command fails
 set -e
 
+# Note: should deprecate this file, since people should either use docker for
+# development or just pip install codalab.
 
 # ======================================
 #  COLORS
@@ -48,7 +50,6 @@ $env/bin/pip install -U setuptools pip
 echo -e "${info}[*] Installing Python packages into $env...${reset}"
 if [ "$1" == "server" ]; then
   $env/bin/pip install -r $codalabdir/requirements-server.txt
-  $env/bin/pip install -e $codalabdir/worker
 elif [ "$1" == "client" ]; then
   $env/bin/pip install -r $codalabdir/requirements.txt
 elif [ "$1" == "frontend" ]; then
@@ -92,7 +93,7 @@ echo
 echo -e "${warning}[!] Add the following line to your .bashrc to put CodaLab in your path:${reset}"
 echo -e "${warning}  export PATH=\$PATH:$PWD/codalab/bin${reset}"
 echo
-echo -e "${info}[*] Then you can use Codalab with the single command:${reset}"
+echo -e "${info}[*] Then you can use CodaLab with the single command:${reset}"
 echo -e "${info}  cl${reset}"
 echo
-echo -e "${success}[!] Successfully installed Codalab in $1 mode!${reset}"
+echo -e "${success}[!] Successfully installed CodaLab in $1 mode!${reset}"
