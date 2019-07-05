@@ -150,12 +150,11 @@ class ErrorAdapter(object):
                 if isinstance(e, HTTPResponse):
                     raise
                 code, message = exception_to_http_error(e)
+                exception_details = traceback.format_exc(e)
                 if code == INTERNAL_SERVER_ERROR:
                     self.report_exception(e)
-                    message = (
-                        "Unexpected Internal Error (%s). The administrators have been notified."
-                        % message
-                    )
+                    message = "Unexpected Internal Error ({}). The administrators have been notified.".format(message)
+                    message += " Details: {}".format(exception_details)
                 raise HTTPError(code, message)
 
         return wrapper
