@@ -127,6 +127,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
     def start(self):
         logger.info('Starting local dependency manager')
+
         def loop(self):
             while not self._stop:
                 try:

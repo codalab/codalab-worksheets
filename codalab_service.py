@@ -12,14 +12,7 @@ import subprocess
 import sys
 import test_cli
 
-SERVICES = [
-    'mysql',
-    'nginx',
-    'frontend',
-    'rest-server',
-    'bundle-manager',
-    'worker',
-]
+SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker']
 
 SERVICE_TO_IMAGE = {
     'frontend': 'frontend',
@@ -28,16 +21,21 @@ SERVICE_TO_IMAGE = {
     'worker': 'worker',
 }
 
+
 def print_header(description):
     print('[CodaLab] {}'.format(description))
+
 
 def should_run_service(args, service):
     # `all` is generally used to bring up everything for local dev or quick testing.
     # `all-but-worker` is generally used for real deployment since we don't
     # want a worker running on the same machine.
-    return service in args.services or \
-           'all' in args.services or \
-           ('all-but-worker' in args.services and service != 'worker')
+    return (
+        service in args.services
+        or 'all' in args.services
+        or ('all-but-worker' in args.services and service != 'worker')
+    )
+
 
 def should_build_image(args, image):
     if image in args.images:
@@ -51,10 +49,12 @@ def should_build_image(args, image):
                 return True
     return False
 
+
 def main():
     args = CodalabArgs.get_args()
     service_manager = CodalabServiceManager(args)
     service_manager.execute()
+
 
 class CodalabArgs(argparse.Namespace):
     DEFAULT_ARGS = {
@@ -622,7 +622,9 @@ class CodalabServiceManager(object):
         else:
             uid = self.compose_env['CODALAB_UID']
         self._run_compose_cmd(
-            ('run --no-deps --rm --entrypoint="" --user=%s ' % uid) + service + (' bash -c "%s"' % cmd)
+            ('run --no-deps --rm --entrypoint="" --user=%s ' % uid)
+            + service
+            + (' bash -c "%s"' % cmd)
         )
 
     def start_services(self):
@@ -653,7 +655,7 @@ class CodalabServiceManager(object):
             print_header('Creating root user')
             self.run_service_cmd(
                 "%svenv/bin/python scripts/create-root-user.py %s"
-                    % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
+                % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
                 root=True,
             )
 
@@ -672,7 +674,9 @@ class CodalabServiceManager(object):
         self.bring_up_service('worker')
 
     def build_images(self):
-        images_to_build = [image for image in self.ALL_IMAGES if should_build_image(self.args, image)]
+        images_to_build = [
+            image for image in self.ALL_IMAGES if should_build_image(self.args, image)
+        ]
 
         for image in images_to_build:
             self.build_image(image)

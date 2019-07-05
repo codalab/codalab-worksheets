@@ -636,7 +636,9 @@ class BundleCLI(object):
             )['uuid']
         return worksheet_uuid
 
-    def print_table(self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''):
+    def print_table(
+        self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''
+    ):
         """
         Pretty-print a list of columns from each row in the given list of dicts.
         """

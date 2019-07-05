@@ -1556,10 +1556,7 @@ def test(ctx):
                 "password": 'codalab',
                 "log_worksheet_uuid": log_worksheet_uuid,
                 "submission_tag": submit_tag,
-                "predict": {
-                    "mimic": [{"old": devset_uuid, "new": testset_uuid}],
-                    "tag": "predict",
-                },
+                "predict": {"mimic": [{"old": devset_uuid, "new": testset_uuid}], "tag": "predict"},
                 "evaluate": {
                     "dependencies": [
                         {"parent_uuid": script_uuid, "child_path": "evaluate.sh"},
@@ -1581,12 +1578,7 @@ def test(ctx):
     out_file = temp_path('-competition-out.json')
     try:
         run_command(
-            [
-                os.path.join(base_path, 'scripts/competitiond.py'),
-                config_file,
-                out_file,
-                '--verbose',
-            ]
+            [os.path.join(base_path, 'scripts/competitiond.py'), config_file, out_file, '--verbose']
         )
 
         # Check that eval bundle gets created

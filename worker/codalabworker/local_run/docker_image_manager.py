@@ -53,6 +53,7 @@ class DockerImageManager:
     def start(self):
         logger.info("Starting docker image manager")
         if self._max_image_cache_size:
+
             def cleanup_loop(self):
                 while not self._stop:
                     try:
@@ -193,6 +194,7 @@ class DockerImageManager:
                     self._downloading.remove(image_spec)
                     return status
         else:
+
             def download():
                 logger.debug('Downloading Docker image %s', image_spec)
                 try:
