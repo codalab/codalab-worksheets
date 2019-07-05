@@ -101,12 +101,6 @@ def get_uuid(line):
 
 
 def sanitize(string, max_chars=256):
-    try:
-        string.decode('utf-8')
-    except UnicodeDecodeError:
-        return '<binary>\n'
-
-    string = string.decode('utf-8').encode('ascii', errors='replace')  # Travis only prints ASCII
     if len(string) > max_chars:
         string = string[:max_chars] + ' (...more...)'
     return string
