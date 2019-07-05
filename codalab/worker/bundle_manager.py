@@ -62,7 +62,7 @@ class BundleManager(object):
         return self
 
     def run(self, sleep_time):
-        logger.info('Bundle manager running.')
+        logger.info('Bundle manager running!')
         while not self._is_exiting():
             try:
                 self._run_iteration()
@@ -266,7 +266,7 @@ class BundleManager(object):
 
     def _acknowledge_recently_finished_bundles(self, workers):
         """
-        Acknowledges recently finished bundles to workers so they can discard run information
+        Acknowledge recently finished bundles to workers so they can discard run information.
         """
         for bundle in self._model.batch_get_bundles(state=State.FINALIZING, bundle_type='run'):
             worker = workers.get_bundle_worker(bundle.uuid)
@@ -278,7 +278,7 @@ class BundleManager(object):
             elif self._worker_model.send_json_message(
                 worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
             ):
-                logger.info('Acknowleded finalization of run bundle %s', bundle.uuid)
+                logger.info('Acknowledged finalization of run bundle %s', bundle.uuid)
                 self._model.finish_bundle(bundle)
 
     def _bring_offline_stuck_running_bundles(self, workers):

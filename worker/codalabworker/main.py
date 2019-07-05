@@ -201,7 +201,7 @@ chmod 600 %s""" % args.password_file
 
     # BEGIN: DO NOT CHANGE THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING
     # THIS IS HERE TO KEEP TEST-CLI FROM HANGING
-    print('Worker started.')
+    logger.info('Worker started!')
     # END
 
     worker.start()
