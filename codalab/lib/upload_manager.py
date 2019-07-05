@@ -108,7 +108,7 @@ class UploadManager(object):
                         )
                     else:
                         with open(source_output_path, 'wb') as out:
-                            shutil.copyfileobj(source[1], out)
+                            shutil.copyfileobj(source[1], out.encode() if type(out) is str else out)
 
             if len(sources) == 1:
                 self._simplify_directory(bundle_path)
