@@ -38,7 +38,7 @@ class BundleActions extends React.Component<
 		});
 	}
 
-	render(): React.node {
+	render() {
 		const { bundleInfo } = this.props;
 		const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
 		const isRunBundle = bundleInfo.bundle_type === 'run';

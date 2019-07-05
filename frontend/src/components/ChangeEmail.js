@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Immutable from 'seamless-immutable';
-import { Redirect } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
 import queryString from 'query-string';
@@ -47,7 +47,7 @@ export class ChangeEmail extends React.Component {
                 <ContentWrapper>
                     {!this.props.auth.isAuthenticated && (
                         <p>
-                            Please <a href='/account/login'>sign in</a> first before updating your
+                            Please <NavLink to='/account/login'>sign in</NavLink> first before updating your
                             email address.
                         </p>
                     )}

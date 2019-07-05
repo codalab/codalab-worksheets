@@ -78,6 +78,26 @@ var WorksheetContent = (function() {
         });
     };
 
+    WorksheetContent.prototype.deleteWorksheet = function(props) {
+        if (this.info === undefined) return;
+        $('#update_progress').show();
+        $('#save_error').hide();
+        $.ajax({
+            type: 'DELETE',
+            cache: false,
+            url: '/rest/worksheets?force=1',
+            contentType: 'application/json',
+            data: JSON.stringify({"data": [{"id": this.info.uuid, "type": "worksheets"}]}),
+            success: function(data) {
+                console.log('Deleted worksheet ' + this.info.uuid);
+                props.success && props.success(data);
+            }.bind(this),
+            error: function(xhr, status, err) {
+                props.error && props.error(xhr, status, err);
+            },
+        });
+    };
+
     return WorksheetContent;
 })();
 
@@ -112,8 +132,8 @@ class Worksheet extends React.Component {
     // Return the number of rows occupied by this item.
     _numTableRows(item) {
         if (item) {
-            if (item.mode == 'table_block') return item.bundles_spec.bundle_infos.length;
-            if (item.mode == 'subworksheets_block') return item.subworksheet_infos.length;
+            if (item.mode === 'table_block') return item.bundles_spec.bundle_infos.length;
+            if (item.mode === 'subworksheets_block') return item.subworksheet_infos.length;
         } else {
             return null;
         }
@@ -174,11 +194,11 @@ class Worksheet extends React.Component {
         var __innerScrollToItem = function(index, subIndex) {
             // Compute the current position of the focused item.
             var pos;
-            if (index == -1) {
+            if (index === -1) {
                 pos = -1000000; // Scroll all the way to the top
             } else {
                 var item = this.refs.list.refs['item' + index];
-                if (this._numTableRows(item.props.item) != null) item = item.refs['row' + subIndex]; // Specifically, the row
+                if (this._numTableRows(item.props.item) !== null) item = item.refs['row' + subIndex]; // Specifically, the row
                 var node = ReactDOM.findDOMNode(item);
                 pos = node.getBoundingClientRect().top;
             }
@@ -252,14 +272,14 @@ class Worksheet extends React.Component {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
         window.onpopstate = function(event) {
-            if (event.state == null) return;
+            if (event.state === null) return;
             this.setState({ ws: new WorksheetContent(event.state.uuid) });
             this.reloadWorksheet();
         }.bind(this);
 
         Mousetrap.reset();
 
-        if (this.state.activeComponent == 'action') {
+        if (this.state.activeComponent === 'action') {
             // no need for other keys, we have the action bar focused
             return;
         }
@@ -494,7 +514,7 @@ class Worksheet extends React.Component {
 
                 var rawIndex;
                 var cursorColumnPosition;
-                if (this.state.focusIndex == -1) {
+                if (this.state.focusIndex === -1) {
                     // Above the first item
                     rawIndex = 0;
                     cursorColumnPosition = 0;
@@ -504,7 +524,7 @@ class Worksheet extends React.Component {
                     var focusIndexPair =
                         this.state.focusIndex +
                         ',' +
-                        (item.mode == 'table_block' || item.mode == 'subworksheets_block'
+                        (item.mode === 'table_block' || item.mode === 'subworksheets_block'
                             ? this.state.subFocusIndex
                             : 0);
                     rawIndex = this.state.ws.info.block_to_raw[focusIndexPair];
@@ -559,7 +579,7 @@ class Worksheet extends React.Component {
                         subIndex++
                     ) {
                         if (
-                            items[index].bundles_spec.bundle_infos[subIndex].uuid ==
+                            items[index].bundles_spec.bundle_infos[subIndex].uuid ===
                             this.state.focusedBundleUuidList[i]
                         )
                             return [index, subIndex];
@@ -687,6 +707,29 @@ class Worksheet extends React.Component {
         });
     }
 
+    delete() {
+        if (!window.confirm("Are you sure you want to delete this worksheet? (Note that this does not delete the bundles, but just detaches them from the worksheet.)")) {
+            return;
+        }
+        $('#worksheet-message').hide();
+        this.setState({ updating: true });
+        this.state.ws.deleteWorksheet({
+            success: function(data) {
+                this.setState({ updating: false });
+                window.location = "/rest/worksheets/?name=dashboard";
+            }.bind(this),
+            error: function(xhr, status, err) {
+                this.setState({ updating: false });
+                $('#update_progress').hide();
+                $('#save_error').show();
+                $('#worksheet-message')
+                    .html(xhr.responseText)
+                    .addClass('alert-danger alert')
+                    .show();
+            }.bind(this),
+        });
+    }
+
     render() {
         const { classes } = this.props;
         const { anchorEl } = this.state;
@@ -711,6 +754,9 @@ class Worksheet extends React.Component {
                     </button>
                     <button className={rawClass} onClick={this.editMode}>
                         {sourceStr}
+                    </button>
+                    <button className={rawClass} onClick={this.delete.bind(this)}>
+                        {"Delete"}
                     </button>
                 </div>
             </div>
@@ -757,7 +803,7 @@ class Worksheet extends React.Component {
         var items_display = (
             <WorksheetItemList
                 ref={'list'}
-                active={this.state.activeComponent == 'list'}
+                active={this.state.activeComponent === 'list'}
                 ws={this.state.ws}
                 version={this.state.version}
                 canEdit={canEdit}

@@ -190,9 +190,9 @@ class BundleRow extends Component {
 
             // See if there's a link
             var url;
-            if (col == 0) {
+            if (col === 0) {
                 url = baseUrl;
-            } else if (columnWithHyperlinks.indexOf(headerKey) != -1) {
+            } else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
                 url = '/rest/bundles/' + uuid + '/contents/blob' + rowContent['path'];
                 if ('text' in rowContent) {
                     rowContent = rowContent['text'];
@@ -444,7 +444,6 @@ const styles = (theme) => ({
     panelContainer: {
         display: 'block',
         height: '0px !important',
-        border: 'none !important',
         overflow: 'visible',
     },
     panelCellContainer: {
@@ -508,6 +507,7 @@ const styles = (theme) => ({
     },
     contentRow: {
         height: 36,
+        borderBottom: '2px solid #ddd',
     },
     modal: {
         position: 'absolute',

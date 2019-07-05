@@ -15,6 +15,7 @@ import { ChangeEmail, ChangeEmailSuccess } from './components/ChangeEmail';
 import VerifySuccess from './components/VerifySuccess';
 import VerifyError from './components/VerifyError';
 import Worksheet from './components/worksheets/Worksheet';
+import WorksheetNameSearch from './components/worksheets/WorksheetNameSearch';
 import {
     PasswordReset,
     PasswordResetSent,
@@ -40,11 +41,8 @@ function CodalabApp() {
 
                         {/*Main Content.*/}
                         <Switch>
-                            <Route
-                                path='/'
-                                exact
-                                render={(props) => <HomePage {...props} auth={fakeAuth} />}
-                            />
+                            <Route path='/' exact render={(props) => <HomePage {...props} auth={fakeAuth} redirectAuthToDashboard={true} />} />
+                            <Route path='/home' exact render={(props) => <HomePage {...props} auth={fakeAuth} redirectAuthToDashboard={false} />} />
                             <Route path='/account/signup/success' component={SignUpSuccess} />
                             <Route path='/account/verify/error' component={VerifyError} />
                             <Route
@@ -84,6 +82,7 @@ function CodalabApp() {
                             />
                             <PrivateRoute path='/account/profile' component={UserInfo} />
                             <Route path='/worksheets/:uuid' component={Worksheet} />
+                            <Route path='/worksheets' component={WorksheetNameSearch} />
                             <Route path='/bundles/:uuid' component={BundleRoute} />
                             <Route component={PageNotFound} />
                         </Switch>
@@ -98,7 +97,7 @@ function CodalabApp() {
 
 function checkAuth() {
     let codalab_session = new Cookies().get('codalab_session');
-    return codalab_session != undefined;
+    return codalab_session !== undefined;
 }
 
 const fakeAuth = {

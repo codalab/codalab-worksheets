@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Immutable from 'seamless-immutable';
-import { Redirect } from 'react-router-dom';
+import { Redirect, NavLink } from 'react-router-dom';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
 import queryString from 'query-string';
@@ -44,7 +44,7 @@ class Login extends React.Component {
             <React.Fragment>
                 <SubHeader title='Sign In' />
                 <ContentWrapper>
-                    {from != '/' && <p>You must log in to view the page at {from}</p>}
+                    {from !== '/' && <p>You must log in to view the page at {from}</p>}
                     {error && <div class='alert alert-error'>{error}</div>}
                     <form className='login' method='POST' action='/rest/account/login'>
                         <div className='form-group'>
@@ -82,10 +82,10 @@ class Login extends React.Component {
                         {/* the above is almost certainly wrong, not sure how to fix*/}
                     </form>
                     <p>
-                        <a href='/account/signup'>Don't have an account? Sign up!</a>
+                        <NavLink to='/account/signup'>Don't have an account? Sign up!</NavLink>
                     </p>
                     <p>
-                        <a href='/account/reset'>Forgot your password?</a>
+                        <NavLink to='/account/reset'>Forgot your password?</NavLink>
                     </p>
                     <a
                         href=''

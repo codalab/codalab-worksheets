@@ -160,14 +160,14 @@ class MarkdownItem extends React.Component {
             //   start = 0, inStart = 2, inEnd = 5, end = 7
             var start = text.indexOf('$', curr);
             if (start === -1) break; // No more math blocks
-            var inStart = text[start + 1] == '$' ? start + 2 : start + 1;
+            var inStart = text[start + 1] === '$' ? start + 2 : start + 1;
             var inEnd = text.indexOf('$', inStart);
             if (inEnd === -1) {
                 // We've reached the end without closing
                 console.error("Math '$' not matched", text);
                 break;
             }
-            var end = text[inEnd + 1] == '$' ? inEnd + 2 : inEnd + 1;
+            var end = text[inEnd + 1] === '$' ? inEnd + 2 : inEnd + 1;
 
             var mathText = text.slice(start, end); // e.g., "$\sum_z p_\theta$"
             mathSegments.push(mathText);
