@@ -2,6 +2,7 @@ import * as React from 'react';
 import classNames from 'classnames';
 import $ from 'jquery';
 
+import { Link } from 'react-router-dom';
 import { withStyles } from '@material-ui/core/styles';
 import { MuiThemeProvider } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
@@ -133,29 +134,35 @@ class NavBar extends React.Component<{
                 <AppBar color='default'>
                     <Toolbar>
                         <div className={classes.logoContainer}>
-                            <a href='/' target='_self'>
+                            <Link to='/home'>
                                 <img
                                     src={`${process.env.PUBLIC_URL}/img/codalab-logo.png`}
                                     className={classes.logo}
                                     alt='CodaLab'
                                 />
-                            </a>
+                            </Link>
                         </div>
                         {!this.props.auth.isAuthenticated && (
                             <React.Fragment>
-                                <Button color='inherit' href='/account/signup'>
-                                    Sign Up
-                                </Button>
-                                <Button color='inherit' href='/account/login'>
+                                <Link to='/account/signup'>
+                                    <Button color='inherit'>
+                                        Sign Up
+                                    </Button>
+                                </Link>
+                                <Link to='/account/login'>
+                                    <Button color='inherit'>
                                     Login
-                                </Button>
+                                    </Button>
+                                </Link>
                             </React.Fragment>
                         )}
                         {this.props.auth.isAuthenticated && (
                             <React.Fragment>
-                                <Button color="primary" href='/rest/worksheets/?name=dashboard'>
-                                    Dashboard
-                                </Button>
+                                <Link to='/worksheets?name=dashboard'>
+                                    <Button color="primary">
+                                        Dashboard
+                                    </Button>
+                                </Link>
                                 <Tooltip title='New Worksheet'>
                                     <IconButton
                                         onClick={() => this.setState({ newWorksheetShowDialog: true })}>
@@ -165,9 +172,11 @@ class NavBar extends React.Component<{
                             </React.Fragment>
                         )}
                         <Tooltip title='Gallery'>
-                            <IconButton href='/rest/worksheets/?name=home'>
-                                <GalleryIcon />
-                            </IconButton>
+                            <Link to='/worksheets?name=home'>
+                                <IconButton>
+                                    <GalleryIcon />
+                                </IconButton>
+                            </Link>
                         </Tooltip>
                         <Tooltip title='How-To Guides'>
                             <IconButton href='https://github.com/codalab/codalab-worksheets/wiki'>

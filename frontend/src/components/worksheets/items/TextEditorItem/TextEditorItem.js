@@ -47,7 +47,7 @@ class TextEditorItem extends React.Component<{
     }
 
     capture_keys = (ev) => {
-        this.keymap[ev.keyCode] = ev.type == 'keydown';
+        this.keymap[ev.keyCode] = ev.type === 'keydown';
         const pressed = [];
         Object.keys(this.keymap).forEach((key) => {
             if (this.keymap[key]) {
