@@ -58,7 +58,7 @@ class FileUtilTest(unittest.TestCase):
         destination = tempfile.NamedTemporaryFile(delete=False)
         self.addCleanup(lambda: os.remove(destination.name))
         un_bz2_file(source_read, destination.name)
-        self.assertEqual(destination.read(), 'contents')
+        self.assertEqual(destination.read(), b'contents')
         source_write.close()
         source_read.close()
         destination.close()
