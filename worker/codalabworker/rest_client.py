@@ -155,5 +155,5 @@ class RestClient(object):
                     response.status,
                     response.reason,
                     dict(response.getheaders()),
-                    StringIO(response.read()),
+                    StringIO(response.read().decode()),
                 )
