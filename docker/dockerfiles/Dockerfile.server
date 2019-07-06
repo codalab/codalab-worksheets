@@ -23,23 +23,18 @@ RUN alias python3='/usr/bin/python3.6'
 
 # Install dependencies
 RUN python3 -m pip install --upgrade pip mysqlclient
-COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
 RUN mkdir /opt/codalab-worksheets
+COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
 COPY worker /opt/codalab-worksheets/worker
 COPY requirements.txt /opt/codalab-worksheets
 COPY requirements-server.txt /opt/codalab-worksheets
 COPY setup.sh /opt/codalab-worksheets
 RUN cd /opt/codalab-worksheets && ./setup.sh server
 
-# Install code
+# Install code (overridden in dev mode)
 COPY . /opt/codalab-worksheets
 
-RUN python3 -m pip install -e /opt/codalab-worksheets/worker/
-RUN python3 -m pip install -e /opt/codalab-worksheets/
-
-ENV PATH="/opt/codalab-worksheets/codalab/bin:${PATH}"
+ENV PATH $PATH:/opt/codalab-worksheets/codalab/bin
+WORKDIR /opt/codalab-worksheets
 ENV CODALAB_HOME=/home/codalab
-
 EXPOSE 2900
-
-ENTRYPOINT ["/opt/codalab-worksheets/codalab/bin/cl"]
