@@ -68,8 +68,6 @@ class RestClient(object):
         # Everything needs to be utf-8 encoded or else urllib will complain
         if 'Content-Type' in headers:
             headers['Content-Type'] += '; charset=utf-8'
-        if data and isinstance(data, str):
-            data = data.encode('utf-8')
         request_url = self._base_url + path
 
         headers.update(self._extra_headers)
