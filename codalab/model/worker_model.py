@@ -70,7 +70,7 @@ class WorkerModel(object):
                 conn.execute(cl_worker.insert().values(worker_row))
 
             # Update dependencies
-            blob = self._serialize_dependencies(dependencies)
+            blob = self._serialize_dependencies(dependencies).encode()
             if existing_row:
                 conn.execute(
                     cl_worker_dependency.update()
