@@ -1,5 +1,5 @@
 import os
-from io import StringIO
+from io import BytesIO
 import tempfile
 import unittest
 
@@ -98,7 +98,7 @@ class UploadManagerTest(unittest.TestCase):
         self.assertFalse(os.path.exists(source))
 
     def test_single_fileobj(self):
-        self.do_upload([('source', StringIO('testing'))])
+        self.do_upload([('source', BytesIO(b'testing'))])
         self.check_file_contains_string(self.bundle_location, 'testing')
 
     def test_single_fileobj_tar_gz_simplify_archives(self):
@@ -117,7 +117,7 @@ class UploadManagerTest(unittest.TestCase):
         self.check_file_contains_string(os.path.join(self.bundle_location, 'filename'), 'testing')
 
     def test_multiple_sources(self):
-        self.do_upload([('source1', StringIO('testing1')), ('source2', StringIO('testing2'))])
+        self.do_upload([('source1', BytesIO(b'testing1')), ('source2', BytesIO(b'testing2'))])
         self.assertEqual(['source1', 'source2'], sorted(os.listdir(self.bundle_location)))
         self.check_file_contains_string(os.path.join(self.bundle_location, 'source1'), 'testing1')
         self.check_file_contains_string(os.path.join(self.bundle_location, 'source2'), 'testing2')
