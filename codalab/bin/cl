@@ -14,5 +14,5 @@ export PYTHONPATH=$CODALAB
 if [ -f "$CODALAB/venv/bin/python" ]; then
   exec $CODALAB/venv/bin/python $CODALAB/codalab/bin/cl.py "$@"
 else
-  exec python $CODALAB/codalab/bin/cl.py "$@"
+  exec python3 $CODALAB/codalab/bin/cl.py "$@"
 fi
