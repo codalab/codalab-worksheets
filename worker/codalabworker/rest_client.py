@@ -138,7 +138,9 @@ class RestClient(object):
                 to_send = fileobj.read(CHUNK_SIZE)
                 if not to_send:
                     break
-                conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send.encode() if type(to_send) is str else to_send))
+                if type(to_send) is str:
+                    to_send = to_send.encode()
+                conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
                 bytes_uploaded += len(to_send)
                 if progress_callback is not None:
                     should_resume = progress_callback(bytes_uploaded)
