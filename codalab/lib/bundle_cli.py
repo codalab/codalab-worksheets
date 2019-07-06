@@ -2259,7 +2259,7 @@ class BundleCLI(object):
 
             contents = client.fetch_contents_blob(bundle_uuid, subpath, **kwargs)
             with closing(contents):
-                shutil.copyfileobj(contents, self.stdout)
+                shutil.copyfileobj(contents, self.stdout.buffer)
 
             if self.headless:
                 print('--Web CLI detected, truncated output to first 50 and last 50 lines.--', file=self.stdout)
