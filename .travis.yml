@@ -1,3 +1,4 @@
+dist: xenial
 jobs:
   include:
     - stage: functionality
