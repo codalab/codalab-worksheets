@@ -329,7 +329,7 @@ class ModuleContext(object):
         if exc_type is not None:
             self.error = (exc_type, exc_value, tb)
             if exc_type is AssertionError:
-                print((Colorizer.red("[!] ERROR: %s" % str(exc_value) )))
+                print((Colorizer.red("[!] ERROR: %s" % str(exc_value))))
             elif exc_type is KeyboardInterrupt:
                 print((Colorizer.yellow("[!] Caught interrupt! Quitting after cleanup.")))
             else:
@@ -449,14 +449,18 @@ class TestModule(object):
                 modules_to_run.append(cls.modules[name])
             else:
                 print((Colorizer.yellow("[!] Could not find module %s" % name)))
-                print((Colorizer.yellow("[*] Modules: all %s" % " ".join(list(cls.modules.keys())))))
+                print(
+                    (Colorizer.yellow("[*] Modules: all %s" % " ".join(list(cls.modules.keys()))))
+                )
                 sys.exit(1)
 
-        print((
-            Colorizer.yellow(
-                "[*][*] Running modules %s" % " ".join([m.name for m in modules_to_run])
+        print(
+            (
+                Colorizer.yellow(
+                    "[*][*] Running modules %s" % " ".join([m.name for m in modules_to_run])
+                )
             )
-        ))
+        )
 
         # Run modules, continuing onto the next test module regardless of
         # failure

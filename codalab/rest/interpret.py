@@ -343,12 +343,14 @@ def resolve_interpreted_blocks(interpreted_blocks):
                         elif mode == BlockModes.image_block:
                             block['status']['code'] = FetchStatusCodes.ready
                             block['image_data'] = base64.b64encode(
-                                bytes(cat_target(
-                                    (
-                                        block['bundles_spec']['bundle_infos'][0]['uuid'],
-                                        block['target_genpath'],
+                                bytes(
+                                    cat_target(
+                                        (
+                                            block['bundles_spec']['bundle_infos'][0]['uuid'],
+                                            block['target_genpath'],
+                                        )
                                     )
-                                ))
+                                )
                             )
                     else:
                         block['status']['code'] = FetchStatusCodes.not_found

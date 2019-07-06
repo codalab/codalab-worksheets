@@ -63,11 +63,13 @@ bundles_password = m.group(2)
 bundles_host = m.group(3)
 bundles_port = m.group(5) or 3306
 bundles_db = m.group(6)
-print((
-    'user = {}, password = {}, db = {}, host = {}, port = {}'.format(
-        bundles_user, '*' * len(bundles_password), bundles_db, bundles_host, bundles_port
+print(
+    (
+        'user = {}, password = {}, db = {}, host = {}, port = {}'.format(
+            bundles_user, '*' * len(bundles_password), bundles_db, bundles_host, bundles_port
+        )
     )
-))
+)
 
 hostname = config['server'].get('instance_name', socket.gethostname())
 
@@ -96,10 +98,12 @@ def send_email(subject, message):
     sender_user = sender_info.get('user', 'noreply@codalab.org')
     sender_password = sender_info.get('password', None)
     do_login = sender_password != None
-    print((
-        'send_email to %s from %s@%s; subject: %s; message contains %d lines'
-        % (recipient, sender_user, sender_host, subject, len(message))
-    ))
+    print(
+        (
+            'send_email to %s from %s@%s; subject: %s; message contains %d lines'
+            % (recipient, sender_user, sender_host, subject, len(message))
+        )
+    )
     s = SMTP(sender_host, 587)
     s.ehlo()
     s.starttls()

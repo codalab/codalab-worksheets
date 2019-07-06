@@ -112,11 +112,15 @@ def main():
     logger.info('Connecting to %s' % args.server)
     if args.password_file:
         if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-            print("""
+            print(
+                """
 Permissions on password file are too lax.
 Only the user should be allowed to access the file.
 On Linux, run:
-chmod 600 %s""" % args.password_file, file=sys.stderr)
+chmod 600 %s"""
+                % args.password_file,
+                file=sys.stderr,
+            )
             exit(1)
         with open(args.password_file) as f:
             username = f.readline().strip()
