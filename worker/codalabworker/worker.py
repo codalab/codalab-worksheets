@@ -54,7 +54,7 @@ class Worker(object):
                 self._run_manager.save_state()
 
                 if not self._last_checkin_successful:
-                    logger.info('Connected! Successful check in.')
+                    logger.info('Connected! Successful check in!')
                 self._last_checkin_successful = True
                 if (
                     self._exit_when_idle
