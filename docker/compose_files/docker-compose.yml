@@ -15,7 +15,7 @@ x-codalab-env:
 services:
   rest-server:
     image: codalab/server:${CODALAB_VERSION}
-    command: server
+    command: cl server
     environment:
       *codalab-env
     networks:
@@ -27,7 +27,7 @@ services:
 
   bundle-manager:
     image: codalab/server:${CODALAB_VERSION}
-    command: bundle-manager
+    command: cl bundle-manager
     environment:
       *codalab-env
     depends_on:
@@ -39,6 +39,7 @@ services:
 
   frontend:
     image: codalab/frontend:${CODALAB_VERSION}
+    command: serve -s build -l 2700
     depends_on:
       - rest-server
     networks:
@@ -76,8 +77,7 @@ services:
   tests:
     image: codalab/server:${CODALAB_VERSION}
     working_dir: /opt/codalab-worksheets/
-    entrypoint: ./venv/bin/python ./test-cli.py
-    command: all --instance http://rest-server:2900
+    command: venv/bin/python ./test-cli.py all --instance http://rest-server:2900
     environment:
       *codalab-env
     depends_on:
