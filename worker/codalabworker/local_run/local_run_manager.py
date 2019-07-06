@@ -185,7 +185,9 @@ class LocalRunManager(BaseRunManager):
                     container.remove(force=True)
                 except (docker.errors.NotFound, docker.errors.NullResource):
                     pass
-            self._runs = {k: v for k, v in list(self._runs.items()) if v.stage != LocalRunStage.FINISHED}
+            self._runs = {
+                k: v for k, v in list(self._runs.items()) if v.stage != LocalRunStage.FINISHED
+            }
 
     def create_run(self, bundle, resources):
         """

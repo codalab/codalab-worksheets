@@ -954,7 +954,9 @@ class BundleCLI(object):
                 aliases[args.name] = args.instance
                 self.manager.save_config()
             else:
-                print(args.name + ': ' + formatting.verbose_contents_str(instance), file=self.stdout)
+                print(
+                    args.name + ': ' + formatting.verbose_contents_str(instance), file=self.stdout
+                )
         else:
             for name, instance in list(aliases.items()):
                 print(name + ': ' + instance, file=self.stdout)
@@ -1191,11 +1193,10 @@ class BundleCLI(object):
                 bundle_info,
                 params={'worksheet': worksheet_uuid, 'wait_for_upload': True},
             )
-            print('Uploading %s (%s) to %s' % (
-                packed['filename'],
-                new_bundle['id'],
-                client.address,
-            ), file=self.stderr)
+            print(
+                'Uploading %s (%s) to %s' % (packed['filename'], new_bundle['id'], client.address),
+                file=self.stderr,
+            )
             progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
             with closing(packed['fileobj']), progress:
                 client.upload_contents_blob(
@@ -1262,11 +1263,10 @@ class BundleCLI(object):
         if target_info['type'] == 'link':
             raise UsageError('Downloading symlinks is not allowed.')
 
-        print('Downloading %s/%s => %s' % (
-            self.simple_bundle_str(info),
-            subpath,
-            final_path,
-        ), file=self.stdout)
+        print(
+            'Downloading %s/%s => %s' % (self.simple_bundle_str(info), subpath, final_path),
+            file=self.stdout,
+        )
 
         progress = FileTransferProgress('Received ', f=self.stderr)
         contents = file_util.tracked(
@@ -1347,10 +1347,11 @@ class BundleCLI(object):
 
         source_desc = self.simple_bundle_str(source_info)
         if source_info['state'] not in [State.READY, State.FAILED]:
-            print('Not copying %s because it has non-final state %s' % (
-                source_desc,
-                source_info['state'],
-            ), file=self.stdout)
+            print(
+                'Not copying %s because it has non-final state %s'
+                % (source_desc, source_info['state']),
+                file=self.stdout,
+            )
             return
 
         print("Copying %s..." % source_desc, file=self.stdout)
@@ -1790,7 +1791,10 @@ class BundleCLI(object):
 
         if args.dry_run:
             bundles = client.fetch('bundles', params={'specs': deleted_uuids, 'include': ['owner']})
-            print('This command would permanently remove the following bundles (not doing so yet):', file=self.stdout)
+            print(
+                'This command would permanently remove the following bundles (not doing so yet):',
+                file=self.stdout,
+            )
             self.print_bundle_info_list(bundles, uuid_only=False, print_ref=False)
         else:
             for uuid in deleted_uuids:
@@ -1861,10 +1865,10 @@ class BundleCLI(object):
                 ],
             )
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
-            print('Added %d bundles to %s' % (
-                len(bundles),
-                self.worksheet_str(worksheet_info),
-            ), file=self.stdout)
+            print(
+                'Added %d bundles to %s' % (len(bundles), self.worksheet_str(worksheet_info)),
+                file=self.stdout,
+            )
 
         return {'refs': self.create_reference_map('bundle', bundles)}
 
@@ -2162,7 +2166,10 @@ class BundleCLI(object):
             mountpoint = path_util.normalize(args.mountpoint)
             path_util.check_isvalid(mountpoint, 'mount')
             print('BundleFUSE mounting bundle {} on {}'.format(uuid, mountpoint), file=self.stdout)
-            print('BundleFUSE will run and maintain the mounted filesystem in the foreground. CTRL-C to cancel.', file=self.stdout)
+            print(
+                'BundleFUSE will run and maintain the mounted filesystem in the foreground. CTRL-C to cancel.',
+                file=self.stdout,
+            )
             bundle_fuse.bundle_mount(client, mountpoint, uuid, args.verbose)
             print('BundleFUSE shutting down.', file=self.stdout)
         else:
@@ -2262,7 +2269,10 @@ class BundleCLI(object):
                 shutil.copyfileobj(contents, self.stdout.buffer)
 
             if self.headless:
-                print('--Web CLI detected, truncated output to first 50 and last 50 lines.--', file=self.stdout)
+                print(
+                    '--Web CLI detected, truncated output to first 50 and last 50 lines.--',
+                    file=self.stdout,
+                )
 
         def size(x):
             t = x.get('type', '???')
@@ -2534,10 +2544,10 @@ class BundleCLI(object):
             metadata_override=metadata,
         )
         for (old, new) in plan:
-            print('%s => %s' % (
-                self.simple_bundle_str(old),
-                self.simple_bundle_str(new),
-            ), file=self.stderr)
+            print(
+                '%s => %s' % (self.simple_bundle_str(old), self.simple_bundle_str(new)),
+                file=self.stderr,
+            )
         if len(plan) > 0:
             new_uuid = plan[-1][1]['uuid']  # Last new uuid to be created
             self.wait(client, args, new_uuid)
@@ -2783,11 +2793,15 @@ class BundleCLI(object):
                 if args.uuid_only:
                     print(worksheet_info['uuid'], file=self.stdout)
                 else:
-                    print('Currently on worksheet: %s' % (
-                        self.worksheet_url(worksheet_info)
-                    ), file=self.stdout)
+                    print(
+                        'Currently on worksheet: %s' % (self.worksheet_url(worksheet_info)),
+                        file=self.stdout,
+                    )
             else:
-                print('Not on any worksheet. Use `cl new` or `cl work` to switch to one.', file=self.stdout)
+                print(
+                    'Not on any worksheet. Use `cl new` or `cl work` to switch to one.',
+                    file=self.stdout,
+                )
 
     def change_current_worksheet(self, client, worksheet_uuid, verbose=False):
         """
@@ -2807,7 +2821,9 @@ class BundleCLI(object):
 
         if verbose:
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
-            print('Switched to worksheet: %s' % (self.worksheet_url(worksheet_info)), file=self.stdout)
+            print(
+                'Switched to worksheet: %s' % (self.worksheet_url(worksheet_info)), file=self.stdout
+            )
 
     @Commands.command(
         'wedit',
@@ -2891,10 +2907,11 @@ class BundleCLI(object):
                 info['is_anonymous'] = args.anonymous
 
             client.update('worksheets', info)
-            print('Saved worksheet metadata for %s(%s).' % (
-                worksheet_info['name'],
-                worksheet_info['uuid'],
-            ), file=self.stdout)
+            print(
+                'Saved worksheet metadata for %s(%s).'
+                % (worksheet_info['name'], worksheet_info['uuid']),
+                file=self.stdout,
+            )
         else:
             if self.headless:
                 return ui_actions.serialize([ui_actions.SetEditMode(True)])
@@ -2913,10 +2930,11 @@ class BundleCLI(object):
 
             # Update worksheet
             client.update_worksheet_raw(worksheet_info['id'], lines)
-            print('Saved worksheet items for %s(%s).' % (
-                worksheet_info['name'],
-                worksheet_info['uuid'],
-            ), file=self.stdout)
+            print(
+                'Saved worksheet items for %s(%s).'
+                % (worksheet_info['name'], worksheet_info['uuid']),
+                file=self.stdout,
+            )
 
     @staticmethod
     def unpack_item(item):
@@ -3014,9 +3032,10 @@ class BundleCLI(object):
                 print('[Graph]', file=self.stdout)
             elif mode == BlockModes.subworksheets_block:
                 for worksheet_info in block['subworksheet_infos']:
-                    print('[Worksheet ' + self.simple_worksheet_str(
-                        worksheet_info
-                    ) + ']', file=self.stdout)
+                    print(
+                        '[Worksheet ' + self.simple_worksheet_str(worksheet_info) + ']',
+                        file=self.stdout,
+                    )
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
 
@@ -3149,10 +3168,10 @@ class BundleCLI(object):
                     add_to_worksheet=False,
                 )
 
-        print('Copied %s worksheet items to %s.' % (
-            len(source_items),
-            dest_worksheet_uuid,
-        ), file=self.stdout)
+        print(
+            'Copied %s worksheet items to %s.' % (len(source_items), dest_worksheet_uuid),
+            file=self.stdout,
+        )
 
     #############################################################################
     # CLI methods for commands related to groups and permissions follow!
@@ -3290,11 +3309,11 @@ class BundleCLI(object):
             JsonApiRelationship('users', user['id']),
         )
 
-        print('%s in group %s as %s' % (
-            user['user_name'],
-            group['name'],
-            'admin' if args.admin else 'member',
-        ), file=self.stdout)
+        print(
+            '%s in group %s as %s'
+            % (user['user_name'], group['name'], 'admin' if args.admin else 'member'),
+            file=self.stdout,
+        )
 
     @Commands.command(
         'urm',
@@ -3319,15 +3338,17 @@ class BundleCLI(object):
         )
 
         if member is None:
-            print('%s is not a member of group %s.' % (
-                user['user_name'],
-                group['name'],
-            ), file=self.stdout)
+            print(
+                '%s is not a member of group %s.' % (user['user_name'], group['name']),
+                file=self.stdout,
+            )
         else:
             client.delete_relationship(
                 'groups', group['id'], 'members', JsonApiRelationship('users', user['id'])
             )
-            print('Removed %s from group %s.' % (user['user_name'], group['name']), file=self.stdout)
+            print(
+                'Removed %s from group %s.' % (user['user_name'], group['name']), file=self.stdout
+            )
 
     @Commands.command(
         'perm',
@@ -3371,12 +3392,11 @@ class BundleCLI(object):
             ],
         )
 
-        print("Group %s(%s) has %s permission on %d bundles." % (
-            group['name'],
-            group['id'],
-            permission_str(new_permission),
-            len(bundle_uuids),
-        ), file=self.stdout)
+        print(
+            "Group %s(%s) has %s permission on %d bundles."
+            % (group['name'], group['id'], permission_str(new_permission), len(bundle_uuids)),
+            file=self.stdout,
+        )
 
     @Commands.command(
         'wperm',
@@ -3405,11 +3425,15 @@ class BundleCLI(object):
             },
         )
 
-        print("Group %s has %s permission on worksheet %s." % (
-            self.simple_group_str(group),
-            permission_str(new_permission),
-            self.simple_worksheet_str(worksheet),
-        ), file=self.stdout)
+        print(
+            "Group %s has %s permission on worksheet %s."
+            % (
+                self.simple_group_str(group),
+                permission_str(new_permission),
+                self.simple_worksheet_str(worksheet),
+            ),
+            file=self.stdout,
+        )
 
     @Commands.command(
         'chown',
@@ -3698,7 +3722,9 @@ class BundleCLI(object):
         self._fail_if_not_local(args)
         # This operation only allowed if we're using MultiDiskBundleStore
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
-            print("This command can only be run when MultiDiskBundleStore is in use.", file=sys.stderr)
+            print(
+                "This command can only be run when MultiDiskBundleStore is in use.", file=sys.stderr
+            )
             sys.exit(1)
         self.manager.bundle_store().add_partition(args.path, args.name)
 
@@ -3711,7 +3737,9 @@ class BundleCLI(object):
         self._fail_if_headless(args)
         self._fail_if_not_local(args)
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
-            print("This command can only be run when MultiDiskBundleStore is in use.", file=sys.stderr)
+            print(
+                "This command can only be run when MultiDiskBundleStore is in use.", file=sys.stderr
+            )
             sys.exit(1)
         self.manager.bundle_store().rm_partition(args.partition)
 
@@ -3724,7 +3752,9 @@ class BundleCLI(object):
         self._fail_if_headless(args)
         self._fail_if_not_local(args)
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
-            print("This command can only be run when MultiDiskBundleStore is in use.", file=sys.stderr)
+            print(
+                "This command can only be run when MultiDiskBundleStore is in use.", file=sys.stderr
+            )
             sys.exit(1)
         self.manager.bundle_store().ls_partitions()
 

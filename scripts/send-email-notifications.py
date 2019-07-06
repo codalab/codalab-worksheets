@@ -81,18 +81,20 @@ def main(args):
         )
         info['sent_time'] = time.time()
 
-        print((
-            'Sending %s/%s (%s>=%s, doit=%s): [%s] %s'
-            % (
-                i,
-                len(pending_to_send_list),
-                info['notifications'],
-                args.threshold,
-                args.doit,
-                info['user_name'],
-                info['email_description'],
+        print(
+            (
+                'Sending %s/%s (%s>=%s, doit=%s): [%s] %s'
+                % (
+                    i,
+                    len(pending_to_send_list),
+                    info['notifications'],
+                    args.threshold,
+                    args.doit,
+                    info['user_name'],
+                    info['email_description'],
+                )
             )
-        ))
+        )
 
         # Apply template to get body of message
         body = body_template

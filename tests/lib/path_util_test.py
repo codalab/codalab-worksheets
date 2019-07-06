@@ -44,7 +44,7 @@ class PathUtilTest(unittest.TestCase):
         for file_name in sorted(files):
             name_hash = hashlib.sha1((relative_prefix + file_name).encode()).hexdigest()
             file_hash.update(name_hash.encode())
-            file_hash.update((contents_hash_prefix + file_name).encode());
+            file_hash.update((contents_hash_prefix + file_name).encode())
         overall_hash = hashlib.sha1()
         overall_hash.update(directory_hash.hexdigest().encode())
         overall_hash.update(file_hash.hexdigest().encode())

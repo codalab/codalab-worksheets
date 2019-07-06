@@ -124,7 +124,10 @@ class Worker(object):
         if self._bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
             self._run_manager.create_run(bundle, resources)
         else:
-            print('Bundle {} no longer assigned to this worker'.format(bundle['uuid']), file=sys.stdout)
+            print(
+                'Bundle {} no longer assigned to this worker'.format(bundle['uuid']),
+                file=sys.stdout,
+            )
 
     def _read(self, socket_id, uuid, path, read_args):
         def reply(err, message={}, data=None):
