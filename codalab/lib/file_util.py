@@ -63,7 +63,7 @@ def download_url(source_url, target_path, print_status=False):
     Download the file at |source_url| and write it to |target_path|.
     """
     in_file = urllib.request.urlopen(source_url)
-    total_bytes = in_file.info().getheader('Content-Length')
+    total_bytes = in_file.info().get('Content-Length')
     if total_bytes:
         total_bytes = int(total_bytes)
 
