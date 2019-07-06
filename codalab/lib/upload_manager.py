@@ -107,8 +107,8 @@ class UploadManager(object):
                             simplify_archive=simplify_archives,
                         )
                     else:
-                        with open(source_output_path, 'wb') as out:
-                            shutil.copyfileobj(source[1], out.encode() if type(out) is str else out)
+                        with open(source_output_path, 'w') as out:
+                            shutil.copyfileobj(source[1], out)
 
             if len(sources) == 1:
                 self._simplify_directory(bundle_path)
