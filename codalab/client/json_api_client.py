@@ -3,7 +3,6 @@ import socket
 import sys
 import six
 import urllib.request, urllib.parse, urllib.error
-import urllib.request, urllib.error, urllib.parse
 
 from codalab.common import http_error_to_exception, precondition, UsageError
 from codalabworker.rest_client import RestClient, RestClientException
