@@ -7,7 +7,6 @@ import sys
 import threading
 import time
 import urllib.request, urllib.parse, urllib.error
-import urllib.request, urllib.error, urllib.parse
 
 from .rest_client import RestClient, RestClientException
 from .file_util import tar_gzip_directory
