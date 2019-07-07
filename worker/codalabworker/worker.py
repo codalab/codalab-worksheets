@@ -104,7 +104,9 @@ class Worker(object):
             elif action_type == 'read':
                 self._read(socket_id, response['uuid'], response['path'], response['read_args'])
             elif action_type == 'netcat':
-                self._netcat(socket_id, response['uuid'], response['port'], response['message'].encode())
+                self._netcat(
+                    socket_id, response['uuid'], response['port'], response['message'].encode()
+                )
             elif action_type == 'write':
                 self._write(response['uuid'], response['subpath'], response['string'])
             elif action_type == 'kill':
@@ -155,7 +157,7 @@ class Worker(object):
             traceback.print_exc()
         except Exception as e:
             traceback.print_exc()
-            err = (http.client.INTERNAL_SERVER_ERROR, str(e))
+            err = (http.client.INTERNAL_SERVER_ERROR, str(e) + "\n" + traceback.format_exc())
             reply(err)
 
     def _write(self, uuid, subpath, string):
