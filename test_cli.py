@@ -427,7 +427,7 @@ class TestModule(object):
 
     @classmethod
     def default_modules(cls):
-        return [m for m in iter(list(cls.modules.values())) if m.default]
+        return [m for m in cls.modules.values() if m.default]
 
     @classmethod
     def run(cls, tests, instance):

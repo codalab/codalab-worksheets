@@ -637,7 +637,7 @@ class BundleModel(object):
             bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
 
         # Construct and validate all of the retrieved bundles.
-        sorted_values = sorted(iter(list(bundle_values.values())), key=lambda r: r['id'])
+        sorted_values = sorted(bundle_values.values(), key=lambda r: r['id'])
         bundles = [
             get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
             for bundle_value in sorted_values
