@@ -1087,7 +1087,7 @@ class BundleModel(object):
                 item_row = dict(item_row)
                 item_row['value'] = self.decode_str(item_row['value'])
                 worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
-        return [Worksheet(value) for value in list(worksheet_values.values())]
+        return [Worksheet(value) for value in worksheet_values.values()]
 
     def search_worksheets(self, user_id, keywords):
         """
@@ -1502,7 +1502,7 @@ class BundleModel(object):
             if not rows:
                 return []
         values = {row.uuid: str_key_dict(row) for row in rows}
-        return [value for value in list(values.values())]
+        return [value for value in values.values()]
 
     def batch_get_all_groups(self, spec_filters, group_filters, user_group_filters):
         """
@@ -1568,7 +1568,7 @@ class BundleModel(object):
                     row['owner_id'] = str(row['owner_id'])
                 rows[i] = row
             values = {row['uuid']: row for row in rows}
-            return [value for value in list(values.values())]
+            return [value for value in values.values()]
 
     def delete_group(self, uuid):
         """
