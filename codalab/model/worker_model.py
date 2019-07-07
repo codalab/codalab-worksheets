@@ -282,7 +282,7 @@ class WorkerModel(object):
 
         with closing(fileobj):
             try:
-                return json.loads(e.read().decode())
+                return json.loads(fileobj.read().decode())
             except json.JSONDecodeError:
                 return None
 
