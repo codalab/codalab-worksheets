@@ -128,7 +128,7 @@ chmod 600 %s"""
     else:
         username = os.environ.get('CODALAB_USERNAME')
         if username is None:
-            username = eval(input('Username: '))
+            username = input('Username: ')
         password = os.environ.get('CODALAB_PASSWORD')
         if password is None:
             password = getpass.getpass()

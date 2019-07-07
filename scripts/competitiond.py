@@ -212,7 +212,7 @@ class Competition(object):
         self.leaderboard_only = leaderboard_only
         auth = AuthHelper(
             self.config['host'],
-            self.config.get('username') or eval(input('Username: ')),
+            self.config.get('username') or input('Username: '),
             self.config.get('password') or getpass.getpass('Password: '),
         )
 
