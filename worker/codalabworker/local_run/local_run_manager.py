@@ -91,15 +91,13 @@ class LocalRunManager(BaseRunManager):
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved
-        simple_runs = {
-            uuid: state._replace(container=None) for uuid, state in list(self._runs.items())
-        }
+        simple_runs = {uuid: state._replace(container=None) for uuid, state in self._runs.items()}
         self._state_committer.commit(simple_runs)
 
     def load_state(self):
         runs = self._state_committer.load()
         # Retrieve the complex container objects from the Docker API
-        for uuid, run_state in list(runs.items()):
+        for uuid, run_state in runs.items():
             if run_state.container_id:
                 try:
                     run_state = run_state._replace(
@@ -154,7 +152,7 @@ class LocalRunManager(BaseRunManager):
         for attempt in range(LocalRunManager.KILL_TIMEOUT):
             with self._lock:
                 self._runs = {
-                    k: v for k, v in list(self._runs.items()) if v.stage != LocalRunStage.FINISHED
+                    k: v for k, v in self._runs.items() if v.stage != LocalRunStage.FINISHED
                 }
                 if len(self._runs) > 0:
                     logger.debug(
@@ -185,9 +183,7 @@ class LocalRunManager(BaseRunManager):
                     container.remove(force=True)
                 except (docker.errors.NotFound, docker.errors.NullResource):
                     pass
-            self._runs = {
-                k: v for k, v in list(self._runs.items()) if v.stage != LocalRunStage.FINISHED
-            }
+            self._runs = {k: v for k, v in self._runs.items() if v.stage != LocalRunStage.FINISHED}
 
     def create_run(self, bundle, resources):
         """
@@ -329,7 +325,7 @@ class LocalRunManager(BaseRunManager):
                     'state': LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
                     'remote': self._worker.id,
                 }
-                for bundle_uuid, run_state in list(self._runs.items())
+                for bundle_uuid, run_state in self._runs.items()
             }
             return result
 

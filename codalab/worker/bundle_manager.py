@@ -134,10 +134,10 @@ class BundleManager(object):
                 acceptable_states.append(State.KILLED)
             else:
                 failed_uuids = [
-                    uuid for uuid, state in list(parent_states.items()) if state == State.FAILED
+                    uuid for uuid, state in parent_states.items() if state == State.FAILED
                 ]
                 killed_uuids = [
-                    uuid for uuid, state in list(parent_states.items()) if state == State.KILLED
+                    uuid for uuid, state in parent_states.items() if state == State.KILLED
                 ]
                 failure_message = ''
                 if failed_uuids:

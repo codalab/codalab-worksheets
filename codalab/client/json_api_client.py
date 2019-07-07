@@ -187,7 +187,7 @@ class JsonApiClient(RestClient):
         if include is not None:
             result.append(('include', ','.join(include)))
 
-        for k, v in iter(list(params.items())) if isinstance(params, dict) else params:
+        for k, v in params.items() if isinstance(params, dict) else params:
             if isinstance(v, list):
                 for item in map(str, v):
                     result.append((k, item))
@@ -287,7 +287,7 @@ class JsonApiClient(RestClient):
                 obj.update(obj_data['attributes'])
             if 'meta' in obj_data:
                 obj['meta'] = obj_data['meta']
-            for key, relationship in list(obj_data.get('relationships', {}).items()):
+            for key, relationship in obj_data.get('relationships', {}).items():
                 linkage = relationship['data']
                 if isinstance(linkage, list):
                     obj[key] = [unpack_linkage(l) for l in linkage]
@@ -372,7 +372,7 @@ class JsonApiClient(RestClient):
             packed_obj = {'type': type_}
             attributes = {}
             relationships = {}
-            for key, value in list(obj.items()):
+            for key, value in obj.items():
                 if isinstance(value, JsonApiRelationship):
                     relationships[key] = value.as_linkage()
                 elif key == 'id':

@@ -12,7 +12,7 @@ class Metadata(object):
         if isinstance(metadata_dict, (list, tuple)):
             metadata_dict = self.collapse_dicts(metadata_specs, metadata_dict)
         self._metadata_keys = set()
-        for (key, value) in list(metadata_dict.items()):
+        for (key, value) in metadata_dict.items():
             self.set_metadata_key(key, value)
 
     def validate(self, metadata_specs):

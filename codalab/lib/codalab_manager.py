@@ -145,7 +145,7 @@ class CodaLabManager(object):
             if isinstance(x, str):
                 return x.replace('$CODALAB_CLI', codalab_cli)
             if isinstance(x, dict):
-                return dict((k, replace(v)) for k, v in list(x.items()))
+                return dict((k, replace(v)) for k, v in x.items())
             return x
 
         self.config = replace(self.config)

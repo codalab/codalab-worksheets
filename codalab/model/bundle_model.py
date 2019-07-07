@@ -59,7 +59,7 @@ def str_key_dict(row):
     which cannot be serialized to JSON.
     This function converts the keys to strings.
     """
-    return dict((str(k), v) for k, v in list(row.items()))
+    return dict((str(k), v) for k, v in row.items())
 
 
 class BundleModel(object):
@@ -130,7 +130,7 @@ class BundleModel(object):
         If a value is a LikeQuery, produce a LIKE clause on that column.
         """
         clauses = [true()]
-        for (key, value) in list(kwargs.items()):
+        for (key, value) in kwargs.items():
             clauses.append(self.make_clause(getattr(table.c, key), value))
         return and_(*clauses)
 
@@ -594,7 +594,7 @@ class BundleModel(object):
     def _render_query(self, query):
         query = query.compile()
         s = str(query)
-        for k, v in list(query.params.items()):
+        for k, v in query.params.items():
             s = s.replace(':' + k, str(v))
         return s
 
@@ -940,7 +940,7 @@ class BundleModel(object):
         # Apply the column and metadata updates in memory and validate the result.
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
-        for (key, value) in list(metadata_update.items()):
+        for (key, value) in metadata_update.items():
             bundle.metadata.set_metadata_key(key, value)
         bundle.validate()
         # Construct clauses and update lists for updating certain bundle columns.
@@ -1777,7 +1777,7 @@ class BundleModel(object):
         if len(remaining_object_uuids) > 0:
             result = self.batch_get_group_permissions(table, user_id, remaining_object_uuids)
             user_groups = self._get_user_groups(user_id)
-            for object_uuid, permissions in list(result.items()):
+            for object_uuid, permissions in result.items():
                 for row in permissions:
                     if row['group_uuid'] in user_groups:
                         object_permissions[object_uuid] = max(

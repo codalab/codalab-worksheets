@@ -98,7 +98,7 @@ def main(args):
 
         # Apply template to get body of message
         body = body_template
-        for field, value in list(info.items()):
+        for field, value in info.items():
             body = body.replace('{{' + field + '}}', str(value or ''))
 
         if args.verbose >= 1:

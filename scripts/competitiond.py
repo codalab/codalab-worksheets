@@ -370,7 +370,7 @@ class Competition(object):
         num_period_submissions = defaultdict(int)
         now = time.time()
         period_start = now - self.config['quota_period_seconds']
-        for owner_id, timestamps in list(submission_times.items()):
+        for owner_id, timestamps in submission_times.items():
             # Count the total number of submissions
             num_total_submissions[owner_id] = len(timestamps)
             # Count the number of submissions in the past 24 hours
@@ -382,7 +382,7 @@ class Competition(object):
         self, submissions, previous_submission_ids, num_total_submissions, num_period_submissions
     ):
         # Drop submission if user has exceeded their quota
-        for key, bundle in list(submissions.items()):
+        for key, bundle in submissions.items():
             # Drop submission if we already ran it before
             if bundle['id'] in previous_submission_ids:
                 logger.debug(
@@ -570,7 +570,7 @@ class Competition(object):
 
         # Build map from submission bundle id => eval bundle
         submit2eval = {}
-        for eval_id, eval_bundle in list(eval_bundles.items()):
+        for eval_id, eval_bundle in eval_bundles.items():
             meta = self._get_competition_metadata(eval_bundle)
             # Eval bundles that are missing competition metadata are simply
             # skipped; code downstream must handle the case where eval2submit
@@ -773,7 +773,7 @@ def generate_description():
         saved_indent = indent
         if first_indent is not None:
             indent = first_indent
-        for field_name, field in list(schema._declared_fields.items()):
+        for field_name, field in schema._declared_fields.items():
             field_help = field.metadata.get('metadata', '')
             field_class = field.__class__
             if field_class is fields.Nested:

@@ -729,7 +729,7 @@ class BundleCLI(object):
         """
         return {
             metadata_util.metadata_argument_to_key(key): value
-            for key, value in list(vars(args).items())
+            for key, value in vars(args).items()
             if key.startswith('md_') and value is not None
         }
 
@@ -958,7 +958,7 @@ class BundleCLI(object):
                     args.name + ': ' + formatting.verbose_contents_str(instance), file=self.stdout
                 )
         else:
-            for name, instance in list(aliases.items()):
+            for name, instance in aliases.items():
                 print(name + ': ' + instance, file=self.stdout)
 
     @Commands.command(
@@ -2080,7 +2080,7 @@ class BundleCLI(object):
 
         # Metadata fields (non-standard)
         standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
-        for key, value in list(metadata.items()):
+        for key, value in metadata.items():
             if key in standard_keys:
                 continue
             lines.append(self.key_value_str(key, value))

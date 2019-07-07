@@ -171,7 +171,7 @@ class ErrorAdapter(object):
         )
         body = formatting.verbose_pretty_json(request.json)
         local_vars = formatting.key_value_list(
-            self._censor_passwords(list(server_util.exc_frame_locals().items()))
+            self._censor_passwords(server_util.exc_frame_locals().items())
         )
         aux_info = textwrap.dedent(
             """\
