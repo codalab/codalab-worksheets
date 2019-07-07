@@ -53,6 +53,7 @@ def test_path(name):
 def test_path_contents(name, binary=False):
     return path_contents(test_path(name), binary=binary)
 
+
 def path_contents(path, binary=False):
     return open(path, "rb" if binary else "r").read().rstrip()
 
@@ -109,7 +110,11 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, bina
     print(">>", *args, sep=" ")
 
     try:
-        output = subprocess.check_output(args, env=env) if binary else subprocess.check_output(args, env=env, encoding="utf-8")
+        output = (
+            subprocess.check_output(args, env=env)
+            if binary
+            else subprocess.check_output(args, env=env, encoding="utf-8")
+        )
         exitcode = 0
     except subprocess.CalledProcessError as e:
         output = e.output
@@ -512,7 +517,7 @@ def test(ctx):
     check_contains(['c', 'd', 'e'], get_info(uuid, 'tags'))
 
     # cat, info
-    check_equals(test_path_contents('a.txt'), run_command([cl, 'cat', uuid])) # here?
+    check_equals(test_path_contents('a.txt'), run_command([cl, 'cat', uuid]))  # here?
     check_contains(['bundle_type', 'uuid', 'owner', 'created'], run_command([cl, 'info', uuid]))
     check_contains('license', run_command([cl, 'info', '--raw', uuid]))
     check_contains(['host_worksheets', 'contents'], run_command([cl, 'info', '--verbose', uuid]))
@@ -542,7 +547,9 @@ def test(ctx):
 
     # Upload binary file
     uuid = run_command([cl, 'upload', test_path('echo')])
-    check_equals(test_path_contents('echo', binary=True), run_command([cl, 'cat', uuid], binary=True))
+    check_equals(
+        test_path_contents('echo', binary=True), run_command([cl, 'cat', uuid], binary=True)
+    )
 
     # Upload file with crazy name
     uuid = run_command([cl, 'upload', test_path(crazy_name)])
@@ -635,12 +642,17 @@ def test(ctx):
         # Upload it but don't unpack
         uuid = run_command([cl, 'upload', archive_path, '--pack'])
         check_equals(os.path.basename(archive_path), get_info(uuid, 'name'))
-        check_equals(test_path_contents(archive_path, binary=True), run_command([cl, 'cat', uuid], binary=True))
+        check_equals(
+            test_path_contents(archive_path, binary=True),
+            run_command([cl, 'cat', uuid], binary=True),
+        )
 
         # Force compression
         uuid = run_command([cl, 'upload', test_path('echo'), '--force-compression'])
         check_equals('echo', get_info(uuid, 'name'))
-        check_equals(test_path_contents('echo', binary=True), run_command([cl, 'cat', uuid], binary=True))
+        check_equals(
+            test_path_contents('echo', binary=True), run_command([cl, 'cat', uuid], binary=True)
+        )
 
         os.unlink(archive_path)
 
