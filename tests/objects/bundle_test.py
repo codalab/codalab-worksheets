@@ -87,6 +87,5 @@ class BundleTest(unittest.TestCase):
         # Serialize through JSON to check that the serialized bundle can be
         # transferred over the wire or depressed into a database.
         json_bundle = json.loads(json.dumps(serialized_bundle))
-        print(json_bundle)
         deserialized_bundle = MockBundle(json_bundle)
         self.check_bundle(deserialized_bundle, uuid=bundle.uuid)
