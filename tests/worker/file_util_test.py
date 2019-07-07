@@ -52,7 +52,7 @@ class FileUtilTest(unittest.TestCase):
     def test_bz2_file(self):
         source_write = tempfile.NamedTemporaryFile(delete=False)
         self.addCleanup(lambda: os.remove(source_write.name))
-        source_write.write(bz2.compress('contents'.encode()))
+        source_write.write(bz2.compress(b'contents'))
         source_write.flush()
         source_read = open(source_write.name, 'rb')
         destination = tempfile.NamedTemporaryFile(delete=False)
