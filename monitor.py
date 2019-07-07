@@ -56,7 +56,7 @@ config = json.loads(open(config_path).read())
 engine_url = config['server']['engine_url']
 m = re.match('mysql://(.+):(.+)@([^:]+)(:(\d+))?/(.+)', engine_url)
 if not m:
-    print(('Can\'t extract server.engine_url from %s' % config_path))
+    print('Can\'t extract server.engine_url from %s' % config_path)
     sys.exit(1)
 bundles_user = m.group(1)
 bundles_password = m.group(2)
@@ -87,7 +87,7 @@ report = []  # Build up the current report to send in an email
 def send_email(subject, message):
     # Not enough information to send email?
     if not recipient or not sender_info:
-        print(('send_email; subject: %s; message contains %d lines' % (subject, len(message))))
+        print('send_email; subject: %s; message contains %d lines' % (subject, len(message)))
         return
 
     sender_host = sender_info['host']
