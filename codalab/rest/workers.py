@@ -125,7 +125,7 @@ def start_bundle(worker_id, uuid):
         start_time=request.json["start_time"],
         remote=request.json["hostname"],
     ):
-        print(("Started bundle %s" % uuid))
+        print("Started bundle %s" % uuid)
         return json.dumps(True)
     return json.dumps(False)
 

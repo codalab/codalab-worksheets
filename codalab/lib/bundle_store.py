@@ -247,7 +247,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
     def ls_partitions(self):
         """List all partitions available for storing bundles and how many bundles are currently stored."""
         partitions, _ = path_util.ls(self.partitions)
-        print(('%d %s' % (len(partitions), 'partition' if len(partitions) == 1 else 'partitions')))
+        print('%d %s' % (len(partitions), 'partition' if len(partitions) == 1 else 'partitions'))
         for d in partitions:
             partition_path = os.path.join(self.partitions, d)
             real_path = os.readlink(partition_path)
