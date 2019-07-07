@@ -303,7 +303,7 @@ class LocalRunManager(BaseRunManager):
                 break
             total_data.append(data)
         s.close()
-        reply(None, {}, ''.join(total_data))
+        reply(None, {}, b''.join(total_data).decode())
 
     def kill(self, run_state):
         """
