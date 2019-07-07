@@ -647,7 +647,7 @@ class Competition(object):
         scores = {}
         queries = []
         keys = []
-        for bundle in list(eval_bundles.values()):
+        for bundle in eval_bundles.values():
             if bundle['state'] == State.READY:
                 for spec in self.config['score_specs']:
                     queries.append((bundle['id'], spec['key'], None))
@@ -672,7 +672,7 @@ class Competition(object):
         # Build leaderboard table
         logger.debug('Fetching scores and building leaderboard table')
         leaderboard = []
-        for eval_bundle in list(eval_bundles.values()):
+        for eval_bundle in eval_bundles.values():
             meta = self._get_competition_metadata(eval_bundle)
             if eval_bundle['id'] in eval2submit:
                 submit_bundle = eval2submit[eval_bundle['id']]

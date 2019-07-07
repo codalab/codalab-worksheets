@@ -255,7 +255,7 @@ def parse_gpuset_args(arg):
         return set(all_gpus.values())
     else:
         gpuset = arg.split(',')
-        if not all(gpu in all_gpus or gpu in list(all_gpus.values()) for gpu in gpuset):
+        if not all(gpu in all_gpus or gpu in all_gpus.values()) for gpu in gpuset:
             raise ValueError("GPUSET_STR invalid: GPUs out of range")
         return set(all_gpus.get(gpu, gpu) for gpu in gpuset)
 

@@ -139,7 +139,7 @@ if fuse_is_available:
         def yank_path(self, path):
             """Clear cache of results from a specific path"""
             for func in self._caches:
-                for key in list(self._caches[func].keys()):
+                for key in self._caches[func].keys():
                     if path in key[0]:
                         del self._caches[func][key]
 

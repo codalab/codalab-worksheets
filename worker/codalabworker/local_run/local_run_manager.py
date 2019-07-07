@@ -143,7 +143,7 @@ class LocalRunManager(BaseRunManager):
         logger.debug("Killing all bundles")
         # Set all bundle statuses to killed
         with self._lock:
-            for uuid in list(self._runs.keys()):
+            for uuid in self._runs.keys():
                 run_state = self._runs[uuid]
                 run_state.info['kill_message'] = 'Worker stopped'
                 run_state = run_state._replace(info=run_state.info, is_killed=True)
@@ -166,7 +166,7 @@ class LocalRunManager(BaseRunManager):
         """ Transition each run then filter out finished runs """
         with self._lock:
             # transition all runs
-            for bundle_uuid in list(self._runs.keys()):
+            for bundle_uuid in self._runs.keys():
                 run_state = self._runs[bundle_uuid]
                 self._runs[bundle_uuid] = self._run_state_manager.transition(run_state)
 
@@ -236,7 +236,7 @@ class LocalRunManager(BaseRunManager):
         cpuset, gpuset = set(self._cpuset), set(self._gpuset)
 
         with self._lock:
-            for run_state in list(self._runs.values()):
+            for run_state in self._runs.values():
                 if run_state.stage == LocalRunStage.RUNNING:
                     cpuset -= run_state.cpuset
                     gpuset -= run_state.gpuset

@@ -433,7 +433,7 @@ class CodalabArgs(argparse.Namespace):
         return args
 
     def __init__(self):
-        for arg in list(self.DEFAULT_ARGS.keys()):
+        for arg in self.DEFAULT_ARGS.keys():
             setattr(self, arg, None)
         self.root_dir = os.path.dirname(os.path.realpath(__file__))
 

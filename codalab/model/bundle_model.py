@@ -217,7 +217,7 @@ class BundleModel(object):
         for row in rows:
             result[row.bundle_uuid].append(row.worksheet_uuid)
         # Deduplicate entries
-        for uuid in list(result.keys()):
+        for uuid in result.keys():
             result[uuid] = list(set(result[uuid]))
         return result
 
@@ -232,7 +232,7 @@ class BundleModel(object):
             # Get children of all nodes in frontier
             result = self.get_children_uuids(frontier)
             new_frontier = []
-            for l in list(result.values()):
+            for l in result.values():
                 for uuid in l:
                     if uuid in visited:
                         continue
@@ -624,7 +624,7 @@ class BundleModel(object):
 
         # Make a dictionary for each bundle with both data and metadata.
         bundle_values = {row.uuid: str_key_dict(row) for row in bundle_rows}
-        for bundle_value in list(bundle_values.values()):
+        for bundle_value in bundle_values.values():
             bundle_value['dependencies'] = []
             bundle_value['metadata'] = []
         for dep_row in dependency_rows:
@@ -1074,12 +1074,12 @@ class BundleModel(object):
         # Make a dictionary for each worksheet with both its main row and its items.
         worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
         # Set tags
-        for value in list(worksheet_values.values()):
+        for value in worksheet_values.values():
             value['tags'] = []
         for row in tag_rows:
             worksheet_values[row.worksheet_uuid]['tags'].append(row.tag)
         if fetch_items:
-            for value in list(worksheet_values.values()):
+            for value in worksheet_values.values():
                 value['items'] = []
             for item_row in sorted(item_rows, key=item_sort_key):
                 if item_row.worksheet_uuid not in worksheet_values:
