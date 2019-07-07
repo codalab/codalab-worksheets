@@ -702,7 +702,7 @@ def test(ctx):
 
     # Download a target inside (binary)
     run_command([cl, 'download', uuid + '/echo', '-o', path])
-    check_equals(test_path_contents('echo'), path_contents(path))
+    check_equals(test_path_contents('echo', binary=True), path_contents(path, binary=True))
     os.unlink(path)
 
     # Download a target inside (crazy name)
