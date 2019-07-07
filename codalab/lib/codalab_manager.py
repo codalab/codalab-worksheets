@@ -190,7 +190,7 @@ class CodaLabManager(object):
                 'rest_host': 'localhost',
                 'rest_port': 2900,
                 'class': 'MySQLModel',
-                'engine_url': 'mysql://codalab@localhost:3306/codalab_bundles',
+                'engine_url': 'mysql://codalab@localhost:3306/codalab_bundles?charset=utf8',
                 'auth': {'class': 'RestOAuthHandler'},
                 'verbose': 1,
             },
@@ -346,7 +346,7 @@ class CodaLabManager(object):
             # Patch for backwards-compatibility until we have a cleaner abstraction around config
             # that can update configs to newer "versions"
             engine_url = self.config['server'].get(
-                'engine_url', "sqlite:///{}".format(os.path.join(self.codalab_home, 'bundle.db'))
+                'engine_url', "sqlite:///{}?charset=utf8".format(os.path.join(self.codalab_home, 'bundle.db'))
             )
             model = SQLiteModel(engine_url=engine_url, default_user_info=self.default_user_info())
         else:
