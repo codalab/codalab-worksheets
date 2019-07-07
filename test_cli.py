@@ -1543,7 +1543,7 @@ def test(ctx):
     )
 
     config_file = temp_path('-competition-config.json')
-    with open(config_file, 'wb') as fp:
+    with open(config_file, 'w') as fp:
         json.dump(
             {
                 "host": 'http://localhost:2900',
