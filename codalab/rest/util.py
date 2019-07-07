@@ -100,7 +100,7 @@ def get_bundle_infos(
         parent2children = local.model.get_children_uuids(readable)
 
         # Gather all children bundle uuids and fetch permissions
-        child_uuids = [uuid for l in list(parent2children.values()) for uuid in l]
+        child_uuids = [uuid for l in parent2children.values() for uuid in l]
         child_perms = _get_user_bundle_permissions(child_uuids)
 
         # Lookup bundle names
@@ -118,7 +118,7 @@ def get_bundle_infos(
         # bundle_uuids -> list of worksheet_uuids
         host_worksheets = local.model.get_host_worksheet_uuids(readable)
         # Gather all worksheet uuids
-        worksheet_uuids = [uuid for l in list(host_worksheets.values()) for uuid in l]
+        worksheet_uuids = [uuid for l in host_worksheets.values() for uuid in l]
         wpermissions = local.model.get_user_worksheet_permissions(
             request.user.user_id,
             worksheet_uuids,

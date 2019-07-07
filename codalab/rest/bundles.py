@@ -452,7 +452,7 @@ def _netcurl_bundle(uuid, port, path=''):
         request.path_shift(4)  # shift away the routing parts of the URL
 
         headers_string = [
-            '{}: {}'.format(h, request.headers.get(h)) for h in list(request.headers.keys())
+            '{}: {}'.format(h, request.headers.get(h)) for h in request.headers.keys()
         ]
         message = "{} {} HTTP/1.1\r\n".format(request.method, request.path)
         message += "\r\n".join(headers_string) + "\r\n"
