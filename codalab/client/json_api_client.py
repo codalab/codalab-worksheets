@@ -677,7 +677,7 @@ class JsonApiClient(RestClient):
             method='POST',
             path='/worksheets/%s/raw' % worksheet_id,
             headers={'Content-Type': 'text/plain'},
-            data='\n'.join(lines),
+            data='\n'.join(lines).encode(),
         )
 
     @wrap_exception('Unable to fetch worker information')
