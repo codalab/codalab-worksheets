@@ -635,13 +635,13 @@ class CodalabServiceManager(object):
         if self.args.external_db_url is None:
             self.bring_up_service('mysql')
             cmd_prefix = '/opt/wait-for-it.sh mysql:3306 -- '
-            mysql_url = 'mysql://%s:%s@mysql:3306/codalab_bundles' % (
+            mysql_url = 'mysql://%s:%s@mysql:3306/codalab_bundles?charset=utf8' % (
                 self.compose_env['CODALAB_MYSQL_USER'],
                 self.compose_env['CODALAB_MYSQL_PWD'],
             )
         else:
             cmd_prefix = ''
-            mysql_url = 'mysql://%s:%s@%s/codalab_bundles' % (
+            mysql_url = 'mysql://%s:%s@%s/codalab_bundles?charset=utf8' % (
                 self.compose_env['CODALAB_MYSQL_USER'],
                 self.compose_env['CODALAB_MYSQL_PWD'],
                 self.args.external_db_url,
