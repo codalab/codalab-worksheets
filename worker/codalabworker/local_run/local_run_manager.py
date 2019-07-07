@@ -173,7 +173,7 @@ class LocalRunManager(BaseRunManager):
             # filter out finished runs
             finished_container_ids = [
                 run.container
-                for run in list(self._runs.values())
+                for run in self._runs.values()
                 if (run.stage == LocalRunStage.FINISHED or run.stage == LocalRunStage.FINALIZING)
                 and run.container_id is not None
             ]
