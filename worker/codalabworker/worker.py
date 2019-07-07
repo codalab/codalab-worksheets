@@ -104,7 +104,7 @@ class Worker(object):
             elif action_type == 'read':
                 self._read(socket_id, response['uuid'], response['path'], response['read_args'])
             elif action_type == 'netcat':
-                self._netcat(socket_id, response['uuid'], response['port'], response['message'])
+                self._netcat(socket_id, response['uuid'], response['port'], response['message'].encode())
             elif action_type == 'write':
                 self._write(response['uuid'], response['subpath'], response['string'])
             elif action_type == 'kill':
