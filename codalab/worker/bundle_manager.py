@@ -50,9 +50,9 @@ class BundleManager(object):
         def parse(to_value, field):
             return to_value(config[field]) if field in config else None
 
-        self._max_request_time = parse(formatting.parse_duration, 'max_request_time')
-        self._max_request_memory = parse(formatting.parse_size, 'max_request_memory')
-        self._max_request_disk = parse(formatting.parse_size, 'max_request_disk')
+        self._max_request_time = parse(formatting.parse_duration, 'max_request_time') or 0
+        self._max_request_memory = parse(formatting.parse_size, 'max_request_memory') or 0
+        self._max_request_disk = parse(formatting.parse_size, 'max_request_disk') or 0
 
         self._default_cpu_image = config.get('default_cpu_image')
         self._default_gpu_image = config.get('default_gpu_image')
