@@ -55,7 +55,7 @@ def test_path_contents(name):
 
 
 def path_contents(path):
-    return open(path).read().rstrip()
+    return open(path, "rb").read().rstrip()
 
 
 def temp_path(suffix, tmp=False):
