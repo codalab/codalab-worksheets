@@ -185,7 +185,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         while True:
             with self._global_lock:
                 self._acquire_all_locks()
-                bytes_used = sum(dep.size_bytes for dep in list(self._dependencies.values()))
+                bytes_used = sum(dep.size_bytes for dep in self._dependencies.values())
                 serialized_length = len(codalabworker.pyjson.dumps(self._dependencies))
                 if (
                     bytes_used > self._max_cache_size_bytes
