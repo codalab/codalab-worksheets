@@ -85,7 +85,7 @@ class BundleModelTest(unittest.TestCase):
     def setUp(self):
         MockBundle._tester = self
         MockDependency._tester = self
-        self.engine = create_engine('sqlite://?charset=utf8', strategy='threadlocal', encoding='utf-8')
+        self.engine = create_engine('sqlite://', strategy='threadlocal', encoding='utf-8')
         self.model = BundleModel(self.engine, {})
         # We'll test the result of this schema creation step in test_create_tables.
         self.model.create_tables()
