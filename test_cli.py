@@ -101,8 +101,8 @@ def get_uuid(line):
 
 
 def sanitize(string, max_chars=256):
-    # if len(string) > max_chars:
-    #     string = string[:max_chars] + ' (...more...)'
+    if len(string) > max_chars:
+        string = string[:max_chars] + ' (...more...)'
     return string
 
 
