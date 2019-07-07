@@ -157,7 +157,7 @@ class Worker(object):
             traceback.print_exc()
         except Exception as e:
             traceback.print_exc()
-            err = (http.client.INTERNAL_SERVER_ERROR, str(e) + "\n" + traceback.format_exc())
+            err = (http.client.INTERNAL_SERVER_ERROR, str(e))
             reply(err)
 
     def _write(self, uuid, subpath, string):
