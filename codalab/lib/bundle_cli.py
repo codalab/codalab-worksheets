@@ -3578,9 +3578,9 @@ class BundleCLI(object):
                 value = user[key]
 
             if should_pretty_print:
-                print('{:<15}: {}'.format(key, value).encode('utf-8'), file=self.stdout)
+                print('{:<15}: {}'.format(key, value), file=self.stdout)
             else:
-                print(value.encode('utf-8'), file=self.stdout)
+                print(value, file=self.stdout)
 
         default_fields = (
             'id',
