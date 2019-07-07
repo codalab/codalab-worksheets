@@ -700,10 +700,14 @@ class CodalabServiceManager(object):
             'CODALAB_USERNAME': self.args.codalab_user,
             'CODALAB_PASSWORD': self.args.codalab_password,
         }
-        subprocess.check_call(
-            '%s work %s::' % (test_cli.cl, instance), env=codalab_client_env, shell=True
-        )
-        success = test_cli.TestModule.run(self.args.tests, instance)
+        try:
+            subprocess.check_call(
+                '%s work %s::' % (test_cli.cl, instance), env=codalab_client_env, shell=True
+            )
+            success = test_cli.TestModule.run(self.args.tests, instance)
+        except subprocess.CalledProcessError as e:
+            print("CalledProcessError: {}, {}".format(str(e), e.output))
+            success = False
         if not success:
             sys.exit(1)
 
