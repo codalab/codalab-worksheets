@@ -149,7 +149,7 @@ class BundleManager(object):
                     bundles_to_fail.append((bundle, failure_message))
                     continue
 
-            if all(state in acceptable_states for state in list(parent_states.values())):
+            if all(state in acceptable_states for state in parent_states.values()):
                 bundles_to_stage.append(bundle)
 
         for bundle, failure_message in bundles_to_fail:

@@ -391,7 +391,7 @@ class Commands(object):
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         # Build subparser for each subcommand
-        for command in list(cls.commands.values()):
+        for command in cls.commands.values():
             help = '\n'.join(command.help)
             subparser = subparsers.add_parser(
                 command.name,
