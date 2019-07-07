@@ -223,7 +223,7 @@ def fetch_interpreted_worksheet(uuid):
             continue
         if item['mode'] == 'table':
             for row_map in item['rows']:
-                for k, v in list(row_map.items()):
+                for k, v in row_map.items():
                     if v is None:
                         row_map[k] = formatting.contents_str(v)
         if 'bundle_info' in item:
@@ -417,7 +417,7 @@ def interpret_genpath_table_contents(contents):
     # Request information
     requests = []
     for r, row in enumerate(contents):
-        for key, value in list(row.items()):
+        for key, value in row.items():
             # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
             if is_bundle_genpath_triple(value):
                 requests.append(value)
@@ -428,7 +428,7 @@ def interpret_genpath_table_contents(contents):
     ri = 0
     for r, row in enumerate(contents):
         new_row = {}
-        for key, value in list(row.items()):
+        for key, value in row.items():
             if is_bundle_genpath_triple(value):
                 value = responses[ri]
                 ri += 1

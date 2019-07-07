@@ -34,7 +34,7 @@ def checkin(worker_id):
         request.json["dependencies"],
     )
 
-    for uuid, run in list(request.json["runs"].items()):
+    for uuid, run in request.json["runs"].items():
         try:
             bundle = local.model.get_bundle(uuid)
             local.model.bundle_checkin(bundle, run, request.user.user_id, worker_id)
@@ -155,7 +155,7 @@ def update_bundle_metadata(worker_id, uuid):
         ]
     )
     metadata_update = {}
-    for key, value in list(request.json.items()):
+    for key, value in request.json.items():
         if key in allowed_keys:
             metadata_update[key] = value
     local.model.update_bundle(bundle, {"metadata": metadata_update})

@@ -118,7 +118,7 @@ if fuse_is_available:
             self._timeouts[f] = self.timeout
 
             def func(*args, **kwargs):
-                kw = list(kwargs.items())
+                kw = kwargs.items()
                 kw.sort()
                 key = (args, tuple(kw))
                 try:

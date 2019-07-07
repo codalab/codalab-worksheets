@@ -755,7 +755,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     # Make sure we don't delete bundles which are active.
     states = local.model.get_bundle_states(uuids)
     logger.debug('delete states: %s', states)
-    active_uuids = [uuid for (uuid, state) in list(states.items()) if state in State.ACTIVE_STATES]
+    active_uuids = [uuid for (uuid, state) in states.items() if state in State.ACTIVE_STATES]
     logger.debug('delete actives: %s', active_uuids)
     if len(active_uuids) > 0:
         raise UsageError(
@@ -768,7 +768,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
 
     # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
     result = local.model.get_host_worksheet_uuids(relevant_uuids)
-    for uuid, host_worksheet_uuids in list(result.items()):
+    for uuid, host_worksheet_uuids in result.items():
         worksheets = local.model.batch_get_worksheets(fetch_items=False, uuid=host_worksheet_uuids)
         frozen_worksheets = [worksheet for worksheet in worksheets if worksheet.frozen]
         if len(frozen_worksheets) > 0:

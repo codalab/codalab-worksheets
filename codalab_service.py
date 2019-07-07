@@ -438,7 +438,7 @@ class CodalabArgs(argparse.Namespace):
         self.root_dir = os.path.dirname(os.path.realpath(__file__))
 
     def _apply_defaults(self):
-        for arg, default in list(self.DEFAULT_ARGS.items()):
+        for arg, default in self.DEFAULT_ARGS.items():
             if getattr(self, arg) is None:
                 setattr(self, arg, default)
 
@@ -446,7 +446,7 @@ class CodalabArgs(argparse.Namespace):
             self.worker_dir = os.path.join(self.root_dir, 'codalab-worker-scratch')
 
     def apply_environment(self, env):
-        for arg, var in list(self.ARG_TO_ENV_VAR.items()):
+        for arg, var in self.ARG_TO_ENV_VAR.items():
             if var in env:
                 setattr(self, arg, env[var])
         self._apply_defaults()

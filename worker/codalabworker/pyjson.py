@@ -51,7 +51,7 @@ class PyJSONEncoder(json.JSONEncoder):
         elif isinstance(obj, set):
             return dict(_set_object=list(self.default(o) for o in obj))
         elif isinstance(obj, dict):
-            return {self.encode_key(k): self.default(v) for k, v in list(obj.items())}
+            return {self.encode_key(k): self.default(v) for k, v in obj.items()}
         elif isinstance(obj, tuple):
             return dict(_tuple_object=list(self.default(o) for o in obj))
         else:
@@ -87,7 +87,7 @@ class PyJSONDecoder(json.JSONDecoder):
             elif '_tuple_object' in dct:
                 return tuple(self.json_as_python(item) for item in dct['_tuple_object'])
             else:
-                return {self.decode_key(k): self.json_as_python(v) for k, v in list(dct.items())}
+                return {self.decode_key(k): self.json_as_python(v) for k, v in dct.items()}
         return dct
 
 
