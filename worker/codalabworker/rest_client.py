@@ -3,8 +3,6 @@ from io import StringIO
 import http.client
 import json
 import urllib.request, urllib.parse, urllib.error
-import urllib.request, urllib.error, urllib.parse
-import urllib.parse
 
 from .file_util import un_gzip_stream
 

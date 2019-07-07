@@ -5,7 +5,6 @@ import base64
 import json
 import threading
 import urllib.request, urllib.parse, urllib.error
-import urllib.request, urllib.error, urllib.parse
 
 
 # TODO(sckoo): clean up auth logic across:
