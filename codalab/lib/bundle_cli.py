@@ -2521,7 +2521,7 @@ class BundleCLI(object):
         # Two cases for args.bundles
         # (A) old_input_1 ... old_input_n            new_input_1 ... new_input_n [go to all outputs]
         # (B) old_input_1 ... old_input_n old_output new_input_1 ... new_input_n [go from inputs to given output]
-        n = len(bundle_uuids) / 2
+        n = len(bundle_uuids) // 2
         if len(bundle_uuids) % 2 == 0:  # (A)
             old_inputs = bundle_uuids[0:n]
             old_output = None
