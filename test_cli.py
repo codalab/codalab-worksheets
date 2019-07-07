@@ -519,7 +519,7 @@ def test(ctx):
     check_contains(['c', 'd', 'e'], get_info(uuid, 'tags'))
 
     # cat, info
-    check_equals(test_path_contents('a.txt'), run_command([cl, 'cat', uuid]))  # here?
+    check_equals(test_path_contents('a.txt'), run_command([cl, 'cat', uuid]))
     check_contains(['bundle_type', 'uuid', 'owner', 'created'], run_command([cl, 'info', uuid]))
     check_contains('license', run_command([cl, 'info', '--raw', uuid]))
     check_contains(['host_worksheets', 'contents'], run_command([cl, 'info', '--verbose', uuid]))
