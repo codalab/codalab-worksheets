@@ -245,7 +245,7 @@ class WorkerModel(object):
         sock.listen(0)
         return sock
 
-    ACK = 'a'
+    ACK = b'a'
 
     def get_stream(self, sock, timeout_secs):
         """
@@ -281,7 +281,10 @@ class WorkerModel(object):
             return None
 
         with closing(fileobj):
-            return json.loads(fileobj.read())
+            try:
+                return json.loads(e.read().decode())
+            except json.JSONDecodeError:
+                return None
 
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """
@@ -368,7 +371,7 @@ class WorkerModel(object):
                         'Received invalid ack on socket.',
                     )
 
-                sock.sendall(json.dumps(message))
+                sock.sendall(json.dumps(message).encode())
                 return True
 
         return False
