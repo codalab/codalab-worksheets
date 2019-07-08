@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#! /usr/bin/python3.6
 
 """
 The main entry point for bringing up CodaLab services.  This is used for both

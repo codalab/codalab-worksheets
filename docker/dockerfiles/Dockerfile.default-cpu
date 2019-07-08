@@ -31,8 +31,7 @@ RUN add-apt-repository ppa:deadsnakes/ppa && \
         python3.6-dev \
         python3-pip \
         python3-software-properties
-
-RUN alias python3='/usr/bin/python3.6' 
+ 
 
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
@@ -78,8 +77,8 @@ RUN python -m spacy download en
 
 ## Python 3 packages
 
-RUN python3 -m pip install -U pip
-RUN python3 -m pip install -U \
+RUN python3.6 -m pip install -U pip
+RUN python3.6 -m pip install -U \
       numpy \
       scipy \
       matplotlib \
@@ -107,10 +106,10 @@ RUN pip2 install -U http://download.pytorch.org/whl/cpu/torch-0.4.1-cp27-cp27mu-
 RUN pip2 install torchvision
 
 
-RUN python3 -m pip install -U \
+RUN python3.6 -m pip install -U \
       tensorflow==1.12.0 \
       tensorboard \
       keras
 
-RUN python3 -m pip install http://download.pytorch.org/whl/cpu/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
-RUN python3 -m pip install torchvision
+RUN python3.6 -m pip install http://download.pytorch.org/whl/cpu/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
+RUN python3.6 -m pip install torchvision
