@@ -147,7 +147,11 @@ class DockerImageManager:
             digests = image.attrs.get('RepoDigests', [image_spec])
             if len(digests) == 0:
                 return ImageAvailabilityState(
-                    digest=None, stage=DependencyStage.FAILED, message='No digest available for {}, probably because it was built locally; delete the docker image on the worker and try again'.format(image_spec),
+                    digest=None,
+                    stage=DependencyStage.FAILED,
+                    message='No digest available for {}, probably because it was built locally; delete the docker image on the worker and try again'.format(
+                        image_spec
+                    ),
                 )
             digest = digests[0]
             with self._lock:
