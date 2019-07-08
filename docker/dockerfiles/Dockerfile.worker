@@ -8,19 +8,18 @@ RUN apt-get update && apt-get install -y software-properties-common && add-apt-r
 # Install dependencies
 RUN apt-get update; apt-get install -y \
   python3.6 \
-  python3-dev \
+  python3.6-dev \
   python3-pip;
-
-RUN alias python3='/usr/bin/python3.6' 
+ 
 
 COPY worker/requirements.txt /opt
-RUN python3 -m pip install --user --upgrade pip; \
-    python3 -m pip install -r /opt/requirements.txt;
+RUN python3.6 -m pip install --user --upgrade pip; \
+    python3.6 -m pip install -r /opt/requirements.txt;
 
 # Install dependencies again
 COPY worker /opt/worker
 
-RUN python3 -m pip install --user --upgrade pip; \
-    python3 -m pip install -e /opt/worker;
+RUN python3.6 -m pip install --user --upgrade pip; \
+    python3.6 -m pip install -e /opt/worker;
 
 ENTRYPOINT ["cl-worker"]

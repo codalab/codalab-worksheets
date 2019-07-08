@@ -11,10 +11,10 @@ if [ "$2" = "release" ]; then
 fi
 
 if [ "$RELEASE" = "1" ]; then
-  python3 codalab_service.py build all -v $TAG --push
-  python3 codalab_service.py build all -v latest --push
-  python3 scripts/upload-to-pypi.sh $TAG
+  python3.6 codalab_service.py build all -v $TAG --push
+  python3.6 codalab_service.py build all -v latest --push
+  python3.6 scripts/upload-to-pypi.sh $TAG
 else
-  python3 codalab_service.py build all -v $TAG --push
+  python3.6 codalab_service.py build all -v $TAG --push
 fi
 
