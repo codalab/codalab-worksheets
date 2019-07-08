@@ -149,7 +149,7 @@ class DockerImageManager:
                 return ImageAvailabilityState(
                     digest=None,
                     stage=DependencyStage.FAILED,
-                    message='No digest available for {}, probably because it was built locally; delete the docker image on the worker and try again'.format(
+                    message='No digest available for {}, probably because it was built locally; delete the Docker image on the worker and try again'.format(
                         image_spec
                     ),
                 )
