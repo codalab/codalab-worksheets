@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Tests all the CLI functionality end-to-end.
@@ -497,7 +496,7 @@ class TestModule(object):
 @TestModule.register('unittest')
 def test(ctx):
     """Run nose unit tests"""
-    run_command(['venv/bin/nosetests'])
+    run_command(['nosetests'])
 
 
 @TestModule.register('basic')

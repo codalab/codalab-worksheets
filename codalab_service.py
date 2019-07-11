@@ -654,7 +654,7 @@ class CodalabServiceManager(object):
         if should_run_service(self.args, 'init'):
             print_header('Creating root user')
             self.run_service_cmd(
-                "%svenv/bin/python scripts/create-root-user.py %s"
+                "%spython scripts/create-root-user.py %s"
                 % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
                 root=True,
             )

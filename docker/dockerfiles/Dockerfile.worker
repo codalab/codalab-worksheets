@@ -7,14 +7,14 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update; apt-get install -y \
   python-dev \
   python-pip;
-
 COPY worker/requirements.txt /opt
 RUN /usr/bin/env python -m pip install --user --upgrade pip; \
     /usr/bin/env python -m pip install -r /opt/requirements.txt;
 
-# Install dependencies again
+# Update the code
 COPY worker /opt/worker
 
+# Install dependencies again
 RUN /usr/bin/env python -m pip install --user --upgrade pip; \
     /usr/bin/env python -m pip install -e /opt/worker;
 

@@ -1,4 +1,3 @@
-#!./venv/bin/python
 """
 Competition leaderboard evaluation daemon.
 

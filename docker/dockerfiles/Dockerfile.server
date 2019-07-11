@@ -17,20 +17,29 @@ RUN apt-get update; apt-get install -y \
     software-properties-common \
     zip;
 
-# Install dependencies
-RUN pip install --upgrade pip MySQL-python
-RUN mkdir /opt/codalab-worksheets
-COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
-COPY worker /opt/codalab-worksheets/worker
-COPY requirements.txt /opt/codalab-worksheets
-COPY requirements-server.txt /opt/codalab-worksheets
-COPY setup.sh /opt/codalab-worksheets
-RUN cd /opt/codalab-worksheets && ./setup.sh server
+RUN pip install --upgrade pip
 
-# Install code (overridden in dev mode)
-COPY . /opt/codalab-worksheets
+RUN mkdir /opt/codalab-worksheets
+WORKDIR /opt/codalab-worksheets
+
+# Install dependencies
+COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
+COPY worker worker
+COPY requirements.txt requirements.txt
+COPY requirements-server.txt requirements-server.txt
+RUN pip install -r requirements-server.txt
+
+# Install code
+COPY alembic alembic
+COPY alembic.ini alembic.ini
+COPY codalab codalab
+COPY codalab_service.py codalab_service.py
+COPY monitor.py monitor.py
+COPY scripts scripts
+COPY test_cli.py test_cli.py
+COPY tests tests
+COPY worker worker
 
 ENV PATH $PATH:/opt/codalab-worksheets/codalab/bin
-WORKDIR /opt/codalab-worksheets
 ENV CODALAB_HOME=/home/codalab
 EXPOSE 2900
