@@ -496,7 +496,7 @@ class TestModule(object):
 @TestModule.register('unittest')
 def test(ctx):
     """Run nose unit tests"""
-    run_command(['nosetests'])
+    run_command(['nosetests', '-e', 'test_cli.py'])
 
 
 @TestModule.register('basic')

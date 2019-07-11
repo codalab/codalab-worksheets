@@ -3,10 +3,11 @@ MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
-# Install dependencies
 RUN apt-get update; apt-get install -y \
   python-dev \
   python-pip;
+
+# Install dependencies
 COPY worker/requirements.txt /opt
 RUN /usr/bin/env python -m pip install --user --upgrade pip; \
     /usr/bin/env python -m pip install -r /opt/requirements.txt;

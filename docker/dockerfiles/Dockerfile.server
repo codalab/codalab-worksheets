@@ -36,10 +36,12 @@ COPY codalab codalab
 COPY codalab_service.py codalab_service.py
 COPY monitor.py monitor.py
 COPY scripts scripts
+COPY setup.py setup.py
 COPY test_cli.py test_cli.py
 COPY tests tests
 COPY worker worker
 
-ENV PATH $PATH:/opt/codalab-worksheets/codalab/bin
+RUN pip install -e .
+
 ENV CODALAB_HOME=/home/codalab
 EXPOSE 2900

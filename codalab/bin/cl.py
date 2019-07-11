@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Main entry point for CodaLab.
 # Run 'cl' rather than this script.
 import os
