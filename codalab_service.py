@@ -539,7 +539,7 @@ class CodalabServiceManager(object):
     def execute(self):
         if self.command == 'build' or (self.command == 'start' and self.args.build_images):
             self.build_images()
-        if self.command == 'start':
+        elif self.command == 'start':
             self.start_services()
         elif self.command == 'run':
             self.run_service_cmd(
@@ -556,8 +556,8 @@ class CodalabServiceManager(object):
             self._run_compose_cmd('stop')
         elif self.command == 'down':
             self._run_compose_cmd('down --remove-orphans')
-        elif self.command == 'test':
-            self.test()
+        else:
+            raise Exception('Bad command: ' + self.command)
 
     def build_image(self, image):
         print_header('Building {} image'.format(image))
