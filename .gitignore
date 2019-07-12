@@ -40,3 +40,4 @@ tags
 docker-compose.override.yml
 
 frontend/node_modules
+pip-wheel-metadata

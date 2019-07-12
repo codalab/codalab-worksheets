@@ -1577,7 +1577,7 @@ def test(ctx):
     out_file = temp_path('-competition-out.json')
     try:
         run_command(
-            [os.path.join(base_path, 'scripts/competitiond.py'), config_file, out_file, '--verbose']
+            ['python', os.path.join(base_path, 'scripts/competitiond.py'), config_file, out_file, '--verbose']
         )
 
         # Check that eval bundle gets created
