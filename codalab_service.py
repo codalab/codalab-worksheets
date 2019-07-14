@@ -142,15 +142,7 @@ class CodalabArgs(argparse.Namespace):
         )
 
         #  CLIENT SETTINGS
-        for cmd in [
-            start_cmd,
-            logs_cmd,
-            build_cmd,
-            run_cmd,
-            stop_cmd,
-            down_cmd,
-            restart_cmd,
-        ]:
+        for cmd in [start_cmd, logs_cmd, build_cmd, run_cmd, stop_cmd, down_cmd, restart_cmd]:
             cmd.add_argument(
                 '--dry-run',
                 action='store_true',
