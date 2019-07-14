@@ -1,4 +1,3 @@
-#!./venv/bin/python
 """
 Script that creates the root user.
 """
