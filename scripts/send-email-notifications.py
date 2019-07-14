@@ -2,7 +2,7 @@
 Sends email notifications to users with notifications set to a certain
 threshold.  Keeps track of partial progress in a file.
 
-    venv/bin/python scripts/send_email.py \
+    python scripts/send_email.py \
         --subject "Hello World" \
         --body-file body.html \
         --sent-file sent.jsonl \
