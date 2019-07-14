@@ -10,7 +10,6 @@ import errno
 import os
 import subprocess
 import sys
-import test_cli
 
 SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker']
 
@@ -27,13 +26,13 @@ def print_header(description):
 
 
 def should_run_service(args, service):
-    # `all` is generally used to bring up everything for local dev or quick testing.
-    # `all-but-worker` is generally used for real deployment since we don't
+    # `default` is generally used to bring up everything for local dev or quick testing.
+    # `default-but-worker` is generally used for real deployment since we don't
     # want a worker running on the same machine.
     return (
         service in args.services
-        or 'all' in args.services
-        or ('all-but-worker' in args.services and service != 'worker')
+        or (service != 'test' and 'default' in args.services)
+        or (service != 'test' and service != 'worker' and 'default-no-worker' in args.services)
     )
 
 
@@ -66,9 +65,8 @@ class CodalabArgs(argparse.Namespace):
         'build_images': False,
         'images': ['services'],
         'external_db_url': None,
-        'test_build': False,
         'user_compose_file': None,
-        'services': ['all'],
+        'services': ['default'],
         'root_dir': None,
         'instance_name': 'codalab',
         'mysql_root_password': 'codalab',
@@ -90,7 +88,6 @@ class CodalabArgs(argparse.Namespace):
         'ssl_key_file': None,
         'follow': False,
         'tail': None,
-        'tests': ['default'],
     }
 
     ARG_TO_ENV_VAR = {
@@ -129,9 +126,6 @@ class CodalabArgs(argparse.Namespace):
 
         start_cmd = subparsers.add_parser('start', help='Start a CodaLab service instance')
         logs_cmd = subparsers.add_parser('logs', help='View logs for existing CodaLab instance')
-        test_cmd = subparsers.add_parser(
-            'test', help='Run tests against an existing CodaLab instance'
-        )
         build_cmd = subparsers.add_parser(
             'build', help='Build CodaLab docker images using the local codebase'
         )
@@ -147,23 +141,14 @@ class CodalabArgs(argparse.Namespace):
         )
 
         #  CLIENT SETTINGS
-        for cmd in [
-            start_cmd,
-            logs_cmd,
-            test_cmd,
-            build_cmd,
-            run_cmd,
-            stop_cmd,
-            down_cmd,
-            restart_cmd,
-        ]:
+        for cmd in [start_cmd, logs_cmd, build_cmd, run_cmd, stop_cmd, down_cmd, restart_cmd]:
             cmd.add_argument(
                 '--dry-run',
                 action='store_true',
                 help='Just print out the commands that will be run and not execute anything',
             )
 
-        for cmd in [start_cmd, run_cmd, test_cmd]:
+        for cmd in [start_cmd, run_cmd]:
 
             cmd.add_argument(
                 '--codalab-user',
@@ -289,7 +274,7 @@ class CodalabArgs(argparse.Namespace):
             '-s',
             nargs='*',
             help='List of services to run',
-            choices=SERVICES + ['all', 'all-but-worker', 'init'],
+            choices=SERVICES + ['default', 'default-no-worker', 'init', 'test'],
             default=argparse.SUPPRESS,
         )
 
@@ -378,9 +363,9 @@ class CodalabArgs(argparse.Namespace):
         logs_cmd.add_argument(
             'services',
             nargs='*',
-            default='all',
+            default='default',
             help='Services to print logs for',
-            choices=SERVICES + ['all'],
+            choices=SERVICES + ['default'],
         )
         logs_cmd.add_argument(
             '--follow',
@@ -397,25 +382,13 @@ class CodalabArgs(argparse.Namespace):
             default=argparse.SUPPRESS,
         )
 
-        #  TESTS SETTINGS
-
-        test_cmd.add_argument(
-            'tests',
-            metavar='TEST',
-            nargs='+',
-            type=str,
-            choices=test_cli.TestModule.modules.keys() + ['all', 'default'],
-            default=['default'],
-            help='Tests to run',
-        )
-
         #  RUN SETTINGS
 
         run_cmd.add_argument(
             'service',
             metavar='SERVICE',
             type=str,
-            choices=SERVICES + ['all'],
+            choices=SERVICES,
             help='Service container to run command on',
         )
         run_cmd.add_argument('cmd', metavar='CMD', type=str, help='Command to run')
@@ -555,12 +528,12 @@ class CodalabServiceManager(object):
                     raise
 
     def execute(self):
-        if self.command == 'build' or (self.command == 'start' and self.args.build_images):
+        if self.command == 'build':
             self.build_images()
-        if self.command == 'start':
+        elif self.command == 'start':
+            if self.args.build_images:
+                self.build_images()
             self.start_services()
-            if self.args.test_build:
-                self.test()
         elif self.command == 'run':
             self.run_service_cmd(
                 self.args.cmd, root=not self.args.no_root, service=self.args.service
@@ -575,9 +548,9 @@ class CodalabServiceManager(object):
         elif self.command == 'stop':
             self._run_compose_cmd('stop')
         elif self.command == 'down':
-            self._run_compose_cmd('down --remove-orphans')
-        elif self.command == 'test':
-            self.test()
+            self._run_compose_cmd('down --remove-orphans -v')
+        else:
+            raise Exception('Bad command: ' + self.command)
 
     def build_image(self, image):
         print_header('Building {} image'.format(image))
@@ -654,7 +627,7 @@ class CodalabServiceManager(object):
         if should_run_service(self.args, 'init'):
             print_header('Creating root user')
             self.run_service_cmd(
-                "%svenv/bin/python scripts/create-root-user.py %s"
+                "%spython scripts/create-root-user.py %s"
                 % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
                 root=True,
             )
@@ -673,6 +646,13 @@ class CodalabServiceManager(object):
         self.bring_up_service('nginx')
         self.bring_up_service('worker')
 
+        if should_run_service(self.args, 'test'):
+            print_header('Running tests')
+            self.run_service_cmd(
+                "/opt/wait-for-it.sh rest-server:2900 -- python test_cli.py --instance http://rest-server:2900 default",
+                root=(not self.args.codalab_home),
+            )
+
     def build_images(self):
         images_to_build = [
             image for image in self.ALL_IMAGES if should_build_image(self.args, image)
@@ -687,21 +667,6 @@ class CodalabServiceManager(object):
             )
             for image in images_to_build:
                 self.push_image(image)
-
-    def test(self):
-        instance = 'http://localhost:%s' % self.args.rest_port
-        test_cli.cl = 'codalab/bin/cl'
-        test_cli.cl_version = self.args.version
-        codalab_client_env = {
-            'CODALAB_USERNAME': self.args.codalab_user,
-            'CODALAB_PASSWORD': self.args.codalab_password,
-        }
-        subprocess.check_call(
-            '%s work %s::' % (test_cli.cl, instance), env=codalab_client_env, shell=True
-        )
-        success = test_cli.TestModule.run(self.args.tests, instance)
-        if not success:
-            sys.exit(1)
 
 
 if __name__ == '__main__':

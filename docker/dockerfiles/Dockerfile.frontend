@@ -5,10 +5,16 @@ ENV NPM_CONFIG_LOGLEVEL warn
 RUN npm install -g serve
 
 WORKDIR /opt/frontend
-COPY frontend/package*.json ./
+
+# Install dependencies
+COPY frontend/package.json ./
+COPY frontend/package-lock.json ./
 RUN npm install
 
+# Overridden in dev mode
 COPY frontend .
+
+# Build static files
 RUN npm run build --production
 
 EXPOSE 2700
