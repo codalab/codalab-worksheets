@@ -10,7 +10,6 @@ import errno
 import os
 import subprocess
 import sys
-import test_cli
 
 SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker']
 
