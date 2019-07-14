@@ -149,7 +149,7 @@ class ConfigSchema(Schema):
     allow_multiple_models = fields.Boolean(
         missing=False, metadata='whether to distinguish multiple models per user by bundle name'
     )
-    host = fields.Url(
+    host = fields.String(
         missing='https://worksheets.codalab.org',
         metadata='address of the CodaLab instance to connect to',
     )

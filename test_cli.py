@@ -233,6 +233,9 @@ class Colorizer(object):
         return cls._colorize(string, "CYAN")
 
 
+# TODO: get rid of this and set up the rest-servers outside test_cli.py and
+# pass them as parameters into here.  Otherwise, there are circular
+# dependencies with calling codalab_service.py.
 @contextmanager
 def temp_instance():
     """
@@ -259,8 +262,6 @@ def temp_instance():
 
     rest_port, http_port, mysql_port = get_free_ports(3)
     temp_instance_name = random_name()
-    # TODO: not ideal that this script calls ./codalab_service.py, which
-    # introduces a circular dependency.  Just need a rest server.
     try:
         subprocess.check_output(
             ' '.join(
@@ -309,9 +310,10 @@ class ModuleContext(object):
     https://docs.python.org/2/reference/datamodel.html#with-statement-context-managers
     """
 
-    def __init__(self):
+    def __init__(self, instance):
         # These are the temporary worksheets and bundles that need to be
         # cleaned up at the end of the test.
+        self.instance = instance
         self.worksheets = []
         self.bundles = []
         self.groups = []
@@ -474,7 +476,7 @@ class TestModule(object):
             if module.description is not None:
                 print(Colorizer.yellow("[*][*] DESCRIPTION: %s" % module.description))
 
-            with ModuleContext() as ctx:
+            with ModuleContext(instance) as ctx:
                 module.func(ctx)
 
             if ctx.error:
@@ -1317,6 +1319,7 @@ def test(ctx):
     wait(run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)
 
 
+# TODO: can't do this test until we can pass in another CodaLab instance.
 @TestModule.register('copy', default=False)
 def test(ctx):
     """Test copying between instances."""
@@ -1550,7 +1553,7 @@ def test(ctx):
     with open(config_file, 'wb') as fp:
         json.dump(
             {
-                "host": 'http://localhost:2900',
+                "host": ctx.instance,
                 "username": 'codalab',
                 "password": 'codalab',
                 "log_worksheet_uuid": log_worksheet_uuid,

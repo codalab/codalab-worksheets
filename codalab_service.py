@@ -537,9 +537,11 @@ class CodalabServiceManager(object):
                     raise
 
     def execute(self):
-        if self.command == 'build' or (self.command == 'start' and self.args.build_images):
+        if self.command == 'build':
             self.build_images()
         elif self.command == 'start':
+            if self.args.build_images:
+                self.build_images()
             self.start_services()
         elif self.command == 'run':
             self.run_service_cmd(
@@ -555,7 +557,7 @@ class CodalabServiceManager(object):
         elif self.command == 'stop':
             self._run_compose_cmd('stop')
         elif self.command == 'down':
-            self._run_compose_cmd('down --remove-orphans')
+            self._run_compose_cmd('down --remove-orphans -v')
         else:
             raise Exception('Bad command: ' + self.command)
 
@@ -656,7 +658,7 @@ class CodalabServiceManager(object):
         if should_run_service(self.args, 'test'):
             print_header('Running tests')
             self.run_service_cmd(
-                "/opt/wait-for-it.sh rest-server:2900 -- python test_cli.py default",
+                "/opt/wait-for-it.sh rest-server:2900 -- python test_cli.py --instance http://rest-server:2900 default",
                 root=(not self.args.codalab_home),
             )
 
