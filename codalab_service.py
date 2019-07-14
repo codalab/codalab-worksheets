@@ -133,7 +133,7 @@ class CodalabArgs(argparse.Namespace):
 
         stop_cmd = subparsers.add_parser('stop', help='Stop any existing CodaLab service instances')
         down_cmd = subparsers.add_parser(
-            'down',
+            'delete',
             help='Bring down any existing CodaLab service instances (and delete all non-external data!)',
         )
         restart_cmd = subparsers.add_parser(
@@ -233,7 +233,7 @@ class CodalabArgs(argparse.Namespace):
 
         build_cmd.add_argument(
             'images',
-            default=['services'],
+            default='services',
             help='Images to build. \'services\' for server-side images (frontend, server, worker) \
                     \'all\' for those and the default execution images',
             choices=CodalabServiceManager.ALL_IMAGES + ['all', 'services'],
@@ -547,7 +547,7 @@ class CodalabServiceManager(object):
             self._run_compose_cmd('logs')
         elif self.command == 'stop':
             self._run_compose_cmd('stop')
-        elif self.command == 'down':
+        elif self.command == 'delete':
             self._run_compose_cmd('down --remove-orphans -v')
         else:
             raise Exception('Bad command: ' + self.command)
