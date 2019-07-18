@@ -17,8 +17,10 @@ from codalabworker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 
-WORKER_TIMEOUT_SECONDS = 60
 
+WORKER_TIMEOUT_SECONDS = 60
+SECONDS_PER_DAY = 86400
+BUNDLE_TIMEOUT_SECONDS = SECONDS_PER_DAY * 60
 
 class BundleManager(object):
     """
@@ -86,6 +88,7 @@ class BundleManager(object):
         self._stage_bundles()
         self._make_bundles()
         self._schedule_run_bundles()
+        self._bring_zombie_bundles_to_fail()
 
     def _schedule_run_bundles(self):
         """
@@ -529,3 +532,21 @@ class BundleManager(object):
         resources['request_network'] = bundle.metadata.request_network
 
         return message
+
+    def _bring_zombie_bundles_to_fail(self):
+        failure_message = "Bundle exceeds maximum time limit {}.".format(BUNDLE_TIMEOUT_SECONDS)
+        bundles_to_fail = (
+            self._model.batch_get_bundles(state=State.UPLOADING)
+            + self._model.batch_get_bundles(state=State.STAGED)
+            + self._model.batch_get_bundles(state=State.RUNNING)
+        )
+        now = time.time()
+
+        for bundle in bundles_to_fail:
+            if now - bundle.metadata.created > BUNDLE_TIMEOUT_SECONDS:
+                logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
+                self._model.update_bundle(
+                    bundle,
+                    {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
+                )
+
