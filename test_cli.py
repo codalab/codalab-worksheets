@@ -25,7 +25,6 @@ import os
 import random
 import re
 import shutil
-import stat
 import subprocess
 import sys
 import time
@@ -1617,6 +1616,29 @@ def test(ctx):
     # edits that introduce unicode.
     # uuid = run_command([cl, 'upload', test_path('a.txt')])
     # run_command([cl, 'edit', uuid], 1)
+
+
+@TestModule.register('workers')
+def test(ctx):
+    # Run workers command
+    result = run_command([cl, 'workers'])
+    lines = result.split("\n")
+
+    # Output should contain at least 3 lines as following:
+    # worker_id        cpus  gpus  memory  free_disk  last_checkin  tag  runs
+    # -----------------------------------------------------------------------
+    # 7a343e1015c7(1)  0/2   0/0   2.0g    32.9g      2.0s ago
+    check_equals(True, len(lines) >= 3)
+
+    # Check header which includes 8 columns in total from output.
+    header = lines[0]
+    check_contains(
+        ['worker_id', 'cpus', 'gpus', 'memory', 'free_disk', 'last_checkin', 'tag', 'runs'], header
+    )
+
+    # Check number of not null values. First 6 columns should be not null. Column "tag" and "runs" could be empty.
+    worker_info = lines[2].split()
+    check_equals(True, len(worker_info) >= 6)
 
 
 if __name__ == '__main__':
