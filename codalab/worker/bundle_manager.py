@@ -19,8 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 WORKER_TIMEOUT_SECONDS = 60
-SECONDS_PER_DAY = 86400
-BUNDLE_TIMEOUT_SECONDS = SECONDS_PER_DAY * 60
+SECONDS_PER_DAY = 60 * 60 * 24
+# Maximum days to fail unresponsive bundles in uploading, staged and running state
+BUNDLE_TIMEOUT_DAYS = SECONDS_PER_DAY * 60
 
 
 class BundleManager(object):
@@ -89,7 +90,7 @@ class BundleManager(object):
         self._stage_bundles()
         self._make_bundles()
         self._schedule_run_bundles()
-        self._bring_zombie_bundles_to_fail()
+        self._fail_unresponsive_bundles()
 
     def _schedule_run_bundles(self):
         """
@@ -534,8 +535,12 @@ class BundleManager(object):
 
         return message
 
-    def _bring_zombie_bundles_to_fail(self):
-        failure_message = "Bundle exceeds maximum time limit {}.".format(BUNDLE_TIMEOUT_SECONDS)
+    def _fail_unresponsive_bundles(self):
+        """
+        Fail bundles in uploading, staged and running state if we haven't heard from them for more than
+        BUNDLE_TIMEOUT_DAYS days.
+        """
+        failure_message = "Bundle hasn't respond in {} days.".format(BUNDLE_TIMEOUT_DAYS)
         bundles_to_fail = (
             self._model.batch_get_bundles(state=State.UPLOADING)
             + self._model.batch_get_bundles(state=State.STAGED)
@@ -544,7 +549,7 @@ class BundleManager(object):
         now = time.time()
 
         for bundle in bundles_to_fail:
-            if now - bundle.metadata.created > BUNDLE_TIMEOUT_SECONDS:
+            if now - bundle.metadata.created > BUNDLE_TIMEOUT_DAYS:
                 logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
                 self._model.update_bundle(
                     bundle,
