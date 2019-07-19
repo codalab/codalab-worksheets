@@ -632,6 +632,12 @@ class CodalabServiceManager(object):
                 root=True,
             )
 
+            print_header('Initializing the database with alembic')
+            self.run_service_cmd(
+                'alembic stamp head && alembic upgrade head',
+                root=True,
+            )
+
         self.bring_up_service('rest-server')
 
         if should_run_service(self.args, 'init'):
