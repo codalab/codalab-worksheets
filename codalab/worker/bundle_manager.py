@@ -17,7 +17,11 @@ from codalabworker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 
+
 WORKER_TIMEOUT_SECONDS = 60
+SECONDS_PER_DAY = 60 * 60 * 24
+# Fail unresponsive bundles in uploading, staged and running state after this many days.
+BUNDLE_TIMEOUT_DAYS = 60
 
 
 class BundleManager(object):
@@ -86,6 +90,7 @@ class BundleManager(object):
         self._stage_bundles()
         self._make_bundles()
         self._schedule_run_bundles()
+        self._fail_unresponsive_bundles()
 
     def _schedule_run_bundles(self):
         """
@@ -529,3 +534,28 @@ class BundleManager(object):
         resources['request_network'] = bundle.metadata.request_network
 
         return message
+
+    def _fail_unresponsive_bundles(self):
+        """
+        Fail bundles in uploading, staged and running state if we haven't heard from them for more than
+        BUNDLE_TIMEOUT_DAYS days.
+        """
+        bundles_to_fail = (
+            self._model.batch_get_bundles(state=State.UPLOADING)
+            + self._model.batch_get_bundles(state=State.STAGED)
+            + self._model.batch_get_bundles(state=State.RUNNING)
+        )
+        now = time.time()
+
+        for bundle in bundles_to_fail:
+            # For simplicity, we use field metadata.created to calculate timeout for now.
+            # Ideally, we should use field metadata.last_updated.
+            if now - bundle.metadata.created > BUNDLE_TIMEOUT_DAYS * SECONDS_PER_DAY:
+                failure_message = 'Bundle has been stuck in {} state for more than {} days.'.format(
+                    bundle.state, BUNDLE_TIMEOUT_DAYS
+                )
+                logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
+                self._model.update_bundle(
+                    bundle,
+                    {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
+                )
