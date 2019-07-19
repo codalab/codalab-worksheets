@@ -22,6 +22,7 @@ WORKER_TIMEOUT_SECONDS = 60
 SECONDS_PER_DAY = 86400
 BUNDLE_TIMEOUT_SECONDS = SECONDS_PER_DAY * 60
 
+
 class BundleManager(object):
     """
     Assigns run bundles to workers and makes make bundles.
@@ -549,4 +550,3 @@ class BundleManager(object):
                     bundle,
                     {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
                 )
-
