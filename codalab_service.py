@@ -624,7 +624,6 @@ class CodalabServiceManager(object):
                 root=(not self.args.codalab_home),
             )
 
-        if should_run_service(self.args, 'init'):
             print_header('Creating root user')
             self.run_service_cmd(
                 "%spython scripts/create-root-user.py %s"
@@ -633,7 +632,9 @@ class CodalabServiceManager(object):
             )
 
             print_header('Initializing the database with alembic')
-            self.run_service_cmd('alembic stamp head && alembic upgrade head', root=True)
+            self.run_service_cmd(
+                "%salembic stamp head && alembic upgrade head" % cmd_prefix, root=True
+            )
 
         self.bring_up_service('rest-server')
 
