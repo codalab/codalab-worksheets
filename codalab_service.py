@@ -630,7 +630,7 @@ class CodalabServiceManager(object):
 
             print_header('Creating root user')
             self.run_service_cmd(
-                "%spython scripts/create-root-user.py %s"
+                "%spython3.6 scripts/create-root-user.py %s"
                 % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
                 root=True,
             )
@@ -657,7 +657,7 @@ class CodalabServiceManager(object):
         if should_run_service(self.args, 'test'):
             print_header('Running tests')
             self.run_service_cmd(
-                "/opt/wait-for-it.sh rest-server:2900 -- python test_cli.py --instance http://rest-server:2900 default",
+                "/opt/wait-for-it.sh rest-server:2900 -- python3.6 test_cli.py --instance http://rest-server:2900 default",
                 root=(not self.args.codalab_home),
             )
 
