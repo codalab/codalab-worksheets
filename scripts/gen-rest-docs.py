@@ -1,4 +1,3 @@
-#!./venv/bin/python
 # -*- coding: utf-8 -*-
 """
 Generate REST docs.

@@ -184,7 +184,9 @@ class LocalRunStateMachine(StateTransitioner):
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> CLEANING_UP
-            run_state.info['failure_message'] = image_state.message
+            run_state.info['failure_message'] = (
+                'Failed to download Docker image: %s' % image_state.message
+            )
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
         # stop proceeding if dependency and image downloads aren't all done

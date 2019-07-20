@@ -420,15 +420,7 @@ def interpret_genpath(bundle_info, genpath):
                 args.append(friendly_render_dep(dep)[1])
             return '= ' + ' '.join(args)
         elif bundle_type == 'run':
-            command = bundle_info['command']
-            for dep in deps:
-                key, value = friendly_render_dep(dep)
-                # Replace full-word occurrences of key in the command with an indicator of the dependency.
-                # Of course, a string match in the command isn't necessary a semantic reference to the dependency,
-                # and there are some dependencies which are not explicit in the command.
-                # But this can be seen as a best-effort attempt.
-                command = re.sub(r'\b%s\b' % key, value, command)
-            return '! ' + command
+            return '! ' + bundle_info['command']
     elif genpath == 'host_worksheets':
         if 'host_worksheets' in bundle_info:
             return ' '.join(
