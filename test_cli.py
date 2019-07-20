@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Tests all the CLI functionality end-to-end.
@@ -231,6 +230,9 @@ class Colorizer(object):
         return cls._colorize(string, "CYAN")
 
 
+# TODO: get rid of this and set up the rest-servers outside test_cli.py and
+# pass them as parameters into here.  Otherwise, there are circular
+# dependencies with calling codalab_service.py.
 @contextmanager
 def temp_instance():
     """
@@ -257,8 +259,6 @@ def temp_instance():
 
     rest_port, http_port, mysql_port = get_free_ports(3)
     temp_instance_name = random_name()
-    # TODO: not ideal that this script calls ./codalab_service.py, which
-    # introduces a circular dependency.  Just need a rest server.
     try:
         subprocess.check_output(
             ' '.join(
@@ -307,9 +307,10 @@ class ModuleContext(object):
     https://docs.python.org/2/reference/datamodel.html#with-statement-context-managers
     """
 
-    def __init__(self):
+    def __init__(self, instance):
         # These are the temporary worksheets and bundles that need to be
         # cleaned up at the end of the test.
+        self.instance = instance
         self.worksheets = []
         self.bundles = []
         self.groups = []
@@ -476,7 +477,7 @@ class TestModule(object):
             if module.description is not None:
                 print(Colorizer.yellow("[*][*] DESCRIPTION: %s" % module.description))
 
-            with ModuleContext() as ctx:
+            with ModuleContext(instance) as ctx:
                 module.func(ctx)
 
             if ctx.error:
@@ -498,7 +499,7 @@ class TestModule(object):
 @TestModule.register('unittest')
 def test(ctx):
     """Run nose unit tests"""
-    run_command(['venv/bin/nosetests'])
+    run_command(['nosetests', '-e', 'test_cli.py'])
 
 
 @TestModule.register('basic')
@@ -1326,6 +1327,7 @@ def test(ctx):
     wait(run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)
 
 
+# TODO: can't do this test until we can pass in another CodaLab instance.
 @TestModule.register('copy', default=False)
 def test(ctx):
     """Test copying between instances."""
@@ -1559,7 +1561,7 @@ def test(ctx):
     with open(config_file, 'w') as fp:
         json.dump(
             {
-                "host": 'http://localhost:2900',
+                "host": ctx.instance,
                 "username": 'codalab',
                 "password": 'codalab',
                 "log_worksheet_uuid": log_worksheet_uuid,
@@ -1586,7 +1588,13 @@ def test(ctx):
     out_file = temp_path('-competition-out.json')
     try:
         run_command(
-            [os.path.join(base_path, 'scripts/competitiond.py'), config_file, out_file, '--verbose']
+            [
+                'python',
+                os.path.join(base_path, 'scripts/competitiond.py'),
+                config_file,
+                out_file,
+                '--verbose',
+            ]
         )
 
         # Check that eval bundle gets created

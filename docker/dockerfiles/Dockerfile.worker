@@ -5,20 +5,21 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa 
 
-# Install dependencies
 RUN apt-get update; apt-get install -y \
   python3.6 \
   python3.6-dev \
   python3-pip;
  
 
+# Install dependencies
 COPY worker/requirements.txt /opt
 RUN python3.6 -m pip install --user --upgrade pip; \
     python3.6 -m pip install -r /opt/requirements.txt;
 
-# Install dependencies again
+# Update the code
 COPY worker /opt/worker
 
+# Install dependencies again
 RUN python3.6 -m pip install --user --upgrade pip; \
     python3.6 -m pip install -e /opt/worker;
 
