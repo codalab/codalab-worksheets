@@ -1589,7 +1589,7 @@ def test(ctx):
     try:
         run_command(
             [
-                'python',
+                'python3.6',
                 os.path.join(base_path, 'scripts/competitiond.py'),
                 config_file,
                 out_file,
