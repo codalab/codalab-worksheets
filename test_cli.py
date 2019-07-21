@@ -108,7 +108,7 @@ def sanitize(string, max_chars=256):
 
 
 def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, binary=False):
-    print(">>", *args, sep=" ")
+    print(">>", *[a.encode('ascii', errors='replace') for a in args], sep=" ")
 
     try:
         output = (
