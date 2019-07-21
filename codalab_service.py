@@ -606,9 +606,16 @@ class CodalabServiceManager(object):
         compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in self.compose_env.items())
         print('(cd {}; {} {})'.format(self.compose_cwd, compose_env_string, command_string))
         if not self.args.dry_run:
-            subprocess.check_call(
-                command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True
-            )
+            try:
+                popen = subprocess.Popen(
+                    command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True,
+                    stdout=subprocess.PIPE
+                )
+                for stdout_line in popen.stdout:
+                    print("process: " + stdout_line.decode(), end="")
+            except subprocess.CalledProcessError as e:
+                print("CalledProcessError: {}, {}".format(str(e), e.output))
+                raise e
         print('')
 
     def bring_up_service(self, service):
