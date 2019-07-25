@@ -252,7 +252,11 @@ class WorkerModel(object):
             return None
 
         with closing(fileobj):
-            return json.loads(fileobj.read())
+            val = fileobj.read()
+            try:
+                return json.loads(val)
+            except ValueError:
+                raise ValueError("Failed to parse JSON message from worker socket: %s" % val)
 
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """
