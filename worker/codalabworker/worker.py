@@ -1,3 +1,4 @@
+import httplib
 from contextlib import closing
 from subprocess import check_output
 import logging
@@ -11,11 +12,10 @@ import re
 import json
 
 from bundle_service_client import BundleServiceException
+from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from dependency_manager import DependencyManager
 from worker_state_manager import WorkerStateManager
 from file_util import remove_path, un_tar_directory
-from run import Run
-from docker_image_manager import DockerImageManager
 
 VERSION = 18
 
@@ -29,6 +29,7 @@ Resumable Workers
     bundle once again, as long as the state is intact and the bundle container
     is still running or has finished running.
 """
+
 
 class Worker(object):
     """
@@ -45,95 +46,47 @@ class Worker(object):
         4) Upgrading the worker.
     """
 
-    def __init__(self, id, tag, work_dir, cpuset, gpuset,
-                 max_work_dir_size_bytes, max_dependencies_serialized_length, max_images_bytes,
-                 shared_file_system, bundle_service, docker, docker_network_prefix='codalab_worker_network'):
-        self.id = id
+    def __init__(self, worker_id, tag, work_dir,
+                 max_work_dir_size_bytes, max_dependencies_serialized_length,
+                 shared_file_system, bundle_service, create_run_manager):
+        self.id = worker_id
         self._tag = tag
         self.shared_file_system = shared_file_system
         self._bundle_service = bundle_service
-        self._docker = docker
-        self._docker_network_prefix = docker_network_prefix
-
         self._resource_lock = threading.Lock() # lock for cpuset and gpuset
-        self._cpuset = cpuset
-        self._gpuset = gpuset
-        self._cpuset_free = set(self._cpuset) # make a copy of self._cpuset as initial value
-        self._gpuset_free = set(self._gpuset) # make a copy of self._gpuset as initial value
+        self._run_manager = create_run_manager(self)
 
-        self._worker_state_manager = WorkerStateManager(work_dir, self.shared_file_system)
+        self._worker_state_manager = WorkerStateManager(
+            work_dir=work_dir,
+            run_manager=self._run_manager,
+            shared_file_system=self.shared_file_system
+        )
 
         if not self.shared_file_system:
             # Manages which dependencies are available.
             self._dependency_manager = DependencyManager(
-                    work_dir, max_work_dir_size_bytes, max_dependencies_serialized_length,
-                    self._worker_state_manager.previous_runs.keys())
-        self._image_manager = DockerImageManager(self._docker, work_dir, max_images_bytes)
-        self._max_images_bytes = max_images_bytes
+                work_dir,
+                max_work_dir_size_bytes,
+                max_dependencies_serialized_length,
+                self._worker_state_manager.previous_runs.keys()
+            )
 
         self._exiting_lock = threading.Lock()
         self._exiting = False
         self._should_upgrade = False
         self._last_checkin_successful = False
 
-        # set up docker networks for running bundles: one with external network access and one without
-        self.docker_network_external_name = self._docker_network_prefix + "_ext"
-        if self.docker_network_external_name not in self._docker.list_networks():
-            logger.debug('Creating docker network: {}'.format(self.docker_network_external_name))
-            self._docker.create_network(self.docker_network_external_name, internal=False)
-        else:
-            logger.debug('Docker network already exists, not creating: {}'.format(self.docker_network_external_name))
-
-        self.docker_network_internal_name = self._docker_network_prefix + "_int"
-        if self.docker_network_internal_name not in self._docker.list_networks():
-            logger.debug('Creating docker network: {}'.format(self.docker_network_internal_name))
-            self._docker.create_network(self.docker_network_internal_name)
-        else:
-            logger.debug('Docker network already exists, not creating: {}'.format(self.docker_network_internal_name))
 
     def run(self):
-        if self._max_images_bytes is not None:
-            self._image_manager.start_cleanup_thread()
         if not self.shared_file_system:
             self._dependency_manager.start_cleanup_thread()
 
-        resumed_prev_runs = False
-        def resume_previous_runs():
-            # resume previous runs
-            self._worker_state_manager.resume_previous_runs(
-                    lambda run_info: Run.deserialize(
-                        self._bundle_service, self._docker, self._image_manager, self, run_info)
-            )
-
-            # for each resumed run, remove the assigned cpu and gpus from the free sets
-            with self._resource_lock:
-                run_sets = self._worker_state_manager.map_runs(lambda run: (run._cpuset, run._gpuset))
-                for cpuset, gpuset in run_sets:
-                    for k in cpuset:
-                        if k in self._cpuset:
-                            self._cpuset_free.remove(k)
-                        else:
-                            logger.debug('Warning: cpu {} not in worker cpuset'.format(k))
-
-                    for k in gpuset:
-                        if k in self._gpuset:
-                            self._gpuset_free.remove(k)
-                        else:
-                            logger.debug('Warning: gpu {} not in worker gpuset'.format(k))
-
-            self._worker_state_manager.save_state()
+        self._run_manager.worker_did_start()
 
         while self._should_run():
             try:
                 self._checkin()
-
-                # resume previous runs once in the beginning, but after checkin
-                # this is not an ideal design because initial checkin can assign worker with new runs
-                # but resources from previous runs are not re-allocated to the worker yet; this can cause
-                # performance problems
-                if not resumed_prev_runs:
-                    resume_previous_runs()
-                    resumed_prev_runs = True
+                self._worker_state_manager.resume_previous_runs()
                 self._worker_state_manager.save_state()
                 if not self._last_checkin_successful:
                     logger.info('Connected! Successful check in.')
@@ -147,10 +100,10 @@ class Worker(object):
         self._checkout()
         self._worker_state_manager.save_state()
 
-        if self._max_images_bytes is not None:
-            self._image_manager.stop_cleanup_thread()
         if not self.shared_file_system:
             self._dependency_manager.stop_cleanup_thread()
+
+        self._run_manager.worker_will_stop()
 
         if self._should_upgrade:
             self._upgrade()
@@ -169,31 +122,19 @@ class Worker(object):
             return True
         return self._worker_state_manager.has_runs()
 
-    def _get_installed_memory_bytes(self):
-        try:
-            return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
-        except ValueError:
-            # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
-            return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
-
     def _get_allocated_memory_bytes(self):
         return sum(self._worker_state_manager.map_runs(lambda run: run.requested_memory_bytes))
 
     def _get_memory_bytes(self):
-        return max(0, self._get_installed_memory_bytes() - self._get_allocated_memory_bytes())
-
-    def _get_gpu_count(self):
-        info = self._docker.get_nvidia_devices_info()
-        count = 0 if info is None else len(info['Devices'])
-        return count
+        return max(0, self._run_manager.memory_bytes - self._get_allocated_memory_bytes())
 
     def _checkin(self):
         request = {
             'version': VERSION,
             'will_upgrade': self._should_upgrade,
             'tag': self._tag,
-            'cpus': len(self._cpuset),
-            'gpus': len(self._gpuset),
+            'cpus': self._run_manager.cpus,
+            'gpus': self._run_manager.gpus,
             'memory_bytes': self._get_memory_bytes(),
             'dependencies': [] if self.shared_file_system else self._dependency_manager.dependencies()
         }
@@ -219,60 +160,27 @@ class Worker(object):
                     self._exiting = True
                 self._should_upgrade = True
 
-    def _allocate_cpu_and_gpu_sets(self, request_cpus, request_gpus):
-        """
-        Allocate a cpuset and gpuset to assign to a bundle based on given requested resources.
-        Side effects: updates the free sets, self._cpuset_free and self._gpuset_free
-
-        Arguments:
-            request_cpus: integer
-            request_gpus: integer
-
-        Returns a 2-tuple:
-            cpuset: Allocated cpuset. Empty set if allocation was unsuccessful
-            gpuset: Allocated gpuset. Empty set if allocation was unsuccessful
-        """
-        cpuset, gpuset = set(), set()
-
-        with self._resource_lock:
-            if len(self._cpuset_free) < request_cpus or len(self._gpuset_free) < request_gpus:
-                return cpuset, gpuset
-
-            for i in range(request_cpus):
-                cpuset.add(self._cpuset_free.pop())
-            for j in range(request_gpus):
-                gpuset.add(self._gpuset_free.pop())
-            return cpuset, gpuset
-
-    def _deallocate_cpu_and_sets(self, cpuset, gpuset):
-        """
-        Release held up cpus and gpus
-
-        Re-add cpuset and gpuset back to their respective free sets
-        """
-        with self._resource_lock:
-            self._cpuset_free |= cpuset
-            self._gpuset_free |= gpuset
-
     def _run(self, bundle, resources):
         if self.shared_file_system:
+            assert 'location' in bundle, \
+                "Bundle location not provided by master with shared file system. Are you running as the master user?"
             bundle_path = bundle['location']
         else:
             bundle_path = self._dependency_manager.get_run_path(bundle['uuid'])
 
-        cpuset, gpuset = self._allocate_cpu_and_gpu_sets(
-                resources['request_cpus'], resources['request_gpus'])
-
-        if len(cpuset) == 0 and len(gpuset) == 0: # revert self._cpuset_free and self._gpuset_free in-place
-            logger.debug('Unsuccessful allocation of cpu and gpu sets for bundle %s', bundle['uuid'])
-            return
-
-        run = Run(self._bundle_service, self._docker, self._image_manager, self,
-                  bundle, bundle_path, resources, cpuset, gpuset)
-        if run.run():
-            self._worker_state_manager.add_run(bundle['uuid'], run)
-        else: # revert self._cpuset_free and self._gpuset_free in-place
-            self._deallocate_cpu_and_sets(cpuset, gpuset)
+        run = self._run_manager.create_run(
+            bundle=bundle,
+            bundle_path=bundle_path,
+            resources=resources
+        )
+        try:
+            run.pre_start()
+            if run.start():
+                self._worker_state_manager.add_run(bundle['uuid'], run)
+        except Exception as e:
+            run.kill('Problem starting run.')
+            run.post_stop()
+            raise e
 
     def add_dependency(self, parent_uuid, parent_path, uuid, loop_callback):
         """
@@ -336,22 +244,20 @@ class Worker(object):
         self._dependency_manager.remove_dependency(parent_uuid, parent_path, uuid)
 
     def _read(self, socket_id, uuid, path, read_args):
+        socket = self._bundle_service.socket(worker_id=self.id, socket_id=socket_id)
         run = self._worker_state_manager._get_run(uuid)
         if run is None:
-            Run.read_run_missing(self._bundle_service, self, socket_id)
+            message = {
+                'error_code': httplib.INTERNAL_SERVER_ERROR,
+                'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
+            }
+            socket.reply(message)
         else:
-            # Reads may take a long time, so do the read in a separate thread.
-            threading.Thread(target=Run.read,
-                             args=(run, socket_id, path, read_args)).start()
+            run.read(path=path, read_args=read_args, socket=socket)
 
     def _netcat(self, socket_id, uuid, port, message):
-        run = self._worker_state_manager._get_run(uuid)
-        if run is None:
-            Run.read_run_missing(self._bundle_service, self, socket_id)
-        else:
-            # Reads may take a long time, so do the read in a separate thread.
-            threading.Thread(target=Run.netcat,
-                             args=(run, socket_id, port, message)).start()
+        # TODO Netcat isn't supported because it cannot be by a general execution framework; this shouldn't be allowed.
+        pass
 
     def _write(self, uuid, subpath, string):
         run = self._worker_state_manager._get_run(uuid)
@@ -361,15 +267,18 @@ class Worker(object):
     def _kill(self, uuid):
         run = self._worker_state_manager._get_run(uuid)
         if run is not None:
-            run.kill('Kill requested')
+            run.kill('Kill requested.')
 
     def finish_run(self, uuid):
         """
         Registers that the run with the given UUID has finished.
         """
-        self._worker_state_manager.finish_run(uuid)
-        if not self.shared_file_system:
-            self._dependency_manager.finish_run(uuid)
+        run = self._worker_state_manager._get_run(uuid)
+        if run:
+            run.post_stop()
+            self._worker_state_manager.finish_run(uuid)
+            if not self.shared_file_system:
+                self._dependency_manager.finish_run(uuid)
 
     def _checkout(self):
         try:

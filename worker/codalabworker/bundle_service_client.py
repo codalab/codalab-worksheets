@@ -175,3 +175,25 @@ class BundleServiceClient(RestClient):
             'GET', '/bundles/' + uuid + '/contents/blob/' + path,
             headers={'Accept-Encoding': 'gzip'}, return_response=True)
         return response, response.headers.get('Target-Type')
+
+    def socket(self, worker_id, socket_id):
+        return SocketConnection(worker_id, socket_id, self)
+
+
+class SocketConnection:
+    """
+    Helper class which represents a connection for a worker over a socket.
+    Essentially reduces the boilerplate for socket calls.
+    """
+    def __init__(self, worker_id, socket_id, bundle_service_client):
+        self._worker_id = worker_id
+        self._socket_id = socket_id
+        self._bundle_service_client = bundle_service_client
+
+    def reply(self, message):
+        return self._bundle_service_client.reply(self._worker_id, self._socket_id, message)
+
+    def reply_data(self, header_message, fileobj_or_string):
+        return self._bundle_service_client.reply_data(self._worker_id, self._socket_id, header_message,
+                                                      fileobj_or_string)
+

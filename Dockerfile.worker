@@ -6,6 +6,8 @@ RUN apt-get update
 RUN apt-get install -y python-dev python-pip
 COPY worker/requirements.txt /opt
 RUN pip install -r /opt/requirements.txt
+# Additionally install the optional boto3 requirement so the image can be used for batch workers
+RUN pip install boto3
 
 # Install dependencies again
 COPY worker /opt/worker

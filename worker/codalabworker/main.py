@@ -67,6 +67,11 @@ def main():
                         help='Internal use: Whether the file system containing '
                              'bundle data is shared between the bundle service '
                              'and the worker.')
+    parser.add_argument('--batch-queue',
+                        help='Name of the AWS Batch queue to use for run submission. '
+                             'Providing this option will cause runs to be submitted to Batch rather than local docker. '
+                             'The queue must already exist and you must have AWS credentials to submit to it.'
+                        )
     args = parser.parse_args()
 
     # Get the username and password.
@@ -99,22 +104,46 @@ chmod 600 %s""" % args.password_file
                             level=logging.INFO)
 
     max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
+    max_dependencies_serialized_length = args.max_dependencies_serialized_length
     if args.max_image_cache_size is None:
         max_images_bytes = None
     else:
         max_images_bytes = parse_size(args.max_image_cache_size)
 
-    docker_client = DockerClient()
+    bundle_service = BundleServiceClient(args.server, username, password)
 
-    # transform/verify cpuset and gpuset
-    cpuset = parse_cpuset_args(args.cpuset)
-    gpuset = parse_gpuset_args(docker_client, args.gpuset)
+    # TODO Break the dependency of RunManagers on Worker to make this initialization nicer
+    def create_run_manager(w):
+        if args.batch_queue is None:
+            # We defer importing the run managers so their dependencies are lazily loaded
+            from docker_run import DockerRunManager
+            from docker_client import DockerClient
+            from docker_image_manager import DockerImageManager
 
-    worker = Worker(args.id, args.tag, args.work_dir, cpuset, gpuset,
-                    max_work_dir_size_bytes, args.max_dependencies_serialized_length,
-                    max_images_bytes, args.shared_file_system,
-                    BundleServiceClient(args.server, username, password),
-                    docker_client, args.network_prefix)
+            logging.info("Using local docker client for run submission.")
+
+            docker = DockerClient()
+            image_manager = DockerImageManager(docker, args.work_dir, max_images_bytes)
+            cpuset = parse_cpuset_args(args.cpuset)
+            gpuset = parse_gpuset_args(docker, args.gpuset)
+            return DockerRunManager(docker, bundle_service, image_manager, w, cpuset, gpuset)
+        else:
+            try:
+                import boto3
+            except ImportError:
+                logging.exception("Missing dependencies, please install boto3 to enable AWS support.")
+                import sys
+                sys.exit(1)
+
+            from aws_batch import AwsBatchRunManager
+
+            logging.info("Using AWS Batch queue %s for run submission.", args.batch_queue)
+
+            batch_client = boto3.client('batch')
+            return AwsBatchRunManager(batch_client, args.batch_queue, bundle_service, w)
+
+    worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes, max_dependencies_serialized_length,
+                    args.shared_file_system, bundle_service, create_run_manager)
 
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
@@ -126,6 +155,7 @@ chmod 600 %s""" % args.password_file
     # END
 
     worker.run()
+
 
 def parse_cpuset_args(arg):
     """
@@ -148,6 +178,7 @@ def parse_cpuset_args(arg):
         if not all(cpu in range(cpu_count) for cpu in cpuset):
             raise ValueError("CPUSET_STR invalid: CPUs out of range")
     return set(cpuset)
+
 
 def parse_gpuset_args(docker_client, arg):
     """
