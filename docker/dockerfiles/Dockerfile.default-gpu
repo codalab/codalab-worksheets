@@ -34,12 +34,13 @@ RUN add-apt-repository ppa:deadsnakes/ppa && \
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
 
-## Java (Oracle - can be flaky sometimes)
-RUN echo oracle-java12-installer shared/accepted-oracle-license-v1-2 select true | debconf-set-selections && \
-    add-apt-repository -y ppa:linuxuprising/java && \
-    apt-get update && \
-    apt-get install -y oracle-java12-installer && \
-    rm -rf /var/cache/oracle-jdk12-installer
+## Java (Oracle can be flaky sometimes, so use OpenJDK)
+#RUN echo oracle-java12-installer shared/accepted-oracle-license-v1-2 select true | debconf-set-selections && \
+#    add-apt-repository -y ppa:linuxuprising/java && \
+#    apt-get update && \
+#    apt-get install -y oracle-java12-installer && \
+#    rm -rf /var/cache/oracle-jdk12-installer
+RUN apt-get install -y openjdk-8-jdk
 
 ## Scala
 ENV SCALA_VERSION 2.12.6
