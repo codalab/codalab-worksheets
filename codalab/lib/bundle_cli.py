@@ -28,7 +28,7 @@ import time
 import textwrap
 from collections import defaultdict
 from contextlib import closing
-from io import StringIO
+from io import BytesIO
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -1132,7 +1132,7 @@ class BundleCLI(object):
 
         # Option 1: Upload contents string
         if args.contents is not None:
-            contents_buffer = StringIO(args.contents)
+            contents_buffer = BytesIO(args.contents.encode())
             new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})
             client.upload_contents_blob(
                 new_bundle['id'],
