@@ -85,6 +85,7 @@ class Worker(object):
             'cpus': self._run_manager.cpus,
             'gpus': self._run_manager.gpus,
             'memory_bytes': self._run_manager.memory_bytes,
+            'free_disk_bytes': self._run_manager.free_disk_bytes,
             'dependencies': self._run_manager.all_dependencies,
             'hostname': socket.gethostname(),
             'runs': self._run_manager.all_runs,
