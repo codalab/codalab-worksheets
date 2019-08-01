@@ -20,8 +20,7 @@ def bool_constructor(x=False):
 
 
 def unicode_constructor(s=""):
-    # Need this method so that any uninterpretable characters in the database will be
-    # replaced with '?'.
+    # Returns the same string.
     return s
 
 
