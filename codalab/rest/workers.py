@@ -31,6 +31,7 @@ def checkin(worker_id):
         request.json["cpus"],
         request.json["gpus"],
         request.json["memory_bytes"],
+        request.json["free_disk_bytes"],
         request.json["dependencies"],
     )
 
