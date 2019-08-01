@@ -100,8 +100,12 @@ def get_uuid(line):
 
 
 def sanitize(string, max_chars=256):
+    """Sanitize and truncate output so it can be printed on the command line.
+    Bytes are converted to strings, and all strings are converted to ASCII.
+    """
     if type(string) is bytes:
         string = "{}".format(string)
+    string = string.encode('ascii', errors='replace').decode()
     if len(string) > max_chars:
         string = string[:max_chars] + ' (...more...)'
     return string
@@ -114,7 +118,9 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, bina
         output = (
             subprocess.check_output(args, env=env)
             if binary
-            else subprocess.check_output([a.encode('utf-8') for a in args], env=env, encoding="utf-8")
+            else subprocess.check_output(
+                [a.encode('utf-8') for a in args], env=env, encoding="utf-8"
+            )
         )
         exitcode = 0
     except subprocess.CalledProcessError as e:
@@ -1619,7 +1625,6 @@ def test(ctx):
     # Unicode in bundle description, tags and command
     run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'], 1)
     run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'], 1)
-    # 
     run_command([cl, 'run', 'echo "fáncy ünicode"'], 1)
 
     # Unicode in edits --> interactive mode not tested, but `cl edit` properly discards
