@@ -48,8 +48,7 @@ from codalab.lib import (
     ui_actions,
     worksheet_util,
     zip_util,
-    bundle_fuse,
-    unicode_util,
+    bundle_fuse
 )
 from codalab.lib.cli_util import (
     nested_dict_get,
@@ -1203,7 +1202,7 @@ class BundleCLI(object):
                     new_bundle['id'],
                     fileobj=packed['fileobj'],
                     params={
-                        'filename': packed['filename'].encode('ascii', 'replace').decode(),
+                        'filename': packed['filename'],
                         'unpack': packed['should_unpack'],
                         'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
