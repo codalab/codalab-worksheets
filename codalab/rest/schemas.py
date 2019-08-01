@@ -47,20 +47,6 @@ def validate_sub_path(path):
         raise ValidationError('Child path must match %s, was %s' % (NAME_REGEX.pattern, path))
 
 
-def validate_ascii(value):
-    if isinstance(value, str):
-        try:
-            value.encode("ascii")
-        except UnicodeError:
-            raise ValidationError('Unsupported character detected, use ascii characters')
-    elif isinstance(value, list):
-        for v in value:
-            validate_ascii(v)
-    elif isinstance(value, dict):
-        for v in value.values():
-            validate_ascii(v)
-
-
 class WorksheetItemSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
     worksheet = fields.Relationship(
@@ -113,10 +99,10 @@ class WorksheetSchema(Schema):
     uuid = fields.String(attribute='uuid')  # for backwards compatibility
     name = fields.String(validate=validate_name)
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
-    title = fields.String(validate=validate_ascii)
+    title = fields.String()
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
-    tags = fields.List(fields.String(validate=validate_ascii))
+    tags = fields.List(fields.String())
     group_permissions = fields.Relationship(
         include_resource_linkage=True, type_='worksheet-permissions', id_field='id', many=True
     )
@@ -182,12 +168,12 @@ class BundleSchema(Schema):
     bundle_type = fields.String(
         validate=validate.OneOf({bsc.BUNDLE_TYPE for bsc in BUNDLE_SUBCLASSES})
     )
-    command = fields.String(allow_none=True, validate=validate_ascii)
+    command = fields.String(allow_none=True)
     data_hash = fields.String()
     state = fields.String()
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
     is_anonymous = fields.Bool()
-    metadata = fields.Dict(values=fields.Field(validate=validate_ascii))
+    metadata = fields.Dict(values=fields.String())
     dependencies = fields.Nested(BundleDependencySchema, many=True)
     children = fields.Relationship(
         include_resource_linkage=True, type_='bundles', id_field='uuid', many=True
