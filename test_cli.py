@@ -1623,10 +1623,11 @@ def test(ctx):
     check_equals('你好世界😊', run_command([cl, 'cat', uuid]))
 
     # Unicode in bundle description, tags and command
-    run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'], 1)
-    run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'], 1)
-    run_command([cl, 'run', 'echo "fáncy ünicode"'], 1)
+    run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'], 0)
+    run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'], 0)
+    run_command([cl, 'run', 'echo "fáncy ünicode"'], 0)
 
+    # TODO: what are these tests? do we need them?
     # Unicode in edits --> interactive mode not tested, but `cl edit` properly discards
     # edits that introduce unicode.
     # uuid = run_command([cl, 'upload', test_path('a.txt')])
