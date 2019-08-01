@@ -48,7 +48,7 @@ from codalab.lib import (
     ui_actions,
     worksheet_util,
     zip_util,
-    bundle_fuse
+    bundle_fuse,
 )
 from codalab.lib.cli_util import (
     nested_dict_get,
