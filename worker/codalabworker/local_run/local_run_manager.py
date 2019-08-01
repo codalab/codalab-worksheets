@@ -1,7 +1,6 @@
-import copy
 import logging
 import os
-from subprocess import check_output
+from subprocess import check_output, PIPE, Popen
 import threading
 import time
 import socket
@@ -57,6 +56,7 @@ class LocalRunManager(BaseRunManager):
         self._cpuset = cpuset
         self._gpuset = gpuset
         self._stop = False
+        self._work_dir = work_dir
 
         self._runs = {}  # bundle_uuid -> LocalRunState
         self._lock = threading.RLock()
@@ -360,3 +360,27 @@ class LocalRunManager(BaseRunManager):
         except ValueError:
             # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
             return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
+
+    @property
+    def free_disk_bytes(self):
+        """
+        Available disk space by bytes of this RunManager.
+        """
+        error_msg = "Failed to run command {}".format("df " + self._work_dir)
+        try:
+            p = Popen(["df", self._work_dir], stdout=PIPE)
+            output, error = p.communicate()
+            # Return None when there is an error.
+            if error:
+                logger.error(error.strip())
+                return None
+
+            if output:
+                lines = output.decode().split("\n")
+                index = lines[0].split().index("Available")
+                # We convert the original result from df command in unit of 1KB blocks into bytes.
+                return int(lines[1].split()[index]) * 1024
+
+        except Exception as e:
+            logger.error("{}: {}".format(error_msg, str(e)))
+            return None
