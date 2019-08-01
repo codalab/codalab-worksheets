@@ -114,7 +114,10 @@ def do_bundle_manager_command(bundle_cli, args):
 def main():
     cli = BundleCLI(CodaLabManager())
     try:
-        cli.do_command(sys.argv[1:])
+        """Properly accept unicode arguments, since the filesystem encoding by default is ascii -- see note at https://docs.python.org/3.7/library/sys.html#sys.argv:
+        Note On Unix, command line arguments are passed by bytes from OS. Python decodes them with filesystem encoding and “surrogateescape” error handler. When you need original bytes, you can get it by [os.fsencode(arg) for arg in sys.argv].
+        """
+        cli.do_command([os.fsencode(arg).decode() for arg in sys.argv[1:]])
     except KeyboardInterrupt:
         print('Terminated by Ctrl-C')
         sys.exit(130)
