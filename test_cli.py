@@ -868,12 +868,16 @@ def test(ctx):
     ctx.collect_worksheet(wuuid)
     # Add tags
     tags = ['foo', 'bar', 'baz']
-    fewer_tags = ['bar', 'foo']
     run_command([cl, 'wedit', wname, '--tags'] + tags)
     check_contains(['Tags: %s' % ' '.join(tags)], run_command([cl, 'ls', '-w', wuuid]))
     # Modify tags
+    fewer_tags = ['bar', 'foo']
     run_command([cl, 'wedit', wname, '--tags'] + fewer_tags)
     check_contains(['Tags: %s' % fewer_tags], run_command([cl, 'ls', '-w', wuuid]))
+    # Modify to non-ascii tags
+    non_ascii_tags = ['你好世界😊', 'fáncy ünicode']
+    run_command([cl, 'wedit', wname, '--tags'] + non_ascii_tags)
+    check_contains(['Tags: %s' % non_ascii_tags], run_command([cl, 'ls', '-w', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
     check_contains(r'Tags:\s+###', run_command([cl, 'ls', '-w', wuuid]))
@@ -1622,15 +1626,16 @@ def test(ctx):
     check_equals('你好世界😊', run_command([cl, 'cat', uuid]))
 
     # Unicode in bundle description, tags and command
-    run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'], 0)
-    run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'], 0)
-    run_command([cl, 'run', 'echo "fáncy ünicode"'], 0)
+    uuid = run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'])
+    check_equals('你好', get_info(uuid, 'description'))
+    uuid = run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'])
+    check_contains(['test', '😁'], get_info(uuid, 'tags'))
+    uuid = run_command([cl, 'run', 'echo "fáncy ünicode"'])
 
-    # TODO: what are these tests? do we need them?
-    # Unicode in edits --> interactive mode not tested, but `cl edit` properly discards
-    # edits that introduce unicode.
-    # uuid = run_command([cl, 'upload', test_path('a.txt')])
-    # run_command([cl, 'edit', uuid], 1)
+    # edit description with unicode
+    uuid = run_command([cl, 'upload', test_path('a.txt')])
+    run_command([cl, 'edit', uuid, '-d', '你好世界😊'])
+    check_equals('你好世界😊', get_info(uuid, 'description'))
 
 
 @TestModule.register('workers')
