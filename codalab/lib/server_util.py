@@ -86,19 +86,9 @@ def rate_limited(max_calls_per_hour):
 
 def decoded_body():
     """
-    Return the request body decoded into Unicode string according to the
-    charset specified in the Content-Type header of the request.
+    Return the request body decoded into Unicode string according to UTF-8.
     """
-    # e.g. Content-Type: text/plain; charset=utf-8
-    #        -> content_type = 'text/plain'
-    #        -> charset = 'utf-8'
-    m = re.match(r'([^;]+)(?:;\s*charset=(.+))?', request.content_type)
-    if m is not None:
-        content_type = m.group(1)  # unused
-        charset = m.group(2) or 'iso-8859-1'  # could be None
-    else:
-        charset = 'iso-8859-1'
-    return request.body.read().decode(charset)
+    return request.body.read().decode()
 
 
 def query_get_list(key):
