@@ -53,7 +53,10 @@ def test_path_contents(name, binary=False):
 
 
 def path_contents(path, binary=False):
-    return open(path, "rb" if binary else "r").read().rstrip()
+    with open(path, "rb") as file:
+        if binary:
+            return file.read().rstrip()
+        return file.read().decode().rstrip()
 
 
 def temp_path(suffix, tmp=False):
