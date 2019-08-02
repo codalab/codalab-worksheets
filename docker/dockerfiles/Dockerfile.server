@@ -46,4 +46,5 @@ COPY worker worker
 RUN pip install -e .
 
 ENV CODALAB_HOME=/home/codalab
+ENV PYTHONIOENCODING=utf-8
 EXPOSE 2900
