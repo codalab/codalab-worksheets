@@ -40,6 +40,7 @@ COPY setup.py setup.py
 COPY test_cli.py test_cli.py
 COPY tests tests
 COPY worker worker
+COPY views views
 
 RUN pip install -e .
 
