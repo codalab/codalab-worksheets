@@ -828,14 +828,11 @@ def test(ctx):
     run_command(
         [cl, 'wedit', wuuid, '--title', 'fáncy ünicode']
     )  # try encoded unicode in worksheet title
-    
+
     run_command(
         [cl, 'wedit', wuuid, '--file', test_path('unicode-worksheet')]
     )  # try unicode in worksheet contents
-    check_contains(
-        [test_path_contents('unicode-worksheet')],
-        run_command([cl, 'print', '-r']),
-    )
+    check_contains([test_path_contents('unicode-worksheet')], run_command([cl, 'print', '-r']))
 
     run_command([cl, 'wedit', wuuid, '--file', '/dev/null'])  # wipe out worksheet
 
