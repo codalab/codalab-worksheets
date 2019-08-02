@@ -918,13 +918,10 @@ class BundleModel(object):
         # (Clients should check for this case ahead of time if they want to
         # silently skip over creating bundles that already exist.)
         with self.engine.begin() as connection:
-            try:
-                result = connection.execute(cl_bundle.insert().values(bundle_value))
-                self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
-                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-                bundle.id = result.lastrowid
-            except UnicodeError:
-                raise UsageError("Invalid character detected; use ascii characters only.")
+            result = connection.execute(cl_bundle.insert().values(bundle_value))
+            self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
+            self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            bundle.id = result.lastrowid
 
     def update_bundle(self, bundle, update, connection=None):
         """
@@ -959,14 +956,11 @@ class BundleModel(object):
 
         # Perform the actual updates.
         def do_update(connection):
-            try:
-                if update:
-                    connection.execute(cl_bundle.update().where(clause).values(update))
-                if metadata_update:
-                    connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
-                    self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-            except UnicodeError:
-                raise UsageError("Invalid character detected; use ascii characters only.")
+            if update:
+                connection.execute(cl_bundle.update().where(clause).values(update))
+            if metadata_update:
+                connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
+                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
 
         if connection:
             do_update(connection)
