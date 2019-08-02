@@ -826,11 +826,17 @@ def test(ctx):
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
     run_command(
-        [cl, 'wedit', wuuid, '--title', 'fáncy ünicode'], 1
+        [cl, 'wedit', wuuid, '--title', 'fáncy ünicode']
     )  # try encoded unicode in worksheet title
+    
     run_command(
         [cl, 'wedit', wuuid, '--file', test_path('unicode-worksheet')]
     )  # try unicode in worksheet contents
+    check_contains(
+        [test_path_contents('unicode-worksheet')],
+        run_command([cl, 'print', '-r']),
+    )
+
     run_command([cl, 'wedit', wuuid, '--file', '/dev/null'])  # wipe out worksheet
 
 
@@ -876,11 +882,12 @@ def test(ctx):
     # Modify tags
     fewer_tags = ['bar', 'foo']
     run_command([cl, 'wedit', wname, '--tags'] + fewer_tags)
-    check_contains(['Tags: %s' % fewer_tags], run_command([cl, 'ls', '-w', wuuid]))
+    check_contains(['Tags: %s' % ' '.join(fewer_tags)], run_command([cl, 'ls', '-w', wuuid]))
     # Modify to non-ascii tags
     non_ascii_tags = ['你好世界😊', 'fáncy ünicode']
     run_command([cl, 'wedit', wname, '--tags'] + non_ascii_tags)
-    check_contains(['Tags: %s' % non_ascii_tags], run_command([cl, 'ls', '-w', wuuid]))
+    # check_contains(['Tags: %s' % ' '.join(non_ascii_tags)], run_command([cl, 'ls', '-w', wuuid]))
+    check_contains(non_ascii_tags, get_info(wuuid, 'tags'))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
     check_contains(r'Tags:\s+###', run_command([cl, 'ls', '-w', wuuid]))
@@ -1625,7 +1632,7 @@ def test(ctx):
 
     # Unicode in file contents
     uuid = run_command([cl, 'upload', '--contents', '你好世界😊'])
-    check_equals('_', get_info(uuid, 'name'))  # Currently ignores unicode chars for name
+    check_equals('_', get_info(uuid, 'name'))
     check_equals('你好世界😊', run_command([cl, 'cat', uuid]))
 
     # Unicode in bundle description, tags and command
