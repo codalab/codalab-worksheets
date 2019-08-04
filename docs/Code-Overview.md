@@ -80,7 +80,7 @@ Recall that a worksheet is a list of worksheet items, where each item is
 markup, a bundle reference, a worksheet reference, or a **directive**.  It is this
 last category that makes markdown more complex and powerful and is almost like
 a mini-programming language.  See what the functionality looks like from the
-[user's perspective](https://github.com/codalab/codalab-worksheets/wiki/Worksheet-Markdown).
+[user's perspective](https://codalab.readthedocs.io/en/latest/Worksheet-Markdown).
 
 **Worksheet interpretation**
 ([worksheet_util.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/lib/worksheet_util.py))
@@ -205,7 +205,7 @@ does most of the heavy lifting and transitions jobs between different states.
 There is one script
 [codalab_service.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab_service.py)
 that brings up and down an entire CodaLab service.  See [server
-setup](https://github.com/codalab/codalab-worksheets/wiki/Server-Setup) for how
+setup](Server-Setup.md) for how
 to use it.
 
 Any set of services (e.g., frontend, rest-server) are brought up using Docker
