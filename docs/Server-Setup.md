@@ -148,7 +148,7 @@ You can execute commands in the Docker images to see what's going on, for exampl
 
 If you just want to update your database, run the following command (which includes something to update the database schema via `alembic`):
 
-    ./codalab_service.py -s init
+    ./codalab_service.py start -b -d -v local -s update
 
 If you want to modify the database schema, use `alembic` to create a migration.  Note that everything must be run in Docker, but your modifications are outside in your local codebase.
 
