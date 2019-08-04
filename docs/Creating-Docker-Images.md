@@ -8,7 +8,7 @@ Bundles are run inside [Docker](https://www.docker.com) containers. Containers p
 ## Building your own images
 Detailed instructions for building images are available on the Docker website [here](https://docs.docker.com/engine/userguide/containers/dockerimages/). In the spirit of reproducibility we recommend building images using a Dockerfile so that how the image is built is documented. The steps are as follows:
 
-1. [Download and install Docker](Installing-Docker).
+1. [Download and install Docker](Installing-Docker.md).
 2. Create a directory for your image and `cd` into it. Then start editing a file with the name `Dockerfile`.
 
     ```
@@ -73,8 +73,8 @@ Detailed instructions for building images are available on the Docker website [h
 ### Building Docker Images with CUDA support
 
 This section describes how to build Docker images with CUDA support. 
-We also have instructions for [running your own worker](Execution#running-your-own-worker), which discusses
-GPU workers, and for using [GPUs on CodaLab](https://github.com/codalab/codalab-worksheets/wiki/Execution#running-jobs-that-use-gpus).
+We also have instructions for [running your own worker](Execution.md#running-your-own-worker), which discusses
+GPU workers, and for using [GPUs on CodaLab](Execution.md#running-jobs-that-use-gpus).
 
 CUDA consists of several components:
 

@@ -47,7 +47,7 @@ perspective, these are just bundles.
 
 Bundles can also be directories.  To upload a directory, zip (or tar) up the
 directory and upload the zip file.  The zip file will be unpacked
-automatically.  If you use the [command-line interface (CLI)](CLI-Basics),
+automatically.  If you use the [command-line interface (CLI)](CLI-Basics.md),
 you can upload directories directly.
 
 ### Step 2: Run a command
@@ -75,7 +75,7 @@ panel show the resulting output:
 
 You have successfully run your first experiment in CodaLab.
 To explain what just happened, CodaLab just ran your command in a [sandbox
-environment](Execution) in a [docker container](https://www.docker.com).
+environment](Execution.md) in a [docker container](https://www.docker.com).
 From the point of view of your command,
 you're sitting in some temporary directory that contains the dependencies you
 specified.
@@ -96,7 +96,7 @@ to have your commands simply write into the current directory.
 
 **Libraries**.  If your command depends on custom libraries (e.g., TensorFlow),
 they need to be installed in the docker image.  You can use an existing docker
-container or [build your own docker image](Execution).
+container or [build your own docker image](Execution.md).
 
 **Parallelism**.  You can start off multiple runs in parallel, and even ones
 that depend on previous runs that haven't yet finished.  Since CodaLab knows
@@ -117,7 +117,7 @@ selecting **Kill this run bundle**.  You can remove non-running bundles by selec
 Note that whenever you run a bundle or perform an operation, a command is sent
 to the **web terminal** (`CodaLab>` prompt) at the top of the screen.  This
 terminal allows you to use most of the [command-line interface
-(CLI)](CLI-Basics) commands.  Type `help` to get more information.
+(CLI)](CLI-Basics.md) commands.  Type `help` to get more information.
 
 ### Step 3: Present your results
 
@@ -126,7 +126,7 @@ But we can customize this view to better document and present our results.  To
 edit the worksheet, click `Edit Source` button (or hitting `e`).
 
 You will be taken to an editor in your browser with plain-text markdown source of the
-worksheet.  [CodaLab markdown](Worksheet-Markdown) is an extension of markdown
+worksheet.  [CodaLab markdown](Worksheet-Markdown.md) is an extension of markdown
 that allows you to interleave usual markdown with bundles and formatting directives.
 
 You can edit the source freely.  For example, you might edit the source to look like this
@@ -178,17 +178,17 @@ and finding worksheets:
     wsearch <worksheet keywords>                # General form
     wsearch acl2016                             # Find all worksheets matching "acl2016"
 
-Look at the [CLI reference](CLI-Reference) for more information.
+Look at the [CLI reference](CLI-Reference.md) for more information.
 
 ### Summary
 
 Congratulations - you have successfully used CodaLab to upload a program, a dataset,
 and performed a run!  In practice, you might have more [complex
-workflows](Workflow), running commands to preprocess the data, running
+workflows](Workflow.md), running commands to preprocess the data, running
 algorithms with different settings, using CodaLab to
 manage your runs.
-If you prefer working from the shell, check out the [command-line interface (CLI)](CLI-Basics).
-[CodaLab markdown](Worksheet-Markdown)
+If you prefer working from the shell, check out the [command-line interface (CLI)](CLI-Basics.md).
+[CodaLab markdown](Worksheet-Markdown.md)
 is a powerful way to create worksheets that document your
 experiments, either for a private research log or a public executable paper.
 There are many possibilities!

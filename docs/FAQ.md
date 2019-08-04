@@ -1,6 +1,6 @@
 ### Why is my run bundle in `staged` for a long time?
 
-The `staged` state means that the bundle is ready to run but it is waiting for appropriate resources to free up.  CodaLab has a limited set of machines available (we're offering it for free after all), so when there are a lot of people wanting to run jobs, you might have to wait a long time.  You can check out the [CodaLab status](https://worksheets.codalab.org/worksheets/0xa590fd1b68944a1a95c1c40c4931dc7b/) page to see where your jobs are in the queue (note that this page only sees public jobs, so there might be hidden bundles in the queue that you can't see).  If you'd like to run your job earlier, you can easily [attach your own compute workers](https://github.com/codalab/codalab-worksheets/wiki/Execution#running-your-own-worker), which you might want to do anyway if you have fancier GPUs, say.
+The `staged` state means that the bundle is ready to run but it is waiting for appropriate resources to free up.  CodaLab has a limited set of machines available (we're offering it for free after all), so when there are a lot of people wanting to run jobs, you might have to wait a long time.  You can check out the [CodaLab status](https://worksheets.codalab.org/worksheets/0xa590fd1b68944a1a95c1c40c4931dc7b/) page to see where your jobs are in the queue (note that this page only sees public jobs, so there might be hidden bundles in the queue that you can't see).  If you'd like to run your job earlier, you can easily [attach your own compute workers](Execution.md#running-your-own-worker), which you might want to do anyway if you have fancier GPUs, say.
 
 ### What does it mean for my run bundle to be in the `worker_offline` state?
 
@@ -8,15 +8,15 @@ This means that the worker that was running your job is unreachable.  This might
 
 ### How do I run my run bundle on a GPU?
 
-See our [article on running jobs that use GPUs](https://github.com/codalab/codalab-worksheets/wiki/Execution#running-jobs-that-use-gpus).
+See our [article on running jobs that use GPUs](Execution.md#running-jobs-that-use-gpus).
 
 ### How do I share a bundle only with other CodaLab users?
 
-By default, all bundles (and worksheets) on CodaLab are public (and we encourage this).  But if you need to make your bundle private to you and your team, check out the instructions [here](https://github.com/codalab/codalab-worksheets/wiki/CLI-Reference#permissions).
+By default, all bundles (and worksheets) on CodaLab are public (and we encourage this).  But if you need to make your bundle private to you and your team, check out the instructions [here](CLI-Reference.md#permissions).
 
 ### I received an `ImportError` because I don't have the appropriate library installed. How do I install libraries in CodaLab?
 
-CodaLab runs all run bundles in Docker containers. See our [article about specifying Docker containers](https://github.com/codalab/codalab-worksheets/wiki/Execution#specifying-environments-with-docker).  You can see how to [make your own Docker images](https://github.com/codalab/codalab-worksheets/wiki/Creating-Docker-Images).
+CodaLab runs all run bundles in Docker containers. See our [article about specifying Docker containers](Execution.md#specifying-environments-with-docker).  You can see how to [make your own Docker images](Creating-Docker-Images.md).
 
 ### How do I check how much space my bundles are using?
 

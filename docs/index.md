@@ -35,7 +35,7 @@ A run bundle is specified by a set of bundle dependencies and an arbitrary shell
 This shell command is executed in a [docker container](https://www.docker.com) in a directory
 with the dependencies.  The contents of the run bundle are the files/directories which are
 written to the current directory by the shell command:
-<img src="https://github.com/codalab/codalab-worksheets/wiki/images/execution.png" />
+<img src="images/execution.png" />
 Above, each rounded rectangle represents a bundle, and arrows represent
 dependencies between bundles.  There are two bundles which are uploaded
 by the user: the top left bundle is a single script `cnn.py` containing the
@@ -51,10 +51,10 @@ process in an *immutable* way.
 ***Worksheets*** organize and present an experimental pipeline in a comprehensible
 way, and can be used as a lab notebook, a tutorial, or an executable paper.
 Worksheets contain references to bundles, and are written in a custom [markdown
-language](https://github.com/codalab/codalab-worksheets/wiki/Worksheet-Markdown).
+language](Worksheet-Markdown.md).
 
 Consider the following example:
-<img src="https://github.com/codalab/codalab-worksheets/wiki/images/worksheets-schema.png" />
+<img src="images/worksheets-schema.png" />
 At the center is the dependency graph over four
 bundles. On the side are two separate worksheets, which contain
 both text and pointers to various bundles.

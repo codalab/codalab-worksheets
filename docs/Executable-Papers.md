@@ -59,7 +59,7 @@ Note: in the following, replace `pliang` with your username.
 1. Create an account by going to [CodaLab website](https://worksheets.codalab.org),
 clicking 'Sign Up'.  You will get an email confirmation; click on the link to activate
 your account.  Now you can sign in through the browser.  Optionally, you can install the
-[command-line interface (CLI)](CLI-Basics).
+[command-line interface (CLI)](CLI-Basics.md).
 
 1. For your new executable paper, create a new worksheet (you should use a
 different worksheet name than the one below).  Click on 'New Worksheet'
@@ -102,7 +102,7 @@ Now you are ready to actually upload content.  The plan is to upload your
 source code, libraries, datasets, evaluation program as separate bundles.  You
 then compile the source code, run your algorithm, and run the evaluation
 program.  Note: for your particular paper, you might choose to structure things differently,
-so treat this only as a rough guide.  See [the workflow](Workflow) for a
+so treat this only as a rough guide.  See [the workflow](Workflow.md) for a
 similar example.
 
 1. From the CLI, you can upload bundles (with meaningful descriptions):
@@ -158,7 +158,7 @@ which it's run.
         % display image /graph.png
 
   You can have two instances of the same bundle on a worksheet, so you can have
-  both a graph and a table.  See the [worksheet markdown](Worksheet-Markdown) for full details.
+  both a graph and a table.  See the [worksheet markdown](Worksheet-Markdown.md) for full details.
 
 1. Run the official evaluation script on the predictions output by your system,
 so if other people use your dataset, they can use the exact same evaluation

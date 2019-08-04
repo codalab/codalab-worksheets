@@ -1,4 +1,4 @@
-Having gone over the [basics of the command-line interface (CLI)](CLI-Basics),
+Having gone over the [basics of the command-line interface (CLI)](CLI-Basics.md),
 let us provide a more complete picture of the capabilities of the CLI, along
 with more details about the general structure of CodaLab.  Note that many
 (though not all) of the commands work in the web terminal (the `CodaLab>`
@@ -244,7 +244,7 @@ Here is the output:
 
       wedit (we):
         Edit the contents of a worksheet.
-        See https://github.com/codalab/codalab-worksheets/wiki/User_Worksheet-Markdown for the markdown syntax.
+        See [Worksheet Markdown](Worksheet-Markdown.md) for the markdown syntax.
           wedit -n <name>          : Change the name of the worksheet.
           wedit -T <tag> ... <tag> : Set the tags of the worksheet (e.g., paper).
           wedit -o <username>      : Set the owner of the worksheet to <username>.
@@ -530,7 +530,7 @@ The contents is a list of items, where each item is one of the following:
 - directive (e.g., `% display table s1`)
 
 Worksheets are modified by editing the markdown source directly (see [worksheet
-markdown reference](Worksheet-Markdown)) or by running commands that remove/add
+markdown reference](Worksheet-Markdown.md)) or by running commands that remove/add
 bundles to the worksheet.
 
     cl wedit <worksheet>

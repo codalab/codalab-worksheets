@@ -3,7 +3,6 @@ docs_dir: docs
 theme: readthedocs
 
 nav:
-  - Home: Home.md
   - Examples: https://github.com/codalab/worksheets-examples
   - The CodaLab Workflow: Workflow.md
   - Executable Papers: Executable-Papers.md
@@ -16,6 +15,7 @@ nav:
   - Code Overview: Code-Overview.md
   - REST API Reference: REST-API-Reference.md
   - About: About.md
+  - Privacy: Privacy.md
   - Frequently Asked Questions: FAQ.md
 
 markdown_extensions:

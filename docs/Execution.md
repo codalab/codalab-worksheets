@@ -38,8 +38,8 @@ In general, when you create a run, you can specify which Docker container you wa
 
 To see what Docker images are available, you can do a search on [Docker
 hub](https://hub.docker.com). If nothing satisfies your needs, you can
-[install Docker](Installing-Docker) and [create your own
-image](Creating-Docker-Images). If you're creating a Docker image in Python,
+[install Docker](Installing-Docker.md) and [create your own
+image](Creating-Docker-Images.md). If you're creating a Docker image in Python,
 we recommend using the [Codalab Python](https://hub.docker.com/r/codalab/python/)
 image as your base image because it comes pre-installed with `python` and `pip`.
 
@@ -73,7 +73,7 @@ And that's all it takes!
 
         cl run 'python -c "import tensorflow"' --request-docker-image tensorflow/tensorflow:0.8.0-gpu --request-gpus 1
 
-* We have instructions for [creating your own Docker image with GPU support](https://github.com/codalab/codalab-worksheets/wiki/Creating-Docker-Images#building-docker-images-with-cuda-support), though we would recommend searching on [Docker Hub](dockerhub.com) first before creating your own image.
+* We have instructions for [creating your own Docker image with GPU support](Creating-Docker-Images.md#building-docker-images-with-cuda-support), though we would recommend searching on [Docker Hub](dockerhub.com.md) first before creating your own image.
 
 ## Default workers
 
@@ -90,9 +90,9 @@ If the default workers are full or do not satisfy your needs, one of the advanta
 
 ### Setup Instructions
 
-**Step 0**. [Install the CLI](https://github.com/codalab/codalab-worksheets/wiki/CLI-Basics).
+**Step 0**. [Install the CLI](CLI-Basics.md).
 
-**Step 1**. [Install Docker](https://github.com/codalab/codalab-worksheets/wiki/Installing-Docker), which will be used to run your bundles in an isolated environment. 
+**Step 1**. [Install Docker](Installing-Docker.md), which will be used to run your bundles in an isolated environment. 
 
 **Step 2**. Start the worker:
 

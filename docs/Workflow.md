@@ -12,7 +12,7 @@ programs, but this requirement also promotes good modular design and makes your
 work easier to build on.
 
 Without further ado, let's get started.  We will use the [command-line
-interface (CLI)](CLI-Basics), since it can be more efficient than using the web
+interface (CLI)](CLI-Basics.md), since it can be more efficient than using the web
 interface for many things.  In what follows will be a fictitious scenario to
 give you an idea.
 
@@ -167,5 +167,5 @@ Then insert the following into your worksheet:
 Your table will now have three new columns corresponding to the values that you
 output.  If you have 20 jobs running at once, this is a quick way to see at a
 glance what is going on with them.  See [markdown
-documentation](Worksheet-Markdown) for more information on how to customize the
+documentation](Worksheet-Markdown.md) for more information on how to customize the
 display of tables.
