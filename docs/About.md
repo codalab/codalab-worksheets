@@ -11,11 +11,11 @@ worksheets and competitions.
 
 <table>
     <tr>
-        <td width=200px><img src="images/percy.jpeg" alt="" style="max-width:100%;"></td>
+        <td width=200px><img src="../images/percy.jpeg" alt="" style="max-width:100%;"></td>
         <td><p><a href="http://cs.stanford.edu/%7Epliang/">Percy Liang</a> is an assistant professor of Computer Science at Stanford University. His primary research areas are machine learning and natural language processing.  He leads the development of CodaLab in close collaboration with Microsoft Research and the rest of the community.</p></td>
     </tr>
     <tr>
-        <td width=200px><img src="images/isabelle.png" alt="" style="max-width:100%;"></td>
+        <td width=200px><img src="../images/isabelle.png" alt="" style="max-width:100%;"></td>
         <td><p><a href="http://www.clopinet.com/isabelle/">Isabelle Guyon</a> is an independent consultant, specializing in statistical data analysis, pattern recognition and machine learning. Isabelle served as an advisor in the development of the CodaLab competition platform and pioneered the implementation of several challenges on Codalab.</p></td>
     </tr>
     <tr>
@@ -23,7 +23,7 @@ worksheets and competitions.
         <td><p><a href="http://sergioescalera.com/">Sergio Escalera</a> leads the Human Analysis group (HuPBA) at the University of Barcelona and the Computer Vision Center. He is one of the directors of ChaLearn. He pioneered the implementation of several Computer Vision challenges on Codalab within the field of Looking at People.</p></td>
     </tr>
     <tr>
-        <td width=200px><img src="images/EvelyneViegas.jpg" alt="" style="max-width:100%;"></td>
+        <td width=200px><img src="../images/EvelyneViegas.jpg" alt="" style="max-width:100%;"></td>
         <td><p><a href="http://research.microsoft.com/~evelynev/">Evelyne Viegas</a> is a Director at Microsoft Research responsible for the outreach artificial intelligence program. She leads the CodaLab project working in collaboration with Isabelle Guyon, Percy Liang and the machine learning and artificial intelligence communities.</p></td>
     </tr>
 </table>
