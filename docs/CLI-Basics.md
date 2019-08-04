@@ -1,5 +1,3 @@
-DEPRECATED.  Go to https://github.com/codalab/codalab-worksheets/wiki instead.
-
 The command-line interface (CLI) gives you the ability to use CodaLab more
 efficiently and programatically.  For example, you can copy bundles between
 CodaLab servers, use your own editor to edit worksheets, and write scripts that

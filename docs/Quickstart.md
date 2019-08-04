@@ -1,5 +1,3 @@
-DEPRECATED.  Go to https://github.com/codalab/codalab-worksheets/wiki instead.
-
 In five minutes, you will be able to upload a program, a dataset, and execute
 your first run in CodaLab.
 
