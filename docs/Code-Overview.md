@@ -80,7 +80,7 @@ Recall that a worksheet is a list of worksheet items, where each item is
 markup, a bundle reference, a worksheet reference, or a **directive**.  It is this
 last category that makes markdown more complex and powerful and is almost like
 a mini-programming language.  See what the functionality looks like from the
-[user's perspective](https://codalab.readthedocs.io/en/latest/Worksheet-Markdown).
+[user's perspective](https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown).
 
 **Worksheet interpretation**
 ([worksheet_util.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/lib/worksheet_util.py))

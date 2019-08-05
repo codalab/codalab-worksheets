@@ -20,7 +20,7 @@ workflow.
 The CodaLab frontend holds the React front-end web interface for CodaLab worksheets.
 
 To get started visit [the official CodaLab Worksheets instance](https://worksheets.codalab.org/)
-For more information about the platform, visit [our documentation](https://codalab.readthedocs.io/en/latest)
+For more information about the platform, visit [our documentation](https://codalab-worksheets.readthedocs.io/en/latest)
 
 If you're interested in contributing or setting up your own CodaLab Worksheets instance, [get in touch with us](mailto:codalab.worksheets@gmail.com)
 
@@ -28,7 +28,7 @@ If you're interested in contributing or setting up your own CodaLab Worksheets i
 ## Links
 
 * [Official CodaLab Worksheets Instance](https://worksheets.codalab.org/): live instance of CodaLab Worksheets
-* [CodaLab Worksheets Documentation](https://codalab.readthedocs.io/en/latest/): all documentation
+* [CodaLab Worksheets Documentation](https://codalab-worksheets.readthedocs.io/en/latest/): all documentation
 
 ## Bringing up your own instance of CodaLab Worksheets
 
@@ -39,4 +39,4 @@ If you've made local changes to the codebase and would like to rebuild docker im
 use `./codalab_service.py start -b`.
 If you've previously started an instance and thus have the database and root account initialization done, omit the `-i` flag to just bring the service up like so: `./codalab_service.py start`
 
-For more information, check out the [documentation page](https://codalab.readthedocs.io/en/latest/Server-Setup)
+For more information, check out the [documentation page](https://codalab-worksheets.readthedocs.io/en/latest/Server-Setup)

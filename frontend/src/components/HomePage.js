@@ -206,22 +206,22 @@ class HomePage extends React.Component<{
                                         {this.renderTableItem(
                                             'Workflow',
                                             'Use CodaLab in your daily research.',
-                                            'https://codalab.readthedocs.io/en/latest/Workflow',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Workflow',
                                         )}
                                         {this.renderTableItem(
                                             'Executable Papers',
                                             'Put your research paper on CodaLab.',
-                                            'https://codalab.readthedocs.io/en/latest/Executable-Papers',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Executable-Papers',
                                         )}
                                         {this.renderTableItem(
                                             'CLI Reference',
                                             'Be an expert CodaLab user.',
-                                            'https://codalab.readthedocs.io/en/latest/CLI-Reference',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/CLI-Reference',
                                         )}
                                         {this.renderTableItem(
                                             'Worksheet Reference',
                                             'Insert custom tables, graphs, and images.',
-                                            'https://codalab.readthedocs.io/en/latest/Worksheet-Markdown',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown',
                                         )}
                                         {this.renderTableItem(
                                             'REST API Reference',
@@ -231,22 +231,22 @@ class HomePage extends React.Component<{
                                         {this.renderTableItem(
                                             'Execution',
                                             'Learn how bundles are executed in Docker.',
-                                            'https://codalab.readthedocs.io/en/latest/Execution',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Execution',
                                         )}
                                         {this.renderTableItem(
                                             'Latest Features',
                                             'See what features have been added recently.',
-                                            'https://codalab.readthedocs.io/en/latest/Latest-Features',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Latest-Features',
                                         )}
                                         {this.renderTableItem(
                                             'Competitions',
                                             'Host your own machine learning competition.',
-                                            'https://codalab.readthedocs.io/en/latest/Competitions',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Competitions',
                                         )}
                                         {this.renderTableItem(
                                             'Contributors',
                                             'Meet the team behind CodaLab and get involved!',
-                                            'https://codalab.readthedocs.io/en/latest/About',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/About',
                                         )}
                                     </Table>
                                 </Typography>
