@@ -590,7 +590,7 @@ class CodalabServiceManager(object):
                     stderr=subprocess.PIPE,
                 )
                 for stdout_line in popen.stdout:
-                    print("process: " + stdout_line.decode(), end="")
+                    print("process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace'), end="")
             except subprocess.CalledProcessError as e:
                 print("CalledProcessError: {}, {}".format(str(e), e.output))
                 raise e
