@@ -791,7 +791,7 @@ class Worksheet extends React.Component {
                 Press ctrl-enter to save. See{' '}
                 <a
                     target='_blank'
-                    href='https://github.com/codalab/codalab-worksheets/wiki/Worksheet-Markdown'
+                    href='https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown'
                 >
                     markdown syntax
                 </a>
