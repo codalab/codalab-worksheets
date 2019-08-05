@@ -274,7 +274,7 @@ class CodalabArgs(argparse.Namespace):
             '-s',
             nargs='*',
             help='List of services to run',
-            choices=SERVICES + ['default', 'default-no-worker', 'init', 'test'],
+            choices=SERVICES + ['default', 'default-no-worker', 'init', 'update', 'test'],
             default=argparse.SUPPRESS,
         )
 
@@ -642,9 +642,11 @@ class CodalabServiceManager(object):
             )
 
             print_header('Initializing the database with alembic')
-            self.run_service_cmd(
-                "%salembic stamp head && alembic upgrade head" % cmd_prefix, root=True
-            )
+            self.run_service_cmd("%salembic stamp head" % cmd_prefix, root=True)
+
+        if should_run_service(self.args, 'update'):
+            print_header('Update the database with alembic (run migrations)')
+            self.run_service_cmd("%salembic upgrade head" % cmd_prefix, root=True)
 
         self.bring_up_service('rest-server')
 

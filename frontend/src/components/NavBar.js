@@ -100,7 +100,7 @@ class NavBar extends React.Component<{
                             )}
                             <li>
                                 <a
-                                    href='https://github.com/codalab/codalab-worksheets/wiki'
+                                    href='https://codalab-worksheets.readthedocs.io/en/latest'
                                     target='_blank'
                                 >
                                     Help

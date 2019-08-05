@@ -20,7 +20,7 @@ from codalab.common import CODALAB_VERSION
 from codalab.server import rest_server
 
 
-REST_DOCS_PATH = 'docs/rest.md'
+REST_DOCS_PATH = 'docs/REST-API-Reference.md'
 EXCLUDED_APIS = {'account', 'titlejs', 'api', 'static', 'chats', 'faq', 'help'}
 
 
