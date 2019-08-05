@@ -18,7 +18,7 @@ class Footer extends React.Component {
                     <ul className='nav navbar-nav navbar-right'>
                         <li>
                             <a
-                                href='https://codalab.readthedocs.io/en/latest/About'
+                                href='https://codalab-worksheets.readthedocs.io/en/latest/About'
                                 target='_blank'
                             >
                                 About
@@ -26,7 +26,7 @@ class Footer extends React.Component {
                         </li>
                         <li>
                             <a
-                                href='https://codalab.readthedocs.io/en/latest/Privacy'
+                                href='https://codalab-worksheets.readthedocs.io/en/latest/Privacy'
                                 target='_blank'
                             >
                                 Privacy and Terms
@@ -34,7 +34,7 @@ class Footer extends React.Component {
                         </li>
                         <li>
                             <a
-                                href='https://codalab.readthedocs.io/en/latest/Latest-Features'
+                                href='https://codalab-worksheets.readthedocs.io/en/latest/Latest-Features'
                                 target='_blank'
                             >
                                 v{CODALAB_VERSION}
