@@ -19,6 +19,8 @@ RUN apt-get update; apt-get install -y \
     python3-software-properties \
     zip;
  
+### Without this Python thinks we're ASCII and unicode chars fail
+ENV LANG C.UTF-8
 
 RUN python3.6 -m pip install --upgrade pip
 RUN mkdir /opt/codalab-worksheets
@@ -47,5 +49,4 @@ COPY views views
 RUN python3.6 -m pip install -e .
 
 ENV CODALAB_HOME=/home/codalab
-ENV PYTHONIOENCODING=utf-8
 EXPOSE 2900
