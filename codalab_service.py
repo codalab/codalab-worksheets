@@ -582,7 +582,7 @@ class CodalabServiceManager(object):
             try:
                 popen = subprocess.Popen(
                     command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True,
-                    stdout=subprocess.PIPE
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 )
                 for stdout_line in popen.stdout:
                     print("process: " + stdout_line.decode(), end="")
