@@ -47,7 +47,7 @@ perspective, these are just bundles.
 
 Bundles can also be directories.  To upload a directory, zip (or tar) up the
 directory and upload the zip file.  The zip file will be unpacked
-automatically.  If you use the [command-line interface (CLI)](CLI-Basics.md),
+automatically.  If you use the [command-line interface (CLI)](CLI-Reference.md),
 you can upload directories directly.
 
 ### Step 2: Run a command
@@ -117,7 +117,7 @@ selecting **Kill this run bundle**.  You can remove non-running bundles by selec
 Note that whenever you run a bundle or perform an operation, a command is sent
 to the **web terminal** (`CodaLab>` prompt) at the top of the screen.  This
 terminal allows you to use most of the [command-line interface
-(CLI)](CLI-Basics.md) commands.  Type `help` to get more information.
+(CLI)](CLI-Reference.md) commands.  Type `help` to get more information.
 
 ### Step 3: Present your results
 
@@ -187,7 +187,7 @@ and performed a run!  In practice, you might have more [complex
 workflows](Workflow.md), running commands to preprocess the data, running
 algorithms with different settings, using CodaLab to
 manage your runs.
-If you prefer working from the shell, check out the [command-line interface (CLI)](CLI-Basics.md).
+If you prefer working from the shell, check out the [command-line interface (CLI)](CLI-Reference.md).
 [CodaLab markdown](Worksheet-Markdown.md)
 is a powerful way to create worksheets that document your
 experiments, either for a private research log or a public executable paper.

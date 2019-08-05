@@ -1,5 +1,4 @@
-Having gone over the [basics of the command-line interface (CLI)](CLI-Basics.md),
-let us provide a more complete picture of the capabilities of the CLI, along
+Let us provide a more complete picture of the capabilities of the CLI, along
 with more details about the general structure of CodaLab.  Note that many
 (though not all) of the commands work in the web terminal (the `CodaLab>`
 prompt at the top of the web interface).

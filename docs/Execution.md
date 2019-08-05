@@ -90,7 +90,7 @@ If the default workers are full or do not satisfy your needs, one of the advanta
 
 ### Setup Instructions
 
-**Step 0**. [Install the CLI](CLI-Basics.md).
+**Step 0**. [Install the CLI](CLI-Reference.md).
 
 **Step 1**. [Install Docker](Installing-Docker.md), which will be used to run your bundles in an isolated environment. 
 

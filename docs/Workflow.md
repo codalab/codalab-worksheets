@@ -12,7 +12,7 @@ programs, but this requirement also promotes good modular design and makes your
 work easier to build on.
 
 Without further ado, let's get started.  We will use the [command-line
-interface (CLI)](CLI-Basics.md), since it can be more efficient than using the web
+interface (CLI)](CLI-Reference.md), since it can be more efficient than using the web
 interface for many things.  In what follows will be a fictitious scenario to
 give you an idea.
 

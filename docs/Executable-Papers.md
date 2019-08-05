@@ -59,7 +59,7 @@ Note: in the following, replace `pliang` with your username.
 1. Create an account by going to [CodaLab website](https://worksheets.codalab.org),
 clicking 'Sign Up'.  You will get an email confirmation; click on the link to activate
 your account.  Now you can sign in through the browser.  Optionally, you can install the
-[command-line interface (CLI)](CLI-Basics.md).
+[command-line interface (CLI)](CLI-Reference.md).
 
 1. For your new executable paper, create a new worksheet (you should use a
 different worksheet name than the one below).  Click on 'New Worksheet'
