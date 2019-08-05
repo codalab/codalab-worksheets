@@ -29,7 +29,7 @@ COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
 COPY worker worker
 COPY requirements.txt requirements.txt
 COPY requirements-server.txt requirements-server.txt
-RUN python3.6 -m pip install -r requirements-server.txt
+RUN pip install -r requirements-server.txt
 
 # Install code
 COPY alembic alembic
@@ -44,7 +44,7 @@ COPY tests tests
 COPY worker worker
 COPY views views
 
-RUN python3.6 -m pip install -e .
+RUN pip install -e .
 
 ENV CODALAB_HOME=/home/codalab
 ENV PYTHONIOENCODING=utf-8
