@@ -19,7 +19,7 @@ setup(
     name='codalabworker',
     version='0.3.2',
     description='Worker for CodaLab, a platform for reproducible computation',
-    long_description='To use your own hardware in CodaLab Worksheets, visit https://github.com/codalab/codalab-worksheets/wiki/Execution#running-your-own-worker. You can find the code at https://github.com/codalab/codalab-worksheets.',
+    long_description='To use your own hardware in CodaLab Worksheets, visit https://codalab.readthedocs.io/en/latest/Execution#running-your-own-worker. You can find the code at https://github.com/codalab/codalab-worksheets.',
     url='https://github.com/codalab/codalab-worksheets',
     author='CodaLab',
     author_email='codalab.worksheets@gmail.com',
