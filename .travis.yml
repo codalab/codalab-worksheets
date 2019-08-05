@@ -6,7 +6,7 @@ jobs:
       services:
         - docker
       env:
-        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false PYTHONIOENCODING=UTF-8
+        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
       python: 3.6
       before_install:
         - sudo rm /usr/local/bin/docker-compose
