@@ -27,7 +27,7 @@ setup(
     description='CLI for CodaLab, a platform for reproducible computation',
     long_description=(
         'Visit https://worksheets.codalab.org/ or setup your own server by following the '
-        'instructions in the Wiki (https://github.com/codalab/codalab-worksheets/wiki/Server-Setup).'
+        'instructions in the documentation (https://codalab.readthedocs.io/en/latest/Server-Setup).'
     ),
     url='https://github.com/codalab/codalab-worksheets',
     author='CodaLab',
