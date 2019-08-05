@@ -1021,8 +1021,18 @@ class BundleCLI(object):
     def do_workers_command(self, args):
         client = self.manager.current_client()
         raw_info = client.get_workers_info()
+        raw_info.sort(key=lambda r: r['worker_id'])
 
-        columns = ['worker_id', 'cpus', 'gpus', 'memory_bytes', 'last_checkin', 'tag']
+        columns = [
+            'worker_id',
+            'cpus',
+            'gpus',
+            'memory',
+            'free_disk',
+            'last_checkin',
+            'tag',
+            'runs',
+        ]
 
         data = []
 
@@ -1032,15 +1042,16 @@ class BundleCLI(object):
                     'worker_id': worker['worker_id'],
                     'cpus': '{}/{}'.format(worker['cpus_in_use'], worker['cpus']),
                     'gpus': '{}/{}'.format(worker['gpus_in_use'], worker['gpus']),
-                    'memory_bytes': formatting.size_str(worker['memory_bytes']),
+                    'memory': formatting.size_str(worker['memory_bytes']),
+                    'free_disk': formatting.size_str(worker['free_disk_bytes']),
                     'last_checkin': '{} ago'.format(
                         formatting.duration_str(int(time.time()) - worker['checkin_time'])
                     ),
                     'tag': worker['tag'],
+                    'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                 }
             )
 
-        print >>self.stdout, 'Workers Info:'
         self.print_table(columns, data)
 
     @Commands.command(
