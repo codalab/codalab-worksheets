@@ -4,6 +4,7 @@
 The main entry point for bringing up CodaLab services.  This is used for both
 local development and actual deployment.
 """
+from __future__ import print_function
 
 import argparse
 import errno
