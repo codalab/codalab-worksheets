@@ -4,6 +4,7 @@
 The main entry point for bringing up CodaLab services.  This is used for both
 local development and actual deployment.
 """
+from __future__ import print_function
 
 import argparse
 import errno
@@ -579,9 +580,27 @@ class CodalabServiceManager(object):
         compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in self.compose_env.items())
         print('(cd {}; {} {})'.format(self.compose_cwd, compose_env_string, command_string))
         if not self.args.dry_run:
-            subprocess.check_call(
-                command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True
-            )
+            try:
+                popen = subprocess.Popen(
+                    command_string,
+                    cwd=self.compose_cwd,
+                    env=self.compose_env,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                for stdout_line in popen.stdout:
+                    print(
+                        "process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace'),
+                        end="",
+                    )
+            except subprocess.CalledProcessError as e:
+                print(
+                    "CalledProcessError: {}, {}".format(
+                        str(e), e.output.decode('utf-8').encode('ascii', errors='replace')
+                    )
+                )
+                raise e
         print('')
 
     def bring_up_service(self, service):
