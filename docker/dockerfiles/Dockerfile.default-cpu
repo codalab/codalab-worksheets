@@ -56,9 +56,25 @@ RUN wget http://scala-lang.org/files/archive/scala-$SCALA_VERSION.deb && \
 
 ENV SCALA_HOME /usr/share/java
 
-## Python 2 packages
+## Python packages
+
 RUN pip2 install -U pip
+RUN pip3 install -U pip
+
 RUN pip2 install -U \
+      numpy \
+      scipy \
+      matplotlib \
+      pandas \
+      sympy \
+      nose \
+      spacy \
+      tqdm \
+      wheel \
+      scikit-learn \
+      scikit-image \
+      nltk
+RUN pip3 install -U \
       numpy \
       scipy \
       matplotlib \
@@ -73,41 +89,20 @@ RUN pip2 install -U \
       nltk
 
 RUN python -m spacy download en
-
-## Python 3 packages
-
-RUN pip3 install -U pip
-RUN pip3 install -U \
-      numpy \
-      scipy \
-      matplotlib \
-      pandas \
-      sympy \
-      nose \
-      spacy \
-      tqdm \
-      wheel \
-      scikit-learn \
-      scikit-image \
-      nltk
-
 RUN python3.6 -m spacy download en
 
-############################################################
-# CPU-specific commands
+RUN pip2 install -U \
+      tensorflow-gpu==1.12.0 \
+      tensorboard \
+      keras
+RUN pip3 install -U \
+      tensorflow-gpu==1.12.0 \
+      tensorboard \
+      keras
 
 RUN pip2 install -U \
-      tensorflow==1.12.0 \
-      tensorboard \
-      keras
-
-RUN pip2 install -U http://download.pytorch.org/whl/cpu/torch-0.4.1-cp27-cp27mu-linux_x86_64.whl || pip install -U http://download.pytorch.org/whl/cpu/torch-0.4.1-cp27-cp27m-linux_x86_64.whl
-RUN pip2 install torchvision
-
+      torch==1.1.0 \
+      torchvision
 RUN pip3 install -U \
-      tensorflow==1.12.0 \
-      tensorboard \
-      keras
-
-RUN pip3 install http://download.pytorch.org/whl/cpu/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
-RUN pip3 install torchvision
+      torch==1.1.0 \
+      torchvision
