@@ -4,6 +4,7 @@
 The main entry point for bringing up CodaLab services.  This is used for both
 local development and actual deployment.
 """
+from __future__ import print_function
 
 import argparse
 import errno
@@ -274,7 +275,7 @@ class CodalabArgs(argparse.Namespace):
             '-s',
             nargs='*',
             help='List of services to run',
-            choices=SERVICES + ['default', 'default-no-worker', 'init', 'test'],
+            choices=SERVICES + ['default', 'default-no-worker', 'init', 'update', 'test'],
             default=argparse.SUPPRESS,
         )
 
@@ -579,9 +580,27 @@ class CodalabServiceManager(object):
         compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in self.compose_env.items())
         print('(cd {}; {} {})'.format(self.compose_cwd, compose_env_string, command_string))
         if not self.args.dry_run:
-            subprocess.check_call(
-                command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True
-            )
+            try:
+                popen = subprocess.Popen(
+                    command_string,
+                    cwd=self.compose_cwd,
+                    env=self.compose_env,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                for stdout_line in popen.stdout:
+                    print(
+                        "process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace'),
+                        end="",
+                    )
+            except subprocess.CalledProcessError as e:
+                print(
+                    "CalledProcessError: {}, {}".format(
+                        str(e), e.output.decode('utf-8').encode('ascii', errors='replace')
+                    )
+                )
+                raise e
         print('')
 
     def bring_up_service(self, service):
@@ -632,9 +651,11 @@ class CodalabServiceManager(object):
             )
 
             print_header('Initializing the database with alembic')
-            self.run_service_cmd(
-                "%salembic stamp head && alembic upgrade head" % cmd_prefix, root=True
-            )
+            self.run_service_cmd("%salembic stamp head" % cmd_prefix, root=True)
+
+        if should_run_service(self.args, 'update'):
+            print_header('Update the database with alembic (run migrations)')
+            self.run_service_cmd("%salembic upgrade head" % cmd_prefix, root=True)
 
         self.bring_up_service('rest-server')
 
