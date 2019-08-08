@@ -397,8 +397,8 @@ class CodaLabManager(object):
                 password=self.config['email'].get('password', None),
                 use_tls=self.config['email'].get('use_tls',True),
                 port=self.config['email'].get('port', 587),
-                default_sender=self.config['email'].get('default_sender','CodaLab <noreply@codalab.org>'),
-                server_email=self.config['email'].get('server_email','noreply@codalab.org'),
+                default_sender=self.config['email'].get('sender_from','CodaLab <noreply@codalab.org>'),
+                server_email=self.config['email'].get('sender_email','noreply@codalab.org'),
             )
         else:
             return ConsoleEmailer()
