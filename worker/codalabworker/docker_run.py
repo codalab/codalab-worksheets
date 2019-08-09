@@ -72,7 +72,8 @@ class DockerRunManager(RunManagerBase):
         return count
 
     def create_run(self, bundle, bundle_path, resources):
-        run = Run(self._bundle_service, self._docker, self._image_manager, self._worker, bundle, bundle_path, resources)
+        docker_network_name = self.docker_network_external_name if resources['request_network'] else self.docker_network_internal_name
+        run = Run(self._bundle_service, self._docker, self._image_manager, self._worker, bundle, bundle_path, resources, self._cpuset, self._gpuset, docker_network_name)
         return run
 
     def serialize(self, run):
@@ -120,7 +121,7 @@ class Run(FilesystemRunMixin, RunBase):
         6) Reporting to the bundle service that the run has finished.
     """
 
-    def __init__(self, bundle_service, docker, image_manager, worker, bundle, bundle_path, resources):
+    def __init__(self, bundle_service, docker, image_manager, worker, bundle, bundle_path, resources, cpuset, gpuset, docker_network_name):
         super(Run, self).__init__()
         self._bundle_service = bundle_service
         self._docker = docker
@@ -130,6 +131,9 @@ class Run(FilesystemRunMixin, RunBase):
         self._bundle_path = os.path.realpath(bundle_path)
         self._dep_paths = set([dep['child_path'] for dep in self._bundle['dependencies']])
         self._resources = resources
+        self._cpuset = cpuset
+        self._gpuset = gpuset
+        self._docker_network_name = docker_network_name
         self._uuid = bundle['uuid']
         self._container_id = None
         self._start_time = None # start time of container
@@ -282,8 +286,10 @@ class Run(FilesystemRunMixin, RunBase):
                 return self._docker.start_container(
                     self._bundle_path, self._uuid, self._bundle['command'],
                     self._resources['docker_image'],
-                    self._resources['request_network'],
-                    docker_dependencies)
+                    self._docker_network_name,
+                    docker_dependencies,
+                    self._cpuset, self._gpuset,
+                    self._resources['request_memory'])
 
             # Pull the docker image regardless of whether or not we already have it
             # This will make sure we pull updated versions of the image
@@ -340,10 +346,15 @@ class Run(FilesystemRunMixin, RunBase):
                 report = False
             self._check_and_report_resource_utilization(report)
 
-            try:
-                self.resume()
-            except BundleServiceException:
-                pass
+            # Comment this out to avoid the bug where we call finish_run()
+            # which deletes the container, but resume() starts a thread that
+            # calls _monitor, which tries to finish_run() again and it fails.
+            # Something related was added to the AWS Batch worker:
+            # https://github.com/semanticmachines/codalab-cli/pull/3/commits/202ebc13d73ebe6c56210c060be84e7462a11806#diff-0832a08fd6f7782ab5b63aef2c63d730R548
+            #try:
+            #    self.resume()
+            #except BundleServiceException:
+            #    pass
 
             # TODO(klopyrev): Upload the contents of the running bundle to the
             #                 bundle service every few hours, so that they are
