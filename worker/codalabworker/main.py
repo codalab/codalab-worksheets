@@ -126,7 +126,7 @@ chmod 600 %s""" % args.password_file
             image_manager = DockerImageManager(docker, args.work_dir, max_images_bytes)
             cpuset = parse_cpuset_args(args.cpuset)
             gpuset = parse_gpuset_args(docker, args.gpuset)
-            return DockerRunManager(docker, bundle_service, image_manager, w, cpuset, gpuset)
+            return DockerRunManager(docker, bundle_service, image_manager, w, args.network_prefix, cpuset, gpuset)
         else:
             try:
                 import boto3
