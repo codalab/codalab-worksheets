@@ -37,7 +37,7 @@ setup(
     packages=find_packages(exclude=["tests*"]),
     classifiers=[
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: Apache Software License",
     ],
     python_requires='~=3.6',
