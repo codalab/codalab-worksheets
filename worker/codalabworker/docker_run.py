@@ -346,7 +346,11 @@ class Run(FilesystemRunMixin, RunBase):
                 report = False
             self._check_and_report_resource_utilization(report)
 
-            # Not sure what this was doing here...makes no sense.
+            # Comment this out to avoid the bug where we call finish_run()
+            # which deletes the container, but resume() starts a thread that
+            # calls _monitor, which tries to finish_run() again and it fails.
+            # Something related was added to the AWS Batch worker:
+            # https://github.com/semanticmachines/codalab-cli/pull/3/commits/202ebc13d73ebe6c56210c060be84e7462a11806#diff-0832a08fd6f7782ab5b63aef2c63d730R548
             #try:
             #    self.resume()
             #except BundleServiceException:
