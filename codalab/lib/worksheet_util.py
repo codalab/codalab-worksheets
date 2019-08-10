@@ -524,6 +524,8 @@ def get_default_schemas():
 
     return schemas
 
+def get_command(value_obj):  # For directives only
+    return value_obj[0] if len(value_obj) > 0 else None
 
 def interpret_items(schemas, raw_items):
     """

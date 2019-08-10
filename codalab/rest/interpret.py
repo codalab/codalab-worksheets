@@ -12,6 +12,7 @@ static helper functions.
 import base64
 import types
 from contextlib import closing
+from itertools import chain
 import json
 
 import yaml
@@ -39,6 +40,7 @@ from codalab.lib.worksheet_util import (
     directive_item,
     bundle_item,
     subworksheet_item,
+    get_command,
 )
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.permission import permission_str
@@ -182,6 +184,11 @@ def fetch_interpreted_worksheet(uuid):
 
     # Fetch items.
     worksheet_info['raw'] = get_worksheet_lines(worksheet_info)
+
+    # Replace searches with raw items.
+    # This needs to be done before get_worksheet_lines because this replaces
+    # user-written raw items.
+    worksheet_info['items'] = expand_raw_items(worksheet_info['items'])
 
     # Set permissions
     worksheet_info['edit_permission'] = (worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL)
@@ -584,3 +591,47 @@ def resolve_items_into_infos(items):
         value_obj = formatting.string_to_tokens(i['value']) if i['type'] == TYPE_DIRECTIVE else i['value']
         new_items.append((bundle_info, subworksheet_info, value_obj, i['type']))
     return new_items
+
+
+def expand_raw_items(raw_items):
+    return list(chain.from_iterable([expand_raw_item(raw_item) for raw_item in raw_items]))
+
+
+def expand_raw_item(raw_item):
+    """
+    Raw items that include searches must be expanded into more raw items.
+    Input: Raw item.
+    Output: Array of raw items. If raw item does not need expanding,
+    this returns an 1-length array that contains original raw item,
+    otherwise it contains the search result. You do not need to call
+    resolve_items_into_infos on the returned raw_items.
+    """
+
+    (bundle_info, subworksheet_info, value_obj, item_type) = raw_item
+
+    is_search = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search'
+    is_wsearch = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'wsearch'
+
+    if is_search or is_wsearch:
+        command = get_command(value_obj)
+        keywords = value_obj[1:]
+        raw_items = []
+
+        if is_search:
+            keywords = rest_util.resolve_owner_in_keywords(keywords)
+            search_result = local.model.search_bundle_uuids(request.user.user_id, keywords)
+            if not isinstance(search_result, list):
+                raw_items.append(markup_item(str(search_result)))
+            else:
+                bundle_uuids = search_result
+                bundle_infos = rest_util.get_bundle_infos(bundle_uuids)
+                for bundle_uuid in bundle_uuids:
+                    raw_items.append(bundle_item(bundle_infos[bundle_uuid]))
+        elif is_wsearch:
+            worksheet_infos = search_worksheets(keywords)
+            for worksheet_info in worksheet_infos:
+                raw_items.append(subworksheet_item(worksheet_info))
+
+        return raw_items
+    else:
+        return [raw_item]
