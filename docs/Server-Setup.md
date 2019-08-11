@@ -143,11 +143,12 @@ To auto-generate the REST reference and CLI references:
     venv2.7/bin/python scripts/gen-rest-docs.py
     venv2.7/bin/python scripts/gen-cli-docs.py
 
-To generate the readthedocs documentation to preview locally (outputs to `site`):
+To generate the readthedocs documentation to preview locally:
 
     virtualenv -p python2.7 venv2.7
     venv2.7/bin/pip install -r requirements.docs.txt
-    venv2.7/bin/mkdocs build
+    venv2.7/bin/mkdocs build  # Outputs to `site`
+    venv2.7/bin/mkdocs serve  # Does a live preview
 
 ## Debugging
 
