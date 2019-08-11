@@ -126,7 +126,7 @@ To fix any style issues for the Python code:
 
     virtualenv -p python3.6 venv3.6
     venv3.6/bin/pip install black
-    venv3.6/bin/black codalab worker *.py --diff
+    venv3.6/bin/black codalab worker scripts *.py --diff
 
 These must pass before you submit a PR.
 
