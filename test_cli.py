@@ -110,14 +110,17 @@ def sanitize(string, max_chars=256):
     return string
 
 
-def run_command(args, expected_exit_code=0, max_output_chars=256, env=None):
+def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False):
     for a in args:
         assert isinstance(a, str)
     # Travis only prints ASCII
     print('>> %s' % " ".join([a.decode("utf-8").encode("ascii", errors='replace') for a in args]))
 
     try:
-        output = subprocess.check_output(args, env=env)
+        if include_stderr:
+            output = subprocess.check_output(args, stderr=subprocess.STDOUT, env=env)
+        else:
+            output = subprocess.check_output(args, env=env)
         exitcode = 0
     except subprocess.CalledProcessError as e:
         output = e.output
@@ -496,8 +499,38 @@ class TestModule(object):
 
 @TestModule.register('unittest')
 def test(ctx):
-    """Run nose unit tests"""
+    """Run nose unit tests (exclude this file)."""
     run_command(['nosetests', '-e', 'test_cli.py'])
+
+
+@TestModule.register('gen-rest-docs')
+def test(ctx):
+    """Generate REST API docs."""
+    run_command(
+        [
+            'python',
+            os.path.join(base_path, 'scripts/gen-rest-docs.py'),
+        ]
+    )
+
+
+@TestModule.register('gen-cli-docs')
+def test(ctx):
+    """Generate CLI docs."""
+    run_command(
+        [
+            'python',
+            os.path.join(base_path, 'scripts/gen-cli-docs.py'),
+        ]
+    )
+
+
+@TestModule.register('gen-readthedocs')
+def test(ctx):
+    """Generate the readthedocs site."""
+    # Make sure there are no extraneous things.
+    # mkdocs doesn't return exit code 1 for some warnings.
+    check_num_lines(2, run_command(['mkdocs', 'build'], include_stderr=True))
 
 
 @TestModule.register('basic')
