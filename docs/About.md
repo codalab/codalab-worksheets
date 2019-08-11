@@ -6,7 +6,9 @@ collaborative manner.
 
 The project was started in 2013 by [Percy
 Liang](https://cs.stanford.edu/~pliang/) at Stanford University with the
-support of [Evelyne Viegas](https://www.microsoft.com/en-us/research/people/evelynev/) at Microsoft.
+help of [Evelyne Viegas](https://www.microsoft.com/en-us/research/people/evelynev/) at Microsoft.
+The project is currently funded by Microsoft, and the computing resources are
+provided by Microsoft Azure.
 
 ## Current Developers
 
