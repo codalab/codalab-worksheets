@@ -506,23 +506,13 @@ def test(ctx):
 @TestModule.register('gen-rest-docs')
 def test(ctx):
     """Generate REST API docs."""
-    run_command(
-        [
-            'python',
-            os.path.join(base_path, 'scripts/gen-rest-docs.py'),
-        ]
-    )
+    run_command(['python', os.path.join(base_path, 'scripts/gen-rest-docs.py')])
 
 
 @TestModule.register('gen-cli-docs')
 def test(ctx):
     """Generate CLI docs."""
-    run_command(
-        [
-            'python',
-            os.path.join(base_path, 'scripts/gen-cli-docs.py'),
-        ]
-    )
+    run_command(['python', os.path.join(base_path, 'scripts/gen-cli-docs.py')])
 
 
 @TestModule.register('gen-readthedocs')
