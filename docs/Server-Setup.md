@@ -74,14 +74,14 @@ If you're actively developing and want to test your changes, add the following t
 
 Start the CodaLab service as follows:
 
-    ./codalab_service.py start -b -d -v local
+    ./codalab_service.py start -bdvlocal
 
 If you modify the frontend, you can do so without restarting.  If you would
 like to modify the rest server, bundle manager, or worker, then you can edit
 the code and then start only that single Docker container.  For example, for
 the worker, the command would be:
 
-    ./codalab_service.py start -b -d -v local -s worker
+    ./codalab_service.py start -bdvlocal -s worker
 
 To stop all the Docker containers associated with the CodaLab service (but preserve all the data):
 
@@ -110,9 +110,13 @@ hour because lots of packages have to be installed):
 
 ## Testing
 
+Since tests run against an existing instance, make sure you update your instance first.
+
+    ./codalab_service.py start -bdvlocal -s rest-server
+
 To run the tests against an instance that you've already set up:
 
-    ./codalab_service.py start -s test
+    ./codalab_service.py start -bdvlocal -s test
 
 Or to run a specific test (e.g., basic):
 
@@ -120,15 +124,31 @@ Or to run a specific test (e.g., basic):
 
 You can also start an instance and run tests on it:
 
-    ./codalab_service.py start -b -d -v local -s default test
+    ./codalab_service.py start -bdvlocal -s default test
 
 To fix any style issues for the Python code:
 
     virtualenv -p python3.6 venv3.6
     venv3.6/bin/pip install black
-    venv3.6/bin/black codalab worker *.py --diff
+    venv3.6/bin/black codalab worker scripts *.py --diff
 
 These must pass before you submit a PR.
+
+## Other
+
+To auto-generate the REST reference and CLI references:
+
+    virtualenv -p python2.7 venv2.7
+    venv2.7/bin/pip install -r requirements-server.txt
+    venv2.7/bin/python scripts/gen-rest-docs.py
+    venv2.7/bin/python scripts/gen-cli-docs.py
+
+To generate the readthedocs documentation to preview locally:
+
+    virtualenv -p python2.7 venv2.7
+    venv2.7/bin/pip install -r requirements.docs.txt
+    venv2.7/bin/mkdocs build  # Outputs to `site`
+    venv2.7/bin/mkdocs serve  # Does a live preview
 
 ## Debugging
 
@@ -148,7 +168,7 @@ You can execute commands in the Docker images to see what's going on, for exampl
 
 If you just want to update your database, run the following command (which includes something to update the database schema via `alembic`):
 
-    ./codalab_service.py start -b -d -v local -s update
+    ./codalab_service.py start -bdvlocal -s update
 
 If you want to modify the database schema, use `alembic` to create a migration.  Note that everything must be run in Docker, but your modifications are outside in your local codebase.
 
@@ -156,7 +176,7 @@ If you want to modify the database schema, use `alembic` to create a migration. 
 
 1. Rebuild the Docker image for the rest server:
 
-        ./codalab_service.py start -b -d -v local -s rest-server
+        ./codalab_service.py start -bdvlocal -s rest-server
 
 1. Auto-generate the migration script:
 
@@ -170,7 +190,7 @@ If you want to modify the database schema, use `alembic` to create a migration. 
 
 1. Rebuild the Docker image:
 
-        ./codalab_service.py start -b -d -v local -s rest-server
+        ./codalab_service.py start -bdvlocal -s rest-server
 
 1. Apply the migration to change the actual database:
 

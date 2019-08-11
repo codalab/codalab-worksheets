@@ -17,68 +17,44 @@ CodaLab server (e.g., memory usage, etc.), and sees if there are any requests
 to kill the run bundle. Any requests to download files in the bundle are forwarded
 from the CodaLab server to the worker. At the end of the run, the worker sends
 back all the bundle contents. See the [worker system design
-doc](worker-design.pdf) for more detailed information.
+doc](worker-design.pdf) for more detailed information (this document
+is a bit outdated).
 
 ## Specifying Environments with Docker
 
-CodaLab uses Docker containers to define the 
+CodaLab uses Docker containers to define the
 environment of a run bundle. Each Docker container is based on a Docker image,
 which specifies the full environment, including which Linux kernel
 version, which libraries, etc.
 
-The default Docker image is `codalab/ubuntu:1.9`, which consists of
-Ubuntu 14.04 plus some standard packages (e.g., Python, Ruby, R, Java, Scala, g++).
-See the entry in the [CodaLab Docker
-registery](https://registry.hub.docker.com/u/codalab/ubuntu/) for more
-information.
+The default Docker image is `codalab/default-cpu` and `codalab/default-gpu`, which consists of
+Ubuntu 16.04 plus some standard packages (e.g., Python, Ruby, R, Java, Scala, g++, Tensorflow, Pytorch).
+See the
+[Dockerfile](https://github.com/codalab/codalab-worksheets/blob/master/docker/dockerfiles/Dockerfile.default-cpu)
+for the complete list of packages installed.
 
 In general, when you create a run, you can specify which Docker container you want to use.
 
-    cl run <command> --request-docker-image codalab/ubuntu:1.9
+    cl run <command> --request-docker-image codalab/default-cpu
 
 To see what Docker images are available, you can do a search on [Docker
-hub](https://hub.docker.com). If nothing satisfies your needs, you can
-[install Docker](Installing-Docker.md) and [create your own
-image](Creating-Docker-Images.md). If you're creating a Docker image in Python,
-we recommend using the [Codalab Python](https://hub.docker.com/r/codalab/python/)
-image as your base image because it comes pre-installed with `python` and `pip`.
-
-Here are some other commonly used docker images with machine learning libraries:
-
-- TensorFlow:
-
-        cl run 'python -c "import tensorflow"' --request-docker-image tensorflow/tensorflow:0.8.0
-
-- Theano: [![](https://images.microbadger.com/badges/image/codalab/ubuntu.svg)](https://microbadger.com/images/codalab/ubuntu "Get your own image badge on microbadger.com")
-
-        # Defaults to standard CodaLab Ubuntu image (codalab/ubuntu:1.9)
-        cl run 'python -c "import theano"' 
-
-- Torch: [![](https://images.microbadger.com/badges/image/codalab/torch.svg)](https://microbadger.com/images/codalab/torch "Get your own image badge on microbadger.com")
-
-        cl run 'th' --request-docker-image codalab/torch:1.1
+Hub](https://hub.docker.com). If nothing satisfies your needs, you can
+[install Docker](https://docs.docker.com/install/) and create your own image
+using a `Dockerfile`.
 
 ## Running jobs that use GPUs
 
-CodaLab has publicly available GPUs! To use them, you'll need to 1) include the 
+CodaLab has publicly available GPUs! To use them, you'll need to 1) include the
 `--request-gpus` flag, and 2) specify a Docker image that has `nvidia-smi` installed using the `--request-docker-image` flag. For example:
 
     cl run --request-docker-image nvidia/cuda:8.0-runtime --request-gpus 1 "nvidia-smi"
 
-And that's all it takes!
-
-### GPU Docker images
-
-* Tensorflow GPU users: check out the [official Tensorflow GPU Docker image](https://hub.docker.com/r/tensorflow/tensorflow/). For example:
-
-        cl run 'python -c "import tensorflow"' --request-docker-image tensorflow/tensorflow:0.8.0-gpu --request-gpus 1
-
-* We have instructions for [creating your own Docker image with GPU support](Creating-Docker-Images.md#building-docker-images-with-cuda-support), though we would recommend searching on [Docker Hub](dockerhub.com.md) first before creating your own image.
+If no Docker image is specified, `codalab/default-gpu` will be used.
 
 ## Default workers
 
 On the `worksheets.codalab.org` CodaLab server, the workers are running on Microsoft
-Azure.  Currently, each non-GPU machine has 4 cores and 14 GB of memory, and 
+Azure.  Currently, each non-GPU machine has 4 cores and 14 GB of memory, and
 each GPU machine has 6 cores and 56 GB of memory (but this
 is subject to change).  You can always find out the exact specs by executing the command:
 
@@ -90,19 +66,19 @@ If the default workers are full or do not satisfy your needs, one of the advanta
 
 ### Setup Instructions
 
-**Step 0**. [Install the CLI](CLI-Reference.md).
+**Step 0**. Install the CodaLab CLI (`pip install codalab`).
 
-**Step 1**. [Install Docker](Installing-Docker.md), which will be used to run your bundles in an isolated environment. 
+**Step 1**. Install Docker, which will be used to run your bundles in an isolated environment.
 
-**Step 2**. Start the worker:
+**Step 2**. Start the worker, which will prompt you for your username and password:
 
-    cl-worker
+    cl-worker --verbose
 
 **Step 3**. To test your worker, simply start any run:
 
     cl run date
 
-You should see that the run finished, and if you look at the `remote` metadata field (e.g., via `cl info -f remote ^` on the CLI or on the side panel in the web interface), you should see your hostname.
+You should see that the run finished, and if you look at the `remote` metadata field, you should see your hostname.
 
 Note that only your runs will be run on your workers, so you don't have to worry about interference with other users.
 
@@ -110,7 +86,7 @@ Note that only your runs will be run on your workers, so you don't have to worry
 
 You can tag workers and run jobs on workers with those tags.  To tag a worker, start the worker as follows:
 
-    cl-worker --server https://worksheets.codalab.org --tag <worker_tag> 
+    cl-worker --tag <worker_tag>
 
 To run a job, simply pass the tag in:
 
@@ -118,7 +94,8 @@ To run a job, simply pass the tag in:
 
 **Other flags**. Run `cl-worker --help` for information on all the supported flags. Aside
 from the `--server`, other important flags include `--work-dir`
-specifying where to store intermediate data and `--cpuset` and `--gpuset` controlling which CPUs and GPUs the system has access to.
+specifying where to store intermediate data and `--cpuset` and `--gpuset`
+controlling which CPUs and GPUs the system has access to.
 
 ### Setting up workers to use GPUs
 
