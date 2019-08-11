@@ -16,7 +16,7 @@ By default, all bundles (and worksheets) on CodaLab are public (and we encourage
 
 ### I received an `ImportError` because I don't have the appropriate library installed. How do I install libraries in CodaLab?
 
-CodaLab runs all run bundles in Docker containers. See our [article about specifying Docker containers](Execution.md#specifying-environments-with-docker).  You can see how to [make your own Docker images](Creating-Docker-Images.md).
+CodaLab runs all run bundles in Docker containers. See our [article about specifying Docker containers](Execution.md#specifying-environments-with-docker).
 
 ### How do I check how much space my bundles are using?
 
