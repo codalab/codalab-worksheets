@@ -130,6 +130,21 @@ To fix any style issues for the Python code:
 
 These must pass before you submit a PR.
 
+## Other
+
+To auto-generate the REST reference and CLI references:
+
+    virtualenv -p python2.7 venv2.7
+    venv2.7/bin/pip install -r requirements-server.txt
+    venv2.7/bin/python scripts/gen-rest-docs.py
+    venv2.7/bin/python scripts/gen-cli-docs.py
+
+To generate the readthedocs documentation to preview locally (outputs to `site`):
+
+    virtualenv -p python2.7 venv2.7
+    venv2.7/bin/pip install -r requirements.docs.txt
+    venv2.7/bin/mkdocs build
+
 ## Debugging
 
 You can check the logs using standard Docker commands.  For example, if you want to know what the worker is doing:
