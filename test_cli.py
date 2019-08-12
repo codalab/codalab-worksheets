@@ -113,15 +113,20 @@ def sanitize(string, max_chars=256):
     return string
 
 
-def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, binary=False):
+def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False, binary=False):
     print(">>", *[a.encode('ascii', errors='replace') for a in args], sep=" ")
 
     try:
+        kwargs = dict(env=env)
+        if binary:
+            kwargs = dict(kwargs, encoding="utf-8")
+        if include_stderr:
+            kwargs = dict(kwargs, stderr=subprocess.STDOUT)
         output = (
-            subprocess.check_output(args, env=env)
+            subprocess.check_output(args, **kwargs)
             if binary
             else subprocess.check_output(
-                [a.encode('utf-8') for a in args], env=env, encoding="utf-8"
+                [a.encode('utf-8') for a in args], **kwargs
             )
         )
         exitcode = 0
@@ -506,8 +511,28 @@ class TestModule(object):
 
 @TestModule.register('unittest')
 def test(ctx):
-    """Run nose unit tests"""
+    """Run nose unit tests (exclude this file)."""
     run_command(['nosetests', '-e', 'test_cli.py'])
+
+
+@TestModule.register('gen-rest-docs')
+def test(ctx):
+    """Generate REST API docs."""
+    run_command(['python', os.path.join(base_path, 'scripts/gen-rest-docs.py')])
+
+
+@TestModule.register('gen-cli-docs')
+def test(ctx):
+    """Generate CLI docs."""
+    run_command(['python', os.path.join(base_path, 'scripts/gen-cli-docs.py')])
+
+
+@TestModule.register('gen-readthedocs')
+def test(ctx):
+    """Generate the readthedocs site."""
+    # Make sure there are no extraneous things.
+    # mkdocs doesn't return exit code 1 for some warnings.
+    check_num_lines(2, run_command(['mkdocs', 'build'], include_stderr=True))
 
 
 @TestModule.register('basic')

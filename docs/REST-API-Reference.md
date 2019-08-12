@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.2.28_
+_version 0.3.0_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -140,10 +140,10 @@ Name | Type
 
 Name | Type
 --- | ---
+`parallel_run_quota` | Integer
 `first_name` | String
 `last_name` | String
 `time_quota` | Integer
-`parallel_run_quota` | Integer
 `notifications` | Integer
 `url` | Url
 `disk_used` | Integer
@@ -426,9 +426,14 @@ The contents of the second message go in the body of the HTTP request.
 ### `POST /workers/<worker_id>/start_bundle/<uuid:re:0x[0-9a-f]{32}>`
 
 Checks whether the bundle is still assigned to run on the worker with the
-given ID. If so, reports that it's starting to run and returns True.
+given worker_id. If so, reports that it's starting to run and returns True.
 Otherwise, returns False, meaning the worker shouldn't run the bundle.
 
+### `PUT /workers/<worker_id>/update_bundle_metadata/<uuid:re:0x[0-9a-f]{32}>`
+
+Updates metadata related to a running bundle.
+
+### `GET /workers/info`
 ### `GET /workers/code.tar.gz`
 
 Returns .tar.gz archive containing the code of the worker.
@@ -469,7 +474,6 @@ Query parameters:
     - `size=.sort-            ` : Sort by a particular field in reverse.
     - `size=.sum              ` : Compute total of a particular field.
     - `.mine                  ` : Match only bundles I own.
-    - `.shared                ` : Match only bundles shared with a group I'm a part of.
     - `.floating              ` : Match bundles that aren't on any worksheet.
     - `.count                 ` : Count the number of bundles.
     - `.limit=10              ` : Limit the number of results to the top 10.
@@ -582,6 +586,36 @@ Response format:
 }
 ```
 
+### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/netcat/<port:int>/`
+
+Send a raw bytestring into the specified port of the running bundle with uuid.
+Return the response from this bundle.
+
+### `PATCH /bundles/<uuid:re:0x[0-9a-f]{32}>/netcurl/<port:int>/<path:re:.*>`
+
+Forward an HTTP request into the specified port of the running bundle with uuid.
+Return the HTTP response from this bundle.
+
+### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/netcurl/<port:int>/<path:re:.*>`
+
+Forward an HTTP request into the specified port of the running bundle with uuid.
+Return the HTTP response from this bundle.
+
+### `DELETE /bundles/<uuid:re:0x[0-9a-f]{32}>/netcurl/<port:int>/<path:re:.*>`
+
+Forward an HTTP request into the specified port of the running bundle with uuid.
+Return the HTTP response from this bundle.
+
+### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/netcurl/<port:int>/<path:re:.*>`
+
+Forward an HTTP request into the specified port of the running bundle with uuid.
+Return the HTTP response from this bundle.
+
+### `POST /bundles/<uuid:re:0x[0-9a-f]{32}>/netcurl/<port:int>/<path:re:.*>`
+
+Forward an HTTP request into the specified port of the running bundle with uuid.
+Return the HTTP response from this bundle.
+
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/<path:path>`
 
 API to download the contents of a bundle or a subpath within a bundle.
@@ -607,13 +641,13 @@ Query parameters:
   if either `head` or `tail` is specified. Default is 128.
 
 HTTP Response headers (for single-file targets):
-- `Content-Disposition: filename=<bundle name or target filename>`
+- `Content-Disposition: inline; filename=<bundle name or target filename>`
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
 - `Target-Type: file`
 
 HTTP Response headers (for directories):
-- `Content-Disposition: filename=<bundle or directory name>.tar.gz`
+- `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
 - `Target-Type: directory`
@@ -643,13 +677,13 @@ Query parameters:
   if either `head` or `tail` is specified. Default is 128.
 
 HTTP Response headers (for single-file targets):
-- `Content-Disposition: filename=<bundle name or target filename>`
+- `Content-Disposition: inline; filename=<bundle name or target filename>`
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
 - `Target-Type: file`
 
 HTTP Response headers (for directories):
-- `Content-Disposition: filename=<bundle or directory name>.tar.gz`
+- `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
 - `Target-Type: directory`
@@ -672,9 +706,9 @@ Query parameters:
 - `finalize_on_failure`: (optional) 1 if bundle state should be set
   to 'failed' in the case of a failure during upload, or 0 if the bundle
   state should not change on failure. Default is 0.
-- `finalize_on_success`: (optional) if true update the bundle state to this
-  if the upload completes successfully. Default true, false should be
-  specified.
+- `finalize_on_success`: (optional) 1 if bundle state should be set
+  to 'state_on_success' when the upload finishes successfully. Default is
+  True
 - `state_on_success`: (optional) Update the bundle state to this state if
   the upload completes successfully. Must be either 'ready' or 'failed'.
   Default is 'ready'.
@@ -865,6 +899,8 @@ Bulk set worksheet permissions.
 ## Users API
 ### `GET /users/<user_spec>`
 Fetch a single user.
+### `DELETE /users`
+Fetch user ids
 ### `GET /users`
 
 Fetch list of users, filterable by username and email.

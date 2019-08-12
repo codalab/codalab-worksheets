@@ -1,7 +1,7 @@
 CodaLab worksheets are represented using the standard
 [markdown](http://daringfireball.net/projects/markdown/syntax) with a few modifications.
 
-- Lines that start with a coment (//) are simply instructions to you
+- Lines that start with a comment (//) are simply instructions to you
   and are deleted by CodaLab.
 - Some lines are reference to bundles and worksheets.
 - Some lines are directives which tell CodaLab how to render the bundles.
