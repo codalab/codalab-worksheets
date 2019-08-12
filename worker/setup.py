@@ -1,5 +1,7 @@
 from setuptools import setup, find_packages
 
+# should match codalab/common.py#CODALAB_VERSION
+CODALAB_VERSION = "0.3.3"
 
 def get_requirements(*requirements_file_paths):
     requirements = []
@@ -17,7 +19,7 @@ def get_requirements(*requirements_file_paths):
 
 setup(
     name='codalabworker',
-    version='0.3.2',
+    version=CODALAB_VERSION,
     description='Worker for CodaLab, a platform for reproducible computation',
     long_description='To use your own hardware in CodaLab Worksheets, visit https://codalab-worksheets.readthedocs.io/en/latest/Execution#running-your-own-worker. You can find the code at https://github.com/codalab/codalab-worksheets.',
     url='https://github.com/codalab/codalab-worksheets',
