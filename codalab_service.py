@@ -591,13 +591,13 @@ class CodalabServiceManager(object):
                 )
                 for stdout_line in popen.stdout:
                     print(
-                        "process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace'),
+                        "process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace').decode(),
                         end="",
                     )
             except subprocess.CalledProcessError as e:
                 print(
                     "CalledProcessError: {}, {}".format(
-                        str(e), e.output.decode('utf-8').encode('ascii', errors='replace')
+                        str(e), e.output.decode('utf-8').encode('ascii', errors='replace').decode()
                     )
                 )
                 raise e
