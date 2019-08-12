@@ -4,6 +4,7 @@
 The main entry point for bringing up CodaLab services.  This is used for both
 local development and actual deployment.
 """
+from __future__ import print_function
 
 import argparse
 import errno
@@ -586,11 +587,19 @@ class CodalabServiceManager(object):
                     env=self.compose_env,
                     shell=True,
                     stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
                 )
                 for stdout_line in popen.stdout:
-                    print("process: " + stdout_line.decode(), end="")
+                    print(
+                        "process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace'),
+                        end="",
+                    )
             except subprocess.CalledProcessError as e:
-                print("CalledProcessError: {}, {}".format(str(e), e.output))
+                print(
+                    "CalledProcessError: {}, {}".format(
+                        str(e), e.output.decode('utf-8').encode('ascii', errors='replace')
+                    )
+                )
                 raise e
         print('')
 

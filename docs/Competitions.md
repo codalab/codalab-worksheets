@@ -1,4 +1,7 @@
-_This article is about hosting competitions on CodaLab **Worksheets**. To learn more about CodaLab **Competitions**, which is an affiliated project built on a separate stack, check out the [Competitions Wiki](https://github.com/codalab/codalab-competitions/wiki)._
+_This article is about hosting competitions on CodaLab **Worksheets**. To learn
+more about CodaLab **Competitions**, which is an affiliated project built on a
+separate stack, check out the [Competitions
+Wiki](https://github.com/codalab/codalab-competitions/wiki)._
 
 # List of competitions
 
@@ -27,22 +30,23 @@ The following competitions are hosted on CodaLab Worksheets ([rough Google query
 
 The job execution and provenance facilities of CodaLab Worksheets enable a wide variety of applications in computational experimentation, including hosting competitions on machine learning tasks.
 
-We provide a small application built on the [CodaLab Worksheets API](http://codalab.org/codalab-cli/rest.html) for running small-scale Kaggle-like competitions. It is packaged as a simple Python script in the [codalab-cli repository](https://github.com/codalab/codalab-cli). Competition participants can "submit" their models to the competition by running them on an public dataset provided by the competition organizers, then tagging the resulting predictions bundle with a specific tag. The script searches for bundles with the configured tag, and "mimics" the submitted executions -- rerunning the models while replacing the public dataset with the hidden evaluation dataset. Competition organizers can run this script manually, as a cron job, or as a long-lived daemon.
+We provide a small application built on the [CodaLab Worksheets API](REST-API-Reference.md) for running small-scale Kaggle-like competitions. It is packaged as a simple Python script. Competition participants can "submit" their models to the competition by running them on an public dataset provided by the competition organizers, then tagging the resulting predictions bundle with a specific tag. The script searches for bundles with the configured tag, and "mimics" the submitted executions -- rerunning the models while replacing the public dataset with the hidden evaluation dataset. Competition organizers can run this script manually, as a cron job, or as a long-lived daemon.
 
 ## Installation and setup
 
-Clone the [codalab-cli repository](https://github.com/codalab/codalab-cli):
+Checkout the CodaLab Worksheets repository (in the future, this should be available via pip):
 
-    $ git clone https://github.com/codalab/codalab-cli.git
+    git clone https://github.com/codalab/codalab-worksheets
 
 Install all the dependencies:
 
-    $ cd codalab-cli
-    $ ./setup.sh server
+    cd codalab-worksheets
+    virtualenv -p python2.7 venv2.7
+    venv2.7/bin/pip install -e .
 
 Now when you run the competition script with the help flag `-h`, you should see something like this:
 
-    $ scripts/competitiond.py -h
+    venv2.7/bin/python scripts/competitiond.py -h
 
     usage: competitiond.py [-h] [-l] [-d] [-v] config_file output_path
 
@@ -117,7 +121,7 @@ There are many ways you could choose to set up the competition. The recommended 
 
 Running the competition script in daemon mode will start a long-running process that periodically checks for new submissions, runs them, then updates the leaderboard file.
 
-    $ scripts/competitiond.py -d ~/competition-config.yml /var/www/leaderboard.json
+    venv2.7/bin/python scripts/competitiond.py -d ~/competition-config.yml /var/www/leaderboard.json
 
 ## Submitting a model (as a participant)
 
