@@ -113,7 +113,9 @@ def sanitize(string, max_chars=256):
     return string
 
 
-def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False, binary=False):
+def run_command(
+    args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False, binary=False
+):
     print(">>", *[a.encode('ascii', errors='replace') for a in args], sep=" ")
 
     try:
@@ -125,9 +127,7 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, incl
         output = (
             subprocess.check_output(args, **kwargs)
             if binary
-            else subprocess.check_output(
-                [a.encode('utf-8') for a in args], **kwargs
-            )
+            else subprocess.check_output([a.encode('utf-8') for a in args], **kwargs)
         )
         exitcode = 0
     except subprocess.CalledProcessError as e:
