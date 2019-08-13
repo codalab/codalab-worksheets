@@ -120,7 +120,7 @@ def run_command(
 
     try:
         kwargs = dict(env=env)
-        if binary:
+        if not binary:
             kwargs = dict(kwargs, encoding="utf-8")
         if include_stderr:
             kwargs = dict(kwargs, stderr=subprocess.STDOUT)
