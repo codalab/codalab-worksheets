@@ -260,7 +260,7 @@ def main():
     if not os.path.exists(os.path.dirname(REST_DOCS_PATH)):
         os.makedirs(os.path.dirname(REST_DOCS_PATH))
 
-    with open(REST_DOCS_PATH, 'wb') as out:
+    with open(REST_DOCS_PATH, 'w') as out:
         out.write(template(dedent(INDEX_DOC), api_specs=get_api_routes(), version=CODALAB_VERSION))
         out.write(dedent(INTRODUCTION_DOC))
 
