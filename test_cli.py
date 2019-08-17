@@ -830,6 +830,7 @@ def test(ctx):
     # create worksheet
     check_contains(uuid[0:5], run_command([cl, 'ls']))
     run_command([cl, 'add', 'text', 'testing'])
+    run_command([cl, 'add', 'text', '你好世界😊'])
     run_command([cl, 'add', 'text', '% display contents / maxlines=10'])
     run_command([cl, 'add', 'bundle', uuid])
     run_command([cl, 'add', 'text', '// comment'])
@@ -844,7 +845,7 @@ def test(ctx):
     )  # not testing real copying ability
     run_command([cl, 'add', 'worksheet', wuuid])
     check_contains(
-        ['Worksheet', 'testing', test_path_contents('a.txt'), uuid, 'HEAD', 'CREATE'],
+        ['Worksheet', 'testing', '你好世界😊', test_path_contents('a.txt'), uuid, 'HEAD', 'CREATE'],
         run_command([cl, 'print']),
     )
     run_command([cl, 'wadd', wuuid, wuuid])
