@@ -1,9 +1,11 @@
 import mock
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
 import unittest
 
 from codalab.model.bundle_model import BundleModel, db_metadata
+from codalab.lib.spec_util import generate_uuid
 
 
 def metadata_to_dicts(uuid, metadata):
@@ -46,16 +48,19 @@ class MockDependency(object):
 
 
 class MockBundle(object):
-    _fields = {
-        'uuid': 'my_uuid',
-        'bundle_type': 'my_bundle_type',
-        'data_hash': 'my_data_hash',
-        'state': 'my_state',
-        'metadata': {'key_1': 'value_1', 'key_2': 'value_2'},
-        'dependencies': [MockDependency().to_dict()],
-    }
 
-    def __init__(self, row=None):
+    def __init__(self, uuid=None, row=None):
+        self._fields = {
+            'uuid': uuid,
+            'bundle_type': 'my_bundle_type',
+            'data_hash': 'my_data_hash',
+            'state': 'my_state',
+            'metadata': [
+                {'bundle_uuid': uuid, 'metadata_key': 'key', 'metadata_value': 'value'},
+                {'bundle_uuid': uuid, 'metadata_key': 'key', 'metadata_value': '你好世界😊'}
+            ],
+            'dependencies': [MockDependency().to_dict()],
+        }
         if row:
             for (field, value) in self._fields.items():
                 if field == 'metadata':
@@ -77,15 +82,16 @@ class MockBundle(object):
 
     def to_dict(self, strict=None):
         result = dict(self._fields)
-        result['metadata'] = metadata_to_dicts(result['uuid'], result['metadata'])
+        # result['metadata'] = metadata_to_dicts(result['uuid'], result['metadata'])
         return result
 
 
-class BundleModelTest(unittest.TestCase):
+class BundleModelTestBase:
+    maxDiff = None
     def setUp(self):
         MockBundle._tester = self
         MockDependency._tester = self
-        self.engine = create_engine('sqlite://', strategy='threadlocal', encoding='utf-8')
+        self.engine = create_engine(self.engine_conn_string, **self.engine_conn_kwargs)
         self.model = BundleModel(self.engine, {})
         # We'll test the result of this schema creation step in test_create_tables.
         self.model.create_tables()
@@ -101,7 +107,7 @@ class BundleModelTest(unittest.TestCase):
             self.assertIn(table, tables)
 
     def test_save_and_get_bundle(self):
-        bundle = MockBundle()
+        bundle = MockBundle(generate_uuid())
         self.model.save_bundle(bundle)
         self.assertTrue(bundle._validate_called)
 
@@ -109,3 +115,24 @@ class BundleModelTest(unittest.TestCase):
         with mock.patch(get_bundle_subclass_path, lambda bundle_type: MockBundle):
             retrieved_bundle = self.model.get_bundle(bundle.uuid)
         self.assertTrue(isinstance(retrieved_bundle, MockBundle))
+        bundle_metadata = bundle.to_dict()['metadata']
+        retrieved_bundle_metadata = retrieved_bundle.to_dict()['metadata']
+        self.assertEqual([(item["metadata_key"], item["metadata_value"]) for item in retrieved_bundle_metadata], [(item["metadata_key"], item["metadata_value"]) for item in bundle_metadata])
+
+class BundleModelSqlLiteTest(BundleModelTestBase, unittest.TestCase):
+    engine_conn_string = 'sqlite://'
+    engine_conn_kwargs = dict(strategy='threadlocal', encoding='utf-8')
+
+class BundleModelMySqlTest(BundleModelTestBase, unittest.TestCase):
+    print(os.environ)
+    engine_conn_string = 'mysql://%s:%s@mysql:3306/codalab_bundles?charset=utf8mb4' % (
+        # os.getenv('CODALAB_MYSQL_USER'),
+        # os.getenv('CODALAB_MYSQL_PWD'),
+        'codalab',
+        'codalab'
+    )
+    engine_conn_kwargs = dict(strategy='threadlocal',
+            pool_size=20,
+            max_overflow=100,
+            pool_recycle=3600,
+            encoding='utf-8',)
