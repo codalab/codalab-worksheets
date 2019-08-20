@@ -621,7 +621,7 @@ class CodalabServiceManager(object):
                 while True:
                     stdout_line = popen.stdout.readline()
                     if not stdout_line:
-                        break;
+                        break
                     print(
                         "process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace'),
                         end="",
