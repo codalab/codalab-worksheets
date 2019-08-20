@@ -20,9 +20,9 @@ jobs:
         - sudo mv docker-compose /usr/local/bin
         - sudo service mysql stop
       install:
-        - ./codalab_service.py build services -v ${TRAVIS_BRANCH} --push
+        - ./codalab_service.py build services --version ${TRAVIS_BRANCH} --push
       script:
-        - ./codalab_service.py start -s default test --mysql-port 3306 --version ${TRAVIS_BRANCH}
+        - ./codalab_service.py start --services default test --version ${TRAVIS_BRANCH}
     - stage: deploy
       script: echo "Deploying"
       language: python
