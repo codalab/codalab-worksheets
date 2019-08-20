@@ -295,6 +295,8 @@ while True:
             # Simple things
             run_command(['cl', 'work', 'localhost::'])
             run_command(['cl', 'search', '.count'])
+            run_command(['cl', 'workers'])
+
         if run_time():
             # More intense
             run_command(['cl', 'search', 'size=.sum'], 20)
