@@ -55,9 +55,11 @@ def main():
     service_manager = CodalabServiceManager(args)
     service_manager.execute()
 
+
 def get_default_version():
     """Get the current git branch."""
     return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+
 
 class CodalabArgs(argparse.Namespace):
     DEFAULT_ARGS = {
