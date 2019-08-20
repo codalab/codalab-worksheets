@@ -615,9 +615,13 @@ class CodalabServiceManager(object):
                     env=self.compose_env,
                     shell=True,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
                 )
-                for stdout_line in popen.stdout:
+                # Note: don't do `for stdout_line in popen.stdout` because that buffers.
+                while True:
+                    stdout_line = popen.stdout.readline()
+                    if not stdout_line:
+                        break;
                     print(
                         "process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace'),
                         end="",
