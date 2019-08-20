@@ -99,10 +99,9 @@ class BundleModelTestBase:
 
     def tearDown(self):
         self.model = None
-        self.engine = None
 
     def test_create_tables(self):
-        inspector = Inspector.from_engine(self.engine)
+        inspector = Inspector.from_engine(self.model.engine)
         tables = set(inspector.get_table_names())
         for table in db_metadata.tables:
             self.assertIn(table, tables)
@@ -125,7 +124,7 @@ class BundleModelTestBase:
 
 
 class BundleModelSQLLiteTest(BundleModelTestBase, unittest.TestCase):
-    engine_url = 'sqlite://'
+    engine_url = 'sqlite:///'
     bundle_model = SQLiteModel
 
 
