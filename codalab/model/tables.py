@@ -47,8 +47,8 @@ bundle_metadata = Table(
     db_metadata,
     Column('id', Integer, primary_key=True, nullable=False),
     Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
-    Column('metadata_key', String(63), nullable=False, collation='utf8mb4_unicode_ci'),
-    Column('metadata_value', Text, nullable=False, collation='utf8mb4_unicode_ci'),
+    Column('metadata_key', String(63, collation='utf8mb4_unicode_ci'), nullable=False),
+    Column('metadata_value', Text(collation='utf8mb4_unicode_ci'), nullable=False),
     Index('metadata_kv_index', 'metadata_key', 'metadata_value', mysql_length=63),
     sqlite_autoincrement=True,
 )
