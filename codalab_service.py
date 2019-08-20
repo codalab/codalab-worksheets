@@ -572,12 +572,18 @@ class CodalabServiceManager(object):
 
         # Pull the previous image on this version (branch) if we have it.  Otherwise, use master.
         if self.args.pull:
-            if not self._run_docker_cmd('pull {}'.format(docker_image), allow_fail=True):
+            if self._run_docker_cmd('pull {}'.format(docker_image), allow_fail=True):
+                cache_image = docker_image
+            else:
                 self._run_docker_cmd('pull {}'.format(master_docker_image))
+                cache_image = master_docker_image
+            cache_args = ' --cache-from {}'.format(cache_image)
+        else:
+            cache_args = ''
 
         # Build the image using the cache
         self._run_docker_cmd(
-            'build -t %s -f docker/dockerfiles/Dockerfile.%s .' % (docker_image, image)
+            'build%s -t %s -f docker/dockerfiles/Dockerfile.%s .' % (cache_args, docker_image, image)
         )
 
     def push_image(self, image):
