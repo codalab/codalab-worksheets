@@ -103,7 +103,7 @@ worksheet_item = Table(
     # bundles and worksheets not (yet) in the system.
     Column('bundle_uuid', String(63), nullable=True),
     Column('subworksheet_uuid', String(63), nullable=True),
-    Column('value', Text, nullable=False),  # TODO: make this nullable
+    Column('value', Text(collation='utf8mb4_unicode_ci'), nullable=False),  # TODO: make this nullable
     Column('type', String(20), nullable=False),
     Column('sort_key', Integer, nullable=True),
     Index('worksheet_item_worksheet_uuid_index', 'worksheet_uuid'),
@@ -118,7 +118,7 @@ worksheet_tag = Table(
     db_metadata,
     Column('id', Integer, primary_key=True, nullable=False),
     Column('worksheet_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
-    Column('tag', String(63), nullable=False),
+    Column('tag', String(63, collation='utf8mb4_unicode_ci'), nullable=False),
     Index('worksheet_tag_worksheet_uuid_index', 'worksheet_uuid'),
     Index('worksheet_tag_tag_index', 'tag'),
     sqlite_autoincrement=True,
