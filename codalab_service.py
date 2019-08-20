@@ -587,7 +587,7 @@ class CodalabServiceManager(object):
             try:
                 subprocess.check_call(command_string, shell=True, cwd=self.root_dir)
                 success = True
-            except OSError as e:
+            except subprocess.CalledProcessError as e:
                 success = False
                 if not allow_fail:
                     raise e
