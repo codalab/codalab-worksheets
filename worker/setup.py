@@ -35,7 +35,6 @@ setup(
         "License :: OSI Approved :: Apache Software License",
     ],
     python_requires='~=3.6',
-    package_data={'': ['requirements.txt']},
     include_package_data=True,
     install_requires=get_requirements('./requirements.txt'),
     entry_points={'console_scripts': ['cl-worker=codalabworker.main:main']},
