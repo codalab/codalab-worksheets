@@ -528,7 +528,7 @@ class CodalabServiceManager(object):
                     raise
         for bundle_store in self.args.bundle_stores:
             try:
-                os.makedirs(self.args.bundle_store)
+                os.makedirs(bundle_store)
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
@@ -562,20 +562,37 @@ class CodalabServiceManager(object):
         print_header('Building {} image'.format(image))
         master_docker_image = 'codalab/{}:{}'.format(image, 'master')
         docker_image = 'codalab/{}:{}'.format(image, self.args.version)
+
+        # Pull the previous image on this version (branch) if we have it.  Otherwise, use master.
+        if self._run_docker_cmd('pull {}'.format(docker_image), allow_fail=True):
+            cache_image = docker_image
+        else:
+            self._run_docker_cmd('pull {}'.format(master_docker_image))
+            cache_image = master_docker_image
+
+        # Build the image using the cache
         self._run_docker_cmd(
-            'build --cache-from %s --cache-from %s -t %s -f docker/dockerfiles/Dockerfile.%s .'
-            % (master_docker_image, docker_image, docker_image, image)
+            'build --cache-from %s -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            % (cache_image, docker_image, image)
         )
 
     def push_image(self, image):
         self._run_docker_cmd('push codalab/%s:%s' % (image, self.args.version))
 
-    def _run_docker_cmd(self, cmd):
+    def _run_docker_cmd(self, cmd, allow_fail=False):
+        """Return whether the command succeeded."""
         command_string = 'docker ' + cmd
         print('(cd {}; {})'.format(self.root_dir, command_string))
         if not self.args.dry_run:
-            subprocess.check_call(command_string, shell=True, cwd=self.root_dir)
+            try:
+                subprocess.check_call(command_string, shell=True, cwd=self.root_dir)
+                success = True
+            except OSError as e:
+                success = False
+                if not allow_fail:
+                    raise e
         print('')
+        return success
 
     def _run_compose_cmd(self, cmd):
         files_string = ' -f '.join(self.compose_files)

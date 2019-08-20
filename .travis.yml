@@ -20,13 +20,6 @@ jobs:
         - sudo mv docker-compose /usr/local/bin
         - sudo service mysql stop
       install:
-        - echo ${TRAVIS_BRANCH}
-        - git branch
-        - docker pull codalab/frontend:${TRAVIS_BRANCH} || true
-        - docker pull codalab/server:${TRAVIS_BRANCH} || true
-        - docker pull codalab/worker:${TRAVIS_BRANCH} || true
-        - docker images -a
-        - docker build --cache-from codalab/server:master --cache-from codalab/server:faster-travis -t codalab/server:faster-travis -f docker/dockerfiles/Dockerfile.server .
         - ./codalab_service.py build services --version ${TRAVIS_BRANCH} --push
       script:
         - ./codalab_service.py start --services default test --version ${TRAVIS_BRANCH}
