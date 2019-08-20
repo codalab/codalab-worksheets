@@ -55,10 +55,13 @@ def main():
     service_manager = CodalabServiceManager(args)
     service_manager.execute()
 
+def get_default_version():
+    """Get the current git branch."""
+    return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
 
 class CodalabArgs(argparse.Namespace):
     DEFAULT_ARGS = {
-        'version': 'latest',
+        'version': get_default_version(),
         'dev': False,
         'push': False,
         'docker_user': None,
@@ -555,10 +558,11 @@ class CodalabServiceManager(object):
 
     def build_image(self, image):
         print_header('Building {} image'.format(image))
+        master_docker_image = 'codalab/{}:{}'.format(image, 'master')
         docker_image = 'codalab/{}:{}'.format(image, self.args.version)
         self._run_docker_cmd(
-            'build --cache-from %s -t %s -f docker/dockerfiles/Dockerfile.%s .'
-            % (docker_image, docker_image, image)
+            'build --cache-from %s --cache-from %s -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            % (master_docker_image, docker_image, docker_image, image)
         )
 
     def push_image(self, image):
