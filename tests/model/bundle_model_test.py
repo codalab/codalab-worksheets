@@ -93,8 +93,7 @@ class BundleModelTestBase:
     def setUp(self):
         MockBundle._tester = self
         MockDependency._tester = self
-        self.engine = create_engine(self.engine_conn_string, **self.engine_conn_kwargs)
-        self.model = self.bundle_model(self.engine, {})
+        self.model = self.bundle_model(self.engine_url, {})
         # We'll test the result of this schema creation step in test_create_tables.
         self.model.create_tables()
 
@@ -126,13 +125,12 @@ class BundleModelTestBase:
 
 
 class BundleModelSQLLiteTest(BundleModelTestBase, unittest.TestCase):
-    engine_conn_string = 'sqlite://'
+    engine_url = 'sqlite://'
     bundle_model = SQLiteModel
-    engine_conn_kwargs = dict(strategy='threadlocal', encoding='utf-8')
 
 
 class BundleModelMySQLTest(BundleModelTestBase, unittest.TestCase):
-    engine_conn_string = 'mysql://%s:%s@mysql:3306/codalab_bundles?charset=utf8mb4' % (
+    engine_url = 'mysql://%s:%s@mysql:3306/codalab_bundles?charset=utf8mb4' % (
         # os.getenv('CODALAB_MYSQL_USER'),
         # os.getenv('CODALAB_MYSQL_PWD'),
         'codalab',
