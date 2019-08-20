@@ -594,7 +594,9 @@ class CodalabServiceManager(object):
         """Return whether the command succeeded."""
         command_string = 'docker ' + cmd
         print('(cd {}; {})'.format(self.root_dir, command_string))
-        if not self.args.dry_run:
+        if self.args.dry_run:
+            success = True
+        else:
             try:
                 subprocess.check_call(command_string, shell=True, cwd=self.root_dir)
                 success = True
@@ -614,7 +616,9 @@ class CodalabServiceManager(object):
         )
         compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in self.compose_env.items())
         print('(cd {}; {} {})'.format(self.compose_cwd, compose_env_string, command_string))
-        if not self.args.dry_run:
+        if self.args.dry_run:
+            success = True
+        else:
             try:
                 popen = subprocess.Popen(
                     command_string,
@@ -633,6 +637,10 @@ class CodalabServiceManager(object):
                         "process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace'),
                         end="",
                     )
+                popen.wait()
+                success = (popen.returncode == 0)
+                if not success:
+                    raise Exception('Command exited with code {}'.format(popen.returncode))
             except subprocess.CalledProcessError as e:
                 print(
                     "CalledProcessError: {}, {}".format(
@@ -641,6 +649,7 @@ class CodalabServiceManager(object):
                 )
                 raise e
         print('')
+        return success
 
     def bring_up_service(self, service):
         if should_run_service(self.args, service):
