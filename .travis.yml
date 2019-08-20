@@ -20,7 +20,7 @@ jobs:
         - sudo mv docker-compose /usr/local/bin
         - sudo service mysql stop
       install:
-        - ./codalab_service.py build services --version ${TRAVIS_BRANCH} --push
+        - ./codalab_service.py build services --version ${TRAVIS_BRANCH} --pull --push
       script:
         - ./codalab_service.py start --services default test --version ${TRAVIS_BRANCH}
     - stage: deploy
