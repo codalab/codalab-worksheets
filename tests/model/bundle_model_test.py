@@ -48,7 +48,6 @@ class MockDependency(object):
 
 
 class MockBundle(object):
-
     def __init__(self, uuid=None, row=None):
         self._fields = {
             'uuid': uuid,
@@ -57,7 +56,7 @@ class MockBundle(object):
             'state': 'my_state',
             'metadata': [
                 {'bundle_uuid': uuid, 'metadata_key': 'key', 'metadata_value': 'value'},
-                {'bundle_uuid': uuid, 'metadata_key': 'key', 'metadata_value': '你好世界😊'}
+                {'bundle_uuid': uuid, 'metadata_key': 'key', 'metadata_value': '你好世界😊'},
             ],
             'dependencies': [MockDependency().to_dict()],
         }
@@ -88,6 +87,7 @@ class MockBundle(object):
 
 class BundleModelTestBase:
     maxDiff = None
+
     def setUp(self):
         MockBundle._tester = self
         MockDependency._tester = self
@@ -117,11 +117,16 @@ class BundleModelTestBase:
         self.assertTrue(isinstance(retrieved_bundle, MockBundle))
         bundle_metadata = bundle.to_dict()['metadata']
         retrieved_bundle_metadata = retrieved_bundle.to_dict()['metadata']
-        self.assertEqual([(item["metadata_key"], item["metadata_value"]) for item in retrieved_bundle_metadata], [(item["metadata_key"], item["metadata_value"]) for item in bundle_metadata])
+        self.assertEqual(
+            [(item["metadata_key"], item["metadata_value"]) for item in retrieved_bundle_metadata],
+            [(item["metadata_key"], item["metadata_value"]) for item in bundle_metadata],
+        )
+
 
 class BundleModelSqlLiteTest(BundleModelTestBase, unittest.TestCase):
     engine_conn_string = 'sqlite://'
     engine_conn_kwargs = dict(strategy='threadlocal', encoding='utf-8')
+
 
 class BundleModelMySqlTest(BundleModelTestBase, unittest.TestCase):
     print(os.environ)
@@ -129,10 +134,8 @@ class BundleModelMySqlTest(BundleModelTestBase, unittest.TestCase):
         # os.getenv('CODALAB_MYSQL_USER'),
         # os.getenv('CODALAB_MYSQL_PWD'),
         'codalab',
-        'codalab'
+        'codalab',
     )
-    engine_conn_kwargs = dict(strategy='threadlocal',
-            pool_size=20,
-            max_overflow=100,
-            pool_recycle=3600,
-            encoding='utf-8',)
+    engine_conn_kwargs = dict(
+        strategy='threadlocal', pool_size=20, max_overflow=100, pool_recycle=3600, encoding='utf-8'
+    )
