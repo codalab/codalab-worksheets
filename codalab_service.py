@@ -208,7 +208,7 @@ class CodalabArgs(argparse.Namespace):
                 '--version',
                 '-v',
                 type=str,
-                help='CodaLab version to use for building and deployment',
+                help='CodaLab version to use for building and deployment (should be branch name)',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
@@ -216,6 +216,12 @@ class CodalabArgs(argparse.Namespace):
                 '-d',
                 action='store_true',
                 help='If specified, mount local code for frontend so that changes are reflected right away',
+                default=argparse.SUPPRESS,
+            )
+            cmd.add_argument(
+                '--pull',
+                action='store_true',
+                help='If specified, pull images to Docker Hub (for caching)',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
@@ -564,16 +570,14 @@ class CodalabServiceManager(object):
         docker_image = 'codalab/{}:{}'.format(image, self.args.version)
 
         # Pull the previous image on this version (branch) if we have it.  Otherwise, use master.
-        if self._run_docker_cmd('pull {}'.format(docker_image), allow_fail=True):
-            cache_image = docker_image
-        else:
-            self._run_docker_cmd('pull {}'.format(master_docker_image))
-            cache_image = master_docker_image
+        if self.args.pull:
+            if not self._run_docker_cmd('pull {}'.format(docker_image), allow_fail=True):
+                self._run_docker_cmd('pull {}'.format(master_docker_image))
 
         # Build the image using the cache
         self._run_docker_cmd(
-            'build --cache-from %s -t %s -f docker/dockerfiles/Dockerfile.%s .'
-            % (cache_image, docker_image, image)
+            'build -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            % (docker_image, image)
         )
 
     def push_image(self, image):
