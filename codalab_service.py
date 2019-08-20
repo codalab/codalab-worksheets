@@ -555,9 +555,10 @@ class CodalabServiceManager(object):
 
     def build_image(self, image):
         print_header('Building {} image'.format(image))
+        docker_image = 'codalab/{}:{}'.format(image, self.args.version)
         self._run_docker_cmd(
-            'build -t codalab/%s:%s -f docker/dockerfiles/Dockerfile.%s .'
-            % (image, self.args.version, image)
+            'build --cache-from %s -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            % (docker_image, docker_image, image)
         )
 
     def push_image(self, image):
