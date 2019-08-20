@@ -5,6 +5,8 @@ from sqlalchemy.engine.reflection import Inspector
 import unittest
 
 from codalab.model.bundle_model import BundleModel, db_metadata
+from codalab.model.mysql_model import MySQLModel
+from codalab.model.sqlite_model import SQLiteModel
 from codalab.lib.spec_util import generate_uuid
 
 
@@ -92,7 +94,7 @@ class BundleModelTestBase:
         MockBundle._tester = self
         MockDependency._tester = self
         self.engine = create_engine(self.engine_conn_string, **self.engine_conn_kwargs)
-        self.model = BundleModel(self.engine, {})
+        self.model = self.bundle_model(self.engine, {})
         # We'll test the result of this schema creation step in test_create_tables.
         self.model.create_tables()
 
@@ -123,19 +125,17 @@ class BundleModelTestBase:
         )
 
 
-class BundleModelSqlLiteTest(BundleModelTestBase, unittest.TestCase):
+class BundleModelSQLLiteTest(BundleModelTestBase, unittest.TestCase):
     engine_conn_string = 'sqlite://'
+    bundle_model = SQLiteModel
     engine_conn_kwargs = dict(strategy='threadlocal', encoding='utf-8')
 
 
-class BundleModelMySqlTest(BundleModelTestBase, unittest.TestCase):
-    print(os.environ)
+class BundleModelMySQLTest(BundleModelTestBase, unittest.TestCase):
     engine_conn_string = 'mysql://%s:%s@mysql:3306/codalab_bundles?charset=utf8mb4' % (
         # os.getenv('CODALAB_MYSQL_USER'),
         # os.getenv('CODALAB_MYSQL_PWD'),
         'codalab',
         'codalab',
     )
-    engine_conn_kwargs = dict(
-        strategy='threadlocal', pool_size=20, max_overflow=100, pool_recycle=3600, encoding='utf-8'
-    )
+    bundle_model = MySQLModel
