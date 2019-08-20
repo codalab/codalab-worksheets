@@ -65,6 +65,7 @@ class CodalabArgs(argparse.Namespace):
     DEFAULT_ARGS = {
         'version': get_default_version(),
         'dev': False,
+        'pull': False,
         'push': False,
         'docker_user': None,
         'docker_password': None,
@@ -576,8 +577,7 @@ class CodalabServiceManager(object):
 
         # Build the image using the cache
         self._run_docker_cmd(
-            'build -t %s -f docker/dockerfiles/Dockerfile.%s .'
-            % (docker_image, image)
+            'build -t %s -f docker/dockerfiles/Dockerfile.%s .' % (docker_image, image)
         )
 
     def push_image(self, image):
