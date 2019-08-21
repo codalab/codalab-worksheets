@@ -222,7 +222,7 @@ class CodalabArgs(argparse.Namespace):
             cmd.add_argument(
                 '--pull',
                 action='store_true',
-                help='If specified, pull images to Docker Hub (for caching)',
+                help='If specified, pull images from Docker Hub (for caching)',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
