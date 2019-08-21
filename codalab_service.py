@@ -209,7 +209,7 @@ class CodalabArgs(argparse.Namespace):
                 '--version',
                 '-v',
                 type=str,
-                help='CodaLab version to use for building and deployment (should be branch name)',
+                help='CodaLab version to use for building and deployment (defaults to branch name, set only for Travis CI)',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
