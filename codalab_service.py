@@ -10,7 +10,6 @@ import argparse
 import errno
 import os
 import subprocess
-import sys
 
 SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker']
 
@@ -28,7 +27,7 @@ def print_header(description):
 
 def should_run_service(args, service):
     # `default` is generally used to bring up everything for local dev or quick testing.
-    # `default-but-worker` is generally used for real deployment since we don't
+    # `default-no-worker` is generally used for real deployment since we don't
     # want a worker running on the same machine.
     return (
         service in args.services
@@ -275,7 +274,7 @@ class CodalabArgs(argparse.Namespace):
             '-s',
             nargs='*',
             help='List of services to run',
-            choices=SERVICES + ['default', 'default-no-worker', 'init', 'update', 'test'],
+            choices=SERVICES + ['default', 'default-no-worker', 'init', 'update', 'test', 'monitor'],
             default=argparse.SUPPRESS,
         )
 
@@ -677,6 +676,14 @@ class CodalabServiceManager(object):
                 "/opt/wait-for-it.sh rest-server:2900 -- python test_cli.py --instance http://rest-server:2900 default",
                 root=(not self.args.codalab_home),
             )
+
+        if should_run_service(self.args, 'monitor'):
+            print_header('Running monitoring service')
+            self.run_service_cmd(
+                "/opt/wait-for-it.sh rest-server:2900 -- python monitor.py",
+                root=(not self.args.codalab_home),
+            )
+
 
     def build_images(self):
         images_to_build = [
