@@ -705,7 +705,7 @@ class CodalabServiceManager(object):
                 root=True,
             )
 
-            print_header('Initializing the database with alembic')
+            print_header('Initializing and migrating the database with alembic')
             self.run_service_cmd("%salembic upgrade head" % cmd_prefix, root=True)
             self.run_service_cmd("%salembic stamp head" % cmd_prefix, root=True)
 

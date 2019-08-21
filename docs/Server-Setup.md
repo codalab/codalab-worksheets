@@ -60,10 +60,14 @@ There are two use cases going forward: (i) development (you're trying to modify
 CodaLab) and (ii) productionization (you want to deploy this as a system that
 people will use).  Each will build on this basic framework in a different way.
 
-If you want to update CodaLab (and run any database migrations), run the following commands:
+If you want to update CodaLab, run the following commands:
 
+    git pull
     ./codalab_service.py pull
     ./codalab_service.py start
+
+This will grab the latest Docker images, migrate the database, and start or
+restart all the CodaLab services.  Any ongoing runs should not be affected.
 
 # Development
 
