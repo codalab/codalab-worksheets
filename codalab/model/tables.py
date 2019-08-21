@@ -104,9 +104,7 @@ worksheet_item = Table(
     # bundles and worksheets not (yet) in the system.
     Column('bundle_uuid', String(63), nullable=True),
     Column('subworksheet_uuid', String(63), nullable=True),
-    Column(
-        'value', UnicodeText, nullable=False
-    ),  # TODO: make this nullable
+    Column('value', UnicodeText, nullable=False),  # TODO: make this nullable
     Column('type', String(20), nullable=False),
     Column('sort_key', Integer, nullable=True),
     Index('worksheet_item_worksheet_uuid_index', 'worksheet_uuid'),
