@@ -67,7 +67,7 @@ class RestClient(object):
         if 'Content-Type' in headers:
             headers['Content-Type'] += '; charset=utf-8'
         if isinstance(data, str):
-            data = data.encode('utf-8')
+            data = data.encode()
         request_url = self._base_url + path
 
         headers.update(self._extra_headers)
