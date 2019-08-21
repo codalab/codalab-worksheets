@@ -685,7 +685,6 @@ class CodalabServiceManager(object):
                 root=(not self.args.codalab_home),
             )
 
-
     def build_images(self):
         images_to_build = [
             image for image in self.ALL_IMAGES if should_build_image(self.args, image)
