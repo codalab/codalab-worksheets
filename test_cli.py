@@ -117,6 +117,7 @@ def run_command(
     args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False, binary=False
 ):
     print(">>", *[a.encode('ascii', errors='replace') for a in args], sep=" ")
+    sys.stdout.flush()
 
     try:
         kwargs = dict(env=env)
@@ -141,7 +142,9 @@ def run_command(
     else:
         colorize = Colorizer.cyan
     print(colorize(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
+    sys.stdout.flush()
     print(sanitize(output, max_output_chars))
+    sys.stdout.flush()
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
 

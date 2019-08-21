@@ -69,19 +69,17 @@ If you're actively developing and want to test your changes, add the following t
   [DockerHub](https://hub.docker.com/u/codalab) will be used.
 - `-d` (`--dev`): runs the development version of the frontend so that your
   changes will be propagated instantly rather than having to rebuild any docker images.
-- `-v <name>` (optional): tag the Docker images so that you can play with
-  different versions of CodaLab.
 
 Start the CodaLab service as follows:
 
-    ./codalab_service.py start -bdvlocal
+    ./codalab_service.py start -bd
 
 If you modify the frontend, you can do so without restarting.  If you would
 like to modify the rest server, bundle manager, or worker, then you can edit
 the code and then start only that single Docker container.  For example, for
 the worker, the command would be:
 
-    ./codalab_service.py start -bdvlocal -s worker
+    ./codalab_service.py start -bd -s worker
 
 To stop all the Docker containers associated with the CodaLab service (but preserve all the data):
 
@@ -95,7 +93,7 @@ If you want to delete all the data associated with this, then do:
 
 If you just want to build the Docker images without starting the CodaLab service:
 
-    ./codalab_service.py build -v local
+    ./codalab_service.py build
 
 We provide two default Docker images that bundles are run in if no Docker image
 is specified, one for GPU jobs and one for non-GPU jobs:
@@ -106,17 +104,17 @@ is specified, one for GPU jobs and one for non-GPU jobs:
 If you would like to build these as well (note that this might take up to an
 hour because lots of packages have to be installed):
 
-    ./codalab_service.py build all -v local
+    ./codalab_service.py build all
 
 ## Testing
 
 Since tests run against an existing instance, make sure you update your instance first.
 
-    ./codalab_service.py start -bdvlocal -s rest-server
+    ./codalab_service.py start -bd -s rest-server
 
 To run the tests against an instance that you've already set up:
 
-    ./codalab_service.py start -bdvlocal -s test
+    ./codalab_service.py start -bd -s test
 
 Or to run a specific test (e.g., basic):
 
@@ -124,7 +122,7 @@ Or to run a specific test (e.g., basic):
 
 You can also start an instance and run tests on it:
 
-    ./codalab_service.py start -bdvlocal -s default test
+    ./codalab_service.py start -bd -s default test
 
 To fix any style issues for the Python code:
 
@@ -168,7 +166,7 @@ You can execute commands in the Docker images to see what's going on, for exampl
 
 If you just want to update your database, run the following command (which includes something to update the database schema via `alembic`):
 
-    ./codalab_service.py start -bdvlocal -s update
+    ./codalab_service.py start -bd -s update
 
 If you want to modify the database schema, use `alembic` to create a migration.  Note that everything must be run in Docker, but your modifications are outside in your local codebase.
 
@@ -176,7 +174,7 @@ If you want to modify the database schema, use `alembic` to create a migration. 
 
 1. Rebuild the Docker image for the rest server:
 
-        ./codalab_service.py start -bdvlocal -s rest-server
+        ./codalab_service.py start -bd -s rest-server
 
 1. Auto-generate the migration script:
 
@@ -190,7 +188,7 @@ If you want to modify the database schema, use `alembic` to create a migration. 
 
 1. Rebuild the Docker image:
 
-        ./codalab_service.py start -bdvlocal -s rest-server
+        ./codalab_service.py start -bd -s rest-server
 
 1. Apply the migration to change the actual database:
 
