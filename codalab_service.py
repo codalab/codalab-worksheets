@@ -36,12 +36,14 @@ def should_run_service(args, service):
         or (service != 'test' and service != 'worker' and 'default-no-worker' in args.services)
     )
 
+
 def need_image_for_service(args, image):
     """Does `image` support a service we want to run."""
     for service, service_image in SERVICE_TO_IMAGE.items():
         if should_run_service(args, service) and image == service_image:
             return True
     return False
+
 
 def should_build_image(args, image):
     if image in args.images:
@@ -151,7 +153,16 @@ class CodalabArgs(argparse.Namespace):
         )
 
         #  CLIENT SETTINGS
-        for cmd in [start_cmd, logs_cmd, pull_cmd, build_cmd, run_cmd, stop_cmd, delete_cmd, restart_cmd]:
+        for cmd in [
+            start_cmd,
+            logs_cmd,
+            pull_cmd,
+            build_cmd,
+            run_cmd,
+            stop_cmd,
+            delete_cmd,
+            restart_cmd,
+        ]:
             cmd.add_argument(
                 '--dry-run',
                 action='store_true',
@@ -594,6 +605,7 @@ class CodalabServiceManager(object):
 
     def push_image(self, image):
         self._run_docker_cmd('push codalab/%s:%s' % (image, self.args.version))
+
     def pull_image(self, image):
         self._run_docker_cmd('pull codalab/%s:%s' % (image, self.args.version))
 
@@ -671,7 +683,9 @@ class CodalabServiceManager(object):
         self._run_compose_cmd(
             ('run --no-deps --rm --entrypoint="" --user=%s ' % uid)
             + service
-            + (' bash -c "%s"' % cmd)
+            + (
+                ' bash -c \'%s\'' % cmd
+            )  # TODO: replace with shlex.quote(cmd) once we're on Python 3
         )
 
     def start_services(self):
@@ -705,9 +719,13 @@ class CodalabServiceManager(object):
                 root=True,
             )
 
-            print_header('Initializing and migrating the database with alembic')
-            self.run_service_cmd("%salembic upgrade head" % cmd_prefix, root=True)
-            self.run_service_cmd("%salembic stamp head" % cmd_prefix, root=True)
+            print_header('Initializing/migrating the database with alembic')
+            self.run_service_cmd("%secho mysql ready" % cmd_prefix, root=True)
+            # The first time, we need to stamp; after that upgrade.
+            self.run_service_cmd(
+                "if [ $(alembic current | wc -l) -gt 0 ]; then echo upgrade; alembic upgrade head; else echo stamp; alembic stamp head; fi",
+                root=True,
+            )
 
         self.bring_up_service('rest-server')
 
