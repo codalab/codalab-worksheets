@@ -115,6 +115,7 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, incl
         assert isinstance(a, str)
     # Travis only prints ASCII
     print('>> %s' % " ".join([a.decode("utf-8").encode("ascii", errors='replace') for a in args]))
+    sys.stdout.flush()
 
     try:
         if include_stderr:
@@ -133,7 +134,9 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, incl
     else:
         colorize = Colorizer.cyan
     print(colorize(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
+    sys.stdout.flush()
     print(sanitize(output, max_output_chars))
+    sys.stdout.flush()
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
 

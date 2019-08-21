@@ -56,10 +56,16 @@ def main():
     service_manager.execute()
 
 
+def get_default_version():
+    """Get the current git branch."""
+    return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+
+
 class CodalabArgs(argparse.Namespace):
     DEFAULT_ARGS = {
-        'version': 'latest',
+        'version': get_default_version(),
         'dev': False,
+        'pull': False,
         'push': False,
         'docker_user': None,
         'docker_password': None,
@@ -203,7 +209,7 @@ class CodalabArgs(argparse.Namespace):
                 '--version',
                 '-v',
                 type=str,
-                help='CodaLab version to use for building and deployment',
+                help='CodaLab version to use for building and deployment (defaults to branch name, set only for Travis CI)',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
@@ -211,6 +217,12 @@ class CodalabArgs(argparse.Namespace):
                 '-d',
                 action='store_true',
                 help='If specified, mount local code for frontend so that changes are reflected right away',
+                default=argparse.SUPPRESS,
+            )
+            cmd.add_argument(
+                '--pull',
+                action='store_true',
+                help='If specified, pull images from Docker Hub (for caching)',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
@@ -523,7 +535,7 @@ class CodalabServiceManager(object):
                     raise
         for bundle_store in self.args.bundle_stores:
             try:
-                os.makedirs(self.args.bundle_store)
+                os.makedirs(bundle_store)
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
@@ -555,20 +567,45 @@ class CodalabServiceManager(object):
 
     def build_image(self, image):
         print_header('Building {} image'.format(image))
+        master_docker_image = 'codalab/{}:{}'.format(image, 'master')
+        docker_image = 'codalab/{}:{}'.format(image, self.args.version)
+
+        # Pull the previous image on this version (branch) if we have it.  Otherwise, use master.
+        if self.args.pull:
+            if self._run_docker_cmd('pull {}'.format(docker_image), allow_fail=True):
+                cache_image = docker_image
+            else:
+                self._run_docker_cmd('pull {}'.format(master_docker_image))
+                cache_image = master_docker_image
+            cache_args = ' --cache-from {}'.format(cache_image)
+        else:
+            cache_args = ''
+
+        # Build the image using the cache
         self._run_docker_cmd(
-            'build -t codalab/%s:%s -f docker/dockerfiles/Dockerfile.%s .'
-            % (image, self.args.version, image)
+            'build%s -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            % (cache_args, docker_image, image)
         )
 
     def push_image(self, image):
         self._run_docker_cmd('push codalab/%s:%s' % (image, self.args.version))
 
-    def _run_docker_cmd(self, cmd):
+    def _run_docker_cmd(self, cmd, allow_fail=False):
+        """Return whether the command succeeded."""
         command_string = 'docker ' + cmd
         print('(cd {}; {})'.format(self.root_dir, command_string))
-        if not self.args.dry_run:
-            subprocess.check_call(command_string, shell=True, cwd=self.root_dir)
+        if self.args.dry_run:
+            success = True
+        else:
+            try:
+                subprocess.check_call(command_string, shell=True, cwd=self.root_dir)
+                success = True
+            except subprocess.CalledProcessError as e:
+                success = False
+                if not allow_fail:
+                    raise e
         print('')
+        return success
 
     def _run_compose_cmd(self, cmd):
         files_string = ' -f '.join(self.compose_files)
@@ -579,7 +616,9 @@ class CodalabServiceManager(object):
         )
         compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in self.compose_env.items())
         print('(cd {}; {} {})'.format(self.compose_cwd, compose_env_string, command_string))
-        if not self.args.dry_run:
+        if self.args.dry_run:
+            success = True
+        else:
             try:
                 popen = subprocess.Popen(
                     command_string,
@@ -587,13 +626,21 @@ class CodalabServiceManager(object):
                     env=self.compose_env,
                     shell=True,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
                 )
-                for stdout_line in popen.stdout:
+                # Note: don't do `for stdout_line in popen.stdout` because that buffers.
+                while True:
+                    stdout_line = popen.stdout.readline()
+                    if not stdout_line:
+                        break
                     print(
                         "process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace'),
                         end="",
                     )
+                popen.wait()
+                success = popen.returncode == 0
+                if not success:
+                    raise Exception('Command exited with code {}'.format(popen.returncode))
             except subprocess.CalledProcessError as e:
                 print(
                     "CalledProcessError: {}, {}".format(
@@ -602,6 +649,7 @@ class CodalabServiceManager(object):
                 )
                 raise e
         print('')
+        return success
 
     def bring_up_service(self, service):
         if should_run_service(self.args, service):
