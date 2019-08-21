@@ -489,6 +489,8 @@ class CodalabServiceManager(object):
         if args.mysql_port:
             environment['CODALAB_MYSQL_PORT'] = args.mysql_port
         if args.use_ssl:
+            assert args.ssl_cert_file
+            assert args.ssl_key_file
             environment['CODALAB_SSL_CERT_FILE'] = args.ssl_cert_file
             environment['CODALAB_SSL_KEY_FILE'] = args.ssl_key_file
         if 'DOCKER_HOST' in os.environ:
