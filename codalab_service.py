@@ -274,7 +274,7 @@ class CodalabArgs(argparse.Namespace):
             '-s',
             nargs='*',
             help='List of services to run',
-            choices=SERVICES 
+            choices=SERVICES
             + ['default', 'default-no-worker', 'init', 'update', 'test', 'monitor'],
             default=argparse.SUPPRESS,
         )
