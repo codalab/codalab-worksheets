@@ -17,6 +17,7 @@ from sqlalchemy.types import (
     String,
     Text,
     Unicode,
+    UnicodeText,
 )
 from sqlalchemy.sql.schema import ForeignKeyConstraint
 
@@ -47,8 +48,8 @@ bundle_metadata = Table(
     db_metadata,
     Column('id', Integer, primary_key=True, nullable=False),
     Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
-    Column('metadata_key', String(63, collation='utf8mb4_unicode_ci'), nullable=False),
-    Column('metadata_value', Text(collation='utf8mb4_unicode_ci'), nullable=False),
+    Column('metadata_key', Unicode(63), nullable=False),
+    Column('metadata_value', UnicodeText, nullable=False),
     Index('metadata_kv_index', 'metadata_key', 'metadata_value', mysql_length=63),
     sqlite_autoincrement=True,
 )
@@ -104,7 +105,7 @@ worksheet_item = Table(
     Column('bundle_uuid', String(63), nullable=True),
     Column('subworksheet_uuid', String(63), nullable=True),
     Column(
-        'value', Text(collation='utf8mb4_unicode_ci'), nullable=False
+        'value', UnicodeText, nullable=False
     ),  # TODO: make this nullable
     Column('type', String(20), nullable=False),
     Column('sort_key', Integer, nullable=True),
@@ -120,7 +121,7 @@ worksheet_tag = Table(
     db_metadata,
     Column('id', Integer, primary_key=True, nullable=False),
     Column('worksheet_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
-    Column('tag', String(63, collation='utf8mb4_unicode_ci'), nullable=False),
+    Column('tag', Unicode(63), nullable=False),
     Index('worksheet_tag_worksheet_uuid_index', 'worksheet_uuid'),
     Index('worksheet_tag_tag_index', 'tag'),
     sqlite_autoincrement=True,
