@@ -28,7 +28,7 @@ def print_header(description):
 
 def should_run_service(args, service):
     # `default` is generally used to bring up everything for local dev or quick testing.
-    # `default-but-worker` is generally used for real deployment since we don't
+    # `default-no-worker` is generally used for real deployment since we don't
     # want a worker running on the same machine.
     return (
         service in args.services
@@ -36,6 +36,12 @@ def should_run_service(args, service):
         or (service != 'test' and service != 'worker' and 'default-no-worker' in args.services)
     )
 
+def need_image_for_service(args, image):
+    """Does `image` support a service we want to run."""
+    for service, service_image in SERVICE_TO_IMAGE.items():
+        if should_run_service(args, service) and image == service_image:
+            return True
+    return False
 
 def should_build_image(args, image):
     if image in args.images:
@@ -43,10 +49,7 @@ def should_build_image(args, image):
     if 'all' in args.images:
         return True
     if 'services' in args.images:
-        # Build all images that are correspond to the services we're running
-        for service, service_image in SERVICE_TO_IMAGE.items():
-            if should_run_service(args, service) and image == service_image:
-                return True
+        return need_image_for_service(args, image)
     return False
 
 
@@ -133,13 +136,13 @@ class CodalabArgs(argparse.Namespace):
 
         start_cmd = subparsers.add_parser('start', help='Start a CodaLab service instance')
         logs_cmd = subparsers.add_parser('logs', help='View logs for existing CodaLab instance')
+        pull_cmd = subparsers.add_parser('pull', help='Pull images from Docker Hub')
         build_cmd = subparsers.add_parser(
             'build', help='Build CodaLab docker images using the local codebase'
         )
         run_cmd = subparsers.add_parser('run', help='Run a command inside a service container')
-
         stop_cmd = subparsers.add_parser('stop', help='Stop any existing CodaLab service instances')
-        down_cmd = subparsers.add_parser(
+        delete_cmd = subparsers.add_parser(
             'delete',
             help='Bring down any existing CodaLab service instances (and delete all non-external data!)',
         )
@@ -148,7 +151,7 @@ class CodalabArgs(argparse.Namespace):
         )
 
         #  CLIENT SETTINGS
-        for cmd in [start_cmd, logs_cmd, build_cmd, run_cmd, stop_cmd, down_cmd, restart_cmd]:
+        for cmd in [start_cmd, logs_cmd, pull_cmd, build_cmd, run_cmd, stop_cmd, delete_cmd, restart_cmd]:
             cmd.add_argument(
                 '--dry-run',
                 action='store_true',
@@ -254,7 +257,7 @@ class CodalabArgs(argparse.Namespace):
         )
 
         #  DEPLOYMENT SETTINGS
-        for cmd in [start_cmd, stop_cmd, restart_cmd, down_cmd, logs_cmd]:
+        for cmd in [start_cmd, stop_cmd, restart_cmd, delete_cmd, logs_cmd]:
             cmd.add_argument(
                 '--instance-name',
                 type=str,
@@ -543,6 +546,8 @@ class CodalabServiceManager(object):
     def execute(self):
         if self.command == 'build':
             self.build_images()
+        elif self.command == 'pull':
+            self.pull_images()
         elif self.command == 'start':
             if self.args.build_images:
                 self.build_images()
@@ -589,6 +594,8 @@ class CodalabServiceManager(object):
 
     def push_image(self, image):
         self._run_docker_cmd('push codalab/%s:%s' % (image, self.args.version))
+    def pull_image(self, image):
+        self._run_docker_cmd('pull codalab/%s:%s' % (image, self.args.version))
 
     def _run_docker_cmd(self, cmd, allow_fail=False):
         """Return whether the command succeeded."""
@@ -699,11 +706,8 @@ class CodalabServiceManager(object):
             )
 
             print_header('Initializing the database with alembic')
-            self.run_service_cmd("%salembic stamp head" % cmd_prefix, root=True)
-
-        if should_run_service(self.args, 'update'):
-            print_header('Update the database with alembic (run migrations)')
             self.run_service_cmd("%salembic upgrade head" % cmd_prefix, root=True)
+            self.run_service_cmd("%salembic stamp head" % cmd_prefix, root=True)
 
         self.bring_up_service('rest-server')
 
@@ -725,6 +729,10 @@ class CodalabServiceManager(object):
                 "/opt/wait-for-it.sh rest-server:2900 -- python test_cli.py --instance http://rest-server:2900 default",
                 root=(not self.args.codalab_home),
             )
+
+    def pull_images(self):
+        for image in self.SERVICE_IMAGES:
+            self.pull_image(image)
 
     def build_images(self):
         images_to_build = [
