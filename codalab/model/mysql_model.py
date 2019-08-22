@@ -60,7 +60,7 @@ class MySQLModel(BundleModel):
     # (See tables.py for more details.)
 
     def encode_str(self, value):
-        return value
+        return value.encode()
 
     def decode_str(self, value):
-        return value
+        return array.array('B', [ord(char) for char in value]).tostring().decode()
