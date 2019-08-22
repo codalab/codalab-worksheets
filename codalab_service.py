@@ -38,7 +38,7 @@ def should_run_service(args, service):
 
 
 def need_image_for_service(args, image):
-    """Does `image` support a service we want to run."""
+    """Does `image` support a service we want to run?"""
     for service, service_image in SERVICE_TO_IMAGE.items():
         if should_run_service(args, service) and image == service_image:
             return True
