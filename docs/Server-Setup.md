@@ -60,6 +60,15 @@ There are two use cases going forward: (i) development (you're trying to modify
 CodaLab) and (ii) productionization (you want to deploy this as a system that
 people will use).  Each will build on this basic framework in a different way.
 
+If you want to update CodaLab, run the following commands:
+
+    git pull
+    ./codalab_service.py pull
+    ./codalab_service.py start
+
+This will grab the latest Docker images, migrate the database, and start or
+restart all the CodaLab services.  Any ongoing runs should not be affected.
+
 # Development
 
 If you're actively developing and want to test your changes, add the following two flags:
@@ -164,9 +173,8 @@ You can execute commands in the Docker images to see what's going on, for exampl
 
 ## Database migrations
 
-If you just want to update your database, run the following command (which includes something to update the database schema via `alembic`):
-
-    ./codalab_service.py start -bd -s update
+Note: database migrations are run automatically when you start the CodaLab
+services.
 
 If you want to modify the database schema, use `alembic` to create a migration.  Note that everything must be run in Docker, but your modifications are outside in your local codebase.
 
