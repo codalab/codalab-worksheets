@@ -2,6 +2,7 @@
 MySQLModel is a subclass of BundleModel that stores metadata on a MySQL
 server that it connects to with the given connect parameters.
 """
+import array
 from sqlalchemy import create_engine, event, exc
 from sqlalchemy.pool import Pool
 
