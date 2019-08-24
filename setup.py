@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import setuptools
 
 # should match codalab/common.py#CODALAB_VERSION
-CODALAB_VERSION = "0.3.2"
+CODALAB_VERSION = "0.3.3"
 
 if int(setuptools.__version__.split('.')[0]) < 25:
     print(
@@ -27,7 +27,7 @@ setup(
     description='CLI for CodaLab, a platform for reproducible computation',
     long_description=(
         'Visit https://worksheets.codalab.org/ or setup your own server by following the '
-        'instructions in the Wiki (https://github.com/codalab/codalab-worksheets/wiki/Server-Setup).'
+        'instructions in the documentation (https://codalab-worksheets.readthedocs.io/en/latest/Server-Setup).'
     ),
     url='https://github.com/codalab/codalab-worksheets',
     author='CodaLab',
