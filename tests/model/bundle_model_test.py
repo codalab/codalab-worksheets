@@ -129,7 +129,7 @@ class BundleModelTestBase:
 
 
 class BundleModelMySQLTest(BundleModelTestBase, unittest.TestCase):
-    engine_url = 'mysql://%s:%s@mysql:3306/codalab_bundles?charset=utf8mb4' % (
+    engine_url = 'mysql://%s:%s@mysql:3306/codalab_bundles' % (
         # os.getenv('CODALAB_MYSQL_USER'),
         # os.getenv('CODALAB_MYSQL_PWD'),
         'codalab',
