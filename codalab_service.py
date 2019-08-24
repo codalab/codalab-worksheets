@@ -65,7 +65,7 @@ def main():
 
 def get_default_version():
     """Get the current git branch."""
-    return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+    return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8').strip()
 
 
 class CodalabArgs(argparse.Namespace):
@@ -738,13 +738,13 @@ class CodalabServiceManager(object):
         if self.args.external_db_url is None:
             self.bring_up_service('mysql')
             cmd_prefix = '/opt/wait-for-it.sh mysql:3306 -- '
-            mysql_url = 'mysql://%s:%s@mysql:3306/codalab_bundles?charset=utf8mb4' % (
+            mysql_url = 'mysql://%s:%s@mysql:3306/codalab_bundles' % (
                 self.compose_env['CODALAB_MYSQL_USER'],
                 self.compose_env['CODALAB_MYSQL_PWD'],
             )
         else:
             cmd_prefix = ''
-            mysql_url = 'mysql://%s:%s@%s/codalab_bundles?charset=utf8mb4' % (
+            mysql_url = 'mysql://%s:%s@%s/codalab_bundles' % (
                 self.compose_env['CODALAB_MYSQL_USER'],
                 self.compose_env['CODALAB_MYSQL_PWD'],
                 self.args.external_db_url,
