@@ -334,7 +334,7 @@ class ModuleContext(object):
 
     def __enter__(self):
         """Prepares clean environment for test module."""
-        print(Colorizer.yellow("[*][*] SWITCHING TO TEMPORARY WORKSHEET"))
+        print("[*][*] SWITCHING TO TEMPORARY WORKSHEET")
 
         self.original_environ = os.environ.copy()
         self.original_worksheet = run_command([cl, 'work', '-u'])
@@ -342,7 +342,7 @@ class ModuleContext(object):
         self.worksheets.append(temp_worksheet)
         run_command([cl, 'work', temp_worksheet])
 
-        print(Colorizer.yellow("[*][*] BEGIN TEST"))
+        print("[*][*] BEGIN TEST")
 
         return self
 
@@ -354,7 +354,7 @@ class ModuleContext(object):
             if exc_type is AssertionError:
                 print(Colorizer.red("[!] ERROR: %s" % str(exc_value)))
             elif exc_type is KeyboardInterrupt:
-                print(Colorizer.yellow("[!] Caught interrupt! Quitting after cleanup."))
+                print(Colorizer.red("[!] Caught interrupt! Quitting after cleanup."))
             else:
                 print(Colorizer.red("[!] ERROR: Test raised an exception!"))
                 traceback.print_exception(exc_type, exc_value, tb)
@@ -471,10 +471,8 @@ class TestModule(object):
             elif name in cls.modules:
                 modules_to_run.append(cls.modules[name])
             else:
-                print(Colorizer.yellow("[!] Could not find module %s" % name))
-                print(
-                    (Colorizer.yellow("[*] Modules: all %s" % " ".join(list(cls.modules.keys()))))
-                )
+                print(Colorizer.red("[!] Could not find module %s" % name))
+                print(Colorizer.red("[*] Modules: all %s" % " ".join(list(cls.modules.keys()))))
                 sys.exit(1)
 
         print(

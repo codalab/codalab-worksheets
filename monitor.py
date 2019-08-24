@@ -269,7 +269,7 @@ def check_disk_space(paths):
 
 
 # Make sure we can connect (might prompt for username/password)
-if subprocess.call(['cl', 'work', 'localhost::']) != 0:
+if subprocess.call(['cl', 'work']) != 0:
     sys.exit(1)
 
 # Begin monitoring loop
@@ -293,7 +293,7 @@ while True:
         # Get statistics on bundles
         if ping_time():
             # Simple things
-            run_command(['cl', 'work', 'localhost::'])
+            run_command(['cl', 'work'])
             run_command(['cl', 'search', '.count'])
             run_command(['cl', 'workers'])
 

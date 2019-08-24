@@ -40,7 +40,7 @@ jobs:
         # Otherwise if we're on master or staging build named images
         - provider: script
           # Remove first char of tag (v) to get version number from tag
-          script: ./scripts/travis-deploy.sh ${TRAVIS_TAG#?} release
+          script: ./scripts/travis-deploy.sh ${TRAVIS_TAG#?}
           on:
             # only build on valid semver tags
             tags: true

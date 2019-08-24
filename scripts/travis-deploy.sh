@@ -1,20 +1,16 @@
 #!/bin/bash
-# travis-deploy.sh
+
 # Called by Travis CI at the end of a successful build to do necessary
 # deployment actions like building and pushing docker images and PyPI
-# packages
+# packages.  The two possibilities are:
+#
+#   travis-deploy.sh master
+#   travis-deploy.sh 0.3.3   (for releases)
 
-TAG=$1
-RELEASE=0
-if [ "$2" = "release" ]; then
-  RELEASE=1
+tag=$1
+
+python3.6 codalab_service.py build all --version $tag --pull --push
+if [ "$tag" != "master" ]; then
+  python3.6 codalab_service.py build all --version latest --pull --push
+  ./scripts/upload-to-pypi.sh $tag
 fi
-
-if [ "$RELEASE" = "1" ]; then
-  python3.6 codalab_service.py build all -v $TAG --push
-  python3.6 codalab_service.py build all -v latest --push
-  python3.6 scripts/upload-to-pypi.sh $TAG
-else
-  python3.6 codalab_service.py build all -v $TAG --push
-fi
-
