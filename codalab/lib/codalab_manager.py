@@ -190,7 +190,7 @@ class CodaLabManager(object):
                 'rest_host': 'localhost',
                 'rest_port': 2900,
                 'class': 'MySQLModel',
-                'engine_url': 'mysql://codalab@localhost:3306/codalab_bundles?charset=utf8mb4',
+                'engine_url': 'mysql://codalab@localhost:3306/codalab_bundles',
                 'auth': {'class': 'RestOAuthHandler'},
                 'verbose': 1,
             },
