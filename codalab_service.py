@@ -10,9 +10,12 @@ import argparse
 import errno
 import os
 import subprocess
-import sys
 
-SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker']
+DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
+
+ALL_SERVICES = DEFAULT_SERVICES + ['test', 'monitor']
+
+ALL_NO_SERVICES = ['no-' + service for service in ALL_SERVICES]
 
 SERVICE_TO_IMAGE = {
     'frontend': 'frontend',
@@ -28,13 +31,12 @@ def print_header(description):
 
 def should_run_service(args, service):
     # `default` is generally used to bring up everything for local dev or quick testing.
-    # `default-no-worker` is generally used for real deployment since we don't
-    # want a worker running on the same machine.
-    return (
-        service in args.services
-        or (service != 'test' and 'default' in args.services)
-        or (service != 'test' and service != 'worker' and 'default-no-worker' in args.services)
-    )
+    # `default no-worker` is generally used for real deployment since we don't want a worker running on the same machine.
+    services = [] if args.services is None else args.services
+    if 'default' in args.services:
+        services.extend(DEFAULT_SERVICES)
+
+    return (service in services) and ('no-' + service not in services)
 
 
 def need_image_for_service(args, image):
@@ -100,6 +102,10 @@ class CodalabArgs(argparse.Namespace):
         'ssl_key_file': None,
         'follow': False,
         'tail': None,
+        'admin_email': None,
+        'email_host': None,
+        'email_user': None,
+        'email_password': None,
     }
 
     ARG_TO_ENV_VAR = {
@@ -125,6 +131,10 @@ class CodalabArgs(argparse.Namespace):
         'mysql_port': 'CODALAB_MYSQL_PORT',
         'ssl_cert_file': 'CODALAB_SSL_CERT_FILE',
         'ssl_key_file': 'CODALAB_SSL_KEY_FILE',
+        'admin_email': 'CODALAB_ADMIN_EMAIL',
+        'email_host': 'CODALAB_EMAIL_HOST',
+        'email_user': 'CODALAB_EMAIL_USER',
+        'email_password': 'CODALAB_EMAIL_PASSWORD',
     }
 
     @staticmethod
@@ -301,7 +311,7 @@ class CodalabArgs(argparse.Namespace):
             '-s',
             nargs='*',
             help='List of services to run',
-            choices=SERVICES + ['default', 'default-no-worker', 'init', 'update', 'test'],
+            choices=ALL_SERVICES + ALL_NO_SERVICES + ['default'],
             default=argparse.SUPPRESS,
         )
 
@@ -311,6 +321,30 @@ class CodalabArgs(argparse.Namespace):
             '--mysql-root-password',
             type=str,
             help='Root password for the database',
+            default=argparse.SUPPRESS,
+        )
+
+        #  EMAIL CREDENTIALS
+
+        start_cmd.add_argument(
+            '--admin-email',
+            type=str,
+            help='Recipient email address for receiving email',
+            default=argparse.SUPPRESS,
+        )
+        start_cmd.add_argument(
+            '--email-host', type=str, help='Email host for sending email', default=argparse.SUPPRESS
+        )
+        start_cmd.add_argument(
+            '--email-user',
+            type=str,
+            help='Username of email account for sending email',
+            default=argparse.SUPPRESS,
+        )
+        start_cmd.add_argument(
+            '--email-password',
+            type=str,
+            help='Password of email account for sending email',
             default=argparse.SUPPRESS,
         )
 
@@ -392,7 +426,7 @@ class CodalabArgs(argparse.Namespace):
             nargs='*',
             default='default',
             help='Services to print logs for',
-            choices=SERVICES + ['default'],
+            choices=ALL_SERVICES + ['default'],
         )
         logs_cmd.add_argument(
             '--follow',
@@ -415,7 +449,7 @@ class CodalabArgs(argparse.Namespace):
             'service',
             metavar='SERVICE',
             type=str,
-            choices=SERVICES,
+            choices=ALL_SERVICES,
             help='Service container to run command on',
         )
         run_cmd.add_argument('cmd', metavar='CMD', type=str, help='Command to run')
@@ -495,6 +529,15 @@ class CodalabServiceManager(object):
             environment['CODALAB_SSL_KEY_FILE'] = args.ssl_key_file
         if 'DOCKER_HOST' in os.environ:
             environment['DOCKER_HOST'] = os.environ['DOCKER_HOST']
+        if args.admin_email:
+            environment['CODALAB_ADMIN_EMAIL'] = args.admin_email
+        if args.email_host:
+            environment['CODALAB_EMAIL_HOST'] = args.email_host
+        if args.email_user:
+            environment['CODALAB_EMAIL_USER'] = args.email_user
+        if args.email_password:
+            environment['CODALAB_EMAIL_PASSWORD'] = args.email_password
+
         return environment
 
     @staticmethod
@@ -738,6 +781,19 @@ class CodalabServiceManager(object):
                 root=(not self.args.codalab_home),
             )
 
+            for property, env_var in [
+                ('server/admin_email', 'CODALAB_ADMIN_EMAIL'),
+                ('email/host', 'CODALAB_EMAIL_HOST'),
+                ('email/user', 'CODALAB_EMAIL_USER'),
+                ('email/password', 'CODALAB_EMAIL_PASSWORD'),
+            ]:
+                if env_var in self.compose_env:
+                    print_header('Configuring %s' % property)
+                    self.run_service_cmd(
+                        "cl config %s %s" % (property, self.compose_env[env_var]),
+                        root=(not self.args.codalab_home),
+                    )
+
         self.bring_up_service('bundle-manager')
         self.bring_up_service('frontend')
         self.bring_up_service('nginx')
@@ -747,6 +803,13 @@ class CodalabServiceManager(object):
             print_header('Running tests')
             self.run_service_cmd(
                 "/opt/wait-for-it.sh rest-server:2900 -- python test_cli.py --instance http://rest-server:2900 default",
+                root=(not self.args.codalab_home),
+            )
+
+        if should_run_service(self.args, 'monitor'):
+            print_header('Running monitoring service')
+            self.run_service_cmd(
+                "/opt/wait-for-it.sh rest-server:2900 -- python monitor.py",
                 root=(not self.args.codalab_home),
             )
 
