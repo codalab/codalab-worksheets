@@ -21,6 +21,7 @@ SERVICE_TO_IMAGE = {
     'frontend': 'frontend',
     'rest-server': 'server',
     'bundle-manager': 'server',
+    'monitor': 'server',
     'worker': 'worker',
 }
 
@@ -92,6 +93,7 @@ class CodalabArgs(argparse.Namespace):
         'codalab_home': None,
         'mysql_mount': None,
         'worker_dir': None,
+        'monitor_dir': None,
         'bundle_stores': [],
         'http_port': '80',
         'rest_port': '2900',
@@ -112,7 +114,7 @@ class CodalabArgs(argparse.Namespace):
         'version': 'CODALAB_VERSION',
         'dev': 'CODALAB_DEV',
         'push': 'CODALAB_PUSH',
-        'external_db_url': 'CODALAB_EXTERNAL_DB_URL',
+        'mysql_host': 'CODALAB_MYSQL_HOST',
         'docker_user': 'DOCKER_USER',
         'docker_password': 'DOCKER_PWD',
         'user_compose_file': 'CODALAB_USER_COMPOSE_FILE',
@@ -125,10 +127,12 @@ class CodalabArgs(argparse.Namespace):
         'codalab_home': 'CODALAB_SERVICE_HOME',
         'mysql_mount': 'CODALAB_MYSQL_MOUNT',
         'worker_dir': 'CODALAB_WORKER_DIR',
+        'monitor_dir': 'CODALAB_MONITOR_DIR',
         'http_port': 'CODALAB_HTTP_PORT',
         'rest_port': 'CODALAB_REST_PORT',
         'frontend_port': 'CODALAB_FRONTEND_PORT',
         'mysql_port': 'CODALAB_MYSQL_PORT',
+        'use_ssl': 'CODALAB_USE_SSL',
         'ssl_cert_file': 'CODALAB_SSL_CERT_FILE',
         'ssl_key_file': 'CODALAB_SSL_KEY_FILE',
         'admin_email': 'CODALAB_ADMIN_EMAIL',
@@ -375,6 +379,12 @@ class CodalabArgs(argparse.Namespace):
             default=argparse.SUPPRESS,
         )
         start_cmd.add_argument(
+            '--monitor-dir',
+            type=str,
+            help='Path on the host machine to store monitor directory',
+            default=argparse.SUPPRESS,
+        )
+        start_cmd.add_argument(
             '--bundle-store',
             type=str,
             help='Path on the host machine to store bundle data files (by default these are ephemeral)',
@@ -467,32 +477,29 @@ class CodalabArgs(argparse.Namespace):
         return args
 
     def __init__(self):
-        for arg in self.DEFAULT_ARGS.keys():
-            setattr(self, arg, None)
-        self.root_dir = os.path.dirname(os.path.realpath(__file__))
-
-    def _apply_defaults(self):
+        # Use defaults
         for arg, default in self.DEFAULT_ARGS.items():
-            if getattr(self, arg) is None:
-                setattr(self, arg, default)
+            setattr(self, arg, default)
 
+        # Non-constant defaults
+        self.root_dir = os.path.dirname(os.path.realpath(__file__))
         if self.worker_dir is None:
             self.worker_dir = os.path.join(self.root_dir, 'codalab-worker-scratch')
+        if self.monitor_dir is None:
+            self.monitor_dir = os.path.join(self.root_dir, 'monitor.out')
 
     def apply_environment(self, env):
         for arg, var in self.ARG_TO_ENV_VAR.items():
             if var in env:
                 setattr(self, arg, env[var])
-        self._apply_defaults()
-
 
 class CodalabServiceManager(object):
-
     SERVICE_IMAGES = ['server', 'frontend', 'worker']
     ALL_IMAGES = SERVICE_IMAGES + ['default-cpu', 'default-gpu']
 
     @staticmethod
     def resolve_env_vars(args):
+        """Return environment with all the arguments (which might have come from the environment too)."""
         environment = {
             'CODALAB_MYSQL_ROOT_PWD': args.mysql_root_password,
             'CODALAB_MYSQL_USER': args.mysql_user,
@@ -502,16 +509,13 @@ class CodalabServiceManager(object):
             'CODALAB_HTTP_PORT': args.http_port,
             'CODALAB_VERSION': args.version,
             'CODALAB_WORKER_NETWORK_NAME': '%s-worker-network' % args.instance_name,
+            'CODALAB_MONITOR_DIR': args.monitor_dir,
             'PATH': os.environ['PATH'],
         }
-        if args.uid:
-            environment['CODALAB_UID'] = args.uid
-        else:
-            environment['CODALAB_UID'] = '%s:%s' % (os.getuid(), os.getgid())
-        if args.codalab_home:
-            environment['CODALAB_SERVICE_HOME'] = args.codalab_home
-        else:
-            environment['CODALAB_SERVICE_HOME'] = '/home/codalab'
+        if args.external_db_url:
+            environment['CODALAB_EXTERNAL_DB_URL'] = args.external_db_url
+        environment['CODALAB_UID'] = args.uid if args.uid else '%s:%s' % (os.getuid(), os.getgid())
+        environment['CODALAB_HOME'] = args.codalab_home if args.codalab_home else '/home/codalab'
         if args.mysql_mount:
             environment['CODALAB_MYSQL_MOUNT'] = args.mysql_mount
         if should_run_service(args, 'worker'):
@@ -525,6 +529,7 @@ class CodalabServiceManager(object):
         if args.use_ssl:
             assert args.ssl_cert_file
             assert args.ssl_key_file
+            environment['CODALAB_USE_SSL'] = args.use_ssl
             environment['CODALAB_SSL_CERT_FILE'] = args.ssl_cert_file
             environment['CODALAB_SSL_KEY_FILE'] = args.ssl_key_file
         if 'DOCKER_HOST' in os.environ:
@@ -807,11 +812,7 @@ class CodalabServiceManager(object):
             )
 
         if should_run_service(self.args, 'monitor'):
-            print_header('Running monitoring service')
-            self.run_service_cmd(
-                "/opt/wait-for-it.sh rest-server:2900 -- python monitor.py",
-                root=(not self.args.codalab_home),
-            )
+            self.bring_up_service('monitor')
 
     def pull_images(self):
         for image in self.SERVICE_IMAGES:

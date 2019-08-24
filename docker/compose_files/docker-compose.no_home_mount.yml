@@ -6,12 +6,12 @@ volumes:
 services:
   rest-server:
     volumes:
-      - service_home:${CODALAB_SERVICE_HOME}
+      - service_home:${CODALAB_HOME}
 
   bundle-manager:
     volumes:
-      - service_home:${CODALAB_SERVICE_HOME}
+      - service_home:${CODALAB_HOME}
 
   worker:
     volumes:
-      - service_home:${CODALAB_SERVICE_HOME}
+      - service_home:${CODALAB_HOME}

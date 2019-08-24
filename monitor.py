@@ -51,21 +51,14 @@ parser.add_argument(
 args = parser.parse_args()
 
 # Get MySQL username and password for bundles
-config_path = os.path.join(args.codalab_home, 'config.json')
-config = json.loads(open(config_path).read())
-engine_url = config['server']['engine_url']
-m = re.match('mysql://(.+):(.+)@([^:]+)(:(\d+))?/(.+)', engine_url)
-if not m:
-    print('Can\'t extract server.engine_url from %s' % config_path)
-    sys.exit(1)
-bundles_user = m.group(1)
-bundles_password = m.group(2)
-bundles_host = m.group(3)
-bundles_port = m.group(5) or 3306
-bundles_db = m.group(6)
+bundles_username = os.environ['CODALAB_MYSQL_USERNAME']
+bundles_password = os.environ['CODALAB_MYSQL_PASSWORD']
+bundles_host = os.environ['CODALAB_MYSQL_HOST']
+bundles_port = os.environ['CODALAB_MYSQL_PORT']
+bundles_database = os.environ['CODALAB_MYSQL_DATABASE']
 print(
     'user = {}, password = {}, db = {}, host = {}, port = {}'.format(
-        bundles_user, '*' * len(bundles_password), bundles_db, bundles_host, bundles_port
+        bundles_username, '*' * len(bundles_password), bundles_database, bundles_host, bundles_port
     )
 )
 
@@ -232,15 +225,15 @@ def backup_db():
         print >> f, '[client]'
         print >> f, 'host="%s"' % bundles_host
         print >> f, 'port="%s"' % bundles_port
-        print >> f, 'user="%s"' % bundles_user
+        print >> f, 'user="%s"' % bundles_username
         print >> f, 'password="%s"' % bundles_password
-    path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_db, date)
+    path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_database, date)
     run_command(
         [
             'bash',
             '-c',
             'mysqldump --defaults-file=%s --single-transaction --quick %s | gzip > %s'
-            % (mysql_conf_path, bundles_db, path),
+            % (mysql_conf_path, bundles_database, path),
         ],
         600,
         600,
@@ -253,7 +246,7 @@ def backup_db():
 
 
 def check_disk_space(paths):
-    lines = run_command(['df'] + paths).split('\n')[1:]
+    lines = run_command(['df', '-h'] + paths).split('\n')[1:]
     results = [int(line.split()[3]) for line in lines]
     # Flag an error if disk space running low
     total = sum(results)
@@ -281,7 +274,8 @@ while True:
 
         # Check remaining disk space
         if ping_time():
-            check_disk_space(['/var/lib/docker'])
+            check_disk_space(['/'])  # Always bad if root partition is low
+            check_disk_space(['/var/lib/docker'])  # Should usually be symlinked somewhere else
             base_path = os.path.join(args.codalab_home, 'partitions')
             paths = [os.path.join(base_path, fname) for fname in os.listdir(base_path)]
             check_disk_space(paths)
@@ -289,9 +283,9 @@ while True:
         # Get statistics on bundles
         if ping_time():
             # Simple things
+            run_command(['cl', 'workers'])
             run_command(['cl', 'work'])
             run_command(['cl', 'search', '.count'])
-            run_command(['cl', 'workers'])
 
         if run_time():
             # More intense

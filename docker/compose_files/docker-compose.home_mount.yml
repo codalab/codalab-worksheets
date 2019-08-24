@@ -3,8 +3,8 @@ version: '3.5'
 x-codalab-home-mount:
   &codalab-home-mount
   type: bind
-  source: ${CODALAB_SERVICE_HOME}
-  target: ${CODALAB_SERVICE_HOME}
+  source: ${CODALAB_HOME}
+  target: ${CODALAB_HOME}
 
 services:
   rest-server:

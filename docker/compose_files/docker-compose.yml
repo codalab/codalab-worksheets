@@ -8,9 +8,15 @@ x-non-blocking-logging:
 
 x-codalab-env:
   &codalab-env
-  - CODALAB_HOME=${CODALAB_SERVICE_HOME}
-  - CODALAB_USERNAME=${CODALAB_ROOT_USER}
-  - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+  - CODALAB_HOME=${CODALAB_HOME}
+  - CODALAB_USERNAME=${CODALAB_ROOT_USERNAME}
+  - CODALAB_PASSWORD=${CODALAB_ROOT_PASSWORD}
+
+x-codalab-mysql-env:
+  &codalab-mysql-env
+  - CODALAB_MYSQL_HOST=${CODALAB_MYSQL_HOST}
+  - CODALAB_MYSQL_USERNAME=${CODALAB_MYSQL_USERNAME}
+  - CODALAB_MYSQL_PASSWORD=${CODALAB_MYSQL_PASSWORD}
 
 services:
   rest-server:
@@ -74,10 +80,9 @@ services:
     logging:
       *non-blocking-logging
 
-  tests:
+  monitor:
     image: codalab/server:${CODALAB_VERSION}
-    working_dir: /opt/codalab-worksheets/
-    command: python ./test-cli.py all --instance http://rest-server:2900
+    command: python ./monitor.py --log-path monitor.out/monitor.log --backup-path monitor.out
     environment:
       *codalab-env
     depends_on:
@@ -86,6 +91,9 @@ services:
       - service
     logging:
       *non-blocking-logging
+    volumes:
+      - /var/lib/docker:/var/lib/docker
+      - ${CODALAB_MONITOR_DIR}:/opt/codalab-worksheets/monitor.out
 
 networks:
   worker:
