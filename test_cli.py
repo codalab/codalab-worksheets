@@ -913,7 +913,7 @@ def test(ctx):
     non_ascii_tags = ['你好世界😊', 'fáncy ünicode']
     run_command([cl, 'wedit', wname, '--tags'] + non_ascii_tags)
     # check_contains(['Tags: %s' % ' '.join(non_ascii_tags)], run_command([cl, 'ls', '-w', wuuid]))
-    check_contains(non_ascii_tags, get_info(wuuid, 'tags'))
+    check_contains(non_ascii_tags, run_command([cl, 'ls', '-w', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
     check_contains(r'Tags:\s+###', run_command([cl, 'ls', '-w', wuuid]))
