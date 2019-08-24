@@ -10,9 +10,12 @@ import argparse
 import errno
 import os
 import subprocess
-import sys
 
-SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker']
+DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
+
+ALL_SERVICES = DEFAULT_SERVICES + ['test', 'monitor']
+
+ALL_NO_SERVICES = ['no-' + service for service in ALL_SERVICES]
 
 SERVICE_TO_IMAGE = {
     'frontend': 'frontend',
@@ -28,13 +31,20 @@ def print_header(description):
 
 def should_run_service(args, service):
     # `default` is generally used to bring up everything for local dev or quick testing.
-    # `default-but-worker` is generally used for real deployment since we don't
-    # want a worker running on the same machine.
-    return (
-        service in args.services
-        or (service != 'test' and 'default' in args.services)
-        or (service != 'test' and service != 'worker' and 'default-no-worker' in args.services)
-    )
+    # `default no-worker` is generally used for real deployment since we don't want a worker running on the same machine.
+    services = [] if args.services is None else args.services
+    if 'default' in args.services:
+        services.extend(DEFAULT_SERVICES)
+
+    return (service in services) and ('no-' + service not in services)
+
+
+def need_image_for_service(args, image):
+    """Does `image` support a service we want to run?"""
+    for service, service_image in SERVICE_TO_IMAGE.items():
+        if should_run_service(args, service) and image == service_image:
+            return True
+    return False
 
 
 def should_build_image(args, image):
@@ -43,10 +53,7 @@ def should_build_image(args, image):
     if 'all' in args.images:
         return True
     if 'services' in args.images:
-        # Build all images that are correspond to the services we're running
-        for service, service_image in SERVICE_TO_IMAGE.items():
-            if should_run_service(args, service) and image == service_image:
-                return True
+        return need_image_for_service(args, image)
     return False
 
 
@@ -95,6 +102,10 @@ class CodalabArgs(argparse.Namespace):
         'ssl_key_file': None,
         'follow': False,
         'tail': None,
+        'admin_email': None,
+        'email_host': None,
+        'email_user': None,
+        'email_password': None,
     }
 
     ARG_TO_ENV_VAR = {
@@ -120,6 +131,10 @@ class CodalabArgs(argparse.Namespace):
         'mysql_port': 'CODALAB_MYSQL_PORT',
         'ssl_cert_file': 'CODALAB_SSL_CERT_FILE',
         'ssl_key_file': 'CODALAB_SSL_KEY_FILE',
+        'admin_email': 'CODALAB_ADMIN_EMAIL',
+        'email_host': 'CODALAB_EMAIL_HOST',
+        'email_user': 'CODALAB_EMAIL_USER',
+        'email_password': 'CODALAB_EMAIL_PASSWORD',
     }
 
     @staticmethod
@@ -133,13 +148,13 @@ class CodalabArgs(argparse.Namespace):
 
         start_cmd = subparsers.add_parser('start', help='Start a CodaLab service instance')
         logs_cmd = subparsers.add_parser('logs', help='View logs for existing CodaLab instance')
+        pull_cmd = subparsers.add_parser('pull', help='Pull images from Docker Hub')
         build_cmd = subparsers.add_parser(
             'build', help='Build CodaLab docker images using the local codebase'
         )
         run_cmd = subparsers.add_parser('run', help='Run a command inside a service container')
-
         stop_cmd = subparsers.add_parser('stop', help='Stop any existing CodaLab service instances')
-        down_cmd = subparsers.add_parser(
+        delete_cmd = subparsers.add_parser(
             'delete',
             help='Bring down any existing CodaLab service instances (and delete all non-external data!)',
         )
@@ -148,7 +163,16 @@ class CodalabArgs(argparse.Namespace):
         )
 
         #  CLIENT SETTINGS
-        for cmd in [start_cmd, logs_cmd, build_cmd, run_cmd, stop_cmd, down_cmd, restart_cmd]:
+        for cmd in [
+            start_cmd,
+            logs_cmd,
+            pull_cmd,
+            build_cmd,
+            run_cmd,
+            stop_cmd,
+            delete_cmd,
+            restart_cmd,
+        ]:
             cmd.add_argument(
                 '--dry-run',
                 action='store_true',
@@ -254,7 +278,7 @@ class CodalabArgs(argparse.Namespace):
         )
 
         #  DEPLOYMENT SETTINGS
-        for cmd in [start_cmd, stop_cmd, restart_cmd, down_cmd, logs_cmd]:
+        for cmd in [start_cmd, stop_cmd, restart_cmd, delete_cmd, logs_cmd]:
             cmd.add_argument(
                 '--instance-name',
                 type=str,
@@ -287,7 +311,7 @@ class CodalabArgs(argparse.Namespace):
             '-s',
             nargs='*',
             help='List of services to run',
-            choices=SERVICES + ['default', 'default-no-worker', 'init', 'update', 'test'],
+            choices=ALL_SERVICES + ALL_NO_SERVICES + ['default'],
             default=argparse.SUPPRESS,
         )
 
@@ -297,6 +321,30 @@ class CodalabArgs(argparse.Namespace):
             '--mysql-root-password',
             type=str,
             help='Root password for the database',
+            default=argparse.SUPPRESS,
+        )
+
+        #  EMAIL CREDENTIALS
+
+        start_cmd.add_argument(
+            '--admin-email',
+            type=str,
+            help='Recipient email address for receiving email',
+            default=argparse.SUPPRESS,
+        )
+        start_cmd.add_argument(
+            '--email-host', type=str, help='Email host for sending email', default=argparse.SUPPRESS
+        )
+        start_cmd.add_argument(
+            '--email-user',
+            type=str,
+            help='Username of email account for sending email',
+            default=argparse.SUPPRESS,
+        )
+        start_cmd.add_argument(
+            '--email-password',
+            type=str,
+            help='Password of email account for sending email',
             default=argparse.SUPPRESS,
         )
 
@@ -378,7 +426,7 @@ class CodalabArgs(argparse.Namespace):
             nargs='*',
             default='default',
             help='Services to print logs for',
-            choices=SERVICES + ['default'],
+            choices=ALL_SERVICES + ['default'],
         )
         logs_cmd.add_argument(
             '--follow',
@@ -401,7 +449,7 @@ class CodalabArgs(argparse.Namespace):
             'service',
             metavar='SERVICE',
             type=str,
-            choices=SERVICES,
+            choices=ALL_SERVICES,
             help='Service container to run command on',
         )
         run_cmd.add_argument('cmd', metavar='CMD', type=str, help='Command to run')
@@ -454,7 +502,7 @@ class CodalabServiceManager(object):
             'CODALAB_HTTP_PORT': args.http_port,
             'CODALAB_VERSION': args.version,
             'CODALAB_WORKER_NETWORK_NAME': '%s-worker-network' % args.instance_name,
-            #'PATH': os.environ['PATH'],
+            'PATH': os.environ['PATH'],
         }
         if args.uid:
             environment['CODALAB_UID'] = args.uid
@@ -475,10 +523,21 @@ class CodalabServiceManager(object):
         if args.mysql_port:
             environment['CODALAB_MYSQL_PORT'] = args.mysql_port
         if args.use_ssl:
+            assert args.ssl_cert_file
+            assert args.ssl_key_file
             environment['CODALAB_SSL_CERT_FILE'] = args.ssl_cert_file
             environment['CODALAB_SSL_KEY_FILE'] = args.ssl_key_file
         if 'DOCKER_HOST' in os.environ:
             environment['DOCKER_HOST'] = os.environ['DOCKER_HOST']
+        if args.admin_email:
+            environment['CODALAB_ADMIN_EMAIL'] = args.admin_email
+        if args.email_host:
+            environment['CODALAB_EMAIL_HOST'] = args.email_host
+        if args.email_user:
+            environment['CODALAB_EMAIL_USER'] = args.email_user
+        if args.email_password:
+            environment['CODALAB_EMAIL_PASSWORD'] = args.email_password
+
         return environment
 
     @staticmethod
@@ -543,6 +602,8 @@ class CodalabServiceManager(object):
     def execute(self):
         if self.command == 'build':
             self.build_images()
+        elif self.command == 'pull':
+            self.pull_images()
         elif self.command == 'start':
             if self.args.build_images:
                 self.build_images()
@@ -589,6 +650,9 @@ class CodalabServiceManager(object):
 
     def push_image(self, image):
         self._run_docker_cmd('push codalab/%s:%s' % (image, self.args.version))
+
+    def pull_image(self, image):
+        self._run_docker_cmd('pull codalab/%s:%s' % (image, self.args.version))
 
     def _run_docker_cmd(self, cmd, allow_fail=False):
         """Return whether the command succeeded."""
@@ -665,7 +729,9 @@ class CodalabServiceManager(object):
         self._run_compose_cmd(
             ('run --no-deps --rm --entrypoint="" --user=%s ' % uid)
             + service
-            + (' bash -c "%s"' % cmd)
+            + (
+                ' bash -c \'%s\'' % cmd
+            )  # TODO: replace with shlex.quote(cmd) once we're on Python 3
         )
 
     def start_services(self):
@@ -699,12 +765,13 @@ class CodalabServiceManager(object):
                 root=True,
             )
 
-            print_header('Initializing the database with alembic')
-            self.run_service_cmd("%salembic stamp head" % cmd_prefix, root=True)
-
-        if should_run_service(self.args, 'update'):
-            print_header('Update the database with alembic (run migrations)')
-            self.run_service_cmd("%salembic upgrade head" % cmd_prefix, root=True)
+            print_header('Initializing/migrating the database with alembic')
+            self.run_service_cmd("%secho mysql ready" % cmd_prefix, root=True)
+            # The first time, we need to stamp; after that upgrade.
+            self.run_service_cmd(
+                "if [ $(alembic current | wc -l) -gt 0 ]; then echo upgrade; alembic upgrade head; else echo stamp; alembic stamp head; fi",
+                root=True,
+            )
 
         self.bring_up_service('rest-server')
 
@@ -714,6 +781,19 @@ class CodalabServiceManager(object):
                 "/opt/wait-for-it.sh rest-server:2900 -- cl logout && cl status && ((cl new home && cl new dashboard) || exit 0)",
                 root=(not self.args.codalab_home),
             )
+
+            for property, env_var in [
+                ('server/admin_email', 'CODALAB_ADMIN_EMAIL'),
+                ('email/host', 'CODALAB_EMAIL_HOST'),
+                ('email/user', 'CODALAB_EMAIL_USER'),
+                ('email/password', 'CODALAB_EMAIL_PASSWORD'),
+            ]:
+                if env_var in self.compose_env:
+                    print_header('Configuring %s' % property)
+                    self.run_service_cmd(
+                        "cl config %s %s" % (property, self.compose_env[env_var]),
+                        root=(not self.args.codalab_home),
+                    )
 
         self.bring_up_service('bundle-manager')
         self.bring_up_service('frontend')
@@ -726,6 +806,17 @@ class CodalabServiceManager(object):
                 "/opt/wait-for-it.sh rest-server:2900 -- python3.6 test_cli.py --instance http://rest-server:2900 default",
                 root=(not self.args.codalab_home),
             )
+
+        if should_run_service(self.args, 'monitor'):
+            print_header('Running monitoring service')
+            self.run_service_cmd(
+                "/opt/wait-for-it.sh rest-server:2900 -- python3.6 monitor.py",
+                root=(not self.args.codalab_home),
+            )
+
+    def pull_images(self):
+        for image in self.SERVICE_IMAGES:
+            self.pull_image(image)
 
     def build_images(self):
         images_to_build = [
