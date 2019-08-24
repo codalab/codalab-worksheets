@@ -123,9 +123,9 @@ class BundleModelTestBase:
         )
 
 
-class BundleModelSQLLiteTest(BundleModelTestBase, unittest.TestCase):
-    engine_url = 'sqlite:///'
-    bundle_model = SQLiteModel
+# class BundleModelSQLLiteTest(BundleModelTestBase, unittest.TestCase):
+#     engine_url = 'sqlite:///'
+#     bundle_model = SQLiteModel
 
 
 class BundleModelMySQLTest(BundleModelTestBase, unittest.TestCase):
