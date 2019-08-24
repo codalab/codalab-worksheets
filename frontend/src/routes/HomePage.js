@@ -228,7 +228,7 @@ class HomePage extends React.Component<{
                             </Grid>
                             <Grid item xs={12} sm={8} className={classes.textBox}>
                                 <Typography>
-                                    For more <b>advanced users</b>, the CodaLab Wiki has a wealth of
+                                    For more <b>advanced users</b>, the CodaLab documentation has a wealth of
                                     information about many aspects of using the platform:
                                 </Typography>
                                 <Typography>
@@ -236,22 +236,22 @@ class HomePage extends React.Component<{
                                         {this.renderTableItem(
                                             'Workflow',
                                             'Use CodaLab in your daily research.',
-                                            'https://github.com/codalab/codalab-worksheets/wiki/Workflow',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Workflow',
                                         )}
                                         {this.renderTableItem(
                                             'Executable Papers',
                                             'Put your research paper on CodaLab.',
-                                            'https://github.com/codalab/codalab-worksheets/wiki/Executable-Papers',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Executable-Papers',
                                         )}
                                         {this.renderTableItem(
                                             'CLI Reference',
                                             'Be an expert CodaLab user.',
-                                            'https://github.com/codalab/codalab-worksheets/wiki/CLI-Reference',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/CLI-Reference',
                                         )}
                                         {this.renderTableItem(
                                             'Worksheet Reference',
                                             'Insert custom tables, graphs, and images.',
-                                            'https://github.com/codalab/codalab-worksheets/wiki/Worksheet-Markdown',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown',
                                         )}
                                         {this.renderTableItem(
                                             'REST API Reference',
@@ -261,22 +261,22 @@ class HomePage extends React.Component<{
                                         {this.renderTableItem(
                                             'Execution',
                                             'Learn how bundles are executed in Docker.',
-                                            'https://github.com/codalab/codalab-worksheets/wiki/Execution',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Execution',
                                         )}
                                         {this.renderTableItem(
                                             'Latest Features',
                                             'See what features have been added recently.',
-                                            'https://github.com/codalab/codalab-worksheets/wiki/Latest-Features',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Latest-Features',
                                         )}
                                         {this.renderTableItem(
                                             'Competitions',
                                             'Host your own machine learning competition.',
-                                            'https://github.com/codalab/codalab-worksheets/wiki/Competitions',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/Competitions',
                                         )}
                                         {this.renderTableItem(
                                             'Contributors',
                                             'Meet the team behind CodaLab and get involved!',
-                                            'https://github.com/codalab/codalab-worksheets/wiki/About',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/About',
                                         )}
                                     </Table>
                                 </Typography>

@@ -25,7 +25,6 @@ import os
 import random
 import re
 import shutil
-import stat
 import subprocess
 import sys
 import time
@@ -111,14 +110,18 @@ def sanitize(string, max_chars=256):
     return string
 
 
-def run_command(args, expected_exit_code=0, max_output_chars=256, env=None):
+def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False):
     for a in args:
         assert isinstance(a, str)
     # Travis only prints ASCII
     print('>> %s' % " ".join([a.decode("utf-8").encode("ascii", errors='replace') for a in args]))
+    sys.stdout.flush()
 
     try:
-        output = subprocess.check_output(args, env=env)
+        if include_stderr:
+            output = subprocess.check_output(args, stderr=subprocess.STDOUT, env=env)
+        else:
+            output = subprocess.check_output(args, env=env)
         exitcode = 0
     except subprocess.CalledProcessError as e:
         output = e.output
@@ -131,7 +134,9 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None):
     else:
         colorize = Colorizer.cyan
     print(colorize(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
+    sys.stdout.flush()
     print(sanitize(output, max_output_chars))
+    sys.stdout.flush()
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
 
@@ -321,7 +326,7 @@ class ModuleContext(object):
 
     def __enter__(self):
         """Prepares clean environment for test module."""
-        print(Colorizer.yellow("[*][*] SWITCHING TO TEMPORARY WORKSHEET"))
+        print("[*][*] SWITCHING TO TEMPORARY WORKSHEET")
 
         self.original_environ = os.environ.copy()
         self.original_worksheet = run_command([cl, 'work', '-u'])
@@ -329,7 +334,7 @@ class ModuleContext(object):
         self.worksheets.append(temp_worksheet)
         run_command([cl, 'work', temp_worksheet])
 
-        print(Colorizer.yellow("[*][*] BEGIN TEST"))
+        print("[*][*] BEGIN TEST")
 
         return self
 
@@ -341,7 +346,7 @@ class ModuleContext(object):
             if exc_type is AssertionError:
                 print(Colorizer.red("[!] ERROR: %s" % exc_value.message))
             elif exc_type is KeyboardInterrupt:
-                print(Colorizer.yellow("[!] Caught interrupt! Quitting after cleanup."))
+                print(Colorizer.red("[!] Caught interrupt! Quitting after cleanup."))
             else:
                 print(Colorizer.red("[!] ERROR: Test raised an exception!"))
                 traceback.print_exception(exc_type, exc_value, tb)
@@ -458,8 +463,8 @@ class TestModule(object):
             elif name in cls.modules:
                 modules_to_run.append(cls.modules[name])
             else:
-                print(Colorizer.yellow("[!] Could not find module %s" % name))
-                print(Colorizer.yellow("[*] Modules: all %s" % " ".join(cls.modules.keys())))
+                print(Colorizer.red("[!] Could not find module %s" % name))
+                print(Colorizer.red("[*] Modules: all %s" % " ".join(cls.modules.keys())))
                 sys.exit(1)
 
         print(
@@ -497,8 +502,28 @@ class TestModule(object):
 
 @TestModule.register('unittest')
 def test(ctx):
-    """Run nose unit tests"""
+    """Run nose unit tests (exclude this file)."""
     run_command(['nosetests', '-e', 'test_cli.py'])
+
+
+@TestModule.register('gen-rest-docs')
+def test(ctx):
+    """Generate REST API docs."""
+    run_command(['python', os.path.join(base_path, 'scripts/gen-rest-docs.py')])
+
+
+@TestModule.register('gen-cli-docs')
+def test(ctx):
+    """Generate CLI docs."""
+    run_command(['python', os.path.join(base_path, 'scripts/gen-cli-docs.py')])
+
+
+@TestModule.register('gen-readthedocs')
+def test(ctx):
+    """Generate the readthedocs site."""
+    # Make sure there are no extraneous things.
+    # mkdocs doesn't return exit code 1 for some warnings.
+    check_num_lines(2, run_command(['mkdocs', 'build'], include_stderr=True))
 
 
 @TestModule.register('basic')
@@ -1617,6 +1642,29 @@ def test(ctx):
     # edits that introduce unicode.
     # uuid = run_command([cl, 'upload', test_path('a.txt')])
     # run_command([cl, 'edit', uuid], 1)
+
+
+@TestModule.register('workers')
+def test(ctx):
+    # Run workers command
+    result = run_command([cl, 'workers'])
+    lines = result.split("\n")
+
+    # Output should contain at least 3 lines as following:
+    # worker_id        cpus  gpus  memory  free_disk  last_checkin  tag  runs
+    # -----------------------------------------------------------------------
+    # 7a343e1015c7(1)  0/2   0/0   2.0g    32.9g      2.0s ago
+    check_equals(True, len(lines) >= 3)
+
+    # Check header which includes 8 columns in total from output.
+    header = lines[0]
+    check_contains(
+        ['worker_id', 'cpus', 'gpus', 'memory', 'free_disk', 'last_checkin', 'tag', 'runs'], header
+    )
+
+    # Check number of not null values. First 6 columns should be not null. Column "tag" and "runs" could be empty.
+    worker_info = lines[2].split()
+    check_equals(True, len(worker_info) >= 6)
 
 
 if __name__ == '__main__':

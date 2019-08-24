@@ -4,6 +4,7 @@
 The main entry point for bringing up CodaLab services.  This is used for both
 local development and actual deployment.
 """
+from __future__ import print_function
 
 import argparse
 import errno
@@ -27,7 +28,7 @@ def print_header(description):
 
 def should_run_service(args, service):
     # `default` is generally used to bring up everything for local dev or quick testing.
-    # `default-but-worker` is generally used for real deployment since we don't
+    # `default-no-worker` is generally used for real deployment since we don't
     # want a worker running on the same machine.
     return (
         service in args.services
@@ -36,16 +37,21 @@ def should_run_service(args, service):
     )
 
 
+def need_image_for_service(args, image):
+    """Does `image` support a service we want to run?"""
+    for service, service_image in SERVICE_TO_IMAGE.items():
+        if should_run_service(args, service) and image == service_image:
+            return True
+    return False
+
+
 def should_build_image(args, image):
     if image in args.images:
         return True
     if 'all' in args.images:
         return True
     if 'services' in args.images:
-        # Build all images that are correspond to the services we're running
-        for service, service_image in SERVICE_TO_IMAGE.items():
-            if should_run_service(args, service) and image == service_image:
-                return True
+        return need_image_for_service(args, image)
     return False
 
 
@@ -55,10 +61,16 @@ def main():
     service_manager.execute()
 
 
+def get_default_version():
+    """Get the current git branch."""
+    return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+
+
 class CodalabArgs(argparse.Namespace):
     DEFAULT_ARGS = {
-        'version': 'latest',
+        'version': get_default_version(),
         'dev': False,
+        'pull': False,
         'push': False,
         'docker_user': None,
         'docker_password': None,
@@ -126,13 +138,13 @@ class CodalabArgs(argparse.Namespace):
 
         start_cmd = subparsers.add_parser('start', help='Start a CodaLab service instance')
         logs_cmd = subparsers.add_parser('logs', help='View logs for existing CodaLab instance')
+        pull_cmd = subparsers.add_parser('pull', help='Pull images from Docker Hub')
         build_cmd = subparsers.add_parser(
             'build', help='Build CodaLab docker images using the local codebase'
         )
         run_cmd = subparsers.add_parser('run', help='Run a command inside a service container')
-
         stop_cmd = subparsers.add_parser('stop', help='Stop any existing CodaLab service instances')
-        down_cmd = subparsers.add_parser(
+        delete_cmd = subparsers.add_parser(
             'delete',
             help='Bring down any existing CodaLab service instances (and delete all non-external data!)',
         )
@@ -141,7 +153,16 @@ class CodalabArgs(argparse.Namespace):
         )
 
         #  CLIENT SETTINGS
-        for cmd in [start_cmd, logs_cmd, build_cmd, run_cmd, stop_cmd, down_cmd, restart_cmd]:
+        for cmd in [
+            start_cmd,
+            logs_cmd,
+            pull_cmd,
+            build_cmd,
+            run_cmd,
+            stop_cmd,
+            delete_cmd,
+            restart_cmd,
+        ]:
             cmd.add_argument(
                 '--dry-run',
                 action='store_true',
@@ -202,7 +223,7 @@ class CodalabArgs(argparse.Namespace):
                 '--version',
                 '-v',
                 type=str,
-                help='CodaLab version to use for building and deployment',
+                help='CodaLab version to use for building and deployment (defaults to branch name, set only for Travis CI)',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
@@ -210,6 +231,12 @@ class CodalabArgs(argparse.Namespace):
                 '-d',
                 action='store_true',
                 help='If specified, mount local code for frontend so that changes are reflected right away',
+                default=argparse.SUPPRESS,
+            )
+            cmd.add_argument(
+                '--pull',
+                action='store_true',
+                help='If specified, pull images from Docker Hub (for caching)',
                 default=argparse.SUPPRESS,
             )
             cmd.add_argument(
@@ -241,7 +268,7 @@ class CodalabArgs(argparse.Namespace):
         )
 
         #  DEPLOYMENT SETTINGS
-        for cmd in [start_cmd, stop_cmd, restart_cmd, down_cmd, logs_cmd]:
+        for cmd in [start_cmd, stop_cmd, restart_cmd, delete_cmd, logs_cmd]:
             cmd.add_argument(
                 '--instance-name',
                 type=str,
@@ -274,7 +301,7 @@ class CodalabArgs(argparse.Namespace):
             '-s',
             nargs='*',
             help='List of services to run',
-            choices=SERVICES + ['default', 'default-no-worker', 'init', 'test'],
+            choices=SERVICES + ['default', 'default-no-worker', 'init', 'update', 'test'],
             default=argparse.SUPPRESS,
         )
 
@@ -441,7 +468,7 @@ class CodalabServiceManager(object):
             'CODALAB_HTTP_PORT': args.http_port,
             'CODALAB_VERSION': args.version,
             'CODALAB_WORKER_NETWORK_NAME': '%s-worker-network' % args.instance_name,
-            #'PATH': os.environ['PATH'],
+            'PATH': os.environ['PATH'],
         }
         if args.uid:
             environment['CODALAB_UID'] = args.uid
@@ -462,6 +489,8 @@ class CodalabServiceManager(object):
         if args.mysql_port:
             environment['CODALAB_MYSQL_PORT'] = args.mysql_port
         if args.use_ssl:
+            assert args.ssl_cert_file
+            assert args.ssl_key_file
             environment['CODALAB_SSL_CERT_FILE'] = args.ssl_cert_file
             environment['CODALAB_SSL_KEY_FILE'] = args.ssl_key_file
         if 'DOCKER_HOST' in os.environ:
@@ -522,7 +551,7 @@ class CodalabServiceManager(object):
                     raise
         for bundle_store in self.args.bundle_stores:
             try:
-                os.makedirs(self.args.bundle_store)
+                os.makedirs(bundle_store)
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
@@ -530,6 +559,8 @@ class CodalabServiceManager(object):
     def execute(self):
         if self.command == 'build':
             self.build_images()
+        elif self.command == 'pull':
+            self.pull_images()
         elif self.command == 'start':
             if self.args.build_images:
                 self.build_images()
@@ -554,20 +585,48 @@ class CodalabServiceManager(object):
 
     def build_image(self, image):
         print_header('Building {} image'.format(image))
+        master_docker_image = 'codalab/{}:{}'.format(image, 'master')
+        docker_image = 'codalab/{}:{}'.format(image, self.args.version)
+
+        # Pull the previous image on this version (branch) if we have it.  Otherwise, use master.
+        if self.args.pull:
+            if self._run_docker_cmd('pull {}'.format(docker_image), allow_fail=True):
+                cache_image = docker_image
+            else:
+                self._run_docker_cmd('pull {}'.format(master_docker_image))
+                cache_image = master_docker_image
+            cache_args = ' --cache-from {}'.format(cache_image)
+        else:
+            cache_args = ''
+
+        # Build the image using the cache
         self._run_docker_cmd(
-            'build -t codalab/%s:%s -f docker/dockerfiles/Dockerfile.%s .'
-            % (image, self.args.version, image)
+            'build%s -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            % (cache_args, docker_image, image)
         )
 
     def push_image(self, image):
         self._run_docker_cmd('push codalab/%s:%s' % (image, self.args.version))
 
-    def _run_docker_cmd(self, cmd):
+    def pull_image(self, image):
+        self._run_docker_cmd('pull codalab/%s:%s' % (image, self.args.version))
+
+    def _run_docker_cmd(self, cmd, allow_fail=False):
+        """Return whether the command succeeded."""
         command_string = 'docker ' + cmd
         print('(cd {}; {})'.format(self.root_dir, command_string))
-        if not self.args.dry_run:
-            subprocess.check_call(command_string, shell=True, cwd=self.root_dir)
+        if self.args.dry_run:
+            success = True
+        else:
+            try:
+                subprocess.check_call(command_string, shell=True, cwd=self.root_dir)
+                success = True
+            except subprocess.CalledProcessError as e:
+                success = False
+                if not allow_fail:
+                    raise e
         print('')
+        return success
 
     def _run_compose_cmd(self, cmd):
         files_string = ' -f '.join(self.compose_files)
@@ -578,11 +637,40 @@ class CodalabServiceManager(object):
         )
         compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in self.compose_env.items())
         print('(cd {}; {} {})'.format(self.compose_cwd, compose_env_string, command_string))
-        if not self.args.dry_run:
-            subprocess.check_call(
-                command_string, cwd=self.compose_cwd, env=self.compose_env, shell=True
-            )
+        if self.args.dry_run:
+            success = True
+        else:
+            try:
+                popen = subprocess.Popen(
+                    command_string,
+                    cwd=self.compose_cwd,
+                    env=self.compose_env,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+                # Note: don't do `for stdout_line in popen.stdout` because that buffers.
+                while True:
+                    stdout_line = popen.stdout.readline()
+                    if not stdout_line:
+                        break
+                    print(
+                        "process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace'),
+                        end="",
+                    )
+                popen.wait()
+                success = popen.returncode == 0
+                if not success:
+                    raise Exception('Command exited with code {}'.format(popen.returncode))
+            except subprocess.CalledProcessError as e:
+                print(
+                    "CalledProcessError: {}, {}".format(
+                        str(e), e.output.decode('utf-8').encode('ascii', errors='replace')
+                    )
+                )
+                raise e
         print('')
+        return success
 
     def bring_up_service(self, service):
         if should_run_service(self.args, service):
@@ -597,7 +685,9 @@ class CodalabServiceManager(object):
         self._run_compose_cmd(
             ('run --no-deps --rm --entrypoint="" --user=%s ' % uid)
             + service
-            + (' bash -c "%s"' % cmd)
+            + (
+                ' bash -c \'%s\'' % cmd
+            )  # TODO: replace with shlex.quote(cmd) once we're on Python 3
         )
 
     def start_services(self):
@@ -624,11 +714,18 @@ class CodalabServiceManager(object):
                 root=(not self.args.codalab_home),
             )
 
-        if should_run_service(self.args, 'init'):
             print_header('Creating root user')
             self.run_service_cmd(
                 "%spython scripts/create-root-user.py %s"
                 % (cmd_prefix, self.compose_env['CODALAB_ROOT_PWD']),
+                root=True,
+            )
+
+            print_header('Initializing/migrating the database with alembic')
+            self.run_service_cmd("%secho mysql ready" % cmd_prefix, root=True)
+            # The first time, we need to stamp; after that upgrade.
+            self.run_service_cmd(
+                "if [ $(alembic current | wc -l) -gt 0 ]; then echo upgrade; alembic upgrade head; else echo stamp; alembic stamp head; fi",
                 root=True,
             )
 
@@ -652,6 +749,10 @@ class CodalabServiceManager(object):
                 "/opt/wait-for-it.sh rest-server:2900 -- python test_cli.py --instance http://rest-server:2900 default",
                 root=(not self.args.codalab_home),
             )
+
+    def pull_images(self):
+        for image in self.SERVICE_IMAGES:
+            self.pull_image(image)
 
     def build_images(self):
         images_to_build = [
