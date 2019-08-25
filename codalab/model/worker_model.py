@@ -286,10 +286,7 @@ class WorkerModel(object):
             return None
 
         with closing(fileobj):
-            try:
-                return json.loads(fileobj.read().decode())
-            except json.JSONDecodeError:
-                return None
+            return json.loads(fileobj.read().decode())
 
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """
