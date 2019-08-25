@@ -1071,7 +1071,7 @@ class BundleModel(object):
         for value in worksheet_values.values():
             value['tags'] = []
         for row in tag_rows:
-            worksheet_values[row.worksheet_uuid]['tags'].append(row.tag)
+            worksheet_values[row.worksheet_uuid]['tags'].append(self.decode_str(row.tag))
         if fetch_items:
             for value in worksheet_values.values():
                 value['items'] = []
@@ -1404,7 +1404,7 @@ class BundleModel(object):
         if 'name' in info:
             worksheet.name = info['name']
         if 'title' in info:
-            worksheet.title = info['title']
+            worksheet.title = self.encode_str(info['title'])
         if 'frozen' in info:
             worksheet.frozen = info['frozen']
         if 'owner_id' in info:
@@ -1420,7 +1420,8 @@ class BundleModel(object):
                 )
                 # Add new tags
                 new_tag_values = [
-                    {'worksheet_uuid': worksheet.uuid, 'tag': tag} for tag in info['tags']
+                    {'worksheet_uuid': worksheet.uuid, 'tag': self.encode_str(tag)}
+                    for tag in info['tags']
                 ]
                 self.do_multirow_insert(connection, cl_worksheet_tag, new_tag_values)
                 del info['tags']
