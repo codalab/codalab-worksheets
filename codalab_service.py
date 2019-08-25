@@ -65,7 +65,9 @@ def main():
 
 def get_default_version():
     """Get the current git branch."""
-    return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8').strip()
+    return subprocess.check_output(
+        ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8'
+    ).strip()
 
 
 class CodalabArgs(argparse.Namespace):

@@ -109,7 +109,7 @@ class Metadata(object):
                 else:
                     values = [str(v) for v in values]
                 for value in values:
-                    result.append({'metadata_key': str(spec.key), 'metadata_value': value })
+                    result.append({'metadata_key': str(spec.key), 'metadata_value': value})
         return result
 
     def to_dict(self):
