@@ -61,10 +61,6 @@ services:
     command: serve -s build -l ${CODALAB_FRONTEND_PORT}
     <<: *codalab-base
     <<: *codalab-root
-    # TODO
-    #command: npm start
-    #volumes:
-    #  - ./../../frontend/src:/opt/frontend/src
 
   nginx:
     image: nginx:1.12.0
@@ -75,13 +71,6 @@ services:
       - ${CODALAB_HTTP_PORT}:${CODALAB_HTTP_PORT}
     volumes:
       - ./files/nginx.conf:/etc/nginx/nginx.conf:ro
-    # TODO
-    #ports:
-    # - ${CODALAB_HTTPS_PORT}:${CODALAB_HTTPS_PORT}
-    #volumes:
-    #  - ./files/nginx.conf.ssl:/etc/nginx/nginx.conf:ro
-    #  - ${CODALAB_SSL_KEY_FILE}:/opt/ssl/codalab.key
-    #  - ${CODALAB_SSL_CERT_FILE}:/opt/ssl/codalab.pem
 
   mysql:
     # https://hub.docker.com/_/mysql

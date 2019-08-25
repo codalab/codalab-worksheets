@@ -1,0 +1,8 @@
+version: '3.5'
+
+# Hotload the React code.
+services:
+  frontend:
+    command: npm start
+    volumes:
+      - ./../../frontend/src:/opt/frontend/src

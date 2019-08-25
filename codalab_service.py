@@ -396,6 +396,13 @@ class CodalabServiceManager(object):
     def __init__(self, args):
         self.args = args
         self.compose_cwd = os.path.join(BASE_DIR, 'docker', 'compose_files')
+
+        self.compose_files = ['docker-compose.yml']
+        if self.args.dev:
+            self.compose_files.append('docker-compose.dev.yml')
+        if self.args.use_ssl:
+            self.compose_files.append('docker-compose.ssl.yml')
+
         self.compose_env = self.resolve_env_vars(args)
         ensure_directory_exists(self.args.codalab_home)
         ensure_directory_exists(self.args.monitor_dir)
@@ -475,8 +482,10 @@ class CodalabServiceManager(object):
         return success
 
     def _run_compose_cmd(self, cmd):
-        command_string = 'docker-compose -p %s -f docker-compose.yml %s' % (
+        compose_files_str = ' '.join('-f ' + f for f in self.compose_files)
+        command_string = 'docker-compose -p %s %s %s' % (
             self.args.instance_name,
+            compose_files_str,
             cmd,
         )
         compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in self.compose_env.items())
