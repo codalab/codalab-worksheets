@@ -1655,7 +1655,7 @@ def test(ctx):
     wuuid = run_command([cl, 'new', random_name()])
     
     run_command([cl, 'wedit', wuuid, '--title', 'nonunicode'])
-    check_contains('nonunicode', run_command([cl, 'print']))
+    check_contains('nonunicode', run_command([cl, 'print', wuuid]))
 
     # TODO: enable with Unicode support.
     run_command([cl, 'wedit', wuuid, '--title', 'fáncy ünicode 你好世界😊'], 1)
