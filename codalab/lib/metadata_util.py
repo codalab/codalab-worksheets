@@ -11,7 +11,7 @@ import os
 
 from codalab.common import UsageError
 from codalab.lib.metadata_defaults import MetadataDefaults
-from codalab.lib import editor_util
+from codalab.lib import editor_util, unicode_util
 
 metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
 metadata_argument_to_key = lambda arg_key: arg_key[3:]
@@ -31,6 +31,14 @@ def fill_missing_metadata(bundle_subclass, args, initial_metadata):
             default = MetadataDefaults.get_default(spec, bundle_subclass, args)
             new_initial_metadata[spec.key] = default
         final_value = new_initial_metadata[spec.key]
+        is_unicode_string = isinstance(final_value, str) and unicode_util.contains_unicode(	
+            final_value	
+        )	
+        is_unicode_list = isinstance(final_value, list) and any(	
+            unicode_util.contains_unicode(v) for v in final_value	
+        )	
+        if is_unicode_string or is_unicode_list:	
+            raise UsageError('Metadata cannot contain unicode: %s = %s' % (spec.key, final_value))
 
     return new_initial_metadata
 
@@ -87,8 +95,17 @@ def parse_metadata_form(bundle_subclass, form_result):
                 raise UsageError('Unexpected metadata key: %s' % (metadata_key,))
             metadata_type = metadata_types[metadata_key]
             if metadata_type == list:
+                if any(unicode_util.contains_unicode(v) for v in result[metadata_key]):
+                    raise UsageError(	
+                        'Metadata cannot contain unicode: %s = %s'	
+                        % (metadata_key, result[metadata_key])	
+                    )
                 result[metadata_key] = remainder.split() if remainder else []
             elif metadata_type == str:
+                if remainder is not None and unicode_util.contains_unicode(remainder):	
+                    raise UsageError(	
+                        'Metadata cannot contain unicode: %s = %s' % (metadata_key, remainder)	
+                    )
                 result[metadata_key] = remainder
             else:
                 try:

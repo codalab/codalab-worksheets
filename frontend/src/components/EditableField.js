@@ -8,6 +8,10 @@ import ReactDOM from 'react-dom';
 
 const KEYCODE_ESC = 27;
 
+function isAscii(str) {
+    return /^[\x00-\x7F]*$/.test(str);
+}
+
 export class EditableField extends React.Component<{
     value: string,
     buildPayload: (string) => {},
@@ -27,7 +31,8 @@ export class EditableField extends React.Component<{
         this.state = {
             editing: false,
             value: this.props.value,
-            initValue: this.props.value
+            initValue: this.props.value,
+            isValid: true,
         };
     }
 
@@ -42,6 +47,11 @@ export class EditableField extends React.Component<{
     };
 
     onBlur = (event) => {
+        if (!this.state.isValid) {
+            event.preventDefault();
+            return false;
+        }
+
         this.setState({ editing: false });
         event.preventDefault();
 
@@ -77,7 +87,7 @@ export class EditableField extends React.Component<{
     };
 
     handleChange = (event) => {
-        this.setState({ value: event.target.value });
+        this.setState({ value: event.target.value, isValid: isAscii(event.target.value) });
     };
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -106,6 +116,9 @@ export class EditableField extends React.Component<{
                         onChange={this.handleChange}
                         onKeyDown={this.handleKeyPress}
                     />
+                    {!this.state.isValid && (
+                        <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>
+                    )}
                 </form>
             );
         }
