@@ -1653,7 +1653,7 @@ def test(ctx):
 def test(ctx):
     # Non-unicode in worksheet title
     wuuid = run_command([cl, 'new', random_name()])
-    
+
     run_command([cl, 'wedit', wuuid, '--title', 'nonunicode'])
     check_contains('nonunicode', run_command([cl, 'print', wuuid]))
 

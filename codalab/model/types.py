@@ -1,6 +1,7 @@
 import array
 import sqlalchemy.types as types
 
+
 class UnicodeCoerceBase(types.TypeDecorator):
     """Base class for Unicode Coerce types. This allows one to store
     Unicode values in a latin1-encoded column, by encoding the data
@@ -23,8 +24,10 @@ class UnicodeCoerceBase(types.TypeDecorator):
             return array.array('B', [ord(char) for char in value]).tostring().decode()
         return value
 
+
 class UnicodeCoerceString(UnicodeCoerceBase):
     impl = types.String
+
 
 class UnicodeCoerceText(UnicodeCoerceBase):
     impl = types.Text
