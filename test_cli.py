@@ -852,9 +852,6 @@ def test(ctx):
     run_command([cl, 'wadd', wuuid, wuuid])
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
-    run_command(
-        [cl, 'wedit', wuuid, '--title', 'fáncy ünicode']
-    )  # try encoded unicode in worksheet title
 
     run_command(
         [cl, 'wedit', wuuid, '--file', test_path('unicode-worksheet')]
@@ -1654,6 +1651,13 @@ def test(ctx):
 
 @TestModule.register('unicode')
 def test(ctx):
+    # Non-unicode in worksheet title
+    wuuid = run_command([cl, 'new', random_name()])
+    run_command(
+        [cl, 'wedit', wuuid, '--title', 'fáncy ünicode 你好世界😊']
+    )
+    check_equals('fáncy ünicode 你好世界😊', get_info(uuid, 'title'))
+
     # Non-unicode in file contents
     uuid = run_command([cl, 'upload', '--contents', 'nounicode'])
     check_equals('nounicode', run_command([cl, 'cat', uuid]))
