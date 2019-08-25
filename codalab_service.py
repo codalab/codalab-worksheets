@@ -28,7 +28,9 @@ DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager
 
 ALL_SERVICES = DEFAULT_SERVICES + ['test', 'monitor']
 
-ALL_NO_SERVICES = ['no-' + service for service in ALL_SERVICES]  # Identifiers that stand for exclusion of certain services
+ALL_NO_SERVICES = [
+    'no-' + service for service in ALL_SERVICES
+]  # Identifiers that stand for exclusion of certain services
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -41,12 +43,14 @@ SERVICE_TO_IMAGE = {
     'worker': 'worker',
 }
 
+
 def ensure_directory_exists(path):
     try:
         os.makedirs(path)
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
+
 
 def print_header(description):
     print('[CodaLab] {}'.format(description))
@@ -90,8 +94,10 @@ def get_default_version():
     """Get the current git branch."""
     return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
 
+
 def var_path(name):
     return lambda args: os.path.join(BASE_DIR, 'var', args.instance_name, name)
+
 
 # An configuration argument.
 class CodalabArg(object):
@@ -102,10 +108,13 @@ class CodalabArg(object):
         self.env_var = env_var or 'CODALAB_' + name.upper()
         self.flag = flag  # Command-line argument
         self.default = default
+
     def has_constant_default(self):
         return self.default is not None and not callable(self.default)
+
     def has_callable_default(self):
         return self.default is not None and callable(self.default)
+
 
 CODALAB_ARGUMENTS = [
     CodalabArg(
@@ -124,17 +133,9 @@ CODALAB_ARGUMENTS = [
         help='Network name for the worker',
         default=lambda args: args.instance_name + '-worker-network',
     ),
-
     ### Docker
-    CodalabArg(
-        name='docker_username',
-        help='Docker Hub username to push built images',
-    ),
-    CodalabArg(
-        name='docker_password',
-        help='Docker Hub password to push built images',
-    ),
-
+    CodalabArg(name='docker_username', help='Docker Hub username to push built images'),
+    CodalabArg(name='docker_password', help='Docker Hub password to push built images'),
     ### CodaLab
     CodalabArg(
         name='codalab_username',
@@ -148,40 +149,13 @@ CODALAB_ARGUMENTS = [
         help='CodaLab (root) password',
         default='codalab',
     ),
-
     ### MySQL
-    CodalabArg(
-        name='mysql_host',
-        help='MySQL hostname',
-        default='mysql',  # Inside Docker
-    ),
-    CodalabArg(
-        name='mysql_port',
-        help='MySQL hostname',
-        default=3306,
-        type=int,
-    ),
-    CodalabArg(
-        name='mysql_database',
-        help='MySQL database name',
-        default='codalab_bundles',
-    ),
-    CodalabArg(
-        name='mysql_username',
-        help='MySQL username',
-        default='codalab',
-    ),
-    CodalabArg(
-        name='mysql_password',
-        help='MySQL password',
-        default='codalab',
-    ),
-    CodalabArg(
-        name='mysql_root_password',
-        help='MySQL root password',
-        default='codalab',
-    ),
-
+    CodalabArg(name='mysql_host', help='MySQL hostname', default='mysql'),  # Inside Docker
+    CodalabArg(name='mysql_port', help='MySQL hostname', default=3306, type=int),
+    CodalabArg(name='mysql_database', help='MySQL database name', default='codalab_bundles'),
+    CodalabArg(name='mysql_username', help='MySQL username', default='codalab'),
+    CodalabArg(name='mysql_password', help='MySQL password', default='codalab'),
+    CodalabArg(name='mysql_root_password', help='MySQL root password', default='codalab'),
     CodalabArg(
         'uid',
         help='Linux UID that owns the files created by Codalab. default=(ID of the user running this script)',
@@ -213,13 +187,7 @@ CODALAB_ARGUMENTS = [
         help='Path on the host machine to store worker data files (defaults to <repo root>/codalab-worker-scratch if worker started)',
         default=var_path('worker'),
     ),
-
-    CodalabArg(
-        'http_port',
-        help='HTTP port for the server to listen on',
-        type=int,
-        default=80,
-    ),
+    CodalabArg('http_port', help='HTTP port for the server to listen on', type=int, default=80),
     CodalabArg(
         'https_port',
         help='HTTP port for the server to listen on (when using SSL)',
@@ -238,41 +206,19 @@ CODALAB_ARGUMENTS = [
         type=int,
         default=2900,
     ),
-
     ### Email
-    CodalabArg(
-        name='admin_email',
-        help='Email to send admin notifications to (e.g., monitoring)',
-    ),
-    CodalabArg(
-        name='email_host',
-        help='Send email by logging into this SMTP server',
-    ),
-    CodalabArg(
-        name='email_username',
-        help='Username of email account for sending email',
-    ),
-    CodalabArg(
-        name='email_password',
-        help='Password of email account for sending email',
-    ),
-
+    CodalabArg(name='admin_email', help='Email to send admin notifications to (e.g., monitoring)'),
+    CodalabArg(name='email_host', help='Send email by logging into this SMTP server'),
+    CodalabArg(name='email_username', help='Username of email account for sending email'),
+    CodalabArg(name='email_password', help='Password of email account for sending email'),
     ### SSL
     CodalabArg(
-        name='use_ssl',
-        help='If specified, set the server up with SSL',
-        type=bool,
-        default=False,
+        name='use_ssl', help='If specified, set the server up with SSL', type=bool, default=False
     ),
-    CodalabArg(
-        name='ssl_cert_file',
-        help='Path to the cert file for SSL',
-    ),
-    CodalabArg(
-        name='ssl_key_file',
-        help='Path to the key file for SSL',
-    ),
+    CodalabArg(name='ssl_cert_file', help='Path to the cert file for SSL'),
+    CodalabArg(name='ssl_key_file', help='Path to the key file for SSL'),
 ]
+
 
 class CodalabArgs(object):
     @staticmethod
@@ -297,15 +243,7 @@ class CodalabArgs(object):
         )
 
         # Arguments for every subcommand
-        for cmd in [
-            start_cmd,
-            logs_cmd,
-            pull_cmd,
-            build_cmd,
-            run_cmd,
-            stop_cmd,
-            delete_cmd,
-        ]:
+        for cmd in [start_cmd, logs_cmd, pull_cmd, build_cmd, run_cmd, stop_cmd, delete_cmd]:
             cmd.add_argument(
                 '--dry-run',
                 action='store_true',
@@ -313,14 +251,12 @@ class CodalabArgs(object):
             )
 
             ## Arguments for `start`
-            #for cmd in [start_cmd]:
+            # for cmd in [start_cmd]:
             for arg in CODALAB_ARGUMENTS:
                 unnamed = ['--' + arg.name.replace('_', '-')]
                 if arg.flag:
                     unnamed.append(arg.flag)
-                named = {
-                    'help': arg.help,
-                }
+                named = {'help': arg.help}
                 if arg.has_constant_default():
                     named['default'] = arg.default
                 if arg.type == bool:
@@ -601,14 +537,18 @@ class CodalabServiceManager(object):
     def start_services(self):
         def wait(host, port, cmd):
             return '/opt/wait-for-it.sh {}:{} -- {}'.format(host, port, cmd)
+
         def wait_mysql(cmd):
             return wait(self.args.mysql_host, self.args.mysql_port, cmd)
+
         def wait_rest_server(cmd):
             return wait('rest-server', self.args.rest_port, cmd)
 
         mysql_url = 'mysql://{}:{}@{}:{}/{}'.format(
-            self.args.mysql_username, self.args.mysql_password,
-            self.args.mysql_host, self.args.mysql_port,
+            self.args.mysql_username,
+            self.args.mysql_password,
+            self.args.mysql_host,
+            self.args.mysql_port,
             self.args.mysql_database,
         )
         rest_url = 'http://rest-server:{}'.format(self.args.rest_port)
@@ -634,20 +574,26 @@ class CodalabServiceManager(object):
 
             print_header('Creating root user')
             self.run_service_cmd(
-                wait_mysql('python scripts/create-root-user.py {}'.format(self.args.codalab_password))
+                wait_mysql(
+                    'python scripts/create-root-user.py {}'.format(self.args.codalab_password)
+                )
             )
 
             print_header('Initializing/migrating the database with alembic')
             # The first time, we need to stamp; after that upgrade.
             self.run_service_cmd(
-                'if [ $(alembic current | wc -l) -gt 0 ]; then echo upgrade; alembic upgrade head; else echo stamp; alembic stamp head; fi',
+                'if [ $(alembic current | wc -l) -gt 0 ]; then echo upgrade; alembic upgrade head; else echo stamp; alembic stamp head; fi'
             )
 
         self.bring_up_service('rest-server')
 
         if should_run_service(self.args, 'init'):
             print_header('Creating home and dashboard worksheets')
-            self.run_service_cmd(wait_rest_server('cl logout && cl status && ((cl new home && cl new dashboard) || exit 0)'))
+            self.run_service_cmd(
+                wait_rest_server(
+                    'cl logout && cl status && ((cl new home && cl new dashboard) || exit 0)'
+                )
+            )
 
         self.bring_up_service('bundle-manager')
         self.bring_up_service('frontend')
@@ -656,7 +602,9 @@ class CodalabServiceManager(object):
 
         if should_run_service(self.args, 'test'):
             print_header('Running tests')
-            self.run_service_cmd(wait_rest_server('python test_cli.py --instance {} default'.format(rest_url)))
+            self.run_service_cmd(
+                wait_rest_server('python test_cli.py --instance {} default'.format(rest_url))
+            )
 
         self.bring_up_service('monitor')
 

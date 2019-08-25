@@ -89,7 +89,7 @@ def send_email(subject, message):
     # Default to authless SMTP (supported by some servers) if user/password is unspecified.
     #   Default sender_username has to be a valid RFC 822 from-address string for transport (distinct from msg headers)
     #   Ref: https://docs.python.org/2/library/smtplib.html#smtplib.SMTP.sendmail
-    do_login = (sender_password is not None)
+    do_login = sender_password is not None
     s = SMTP(sender_host, 587)
     s.ehlo()
     s.starttls()
