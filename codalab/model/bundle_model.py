@@ -1074,7 +1074,7 @@ class BundleModel(object):
         for value in worksheet_values.values():
             value['tags'] = []
         for row in tag_rows:
-            worksheet_values[row.worksheet_uuid]['tags'].append(self.decode_str(row.tag))
+            worksheet_values[row.worksheet_uuid]['tags'].append(row.tag)
         if fetch_items:
             for value in worksheet_values.values():
                 value['items'] = []
@@ -1082,6 +1082,7 @@ class BundleModel(object):
                 if item_row.worksheet_uuid not in worksheet_values:
                     raise IntegrityError('Got item %s without worksheet' % (item_row,))
                 item_row = dict(item_row)
+                item_row['value'] = self.decode_str(item_row['value'])
                 worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
         return [Worksheet(value) for value in worksheet_values.values()]
 
