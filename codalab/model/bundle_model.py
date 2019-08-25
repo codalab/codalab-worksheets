@@ -1067,11 +1067,6 @@ class BundleModel(object):
                 ).fetchall()
 
         # Make a dictionary for each worksheet with both its main row and its items.
-        # todo fix
-        # for row in worksheet_rows:
-        #     if row.title:
-        #         row.title = self.decode_str(row.title)
-
         worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
         # Set tags
         for value in worksheet_values.values():
@@ -1085,7 +1080,6 @@ class BundleModel(object):
                 if item_row.worksheet_uuid not in worksheet_values:
                     raise IntegrityError('Got item %s without worksheet' % (item_row,))
                 item_row = dict(item_row)
-                item_row['value'] = self.decode_str(item_row['value'])
                 worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
         return [Worksheet(value) for value in worksheet_values.values()]
 
@@ -1409,9 +1403,6 @@ class BundleModel(object):
         """
         if 'name' in info:
             worksheet.name = info['name']
-        if 'title' in info:
-            info['title'] = self.encode_str(info['title'])
-            worksheet.title = info['title']
         if 'frozen' in info:
             worksheet.frozen = info['frozen']
         if 'owner_id' in info:
@@ -1427,7 +1418,7 @@ class BundleModel(object):
                 )
                 # Add new tags
                 new_tag_values = [
-                    {'worksheet_uuid': worksheet.uuid, 'tag': self.encode_str(tag)}
+                    {'worksheet_uuid': worksheet.uuid, 'tag': tag}
                     for tag in info['tags']
                 ]
                 self.do_multirow_insert(connection, cl_worksheet_tag, new_tag_values)
