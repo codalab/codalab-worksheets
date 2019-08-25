@@ -22,10 +22,7 @@ def wrap_exception(message):
             except RestClientException as e:
                 raise BundleServiceException(message + ': ' + str(e), e.client_error)
             except urllib.error.HTTPError as e:
-                try:
-                    client_error = json.loads(e.read().decode())
-                except json.JSONDecodeError:
-                    client_error = {'error': e.read().decode()}
+                client_error = json.loads(e.read().decode())
 
                 if client_error['error'] == 'invalid_grant':
                     raise BundleAuthException(
