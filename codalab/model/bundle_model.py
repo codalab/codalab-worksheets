@@ -634,6 +634,8 @@ class BundleModel(object):
         for metadata_row in metadata_rows:
             if metadata_row.bundle_uuid not in bundle_values:
                 raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
+            if metadata_row.has_key("metadata_value"):
+                metadata_row.metadata_value = self.decode_str(metadata_row.metadata_value)
             bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
 
         # Construct and validate all of the retrieved bundles.
@@ -1066,6 +1068,11 @@ class BundleModel(object):
                 ).fetchall()
 
         # Make a dictionary for each worksheet with both its main row and its items.
+        # todo fix
+        # for row in worksheet_rows:
+        #     if row.title:
+        #         row.title = self.decode_str(row.title)
+
         worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
         # Set tags
         for value in worksheet_values.values():
@@ -1404,7 +1411,8 @@ class BundleModel(object):
         if 'name' in info:
             worksheet.name = info['name']
         if 'title' in info:
-            worksheet.title = self.encode_str(info['title'])
+            info['title'] = self.encode_str(info['title'])
+            worksheet.title = info['title']
         if 'frozen' in info:
             worksheet.frozen = info['frozen']
         if 'owner_id' in info:

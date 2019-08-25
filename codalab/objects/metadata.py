@@ -104,8 +104,12 @@ class Metadata(object):
                 if value == None:
                     continue
                 values = value if spec.type == list else (value,)
+                if spec.key in ("description", "tags"):
+                    values = [self.encode_str(v) for v in values]
+                else:
+                    values = [str(v) for v in values]
                 for value in values:
-                    result.append({'metadata_key': str(spec.key), 'metadata_value': str(value)})
+                    result.append({'metadata_key': str(spec.key), 'metadata_value': value })
         return result
 
     def to_dict(self):
@@ -115,3 +119,10 @@ class Metadata(object):
         '''
         items = [(key, getattr(self, key)) for key in self._metadata_keys]
         return {key: value for (key, value) in items}
+
+    # TODO: Remove this methods below when all appropriate table columns have
+    # been converted to the appropriate types that perform automatic encoding.
+    # This is the same function as MySQLModel.encode_str.
+
+    def encode_str(self, value):
+        return value.encode()
