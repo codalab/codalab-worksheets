@@ -634,13 +634,12 @@ class BundleModel(object):
         for metadata_row in metadata_rows:
             if metadata_row.bundle_uuid not in bundle_values:
                 raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
-            if metadata_row.has_key("metadata_value"):
-                metadata_row.metadata_value = self.decode_str(metadata_row.metadata_value)
             bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
 
         # Construct and validate all of the retrieved bundles.
         sorted_values = sorted(bundle_values.values(), key=lambda r: r['id'])
         bundles = [
+            #
             get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
             for bundle_value in sorted_values
         ]
