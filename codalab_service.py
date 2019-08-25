@@ -158,63 +158,36 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='mysql_root_password', help='MySQL root password', default='codalab'),
     CodalabArg(
         'uid',
-        help='Linux UID that owns the files created by Codalab. default=(ID of the user running this script)',
+        help='UID:GID to run everything inside Docker and owns created files',
         default='%s:%s' % (os.getuid(), os.getgid()),
     ),
     CodalabArg(
         'codalab_home',
         env_var='CODALAB_HOME',
-        help='Path on the host machine to store home directory of the Codalab server (e.g., config.json file)',
+        help='Path to store things like config.json for the REST server',
         default=var_path('home'),
     ),
+    CodalabArg('bundle_store', help='Path to store bundle data files', default=var_path('bundles')),
+    CodalabArg('mysql_mount', help='Path to store MySQL data files', default=var_path('mysql')),
     CodalabArg(
-        'bundle_store',
-        help='Path on the host machine to store bundle data files',
-        default=var_path('bundles'),
-    ),
-    CodalabArg(
-        'mysql_mount',
-        help='Path on the host machine to store MySQL data files (by default the database is ephemeral)',
-        default=var_path('mysql'),
-    ),
-    CodalabArg(
-        'monitor_dir',
-        help='Path on the host machine to store monitor script output',
-        default=var_path('monitor'),
+        'monitor_dir', help='Path to store monitor logs and DB backups', default=var_path('monitor')
     ),
     CodalabArg(
         'worker_dir',
-        help='Path on the host machine to store worker data files (defaults to <repo root>/codalab-worker-scratch if worker started)',
+        help='Path to store worker state / cached dependencies',
         default=var_path('worker'),
     ),
-    CodalabArg('http_port', help='HTTP port for the server to listen on', type=int, default=80),
-    CodalabArg(
-        'https_port',
-        help='HTTP port for the server to listen on (when using SSL)',
-        type=int,
-        default=443,
-    ),
-    CodalabArg(
-        'frontend_port',
-        help='Port for the React server to listen on (by default it is not exposed to the host machine)',
-        type=int,
-        default=2700,
-    ),
-    CodalabArg(
-        name='rest_port',
-        help='Port for the REST server to listen on (by default it is not exposed to the host machine)',
-        type=int,
-        default=2900,
-    ),
+    CodalabArg('http_port', help='Port for nginx', type=int, default=80),
+    CodalabArg('https_port', help='Port for nginx (when using SSL)', type=int, default=443),
+    CodalabArg('frontend_port', help='Port for frontend', type=int, default=2700),
+    CodalabArg(name='rest_port', help='Port for REST server', type=int, default=2900),
     ### Email
     CodalabArg(name='admin_email', help='Email to send admin notifications to (e.g., monitoring)'),
     CodalabArg(name='email_host', help='Send email by logging into this SMTP server'),
     CodalabArg(name='email_username', help='Username of email account for sending email'),
     CodalabArg(name='email_password', help='Password of email account for sending email'),
     ### SSL
-    CodalabArg(
-        name='use_ssl', help='If specified, set the server up with SSL', type=bool, default=False
-    ),
+    CodalabArg(name='use_ssl', help='Use HTTPS instead of HTTP', type=bool, default=False),
     CodalabArg(name='ssl_cert_file', help='Path to the cert file for SSL'),
     CodalabArg(name='ssl_key_file', help='Path to the key file for SSL'),
 ]
