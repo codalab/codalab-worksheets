@@ -22,7 +22,6 @@ import argparse
 import errno
 import os
 import subprocess
-from collections import namedtuple
 
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
 
