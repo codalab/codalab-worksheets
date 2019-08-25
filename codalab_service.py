@@ -223,12 +223,13 @@ class CodalabArgs(object):
                 help='Just print out the commands that will be run and not execute anything',
             )
 
-            ## Arguments for `start`
-            # for cmd in [start_cmd]:
+            # Populate the command-line parser with CODALAB_ARGUMENTS.
             for arg in CODALAB_ARGUMENTS:
+                # Unnamed parameters to add_argument
                 unnamed = ['--' + arg.name.replace('_', '-')]
                 if arg.flag:
                     unnamed.append(arg.flag)
+                # Named parameters to add_argument
                 named = {'help': arg.help}
                 if arg.has_constant_default():
                     named['default'] = arg.default
@@ -236,34 +237,32 @@ class CodalabArgs(object):
                     named['action'] = 'store_true'
                 else:
                     named['type'] = arg.type
+                # Add it!
                 cmd.add_argument(*unnamed, **named)
 
-            # Arguments for `start`
             cmd.add_argument(
                 '--build-images',
                 '-b',
                 action='store_true',
-                help='If specified, build Docker images using local code.',
+                help='Build Docker images using local code',
             )
-
-            # Arguments for `build` and `start`
             cmd.add_argument(
                 '--pull',
                 action='store_true',
-                help='If specified, pull images from Docker Hub (for caching)',
+                help='Pull images from Docker Hub (for caching) before building',
                 default=False,
             )
             cmd.add_argument(
                 '--push',
                 action='store_true',
-                help='If specified, push the images to Docker Hub',
+                help='Push the images to Docker Hub after building',
                 default=False,
             )
             cmd.add_argument(
                 'images',
                 default='services',
                 help='Images to build. \'services\' for server-side images (frontend, server, worker) \
-                        \'all\' for those and the default execution images',
+                        \'all\' to include default execution images',
                 choices=CodalabServiceManager.ALL_IMAGES + ['all', 'services'],
                 nargs='*',
             )
@@ -271,7 +270,7 @@ class CodalabArgs(object):
                 '--dev',
                 '-d',
                 action='store_true',
-                help='If specified, mount local code for frontend so that changes are reflected right away',
+                help='Mount local code for frontend so that changes are reflected right away',
             )
             cmd.add_argument(
                 '--services',
@@ -540,18 +539,19 @@ class CodalabServiceManager(object):
 
         if should_run_service(self.args, 'init'):
             print_header('Populating config.json')
-            commands = []
-            for config_prop, value in [
-                ('cli/default_address', rest_url),
-                ('server/engine_url', mysql_url),
-                ('server/rest_host', '0.0.0.0'),
-                ('server/admin_email', self.args.admin_email),
-                ('email/host', self.args.email_host),
-                ('email/username', self.args.email_username),
-                ('email/password', self.args.email_password),
-            ]:
-                if value:
-                    commands.append('cl config {} {}'.format(config_prop, value))
+            commands = [
+                'cl config {} {}'.format(config_prop, value)
+                for config_prop, value in [
+                    ('cli/default_address', rest_url),
+                    ('server/engine_url', mysql_url),
+                    ('server/rest_host', '0.0.0.0'),
+                    ('server/admin_email', self.args.admin_email),
+                    ('email/host', self.args.email_host),
+                    ('email/username', self.args.email_username),
+                    ('email/password', self.args.email_password),
+                ]
+                if value
+            ]
             self.run_service_cmd(' && '.join(commands))
 
             print_header('Creating root user')
