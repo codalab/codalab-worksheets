@@ -20,8 +20,9 @@ def bool_constructor(x=False):
 
 
 def unicode_constructor(s=""):
-    # Returns the same string.
-    return s
+    # Need this method so that any uninterpretable characters
+    # in the database will be replaced with '?'.
+    return s.encode(encoding='ascii', errors='replace').decode()
 
 
 class MetadataSpec(object):

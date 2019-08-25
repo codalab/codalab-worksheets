@@ -905,10 +905,10 @@ def test(ctx):
     run_command([cl, 'wedit', wname, '--tags'] + fewer_tags)
     check_contains(['Tags: %s' % ' '.join(fewer_tags)], run_command([cl, 'ls', '-w', wuuid]))
     # Modify to non-ascii tags
+    # TODO: enable with Unicode support.
     non_ascii_tags = ['你好世界😊', 'fáncy ünicode']
-    run_command([cl, 'wedit', wname, '--tags'] + non_ascii_tags)
-    # check_contains(['Tags: %s' % ' '.join(non_ascii_tags)], run_command([cl, 'ls', '-w', wuuid]))
-    check_contains(non_ascii_tags, run_command([cl, 'ls', '-w', wuuid]))
+    run_command([cl, 'wedit', wname, '--tags'] + non_ascii_tags, 1)
+    # check_contains(non_ascii_tags, run_command([cl, 'ls', '-w', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
     check_contains(r'Tags:\s+###', run_command([cl, 'ls', '-w', wuuid]))
@@ -1653,10 +1653,13 @@ def test(ctx):
 def test(ctx):
     # Non-unicode in worksheet title
     wuuid = run_command([cl, 'new', random_name()])
+    
     run_command([cl, 'wedit', wuuid, '--title', 'nonunicode'])
     check_contains('nonunicode', run_command([cl, 'print']))
-    run_command([cl, 'wedit', wuuid, '--title', 'fáncy ünicode 你好世界😊'])
-    check_contains('fáncy ünicode 你好世界😊', run_command([cl, 'print']))
+
+    # TODO: enable with Unicode support.
+    run_command([cl, 'wedit', wuuid, '--title', 'fáncy ünicode 你好世界😊'], 1)
+    # check_contains('fáncy ünicode 你好世界😊', run_command([cl, 'print']))
 
     # Non-unicode in file contents
     uuid = run_command([cl, 'upload', '--contents', 'nounicode'])
@@ -1668,16 +1671,17 @@ def test(ctx):
     check_equals('你好世界😊', run_command([cl, 'cat', uuid]))
 
     # Unicode in bundle description, tags and command
-    uuid = run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'])
-    check_equals('你好', get_info(uuid, 'description'))
-    uuid = run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'])
-    check_contains(['test', '😁'], get_info(uuid, 'tags'))
-    uuid = run_command([cl, 'run', 'echo "fáncy ünicode"'])
+    # TODO: enable with Unicode support.
+    uuid = run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'], 1)
+    # check_equals('你好', get_info(uuid, 'description'))
+    uuid = run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'], 1)
+    # check_contains(['test', '😁'], get_info(uuid, 'tags'))
+    uuid = run_command([cl, 'run', 'echo "fáncy ünicode"'], 1)
 
     # edit description with unicode
     uuid = run_command([cl, 'upload', test_path('a.txt')])
-    run_command([cl, 'edit', uuid, '-d', '你好世界😊'])
-    check_equals('你好世界😊', get_info(uuid, 'description'))
+    run_command([cl, 'edit', uuid, '-d', '你好世界😊'], 1)
+    # check_equals('你好世界😊', get_info(uuid, 'description'))
 
 
 @TestModule.register('workers')
