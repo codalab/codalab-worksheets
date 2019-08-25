@@ -19,4 +19,5 @@ COPY worker /opt/worker
 RUN /usr/bin/env python -m pip install --user --upgrade pip; \
     /usr/bin/env python -m pip install -e /opt/worker;
 
-ENTRYPOINT ["cl-worker"]
+# Allow non-root to read everything
+RUN chmod -R og=u-w /opt/worker

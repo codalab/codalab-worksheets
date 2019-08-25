@@ -1,7 +1,0 @@
-version: '3.5'
-
-services:
-  frontend:
-    command: npm start
-    volumes:
-      - ./../../frontend/src:/opt/frontend/src

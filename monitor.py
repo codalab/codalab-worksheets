@@ -12,7 +12,7 @@ import socket
 import argparse
 import json
 
-CODALAB_CLI = os.path.dirname(__file__)
+BASE_DIR = os.path.dirname(__file__)
 
 # This script runs in a loop monitoring the health of the CodaLab instance.
 # It reads config.json in your CODALAB_HOME (~/.codalab).
@@ -51,22 +51,24 @@ parser.add_argument(
 args = parser.parse_args()
 
 # Get MySQL username and password for bundles
-bundles_username = os.environ['CODALAB_MYSQL_USERNAME']
-bundles_password = os.environ['CODALAB_MYSQL_PASSWORD']
 bundles_host = os.environ['CODALAB_MYSQL_HOST']
 bundles_port = os.environ['CODALAB_MYSQL_PORT']
 bundles_database = os.environ['CODALAB_MYSQL_DATABASE']
+bundles_username = os.environ['CODALAB_MYSQL_USERNAME']
+bundles_password = os.environ['CODALAB_MYSQL_PASSWORD']
 print(
     'user = {}, password = {}, db = {}, host = {}, port = {}'.format(
         bundles_username, '*' * len(bundles_password), bundles_database, bundles_host, bundles_port
     )
 )
 
-hostname = config['server'].get('instance_name', socket.gethostname())
+hostname = socket.gethostname()
 
 # Email
-recipient = config['server'].get('admin_email')
-sender_info = config.get('email')
+admin_email = os.environ['CODALAB_ADMIN_EMAIL']
+sender_host = os.environ['CODALAB_EMAIL_HOST']
+sender_username = os.environ['CODALAB_EMAIL_USERNAME']
+sender_password = os.environ['CODALAB_EMAIL_PASSWORD']
 
 # Create backup directory
 if not os.path.exists(args.backup_path):
@@ -76,41 +78,35 @@ report = []  # Build up the current report to send in an email
 
 # message is a list
 def send_email(subject, message):
-    # Not enough information to send email?
-    if not recipient or not sender_info:
-        print('send_email; subject: %s; message contains %d lines' % (subject, len(message)))
-        return
-
-    sender_host = sender_info['host']
-
-    # Default to authless SMTP (supported by some servers) if user/password is unspecified.
-    #   Default sender_user has to be a valid RFC 822 from-address string for transport (distinct from msg headers)
-    #   Ref: https://docs.python.org/2/library/smtplib.html#smtplib.SMTP.sendmail
-    sender_user = sender_info.get('user', 'noreply@codalab.org')
-    sender_password = sender_info.get('password', None)
-    do_login = sender_password != None
     print(
         'send_email to %s from %s@%s; subject: %s; message contains %d lines'
-        % (recipient, sender_user, sender_host, subject, len(message))
+        % (admin_email, sender_username, sender_host, subject, len(message))
     )
+    sys.stdout.flush()
+    if not admin_email:
+        return
+
+    # Default to authless SMTP (supported by some servers) if user/password is unspecified.
+    #   Default sender_username has to be a valid RFC 822 from-address string for transport (distinct from msg headers)
+    #   Ref: https://docs.python.org/2/library/smtplib.html#smtplib.SMTP.sendmail
+    do_login = (sender_password is not None)
     s = SMTP(sender_host, 587)
     s.ehlo()
     s.starttls()
     s.ehlo()
     msg = MIMEText('<pre style="font: monospace">' + '\n'.join(message) + '</pre>', 'html')
     msg['Subject'] = 'CodaLab on %s: %s' % (hostname, subject)
-    msg['To'] = recipient
+    msg['To'] = admin_email
     msg['From'] = 'noreply@codalab.org'
     if do_login:
-        s.login(sender_user, sender_password)
-    s.sendmail(sender_user, recipient, msg.as_string())
+        s.login(sender_username, sender_password)
+    s.sendmail(sender_username, admin_email, msg.as_string())
     s.quit()
 
 
 def get_date():
     # Only save a backup for every month to save space
     return datetime.datetime.now().strftime('%Y-%m')
-    # return datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
 
 
 def log(line, newline=True):
@@ -119,6 +115,7 @@ def log(line, newline=True):
         print(line)
     else:
         print(line)
+    sys.stdout.flush()
     report.append(line)
     out = open(args.log_path, 'a')
     print >> out, line
@@ -246,7 +243,7 @@ def backup_db():
 
 
 def check_disk_space(paths):
-    lines = run_command(['df', '-h'] + paths).split('\n')[1:]
+    lines = run_command(['df'] + paths).split('\n')[1:]
     results = [int(line.split()[3]) for line in lines]
     # Flag an error if disk space running low
     total = sum(results)
@@ -275,7 +272,7 @@ while True:
         # Check remaining disk space
         if ping_time():
             check_disk_space(['/'])  # Always bad if root partition is low
-            check_disk_space(['/var/lib/docker'])  # Should usually be symlinked somewhere else
+            check_disk_space(['/var/lib/docker'])  # Docker images
             base_path = os.path.join(args.codalab_home, 'partitions')
             paths = [os.path.join(base_path, fname) for fname in os.listdir(base_path)]
             check_disk_space(paths)
@@ -296,7 +293,7 @@ while True:
         # Try uploading, downloading and running a job with a dependency.
         if run_time():
             upload_uuid = run_command(
-                ['cl', 'upload', os.path.join(CODALAB_CLI, 'scripts', 'stress-test.pl')]
+                ['cl', 'upload', os.path.join(BASE_DIR, 'scripts', 'stress-test.pl')]
             )
             cat_result = run_command(['cl', 'cat', upload_uuid], include_output=False)
             if 'BYTES_IN_MB' not in cat_result:
