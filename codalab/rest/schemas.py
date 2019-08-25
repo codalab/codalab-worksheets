@@ -15,6 +15,7 @@ from codalab.lib.worksheet_util import WORKSHEET_ITEM_TYPES
 from codalab.lib.unicode_util import contains_unicode
 from codalab.objects.permission import parse_permission, permission_str
 
+
 class PermissionSpec(fields.Field):
     def _serialize(self, value, attr, obj):
         try:
@@ -46,16 +47,18 @@ def validate_sub_path(path):
     if not SUB_PATH_REGEX.match(path):
         raise ValidationError('Child path must match %s, was %s' % (NAME_REGEX.pattern, path))
 
-def validate_ascii(value):	
-    if isinstance(value, str):	
-        if contains_unicode(value):		
-            raise ValidationError('Unsupported character detected, use ascii characters')	
-    elif isinstance(value, list):	
-        for v in value:	
-            validate_ascii(v)	
-    elif isinstance(value, dict):	
-        for v in value.itervalues():	
+
+def validate_ascii(value):
+    if isinstance(value, str):
+        if contains_unicode(value):
+            raise ValidationError('Unsupported character detected, use ascii characters')
+    elif isinstance(value, list):
+        for v in value:
             validate_ascii(v)
+    elif isinstance(value, dict):
+        for v in value.itervalues():
+            validate_ascii(v)
+
 
 class WorksheetItemSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)

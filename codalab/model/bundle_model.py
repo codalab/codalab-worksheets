@@ -963,8 +963,9 @@ class BundleModel(object):
                 if metadata_update:
                     connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
                     self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-            except UnicodeError:	
+            except UnicodeError:
                 raise UsageError("Invalid character detected; use ascii characters only.")
+
         if connection:
             do_update(connection)
         else:
@@ -1421,8 +1422,7 @@ class BundleModel(object):
                 )
                 # Add new tags
                 new_tag_values = [
-                    {'worksheet_uuid': worksheet.uuid, 'tag': tag}
-                    for tag in info['tags']
+                    {'worksheet_uuid': worksheet.uuid, 'tag': tag} for tag in info['tags']
                 ]
                 self.do_multirow_insert(connection, cl_worksheet_tag, new_tag_values)
                 del info['tags']
