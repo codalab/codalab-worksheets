@@ -835,7 +835,14 @@ class BundleCLI(object):
         if len(argv) > 0 and (argv[0] == '-v' or argv[0] == '--version'):
             self.print_version()
             return
-        args = parser.parse_args(argv)
+
+        if len(argv) == 0:
+            # In Python 2, running "cl" without any subparsers specified would
+            # lead to help being printed. In Python 3, this was removed, so this code
+            # re-adds that functionality. See https://bugs.python.org/issue16308
+            args = parser.parse_args(['help'])
+        else:
+            args = parser.parse_args(argv)
 
         # Bind self (BundleCLI instance) and args to command function
         command_fn = lambda: args.function(self, args)

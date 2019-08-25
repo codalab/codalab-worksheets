@@ -1238,7 +1238,11 @@ def test(ctx):
 def test(ctx):
     run_command([cl, 'status'])
     run_command([cl, 'alias'])
-    run_command([cl, 'help'])
+    help_output = run_command([cl, 'help'])
+    cl_output = run_command([cl])
+    check_contains("Commands for bundles", help_output)
+    check_contains("Commands for bundles", cl_output)
+    check_equals(cl_output, help_output)
 
 
 @TestModule.register('events', default=False)
