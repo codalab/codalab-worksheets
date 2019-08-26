@@ -291,26 +291,5 @@ understand our `compose` setup, please look into the source of
 Some of the CodaLab service options can be set via environment variables
 instead of command-line options. This is useful for sensitive options like
 passwords, and also useful for setting local defaults instead of reusing long
-argument lists.
-
-Here's a list of options that can be configured via environment variables and
-the corresponding environment variable names:
-
-* `version             : CODALAB_VERSION`
-* `dev                 : CODALAB_DEV`
-* `user_compose_file   : CODALAB_USER_COMPOSE_FILE`
-* `start_worker        : CODALAB_START_WORKER`
-* `mysql_root_password : CODALAB_MYSQL_ROOT_PWD`
-* `mysql_user          : CODALAB_MYSQL_USER`
-* `mysql_password      : CODALAB_MYSQL_PWD`
-* `codalab_user        : CODALAB_ROOT_USER`
-* `codalab_password    : CODALAB_ROOT_PWD`
-* `codalab_home        : CODALAB_SERVICE_HOME`
-* `mysql_mount         : CODALAB_MYSQL_MOUNT`
-* `worker_dir          : CODALAB_WORKER_DIR`
-* `http_port           : CODALAB_HTTP_PORT`
-* `rest_port           : CODALAB_REST_PORT`
-* `frontend_port       : CODALAB_FRONTEND_PORT`
-* `mysql_port          : CODALAB_MYSQL_PORT`
-* `ssl_cert_file       : CODALAB_SSL_CERT_FILE`
-* `ssl_key_file        : CODALAB_SSL_KEY_FILE`
+argument lists.  For the list of environment variables, look at
+`ARG_TO_ENV_VAR` in `codalab_service.py`.

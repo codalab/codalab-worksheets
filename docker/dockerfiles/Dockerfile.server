@@ -24,6 +24,7 @@ WORKDIR /opt/codalab-worksheets
 
 # Install dependencies
 COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
+RUN chmod a+rx /opt/wait-for-it.sh
 COPY worker worker
 COPY requirements.txt requirements.txt
 COPY requirements.docs.txt requirements.docs.txt
@@ -47,5 +48,7 @@ COPY views views
 
 RUN pip install -e .
 
-ENV CODALAB_HOME=/home/codalab
+# Allow non-root to read everything
+RUN chmod -R og=u-w .
+
 EXPOSE 2900

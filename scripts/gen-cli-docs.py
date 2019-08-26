@@ -3,6 +3,7 @@ Generate CLI docs.
 """
 import os
 import sys
+import argparse
 from codalab.bin import cl  # Important to put here to register the commands.
 from codalab.lib.bundle_cli import Commands
 
@@ -18,7 +19,11 @@ def indent(s, padding='    '):
 
 
 def main():
-    with open(os.path.join('docs', 'CLI-Reference.md'), 'w') as f:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--docs', default='docs')
+    args = parser.parse_args()
+
+    with open(os.path.join(args.docs, 'CLI-Reference.md'), 'w') as f:
         print >> f, INTRODUCTION
         print >> f, indent(Commands.help_text(True))
 
