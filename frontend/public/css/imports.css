@@ -6913,29 +6913,29 @@ body,
   line-height: 1.2;
   display: none;
 }
-#worksheet_content hr {
+.worksheet_content hr {
   margin: 12px 0;
 }
-#worksheet_content .glossary-link,
-#worksheet_content .controls label {
+.worksheet_content .glossary-link,
+.worksheet_content .controls label {
   font-weight: normal;
   font-size: 13px;
 }
-#worksheet_content .glossary-link:hover,
-#worksheet_content .controls label:hover {
+.worksheet_content .glossary-link:hover,
+.worksheet_content .controls label:hover {
   text-decoration: none;
 }
-#worksheet_content .glossary-link code,
-#worksheet_content .controls label code {
+.worksheet_content .glossary-link code,
+.worksheet_content .controls label code {
   background-color: transparent;
   padding: 0;
 }
-#worksheet_content .empty-worksheet {
+.worksheet_content .empty-worksheet {
   color: #a4a4a4;
   text-align: center;
   display: none;
 }
-#worksheet_content .worksheet-title {
+.worksheet_content .worksheet-title {
   text-indent: 0;
   margin: 0;
   font-size: 28px;
@@ -6944,31 +6944,31 @@ body,
   padding-top: 40px;
   min-height: 60px;
 }
-#worksheet_content .worksheet-name {
+.worksheet_content .worksheet-name {
   font-size: 14px;
   min-height: 65px;
 }
-#worksheet_content .worksheet-name .worksheet-detail {
+.worksheet_content .worksheet-name .worksheet-detail {
   margin-top: 0;
 }
-#worksheet_content .header-row hr {
+.worksheet_content .header-row hr {
   margin-bottom: 30px;
 }
-#worksheet_content .header-row .controls {
+.worksheet_content .header-row .controls {
   text-align: right;
   padding-top: 12px;
 }
-#worksheet_content .header-row .controls .edit-features {
+.worksheet_content .header-row .controls .edit-features {
   margin-top: 8px;
 }
-#worksheet_content .header-row .controls .edit-features label {
+.worksheet_content .header-row .controls .edit-features label {
   display: inline-block;
   vertical-align: -1px;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group {
+.worksheet_content .header-row .controls .edit-features .btn-group {
   margin-left: 8px;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button {
+.worksheet_content .header-row .controls .edit-features .btn-group button {
   display: inline-block;
   margin-bottom: 0;
   font-weight: normal;
@@ -6993,207 +6993,207 @@ body,
   line-height: 1.34;
   border-radius: 0;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button:focus,
-#worksheet_content .header-row .controls .edit-features .btn-group button:active:focus,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active:focus {
+.worksheet_content .header-row .controls .edit-features .btn-group button:focus,
+.worksheet_content .header-row .controls .edit-features .btn-group button:active:focus,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active:focus {
   outline: thin dotted;
   outline: 5px auto -webkit-focus-ring-color;
   outline-offset: -2px;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button:hover,
-#worksheet_content .header-row .controls .edit-features .btn-group button:focus {
+.worksheet_content .header-row .controls .edit-features .btn-group button:hover,
+.worksheet_content .header-row .controls .edit-features .btn-group button:focus {
   color: #333;
   text-decoration: none;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button:active,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active {
+.worksheet_content .header-row .controls .edit-features .btn-group button:active,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active {
   outline: 0;
   background-image: none;
   -webkit-box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
   box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button.disabled,
-#worksheet_content .header-row .controls .edit-features .btn-group button[disabled],
-fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-group button {
+.worksheet_content .header-row .controls .edit-features .btn-group button.disabled,
+.worksheet_content .header-row .controls .edit-features .btn-group button[disabled],
+fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-group button {
   cursor: not-allowed;
   pointer-events: none;
   -webkit-box-shadow: none;
   box-shadow: none;
   color: #ccc;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button:active,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active {
+.worksheet_content .header-row .controls .edit-features .btn-group button:active,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active {
   -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.125);
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.125);
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button:hover,
-#worksheet_content .header-row .controls .edit-features .btn-group button:focus,
-#worksheet_content .header-row .controls .edit-features .btn-group button:active,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active,
-.open > .dropdown-toggle#worksheet_content .header-row .controls .edit-features .btn-group button {
+.worksheet_content .header-row .controls .edit-features .btn-group button:hover,
+.worksheet_content .header-row .controls .edit-features .btn-group button:focus,
+.worksheet_content .header-row .controls .edit-features .btn-group button:active,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active,
+.open > .dropdown-toggle.worksheet_content .header-row .controls .edit-features .btn-group button {
   color: #333;
   background-color: #e1e1e1;
   border-color: #adadad;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button:active,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active,
-.open > .dropdown-toggle#worksheet_content .header-row .controls .edit-features .btn-group button {
+.worksheet_content .header-row .controls .edit-features .btn-group button:active,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active,
+.open > .dropdown-toggle.worksheet_content .header-row .controls .edit-features .btn-group button {
   background-image: none;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button.disabled,
-#worksheet_content .header-row .controls .edit-features .btn-group button[disabled],
-fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-group button,
-#worksheet_content .header-row .controls .edit-features .btn-group button.disabled:hover,
-#worksheet_content .header-row .controls .edit-features .btn-group button[disabled]:hover,
-fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-group button:hover,
-#worksheet_content .header-row .controls .edit-features .btn-group button.disabled:focus,
-#worksheet_content .header-row .controls .edit-features .btn-group button[disabled]:focus,
-fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-group button:focus,
-#worksheet_content .header-row .controls .edit-features .btn-group button.disabled:active,
-#worksheet_content .header-row .controls .edit-features .btn-group button[disabled]:active,
-fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-group button:active,
-#worksheet_content .header-row .controls .edit-features .btn-group button.disabled.active,
-#worksheet_content .header-row .controls .edit-features .btn-group button[disabled].active,
-fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-group button.active {
+.worksheet_content .header-row .controls .edit-features .btn-group button.disabled,
+.worksheet_content .header-row .controls .edit-features .btn-group button[disabled],
+fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-group button,
+.worksheet_content .header-row .controls .edit-features .btn-group button.disabled:hover,
+.worksheet_content .header-row .controls .edit-features .btn-group button[disabled]:hover,
+fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-group button:hover,
+.worksheet_content .header-row .controls .edit-features .btn-group button.disabled:focus,
+.worksheet_content .header-row .controls .edit-features .btn-group button[disabled]:focus,
+fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-group button:focus,
+.worksheet_content .header-row .controls .edit-features .btn-group button.disabled:active,
+.worksheet_content .header-row .controls .edit-features .btn-group button[disabled]:active,
+fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-group button:active,
+.worksheet_content .header-row .controls .edit-features .btn-group button.disabled.active,
+.worksheet_content .header-row .controls .edit-features .btn-group button[disabled].active,
+fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-group button.active {
   background-color: #fafafa;
   border-color: #ccc;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button .badge {
+.worksheet_content .header-row .controls .edit-features .btn-group button .badge {
   color: #fafafa;
   background-color: #333;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button + button {
+.worksheet_content .header-row .controls .edit-features .btn-group button + button {
   margin-left: -1px;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button.active {
+.worksheet_content .header-row .controls .edit-features .btn-group button.active {
   color: #fff;
   background-color: #676278;
   border-color: #4f4b5c;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button.active:hover,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active:focus,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active:active,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active.active,
-.open > .dropdown-toggle#worksheet_content .header-row .controls .edit-features .btn-group button.active {
+.worksheet_content .header-row .controls .edit-features .btn-group button.active:hover,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active:focus,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active:active,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active.active,
+.open > .dropdown-toggle.worksheet_content .header-row .controls .edit-features .btn-group button.active {
   color: #fff;
   background-color: #4f4b5c;
   border-color: #32303a;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button.active:active,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active.active,
-.open > .dropdown-toggle#worksheet_content .header-row .controls .edit-features .btn-group button.active {
+.worksheet_content .header-row .controls .edit-features .btn-group button.active:active,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active.active,
+.open > .dropdown-toggle.worksheet_content .header-row .controls .edit-features .btn-group button.active {
   background-image: none;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button.active.disabled,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active[disabled],
-fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-group button.active,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active.disabled:hover,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active[disabled]:hover,
-fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-group button.active:hover,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active.disabled:focus,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active[disabled]:focus,
-fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-group button.active:focus,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active.disabled:active,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active[disabled]:active,
-fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-group button.active:active,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active.disabled.active,
-#worksheet_content .header-row .controls .edit-features .btn-group button.active[disabled].active,
-fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-group button.active.active {
+.worksheet_content .header-row .controls .edit-features .btn-group button.active.disabled,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active[disabled],
+fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-group button.active,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active.disabled:hover,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active[disabled]:hover,
+fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-group button.active:hover,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active.disabled:focus,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active[disabled]:focus,
+fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-group button.active:focus,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active.disabled:active,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active[disabled]:active,
+fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-group button.active:active,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active.disabled.active,
+.worksheet_content .header-row .controls .edit-features .btn-group button.active[disabled].active,
+fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-group button.active.active {
   background-color: #676278;
   border-color: #4f4b5c;
 }
-#worksheet_content .header-row .controls .edit-features .btn-group button.active .badge {
+.worksheet_content .header-row .controls .edit-features .btn-group button.active .badge {
   color: #676278;
   background-color: #fff;
 }
-#worksheet_content .header-row .controls input,
-#worksheet_content .header-row .controls label {
+.worksheet_content .header-row .controls input,
+.worksheet_content .header-row .controls label {
   font-weight: normal;
   margin: 0;
 }
-#worksheet_content .ws-item {
+.worksheet_content .ws-item {
   position: relative;
   /*margin-bottom: 20px;*/
 }
-#worksheet_content .ws-item .ws-checkbox {
+.worksheet_content .ws-item .ws-checkbox {
   margin: 0;
   position: absolute;
   left: -24px;
   top: 4px;
   font-size: 16px;
 }
-#worksheet_content .ws-item > .focused {
+.worksheet_content .ws-item > .focused {
   background-color: #e2f0f5;
   border-left: #1d91c0 solid 3px;
   padding-left: 4px;
 }
-#worksheet_content.editable .ws-item {
+.worksheet_content.editable .ws-item {
   margin-left: 24px;
 }
-#worksheet_content textarea {
+.worksheet_content textarea {
 
 }
-#worksheet_content textarea.raw-textarea {
+.worksheet_content textarea.raw-textarea {
   min-height: 480px;
 }
-#worksheet_content .type-markup {
+.worksheet_content .type-markup {
   line-height: 1.5;
 }
-#worksheet_content .type-markup:before,
-#worksheet_content .type-markup:after {
+.worksheet_content .type-markup:before,
+.worksheet_content .type-markup:after {
   content: " ";
   display: table;
 }
-#worksheet_content .type-markup:after {
+.worksheet_content .type-markup:after {
   clear: both;
 }
-#worksheet_content .type-markup:before,
-#worksheet_content .type-markup:after {
+.worksheet_content .type-markup:before,
+.worksheet_content .type-markup:after {
   content: " ";
   display: table;
 }
-#worksheet_content .type-markup:after {
+.worksheet_content .type-markup:after {
   clear: both;
 }
-#worksheet_content .type-markup > * {
+.worksheet_content .type-markup > * {
   margin-bottom: 20px;
 }
-#worksheet_content .type-markup > *:last-child {
+.worksheet_content .type-markup > *:last-child {
   margin-bottom: 0;
 }
-#worksheet_content .type-markup ul,
-#worksheet_content .type-markup ol {
+.worksheet_content .type-markup ul,
+.worksheet_content .type-markup ol {
   margin: 0;
   padding-left: 40px;
 }
-#worksheet_content .type-markup ul {
+.worksheet_content .type-markup ul {
   list-style-type: disc;
 }
-#worksheet_content .type-markup ol {
+.worksheet_content .type-markup ol {
   list-style-type: decimal;
 }
-#worksheet_content .type-markup li {
+.worksheet_content .type-markup li {
   margin-top: 6px;
   margin-bottom: 6px;
 }
-#worksheet_content .type-markup h1,
-#worksheet_content .type-markup h2,
-#worksheet_content .type-markup h3,
-#worksheet_content .type-markup h4 {
+.worksheet_content .type-markup h1,
+.worksheet_content .type-markup h2,
+.worksheet_content .type-markup h3,
+.worksheet_content .type-markup h4 {
   margin-top: .5em;
   padding: 0;
   font-weight: 500;
 }
-#worksheet_content .type-markup h1 {
+.worksheet_content .type-markup h1 {
   font-size: 36px;
 }
-#worksheet_content .type-markup h2 {
+.worksheet_content .type-markup h2 {
   font-size: 28px;
 }
-#worksheet_content .type-markup h3 {
+.worksheet_content .type-markup h3 {
   font-size: 20px;
 }
-#worksheet_content .type-markup code {
+.worksheet_content .type-markup code {
   font-size: 90%;
   display: inline;
   max-width: initial;
@@ -7206,21 +7206,21 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   word-break: normal;
   white-space: pre;
 }
-#worksheet_content .type-markup,
-#worksheet_content .type-inline,
-#worksheet_content .type-worksheet,
-#worksheet_content .type-image {
+.worksheet_content .type-markup,
+.worksheet_content .type-inline,
+.worksheet_content .type-worksheet,
+.worksheet_content .type-image {
   min-height: 0;
 }
-#worksheet_content .type-image img {
+.worksheet_content .type-image img {
   width: 98%;
   margin: 1%;
 }
-#worksheet_content .type-contents blockquote {
+.worksheet_content .type-contents blockquote {
   padding: 16px 0 16px 16px;
   border-left: 4px solid #ddd;
 }
-#worksheet_content .type-contents blockquote p {
+.worksheet_content .type-contents blockquote p {
   font-family: 'Roboto Mono', monospace;
   color: #666;
   margin: 0;
@@ -7229,35 +7229,35 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   white-space: pre;
   overflow: auto;
 }
-#worksheet_content .type-contents:not(.focused) blockquote {
+.worksheet_content .type-contents:not(.focused) blockquote {
   background-color: #f7f7f7;
 }
-#worksheet_content .type-html .html-bundle {
+.worksheet_content .type-html .html-bundle {
   padding: 16px;
   margin-bottom: 24px;
   border: 1px solid #ddd;
   background-color: #fff;
 }
-#worksheet_content .type-html .html-bundle.focused .html-bundle {
+.worksheet_content .type-html .html-bundle.focused .html-bundle {
   background-color: #fffef4;
 }
-#worksheet_content .type-worksheet {
+.worksheet_content .type-worksheet {
   height: 40px;
   line-height: 40px;
   padding: 0 8px 0 40px;
   background: url('/static/img/icon_worksheet.png') no-repeat 4px #fcfcfc;
   background-size: 32px;
 }
-#worksheet_content .type-table,
-#worksheet_content .type-record,
-#worksheet_content .type-search {
+.worksheet_content .type-table,
+.worksheet_content .type-record,
+.worksheet_content .type-search {
   margin-right: 45px;
   display: inline-block;
   min-width: 100%;
 }
-#worksheet_content .type-table table,
-#worksheet_content .type-record table,
-#worksheet_content .type-search table {
+.worksheet_content .type-table table,
+.worksheet_content .type-record table,
+.worksheet_content .type-search table {
   width: 100%;
   max-width: 100%;
   margin-bottom: 25px;
@@ -7267,261 +7267,261 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   margin-bottom: 0;
   border-top: 3px solid #DDDDDD;
 }
-#worksheet_content .type-table table > thead > tr > th,
-#worksheet_content .type-record table > thead > tr > th,
-#worksheet_content .type-search table > thead > tr > th,
-#worksheet_content .type-table table > tbody > tr > th,
-#worksheet_content .type-record table > tbody > tr > th,
-#worksheet_content .type-search table > tbody > tr > th,
-#worksheet_content .type-table table > tfoot > tr > th,
-#worksheet_content .type-record table > tfoot > tr > th,
-#worksheet_content .type-search table > tfoot > tr > th,
-#worksheet_content .type-table table > thead > tr > td,
-#worksheet_content .type-record table > thead > tr > td,
-#worksheet_content .type-search table > thead > tr > td,
-#worksheet_content .type-table table > tbody > tr > td,
-#worksheet_content .type-record table > tbody > tr > td,
-#worksheet_content .type-search table > tbody > tr > td,
-#worksheet_content .type-table table > tfoot > tr > td,
-#worksheet_content .type-record table > tfoot > tr > td,
-#worksheet_content .type-search table > tfoot > tr > td {
+.worksheet_content .type-table table > thead > tr > th,
+.worksheet_content .type-record table > thead > tr > th,
+.worksheet_content .type-search table > thead > tr > th,
+.worksheet_content .type-table table > tbody > tr > th,
+.worksheet_content .type-record table > tbody > tr > th,
+.worksheet_content .type-search table > tbody > tr > th,
+.worksheet_content .type-table table > tfoot > tr > th,
+.worksheet_content .type-record table > tfoot > tr > th,
+.worksheet_content .type-search table > tfoot > tr > th,
+.worksheet_content .type-table table > thead > tr > td,
+.worksheet_content .type-record table > thead > tr > td,
+.worksheet_content .type-search table > thead > tr > td,
+.worksheet_content .type-table table > tbody > tr > td,
+.worksheet_content .type-record table > tbody > tr > td,
+.worksheet_content .type-search table > tbody > tr > td,
+.worksheet_content .type-table table > tfoot > tr > td,
+.worksheet_content .type-record table > tfoot > tr > td,
+.worksheet_content .type-search table > tfoot > tr > td {
   padding: 4px 6px;
   line-height: 1.6;
   vertical-align: top;
   border-top: 1px solid #ddd;
 }
-#worksheet_content .type-table table > thead > tr > th,
-#worksheet_content .type-record table > thead > tr > th,
-#worksheet_content .type-search table > thead > tr > th {
+.worksheet_content .type-table table > thead > tr > th,
+.worksheet_content .type-record table > thead > tr > th,
+.worksheet_content .type-search table > thead > tr > th {
   vertical-align: bottom;
   border-bottom: 2px solid #ddd;
 }
-#worksheet_content .type-table table > caption + thead > tr:first-child > th,
-#worksheet_content .type-record table > caption + thead > tr:first-child > th,
-#worksheet_content .type-search table > caption + thead > tr:first-child > th,
-#worksheet_content .type-table table > colgroup + thead > tr:first-child > th,
-#worksheet_content .type-record table > colgroup + thead > tr:first-child > th,
-#worksheet_content .type-search table > colgroup + thead > tr:first-child > th,
-#worksheet_content .type-table table > thead:first-child > tr:first-child > th,
-#worksheet_content .type-record table > thead:first-child > tr:first-child > th,
-#worksheet_content .type-search table > thead:first-child > tr:first-child > th,
-#worksheet_content .type-table table > caption + thead > tr:first-child > td,
-#worksheet_content .type-record table > caption + thead > tr:first-child > td,
-#worksheet_content .type-search table > caption + thead > tr:first-child > td,
-#worksheet_content .type-table table > colgroup + thead > tr:first-child > td,
-#worksheet_content .type-record table > colgroup + thead > tr:first-child > td,
-#worksheet_content .type-search table > colgroup + thead > tr:first-child > td,
-#worksheet_content .type-table table > thead:first-child > tr:first-child > td,
-#worksheet_content .type-record table > thead:first-child > tr:first-child > td,
-#worksheet_content .type-search table > thead:first-child > tr:first-child > td {
+.worksheet_content .type-table table > caption + thead > tr:first-child > th,
+.worksheet_content .type-record table > caption + thead > tr:first-child > th,
+.worksheet_content .type-search table > caption + thead > tr:first-child > th,
+.worksheet_content .type-table table > colgroup + thead > tr:first-child > th,
+.worksheet_content .type-record table > colgroup + thead > tr:first-child > th,
+.worksheet_content .type-search table > colgroup + thead > tr:first-child > th,
+.worksheet_content .type-table table > thead:first-child > tr:first-child > th,
+.worksheet_content .type-record table > thead:first-child > tr:first-child > th,
+.worksheet_content .type-search table > thead:first-child > tr:first-child > th,
+.worksheet_content .type-table table > caption + thead > tr:first-child > td,
+.worksheet_content .type-record table > caption + thead > tr:first-child > td,
+.worksheet_content .type-search table > caption + thead > tr:first-child > td,
+.worksheet_content .type-table table > colgroup + thead > tr:first-child > td,
+.worksheet_content .type-record table > colgroup + thead > tr:first-child > td,
+.worksheet_content .type-search table > colgroup + thead > tr:first-child > td,
+.worksheet_content .type-table table > thead:first-child > tr:first-child > td,
+.worksheet_content .type-record table > thead:first-child > tr:first-child > td,
+.worksheet_content .type-search table > thead:first-child > tr:first-child > td {
   border-top: 0;
 }
-#worksheet_content .type-table table > tbody + tbody,
-#worksheet_content .type-record table > tbody + tbody,
-#worksheet_content .type-search table > tbody + tbody {
+.worksheet_content .type-table table > tbody + tbody,
+.worksheet_content .type-record table > tbody + tbody,
+.worksheet_content .type-search table > tbody + tbody {
   border-top: 2px solid #ddd;
 }
-#worksheet_content .type-table table .table,
-#worksheet_content .type-record table .table,
-#worksheet_content .type-search table .table {
+.worksheet_content .type-table table .table,
+.worksheet_content .type-record table .table,
+.worksheet_content .type-search table .table {
   background-color: #f7f7f7;
 }
-#worksheet_content .type-table table > thead > tr > th,
-#worksheet_content .type-record table > thead > tr > th,
-#worksheet_content .type-search table > thead > tr > th,
-#worksheet_content .type-table table > tbody > tr > th,
-#worksheet_content .type-record table > tbody > tr > th,
-#worksheet_content .type-search table > tbody > tr > th,
-#worksheet_content .type-table table > tfoot > tr > th,
-#worksheet_content .type-record table > tfoot > tr > th,
-#worksheet_content .type-search table > tfoot > tr > th,
-#worksheet_content .type-table table > thead > tr > td,
-#worksheet_content .type-record table > thead > tr > td,
-#worksheet_content .type-search table > thead > tr > td,
-#worksheet_content .type-table table > tbody > tr > td,
-#worksheet_content .type-record table > tbody > tr > td,
-#worksheet_content .type-search table > tbody > tr > td,
-#worksheet_content .type-table table > tfoot > tr > td,
-#worksheet_content .type-record table > tfoot > tr > td,
-#worksheet_content .type-search table > tfoot > tr > td {
+.worksheet_content .type-table table > thead > tr > th,
+.worksheet_content .type-record table > thead > tr > th,
+.worksheet_content .type-search table > thead > tr > th,
+.worksheet_content .type-table table > tbody > tr > th,
+.worksheet_content .type-record table > tbody > tr > th,
+.worksheet_content .type-search table > tbody > tr > th,
+.worksheet_content .type-table table > tfoot > tr > th,
+.worksheet_content .type-record table > tfoot > tr > th,
+.worksheet_content .type-search table > tfoot > tr > th,
+.worksheet_content .type-table table > thead > tr > td,
+.worksheet_content .type-record table > thead > tr > td,
+.worksheet_content .type-search table > thead > tr > td,
+.worksheet_content .type-table table > tbody > tr > td,
+.worksheet_content .type-record table > tbody > tr > td,
+.worksheet_content .type-search table > tbody > tr > td,
+.worksheet_content .type-table table > tfoot > tr > td,
+.worksheet_content .type-record table > tfoot > tr > td,
+.worksheet_content .type-search table > tfoot > tr > td {
   border: 1px solid #ddd;
 }
-#worksheet_content .type-table table > thead > tr > th,
-#worksheet_content .type-record table > thead > tr > th,
-#worksheet_content .type-search table > thead > tr > th,
-#worksheet_content .type-table table > thead > tr > td,
-#worksheet_content .type-record table > thead > tr > td,
-#worksheet_content .type-search table > thead > tr > td {
+.worksheet_content .type-table table > thead > tr > th,
+.worksheet_content .type-record table > thead > tr > th,
+.worksheet_content .type-search table > thead > tr > th,
+.worksheet_content .type-table table > thead > tr > td,
+.worksheet_content .type-record table > thead > tr > td,
+.worksheet_content .type-search table > thead > tr > td {
   border-bottom-width: 2px;
 }
-#worksheet_content .type-table table > tbody > tr:nth-child(odd) > td,
-#worksheet_content .type-record table > tbody > tr:nth-child(odd) > td,
-#worksheet_content .type-search table > tbody > tr:nth-child(odd) > td,
-#worksheet_content .type-table table > tbody > tr:nth-child(odd) > th,
-#worksheet_content .type-record table > tbody > tr:nth-child(odd) > th,
-#worksheet_content .type-search table > tbody > tr:nth-child(odd) > th {
+.worksheet_content .type-table table > tbody > tr:nth-child(odd) > td,
+.worksheet_content .type-record table > tbody > tr:nth-child(odd) > td,
+.worksheet_content .type-search table > tbody > tr:nth-child(odd) > td,
+.worksheet_content .type-table table > tbody > tr:nth-child(odd) > th,
+.worksheet_content .type-record table > tbody > tr:nth-child(odd) > th,
+.worksheet_content .type-search table > tbody > tr:nth-child(odd) > th {
   background-color: white;
 }
-#worksheet_content .type-table table > thead > tr > th,
-#worksheet_content .type-record table > thead > tr > th,
-#worksheet_content .type-search table > thead > tr > th,
-#worksheet_content .type-table table > tbody > tr > th,
-#worksheet_content .type-record table > tbody > tr > th,
-#worksheet_content .type-search table > tbody > tr > th,
-#worksheet_content .type-table table > tfoot > tr > th,
-#worksheet_content .type-record table > tfoot > tr > th,
-#worksheet_content .type-search table > tfoot > tr > th,
-#worksheet_content .type-table table > thead > tr > td,
-#worksheet_content .type-record table > thead > tr > td,
-#worksheet_content .type-search table > thead > tr > td,
-#worksheet_content .type-table table > tbody > tr > td,
-#worksheet_content .type-record table > tbody > tr > td,
-#worksheet_content .type-search table > tbody > tr > td,
-#worksheet_content .type-table table > tfoot > tr > td,
-#worksheet_content .type-record table > tfoot > tr > td,
-#worksheet_content .type-search table > tfoot > tr > td {
+.worksheet_content .type-table table > thead > tr > th,
+.worksheet_content .type-record table > thead > tr > th,
+.worksheet_content .type-search table > thead > tr > th,
+.worksheet_content .type-table table > tbody > tr > th,
+.worksheet_content .type-record table > tbody > tr > th,
+.worksheet_content .type-search table > tbody > tr > th,
+.worksheet_content .type-table table > tfoot > tr > th,
+.worksheet_content .type-record table > tfoot > tr > th,
+.worksheet_content .type-search table > tfoot > tr > th,
+.worksheet_content .type-table table > thead > tr > td,
+.worksheet_content .type-record table > thead > tr > td,
+.worksheet_content .type-search table > thead > tr > td,
+.worksheet_content .type-table table > tbody > tr > td,
+.worksheet_content .type-record table > tbody > tr > td,
+.worksheet_content .type-search table > tbody > tr > td,
+.worksheet_content .type-table table > tfoot > tr > td,
+.worksheet_content .type-record table > tfoot > tr > td,
+.worksheet_content .type-search table > tfoot > tr > td {
   line-height: 1.2;
   font-size: 14px;
   border-width: 2px;
   border-color: white;
 }
 @media screen and (max-width: 767px) {
-  #worksheet_content .type-table table > thead > tr > th,
-  #worksheet_content .type-record table > thead > tr > th,
-  #worksheet_content .type-search table > thead > tr > th,
-  #worksheet_content .type-table table > tbody > tr > th,
-  #worksheet_content .type-record table > tbody > tr > th,
-  #worksheet_content .type-search table > tbody > tr > th,
-  #worksheet_content .type-table table > tfoot > tr > th,
-  #worksheet_content .type-record table > tfoot > tr > th,
-  #worksheet_content .type-search table > tfoot > tr > th,
-  #worksheet_content .type-table table > thead > tr > td,
-  #worksheet_content .type-record table > thead > tr > td,
-  #worksheet_content .type-search table > thead > tr > td,
-  #worksheet_content .type-table table > tbody > tr > td,
-  #worksheet_content .type-record table > tbody > tr > td,
-  #worksheet_content .type-search table > tbody > tr > td,
-  #worksheet_content .type-table table > tfoot > tr > td,
-  #worksheet_content .type-record table > tfoot > tr > td,
-  #worksheet_content .type-search table > tfoot > tr > td {
+  .worksheet_content .type-table table > thead > tr > th,
+  .worksheet_content .type-record table > thead > tr > th,
+  .worksheet_content .type-search table > thead > tr > th,
+  .worksheet_content .type-table table > tbody > tr > th,
+  .worksheet_content .type-record table > tbody > tr > th,
+  .worksheet_content .type-search table > tbody > tr > th,
+  .worksheet_content .type-table table > tfoot > tr > th,
+  .worksheet_content .type-record table > tfoot > tr > th,
+  .worksheet_content .type-search table > tfoot > tr > th,
+  .worksheet_content .type-table table > thead > tr > td,
+  .worksheet_content .type-record table > thead > tr > td,
+  .worksheet_content .type-search table > thead > tr > td,
+  .worksheet_content .type-table table > tbody > tr > td,
+  .worksheet_content .type-record table > tbody > tr > td,
+  .worksheet_content .type-search table > tbody > tr > td,
+  .worksheet_content .type-table table > tfoot > tr > td,
+  .worksheet_content .type-record table > tfoot > tr > td,
+  .worksheet_content .type-search table > tfoot > tr > td {
     max-width: 25em;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 }
-#worksheet_content .type-table table > thead > tr > th a.bundle-link,
-#worksheet_content .type-record table > thead > tr > th a.bundle-link,
-#worksheet_content .type-search table > thead > tr > th a.bundle-link,
-#worksheet_content .type-table table > tbody > tr > th a.bundle-link,
-#worksheet_content .type-record table > tbody > tr > th a.bundle-link,
-#worksheet_content .type-search table > tbody > tr > th a.bundle-link,
-#worksheet_content .type-table table > tfoot > tr > th a.bundle-link,
-#worksheet_content .type-record table > tfoot > tr > th a.bundle-link,
-#worksheet_content .type-search table > tfoot > tr > th a.bundle-link,
-#worksheet_content .type-table table > thead > tr > td a.bundle-link,
-#worksheet_content .type-record table > thead > tr > td a.bundle-link,
-#worksheet_content .type-search table > thead > tr > td a.bundle-link,
-#worksheet_content .type-table table > tbody > tr > td a.bundle-link,
-#worksheet_content .type-record table > tbody > tr > td a.bundle-link,
-#worksheet_content .type-search table > tbody > tr > td a.bundle-link,
-#worksheet_content .type-table table > tfoot > tr > td a.bundle-link,
-#worksheet_content .type-record table > tfoot > tr > td a.bundle-link,
-#worksheet_content .type-search table > tfoot > tr > td a.bundle-link {
+.worksheet_content .type-table table > thead > tr > th a.bundle-link,
+.worksheet_content .type-record table > thead > tr > th a.bundle-link,
+.worksheet_content .type-search table > thead > tr > th a.bundle-link,
+.worksheet_content .type-table table > tbody > tr > th a.bundle-link,
+.worksheet_content .type-record table > tbody > tr > th a.bundle-link,
+.worksheet_content .type-search table > tbody > tr > th a.bundle-link,
+.worksheet_content .type-table table > tfoot > tr > th a.bundle-link,
+.worksheet_content .type-record table > tfoot > tr > th a.bundle-link,
+.worksheet_content .type-search table > tfoot > tr > th a.bundle-link,
+.worksheet_content .type-table table > thead > tr > td a.bundle-link,
+.worksheet_content .type-record table > thead > tr > td a.bundle-link,
+.worksheet_content .type-search table > thead > tr > td a.bundle-link,
+.worksheet_content .type-table table > tbody > tr > td a.bundle-link,
+.worksheet_content .type-record table > tbody > tr > td a.bundle-link,
+.worksheet_content .type-search table > tbody > tr > td a.bundle-link,
+.worksheet_content .type-table table > tfoot > tr > td a.bundle-link,
+.worksheet_content .type-record table > tfoot > tr > td a.bundle-link,
+.worksheet_content .type-search table > tfoot > tr > td a.bundle-link {
   font-weight: 500;
 }
-#worksheet_content .type-table table > thead > tr > th.table-column-_7C,
-#worksheet_content .type-record table > thead > tr > th.table-column-_7C,
-#worksheet_content .type-search table > thead > tr > th.table-column-_7C,
-#worksheet_content .type-table table > tbody > tr > th.table-column-_7C,
-#worksheet_content .type-record table > tbody > tr > th.table-column-_7C,
-#worksheet_content .type-search table > tbody > tr > th.table-column-_7C,
-#worksheet_content .type-table table > tfoot > tr > th.table-column-_7C,
-#worksheet_content .type-record table > tfoot > tr > th.table-column-_7C,
-#worksheet_content .type-search table > tfoot > tr > th.table-column-_7C,
-#worksheet_content .type-table table > thead > tr > td.table-column-_7C,
-#worksheet_content .type-record table > thead > tr > td.table-column-_7C,
-#worksheet_content .type-search table > thead > tr > td.table-column-_7C,
-#worksheet_content .type-table table > tbody > tr > td.table-column-_7C,
-#worksheet_content .type-record table > tbody > tr > td.table-column-_7C,
-#worksheet_content .type-search table > tbody > tr > td.table-column-_7C,
-#worksheet_content .type-table table > tfoot > tr > td.table-column-_7C,
-#worksheet_content .type-record table > tfoot > tr > td.table-column-_7C,
-#worksheet_content .type-search table > tfoot > tr > td.table-column-_7C {
+.worksheet_content .type-table table > thead > tr > th.table-column-_7C,
+.worksheet_content .type-record table > thead > tr > th.table-column-_7C,
+.worksheet_content .type-search table > thead > tr > th.table-column-_7C,
+.worksheet_content .type-table table > tbody > tr > th.table-column-_7C,
+.worksheet_content .type-record table > tbody > tr > th.table-column-_7C,
+.worksheet_content .type-search table > tbody > tr > th.table-column-_7C,
+.worksheet_content .type-table table > tfoot > tr > th.table-column-_7C,
+.worksheet_content .type-record table > tfoot > tr > th.table-column-_7C,
+.worksheet_content .type-search table > tfoot > tr > th.table-column-_7C,
+.worksheet_content .type-table table > thead > tr > td.table-column-_7C,
+.worksheet_content .type-record table > thead > tr > td.table-column-_7C,
+.worksheet_content .type-search table > thead > tr > td.table-column-_7C,
+.worksheet_content .type-table table > tbody > tr > td.table-column-_7C,
+.worksheet_content .type-record table > tbody > tr > td.table-column-_7C,
+.worksheet_content .type-search table > tbody > tr > td.table-column-_7C,
+.worksheet_content .type-table table > tfoot > tr > td.table-column-_7C,
+.worksheet_content .type-record table > tfoot > tr > td.table-column-_7C,
+.worksheet_content .type-search table > tfoot > tr > td.table-column-_7C {
   background-color: #AAA !important;
   color: #AAA;
   width: 3px;
   padding: 0;
 }
-#worksheet_content .type-table table > thead > tr > th,
-#worksheet_content .type-record table > thead > tr > th,
-#worksheet_content .type-search table > thead > tr > th {
+.worksheet_content .type-table table > thead > tr > th,
+.worksheet_content .type-record table > thead > tr > th,
+.worksheet_content .type-search table > thead > tr > th {
   font-weight: 500;
   color: #666;
 }
-#worksheet_content .type-table table.focused,
-#worksheet_content .type-record table.focused,
-#worksheet_content .type-search table.focused {
+.worksheet_content .type-table table.focused,
+.worksheet_content .type-record table.focused,
+.worksheet_content .type-search table.focused {
   border-color: #fffef4;
   box-shadow: 0 0 5px 5px #e2f0f5;
   border-top: 3px solid #DDDDDD;
 }
-#worksheet_content .type-table table.focused > thead > tr > th,
-#worksheet_content .type-record table.focused > thead > tr > th,
-#worksheet_content .type-search table.focused > thead > tr > th,
-#worksheet_content .type-table table.focused > tbody > tr > th,
-#worksheet_content .type-record table.focused > tbody > tr > th,
-#worksheet_content .type-search table.focused > tbody > tr > th,
-#worksheet_content .type-table table.focused > tfoot > tr > th,
-#worksheet_content .type-record table.focused > tfoot > tr > th,
-#worksheet_content .type-search table.focused > tfoot > tr > th,
-#worksheet_content .type-table table.focused > thead > tr > td,
-#worksheet_content .type-record table.focused > thead > tr > td,
-#worksheet_content .type-search table.focused > thead > tr > td,
-#worksheet_content .type-table table.focused > tbody > tr > td,
-#worksheet_content .type-record table.focused > tbody > tr > td,
-#worksheet_content .type-search table.focused > tbody > tr > td,
-#worksheet_content .type-table table.focused > tfoot > tr > td,
-#worksheet_content .type-record table.focused > tfoot > tr > td,
-#worksheet_content .type-search table.focused > tfoot > tr > td {
+.worksheet_content .type-table table.focused > thead > tr > th,
+.worksheet_content .type-record table.focused > thead > tr > th,
+.worksheet_content .type-search table.focused > thead > tr > th,
+.worksheet_content .type-table table.focused > tbody > tr > th,
+.worksheet_content .type-record table.focused > tbody > tr > th,
+.worksheet_content .type-search table.focused > tbody > tr > th,
+.worksheet_content .type-table table.focused > tfoot > tr > th,
+.worksheet_content .type-record table.focused > tfoot > tr > th,
+.worksheet_content .type-search table.focused > tfoot > tr > th,
+.worksheet_content .type-table table.focused > thead > tr > td,
+.worksheet_content .type-record table.focused > thead > tr > td,
+.worksheet_content .type-search table.focused > thead > tr > td,
+.worksheet_content .type-table table.focused > tbody > tr > td,
+.worksheet_content .type-record table.focused > tbody > tr > td,
+.worksheet_content .type-search table.focused > tbody > tr > td,
+.worksheet_content .type-table table.focused > tfoot > tr > td,
+.worksheet_content .type-record table.focused > tfoot > tr > td,
+.worksheet_content .type-search table.focused > tfoot > tr > td {
   border-color: #fffef4;
 }
-#worksheet_content .type-table table.focused > thead > tr.focused > td,
-#worksheet_content .type-record table.focused > thead > tr.focused > td,
-#worksheet_content .type-search table.focused > thead > tr.focused > td,
-#worksheet_content .type-table table.focused > tbody > tr.focused > td,
-#worksheet_content .type-record table.focused > tbody > tr.focused > td,
-#worksheet_content .type-search table.focused > tbody > tr.focused > td,
-#worksheet_content .type-table table.focused > tfoot > tr.focused > td,
-#worksheet_content .type-record table.focused > tfoot > tr.focused > td,
-#worksheet_content .type-search table.focused > tfoot > tr.focused > td {
+.worksheet_content .type-table table.focused > thead > tr.focused > td,
+.worksheet_content .type-record table.focused > thead > tr.focused > td,
+.worksheet_content .type-search table.focused > thead > tr.focused > td,
+.worksheet_content .type-table table.focused > tbody > tr.focused > td,
+.worksheet_content .type-record table.focused > tbody > tr.focused > td,
+.worksheet_content .type-search table.focused > tbody > tr.focused > td,
+.worksheet_content .type-table table.focused > tfoot > tr.focused > td,
+.worksheet_content .type-record table.focused > tfoot > tr.focused > td,
+.worksheet_content .type-search table.focused > tfoot > tr.focused > td {
   background-color: #dfedf7;
 }
-#worksheet_content .type-record table.table {
+.worksheet_content .type-record table.table {
   width: auto;
   max-width: 100%;
 }
-#worksheet_content .type-search:before,
-#worksheet_content .type-search:after {
+.worksheet_content .type-search:before,
+.worksheet_content .type-search:after {
   content: " ";
   display: table;
 }
-#worksheet_content .type-search:after {
+.worksheet_content .type-search:after {
   clear: both;
 }
-#worksheet_content .type-search:before,
-#worksheet_content .type-search:after {
+.worksheet_content .type-search:before,
+.worksheet_content .type-search:after {
   content: " ";
   display: table;
 }
-#worksheet_content .type-search:after {
+.worksheet_content .type-search:after {
   clear: both;
 }
-#worksheet_content .type-search .result {
+.worksheet_content .type-search .result {
   padding: 8px;
   position: relative;
   background: #f8fafb;
 }
-#worksheet_content .type-search .result:before {
+.worksheet_content .type-search .result:before {
   top: 1px;
   display: inline-block;
   font-family: 'Glyphicons Halflings';
@@ -7537,15 +7537,15 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   margin-right: 5px;
   font-size: 12px;
 }
-#worksheet_content .type-search .result.empty {
+.worksheet_content .type-search .result.empty {
   color: #999;
 }
-#worksheet_content .type-search table {
+.worksheet_content .type-search table {
   border-left-width: 24px;
   border-color: #f8fafb;
   background-color: #f3f7f9;
 }
-#worksheet_content .type-search table:before {
+.worksheet_content .type-search table:before {
   position: relative;
   top: 1px;
   display: inline-block;
@@ -7562,11 +7562,11 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   left: 5px;
   top: 5px;
 }
-#worksheet_content .type-search table > tbody > tr > td,
-#worksheet_content .type-search table > thead > tr > th {
+.worksheet_content .type-search table > tbody > tr > td,
+.worksheet_content .type-search table > thead > tr > th {
   border-color: #f8fafb;
 }
-#worksheet_content .type-search table > tbody > tr:nth-child(odd) > td {
+.worksheet_content .type-search table > tbody > tr:nth-child(odd) > td {
   background-color: #f8fafb;
 }
 .select2-drop,
@@ -7751,8 +7751,8 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   border-bottom: 1px solid #eee;
 }
 @media screen and (max-width: 767px) {
-  #worksheet_content .type-table table,
-  #worksheet_content .type-record table {
+  .worksheet_content .type-table table,
+  .worksheet_content .type-record table {
     margin-bottom: 16px;
   }
   #worksheet #worksheet_panel,
