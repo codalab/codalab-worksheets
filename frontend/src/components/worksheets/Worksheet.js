@@ -753,7 +753,7 @@ class Worksheet extends React.Component {
                     <button className={rawClass} onClick={this.editMode}>
                         {sourceStr}
                     </button>
-                    <button className={rawClass} onClick={this.delete.bind(this)}>
+                    <button className={rawClass} onClick={e => this.delete()}>
                         {"Delete"}
                     </button>
                 </div>
