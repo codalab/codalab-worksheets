@@ -1,19 +1,17 @@
 import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
-import Grid from '@material-ui/core/Grid';
-import Popover from '@material-ui/core/Popover';
 import { withStyles } from '@material-ui/core/styles';
 import { keepPosInView, renderPermissions, getMinMaxKeys } from '../../util/worksheet_utils';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import WorksheetItemList from './WorksheetItemList';
-import { WorksheetEditableField } from '../EditableField';
 import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from './ExtraWorksheetHTML';
-import PermissionDialog from './PermissionDialog';
 import ColdStartItem from './items/ColdStartItem';
 import 'bootstrap';
 import 'jquery-ui-bundle';
+import WorksheetHeader from './WorksheetHeader';
+import { NAVBAR_HEIGHT, WORKSHEET_HEADER_HEIGHT } from '../../constants';
 
 /*
 Information about the current worksheet and its items.
@@ -821,104 +819,22 @@ class Worksheet extends React.Component {
 
         return (
             <React.Fragment>
+                <WorksheetHeader
+                    canEdit={this.canEdit()}
+                    info={info}
+                    classes={classes}
+                    renderPermissions={renderPermissions}
+                    reloadWorksheet={this.reloadWorksheet}
+                    editButtons={editButtons}
+                    anchorEl={anchorEl}
+                    setAnchorEl={e => this.setState({ anchorEl: e })}
+                    />
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
                         <div className={classes.worksheetDesktop}>
                             <div className={classes.worksheetOuter}>
                                 <div className={classes.worksheetInner}>
-                                    <div id='worksheet_content' className={editableClassName}>
-                                        <div className='header-row '>
-                                        <Grid container alignItems="flex-end">
-                                            <Grid item sm={12} md={7}>
-                                                <h4 className='worksheet-title'>
-                                                    {/*TODO: hack, take out ASAP*/}
-                                                    <WorksheetEditableField
-                                                        key={'title' + this.canEdit()}
-                                                        canEdit={this.canEdit()}
-                                                        fieldName='title'
-                                                        value={(info && info.title) || "Untitled"}
-                                                        uuid={info && info.uuid}
-                                                        onChange={() => this.reloadWorksheet()}
-                                                    />
-                                                </h4>
-                                            </Grid>
-                                            <Grid item sm={12} md={5} container direction="column" justify="flex-end">
-                                                <Grid item sm={12}>
-                                                    {info && <div className={classes.uuid}>{info.uuid}</div>}
-                                                </Grid>
-                                                <Grid item sm={12} container direction="row">
-                                                    <Grid item container sm={6} direction="column" alignItems="flex-end" justify="flex-end">
-                                                        {!info ? null : (
-                                                            <React.Fragment>
-                                                                <Grid item>
-                                                                    <span className={classes.label}>name:</span>
-                                                                    <WorksheetEditableField
-                                                                        canEdit={this.canEdit()}
-                                                                        fieldName='name'
-                                                                        value={info && info.name}
-                                                                        uuid={info && info.uuid}
-                                                                        onChange={() => this.reloadWorksheet()}
-                                                                    />
-                                                                </Grid>
-                                                                <Grid item>
-                                                                    <span className={classes.label}>owner:</span>
-                                                                    {info.owner_name ? info.owner_name : '<anonymous>'}
-                                                                </Grid>
-                                                                <Grid item>
-                                                                    <div
-                                                                        onClick={ (ev) => {
-                                                                            this.setState({ anchorEl: ev.currentTarget });
-                                                                        } }
-                                                                        className={classes.permissions}
-                                                                    >
-                                                                        {renderPermissions(info)}
-                                                                    </div>
-                                                                    <Popover
-                                                                        open={ Boolean(anchorEl) }
-                                                                        anchorEl={ anchorEl }
-                                                                        onClose={ () => { this.setState({ anchorEl: null }); } }
-                                                                        anchorOrigin={{
-                                                                          vertical: 'bottom',
-                                                                          horizontal: 'center',
-                                                                        }}
-                                                                        transformOrigin={{
-                                                                          vertical: 'top',
-                                                                          horizontal: 'center',
-                                                                        }}
-                                                                        classes={ { paper: classes.noTransform } }
-                                                                    >
-                                                                        <div style={ { padding: 16 } }>
-                                                                            <PermissionDialog
-                                                                                uuid={ info.uuid }
-                                                                                permission_spec={ info.permission_spec }
-                                                                                group_permissions={ info.group_permissions }
-                                                                                onChange={ this.reloadWorksheet }
-                                                                                wperm
-                                                                            />
-                                                                        </div>
-                                                                    </Popover>
-                                                                </Grid>
-                                                            </React.Fragment>
-                                                        )}
-                                                    </Grid>
-                                                    <Grid item container sm={6} direction="column" alignItems="flex-end">
-                                                        <div className='controls'>
-                                                            <a
-                                                                href='#'
-                                                                data-toggle='modal'
-                                                                data-target='#glossaryModal'
-                                                                className='glossary-link'
-                                                            >
-                                                                <code>?</code> Keyboard Shortcuts
-                                                            </a>
-                                                            {editButtons}
-                                                        </div>
-                                                    </Grid>
-                                                </Grid>
-                                            </Grid>
-                                        </Grid>
-                                        </div>
-                                        <hr />
+                                    <div id='worksheet_content' className={editableClassName + ' worksheet_content'}>
                                         {worksheet_display}
                                     </div>
                                     <div className={ classes.bottomButtons }
@@ -946,7 +862,7 @@ class Worksheet extends React.Component {
 const styles = (theme) => ({
     worksheetDesktop: {
         backgroundColor: theme.color.grey.lightest,
-        paddingTop: 60,  // Height of NavBar
+        marginTop: NAVBAR_HEIGHT + WORKSHEET_HEADER_HEIGHT,
         paddingBottom: 25,  // Height of Footer
     },
     worksheetOuter: {

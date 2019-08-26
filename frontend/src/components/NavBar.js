@@ -131,7 +131,7 @@ class NavBar extends React.Component<{
                     },
                 }}
             >
-                <AppBar color='default'>
+                <AppBar id='codalab-app-bar' color='default'>
                     <Toolbar>
                         <div className={classes.logoContainer}>
                             <Link to='/home'>
