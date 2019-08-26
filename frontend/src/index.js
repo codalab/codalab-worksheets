@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import CodalabApp from './CodalabApp';
 import * as serviceWorker from './serviceWorker';
+import "./css/imports.css";
+import "./css/overrides.css";
 
 ReactDOM.render(<CodalabApp />, document.getElementById('root'));
 
