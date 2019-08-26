@@ -4,12 +4,15 @@ import Popover from '@material-ui/core/Popover';
 import { WorksheetEditableField } from '../EditableField';
 import PermissionDialog from './PermissionDialog';
 import Sticky from 'react-stickynode';
-import { NAVBAR_HEIGHT, WORKSHEET_HEADER_HEIGHT } from '../../constants';
+import { NAVBAR_HEIGHT } from '../../constants';
 
 const styles = {
     backgroundColor: "white",
-    paddingLeft: 12,
-    paddingRight: 12
+    paddingLeft: 36,
+    paddingRight: 36,
+    paddingTop: 10,
+    paddingBottom: 10,
+    boxShadow: "0px 2px 4px -2px rgba(0,0,0,0.2), 0px 4px 5px -1px rgba(0,0,0,0.14), 0px 1px 10px -1px rgba(0,0,0,0.12)"
 };
 
 export default ({ canEdit, info, classes, renderPermissions, reloadWorksheet, editButtons, anchorEl, setAnchorEl }) =>
