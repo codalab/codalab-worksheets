@@ -11,7 +11,7 @@ import ColdStartItem from './items/ColdStartItem';
 import 'bootstrap';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
-import { NAVBAR_HEIGHT, WORKSHEET_HEADER_HEIGHT } from '../../constants';
+import { NAVBAR_HEIGHT } from '../../constants';
 
 /*
 Information about the current worksheet and its items.
@@ -862,7 +862,7 @@ class Worksheet extends React.Component {
 const styles = (theme) => ({
     worksheetDesktop: {
         backgroundColor: theme.color.grey.lightest,
-        marginTop: NAVBAR_HEIGHT + WORKSHEET_HEADER_HEIGHT,
+        marginTop: NAVBAR_HEIGHT,
         paddingBottom: 25,  // Height of Footer
     },
     worksheetOuter: {
