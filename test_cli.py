@@ -56,7 +56,7 @@ def path_contents(path):
     return open(path).read().rstrip()
 
 
-def temp_path(suffix, tmp=False):
+def temp_path(suffix, tmp=True):
     root = '/tmp' if tmp else base_path
     return os.path.join(root, random_name() + suffix)
 
@@ -70,7 +70,7 @@ def current_worksheet():
     Returns the full worksheet spec of the current worksheet.
 
     Does so by parsing the output of `cl work`:
-        Switched to worksheet http://localhost:2800/worksheets/0x87a7a7ffe29d4d72be9b23c745adc120 (home-codalab).
+        Switched to worksheet http://localhost:2900/worksheets/0x87a7a7ffe29d4d72be9b23c745adc120 (home-codalab).
     """
     m = re.search('(http.*?)/worksheets/(.*?) \((.*?)\)', run_command([cl, 'work']))
     assert m is not None
@@ -131,9 +131,11 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, incl
         exitcode = 'test-cli exception'
     if exitcode != expected_exit_code:
         colorize = Colorizer.red
+        extra = ' BAD'
     else:
         colorize = Colorizer.cyan
-    print(colorize(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
+        extra = ''
+    print(colorize(" (exit code %s, expected %s%s)" % (exitcode, expected_exit_code, extra)))
     sys.stdout.flush()
     print(sanitize(output, max_output_chars))
     sys.stdout.flush()
@@ -354,7 +356,7 @@ class ModuleContext(object):
             print(Colorizer.green("[*] TEST PASSED"))
 
         # Clean up and restore original worksheet
-        print(Colorizer.yellow("[*][*] CLEANING UP"))
+        print("[*][*] CLEANING UP")
         os.environ.clear()
         os.environ.update(self.original_environ)
 
@@ -509,13 +511,13 @@ def test(ctx):
 @TestModule.register('gen-rest-docs')
 def test(ctx):
     """Generate REST API docs."""
-    run_command(['python', os.path.join(base_path, 'scripts/gen-rest-docs.py')])
+    run_command(['python', os.path.join(base_path, 'scripts/gen-rest-docs.py'), '--docs', '/tmp'])
 
 
 @TestModule.register('gen-cli-docs')
 def test(ctx):
     """Generate CLI docs."""
-    run_command(['python', os.path.join(base_path, 'scripts/gen-cli-docs.py')])
+    run_command(['python', os.path.join(base_path, 'scripts/gen-cli-docs.py'), '--docs', '/tmp'])
 
 
 @TestModule.register('gen-readthedocs')
@@ -523,7 +525,7 @@ def test(ctx):
     """Generate the readthedocs site."""
     # Make sure there are no extraneous things.
     # mkdocs doesn't return exit code 1 for some warnings.
-    check_num_lines(2, run_command(['mkdocs', 'build'], include_stderr=True))
+    check_num_lines(2, run_command(['mkdocs', 'build', '-d', '/tmp/site'], include_stderr=True))
 
 
 @TestModule.register('basic')

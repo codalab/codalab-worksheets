@@ -22,7 +22,7 @@ jobs:
       install:
         - ./codalab_service.py build services --version ${TRAVIS_BRANCH} --pull --push
       script:
-        - ./codalab_service.py start --services default test --version ${TRAVIS_BRANCH}
+        - ./codalab_service.py start --services default monitor test --version ${TRAVIS_BRANCH}
     - stage: deploy
       script: echo "Deploying"
       language: python
