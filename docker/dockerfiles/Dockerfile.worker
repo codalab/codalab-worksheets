@@ -23,4 +23,5 @@ COPY worker /opt/worker
 RUN python3.6 -m pip install --user --upgrade pip; \
     python3.6 -m pip install -e /opt/worker;
 
-ENTRYPOINT ["cl-worker"]
+# Allow non-root to read everything
+RUN chmod -R og=u-w /opt/worker

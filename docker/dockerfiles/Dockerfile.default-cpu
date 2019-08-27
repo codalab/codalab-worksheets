@@ -31,7 +31,11 @@ RUN add-apt-repository ppa:deadsnakes/ppa && \
         python3.6-dev \
         python3-pip \
         python3-software-properties
- 
+
+# Set Python3.6 as the default python3 version
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+
+RUN curl https://bootstrap.pypa.io/get-pip.py | python3.6
 
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
