@@ -282,7 +282,7 @@ def make_directory(path):
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
-    check_isdir(path, 'make_directories')
+    check_isdir(path, 'make_directory')
 
 
 def set_write_permissions(path):
