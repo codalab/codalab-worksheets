@@ -116,6 +116,7 @@ class CodalabArg(object):
 
 
 CODALAB_ARGUMENTS = [
+    # Basic settings
     CodalabArg(
         name='version',
         help='Version of CodaLab (usually the branch name)',
@@ -132,9 +133,11 @@ CODALAB_ARGUMENTS = [
         help='Network name for the worker',
         default=lambda args: args.instance_name + '-worker-network',
     ),
+
     ### Docker
     CodalabArg(name='docker_username', help='Docker Hub username to push built images'),
     CodalabArg(name='docker_password', help='Docker Hub password to push built images'),
+
     ### CodaLab
     CodalabArg(
         name='codalab_username',
@@ -148,6 +151,7 @@ CODALAB_ARGUMENTS = [
         help='CodaLab (root) password',
         default='codalab',
     ),
+
     ### MySQL
     CodalabArg(name='mysql_host', help='MySQL hostname', default='mysql'),  # Inside Docker
     CodalabArg(name='mysql_port', help='MySQL hostname', default=3306, type=int),
@@ -156,30 +160,31 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='mysql_password', help='MySQL password', default='codalab'),
     CodalabArg(name='mysql_root_password', help='MySQL root password', default='codalab'),
     CodalabArg(
-        'uid',
+        name='uid',
         help='UID:GID to run everything inside Docker and owns created files',
         default='%s:%s' % (os.getuid(), os.getgid()),
     ),
     CodalabArg(
-        'codalab_home',
+        name='codalab_home',
         env_var='CODALAB_HOME',
         help='Path to store things like config.json for the REST server',
         default=var_path('home'),
     ),
-    CodalabArg('bundle_store', help='Path to store bundle data files', default=var_path('bundles')),
-    CodalabArg('mysql_mount', help='Path to store MySQL data files', default=var_path('mysql')),
+    CodalabArg(name='bundle_store', help='Path to store bundle data files', default=var_path('bundles')),
+    CodalabArg(name='mysql_mount', help='Path to store MySQL data files', default=var_path('mysql')),
     CodalabArg(
-        'monitor_dir', help='Path to store monitor logs and DB backups', default=var_path('monitor')
+        name='monitor_dir', help='Path to store monitor logs and DB backups', default=var_path('monitor')
     ),
     CodalabArg(
-        'worker_dir',
+        name='worker_dir',
         help='Path to store worker state / cached dependencies',
         default=var_path('worker'),
     ),
-    CodalabArg('http_port', help='Port for nginx', type=int, default=80),
-    CodalabArg('https_port', help='Port for nginx (when using SSL)', type=int, default=443),
-    CodalabArg('frontend_port', help='Port for frontend', type=int, default=2700),
+    CodalabArg(name='http_port', help='Port for nginx', type=int, default=80),
+    CodalabArg(name='https_port', help='Port for nginx (when using SSL)', type=int, default=443),
+    CodalabArg(name='frontend_port', help='Port for frontend', type=int, default=2700),
     CodalabArg(name='rest_port', help='Port for REST server', type=int, default=2900),
+    CodalabArg(name='rest_num_processes', help='Number of processes', type=int, default=1),
     ### Email
     CodalabArg(name='admin_email', help='Email to send admin notifications to (e.g., monitoring)'),
     CodalabArg(name='email_host', help='Send email by logging into this SMTP server'),
