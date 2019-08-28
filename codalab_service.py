@@ -587,7 +587,7 @@ class CodalabServiceManager(object):
         if should_run_service(self.args, 'test'):
             print_header('Running tests')
             self.run_service_cmd(
-                wait_rest_server('python test_cli.py --instance {} default'.format(rest_url))
+                wait_rest_server('python3.6 test_cli.py --instance {} default'.format(rest_url))
             )
 
         self.bring_up_service('monitor')
