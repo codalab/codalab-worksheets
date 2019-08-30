@@ -612,7 +612,7 @@ class CodalabServiceManager(object):
 
         if self.args.push:
             self._run_docker_cmd(
-                'login -u %s -p %s' % (self.args.docker_username, self.args.docker_password)
+                'login --username {} --password {}'.format(self.args.docker_username, self.args.docker_password)
             )
             for image in images_to_build:
                 self.push_image(image)
