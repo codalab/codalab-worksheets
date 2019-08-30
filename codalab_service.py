@@ -382,6 +382,8 @@ class CodalabServiceManager(object):
             self.compose_files.append('docker-compose.dev.yml')
         if self.args.use_ssl:
             self.compose_files.append('docker-compose.ssl.yml')
+        if self.args.mysql_host == 'mysql':
+            self.compose_files.append('docker-compose.mysql.yml')
 
         self.compose_env = self.resolve_env_vars(args)
         ensure_directory_exists(self.args.codalab_home)
