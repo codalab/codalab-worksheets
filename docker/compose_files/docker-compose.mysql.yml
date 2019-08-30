@@ -1,0 +1,12 @@
+services:
+  mysql:
+    # https://hub.docker.com/_/mysql
+    image: mysql:5.5.53
+    <<: *codalab-base
+    environment:
+      - MYSQL_ROOT_PASSWORD=${CODALAB_MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${CODALAB_MYSQL_DATABASE}
+      - MYSQL_USER=${CODALAB_MYSQL_USERNAME}
+      - MYSQL_PASSWORD=${CODALAB_MYSQL_PASSWORD}
+    volumes:
+      - ${CODALAB_MYSQL_MOUNT}:/var/lib/mysql
