@@ -151,7 +151,7 @@ CODALAB_ARGUMENTS = [
     ),
     ### MySQL
     CodalabArg(name='mysql_host', help='MySQL hostname', default='mysql'),  # Inside Docker
-    CodalabArg(name='mysql_port', help='MySQL hostname', default=3306, type=int),
+    CodalabArg(name='mysql_port', help='MySQL port', default=3306, type=int),
     CodalabArg(name='mysql_database', help='MySQL database name', default='codalab_bundles'),
     CodalabArg(name='mysql_username', help='MySQL username', default='codalab'),
     CodalabArg(name='mysql_password', help='MySQL password', default='codalab'),
@@ -238,8 +238,9 @@ class CodalabArgs(object):
                     unnamed.append(arg.flag)
                 # Named parameters to add_argument
                 named = {'help': arg.help}
-                if arg.has_constant_default():
-                    named['default'] = arg.default
+                # Don't set defaults here or else we won't know downstream
+                # whether a value was a default or passed in on the
+                # command-line.
                 if arg.type == bool:
                     named['action'] = 'store_true'
                 else:
