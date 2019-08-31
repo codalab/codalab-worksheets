@@ -168,10 +168,10 @@ CODALAB_ARGUMENTS = [
         default=var_path('home'),
     ),
     CodalabArg(
-        name='bundle_store', help='Path to store bundle data files', default=var_path('bundles')
+        name='bundle_mount', help='Path to bundle data (just for mounting into Docker)', default=var_path('home'),
     ),
     CodalabArg(
-        name='mysql_mount', help='Path to store MySQL data files', default=var_path('mysql')
+        name='mysql_mount', help='Path to store MySQL data', default=var_path('mysql')
     ),
     CodalabArg(
         name='monitor_dir',
@@ -388,7 +388,6 @@ class CodalabServiceManager(object):
         ensure_directory_exists(self.args.monitor_dir)
         ensure_directory_exists(self.args.worker_dir)
         ensure_directory_exists(self.args.mysql_mount)
-        ensure_directory_exists(self.args.bundle_store)
 
     def execute(self):
         command = self.args.command

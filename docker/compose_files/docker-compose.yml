@@ -39,7 +39,7 @@ x-codalab-root: &codalab-root
 x-codalab-server: &codalab-server
   volumes:
   - "${CODALAB_HOME}:${CODALAB_HOME}"
-  - "${CODALAB_BUNDLE_STORE}:${CODALAB_BUNDLE_STORE}"
+  - "${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}"
   - "${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}"
 
 ############################################################
