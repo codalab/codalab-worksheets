@@ -6,6 +6,7 @@ from collections import OrderedDict
 from codalab.lib import path_util, spec_util
 from codalabworker.bundle_state import State
 
+
 class MultiDiskBundleStore(object):
     """
     Responsible for taking a set of locations and load-balancing the placement of
@@ -52,7 +53,6 @@ class MultiDiskBundleStore(object):
             self.add_partition(None, 'default')
 
         self.lru_cache = OrderedDict()
-
 
     def refresh_partitions(self):
         nodes, _ = path_util.ls(self.partitions)

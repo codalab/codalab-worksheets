@@ -168,11 +168,11 @@ CODALAB_ARGUMENTS = [
         default=var_path('home'),
     ),
     CodalabArg(
-        name='bundle_mount', help='Path to bundle data (just for mounting into Docker)', default=var_path('home'),
+        name='bundle_mount',
+        help='Path to bundle data (just for mounting into Docker)',
+        default=var_path('home'),
     ),
-    CodalabArg(
-        name='mysql_mount', help='Path to store MySQL data', default=var_path('mysql')
-    ),
+    CodalabArg(name='mysql_mount', help='Path to store MySQL data', default=var_path('mysql')),
     CodalabArg(
         name='monitor_dir',
         help='Path to store monitor logs and DB backups',
