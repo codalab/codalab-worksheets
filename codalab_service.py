@@ -368,7 +368,7 @@ class CodalabServiceManager(object):
             if value:
                 environment[arg.env_var] = str(value)
         # Additional environment variables to pass through
-        for env_var in ['PATH', 'DOCKER_HOST']:
+        for env_var in ['PATH', 'DOCKER_HOST', 'HOSTNAME']:
             if env_var in os.environ:
                 environment[env_var] = os.environ[env_var]
         return environment

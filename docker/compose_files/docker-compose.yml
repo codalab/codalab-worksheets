@@ -18,6 +18,7 @@ x-codalab-env: &codalab-env
   - CODALAB_EMAIL_HOST=${CODALAB_EMAIL_HOST}
   - CODALAB_EMAIL_USERNAME=${CODALAB_EMAIL_USERNAME}
   - CODALAB_EMAIL_PASSWORD=${CODALAB_EMAIL_PASSWORD}
+  - HOSTNAME=${HOSTNAME}
 
 # Properties that every service inherits.
 x-codalab-base: &codalab-base
