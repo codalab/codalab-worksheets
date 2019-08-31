@@ -21,6 +21,7 @@ from __future__ import print_function
 import argparse
 import errno
 import os
+import socket
 import subprocess
 
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
@@ -188,6 +189,15 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='frontend_port', help='Port for frontend', type=int, default=2700),
     CodalabArg(name='rest_port', help='Port for REST server', type=int, default=2900),
     CodalabArg(name='rest_num_processes', help='Number of processes', type=int, default=1),
+    ### User
+    CodalabArg(name='user_disk_quota', help='How much space a user can use', default='100g'),
+    CodalabArg(name='user_time_quota', help='How much total time a user can use', default='100y'),
+    CodalabArg(
+        name='user_parallel_run_quota',
+        help='How many simultaneous runs a user can have',
+        type=int,
+        default=100,
+    ),
     ### Email
     CodalabArg(name='admin_email', help='Email to send admin notifications to (e.g., monitoring)'),
     CodalabArg(name='email_host', help='Send email by logging into this SMTP server'),
@@ -368,9 +378,10 @@ class CodalabServiceManager(object):
             if value:
                 environment[arg.env_var] = str(value)
         # Additional environment variables to pass through
-        for env_var in ['PATH', 'DOCKER_HOST', 'HOSTNAME']:
+        for env_var in ['PATH', 'DOCKER_HOST']:
             if env_var in os.environ:
                 environment[env_var] = os.environ[env_var]
+        environment['HOSTNAME'] = socket.gethostname()  # Sometimes not available
         return environment
 
     def __init__(self, args):
@@ -553,6 +564,13 @@ class CodalabServiceManager(object):
                     ('server/engine_url', mysql_url),
                     ('server/rest_host', '0.0.0.0'),
                     ('server/admin_email', self.args.admin_email),
+                    ('server/support_email', self.args.admin_email),  # Use same email
+                    ('server/default_user_info/disk_quota', self.args.user_disk_quota),
+                    ('server/default_user_info/time_quota', self.args.user_time_quota),
+                    (
+                        'server/default_user_info/parallel_run_quota',
+                        self.args.user_parallel_run_quota,
+                    ),
                     ('email/host', self.args.email_host),
                     ('email/username', self.args.email_username),
                     ('email/password', self.args.email_password),
