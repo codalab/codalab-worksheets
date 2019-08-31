@@ -393,7 +393,7 @@ class CodaLabManager(object):
             # Default to authless SMTP (supported by some servers) if user/password is unspecified.
             return SMTPEmailer(
                 host=self.config['email']['host'],
-                user=self.config['email'].get('user', 'noreply@codalab.org'),
+                user=self.config['email'].get('username', 'noreply@codalab.org'),
                 password=self.config['email'].get('password', None),
                 use_tls=self.config['email'].get('use_tls', True),
                 port=self.config['email'].get('port', 587),
