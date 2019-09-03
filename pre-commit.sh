@@ -9,6 +9,7 @@ if ! [ -e venv2.7 ]; then
   venv2.7/bin/pip install -r requirements-server.txt || exit 1
   venv2.7/bin/pip install -r requirements.docs.txt || exit 1
   rm -rf worker/codalabworker.egg-info  # Need to clear because of different Python versions
+  # Install for generating docs.
   venv2.7/bin/pip install -e worker  # Not sure why this is necessary
   venv2.7/bin/pip install -e .
 fi
