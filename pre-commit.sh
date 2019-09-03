@@ -15,7 +15,7 @@ fi
 
 if ! [ -e venv3.6 ]; then
   virtualenv -p python3.6 venv3.6 || exit 1
-  venv3.6/bin/pip install black || exit 1
+  venv3.6/bin/pip install black==18.9b0 || exit 1
 fi
 
 # Generate docs
