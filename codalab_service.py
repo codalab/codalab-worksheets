@@ -21,6 +21,7 @@ from __future__ import print_function
 import argparse
 import errno
 import os
+import socket
 import subprocess
 
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
@@ -116,6 +117,7 @@ class CodalabArg(object):
 
 
 CODALAB_ARGUMENTS = [
+    # Basic settings
     CodalabArg(
         name='version',
         help='Version of CodaLab (usually the branch name)',
@@ -150,36 +152,52 @@ CODALAB_ARGUMENTS = [
     ),
     ### MySQL
     CodalabArg(name='mysql_host', help='MySQL hostname', default='mysql'),  # Inside Docker
-    CodalabArg(name='mysql_port', help='MySQL hostname', default=3306, type=int),
+    CodalabArg(name='mysql_port', help='MySQL port', default=3306, type=int),
     CodalabArg(name='mysql_database', help='MySQL database name', default='codalab_bundles'),
     CodalabArg(name='mysql_username', help='MySQL username', default='codalab'),
     CodalabArg(name='mysql_password', help='MySQL password', default='codalab'),
     CodalabArg(name='mysql_root_password', help='MySQL root password', default='codalab'),
     CodalabArg(
-        'uid',
+        name='uid',
         help='UID:GID to run everything inside Docker and owns created files',
         default='%s:%s' % (os.getuid(), os.getgid()),
     ),
     CodalabArg(
-        'codalab_home',
+        name='codalab_home',
         env_var='CODALAB_HOME',
         help='Path to store things like config.json for the REST server',
         default=var_path('home'),
     ),
-    CodalabArg('bundle_store', help='Path to store bundle data files', default=var_path('bundles')),
-    CodalabArg('mysql_mount', help='Path to store MySQL data files', default=var_path('mysql')),
     CodalabArg(
-        'monitor_dir', help='Path to store monitor logs and DB backups', default=var_path('monitor')
+        name='bundle_mount',
+        help='Path to bundle data (just for mounting into Docker)',
+        default=var_path('home'),
+    ),
+    CodalabArg(name='mysql_mount', help='Path to store MySQL data', default=var_path('mysql')),
+    CodalabArg(
+        name='monitor_dir',
+        help='Path to store monitor logs and DB backups',
+        default=var_path('monitor'),
     ),
     CodalabArg(
-        'worker_dir',
+        name='worker_dir',
         help='Path to store worker state / cached dependencies',
         default=var_path('worker'),
     ),
-    CodalabArg('http_port', help='Port for nginx', type=int, default=80),
-    CodalabArg('https_port', help='Port for nginx (when using SSL)', type=int, default=443),
-    CodalabArg('frontend_port', help='Port for frontend', type=int, default=2700),
+    CodalabArg(name='http_port', help='Port for nginx', type=int, default=80),
+    CodalabArg(name='https_port', help='Port for nginx (when using SSL)', type=int, default=443),
+    CodalabArg(name='frontend_port', help='Port for frontend', type=int, default=2700),
     CodalabArg(name='rest_port', help='Port for REST server', type=int, default=2900),
+    CodalabArg(name='rest_num_processes', help='Number of processes', type=int, default=1),
+    ### User
+    CodalabArg(name='user_disk_quota', help='How much space a user can use', default='100g'),
+    CodalabArg(name='user_time_quota', help='How much total time a user can use', default='100y'),
+    CodalabArg(
+        name='user_parallel_run_quota',
+        help='How many simultaneous runs a user can have',
+        type=int,
+        default=100,
+    ),
     ### Email
     CodalabArg(name='admin_email', help='Email to send admin notifications to (e.g., monitoring)'),
     CodalabArg(name='email_host', help='Send email by logging into this SMTP server'),
@@ -230,8 +248,9 @@ class CodalabArgs(object):
                     unnamed.append(arg.flag)
                 # Named parameters to add_argument
                 named = {'help': arg.help}
-                if arg.has_constant_default():
-                    named['default'] = arg.default
+                # Don't set defaults here or else we won't know downstream
+                # whether a value was a default or passed in on the
+                # command-line.
                 if arg.type == bool:
                     named['action'] = 'store_true'
                 else:
@@ -362,6 +381,7 @@ class CodalabServiceManager(object):
         for env_var in ['PATH', 'DOCKER_HOST']:
             if env_var in os.environ:
                 environment[env_var] = os.environ[env_var]
+        environment['HOSTNAME'] = socket.gethostname()  # Sometimes not available
         return environment
 
     def __init__(self, args):
@@ -379,7 +399,6 @@ class CodalabServiceManager(object):
         ensure_directory_exists(self.args.monitor_dir)
         ensure_directory_exists(self.args.worker_dir)
         ensure_directory_exists(self.args.mysql_mount)
-        ensure_directory_exists(self.args.bundle_store)
 
     def execute(self):
         command = self.args.command
@@ -545,6 +564,13 @@ class CodalabServiceManager(object):
                     ('server/engine_url', mysql_url),
                     ('server/rest_host', '0.0.0.0'),
                     ('server/admin_email', self.args.admin_email),
+                    ('server/support_email', self.args.admin_email),  # Use same email
+                    ('server/default_user_info/disk_quota', self.args.user_disk_quota),
+                    ('server/default_user_info/time_quota', self.args.user_time_quota),
+                    (
+                        'server/default_user_info/parallel_run_quota',
+                        self.args.user_parallel_run_quota,
+                    ),
                     ('email/host', self.args.email_host),
                     ('email/username', self.args.email_username),
                     ('email/password', self.args.email_password),
@@ -603,7 +629,9 @@ class CodalabServiceManager(object):
 
         if self.args.push:
             self._run_docker_cmd(
-                'login -u %s -p %s' % (self.args.docker_username, self.args.docker_password)
+                'login --username {} --password {}'.format(
+                    self.args.docker_username, self.args.docker_password
+                )
             )
             for image in images_to_build:
                 self.push_image(image)
