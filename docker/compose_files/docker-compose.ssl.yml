@@ -7,4 +7,4 @@ services:
     volumes:
       - ./files/nginx.conf.ssl:/etc/nginx/nginx.conf:ro
       - ${CODALAB_SSL_KEY_FILE}:/opt/ssl/codalab.key
-      - ${CODALAB_SSL_CERT_FILE}:/opt/ssl/codalab.pem
+      - ${CODALAB_SSL_CERT_FILE}:/opt/ssl/codalab.crt

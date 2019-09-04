@@ -24,14 +24,16 @@ def checkin(worker_id):
     """
     WAIT_TIME_SECS = 3.0
 
+    # Old workers might not have all the fields, so allow subsets to be
+    # missing.
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id,
         worker_id,
-        request.json["tag"],
-        request.json["cpus"],
-        request.json["gpus"],
-        request.json["memory_bytes"],
-        request.json["free_disk_bytes"],
+        request.json.get("tag"),
+        request.json.get("cpus"),
+        request.json.get("gpus"),
+        request.json.get("memory_bytes"),
+        request.json.get("free_disk_bytes"),
         request.json["dependencies"],
     )
 
