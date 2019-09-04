@@ -2331,9 +2331,6 @@ class BundleModel(object):
     def get_user_parallel_run_quota_left(self, user_id):
         user_info = self.get_user_info(user_id)
         parallel_run_quota = user_info['parallel_run_quota']
-        if user_id == self.root_user_id:
-            # Root user has no parallel run quota
-            return parallel_run_quota
         with self.engine.begin() as connection:
             # Get all the runs belonging to this user whose workers are not personal workers
             # of the user themselves
