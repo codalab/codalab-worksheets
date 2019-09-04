@@ -9,8 +9,8 @@
 
 tag=$1
 
-./codalab_service.py build all --version $tag --pull --push
+./codalab_service.py build --version $tag --pull --push
 if [ "$tag" != "master" ]; then
-  ./codalab_service.py build all --version latest --pull --push
+  ./codalab_service.py build --version latest --pull --push
   ./scripts/upload-to-pypi.sh $tag
 fi
