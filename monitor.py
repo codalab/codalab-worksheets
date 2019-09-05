@@ -62,7 +62,7 @@ print(
     )
 )
 
-hostname = socket.gethostname()
+hostname = os.environ['HOSTNAME']
 
 # Email
 admin_email = os.environ['CODALAB_ADMIN_EMAIL']

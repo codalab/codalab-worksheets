@@ -29,7 +29,7 @@ class DefaultBundleManager(BundleManager):
         self._cleanup_dead_workers(workers)
         self._restage_stuck_starting_bundles(workers)
         self._bring_offline_stuck_running_bundles(workers)
-        self._fail_on_too_many_resources(workers)
+        self._fail_on_too_many_resources()
         self._acknowledge_recently_finished_bundles(workers)
 
         # Schedule, preferring user-owned workers.
@@ -59,35 +59,14 @@ class DefaultBundleManager(BundleManager):
                 return global_fail_string % (pretty_print(value), pretty_print(global_max))
         return None
 
-    def _fail_on_too_many_resources(self, workers):
+    def _fail_on_too_many_resources(self):
         """
-        Fails bundles that request more resources than available on any worker.
+        Fails bundles that request more resources than available for the given user.
+        Note: allow more resources than available on any worker because new
+        workers might get spun up in response to the presence of this run.
         """
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
-            workers_list = workers.user_owned_workers(bundle.owner_id) + workers.user_owned_workers(
-                self._model.root_user_id
-            )
-
-            if len(workers_list) == 0:
-                return
-
             failures = []
-
-            failures.append(
-                self._check_resource_failure(
-                    self._compute_request_cpus(bundle),
-                    global_fail_string='No workers available with %s CPUs, max available: %s',
-                    global_max=max([worker['cpus'] for worker in workers_list]),
-                )
-            )
-
-            failures.append(
-                self._check_resource_failure(
-                    self._compute_request_gpus(bundle),
-                    global_fail_string='No workers available with %s GPUs, max available: %s',
-                    global_max=max([worker['gpus'] for worker in workers_list]),
-                )
-            )
 
             failures.append(
                 self._check_resource_failure(

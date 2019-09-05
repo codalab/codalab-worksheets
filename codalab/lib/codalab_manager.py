@@ -193,7 +193,7 @@ class CodaLabManager(object):
                 'auth': {'class': 'RestOAuthHandler'},
                 'verbose': 1,
             },
-            'aliases': {'main': MAIN_BUNDLE_SERVICE, 'localhost': 'http://localhost:2900'},
+            'aliases': {'main': MAIN_BUNDLE_SERVICE, 'localhost': 'http://localhost'},
             'workers': {
                 'default_cpu_image': 'codalab/default-cpu:latest',
                 'default_gpu_image': 'codalab/default-gpu:latest',
@@ -392,7 +392,7 @@ class CodaLabManager(object):
             # Default to authless SMTP (supported by some servers) if user/password is unspecified.
             return SMTPEmailer(
                 host=self.config['email']['host'],
-                user=self.config['email'].get('user', 'noreply@codalab.org'),
+                user=self.config['email'].get('username', 'noreply@codalab.org'),
                 password=self.config['email'].get('password', None),
                 use_tls=self.config['email'].get('use_tls', True),
                 port=self.config['email'].get('port', 587),
