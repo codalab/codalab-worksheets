@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3.6
 # For information about the design of the worker, see design.pdf in the same
 # directory as this file. For information about running a worker, see the
 # tutorial on the CodaLab documentation.
@@ -14,13 +14,13 @@ import sys
 import multiprocessing
 
 
-from bundle_service_client import BundleServiceClient, BundleAuthException
-import docker_utils
-from formatting import parse_size
-from worker import Worker
-from local_run.local_dependency_manager import LocalFileSystemDependencyManager
-from local_run.docker_image_manager import DockerImageManager
-from local_run.local_run_manager import LocalRunManager
+from .bundle_service_client import BundleServiceClient, BundleAuthException
+from . import docker_utils
+from .formatting import parse_size
+from .worker import Worker
+from .local_run.local_dependency_manager import LocalFileSystemDependencyManager
+from .local_run.docker_image_manager import DockerImageManager
+from .local_run.local_run_manager import LocalRunManager
 
 logger = logging.getLogger(__name__)
 
@@ -112,11 +112,15 @@ def main():
     logger.info('Connecting to %s' % args.server)
     if args.password_file:
         if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-            print >>sys.stderr, """
+            print(
+                """
 Permissions on password file are too lax.
 Only the user should be allowed to access the file.
 On Linux, run:
-chmod 600 %s""" % args.password_file
+chmod 600 %s"""
+                % args.password_file,
+                file=sys.stderr,
+            )
             exit(1)
         with open(args.password_file) as f:
             username = f.readline().strip()
@@ -124,7 +128,7 @@ chmod 600 %s""" % args.password_file
     else:
         username = os.environ.get('CODALAB_USERNAME')
         if username is None:
-            username = raw_input('Username: ')
+            username = input('Username: ')
         password = os.environ.get('CODALAB_PASSWORD')
         if password is None:
             password = getpass.getpass()
@@ -216,7 +220,7 @@ def parse_cpuset_args(arg):
     """
     cpu_count = multiprocessing.cpu_count()
     if arg == 'ALL':
-        cpuset = range(cpu_count)
+        cpuset = list(range(cpu_count))
     else:
         try:
             cpuset = [int(s) for s in arg.split(',')]

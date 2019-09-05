@@ -33,7 +33,7 @@ class BundleManager(object):
     def create(codalab_manager):
         config = codalab_manager.config.get('workers')
         if not config:
-            print >>sys.stderr, 'config.json file missing a workers section.'
+            print('config.json file missing a workers section.', file=sys.stderr)
             exit(1)
 
         from codalab.worker.default_bundle_manager import DefaultBundleManager
@@ -54,9 +54,9 @@ class BundleManager(object):
         def parse(to_value, field):
             return to_value(config[field]) if field in config else None
 
-        self._max_request_time = parse(formatting.parse_duration, 'max_request_time')
-        self._max_request_memory = parse(formatting.parse_size, 'max_request_memory')
-        self._max_request_disk = parse(formatting.parse_size, 'max_request_disk')
+        self._max_request_time = parse(formatting.parse_duration, 'max_request_time') or 0
+        self._max_request_memory = parse(formatting.parse_size, 'max_request_memory') or 0
+        self._max_request_disk = parse(formatting.parse_size, 'max_request_disk') or 0
 
         self._default_cpu_image = config.get('default_cpu_image')
         self._default_gpu_image = config.get('default_gpu_image')
@@ -139,10 +139,10 @@ class BundleManager(object):
                 acceptable_states.append(State.KILLED)
             else:
                 failed_uuids = [
-                    uuid for uuid, state in parent_states.iteritems() if state == State.FAILED
+                    uuid for uuid, state in parent_states.items() if state == State.FAILED
                 ]
                 killed_uuids = [
-                    uuid for uuid, state in parent_states.iteritems() if state == State.KILLED
+                    uuid for uuid, state in parent_states.items() if state == State.KILLED
                 ]
                 failure_message = ''
                 if failed_uuids:
@@ -154,7 +154,7 @@ class BundleManager(object):
                     bundles_to_fail.append((bundle, failure_message))
                     continue
 
-            if all(state in acceptable_states for state in parent_states.itervalues()):
+            if all(state in acceptable_states for state in parent_states.values()):
                 bundles_to_stage.append(bundle)
 
         for bundle, failure_message in bundles_to_fail:
@@ -361,26 +361,26 @@ class BundleManager(object):
         # Filter by CPUs.
         request_cpus = self._compute_request_cpus(bundle)
         if request_cpus:
-            workers_list = filter(lambda worker: worker['cpus'] >= request_cpus, workers_list)
+            workers_list = [worker for worker in workers_list if worker['cpus'] >= request_cpus]
 
         # Filter by GPUs.
         request_gpus = self._compute_request_gpus(bundle)
         if request_gpus:
-            workers_list = filter(lambda worker: worker['gpus'] >= request_gpus, workers_list)
+            workers_list = [worker for worker in workers_list if worker['gpus'] >= request_gpus]
 
         # Filter by memory.
         request_memory = self._compute_request_memory(bundle)
         if request_memory:
-            workers_list = filter(
-                lambda worker: worker['memory_bytes'] >= request_memory, workers_list
-            )
+            workers_list = [
+                worker for worker in workers_list if worker['memory_bytes'] >= request_memory
+            ]
 
         # Filter by tag.
         request_queue = bundle.metadata.request_queue
         if request_queue:
             tagm = re.match('tag=(.+)', request_queue)
             if tagm:
-                workers_list = filter(lambda worker: worker['tag'] == tagm.group(1), workers_list)
+                workers_list = [worker for worker in workers_list if worker['tag'] == tagm.group(1)]
             else:
                 # We don't know how to handle this type of request queue
                 # argument.
@@ -399,7 +399,7 @@ class BundleManager(object):
         # is not a problem for the performance of the jobs themselves, this can
         # cause one worker to collect a disproportionate number of dependencies
         # in its cache.
-        needed_deps = set(map(lambda dep: (dep.parent_uuid, dep.parent_path), bundle.dependencies))
+        needed_deps = set([(dep.parent_uuid, dep.parent_path) for dep in bundle.dependencies])
 
         def get_sort_key(worker):
             deps = set(worker['dependencies'])

@@ -118,7 +118,7 @@ def log(line, newline=True):
     sys.stdout.flush()
     report.append(line)
     out = open(args.log_path, 'a')
-    print >> out, line
+    print(line, file=out)
     out.close()
 
 
@@ -153,7 +153,7 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
     # We cap the running time to hard_time_limit, but print out an error if we exceed soft_time_limit.
     start_time = time.time()
     args = ['timeout', '%ss' % hard_time_limit] + args
-    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
     output, err_output = proc.communicate()
     exitcode = proc.returncode
     end_time = time.time()
@@ -164,7 +164,7 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
     l.append(duration)
     while len(l) > 1000:  # Keep the list bounded
         l.pop(0)
-    average_duration = sum(l) / len(l)
+    average_duration = sum(l) // len(l)
     max_duration = max(l)
 
     # Abstract away the concrete uuids
@@ -219,11 +219,11 @@ def backup_db():
     date = get_date()
     mysql_conf_path = os.path.join(args.codalab_home, 'monitor-mysql.cnf')
     with open(mysql_conf_path, 'w') as f:
-        print >> f, '[client]'
-        print >> f, 'host="%s"' % bundles_host
-        print >> f, 'port="%s"' % bundles_port
-        print >> f, 'user="%s"' % bundles_username
-        print >> f, 'password="%s"' % bundles_password
+        print('[client]', file=f)
+        print('host="%s"' % bundles_host, file=f)
+        print('port="%s"' % bundles_port, file=f)
+        print('user="%s"' % bundles_user, file=f)
+        print('password="%s"' % bundles_password, file=f)
     path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_database, date)
     run_command(
         [
@@ -250,7 +250,7 @@ def check_disk_space(paths):
     if total < 1000 * 1024:
         error_logs(
             'low disk space',
-            'Only %s MB of disk space left on %s!' % (total / 1024, ' '.join(paths)),
+            'Only %s MB of disk space left on %s!' % (total // 1024, ' '.join(paths)),
         )
 
 
@@ -320,7 +320,7 @@ while True:
         send_email('report', report)
 
     if ping_time():
-        print
+        print()
 
     # Update timer
     time.sleep(1)

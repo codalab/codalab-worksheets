@@ -3,6 +3,8 @@ MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa 
+
 RUN apt-get update; apt-get install -y \
     build-essential \
     git \
@@ -10,15 +12,17 @@ RUN apt-get update; apt-get install -y \
     libjpeg-dev \
     libmysqlclient-dev \
     mysql-client \
-    python-dev \
-    python-pip \
-    python-software-properties \
+    python3.6 \
+    python3.6-dev \
+    python3-pip \
     python-virtualenv \
-    software-properties-common \
+    python3-software-properties \
     zip;
+ 
+### Without this Python thinks we're ASCII and unicode chars fail
+ENV LANG C.UTF-8
 
-RUN pip install --upgrade pip
-
+RUN python3.6 -m pip install --upgrade pip
 RUN mkdir /opt/codalab-worksheets
 WORKDIR /opt/codalab-worksheets
 
@@ -29,7 +33,7 @@ COPY worker worker
 COPY requirements.txt requirements.txt
 COPY requirements.docs.txt requirements.docs.txt
 COPY requirements-server.txt requirements-server.txt
-RUN pip install -r requirements-server.txt
+RUN python3.6 -m pip install -r requirements-server.txt
 
 # Install code
 COPY alembic alembic
@@ -46,7 +50,7 @@ COPY tests tests
 COPY worker worker
 COPY views views
 
-RUN pip install -e .
+RUN python3.6 -m pip install -e .
 
 # Allow non-root to read everything
 RUN chmod -R og=u-w .

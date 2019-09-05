@@ -58,7 +58,7 @@ def get_api_routes():
 def get_codalab_schemas():
     from codalab.rest import schemas as schemas_module
 
-    for k, v in vars(schemas_module).iteritems():
+    for k, v in vars(schemas_module).items():
         if not isclass(v):
             continue
         if not issubclass(v, Schema):
@@ -261,7 +261,7 @@ def main():
     parser.add_argument('--docs', default='docs')
     args = parser.parse_args()
 
-    with open(os.path.join(args.docs, 'REST-API-Reference.md'), 'wb') as out:
+    with open(os.path.join(args.docs, 'REST-API-Reference.md'), 'w') as out:
         out.write(template(dedent(INDEX_DOC), api_specs=get_api_routes(), version=CODALAB_VERSION))
         out.write(dedent(INTRODUCTION_DOC))
 
