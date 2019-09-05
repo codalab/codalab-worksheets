@@ -1358,7 +1358,6 @@ class BundleModel(object):
                 }
                 new_items.append(new_item)
                 connection.execute(cl_worksheet_item.insert().values(new_item))
-            # sqlite doesn't support batch insertion
 
     def update_worksheet_items(self, worksheet_uuid, last_item_id, length, new_items):
         """
