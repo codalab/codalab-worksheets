@@ -287,13 +287,6 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     root_app = Bottle()
     root_app.mount('/rest', default_app())
 
-    # Look for templates in codalab-worksheets/views
-    bottle.TEMPLATE_PATH = [
-        os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views'
-        )
-    ]
-
     # Increase the request body size limit to 8 MiB
     bottle.BaseRequest.MEMFILE_MAX = 8 * 1024 * 1024
 
