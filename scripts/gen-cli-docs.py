@@ -24,8 +24,8 @@ def main():
     args = parser.parse_args()
 
     with open(os.path.join(args.docs, 'CLI-Reference.md'), 'w') as f:
-        print >> f, INTRODUCTION
-        print >> f, indent(Commands.help_text(True))
+        print(INTRODUCTION, file=f)
+        print(indent(Commands.help_text(True)), file=f)
 
 
 if __name__ == '__main__':

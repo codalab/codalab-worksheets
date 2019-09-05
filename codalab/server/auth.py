@@ -4,8 +4,7 @@ AuthHandler encapsulates the logic to authenticate users on the server-side.
 import base64
 import json
 import threading
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
 
 
 # TODO(sckoo): clean up auth logic across:
@@ -49,18 +48,20 @@ class RestOAuthHandler(object):
     def _make_token_request(self, data):
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': 'Basic ' + base64.b64encode('codalab_cli_client:'),
+            'Authorization': 'Basic ' + base64.b64encode(b'codalab_cli_client:').decode('utf-8'),
             'X-Requested-With': 'XMLHttpRequest',
         }
         headers.update(self._extra_headers)
-        request = urllib2.Request(
-            self._address + '/rest/oauth2/token', headers=headers, data=urllib.urlencode(data)
+        request = urllib.request.Request(
+            self._address + '/rest/oauth2/token',
+            headers=headers,
+            data=urllib.parse.urlencode(data).encode('utf-8'),
         )
         try:
-            response = urllib2.urlopen(request)
-            result = json.load(response)
+            response = urllib.request.urlopen(request)
+            result = json.loads(response.read().decode())
             return result
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             if e.code == 401:
                 return None
             raise

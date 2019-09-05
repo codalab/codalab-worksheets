@@ -1,4 +1,4 @@
-#! /usr/bin/python2.7
+#! /usr/bin/python3.6
 
 """
 The main entry point for bringing up CodaLab services.  This is used for both
@@ -92,7 +92,9 @@ def main():
 
 def get_default_version():
     """Get the current git branch."""
-    return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+    return subprocess.check_output(
+        ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8'
+    ).strip()
 
 
 def var_path(name):
@@ -498,7 +500,8 @@ class CodalabServiceManager(object):
                     if not stdout_line:
                         break
                     print(
-                        "process: " + stdout_line.decode('utf-8').encode('ascii', errors='replace'),
+                        "process: "
+                        + stdout_line.decode('utf-8').encode('ascii', errors='replace').decode(),
                         end="",
                     )
                 popen.wait()
@@ -508,7 +511,7 @@ class CodalabServiceManager(object):
             except subprocess.CalledProcessError as e:
                 print(
                     "CalledProcessError: {}, {}".format(
-                        str(e), e.output.decode('utf-8').encode('ascii', errors='replace')
+                        str(e), e.output.decode('utf-8').encode('ascii', errors='replace').decode()
                     )
                 )
                 raise e
@@ -582,7 +585,7 @@ class CodalabServiceManager(object):
             print_header('Creating root user')
             self.run_service_cmd(
                 wait_mysql(
-                    'python scripts/create-root-user.py {}'.format(self.args.codalab_password)
+                    'python3.6 scripts/create-root-user.py {}'.format(self.args.codalab_password)
                 )
             )
 
@@ -610,7 +613,7 @@ class CodalabServiceManager(object):
         if should_run_service(self.args, 'test'):
             print_header('Running tests')
             self.run_service_cmd(
-                wait_rest_server('python test_cli.py --instance {} default'.format(rest_url))
+                wait_rest_server('python3.6 test_cli.py --instance {} default'.format(rest_url))
             )
 
         self.bring_up_service('monitor')

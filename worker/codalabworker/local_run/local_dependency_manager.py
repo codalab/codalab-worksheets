@@ -211,11 +211,11 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     }
                     if failed_deps:
                         dep_to_remove = min(
-                            failed_deps.iteritems(), key=lambda dep_state: dep_state[1].last_used
+                            failed_deps.items(), key=lambda dep_state: dep_state[1].last_used
                         )[0]
                     elif ready_deps:
                         dep_to_remove = min(
-                            ready_deps.iteritems(), key=lambda dep_state: dep_state[1].last_used
+                            ready_deps.items(), key=lambda dep_state: dep_state[1].last_used
                         )[0]
                     else:
                         logger.info(
@@ -312,7 +312,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         Acquires all dependency locks in the thread it's called from
         """
         with self._global_lock:
-            for dependency, lock in self._dependency_locks.iteritems():
+            for dependency, lock in self._dependency_locks.items():
                 lock.acquire()
 
     def _release_all_locks(self):
@@ -320,7 +320,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         Releases all dependency locks in the thread it's called from
         """
         with self._global_lock:
-            for dependency, lock in self._dependency_locks.iteritems():
+            for dependency, lock in self._dependency_locks.items():
                 lock.release()
 
     def _assign_path(self, dependency):

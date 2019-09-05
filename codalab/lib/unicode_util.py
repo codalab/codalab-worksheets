@@ -6,7 +6,7 @@ containing unicode characters.
 
 def contains_unicode(s):
     try:
-        s.decode("ascii")
+        s.encode("ascii")
     except UnicodeError:
         return True
     return False

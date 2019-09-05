@@ -32,7 +32,6 @@ def open_and_edit(suffix, template=''):
         subprocess.call([editor, tempfile_name])
         with open(tempfile_name, 'r') as form:
             lines = form.readlines()
-            lines = [line.decode('utf-8') for line in lines]
         path_util.remove(tempfile_name)
 
     return lines

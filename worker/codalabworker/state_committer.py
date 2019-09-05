@@ -1,7 +1,7 @@
 import tempfile
 import os
 import shutil
-import pyjson
+from . import pyjson
 
 
 class BaseStateCommitter(object):
@@ -29,6 +29,6 @@ class JsonStateCommitter(BaseStateCommitter):
         """ Write out the state in JSON format to a temporary file and rename it into place """
 
         with tempfile.NamedTemporaryFile() as f:
-            f.write(pyjson.dumps(state))
+            f.write(pyjson.dumps(state).encode())
             f.flush()
             shutil.copyfile(f.name, self._state_file)

@@ -13,10 +13,10 @@ class UploadedBundle(NamedBundle):
     # Don't format specs
     # fmt: off
     METADATA_SPECS.append(
-        MetadataSpec('license', basestring, 'The license under which this program/dataset is released.')
+        MetadataSpec('license', str, 'The license under which this program/dataset is released.')
     )
     METADATA_SPECS.append(
-        MetadataSpec('source_url', basestring, 'URL corresponding to the original source of this bundle.')
+        MetadataSpec('source_url', str, 'URL corresponding to the original source of this bundle.')
     )
     # fmt: on
 

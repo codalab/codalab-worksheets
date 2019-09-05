@@ -73,7 +73,7 @@ class WorkerModel(object):
                 conn.execute(cl_worker.insert().values(worker_row))
 
             # Update dependencies
-            blob = self._serialize_dependencies(dependencies)
+            blob = self._serialize_dependencies(dependencies).encode()
             if existing_row:
                 conn.execute(
                     cl_worker_dependency.update()
@@ -99,7 +99,7 @@ class WorkerModel(object):
 
     @staticmethod
     def _deserialize_dependencies(blob):
-        return map(tuple, json.loads(blob))
+        return list(map(tuple, json.loads(blob)))
 
     def worker_cleanup(self, user_id, worker_id):
         """
@@ -177,7 +177,7 @@ class WorkerModel(object):
         }
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
-        return worker_dict.values()
+        return list(worker_dict.values())
 
     def get_bundle_worker(self, uuid):
         """
@@ -250,7 +250,7 @@ class WorkerModel(object):
         sock.listen(0)
         return sock
 
-    ACK = 'a'
+    ACK = b'a'
 
     def get_stream(self, sock, timeout_secs):
         """
@@ -286,7 +286,7 @@ class WorkerModel(object):
             return None
 
         with closing(fileobj):
-            return json.loads(fileobj.read())
+            return json.loads(fileobj.read().decode())
 
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """
@@ -373,7 +373,7 @@ class WorkerModel(object):
                         'Received invalid ack on socket.',
                     )
 
-                sock.sendall(json.dumps(message))
+                sock.sendall(json.dumps(message).encode())
                 return True
 
         return False
