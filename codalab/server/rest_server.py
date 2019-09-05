@@ -36,7 +36,6 @@ import codalab.rest.groups
 import codalab.rest.help
 import codalab.rest.interpret
 import codalab.rest.oauth2
-import codalab.rest.titlejs
 import codalab.rest.users
 import codalab.rest.workers
 import codalab.rest.worksheets
