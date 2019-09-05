@@ -677,7 +677,7 @@ class BundleCLI(object):
     def parse_spec(self, spec):
         """
         Parse a global spec, which includes the instance and either a bundle or worksheet spec.
-        Example: https://worksheets.codalab.org/bundleservice::wine
+        Example: https://worksheets.codalab.org::wine
         Return (client, spec)
         """
         tokens = spec.split(INSTANCE_SEPARATOR)
@@ -938,7 +938,7 @@ class BundleCLI(object):
             Commands.Argument('name', help='Name of the alias (e.g., main).', nargs='?'),
             Commands.Argument(
                 'instance',
-                help='Instance to bind the alias to (e.g., https://codalab.org/bundleservice).',
+                help='Instance to bind the alias to (e.g., https://worksheets.codalab.org).',
                 nargs='?',
             ),
             Commands.Argument('-r', '--remove', help='Remove this alias.', action='store_true'),
@@ -978,7 +978,7 @@ class BundleCLI(object):
             Commands.Argument('key', help='key to set (e.g., cli/verbose).'),
             Commands.Argument(
                 'value',
-                help='Instance to bind the alias to (e.g., https://codalab.org/bundleservice).',
+                help='Instance to bind the alias to (e.g., https://worksheets.codalab.org).',
                 nargs='?',
             ),
             Commands.Argument('-r', '--remove', help='Remove this key.', action='store_true'),
