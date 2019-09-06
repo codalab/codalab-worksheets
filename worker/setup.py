@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 # should match codalab/common.py#CODALAB_VERSION
-CODALAB_VERSION = "0.3.3"
+CODALAB_VERSION = "0.4.0"
 
 
 def get_requirements(*requirements_file_paths):
