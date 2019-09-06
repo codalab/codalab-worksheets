@@ -8,9 +8,9 @@ if ! [ -e venv ]; then
   venv/bin/pip install -r requirements.docs.txt || exit 1
   rm -rf worker/codalabworker.egg-info  # Need to clear because of different Python versions
   # Install for generating docs.
+  venv/bin/pip install black==18.9b0 || exit 1
   venv/bin/pip install -e worker  # Not sure why this is necessary
   venv/bin/pip install -e .
-  venv/bin/pip install black==18.9b0 || exit 1
 fi
 
 # Generate docs
