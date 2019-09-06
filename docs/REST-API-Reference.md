@@ -9,19 +9,19 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
 - [Introduction](#introduction)
 - [Resource Object Schemas](#resource-object-schemas)
 - [API Endpoints](#api-endpoints)
-  - [Bundle Permissions API](#bundle-permissions-api)
+  - [Bundle Actions API](#bundle-actions-api)
   - [OAuth2 API](#oauth2-api)
+  - [Users API](#users-api)
+  - [Bundles API](#bundles-api)
+  - [Worksheets API](#worksheets-api)
+  - [User API](#user-api)
+  - [Worksheet Permissions API](#worksheet-permissions-api)
+  - [Groups API](#groups-api)
+  - [Workers API](#workers-api)
   - [CLI API](#cli-api)
   - [Worksheet Items API](#worksheet-items-api)
-  - [Workers API](#workers-api)
-  - [Bundles API](#bundles-api)
   - [Worksheet Interpretation API](#worksheet-interpretation-api)
-  - [User API](#user-api)
-  - [Groups API](#groups-api)
-  - [Bundle Actions API](#bundle-actions-api)
-  - [Worksheets API](#worksheets-api)
-  - [Worksheet Permissions API](#worksheet-permissions-api)
-  - [Users API](#users-api)
+  - [Bundle Permissions API](#bundle-permissions-api)
 
 # Introduction
 We use the JSON API v1.0 specification with the Bulk extension.
@@ -127,79 +127,43 @@ a `401 Unauthorized` or `403 Forbidden` status.
 
 Name | Type
 --- | ---
-`subworksheet` | Relationship([worksheets](#worksheets))
-`sort_key` | Integer
+`id` | Integer
 `worksheet` | Relationship([worksheets](#worksheets))
+`subworksheet` | Relationship([worksheets](#worksheets))
 `bundle` | Relationship([bundles](#bundles))
 `value` | String
 `type` | String
-`id` | Integer
-
-## users
-
-
-Name | Type
---- | ---
-`parallel_run_quota` | Integer
-`first_name` | String
-`last_name` | String
-`time_quota` | Integer
-`notifications` | Integer
-`url` | Url
-`disk_used` | Integer
-`time_used` | Integer
-`email` | String
-`disk_quota` | Integer
-`affiliation` | String
-`last_login` | LocalDateTime
-`user_name` | String
-`id` | String
-`date_joined` | LocalDateTime
-
-## bundles
-
-
-Name | Type
---- | ---
-`host_worksheets` | Relationship([worksheets](#worksheets))
-`data_hash` | String
-`uuid` | String
-`is_anonymous` | Boolean
-`permission` | Integer
-`group_permissions` | Relationship([bundle-permissions](#bundle-permissions))
-`args` | String
-`id` | String
-`state` | String
-`dependencies` | [BundleDependencySchema](#BundleDependencySchema)
-`command` | String
-`owner` | Relationship([users](#users))
-`bundle_type` | String
-`children` | Relationship([bundles](#bundles))
-`permission_spec` | PermissionSpec
-`metadata` | Dict
+`sort_key` | Integer
 
 ## worksheet-permissions
 
 
 Name | Type
 --- | ---
-`group` | Relationship([groups](#groups))
-`permission` | Integer
-`worksheet` | Relationship([worksheets](#worksheets))
-`group_name` | String
 `id` | Integer
+`worksheet` | Relationship([worksheets](#worksheets))
+`group` | Relationship([groups](#groups))
+`group_name` | String
+`permission` | Integer
 `permission_spec` | PermissionSpec
 
-## bundle-permissions
+## worksheets
 
 
 Name | Type
 --- | ---
-`group` | Relationship([groups](#groups))
+`id` | String
+`uuid` | String
+`name` | String
+`owner` | Relationship([users](#users))
+`title` | String
+`frozen` | DateTime
+`is_anonymous` | Boolean
+`tags` | List
+`group_permissions` | Relationship([worksheet-permissions](#worksheet-permissions))
+`items` | Relationship([worksheet-items](#worksheet-items))
+`last_item_id` | Integer
 `permission` | Integer
-`bundle` | Relationship([bundles](#bundles))
-`group_name` | String
-`id` | Integer
 `permission_spec` | PermissionSpec
 
 ## BundleDependencySchema
@@ -212,76 +176,110 @@ create a set of dependencies once at bundle creation.
 
 Name | Type
 --- | ---
-`parent_name` | Method
 `child_uuid` | String
-`parent_uuid` | String
 `child_path` | String
+`parent_uuid` | String
 `parent_path` | String
+`parent_name` | Method
+
+## bundle-permissions
+
+
+Name | Type
+--- | ---
+`id` | Integer
+`bundle` | Relationship([bundles](#bundles))
+`group` | Relationship([groups](#groups))
+`group_name` | String
+`permission` | Integer
+`permission_spec` | PermissionSpec
+
+## bundles
+
+
+Name | Type
+--- | ---
+`id` | String
+`uuid` | String
+`bundle_type` | String
+`command` | String
+`data_hash` | String
+`state` | String
+`owner` | Relationship([users](#users))
+`is_anonymous` | Boolean
+`metadata` | Dict
+`dependencies` | [BundleDependencySchema](#BundleDependencySchema)
+`children` | Relationship([bundles](#bundles))
+`group_permissions` | Relationship([bundle-permissions](#bundle-permissions))
+`host_worksheets` | Relationship([worksheets](#worksheets))
+`args` | String
+`permission` | Integer
+`permission_spec` | PermissionSpec
 
 ## bundle-actions
 
 
 Name | Type
 --- | ---
-`type` | String
+`id` | Integer
 `uuid` | String
+`type` | String
 `subpath` | String
 `string` | String
-`id` | Integer
-
-## worksheets
-
-
-Name | Type
---- | ---
-`last_item_id` | Integer
-`name` | String
-`is_anonymous` | Boolean
-`title` | String
-`frozen` | DateTime
-`group_permissions` | Relationship([worksheet-permissions](#worksheet-permissions))
-`tags` | List
-`items` | Relationship([worksheet-items](#worksheet-items))
-`owner` | Relationship([users](#users))
-`permission` | Integer
-`id` | String
-`permission_spec` | PermissionSpec
-`uuid` | String
-
-## groups
-
-
-Name | Type
---- | ---
-`name` | String
-`user_defined` | Boolean
-`admins` | Relationship([users](#users))
-`members` | Relationship([users](#users))
-`owner` | Relationship([users](#users))
-`id` | String
 
 ## users
 
 
 Name | Type
 --- | ---
+`id` | String
+`user_name` | String
 `first_name` | String
 `last_name` | String
-`url` | Url
 `affiliation` | String
-`user_name` | String
-`id` | String
+`url` | Url
 `date_joined` | LocalDateTime
+
+## users
+
+
+Name | Type
+--- | ---
+`id` | String
+`user_name` | String
+`first_name` | String
+`last_name` | String
+`affiliation` | String
+`url` | Url
+`date_joined` | LocalDateTime
+`email` | String
+`notifications` | Integer
+`time_quota` | Integer
+`parallel_run_quota` | Integer
+`time_used` | Integer
+`disk_quota` | Integer
+`disk_used` | Integer
+`last_login` | LocalDateTime
+
+## groups
+
+
+Name | Type
+--- | ---
+`id` | String
+`name` | String
+`user_defined` | Boolean
+`owner` | Relationship([users](#users))
+`admins` | Relationship([users](#users))
+`members` | Relationship([users](#users))
 
 &uarr; [Back to Top](#table-of-contents)
 # API Endpoints
-## Bundle Permissions API
-### `POST /bundle-permissions`
+## Bundle Actions API
+### `POST /bundle-actions`
 
-Bulk set bundle permissions.
-
-A bundle permission created on a bundle-group pair will replace any
-existing permissions on the same bundle-group pair.
+Sends the message to the worker to do the bundle action, and adds the
+action string to the bundle metadata.
 
 
 &uarr; [Back to Top](#table-of-contents)
@@ -370,73 +368,29 @@ Provide secure services using OAuth2.
 ### `GET /oauth2/errors`
 
 &uarr; [Back to Top](#table-of-contents)
-## CLI API
-### `POST /cli/command`
+## Users API
+### `GET /users/<user_spec>`
+Fetch a single user.
+### `DELETE /users`
+Fetch user ids
+### `GET /users`
 
-JSON request body:
-```
-{
-    "worksheet_uuid": "0xea72f9b6aa754636a6657ff2b5e005b0",
-    "command": "cl run :main.py 'python main.py'",
-    "autocomplete": false
-}
-```
+Fetch list of users, filterable by username and email.
 
-JSON response body:
-```
-{
-    "structured_result": { ... },
-    "output": "..."
-}
-```
+Takes the following query parameters:
+    filter[user_name]=name1,name2,...
+    filter[email]=email1,email2,...
 
+Fetches all users that match any of these usernames or emails.
 
-&uarr; [Back to Top](#table-of-contents)
-## Worksheet Items API
-### `POST /worksheet-items`
+### `PATCH /users`
 
-Bulk add worksheet items.
+Update arbitrary users.
 
-|replace| - Replace existing items in host worksheets. Default is False.
-
-
-&uarr; [Back to Top](#table-of-contents)
-## Workers API
-### `POST /workers/<worker_id>/checkin`
-
-Checks in with the bundle service, storing information about the worker.
-Waits for a message for the worker for WAIT_TIME_SECS seconds. Returns the
-message or None if there isn't one.
-
-### `POST /workers/<worker_id>/reply/<socket_id:int>`
-
-Replies with a single JSON message to the given socket ID.
-
-### `POST /workers/<worker_id>/reply_data/<socket_id:int>`
-
-Replies with a stream of data to the given socket ID. This reply mechanism
-works through 2 messages sent by this method: the first message is a header
-message containing metadata. The second message streams the actual data in.
-
-The contents of the first message are parsed from the header_message query
-parameter, which should be in JSON format.
-
-The contents of the second message go in the body of the HTTP request.
-
-### `POST /workers/<worker_id>/start_bundle/<uuid:re:0x[0-9a-f]{32}>`
-
-Checks whether the bundle is still assigned to run on the worker with the
-given worker_id. If so, reports that it's starting to run and returns True.
-Otherwise, returns False, meaning the worker shouldn't run the bundle.
-
-### `PUT /workers/<worker_id>/update_bundle_metadata/<uuid:re:0x[0-9a-f]{32}>`
-
-Updates metadata related to a running bundle.
-
-### `GET /workers/info`
-### `GET /workers/code.tar.gz`
-
-Returns .tar.gz archive containing the code of the worker.
+This operation is reserved for the root user. Other users can update their
+information through the /user "authenticated user" API.
+Follows the bulk-update convention in the CodaLab API, but currently only
+allows one update at a time.
 
 
 &uarr; [Back to Top](#table-of-contents)
@@ -715,6 +669,151 @@ Query parameters:
 
 
 &uarr; [Back to Top](#table-of-contents)
+## Worksheets API
+### `GET /worksheets/<uuid:re:0x[0-9a-f]{32}>`
+
+Fetch a single worksheet by UUID.
+
+Query parameters:
+
+ - `include`: comma-separated list of related resources to include, such as "owner"
+
+### `GET /worksheets`
+
+Fetch worksheets by worksheet specs (names) OR search keywords.
+
+Query parameters:
+
+ - `include`: comma-separated list of related resources to include, such as "owner"
+
+### `POST /worksheets`
+### `POST /worksheets/<uuid:re:0x[0-9a-f]{32}>/raw`
+
+Request body contains the raw lines of the worksheet.
+
+### `PUT /worksheets/<uuid:re:0x[0-9a-f]{32}>/raw`
+
+Request body contains the raw lines of the worksheet.
+
+### `PATCH /worksheets`
+
+Bulk update worksheets metadata.
+
+### `DELETE /worksheets`
+
+Delete the bundles specified.
+If |force|, allow deletion of bundles that have descendants or that appear across multiple worksheets.
+If |recursive|, add all bundles downstream too.
+If |data-only|, only remove from the bundle store, not the bundle metadata.
+If |dry-run|, just return list of bundles that would be deleted, but do not actually delete.
+
+### `GET /worksheets/sample/`
+
+Get worksheets to display on the front page.
+Keep only |worksheet_uuids|.
+
+### `GET /worksheets/`
+
+&uarr; [Back to Top](#table-of-contents)
+## User API
+### `GET /user`
+Fetch authenticated user.
+### `PATCH /user`
+Update one or multiple fields of the authenticated user.
+
+&uarr; [Back to Top](#table-of-contents)
+## Worksheet Permissions API
+### `POST /worksheet-permissions`
+
+Bulk set worksheet permissions.
+
+
+&uarr; [Back to Top](#table-of-contents)
+## Groups API
+### `GET /groups/<group_spec>`
+Fetch a single group.
+### `GET /groups`
+Fetch list of groups readable by the authenticated user.
+### `DELETE /groups`
+Delete groups.
+### `POST /groups`
+Create a group.
+### `POST /groups/<group_spec>/relationships/admins`
+### `POST /groups/<group_spec>/relationships/members`
+### `DELETE /groups/<group_spec>/relationships/members`
+### `DELETE /groups/<group_spec>/relationships/admins`
+
+&uarr; [Back to Top](#table-of-contents)
+## Workers API
+### `POST /workers/<worker_id>/checkin`
+
+Checks in with the bundle service, storing information about the worker.
+Waits for a message for the worker for WAIT_TIME_SECS seconds. Returns the
+message or None if there isn't one.
+
+### `POST /workers/<worker_id>/reply/<socket_id:int>`
+
+Replies with a single JSON message to the given socket ID.
+
+### `POST /workers/<worker_id>/reply_data/<socket_id:int>`
+
+Replies with a stream of data to the given socket ID. This reply mechanism
+works through 2 messages sent by this method: the first message is a header
+message containing metadata. The second message streams the actual data in.
+
+The contents of the first message are parsed from the header_message query
+parameter, which should be in JSON format.
+
+The contents of the second message go in the body of the HTTP request.
+
+### `POST /workers/<worker_id>/start_bundle/<uuid:re:0x[0-9a-f]{32}>`
+
+Checks whether the bundle is still assigned to run on the worker with the
+given worker_id. If so, reports that it's starting to run and returns True.
+Otherwise, returns False, meaning the worker shouldn't run the bundle.
+
+### `PUT /workers/<worker_id>/update_bundle_metadata/<uuid:re:0x[0-9a-f]{32}>`
+
+Updates metadata related to a running bundle.
+
+### `GET /workers/info`
+### `GET /workers/code.tar.gz`
+
+Returns .tar.gz archive containing the code of the worker.
+
+
+&uarr; [Back to Top](#table-of-contents)
+## CLI API
+### `POST /cli/command`
+
+JSON request body:
+```
+{
+    "worksheet_uuid": "0xea72f9b6aa754636a6657ff2b5e005b0",
+    "command": "cl run :main.py 'python main.py'",
+    "autocomplete": false
+}
+```
+
+JSON response body:
+```
+{
+    "structured_result": { ... },
+    "output": "..."
+}
+```
+
+
+&uarr; [Back to Top](#table-of-contents)
+## Worksheet Items API
+### `POST /worksheet-items`
+
+Bulk add worksheet items.
+
+|replace| - Replace existing items in host worksheets. Default is False.
+
+
+&uarr; [Back to Top](#table-of-contents)
 ## Worksheet Interpretation API
 ### `POST /interpret/search`
 
@@ -813,112 +912,13 @@ that we can render something basic.
 
 
 &uarr; [Back to Top](#table-of-contents)
-## User API
-### `GET /user`
-Fetch authenticated user.
-### `PATCH /user`
-Update one or multiple fields of the authenticated user.
+## Bundle Permissions API
+### `POST /bundle-permissions`
 
-&uarr; [Back to Top](#table-of-contents)
-## Groups API
-### `GET /groups/<group_spec>`
-Fetch a single group.
-### `GET /groups`
-Fetch list of groups readable by the authenticated user.
-### `DELETE /groups`
-Delete groups.
-### `POST /groups`
-Create a group.
-### `POST /groups/<group_spec>/relationships/admins`
-### `POST /groups/<group_spec>/relationships/members`
-### `DELETE /groups/<group_spec>/relationships/members`
-### `DELETE /groups/<group_spec>/relationships/admins`
+Bulk set bundle permissions.
 
-&uarr; [Back to Top](#table-of-contents)
-## Bundle Actions API
-### `POST /bundle-actions`
-
-Sends the message to the worker to do the bundle action, and adds the
-action string to the bundle metadata.
-
-
-&uarr; [Back to Top](#table-of-contents)
-## Worksheets API
-### `GET /worksheets/<uuid:re:0x[0-9a-f]{32}>`
-
-Fetch a single worksheet by UUID.
-
-Query parameters:
-
- - `include`: comma-separated list of related resources to include, such as "owner"
-
-### `GET /worksheets`
-
-Fetch worksheets by worksheet specs (names) OR search keywords.
-
-Query parameters:
-
- - `include`: comma-separated list of related resources to include, such as "owner"
-
-### `POST /worksheets`
-### `POST /worksheets/<uuid:re:0x[0-9a-f]{32}>/raw`
-
-Request body contains the raw lines of the worksheet.
-
-### `PUT /worksheets/<uuid:re:0x[0-9a-f]{32}>/raw`
-
-Request body contains the raw lines of the worksheet.
-
-### `PATCH /worksheets`
-
-Bulk update worksheets metadata.
-
-### `DELETE /worksheets`
-
-Delete the bundles specified.
-If |force|, allow deletion of bundles that have descendants or that appear across multiple worksheets.
-If |recursive|, add all bundles downstream too.
-If |data-only|, only remove from the bundle store, not the bundle metadata.
-If |dry-run|, just return list of bundles that would be deleted, but do not actually delete.
-
-### `GET /worksheets/sample/`
-
-Get worksheets to display on the front page.
-Keep only |worksheet_uuids|.
-
-### `GET /worksheets/`
-
-&uarr; [Back to Top](#table-of-contents)
-## Worksheet Permissions API
-### `POST /worksheet-permissions`
-
-Bulk set worksheet permissions.
-
-
-&uarr; [Back to Top](#table-of-contents)
-## Users API
-### `GET /users/<user_spec>`
-Fetch a single user.
-### `DELETE /users`
-Fetch user ids
-### `GET /users`
-
-Fetch list of users, filterable by username and email.
-
-Takes the following query parameters:
-    filter[user_name]=name1,name2,...
-    filter[email]=email1,email2,...
-
-Fetches all users that match any of these usernames or emails.
-
-### `PATCH /users`
-
-Update arbitrary users.
-
-This operation is reserved for the root user. Other users can update their
-information through the /user "authenticated user" API.
-Follows the bulk-update convention in the CodaLab API, but currently only
-allows one update at a time.
+A bundle permission created on a bundle-group pair will replace any
+existing permissions on the same bundle-group pair.
 
 
 &uarr; [Back to Top](#table-of-contents)

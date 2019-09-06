@@ -41,12 +41,12 @@ Checkout the CodaLab Worksheets repository (in the future, this should be availa
 Install all the dependencies:
 
     cd codalab-worksheets
-    virtualenv -p python2.7 venv2.7
-    venv2.7/bin/pip install -e .
+    virtualenv -p python3.6 venv
+    venv/bin/pip install -e .
 
 Now when you run the competition script with the help flag `-h`, you should see something like this:
 
-    venv2.7/bin/python scripts/competitiond.py -h
+    venv/bin/python scripts/competitiond.py -h
 
     usage: competitiond.py [-h] [-l] [-d] [-v] config_file output_path
 
@@ -121,7 +121,7 @@ There are many ways you could choose to set up the competition. The recommended 
 
 Running the competition script in daemon mode will start a long-running process that periodically checks for new submissions, runs them, then updates the leaderboard file.
 
-    venv2.7/bin/python scripts/competitiond.py -d ~/competition-config.yml /var/www/leaderboard.json
+    venv/bin/python scripts/competitiond.py -d ~/competition-config.yml /var/www/leaderboard.json
 
 ## Submitting a model (as a participant)
 
