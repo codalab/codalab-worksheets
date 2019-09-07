@@ -10,8 +10,8 @@ import codalabworker.docker_utils as docker_utils
 
 from codalabworker.state_committer import JsonStateCommitter
 from codalabworker.run_manager import BaseRunManager
-from local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
-from local_reader import LocalReader
+from .local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
+from .local_reader import LocalReader
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class LocalRunManager(BaseRunManager):
     def load_state(self):
         runs = self._state_committer.load()
         # Retrieve the complex container objects from the Docker API
-        for uuid, run_state in runs.iteritems():
+        for uuid, run_state in runs.items():
             if run_state.container_id:
                 try:
                     run_state = run_state._replace(
@@ -132,7 +132,7 @@ class LocalRunManager(BaseRunManager):
             self.docker_network_internal.remove()
             self.docker_network_external.remove()
         except docker.errors.APIError as e:
-            logger.error("Cannot clear docker networks: {}".format(e.message))
+            logger.error("Cannot clear docker networks: {}".format(str(e)))
 
         logger.info("Stopped Local Run Manager. Exiting")
 
@@ -299,7 +299,7 @@ class LocalRunManager(BaseRunManager):
                 break
             total_data.append(data)
         s.close()
-        reply(None, {}, ''.join(total_data))
+        reply(None, {}, b''.join(total_data).decode())
 
     def kill(self, run_state):
         """

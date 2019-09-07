@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import with_statement
 
 import os
 import errno
@@ -91,7 +90,7 @@ if fuse_is_available:
 
         def _get_chunk_id(self, offset):
             ''' Return chunk id given offset '''
-            return offset / self.chunk_size
+            return offset // self.chunk_size
 
     class MWT(object):
         """
@@ -130,7 +129,7 @@ if fuse_is_available:
                     v = self.cache[key] = f(*args, **kwargs), time.time()
                 return v[0]
 
-            func.func_name = f.func_name
+            func.__name__ = f.__name__
 
             return func
 

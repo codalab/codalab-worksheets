@@ -16,12 +16,10 @@ class PyJSONEncoder(json.JSONEncoder):
         """
         Encodes a dict key. Currently only supports encoding tuples and strings as keys
         """
-        if not (isinstance(key, tuple) or isinstance(key, str) or isinstance(key, unicode)):
+        if not (isinstance(key, tuple) or isinstance(key, str) or isinstance(key, str)):
             raise Exception('PyJSON can only encode dicts with str, unicode or tuple keys')
         if isinstance(key, tuple):
-            if not all(
-                isinstance(tuple_el, str) or isinstance(tuple_el, unicode) for tuple_el in key
-            ):
+            if not all(isinstance(tuple_el, str) or isinstance(tuple_el, str) for tuple_el in key):
                 raise Exception(
                     'Tuple elements need to be all strings (or unicode) for PyJSON to work'
                 )
@@ -47,7 +45,7 @@ class PyJSONEncoder(json.JSONEncoder):
             odct = obj._asdict()
             return dict(
                 _namedtuple_name=type(obj).__name__,
-                _namedtuple_fields=odct.keys(),
+                _namedtuple_fields=list(odct.keys()),
                 _namedtuple_values=list(self.default(o) for o in odct.values()),
             )
         elif isinstance(obj, set):
@@ -73,7 +71,7 @@ class PyJSONDecoder(json.JSONDecoder):
         """
         Should do the opposite of what encode_key does
         """
-        if isinstance(key, basestring) and key.startswith(PyJSONEncoder.TUPLE_KEY_STR):
+        if isinstance(key, str) and key.startswith(PyJSONEncoder.TUPLE_KEY_STR):
             key_str = key[len(PyJSONEncoder.TUPLE_KEY_STR) :]
             return tuple(key_str.split(PyJSONEncoder.TUPLE_ELEM_STR))
         return key

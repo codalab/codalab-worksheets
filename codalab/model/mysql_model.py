@@ -2,6 +2,7 @@
 MySQLModel is a subclass of BundleModel that stores metadata on a MySQL
 server that it connects to with the given connect parameters.
 """
+import array
 from sqlalchemy import create_engine, event, exc
 from sqlalchemy.pool import Pool
 
@@ -60,7 +61,7 @@ class MySQLModel(BundleModel):
     # (See tables.py for more details.)
 
     def encode_str(self, value):
-        return value.encode('utf-8')
+        return value.encode()
 
     def decode_str(self, value):
-        return value.decode('utf-8')
+        return array.array('B', [ord(char) for char in value]).tostring().decode()

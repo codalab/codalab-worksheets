@@ -15,7 +15,7 @@ Things not tested:
 - Interactive modes (cl edit, cl wedit)
 - Permissions
 """
-from __future__ import print_function
+
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
 
@@ -48,15 +48,18 @@ def test_path(name):
 # everywhere to test for equality.
 
 
-def test_path_contents(name):
-    return path_contents(test_path(name))
+def test_path_contents(name, binary=False):
+    return path_contents(test_path(name), binary=binary)
 
 
-def path_contents(path):
-    return open(path).read().rstrip()
+def path_contents(path, binary=False):
+    with open(path, "rb") as file:
+        if binary:
+            return file.read().rstrip()
+        return file.read().decode().rstrip()
 
 
-def temp_path(suffix, tmp=False):
+def temp_path(suffix, tmp=True):
     root = '/tmp' if tmp else base_path
     return os.path.join(root, random_name() + suffix)
 
@@ -70,7 +73,7 @@ def current_worksheet():
     Returns the full worksheet spec of the current worksheet.
 
     Does so by parsing the output of `cl work`:
-        Switched to worksheet http://localhost:2800/worksheets/0x87a7a7ffe29d4d72be9b23c745adc120 (home-codalab).
+        Switched to worksheet http://localhost:2900/worksheets/0x87a7a7ffe29d4d72be9b23c745adc120 (home-codalab).
     """
     m = re.search('(http.*?)/worksheets/(.*?) \((.*?)\)', run_command([cl, 'work']))
     assert m is not None
@@ -99,29 +102,34 @@ def get_uuid(line):
 
 
 def sanitize(string, max_chars=256):
-    try:
-        string.decode('utf-8')
-    except UnicodeDecodeError:
-        return '<binary>\n'
-
-    string = string.decode('utf-8').encode('ascii', errors='replace')  # Travis only prints ASCII
+    """Sanitize and truncate output so it can be printed on the command line.
+    Bytes are converted to strings, and all strings are converted to ASCII.
+    """
+    if type(string) is bytes:
+        string = "{}".format(string)
+    string = string.encode('ascii', errors='replace').decode()
     if len(string) > max_chars:
         string = string[:max_chars] + ' (...more...)'
     return string
 
 
-def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False):
-    for a in args:
-        assert isinstance(a, str)
-    # Travis only prints ASCII
-    print('>> %s' % " ".join([a.decode("utf-8").encode("ascii", errors='replace') for a in args]))
+def run_command(
+    args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False, binary=False
+):
+    print(
+        ">>", *[a.encode('ascii', errors='replace') if type(a) is str else a for a in args], sep=" "
+    )
     sys.stdout.flush()
 
     try:
+        kwargs = dict(env=env)
+        if not binary:
+            kwargs = dict(kwargs, encoding="utf-8")
         if include_stderr:
-            output = subprocess.check_output(args, stderr=subprocess.STDOUT, env=env)
-        else:
-            output = subprocess.check_output(args, env=env)
+            kwargs = dict(kwargs, stderr=subprocess.STDOUT)
+        output = subprocess.check_output(
+            [a.encode() if type(a) is str else a for a in args], **kwargs
+        )
         exitcode = 0
     except subprocess.CalledProcessError as e:
         output = e.output
@@ -131,9 +139,11 @@ def run_command(args, expected_exit_code=0, max_output_chars=256, env=None, incl
         exitcode = 'test-cli exception'
     if exitcode != expected_exit_code:
         colorize = Colorizer.red
+        extra = ' BAD'
     else:
         colorize = Colorizer.cyan
-    print(colorize(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
+        extra = ''
+    print(colorize(" (exit code %s, expected %s%s)" % (exitcode, expected_exit_code, extra)))
     sys.stdout.flush()
     print(sanitize(output, max_output_chars))
     sys.stdout.flush()
@@ -344,7 +354,7 @@ class ModuleContext(object):
         if exc_type is not None:
             self.error = (exc_type, exc_value, tb)
             if exc_type is AssertionError:
-                print(Colorizer.red("[!] ERROR: %s" % exc_value.message))
+                print(Colorizer.red("[!] ERROR: %s" % str(exc_value)))
             elif exc_type is KeyboardInterrupt:
                 print(Colorizer.red("[!] Caught interrupt! Quitting after cleanup."))
             else:
@@ -354,7 +364,7 @@ class ModuleContext(object):
             print(Colorizer.green("[*] TEST PASSED"))
 
         # Clean up and restore original worksheet
-        print(Colorizer.yellow("[*][*] CLEANING UP"))
+        print("[*][*] CLEANING UP")
         os.environ.clear()
         os.environ.update(self.original_environ)
 
@@ -432,11 +442,11 @@ class TestModule(object):
 
     @classmethod
     def all_modules(cls):
-        return cls.modules.values()
+        return list(cls.modules.values())
 
     @classmethod
     def default_modules(cls):
-        return filter(lambda m: m.default, cls.modules.itervalues())
+        return [m for m in cls.modules.values() if m.default]
 
     @classmethod
     def run(cls, tests, instance):
@@ -464,12 +474,14 @@ class TestModule(object):
                 modules_to_run.append(cls.modules[name])
             else:
                 print(Colorizer.red("[!] Could not find module %s" % name))
-                print(Colorizer.red("[*] Modules: all %s" % " ".join(cls.modules.keys())))
+                print(Colorizer.red("[*] Modules: all %s" % " ".join(list(cls.modules.keys()))))
                 sys.exit(1)
 
         print(
-            Colorizer.yellow(
-                "[*][*] Running modules %s" % " ".join([m.name for m in modules_to_run])
+            (
+                Colorizer.yellow(
+                    "[*][*] Running modules %s" % " ".join([m.name for m in modules_to_run])
+                )
             )
         )
 
@@ -509,13 +521,15 @@ def test(ctx):
 @TestModule.register('gen-rest-docs')
 def test(ctx):
     """Generate REST API docs."""
-    run_command(['python', os.path.join(base_path, 'scripts/gen-rest-docs.py')])
+    run_command(
+        ['python3.6', os.path.join(base_path, 'scripts/gen-rest-docs.py'), '--docs', '/tmp']
+    )
 
 
 @TestModule.register('gen-cli-docs')
 def test(ctx):
     """Generate CLI docs."""
-    run_command(['python', os.path.join(base_path, 'scripts/gen-cli-docs.py')])
+    run_command(['python3.6', os.path.join(base_path, 'scripts/gen-cli-docs.py'), '--docs', '/tmp'])
 
 
 @TestModule.register('gen-readthedocs')
@@ -523,7 +537,7 @@ def test(ctx):
     """Generate the readthedocs site."""
     # Make sure there are no extraneous things.
     # mkdocs doesn't return exit code 1 for some warnings.
-    check_num_lines(2, run_command(['mkdocs', 'build'], include_stderr=True))
+    check_num_lines(2, run_command(['mkdocs', 'build', '-d', '/tmp/site'], include_stderr=True))
 
 
 @TestModule.register('basic')
@@ -574,7 +588,9 @@ def test(ctx):
 
     # Upload binary file
     uuid = run_command([cl, 'upload', test_path('echo')])
-    check_equals(test_path_contents('echo'), run_command([cl, 'cat', uuid]))
+    check_equals(
+        test_path_contents('echo', binary=True), run_command([cl, 'cat', uuid], binary=True)
+    )
 
     # Upload file with crazy name
     uuid = run_command([cl, 'upload', test_path(crazy_name)])
@@ -667,12 +683,17 @@ def test(ctx):
         # Upload it but don't unpack
         uuid = run_command([cl, 'upload', archive_path, '--pack'])
         check_equals(os.path.basename(archive_path), get_info(uuid, 'name'))
-        check_equals(test_path_contents(archive_path), run_command([cl, 'cat', uuid]))
+        check_equals(
+            test_path_contents(archive_path, binary=True),
+            run_command([cl, 'cat', uuid], binary=True),
+        )
 
         # Force compression
         uuid = run_command([cl, 'upload', test_path('echo'), '--force-compression'])
         check_equals('echo', get_info(uuid, 'name'))
-        check_equals(test_path_contents('echo'), run_command([cl, 'cat', uuid]))
+        check_equals(
+            test_path_contents('echo', binary=True), run_command([cl, 'cat', uuid], binary=True)
+        )
 
         os.unlink(archive_path)
 
@@ -696,7 +717,7 @@ def test(ctx):
 def test(ctx):
     # Uploads a pair of archives at the same time. Makes sure they're named correctly when unpacked.
     archive_paths = [temp_path(''), temp_path('')]
-    archive_exts = map(lambda p: p + '.tar.gz', archive_paths)
+    archive_exts = [p + '.tar.gz' for p in archive_paths]
     contents_paths = [test_path('dir1'), test_path('a.txt')]
     for (archive, content) in zip(archive_exts, contents_paths):
         run_command(
@@ -734,7 +755,7 @@ def test(ctx):
 
     # Download a target inside (binary)
     run_command([cl, 'download', uuid + '/echo', '-o', path])
-    check_equals(test_path_contents('echo'), path_contents(path))
+    check_equals(test_path_contents('echo', binary=True), path_contents(path, binary=True))
     os.unlink(path)
 
     # Download a target inside (crazy name)
@@ -814,6 +835,7 @@ def test(ctx):
     # create worksheet
     check_contains(uuid[0:5], run_command([cl, 'ls']))
     run_command([cl, 'add', 'text', 'testing'])
+    run_command([cl, 'add', 'text', '你好世界😊'])
     run_command([cl, 'add', 'text', '% display contents / maxlines=10'])
     run_command([cl, 'add', 'bundle', uuid])
     run_command([cl, 'add', 'text', '// comment'])
@@ -828,18 +850,18 @@ def test(ctx):
     )  # not testing real copying ability
     run_command([cl, 'add', 'worksheet', wuuid])
     check_contains(
-        ['Worksheet', 'testing', test_path_contents('a.txt'), uuid, 'HEAD', 'CREATE'],
+        ['Worksheet', 'testing', '你好世界😊', test_path_contents('a.txt'), uuid, 'HEAD', 'CREATE'],
         run_command([cl, 'print']),
     )
     run_command([cl, 'wadd', wuuid, wuuid])
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
-    run_command(
-        [cl, 'wedit', wuuid, '--title', 'fáncy ünicode'], 1
-    )  # try encoded unicode in worksheet title
+
     run_command(
         [cl, 'wedit', wuuid, '--file', test_path('unicode-worksheet')]
     )  # try unicode in worksheet contents
+    check_contains([test_path_contents('unicode-worksheet')], run_command([cl, 'print', '-r']))
+
     run_command([cl, 'wedit', wuuid, '--file', '/dev/null'])  # wipe out worksheet
 
 
@@ -880,12 +902,17 @@ def test(ctx):
     ctx.collect_worksheet(wuuid)
     # Add tags
     tags = ['foo', 'bar', 'baz']
-    fewer_tags = ['bar', 'foo']
     run_command([cl, 'wedit', wname, '--tags'] + tags)
     check_contains(['Tags: %s' % ' '.join(tags)], run_command([cl, 'ls', '-w', wuuid]))
     # Modify tags
+    fewer_tags = ['bar', 'foo']
     run_command([cl, 'wedit', wname, '--tags'] + fewer_tags)
-    check_contains(['Tags: %s' % fewer_tags], run_command([cl, 'ls', '-w', wuuid]))
+    check_contains(['Tags: %s' % ' '.join(fewer_tags)], run_command([cl, 'ls', '-w', wuuid]))
+    # Modify to non-ascii tags
+    # TODO: enable with Unicode support.
+    non_ascii_tags = ['你好世界😊', 'fáncy ünicode']
+    run_command([cl, 'wedit', wname, '--tags'] + non_ascii_tags, 1)
+    # check_contains(non_ascii_tags, run_command([cl, 'ls', '-w', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
     check_contains(r'Tags:\s+###', run_command([cl, 'ls', '-w', wuuid]))
@@ -1120,7 +1147,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'wait', uuid], 1)
-    check_equals(str([u'kill']), get_info(uuid, 'actions'))
+    check_equals(str(['kill']), get_info(uuid, 'actions'))
 
 
 @TestModule.register('write')
@@ -1132,7 +1159,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'write', target, 'hello world']))
     run_command([cl, 'wait', uuid])
     check_equals('hello world', run_command([cl, 'cat', target]))
-    check_equals(str([u'write\tmessage\thello world']), get_info(uuid, 'actions'))
+    check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
 
 
 @TestModule.register('mimic')
@@ -1212,7 +1239,11 @@ def test(ctx):
 def test(ctx):
     run_command([cl, 'status'])
     run_command([cl, 'alias'])
-    run_command([cl, 'help'])
+    help_output = run_command([cl, 'help'])
+    cl_output = run_command([cl])
+    check_contains("Commands for bundles", help_output)
+    check_contains("Commands for bundles", cl_output)
+    check_equals(cl_output, help_output)
 
 
 @TestModule.register('events', default=False)
@@ -1575,7 +1606,7 @@ def test(ctx):
     )
 
     config_file = temp_path('-competition-config.json')
-    with open(config_file, 'wb') as fp:
+    with open(config_file, 'w') as fp:
         json.dump(
             {
                 "host": ctx.instance,
@@ -1606,7 +1637,7 @@ def test(ctx):
     try:
         run_command(
             [
-                'python',
+                'python3.6',
                 os.path.join(base_path, 'scripts/competitiond.py'),
                 config_file,
                 out_file,
@@ -1624,24 +1655,37 @@ def test(ctx):
 
 @TestModule.register('unicode')
 def test(ctx):
+    # Non-unicode in worksheet title
+    wuuid = run_command([cl, 'new', random_name()])
+
+    run_command([cl, 'wedit', wuuid, '--title', 'nonunicode'])
+    check_contains('nonunicode', run_command([cl, 'print', wuuid]))
+
+    # TODO: enable with Unicode support.
+    run_command([cl, 'wedit', wuuid, '--title', 'fáncy ünicode 你好世界😊'], 1)
+    # check_contains('fáncy ünicode 你好世界😊', run_command([cl, 'print']))
+
     # Non-unicode in file contents
     uuid = run_command([cl, 'upload', '--contents', 'nounicode'])
     check_equals('nounicode', run_command([cl, 'cat', uuid]))
 
     # Unicode in file contents
     uuid = run_command([cl, 'upload', '--contents', '你好世界😊'])
-    check_equals('_', get_info(uuid, 'name'))  # Currently ignores unicode chars for name
+    check_equals('_', get_info(uuid, 'name'))
     check_equals('你好世界😊', run_command([cl, 'cat', uuid]))
 
     # Unicode in bundle description, tags and command
-    run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'], 1)
-    run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'], 1)
-    run_command([cl, 'run', 'echo "fáncy ünicode"'], 1)
+    # TODO: enable with Unicode support.
+    uuid = run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'], 1)
+    # check_equals('你好', get_info(uuid, 'description'))
+    uuid = run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'], 1)
+    # check_contains(['test', '😁'], get_info(uuid, 'tags'))
+    uuid = run_command([cl, 'run', 'echo "fáncy ünicode"'], 1)
 
-    # Unicode in edits --> interactive mode not tested, but `cl edit` properly discards
-    # edits that introduce unicode.
-    # uuid = run_command([cl, 'upload', test_path('a.txt')])
-    # run_command([cl, 'edit', uuid], 1)
+    # edit description with unicode
+    uuid = run_command([cl, 'upload', test_path('a.txt')])
+    run_command([cl, 'edit', uuid, '-d', '你好世界😊'], 1)
+    # check_equals('你好世界😊', get_info(uuid, 'description'))
 
 
 @TestModule.register('workers')
@@ -1694,7 +1738,7 @@ if __name__ == '__main__':
         metavar='TEST',
         nargs='+',
         type=str,
-        choices=TestModule.modules.keys() + ['all', 'default'],
+        choices=list(TestModule.modules.keys()) + ['all', 'default'],
         help='Tests to run from: {%(choices)s}',
     )
     args = parser.parse_args()
