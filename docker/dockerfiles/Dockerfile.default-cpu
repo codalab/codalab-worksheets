@@ -1,8 +1,6 @@
 FROM ubuntu:xenial
 MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 
-RUN add-apt-repository ppa:deadsnakes/ppa 
-
 ############################################################
 # Common steps (must be the same in the CPU and GPU images)
 
