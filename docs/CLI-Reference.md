@@ -339,6 +339,7 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.
           wls .mine               : List my worksheets.
           wls .shared             : List worksheets that have been shared with any of the groups I am in.
+          wls .limit=10           : Limit the number of results to the top 10.
         Arguments:
           keywords         Keywords to search for.
           -a, --address    (<alias>|<address>)
