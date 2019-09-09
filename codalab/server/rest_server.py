@@ -5,7 +5,6 @@ import os
 import re
 import sys
 import textwrap
-import time
 import traceback
 
 import bottle
@@ -27,18 +26,6 @@ from bottle import (
 
 from codalab.common import exception_to_http_error
 from codalab.lib import formatting, server_util
-import codalab.rest.account
-import codalab.rest.bundle_actions
-import codalab.rest.bundles
-import codalab.rest.chats
-import codalab.rest.cli
-import codalab.rest.groups
-import codalab.rest.help
-import codalab.rest.interpret
-import codalab.rest.oauth2
-import codalab.rest.users
-import codalab.rest.workers
-import codalab.rest.worksheets
 from codalab.server.authenticated_plugin import PublicUserPlugin, UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
