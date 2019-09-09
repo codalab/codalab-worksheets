@@ -48,3 +48,9 @@ Each bundle uploaded to CodaLab is read-only. If a command you are running creat
 ### How much resources (memory, GPUs, etc.) does my run get?
 
 The exact resources vary at any point in time, but you can do `cl run "free; nvidia-smi; df"` to get the most accurate statistics on the actual environment.  Remember to use `--request-memory`, `--request-gpus` appropriately.
+
+### How do I restrict a search to only bundles in a specific worksheet?
+
+Run `cl search host_worksheet=<worksheet>`.  A common mistake is to do `cl
+search -w <worksheet>`, which will only run the search in the context of the
+given worksheet (which is consistent with other `cl` commands).
