@@ -38,7 +38,6 @@ bundle = Table(
     UniqueConstraint('uuid', name='uix_1'),
     Index('bundle_data_hash_index', 'data_hash'),
     Index('state_index', 'state'),  # Needed for the bundle manager.
-    sqlite_autoincrement=True,
 )
 
 # Includes things like name, description, etc.
@@ -50,7 +49,6 @@ bundle_metadata = Table(
     Column('metadata_key', String(63), nullable=False),
     Column('metadata_value', Text, nullable=False),
     Index('metadata_kv_index', 'metadata_key', 'metadata_value', mysql_length=63),
-    sqlite_autoincrement=True,
 )
 
 # For each child_uuid, we have: key = child_path, target = (parent_uuid, parent_path)
@@ -64,7 +62,6 @@ bundle_dependency = Table(
     # dependencies to bundles not (yet) in the system.
     Column('parent_uuid', String(63), nullable=False),
     Column('parent_path', Text, nullable=False),
-    sqlite_autoincrement=True,
 )
 
 # The worksheet table does not have many columns now, but it will eventually
@@ -86,7 +83,6 @@ worksheet = Table(
     UniqueConstraint('uuid', name='uix_1'),
     Index('worksheet_name_index', 'name'),
     Index('worksheet_owner_index', 'owner_id'),
-    sqlite_autoincrement=True,
 )
 
 worksheet_item = Table(
@@ -109,7 +105,6 @@ worksheet_item = Table(
     Index('worksheet_item_worksheet_uuid_index', 'worksheet_uuid'),
     Index('worksheet_item_bundle_uuid_index', 'bundle_uuid'),
     Index('worksheet_item_subworksheet_uuid_index', 'subworksheet_uuid'),
-    sqlite_autoincrement=True,
 )
 
 # Worksheet tags
@@ -121,7 +116,6 @@ worksheet_tag = Table(
     Column('tag', String(63), nullable=False),
     Index('worksheet_tag_worksheet_uuid_index', 'worksheet_uuid'),
     Index('worksheet_tag_tag_index', 'tag'),
-    sqlite_autoincrement=True,
 )
 
 group = Table(
@@ -135,7 +129,6 @@ group = Table(
     UniqueConstraint('uuid', name='uix_1'),
     Index('group_name_index', 'name'),
     Index('group_owner_id_index', 'owner_id'),
-    sqlite_autoincrement=True,
 )
 
 user_group = Table(
@@ -148,7 +141,6 @@ user_group = Table(
     Column('is_admin', Boolean),
     Index('group_uuid_index', 'group_uuid'),
     Index('user_id_index', 'user_id'),
-    sqlite_autoincrement=True,
 )
 
 # Permissions for bundles
@@ -161,7 +153,6 @@ group_bundle_permission = Table(
     Column('object_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
     # Permissions encoded as integer (see below)
     Column('permission', Integer, nullable=False),
-    sqlite_autoincrement=True,
 )
 
 # Permissions for worksheets
@@ -174,7 +165,6 @@ group_object_permission = Table(
     Column('object_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
     # Permissions encoded as integer (see below)
     Column('permission', Integer, nullable=False),
-    sqlite_autoincrement=True,
 )
 
 # A permission value is one of the following: none (0), read (1), or all (2).
@@ -206,7 +196,6 @@ event = Table(
     Index('events_user_name_index', 'user_name'),
     Index('events_command_index', 'command'),
     Index('events_uuid_index', 'uuid'),
-    sqlite_autoincrement=True,
 )
 
 # A notifications value is one of the following:
@@ -250,7 +239,6 @@ user = Table(
     Index('user_user_id_index', 'user_id'),
     Index('user_user_name_index', 'user_name'),
     UniqueConstraint('user_id', name='uix_1'),
-    sqlite_autoincrement=True,
 )
 
 # Stores (email) verification keys
@@ -262,7 +250,6 @@ user_verification = Table(
     Column('date_created', DateTime, nullable=False),
     Column('date_sent', DateTime, nullable=True),
     Column('key', String(64), nullable=False),
-    sqlite_autoincrement=True,
 )
 
 # Stores password reset codes
@@ -273,7 +260,6 @@ user_reset_code = Table(
     Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
     Column('date_created', DateTime, nullable=False),
     Column('code', String(64), nullable=False),
-    sqlite_autoincrement=True,
 )
 
 # OAuth2 Tables
@@ -295,7 +281,6 @@ oauth2_client = Table(
     Column('scopes', Text, nullable=False),  # comma-separated list of allowed scopes
     Column('redirect_uris', Text, nullable=False),  # comma-separated list of allowed redirect URIs
     UniqueConstraint('client_id', name='uix_1'),
-    sqlite_autoincrement=True,
 )
 
 oauth2_token = Table(
@@ -308,7 +293,6 @@ oauth2_token = Table(
     Column('access_token', String(255), unique=True),
     Column('refresh_token', String(255), unique=True),
     Column('expires', DateTime, nullable=False),
-    sqlite_autoincrement=True,
 )
 
 oauth2_auth_code = Table(
@@ -321,7 +305,6 @@ oauth2_auth_code = Table(
     Column('code', String(100), nullable=False),
     Column('expires', DateTime, nullable=False),
     Column('redirect_uri', String(255), nullable=False),
-    sqlite_autoincrement=True,
 )
 
 # Store information about users' questions or feedback.
@@ -339,7 +322,6 @@ chat = Table(
     Column(
         'bundle_uuid', String(63), nullable=True
     ),  # What is the id of the bundle that the sender is on?
-    sqlite_autoincrement=True,
 )
 
 # Store information about workers.
@@ -391,5 +373,4 @@ worker_dependency = Table(
     # Serialized list of dependencies for the user/worker combination.
     # See WorkerModel for the serialization method.
     Column('dependencies', LargeBinary, nullable=False),
-    sqlite_autoincrement=True,
 )

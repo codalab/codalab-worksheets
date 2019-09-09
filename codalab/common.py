@@ -8,7 +8,7 @@ import http.client
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '0.3.3'
+CODALAB_VERSION = '0.4.0'
 
 
 class IntegrityError(ValueError):

@@ -21,7 +21,7 @@ from codalab.common import CODALAB_VERSION
 from codalab.server import rest_server
 
 
-EXCLUDED_APIS = {'account', 'titlejs', 'api', 'static', 'chats', 'faq', 'help'}
+EXCLUDED_APIS = {'account', 'api', 'static', 'chats', 'faq', 'help'}
 
 
 APISpec = namedtuple('APISpec', 'name anchor routes')
@@ -52,13 +52,13 @@ def get_api_routes():
         anchor = '-'.join(name.lower().split())
         api_specs.append(APISpec(name, anchor, base2routes[base]))
 
-    return api_specs
+    return sorted(api_specs)
 
 
 def get_codalab_schemas():
     from codalab.rest import schemas as schemas_module
 
-    for k, v in vars(schemas_module).items():
+    for k, v in sorted(vars(schemas_module).items()):
         if not isclass(v):
             continue
         if not issubclass(v, Schema):

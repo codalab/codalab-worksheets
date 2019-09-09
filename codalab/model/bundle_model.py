@@ -1097,7 +1097,7 @@ class BundleModel(object):
         """
         clauses = []
         offset = 0
-        limit = 1000
+        limit = 10
         sort_key = [cl_worksheet.c.name]
 
         # Number nested subqueries
@@ -1123,7 +1123,6 @@ class BundleModel(object):
                     return field == value
             return None
 
-        clauses = []
         for keyword in keywords:
             keyword = keyword.replace('.*', '%')
             # Sugar
@@ -1401,7 +1400,6 @@ class BundleModel(object):
                 }
                 new_items.append(new_item)
                 connection.execute(cl_worksheet_item.insert().values(new_item))
-            # sqlite doesn't support batch insertion
 
     def update_worksheet_item_value(self, id, value):
         """
