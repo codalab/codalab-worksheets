@@ -339,19 +339,8 @@ class CodaLabManager(object):
                 engine_url=self.config['server']['engine_url'],
                 default_user_info=self.default_user_info(),
             )
-        elif model_class == 'SQLiteModel':
-            from codalab.model.sqlite_model import SQLiteModel
-
-            # Patch for backwards-compatibility until we have a cleaner abstraction around config
-            # that can update configs to newer "versions"
-            engine_url = self.config['server'].get(
-                'engine_url', "sqlite:///{}".format(os.path.join(self.codalab_home, 'bundle.db'))
-            )
-            model = SQLiteModel(engine_url=engine_url, default_user_info=self.default_user_info())
         else:
-            raise UsageError(
-                'Unexpected model class: %s, expected MySQLModel or SQLiteModel' % (model_class,)
-            )
+            raise UsageError('Unexpected model class: %s, expected MySQLModel' % (model_class,))
         model.root_user_id = self.root_user_id()
         model.system_user_id = self.system_user_id()
         return model
