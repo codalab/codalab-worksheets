@@ -173,7 +173,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='bundle_mount',
         help='Path to bundle data (just for mounting into Docker)',
-        default=var_path('/tmp'),
+        default='/tmp',
     ),
     CodalabArg(name='mysql_mount', help='Path to store MySQL data', default=var_path('mysql')),
     CodalabArg(
