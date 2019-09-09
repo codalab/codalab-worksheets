@@ -25,7 +25,7 @@ ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip', '.gz', '.bz2']
 
 
 def path_is_archive(path):
-    if isinstance(path, basestring):
+    if isinstance(path, str):
         for ext in ARCHIVE_EXTS:
             if path.endswith(ext):
                 return True
@@ -56,7 +56,7 @@ def unpack(ext, source, dest_path):
     if ext != '.zip':
         close_source = False
         try:
-            if isinstance(source, basestring):
+            if isinstance(source, str):
                 source = open(source, 'rb')
                 close_source = True
 
@@ -81,7 +81,7 @@ def unpack(ext, source, dest_path):
         try:
             # unzip doesn't accept input from standard input, so we have to save
             # to a temporary file.
-            if not isinstance(source, basestring):
+            if not isinstance(source, str):
                 temp_path = dest_path + '.zip'
                 with open(temp_path, 'wb') as f:
                     shutil.copyfileobj(source, f)
@@ -134,7 +134,7 @@ def pack_files_for_upload(
             raise UsageError('Not following symlinks.')
         return resolved_source
 
-    sources = map(resolve_source, sources)
+    sources = list(map(resolve_source, sources))
 
     # For efficiency, return single files and directories directly
     if len(sources) == 1:

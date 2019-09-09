@@ -488,7 +488,7 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           alias <name> <instance> : Binds <name> to <instance>.
         Arguments:
           name          Name of the alias (e.g., main).
-          instance      Instance to bind the alias to (e.g., https://codalab.org/bundleservice).
+          instance      Instance to bind the alias to (e.g., https://worksheets.codalab.org).
           -r, --remove  Remove this alias.
 
       config:
@@ -497,7 +497,7 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           config <key> <value> : Sets <key> to <value>.
         Arguments:
           key           key to set (e.g., cli/verbose).
-          value         Instance to bind the alias to (e.g., https://codalab.org/bundleservice).
+          value         Instance to bind the alias to (e.g., https://worksheets.codalab.org).
           -r, --remove  Remove this key.
 
       logout:

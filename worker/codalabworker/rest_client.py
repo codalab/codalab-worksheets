@@ -1,12 +1,10 @@
 from contextlib import closing
-from cStringIO import StringIO
-import httplib
+from io import StringIO
+import http.client
 import json
-import urllib
-import urllib2
-import urlparse
+import urllib.request, urllib.parse, urllib.error
 
-from file_util import un_gzip_stream
+from .file_util import un_gzip_stream
 
 
 class RestClientException(Exception):
@@ -63,24 +61,24 @@ class RestClient(object):
             data = json.dumps(data)
         headers['X-Requested-With'] = 'XMLHttpRequest'
         if query_params is not None:
-            path = path + '?' + urllib.urlencode(query_params)
+            path = path + '?' + urllib.parse.urlencode(query_params)
 
-        # Everything needs to be utf-8 encoded or else urllib2 will complain
+        # Everything needs to be utf-8 encoded or else urllib will complain
         if 'Content-Type' in headers:
             headers['Content-Type'] += '; charset=utf-8'
-        if data and isinstance(data, unicode):
-            data = data.encode('utf-8')
-        request_url = (self._base_url + path).encode('utf-8')
+        if isinstance(data, str):
+            data = data.encode()
+        request_url = self._base_url + path
 
         headers.update(self._extra_headers)
 
-        request = urllib2.Request(request_url, data=data, headers=headers)
+        request = urllib.request.Request(request_url, data=data, headers=headers)
         request.get_method = lambda: method
         if return_response:
             # Return a file-like object containing the contents of the response
             # body, transparently decoding gzip streams if indicated by the
             # Content-Encoding header.
-            response = urllib2.urlopen(request)
+            response = urllib.request.urlopen(request)
             encoding = response.headers.get('Content-Encoding')
             if not encoding or encoding == 'identity':
                 return response
@@ -88,12 +86,12 @@ class RestClient(object):
                 return un_gzip_stream(response)
             else:
                 raise RestClientException('Unsupported Content-Encoding: ' + encoding, False)
-        with closing(urllib2.urlopen(request)) as response:
+        with closing(urllib.request.urlopen(request)) as response:
             # If the response is a JSON document, as indicated by the
             # Content-Type header, try to deserialize it and return the result.
             # Otherwise, just ignore the response body and return None.
             if response.headers.get('Content-Type') == 'application/json':
-                response_data = response.read()
+                response_data = response.read().decode()
                 try:
                     return json.loads(response_data)
                 except ValueError:
@@ -112,12 +110,12 @@ class RestClient(object):
         """
         CHUNK_SIZE = 16 * 1024
         # Start the request.
-        parsed_base_url = urlparse.urlparse(self._base_url)
-        path = url + '?' + urllib.urlencode(query_params)
+        parsed_base_url = urllib.parse.urlparse(self._base_url)
+        path = url + '?' + urllib.parse.urlencode(query_params)
         if parsed_base_url.scheme == 'http':
-            conn = httplib.HTTPConnection(parsed_base_url.netloc)
+            conn = http.client.HTTPConnection(parsed_base_url.netloc)
         else:
-            conn = httplib.HTTPSConnection(parsed_base_url.netloc)
+            conn = http.client.HTTPSConnection(parsed_base_url.netloc)
         with closing(conn):
             conn.putrequest(method, parsed_base_url.path + path)
 
@@ -128,7 +126,7 @@ class RestClient(object):
                 'X-Requested-With': 'XMLHttpRequest',
             }
             headers.update(self._extra_headers)
-            for header_name, header_value in headers.iteritems():
+            for header_name, header_value in headers.items():
                 conn.putheader(header_name, header_value)
             conn.endheaders()
 
@@ -138,22 +136,22 @@ class RestClient(object):
                 to_send = fileobj.read(CHUNK_SIZE)
                 if not to_send:
                     break
-                conn.send('%X\r\n%s\r\n' % (len(to_send), to_send))
+                conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
                 bytes_uploaded += len(to_send)
                 if progress_callback is not None:
                     should_resume = progress_callback(bytes_uploaded)
                     if not should_resume:
                         raise Exception('Upload aborted by client')
-            conn.send('0\r\n\r\n')
+            conn.send(b'0\r\n\r\n')
 
             # Read the response.
             response = conn.getresponse()
             if response.status != 200:
                 # Low-level httplib module doesn't throw HTTPError
-                raise urllib2.HTTPError(
+                raise urllib.error.HTTPError(
                     self._base_url + path,
                     response.status,
                     response.reason,
                     dict(response.getheaders()),
-                    StringIO(response.read()),
+                    StringIO(response.read().decode()),
                 )

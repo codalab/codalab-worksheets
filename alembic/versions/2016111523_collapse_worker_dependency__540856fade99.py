@@ -52,7 +52,7 @@ def upgrade():
             'user_id': user_id,
             'worker_id': worker_id,
             'dependencies': serialize_dependencies(deps),
-        } for (user_id, worker_id), deps in dependencies.iteritems()]))
+        } for (user_id, worker_id), deps in dependencies.items()]))
 
     # Each user/worker will only have one row now
     op.execute("ALTER TABLE `worker_dependency` ADD PRIMARY KEY (`user_id`, `worker_id`);")

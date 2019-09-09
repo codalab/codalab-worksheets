@@ -1,10 +1,8 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
-import httplib
+import http.client
 
 
-class BaseRunManager(object):
-    __metaclass__ = ABCMeta
-
+class BaseRunManager(object, metaclass=ABCMeta):
     @abstractmethod
     def start(self):
         """
@@ -136,7 +134,7 @@ class Reader(object):
         if handler:
             handler(run_state, path, dep_paths, read_args, reply)
         else:
-            err = (httplib.BAD_REQUEST, "Unsupported read_type for read: %s" % read_type)
+            err = (http.client.BAD_REQUEST, "Unsupported read_type for read: %s" % read_type)
             reply(err)
 
     @abstractmethod

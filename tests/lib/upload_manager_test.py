@@ -1,5 +1,5 @@
 import os
-from cStringIO import StringIO
+from io import BytesIO
 import tempfile
 import unittest
 
@@ -69,7 +69,7 @@ class UploadManagerTest(unittest.TestCase):
 
     def test_single_local_gzip_path(self):
         source = os.path.join(self.temp_dir, 'filename.gz')
-        self.write_string_to_file(gzip_string('testing'), source)
+        self.write_bytes_to_file(gzip_string('testing'), source)
         self.do_upload([source], unpack=True)
         self.assertTrue(os.path.exists(source))
         self.check_file_contains_string(self.bundle_location, 'testing')
@@ -93,12 +93,12 @@ class UploadManagerTest(unittest.TestCase):
 
     def test_single_local_gzip_path_remove_sources(self):
         source = os.path.join(self.temp_dir, 'filename.gz')
-        self.write_string_to_file(gzip_string('testing'), source)
+        self.write_bytes_to_file(gzip_string('testing'), source)
         self.do_upload([source], remove_sources=True)
         self.assertFalse(os.path.exists(source))
 
     def test_single_fileobj(self):
-        self.do_upload([('source', StringIO('testing'))])
+        self.do_upload([('source', BytesIO(b'testing'))])
         self.check_file_contains_string(self.bundle_location, 'testing')
 
     def test_single_fileobj_tar_gz_simplify_archives(self):
@@ -117,16 +117,20 @@ class UploadManagerTest(unittest.TestCase):
         self.check_file_contains_string(os.path.join(self.bundle_location, 'filename'), 'testing')
 
     def test_multiple_sources(self):
-        self.do_upload([('source1', StringIO('testing1')), ('source2', StringIO('testing2'))])
-        self.assertItemsEqual(['source1', 'source2'], os.listdir(self.bundle_location))
+        self.do_upload([('source1', BytesIO(b'testing1')), ('source2', BytesIO(b'testing2'))])
+        self.assertEqual(['source1', 'source2'], sorted(os.listdir(self.bundle_location)))
         self.check_file_contains_string(os.path.join(self.bundle_location, 'source1'), 'testing1')
         self.check_file_contains_string(os.path.join(self.bundle_location, 'source2'), 'testing2')
 
     def write_string_to_file(self, string, file_path):
-        with open(file_path, 'wb') as f:
+        with open(file_path, 'w') as f:
             f.write(string)
+
+    def write_bytes_to_file(self, bytes_, file_path):
+        with open(file_path, 'wb') as f:
+            f.write(bytes_)
 
     def check_file_contains_string(self, file_path, string):
         self.assertTrue(os.path.isfile(file_path))
-        with open(file_path, 'rb') as f:
+        with open(file_path, 'r') as f:
             self.assertEqual(f.read(), string)

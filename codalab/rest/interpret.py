@@ -224,7 +224,7 @@ def fetch_interpreted_worksheet(uuid):
             continue
         if item['mode'] == 'table':
             for row_map in item['rows']:
-                for k, v in row_map.iteritems():
+                for k, v in row_map.items():
                     if v is None:
                         row_map[k] = formatting.contents_str(v)
         if 'bundle_info' in item:
@@ -282,7 +282,7 @@ def head_target(target, max_num_lines, replace_non_unicode=False):
     ).splitlines(True)
 
     if replace_non_unicode:
-        lines = map(formatting.verbose_contents_str, lines)
+        lines = list(map(formatting.verbose_contents_str, lines))
 
     return lines
 
@@ -344,10 +344,12 @@ def resolve_interpreted_blocks(interpreted_blocks):
                         elif mode == BlockModes.image_block:
                             block['status']['code'] = FetchStatusCodes.ready
                             block['image_data'] = base64.b64encode(
-                                cat_target(
-                                    (
-                                        block['bundles_spec']['bundle_infos'][0]['uuid'],
-                                        block['target_genpath'],
+                                bytes(
+                                    cat_target(
+                                        (
+                                            block['bundles_spec']['bundle_infos'][0]['uuid'],
+                                            block['target_genpath'],
+                                        )
                                     )
                                 )
                             )
@@ -387,9 +389,9 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 raise UsageError('Invalid display mode: %s' % mode)
 
         except UsageError as e:
-            set_error_data(block_index, e.message)
+            set_error_data(block_index, str(e))
 
-        except StandardError:
+        except Exception:
             import traceback
 
             traceback.print_exc()
@@ -402,7 +404,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
 
 def is_bundle_genpath_triple(value):
     # if called after an RPC call tuples may become lists
-    need_gen_types = (types.TupleType, types.ListType)
+    need_gen_types = (tuple, list)
 
     return isinstance(value, need_gen_types) and len(value) == 3
 

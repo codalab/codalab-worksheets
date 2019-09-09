@@ -24,21 +24,15 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Codalab-cli #
 ###############
 *MANIFEST
 *.egg-info
 venv*/
 
-codalab-worker-scratch/
+/nav
+/tags
 
-nav
-tags
-
-*.env
-*.override
-docker-compose.override.yml
-
-frontend/node_modules
+/var
+/frontend/node_modules
 pip-wheel-metadata
 site
