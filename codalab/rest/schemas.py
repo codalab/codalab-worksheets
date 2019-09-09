@@ -12,6 +12,7 @@ from codalab.bundles import BUNDLE_SUBCLASSES
 from codalab.lib.bundle_action import BundleAction
 from codalab.lib.spec_util import SUB_PATH_REGEX, NAME_REGEX, UUID_REGEX
 from codalab.lib.worksheet_util import WORKSHEET_ITEM_TYPES
+from codalab.lib.unicode_util import contains_unicode
 from codalab.objects.permission import parse_permission, permission_str
 
 
@@ -20,13 +21,13 @@ class PermissionSpec(fields.Field):
         try:
             return permission_str(value)
         except UsageError as e:
-            raise ValidationError(e.message)
+            raise ValidationError(str(e))
 
     def _deserialize(self, value, attr, data):
         try:
             return parse_permission(value)
         except UsageError as e:
-            raise ValidationError(e.message)
+            raise ValidationError(str(e))
 
 
 def validate_uuid(uuid_str):
@@ -48,10 +49,8 @@ def validate_sub_path(path):
 
 
 def validate_ascii(value):
-    if isinstance(value, basestring):
-        try:
-            value.encode("ascii")
-        except UnicodeError:
+    if isinstance(value, str):
+        if contains_unicode(value):
             raise ValidationError('Unsupported character detected, use ascii characters')
     elif isinstance(value, list):
         for v in value:
@@ -187,7 +186,7 @@ class BundleSchema(Schema):
     state = fields.String()
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
     is_anonymous = fields.Bool()
-    metadata = fields.Dict(values=fields.Field(validate=validate_ascii))
+    metadata = fields.Dict(values=fields.String(validate=validate_ascii))
     dependencies = fields.Nested(BundleDependencySchema, many=True)
     children = fields.Relationship(
         include_resource_linkage=True, type_='bundles', id_field='uuid', many=True

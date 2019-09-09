@@ -1,5 +1,5 @@
 from contextlib import closing
-from cStringIO import StringIO
+from io import BytesIO
 import gzip
 import os
 import shutil
@@ -104,7 +104,7 @@ def un_gzip_stream(fileobj):
         def __init__(self, fileobj):
             self._fileobj = fileobj
             self._decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
-            self._buffer = ''
+            self._buffer = b''
             self._finished = False
 
         def read(self, num_bytes=None):
@@ -146,21 +146,21 @@ def gzip_string(string):
     """
     Gzips the given string.
     """
-    with closing(StringIO()) as output_fileobj:
+    with closing(BytesIO()) as output_fileobj:
         with gzip.GzipFile(None, 'wb', 6, output_fileobj) as fileobj:
-            fileobj.write(string)
+            fileobj.write(string.encode())
         return output_fileobj.getvalue()
 
 
-def un_gzip_string(string):
+def un_gzip_string(bytestring):
     """
-    Gunzips the given string.
+    Gunzips the given bytestring.
 
     Raises an IOError if the archive is not valid.
     """
-    with closing(StringIO(string)) as input_fileobj:
+    with closing(BytesIO(bytestring)) as input_fileobj:
         with gzip.GzipFile(None, 'rb', fileobj=input_fileobj) as fileobj:
-            return fileobj.read()
+            return fileobj.read().decode()
 
 
 def read_file_section(file_path, offset, length):

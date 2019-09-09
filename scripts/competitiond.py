@@ -211,7 +211,7 @@ class Competition(object):
         self.leaderboard_only = leaderboard_only
         auth = AuthHelper(
             self.config['host'],
-            self.config.get('username') or raw_input('Username: '),
+            self.config.get('username') or input('Username: '),
             self.config.get('password') or getpass.getpass('Password: '),
         )
 
@@ -230,7 +230,7 @@ class Competition(object):
         try:
             config = ConfigSchema(strict=True).load(config).data
         except ValidationError as e:
-            print >>sys.stderr, 'Invalid config file:', e
+            print('Invalid config file:', e, file=sys.stderr)
             sys.exit(1)
         return config
 
@@ -427,7 +427,7 @@ class Competition(object):
         submissions = self._filter_submissions(
             submissions, previous_submission_ids, num_total_submissions, num_period_submissions
         )
-        return submissions.values(), num_total_submissions, num_period_submissions
+        return list(submissions.values()), num_total_submissions, num_period_submissions
 
     def run_prediction(self, submit_bundle):
         """
@@ -591,7 +591,7 @@ class Competition(object):
                 submit_bundles = {}
                 break
             try:
-                uuids = submit2eval.keys()
+                uuids = list(submit2eval.keys())
                 submit_bundles = []
                 for start in range(0, len(uuids), 50):
                     end = start + 50
@@ -607,7 +607,7 @@ class Competition(object):
                     )
                 break
             except NotFoundError as e:
-                missing_submit_uuid = re.search(UUID_STR, e.message).group(0)
+                missing_submit_uuid = re.search(UUID_STR, str(e)).group(0)
                 eval_uuid = submit2eval[missing_submit_uuid]['id']
 
                 # If a submission bundle (missing_uuid) has been deleted...
@@ -646,7 +646,7 @@ class Competition(object):
         scores = {}
         queries = []
         keys = []
-        for bundle in eval_bundles.itervalues():
+        for bundle in eval_bundles.values():
             if bundle['state'] == State.READY:
                 for spec in self.config['score_specs']:
                     queries.append((bundle['id'], spec['key'], None))
@@ -671,7 +671,7 @@ class Competition(object):
         # Build leaderboard table
         logger.debug('Fetching scores and building leaderboard table')
         leaderboard = []
-        for eval_bundle in eval_bundles.itervalues():
+        for eval_bundle in eval_bundles.values():
             meta = self._get_competition_metadata(eval_bundle)
             if eval_bundle['id'] in eval2submit:
                 submit_bundle = eval2submit[eval_bundle['id']]

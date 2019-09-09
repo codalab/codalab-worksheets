@@ -34,7 +34,7 @@ class UploadManager(object):
         Uploads contents for the given bundle to the bundle store.
 
         |sources|: specifies the locations of the contents to upload. Each element is
-                   either a URL, a local path or a tuple (filename, file-like object).
+                   either a URL, a local path or a tuple (filename, binary file-like object).
         |follow_symlinks|: for local path(s), whether to follow (resolve) symlinks,
                            but only if remove_sources is False.
         |exclude_patterns|: for local path(s), don't upload these patterns (e.g., *.o),
@@ -119,7 +119,7 @@ class UploadManager(object):
 
     def _interpret_source(self, source):
         is_url, is_local_path, is_fileobj = False, False, False
-        if isinstance(source, basestring):
+        if isinstance(source, str):
             if path_util.path_is_url(source):
                 is_url = True
             else:

@@ -131,7 +131,7 @@ class BundleModel(object):
         If a value is a LikeQuery, produce a LIKE clause on that column.
         """
         clauses = [true()]
-        for (key, value) in kwargs.iteritems():
+        for (key, value) in kwargs.items():
             clauses.append(self.make_clause(getattr(table.c, key), value))
         return and_(*clauses)
 
@@ -625,7 +625,7 @@ class BundleModel(object):
 
         # Make a dictionary for each bundle with both data and metadata.
         bundle_values = {row.uuid: str_key_dict(row) for row in bundle_rows}
-        for bundle_value in bundle_values.itervalues():
+        for bundle_value in bundle_values.values():
             bundle_value['dependencies'] = []
             bundle_value['metadata'] = []
         for dep_row in dependency_rows:
@@ -638,8 +638,9 @@ class BundleModel(object):
             bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
 
         # Construct and validate all of the retrieved bundles.
-        sorted_values = sorted(bundle_values.itervalues(), key=lambda r: r['id'])
+        sorted_values = sorted(bundle_values.values(), key=lambda r: r['id'])
         bundles = [
+            #
             get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
             for bundle_value in sorted_values
         ]
@@ -919,13 +920,10 @@ class BundleModel(object):
         # (Clients should check for this case ahead of time if they want to
         # silently skip over creating bundles that already exist.)
         with self.engine.begin() as connection:
-            try:
-                result = connection.execute(cl_bundle.insert().values(bundle_value))
-                self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
-                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-                bundle.id = result.lastrowid
-            except UnicodeError:
-                raise UsageError("Invalid character detected; use ascii characters only.")
+            result = connection.execute(cl_bundle.insert().values(bundle_value))
+            self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
+            self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            bundle.id = result.lastrowid
 
     def update_bundle(self, bundle, update, connection=None):
         """
@@ -941,7 +939,7 @@ class BundleModel(object):
         # Apply the column and metadata updates in memory and validate the result.
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
-        for (key, value) in metadata_update.iteritems():
+        for (key, value) in metadata_update.items():
             bundle.metadata.set_metadata_key(key, value)
         bundle.validate()
         # Construct clauses and update lists for updating certain bundle columns.
@@ -1075,12 +1073,12 @@ class BundleModel(object):
         # Make a dictionary for each worksheet with both its main row and its items.
         worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
         # Set tags
-        for value in worksheet_values.itervalues():
+        for value in worksheet_values.values():
             value['tags'] = []
         for row in tag_rows:
             worksheet_values[row.worksheet_uuid]['tags'].append(row.tag)
         if fetch_items:
-            for value in worksheet_values.itervalues():
+            for value in worksheet_values.values():
                 value['items'] = []
             for item_row in sorted(item_rows, key=item_sort_key):
                 if item_row.worksheet_uuid not in worksheet_values:
@@ -1088,7 +1086,7 @@ class BundleModel(object):
                 item_row = dict(item_row)
                 item_row['value'] = self.decode_str(item_row['value'])
                 worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
-        return [Worksheet(value) for value in worksheet_values.itervalues()]
+        return [Worksheet(value) for value in worksheet_values.values()]
 
     def search_worksheets(self, user_id, keywords):
         """
@@ -1467,8 +1465,6 @@ class BundleModel(object):
         """
         if 'name' in info:
             worksheet.name = info['name']
-        if 'title' in info:
-            worksheet.title = info['title']
         if 'frozen' in info:
             worksheet.frozen = info['frozen']
         if 'owner_id' in info:
@@ -1560,7 +1556,7 @@ class BundleModel(object):
             if not rows:
                 return []
         values = {row.uuid: str_key_dict(row) for row in rows}
-        return [value for value in values.itervalues()]
+        return [value for value in values.values()]
 
     def batch_get_all_groups(self, spec_filters, group_filters, user_group_filters):
         """
@@ -1611,7 +1607,7 @@ class BundleModel(object):
             q2 = q2.where(user_group_clause)
 
         # Union
-        q0 = union(*filter(lambda q: q is not None, [q0, q1, q2]))
+        q0 = union(*[q for q in [q0, q1, q2] if q is not None])
 
         with self.engine.begin() as connection:
             rows = connection.execute(q0).fetchall()
@@ -1626,7 +1622,7 @@ class BundleModel(object):
                     row['owner_id'] = str(row['owner_id'])
                 rows[i] = row
             values = {row['uuid']: row for row in rows}
-            return [value for value in values.itervalues()]
+            return [value for value in values.values()]
 
     def delete_group(self, uuid):
         """
@@ -1933,7 +1929,7 @@ class BundleModel(object):
         # Find the first uuid in args, so we can index that as a separate column in the DB.
         # Note that the uuid could be either a worksheet or a bundle.
         def find_uuid(x):
-            if isinstance(x, basestring):
+            if isinstance(x, str):
                 if spec_util.UUID_REGEX.match(x):
                     return x
             elif isinstance(x, tuple):
@@ -2389,9 +2385,6 @@ class BundleModel(object):
     def get_user_parallel_run_quota_left(self, user_id):
         user_info = self.get_user_info(user_id)
         parallel_run_quota = user_info['parallel_run_quota']
-        if user_id == self.root_user_id:
-            # Root user has no parallel run quota
-            return parallel_run_quota
         with self.engine.begin() as connection:
             # Get all the runs belonging to this user whose workers are not personal workers
             # of the user themselves

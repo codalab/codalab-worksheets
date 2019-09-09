@@ -2,7 +2,7 @@ from __future__ import (
     absolute_import,
 )  # Without this line "from worker.worker import VERSION" doesn't work.
 from contextlib import closing
-import httplib
+import http.client
 import json
 import os
 import subprocess
@@ -24,14 +24,16 @@ def checkin(worker_id):
     """
     WAIT_TIME_SECS = 3.0
 
+    # Old workers might not have all the fields, so allow subsets to be
+    # missing.
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id,
         worker_id,
-        request.json["tag"],
-        request.json["cpus"],
-        request.json["gpus"],
-        request.json["memory_bytes"],
-        request.json["free_disk_bytes"],
+        request.json.get("tag"),
+        request.json.get("cpus"),
+        request.json.get("gpus"),
+        request.json.get("memory_bytes"),
+        request.json.get("free_disk_bytes"),
         request.json["dependencies"],
     )
 
@@ -52,7 +54,7 @@ def check_reply_permission(worker_id, socket_id):
     reply to messages on the given socket ID.
     """
     if not local.worker_model.has_reply_permission(request.user.user_id, worker_id, socket_id):
-        abort(httplib.FORBIDDEN, "Not your socket ID!")
+        abort(http.client.FORBIDDEN, "Not your socket ID!")
 
 
 @post(
@@ -85,12 +87,12 @@ def reply_data(worker_id, socket_id):
     The contents of the second message go in the body of the HTTP request.
     """
     if "header_message" not in request.query:
-        abort(httplib.BAD_REQUEST, "Missing header message.")
+        abort(http.client.BAD_REQUEST, "Missing header message.")
 
     try:
         header_message = json.loads(request.query.header_message)
     except ValueError:
-        abort(httplib.BAD_REQUEST, "Header message should be in JSON format.")
+        abort(http.client.BAD_REQUEST, "Header message should be in JSON format.")
 
     check_reply_permission(worker_id, socket_id)
     local.worker_model.send_json_message(socket_id, header_message, 60, autoretry=False)
@@ -102,7 +104,7 @@ def check_run_permission(bundle):
     Checks whether the current user can run the bundle.
     """
     if not check_bundle_have_run_permission(local.model, request.user.user_id, bundle):
-        abort(httplib.FORBIDDEN, "User does not have permission to run bundle.")
+        abort(http.client.FORBIDDEN, "User does not have permission to run bundle.")
 
 
 @post(
@@ -156,7 +158,7 @@ def update_bundle_metadata(worker_id, uuid):
         ]
     )
     metadata_update = {}
-    for key, value in request.json.iteritems():
+    for key, value in request.json.items():
         if key in allowed_keys:
             metadata_update[key] = value
     local.model.update_bundle(bundle, {"metadata": metadata_update})
@@ -165,7 +167,7 @@ def update_bundle_metadata(worker_id, uuid):
 @get("/workers/info", name="workers_info", apply=AuthenticatedPlugin())
 def workers_info():
     if request.user.user_id != local.model.root_user_id:
-        abort(httplib.UNAUTHORIZED, "User is not root user")
+        abort(http.client.UNAUTHORIZED, "User is not root user")
 
     data = local.worker_model.get_workers()
 
