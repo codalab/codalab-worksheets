@@ -4,7 +4,6 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 
 import collections
 import datetime
-import json
 import re
 import time
 from uuid import uuid4
@@ -31,7 +30,6 @@ from codalab.model.tables import (
     worksheet as cl_worksheet,
     worksheet_tag as cl_worksheet_tag,
     worksheet_item as cl_worksheet_item,
-    event as cl_event,
     user as cl_user,
     chat as cl_chat,
     user_verification as cl_user_verification,
@@ -749,7 +747,7 @@ class BundleModel(object):
         """
         Marks the bundle as running but only if it is still scheduled to run
         on the given worker (done by checking the worker_run table). Returns
-        True if it is. Updates a few metadata fields and the events log.
+        True if it is.
         """
         with self.engine.begin() as connection:
             # Check that still assigned to this worker.
@@ -764,14 +762,6 @@ class BundleModel(object):
                 'metadata': {'started': start_time, 'last_updated': start_time, 'remote': remote},
             }
             self.update_bundle(bundle, bundle_update, connection)
-
-        self.update_events_log(
-            user_id=bundle.owner_id,
-            user_name=None,  # Don't know
-            command='start_bundle',
-            args=(bundle.uuid),
-            uuid=bundle.uuid,
-        )
 
         return True
 
@@ -809,7 +799,6 @@ class BundleModel(object):
     def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, connection):
         '''
         Marks the bundle as running. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
-        Updates a few metadata fields and the events log.
         '''
         if row.state == State.WORKER_OFFLINE:
             run_row = connection.execute(
@@ -839,20 +828,12 @@ class BundleModel(object):
             bundle, {'state': bundle_update['state'], 'metadata': metadata_update}, connection
         )
 
-        self.update_events_log(
-            user_id=bundle.owner_id,
-            user_name=None,  # Don't know
-            command='resume_bundle',
-            args=(bundle.uuid),
-            uuid=bundle.uuid,
-        )
-
         return True
 
     def finalize_bundle(self, bundle, user_id, exitcode, failure_message, connection):
         """
-        Marks the bundle as READY / KILLED / FAILED, updating a few metadata fields, the
-        events log and removing the worker_run row. Additionally, if the user
+        Marks the bundle as READY / KILLED / FAILED, updating a few metadata fields and
+        removing the worker_run row. Additionally, if the user
         running the bundle was the CodaLab root user, increments the time
         used by the bundle owner.
         """
@@ -875,14 +856,6 @@ class BundleModel(object):
 
         if user_id == self.root_user_id:
             self.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
-
-        self.update_events_log(
-            user_id=bundle.owner_id,
-            user_name=None,  # Don't know
-            command='finalize_bundle',
-            args=(bundle.uuid, state, bundle.metadata.to_dict()),
-            uuid=bundle.uuid,
-        )
 
         return True
 
@@ -1789,117 +1762,6 @@ class BundleModel(object):
             cl_group_worksheet_permission, user_id, worksheet_uuids, owner_ids
         )
 
-    # Operations on the events log.
-
-    def get_events_log_info(self, query_info, offset, limit):
-        """
-        Return an info object with
-        - |max_entries| entries matching the given |query|.
-        """
-        # Group by
-        field_name = query_info.get('group_by')
-        field = None
-        if field_name is not None:
-            if field_name == 'user':
-                field = cl_event.c.user_name
-            elif field_name == 'command':
-                field = cl_event.c.command
-            elif field_name == 'uuid':
-                field = cl_event.c.uuid
-            elif field_name == 'date':
-                field = cl_event.c.date
-            else:
-                raise UsageError(
-                    "Invalid field: '%s', expected user|command|uuid|date" % field_name
-                )
-
-        # Build up query
-        if query_info.get('count'):
-            select_args = []
-            if field is not None:
-                select_args.append(field)
-            select_args.append(func.count(cl_event.c.id).label('cnt'))
-        else:
-            select_args = [cl_event]
-        query = select(select_args)
-        if query_info.get('user') is not None:
-            query = query.where(
-                or_(
-                    cl_event.c.user_id == query_info['user'],
-                    cl_event.c.user_name == query_info['user'],
-                )
-            )
-        if query_info.get('command') is not None:
-            query = query.where(cl_event.c.command == query_info['command'])
-        if query_info.get('args') is not None:
-            query = query.where(cl_event.c.args.like(query_info['args']))
-        if query_info.get('uuid') is not None:
-            query = query.where(cl_event.c.uuid == query_info['uuid'])
-        if query_info.get('date') is not None:
-            query = query.where(cl_event.c.date == query_info['date'])
-
-        if query_info.get('count'):
-            # Sort by decreasing count
-            query = query.order_by('cnt DESC')
-            if field is not None:
-                query = query.group_by(field)
-        else:
-            # Sort from latest event to earliest
-            query = query.order_by(cl_event.c.id.desc())
-            if field is not None:
-                raise UsageError('If specify field, must count')
-
-        if offset is not None:
-            query = query.offset(offset)
-        if limit is not None:
-            query = query.limit(limit)
-
-        # Make query
-        info = {}
-        with self.engine.begin() as connection:
-            # print query
-            rows = connection.execute(query).fetchall()
-            if query_info.get('count'):
-                info['counts'] = rows
-            else:
-                info['events'] = reversed(rows)
-        return info
-
-    def update_events_log(self, user_id, user_name, command, args, start_time=None, uuid=None):
-        # Find the first uuid in args, so we can index that as a separate column in the DB.
-        # Note that the uuid could be either a worksheet or a bundle.
-        def find_uuid(x):
-            if isinstance(x, str):
-                if spec_util.UUID_REGEX.match(x):
-                    return x
-            elif isinstance(x, tuple):
-                return find_uuid(list(x))
-            elif isinstance(x, list):
-                for y in x:
-                    z = find_uuid(y)
-                    if z is not None:
-                        return z
-            return None
-
-        with self.engine.begin() as connection:
-            end_time = time.time()
-            if start_time is None:
-                start_time = end_time
-            if uuid is None:
-                uuid = find_uuid(args)
-            info = {
-                'start_time': datetime.datetime.fromtimestamp(start_time),
-                'end_time': datetime.datetime.fromtimestamp(end_time),
-                'date': datetime.datetime.fromtimestamp(end_time).strftime('%Y-%m-%d'),
-                'duration': end_time - start_time,
-                'user_id': user_id,
-                'user_name': user_name,
-                'command': command[:63],  # Truncate
-                'args': json.dumps(args),
-                'uuid': uuid,
-            }
-            connection.execute(cl_event.insert().values(info))
-
     # Operations on the query log
     def date_handler(self, obj):
         """
@@ -2146,9 +2008,6 @@ class BundleModel(object):
 
             # User Groups
             connection.execute(cl_user_group.delete().where(cl_user_group.c.user_id == user_id))
-
-            # Event
-            connection.execute(cl_event.delete().where(cl_event.c.user_id == user_id))
 
             # Chat
             connection.execute(

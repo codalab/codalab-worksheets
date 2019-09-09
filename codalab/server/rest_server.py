@@ -103,25 +103,7 @@ class LoggingPlugin(object):
             if not self._should_log(route.rule):
                 return callback(*args, **kwargs)
 
-            start_time = time.time()
-
             res = callback(*args, **kwargs)
-
-            # Use explicitly defined route name or 'METHOD /rule'
-            command = route.name or (route.method + ' ' + route.rule)
-            query_dict = dict([(k, request.query[k]) for k in request.query])
-            args = [request.path, query_dict]
-            # if (route.method == 'POST'
-            #     and request.content_type == 'application/json'):
-            #     args.append(request.json)
-
-            local.model.update_events_log(
-                start_time=start_time,
-                user_id=getattr(getattr(local, 'user', None), 'user_id', ''),
-                user_name=getattr(getattr(local, 'user', None), 'user_name', ''),
-                command=command,
-                args=args,
-            )
 
             return res
 

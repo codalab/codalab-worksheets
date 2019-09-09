@@ -3647,52 +3647,6 @@ class BundleCLI(object):
     #############################################################################
 
     @Commands.command(
-        'events',
-        help='Print the history of commands on this CodaLab instance (local only).',
-        arguments=(
-            Commands.Argument('-u', '--user', help='Filter by user id or username.'),
-            Commands.Argument('-c', '--command', dest='match_command', help='Filter by command.'),
-            Commands.Argument('-a', '--args', help='Filter by arguments.'),
-            Commands.Argument('--uuid', help='Filter by bundle or worksheet uuid.'),
-            Commands.Argument(
-                '-o', '--offset', help='Offset in the result list.', type=int, default=0
-            ),
-            Commands.Argument(
-                '-l', '--limit', help='Limit in the result list.', type=int, default=20
-            ),
-            Commands.Argument('-n', '--count', help='Just count.', action='store_true'),
-            Commands.Argument('-g', '--group-by', help='Group by this field (e.g., date).'),
-        ),
-    )
-    def do_events_command(self, args):
-        self._fail_if_headless(args)
-        self._fail_if_not_local(args)
-
-        # Build query
-        query_info = {
-            'user': args.user,
-            'command': args.match_command,
-            'args': args.args,
-            'uuid': args.uuid,
-            'count': args.count,
-            'group_by': args.group_by,
-        }
-        info = self.manager.model().get_events_log_info(query_info, args.offset, args.limit)
-        if 'counts' in info:
-            for row in info['counts']:
-                print('\t'.join(map(str, list(row))), file=self.stdout)
-        if 'events' in info:
-            for event in info['events']:
-                row = [
-                    event.end_time.strftime('%Y-%m-%d %X') if event.end_time != None else '',
-                    '%.3f' % event.duration if event.duration != None else '',
-                    '%s(%s)' % (event.user_name, event.user_id),
-                    event.command,
-                    event.args,
-                ]
-                print('\t'.join(row), file=self.stdout)
-
-    @Commands.command(
         'reset',
         help='Delete the CodaLab bundle store and reset the database (local only).',
         arguments=(
