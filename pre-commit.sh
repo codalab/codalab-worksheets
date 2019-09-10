@@ -9,9 +9,10 @@ if ! [ -e venv ]; then
   rm -rf worker/codalabworker.egg-info  # Need to clear because of different Python versions
   # Install for generating docs.
   venv/bin/pip install black==18.9b0 || exit 1
-  venv/bin/pip install -e worker  # Not sure why this is necessary
-  venv/bin/pip install -e .
 fi
+
+venv/bin/pip install -e worker  # Not sure why this is necessary
+venv/bin/pip install -e .
 
 # Generate docs
 venv/bin/python scripts/gen-rest-docs.py || exit 1  # Outputs to `docs`
