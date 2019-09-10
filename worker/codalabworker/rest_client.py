@@ -134,6 +134,7 @@ class RestClient(object):
             bytes_uploaded = 0
             while True:
                 to_send = fileobj.read(CHUNK_SIZE)
+                print(to_send)
                 if not to_send:
                     break
                 conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
