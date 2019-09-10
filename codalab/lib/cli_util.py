@@ -70,6 +70,8 @@ def parse_target_spec(spec):
     """
 
     match = re.match(TARGET_REGEX, spec)
+    if not match:
+        raise Exception(spec)
     return match.groups() if match else (None, None, None, None)
 
 
