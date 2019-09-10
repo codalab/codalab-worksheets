@@ -149,6 +149,10 @@ class RestClient(object):
                 # Read the response.
                 response = conn.getresponse()
                 if response.status != 200:
+                    print("HTTPError")
+                    print(response.read())
+                    print(response.read().decode())
+                    print("===")
                     # Low-level httplib module doesn't throw HTTPError
                     raise urllib.error.HTTPError(
                         self._base_url + path,
