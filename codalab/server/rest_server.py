@@ -1,6 +1,7 @@
 from http.client import INTERNAL_SERVER_ERROR, BAD_REQUEST
 import datetime
 import json
+from io import BytesIO
 import os
 import re
 import sys
@@ -44,6 +45,19 @@ from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
 from codalab.server.oauth2_provider import oauth2_provider
 
+class ChunkMiddleware:
+    def __init__(self, _app):
+        self.wrapped_app = _app
+
+    def __call__(self, environ, start_response):
+        if 'chunked' in environ.get('HTTP_TRANSFER_ENCODING', '').lower():
+            del environ['HTTP_TRANSFER_ENCODING']
+
+            body = environ['wsgi.input'].read()
+            environ['CONTENT_LENGTH'] = len(body)
+            environ['wsgi.input'] = BytesIO(body)
+
+        return self.wrapped_app(environ, start_response)
 
 # Don't log requests to routes matching these regexes.
 ROUTES_NOT_LOGGED_REGEXES = [re.compile(r'/oauth2/.*'), re.compile(r'/workers/.*')]
@@ -282,7 +296,7 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     for code in range(100, 600):
         default_app().error(code)(error_handler)
 
-    root_app = Bottle()
+    root_app = ChunkMiddleware(Bottle())
     root_app.mount('/rest', default_app())
 
     # Look for templates in codalab-worksheets/views
