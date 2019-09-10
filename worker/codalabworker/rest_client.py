@@ -160,5 +160,5 @@ class RestClient(object):
         except Exception as e:
             import traceback
             print("EXCEPTION rest_client.py")
-            traceback.print_exc(e)
+            traceback.print_exc()
             raise e
