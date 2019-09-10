@@ -70,8 +70,6 @@ def parse_target_spec(spec):
     """
 
     match = re.match(TARGET_REGEX, spec)
-    if not match:
-        raise Exception(spec)
     return match.groups() if match else (None, None, None, None)
 
 
@@ -95,6 +93,7 @@ def desugar_command(orig_target_spec, command):
 
     def get(dep):  # Return the key
         key, val = parse_key_target(dep)
+        raise Exception(("parse_key_target", dep, key, val))
         if key == '':
             # key only matches empty string if ':' present
             _, _, bundle, subpath = parse_target_spec(val)
