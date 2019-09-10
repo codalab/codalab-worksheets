@@ -116,43 +116,49 @@ class RestClient(object):
             conn = http.client.HTTPConnection(parsed_base_url.netloc)
         else:
             conn = http.client.HTTPSConnection(parsed_base_url.netloc)
-        with closing(conn):
-            conn.putrequest(method, parsed_base_url.path + path)
+        try:
+            with closing(conn):
+                conn.putrequest(method, parsed_base_url.path + path)
 
-            # Set headers.
-            headers = {
-                'Authorization': 'Bearer ' + self._get_access_token(),
-                'Transfer-Encoding': 'chunked',
-                'X-Requested-With': 'XMLHttpRequest',
-            }
-            headers.update(self._extra_headers)
-            for header_name, header_value in headers.items():
-                conn.putheader(header_name, header_value)
-            conn.endheaders()
+                # Set headers.
+                headers = {
+                    'Authorization': 'Bearer ' + self._get_access_token(),
+                    'Transfer-Encoding': 'chunked',
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+                headers.update(self._extra_headers)
+                for header_name, header_value in headers.items():
+                    conn.putheader(header_name, header_value)
+                conn.endheaders()
 
-            # Use chunked transfer encoding to send the data through.
-            bytes_uploaded = 0
-            while True:
-                to_send = fileobj.read(CHUNK_SIZE)
-                print(to_send)
-                if not to_send:
-                    break
-                conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
-                bytes_uploaded += len(to_send)
-                if progress_callback is not None:
-                    should_resume = progress_callback(bytes_uploaded)
-                    if not should_resume:
-                        raise Exception('Upload aborted by client')
-            conn.send(b'0\r\n\r\n')
+                # Use chunked transfer encoding to send the data through.
+                bytes_uploaded = 0
+                while True:
+                    to_send = fileobj.read(CHUNK_SIZE)
+                    print(to_send)
+                    if not to_send:
+                        break
+                    conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
+                    bytes_uploaded += len(to_send)
+                    if progress_callback is not None:
+                        should_resume = progress_callback(bytes_uploaded)
+                        if not should_resume:
+                            raise Exception('Upload aborted by client')
+                conn.send(b'0\r\n\r\n')
 
-            # Read the response.
-            response = conn.getresponse()
-            if response.status != 200:
-                # Low-level httplib module doesn't throw HTTPError
-                raise urllib.error.HTTPError(
-                    self._base_url + path,
-                    response.status,
-                    response.reason,
-                    dict(response.getheaders()),
-                    StringIO(response.read().decode()),
-                )
+                # Read the response.
+                response = conn.getresponse()
+                if response.status != 200:
+                    # Low-level httplib module doesn't throw HTTPError
+                    raise urllib.error.HTTPError(
+                        self._base_url + path,
+                        response.status,
+                        response.reason,
+                        dict(response.getheaders()),
+                        StringIO(response.read().decode()),
+                    )
+        except Exception as e:
+            import traceback
+            print("EXCEPTION rest_client.py")
+            traceback.print_exc(e)
+            raise e
