@@ -92,9 +92,11 @@ def main():
 
 def get_default_version():
     """Get the current git branch."""
-    return subprocess.check_output(
-        ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8'
-    ).strip().replace("/", "_")
+    return (
+        subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8')
+        .strip()
+        .replace("/", "_")
+    )
 
 
 def var_path(name):
