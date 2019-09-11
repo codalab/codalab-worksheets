@@ -14,7 +14,7 @@
     "bootstrap": "^4.2.1",
     "c3": "^0.6.12",
     "classnames": "^2.2.6",
-    "jquery": "^3.3.1",
+    "jquery": "^3.4.0",
     "jquery-ui": "^1.12.1",
     "jquery-ui-bundle": "^1.12.1-migrate",
     "jquery.terminal": "^2.1.2",
