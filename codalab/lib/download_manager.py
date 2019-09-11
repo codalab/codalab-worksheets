@@ -165,7 +165,7 @@ class DownloadManager(object):
             try:
                 read_args = {'type': 'read_file_section', 'offset': offset, 'length': length}
                 self._send_read_message(worker, response_socket_id, uuid, path, read_args)
-                string = self._get_read_response_string(response_socket_id)
+                string = self._get_read_response(response_socket_id)
             finally:
                 self._worker_model.deallocate_socket(response_socket_id)
 
@@ -206,7 +206,7 @@ class DownloadManager(object):
                     'truncation_text': truncation_text,
                 }
                 self._send_read_message(worker, response_socket_id, uuid, path, read_args)
-                string = self._get_read_response_string(response_socket_id)
+                string = self._get_read_response(response_socket_id)
             finally:
                 self._worker_model.deallocate_socket(response_socket_id)
 
@@ -224,7 +224,7 @@ class DownloadManager(object):
         )
         try:
             self._send_netcat_message(worker, response_socket_id, uuid, port, message)
-            string = self._get_read_response_string(response_socket_id)
+            string = self._get_read_response(response_socket_id)
         finally:
             self._worker_model.deallocate_socket(response_socket_id)
 
@@ -286,8 +286,9 @@ class DownloadManager(object):
             precondition(fileobj is not None, 'Unable to reach worker')
             return fileobj
 
-    def _get_read_response_string(self, response_socket_id):
+    def _get_read_response(self, response_socket_id):
         with closing(self._get_read_response_stream(response_socket_id)) as fileobj:
+            # This function returns a binary string, as the file could be gzipped.
             return fileobj.read()
 
 
