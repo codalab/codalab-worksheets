@@ -413,8 +413,7 @@ def _netcat_bundle(uuid, port):
     bundle = local.model.get_bundle(uuid)
     if bundle.state != State.RUNNING:
         abort(http.client.FORBIDDEN, 'Cannot netcat bundle, bundle not running.')
-    info = local.download_manager.netcat(uuid, port, request.json['message'])
-    return {'data': info}
+    return local.download_manager.netcat(uuid, port, request.json['message'])
 
 
 @post(
@@ -458,14 +457,14 @@ def _netcurl_bundle(uuid, port, path=''):
         message += "\r\n"
         message += request.body.read()
 
-        info = local.download_manager.netcat(uuid, port, message)
+        bytestring = local.download_manager.netcat(uuid, port, message)
     except Exception:
         print("{}".format(request.environ), file=sys.stderr)
         raise
     finally:
         request.path_shift(-4)  # restore the URL
 
-    return info
+    return bytestring
 
 
 @get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')

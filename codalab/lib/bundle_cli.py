@@ -2222,8 +2222,10 @@ class BundleCLI(object):
         client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(
             client, worksheet_uuid, args.bundle_spec
         )
-        info = client.netcat(bundle_uuid, port=args.port, data={"message": args.message})
-        print(info['data'], file=self.stdout)
+        contents = client.netcat(bundle_uuid, port=args.port, data={"message": args.message})
+        with closing(contents):
+            shutil.copyfileobj(contents, self.stdout.buffer)
+
 
     @Commands.command(
         'cat',
