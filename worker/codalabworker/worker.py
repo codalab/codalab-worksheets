@@ -70,11 +70,7 @@ class Worker(object):
 
                 is_idle = now - last_time_ran > self._idle_seconds
 
-                if (
-                    self._exit_when_idle
-                    and is_idle
-                    and self._last_checkin_successful
-                ):
+                if self._exit_when_idle and is_idle and self._last_checkin_successful:
                     self._stop = True
                     break
 

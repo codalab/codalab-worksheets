@@ -216,13 +216,27 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='ssl_key_file', help='Path to the key file for SSL'),
     ### Worker manager
     CodalabArg(name='worker_manager_type', help='Type of worker manager (e.g., aws, azure, slurm)'),
-    CodalabArg(name='worker_manager_cpu_queue', help='Name of queue to submit CPU jobs', default='codalab-cpu'),
-    CodalabArg(name='worker_manager_gpu_queue', help='Name of queue to submit GPU jobs', default='codalab-gpu'),
     CodalabArg(
-        name='worker_manager_max_cpu_workers', help='Maximum number of CPU workers', type=int, default=10
+        name='worker_manager_cpu_queue',
+        help='Name of queue to submit CPU jobs',
+        default='codalab-cpu',
     ),
     CodalabArg(
-        name='worker_manager_max_gpu_workers', help='Maximum number of GPU workers', type=int, default=10
+        name='worker_manager_gpu_queue',
+        help='Name of queue to submit GPU jobs',
+        default='codalab-gpu',
+    ),
+    CodalabArg(
+        name='worker_manager_max_cpu_workers',
+        help='Maximum number of CPU workers',
+        type=int,
+        default=10,
+    ),
+    CodalabArg(
+        name='worker_manager_max_gpu_workers',
+        help='Maximum number of GPU workers',
+        type=int,
+        default=10,
     ),
 ]
 

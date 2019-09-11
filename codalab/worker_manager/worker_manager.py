@@ -7,11 +7,13 @@ from codalabworker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 
+
 class WorkerManager(object):
     """
     The abstract class for a worker manager.  Different backends like AWS,
     Azure, Slurm should override `get_workers` and `start_worker`.
     """
+
     def __init__(self, args):
         self.args = args
         self.codalab_manager = CodaLabManager()
@@ -35,8 +37,8 @@ class WorkerManager(object):
     def run_one_iteration(self):
         # Get staged bundles
         keywords = ['state=' + State.STAGED] + self.args.search
-        #if self.args.worker_tag:
-            #keywords.append('request_queue=tag=' + self.args.worker_tag)
+        # if self.args.worker_tag:
+        # keywords.append('request_queue=tag=' + self.args.worker_tag)
         bundles = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
         )
@@ -55,5 +57,9 @@ class WorkerManager(object):
         need_more_workers = len(workers) < len(bundles) + extra_workers
 
         if can_launch_workers and need_more_workers:
-            logger.debug('Not enough workers ({} < {} + {}), starting a worker'.format(len(workers), len(bundles), extra_workers))
+            logger.debug(
+                'Not enough workers ({} < {} + {}), starting a worker'.format(
+                    len(workers), len(bundles), extra_workers
+                )
+            )
             self.start_worker()
