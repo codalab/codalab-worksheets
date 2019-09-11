@@ -116,6 +116,8 @@ def sanitize(string, max_chars=256):
 def run_command(
     args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False, binary=False
 ):
+    """If we don't care about the exit code, set `expected_exit_code` to None.
+    """
     print(">>", *map(str, args), sep=" ")
     sys.stdout.flush()
 
@@ -135,7 +137,7 @@ def run_command(
     except Exception as e:
         output = traceback.format_exc()
         exitcode = 'test-cli exception'
-    if exitcode != expected_exit_code:
+    if expected_exit_code is not None and exitcode != expected_exit_code:
         colorize = Colorizer.red
         extra = ' BAD'
     else:
@@ -377,7 +379,7 @@ class ModuleContext(object):
                 try:
                     if run_command([cl, 'info', '-f', 'state', bundle]) not in ('ready', 'failed'):
                         run_command([cl, 'kill', bundle])
-                        run_command([cl, 'wait', bundle])
+                        run_command([cl, 'wait', bundle], expected_exit_code=1)
                 except AssertionError:
                     print('CAUGHT')
                     pass
