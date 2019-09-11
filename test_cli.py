@@ -1020,6 +1020,9 @@ def test(ctx):
     check_contains(name, run_command([cl, 'search', name]))
     check_equals(uuid, run_command([cl, 'search', name, '-u']))
     run_command([cl, 'search', name, '--append'])
+    # test download stdout
+    run_command([cl, 'download', uuid + '/stdout'])
+    check_equals('hello', path_contents('stdout'))
     # get info
     check_equals('ready', run_command([cl, 'info', '-f', 'state', uuid]))
     check_contains(['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid]))
