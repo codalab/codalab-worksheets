@@ -181,7 +181,7 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
     Summarizes the file at the given path, returning a string containing the
     given numbers of lines from beginning and end of the file. If the file needs
     to be truncated, places truncation_text at the truncation point.
-    Unlike other methods, this method treats everything as Unicodes string.
+    Unlike other methods, this method treats everything as a Unicode string.
     """
     assert num_head_lines > 0 or num_tail_lines > 0
 
