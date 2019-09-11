@@ -288,7 +288,7 @@ class DownloadManager(object):
 
     def _get_read_response_string(self, response_socket_id):
         with closing(self._get_read_response_stream(response_socket_id)) as fileobj:
-            return fileobj.read().decode()
+            return fileobj.read()
 
 
 class Deallocating(object):

@@ -273,7 +273,7 @@ class LocalRunManager(BaseRunManager):
 
     def write(self, run_state, path, dep_paths, string):
         """
-        Write string to path in bundle with uuid
+        Write `string` (string) to path in bundle with uuid.
         """
         if os.path.normpath(path) in dep_paths:
             return
@@ -282,8 +282,8 @@ class LocalRunManager(BaseRunManager):
 
     def netcat(self, run_state, port, message, reply):
         """
-        Write message to port of bundle with uuid and read the response.
-        Returns a stream with the response contents
+        Write `message` (string) to port of bundle with uuid and read the response.
+        Returns a stream with the response contents (bytes).
         """
         container_ip = docker_utils.get_container_ip(
             self.worker_docker_network.name, run_state.container
@@ -299,7 +299,7 @@ class LocalRunManager(BaseRunManager):
                 break
             total_data.append(data)
         s.close()
-        reply(None, {}, b''.join(total_data).decode())
+        reply(None, {}, b''.join(total_data))
 
     def kill(self, run_state):
         """

@@ -45,7 +45,7 @@ class RestClient(object):
         path,
         query_params=None,
         headers=None,
-        data=None,
+        data=None,  # Can be str or bytes
         return_response=False,
         authorized=True,
     ):

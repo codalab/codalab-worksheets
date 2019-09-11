@@ -222,7 +222,7 @@ def backup_db():
         print('[client]', file=f)
         print('host="%s"' % bundles_host, file=f)
         print('port="%s"' % bundles_port, file=f)
-        print('user="%s"' % bundles_user, file=f)
+        print('user="%s"' % bundles_username, file=f)
         print('password="%s"' % bundles_password, file=f)
     path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_database, date)
     run_command(
