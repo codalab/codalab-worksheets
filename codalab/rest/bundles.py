@@ -409,9 +409,8 @@ def _netcat_bundle(uuid, port):
     Send a raw bytestring into the specified port of the running bundle with uuid.
     Return the response from this bundle.
     """
-    check_bundles_have_read_permission(local.model, request.user, [uuid])
+    check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
-    print(bundle.state)
     if bundle.state != State.RUNNING:
         abort(http.client.FORBIDDEN, 'Cannot netcat bundle, bundle not running.')
     info = local.download_manager.netcat(uuid, port, request.json['message'])
