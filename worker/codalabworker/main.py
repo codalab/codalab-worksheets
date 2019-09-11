@@ -210,8 +210,7 @@ chmod 600 %s"""
     logger.info('Worker started!')
     # END
 
-    if not worker.start():
-        sys.exit(1)
+    worker.start()
 
 
 def parse_cpuset_args(arg):

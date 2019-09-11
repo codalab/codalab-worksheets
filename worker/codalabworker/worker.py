@@ -49,7 +49,6 @@ class Worker(object):
     def start(self):
         """Return whether ran anything."""
         self._run_manager.start()
-        ran_something = False
         last_time_ran = None  # When was the last time we ran something?
         while not self._stop:
             try:
@@ -66,7 +65,6 @@ class Worker(object):
                 now = time.time()
                 if has_runs:
                     last_time_ran = now
-                    ran_something = True
 
                 if last_time_ran is None:
                     last_time_ran = now
@@ -81,7 +79,6 @@ class Worker(object):
                 traceback.print_exc()
                 time.sleep(1)
         self._run_manager.stop()
-        return ran_something
 
     def signal(self):
         self._stop = True

@@ -18,6 +18,8 @@ class WorkerManager(object):
         self.args = args
         self.codalab_manager = CodaLabManager()
         self.codalab_client = self.codalab_manager.client(args.server)
+        self.staged_uuids = []
+        self.pending_worker = False  # Started a worker, waiting for something to happen
         logger.info('Started worker manager.')
 
     def get_workers(self):
@@ -42,24 +44,39 @@ class WorkerManager(object):
         bundles = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
         )
-        logger.debug('Bundles: {}'.format(' '.join(bundle['uuid'] for bundle in bundles)))
+        new_staged_uuids = [bundle['uuid'] for bundle in bundles]
+        old_staged_uuids = self.staged_uuids
+        # Bundles that were staged but now aren't
+        removed_uuids = [uuid for uuid in old_staged_uuids if uuid not in new_staged_uuids]
+        self.staged_uuids = new_staged_uuids
+        logger.debug('Bundles: {}'.format(' '.join(new_staged_uuids)))
 
         # Get workers
         workers = self.get_workers()
+        logger.debug('{} staged bundles ({} removed from last time), {} workers'.format(len(new_staged_uuids), len(removed_uuids), len(workers)))
 
-        logger.debug('{} staged bundles, {} workers'.format(len(bundles), len(workers)))
+        # If we just started a worker and we haven't made any progress towards
+        # removing bundles from staged, don't launch another one.  This is so
+        # that if someone starts a run that requires massive resources that we
+        # can't handle, we don't keep on trying to launch workers to no avail.
+        # Of course, there are many reasons that a bundle might be removed from
+        # staged (user might have deleted).  And the bundle that was removed
+        # might not be the one that we were originally intending to run.
+        if self.pending_worker and len(removed_uuids) == 0:
+            return
+        self.pending_worker = False
 
         # Don't launch more than `max_workers`.
-        can_launch_workers = len(workers) < self.args.max_workers
+        if len(workers) >= self.args.max_workers:
+            return
 
-        # Logic: keep 1 more than the number of staged runs.
-        extra_workers = 1
-        need_more_workers = len(workers) < len(bundles) + extra_workers
+        # Are there staged bundles to run?
+        if len(new_staged_uuids) == 0:
+            return
 
-        if can_launch_workers and need_more_workers:
-            logger.debug(
-                'Not enough workers ({} < {} + {}), starting a worker'.format(
-                    len(workers), len(bundles), extra_workers
-                )
-            )
-            self.start_worker()
+        # Start a worker.
+        logger.debug(
+            'Not enough workers ({} staged), starting a worker'.format(len(new_staged_uuids))
+        )
+        self.start_worker()
+        self.pending_worker = True
