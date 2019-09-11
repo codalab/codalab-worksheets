@@ -116,9 +116,7 @@ def sanitize(string, max_chars=256):
 def run_command(
     args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False, binary=False
 ):
-    print(
-        ">>", *[a.encode('ascii', errors='replace') if type(a) is str else a for a in args], sep=" "
-    )
+    print(">>", *map(str, args), sep=" ")
     sys.stdout.flush()
 
     try:
