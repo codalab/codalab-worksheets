@@ -53,7 +53,11 @@ class WorkerManager(object):
 
         # Get workers
         workers = self.get_workers()
-        logger.debug('{} staged bundles ({} removed from last time), {} workers'.format(len(new_staged_uuids), len(removed_uuids), len(workers)))
+        logger.debug(
+            '{} staged bundles ({} removed from last time), {} workers'.format(
+                len(new_staged_uuids), len(removed_uuids), len(workers)
+            )
+        )
 
         # If we just started a worker and we haven't made any progress towards
         # removing bundles from staged, don't launch another one.  This is so

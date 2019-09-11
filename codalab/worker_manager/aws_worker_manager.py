@@ -31,13 +31,7 @@ class AWSWorkerManager(WorkerManager):
         # TODO: don't hard code these, get these from some config file.
         cpus = 4
         memory_mb = 1024 * 10
-        command = [
-            'cl-worker',
-            '--server',
-            self.args.server,
-            '--verbose',
-            '--exit-when-idle',
-        ]
+        command = ['cl-worker', '--server', self.args.server, '--verbose', '--exit-when-idle']
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])
 
@@ -52,36 +46,23 @@ class AWSWorkerManager(WorkerManager):
                 'memory': memory_mb,
                 'command': command,
                 'environment': [
-                    {
-                        'name': 'CODALAB_USERNAME',
-                        'value': os.environ.get('CODALAB_USERNAME'),
-                    },
-                    {
-                        'name': 'CODALAB_PASSWORD',
-                        'value': os.environ.get('CODALAB_PASSWORD'),
-                    },
+                    {'name': 'CODALAB_USERNAME', 'value': os.environ.get('CODALAB_USERNAME')},
+                    {'name': 'CODALAB_PASSWORD', 'value': os.environ.get('CODALAB_PASSWORD')},
                 ],
                 'volumes': [
-                    {
-                        'host': {
-                            'sourcePath': '/var/run/docker.sock',
-                        },
-                        'name': 'var_run_docker_sock',
-                    }
+                    {'host': {'sourcePath': '/var/run/docker.sock'}, 'name': 'var_run_docker_sock'}
                 ],
                 'mountPoints': [
                     {
-                        "sourceVolume" : 'var_run_docker_sock',
+                        "sourceVolume": 'var_run_docker_sock',
                         'containerPath': '/var/run/docker.sock',
                         "readOnly": False,
-                    },
+                    }
                 ],
                 'readonlyRootFilesystem': False,
                 'user': 'root',  # TODO: if shared file system, use user
             },
-            'retryStrategy': {
-                'attempts': 1
-            }
+            'retryStrategy': {'attempts': 1},
         }
 
         # Create a job definition
@@ -90,9 +71,7 @@ class AWSWorkerManager(WorkerManager):
 
         # Submit the job
         response = batch_client.submit_job(
-            jobName=job_definition_name,
-            jobQueue=self.args.queue,
-            jobDefinition=job_definition_name,
+            jobName=job_definition_name, jobQueue=self.args.queue, jobDefinition=job_definition_name
         )
         logger.info('submit_job', response)
 
