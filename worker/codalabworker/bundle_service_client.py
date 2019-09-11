@@ -136,14 +136,16 @@ class BundleServiceClient(RestClient):
         )
 
     @wrap_exception('Unable to reply to message from bundle service')
-    def reply_data(self, worker_id, socket_id, header_message, fileobj_or_string):
+    def reply_data(self, worker_id, socket_id, header_message, fileobj_or_bytestring):
         method = 'POST'
         url = self._worker_url_prefix(worker_id) + '/reply_data/' + str(socket_id)
         query_params = {'header_message': json.dumps(header_message)}
-        if isinstance(fileobj_or_string, str):
-            self._make_request(method, url, query_params, headers={}, data=fileobj_or_string)
+        if isinstance(fileobj_or_bytestring, bytes):
+            self._make_request(method, url, query_params, headers={}, data=fileobj_or_bytestring)
+        elif isinstance(fileobj_or_bytestring, str):
+            raise Exception('Expected bytes, got string')
         else:
-            self._upload_with_chunked_encoding(method, url, query_params, fileobj_or_string)
+            self._upload_with_chunked_encoding(method, url, query_params, fileobj_or_bytestring)
 
     @wrap_exception('Unable to start bundle in bundle service')
     def start_bundle(self, worker_id, uuid, request_data):

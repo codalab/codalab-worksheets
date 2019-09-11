@@ -98,12 +98,12 @@ class LocalReader(Reader):
     def read_file_section(self, run_state, path, dep_paths, args, reply_fn):
         """
         Read the section of file at path of length args['length'] starting at
-        args['offset'] using a separate thread
+        args['offset'] (bytes) using a separate thread
         """
 
         def read_file_section_thread(final_path):
-            string = gzip_string(read_file_section(final_path, args['offset'], args['length']))
-            reply_fn(None, {}, string)
+            bytestring = gzip_string(read_file_section(final_path, args['offset'], args['length']))
+            reply_fn(None, {}, bytestring)
 
         self._threaded_read(run_state, path, read_file_section_thread, reply_fn)
 
@@ -115,7 +115,7 @@ class LocalReader(Reader):
         """
 
         def summarize_file_thread(final_path):
-            string = gzip_string(
+            bytestring = gzip_string(
                 summarize_file(
                     final_path,
                     args['num_head_lines'],
@@ -124,6 +124,6 @@ class LocalReader(Reader):
                     args['truncation_text'],
                 )
             )
-            reply_fn(None, {}, string)
+            reply_fn(None, {}, bytestring)
 
         self._threaded_read(run_state, path, summarize_file_thread, reply_fn)
