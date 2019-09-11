@@ -65,9 +65,11 @@ class Worker(object):
                 has_runs = len(self._run_manager.all_runs) > 0
                 now = time.time()
                 if has_runs:
-                    ran_something = True
                     last_time_ran = now
+                    ran_something = True
 
+                if last_time_ran is None:
+                    last_time_ran = now
                 is_idle = now - last_time_ran > self._idle_seconds
 
                 if self._exit_when_idle and is_idle and self._last_checkin_successful:

@@ -91,7 +91,6 @@ def main():
     )
     parser.add_argument(
         '--idle-seconds',
-        action='store_true',
         help='Not running anything for this many seconds constitutes idle',
         type=int,
         default=0,
