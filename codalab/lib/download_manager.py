@@ -288,6 +288,7 @@ class DownloadManager(object):
 
     def _get_read_response_string(self, response_socket_id):
         with closing(self._get_read_response_stream(response_socket_id)) as fileobj:
+            # This function returns a binary string, as the file could be gzipped.
             return fileobj.read()
 
 
