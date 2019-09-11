@@ -26,7 +26,7 @@ import subprocess
 
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
 
-ALL_SERVICES = DEFAULT_SERVICES + ['test', 'monitor']
+ALL_SERVICES = DEFAULT_SERVICES + ['test', 'monitor', 'worker-manager']
 
 ALL_NO_SERVICES = [
     'no-' + service for service in ALL_SERVICES
@@ -39,6 +39,7 @@ SERVICE_TO_IMAGE = {
     'frontend': 'frontend',
     'rest-server': 'server',
     'bundle-manager': 'server',
+    'worker-manager': 'server',
     'monitor': 'server',
     'worker': 'worker',
 }
@@ -209,6 +210,16 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='use_ssl', help='Use HTTPS instead of HTTP', type=bool, default=False),
     CodalabArg(name='ssl_cert_file', help='Path to the cert file for SSL'),
     CodalabArg(name='ssl_key_file', help='Path to the key file for SSL'),
+    ### Worker manager
+    CodalabArg(name='worker_manager_type', help='Type of worker manager (e.g., aws, azure, slurm)'),
+    CodalabArg(name='worker_manager_cpu_queue', help='Name of queue to submit CPU jobs', default='codalab-cpu'),
+    CodalabArg(name='worker_manager_gpu_queue', help='Name of queue to submit GPU jobs', default='codalab-gpu'),
+    CodalabArg(
+        name='worker_manager_max_cpu_workers', help='Maximum number of CPU workers', type=int, default=10
+    ),
+    CodalabArg(
+        name='worker_manager_max_gpu_workers', help='Maximum number of GPU workers', type=int, default=10
+    ),
 ]
 
 
@@ -606,6 +617,7 @@ class CodalabServiceManager(object):
             )
 
         self.bring_up_service('bundle-manager')
+        self.bring_up_service('worker-manager')
         self.bring_up_service('frontend')
         self.bring_up_service('nginx')
         self.bring_up_service('worker')

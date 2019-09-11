@@ -97,7 +97,7 @@ def do_rest_server_command(bundle_cli, args):
         Commands.Argument(
             '--sleep-time',
             help='Number of seconds to wait between successive actions.',
-            type=int, default=0.5),
+            type=float, default=0.5),
     ),
 )
 def do_bundle_manager_command(bundle_cli, args):

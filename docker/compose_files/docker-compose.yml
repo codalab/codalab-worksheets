@@ -21,6 +21,11 @@ x-codalab-env: &codalab-env
   - CODALAB_EMAIL_HOST=${CODALAB_EMAIL_HOST}
   - CODALAB_EMAIL_USERNAME=${CODALAB_EMAIL_USERNAME}
   - CODALAB_EMAIL_PASSWORD=${CODALAB_EMAIL_PASSWORD}
+  - CODALAB_WORKER_MANAGER_TYPE=${CODALAB_WORKER_MANAGER_TYPE}
+  - CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
+  - CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS=${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
+  - CODALAB_WORKER_MANAGER_CPU_QUEUE=${CODALAB_WORKER_MANAGER_CPU_QUEUE}
+  - CODALAB_WORKER_MANAGER_GPU_QUEUE=${CODALAB_WORKER_MANAGER_GPU_QUEUE}
   - HOSTNAME=${HOSTNAME}
 
 # Properties that every service inherits.
@@ -57,6 +62,18 @@ services:
   bundle-manager:
     image: codalab/server:${CODALAB_VERSION}
     command: cl bundle-manager
+    <<: *codalab-base
+    <<: *codalab-server
+
+  cpu-worker-manager:
+    image: codalab/server:${CODALAB_VERSION}
+    command: cl-worker-manager --worker-manager-type ${CODALAB_WORKER_MANAGER_TYPE} --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS} --queue ${CODALAB_WORKER_MANAGER_CPU_QUEUE} --search request_gpus=0
+    <<: *codalab-base
+    <<: *codalab-server
+
+  gpu-worker-manager:
+    image: codalab/server:${CODALAB_VERSION}
+    command: cl-worker-manager --worker-manager-type ${CODALAB_WORKER_MANAGER_TYPE} --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS} --queue ${CODALAB_WORKER_MANAGER_GPU_QUEUE} --search request_gpus=1
     <<: *codalab-base
     <<: *codalab-server
 

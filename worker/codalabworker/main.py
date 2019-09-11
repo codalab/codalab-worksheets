@@ -1,8 +1,3 @@
-#!/usr/bin/env python3.6
-# For information about the design of the worker, see design.pdf in the same
-# directory as this file. For information about running a worker, see the
-# tutorial on the CodaLab documentation.
-
 import argparse
 import getpass
 import os
@@ -27,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
-    parser.add_argument('--tag', help='Tag that allows for scheduling runs on specific ' 'workers.')
+    parser.add_argument('--tag', help='Tag that allows for scheduling runs on specific workers.')
     parser.add_argument(
         '--server',
         default='https://worksheets.codalab.org',

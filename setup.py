@@ -47,7 +47,7 @@ setup(
         'console_scripts': [
             'cl=codalab.bin.cl:main',
             'codalab-service=codalab_service:main',
-            'cl-worker-manager=codalab.server.worker_manager:main',
+            'cl-worker-manager=codalab.worker_manager.main:main',
         ]
     },
     zip_safe=False,
