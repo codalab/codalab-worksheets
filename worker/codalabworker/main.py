@@ -90,6 +90,13 @@ def main():
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
     )
     parser.add_argument(
+        '--idle-seconds',
+        action='store_true',
+        help='Not running anything for this many seconds constitutes idle',
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
         '--id',
         default='%s(%d)' % (socket.gethostname(), os.getpid()),
         help='Internal use: ID to use for the worker.',
@@ -191,6 +198,7 @@ chmod 600 %s"""
         args.tag,
         args.work_dir,
         args.exit_when_idle,
+        args.idle_seconds,
         bundle_service,
     )
 
@@ -203,7 +211,8 @@ chmod 600 %s"""
     logger.info('Worker started!')
     # END
 
-    worker.start()
+    if not worker.start():
+        sys.exit(1)
 
 
 def parse_cpuset_args(arg):

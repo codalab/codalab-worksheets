@@ -32,6 +32,7 @@ class Worker(object):
         tag,  # type: str
         work_dir,  # type: str
         exit_when_idle,  # type: str
+        idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
     ):
         self.id = worker_id
@@ -40,12 +41,16 @@ class Worker(object):
         self._work_dir = work_dir
         self._bundle_service = bundle_service
         self._exit_when_idle = exit_when_idle
+        self._idle_seconds = idle_seconds
         self._stop = False
         self._last_checkin_successful = False
         self._run_manager = create_run_manager(self)
 
     def start(self):
+        """Return whether ran anything."""
         self._run_manager.start()
+        ran_something = False
+        last_time_ran = None  # When was the last time we ran something?
         while not self._stop:
             try:
                 self._run_manager.process_runs()
@@ -56,10 +61,19 @@ class Worker(object):
                 if not self._last_checkin_successful:
                     logger.info('Connected! Successful check in!')
                 self._last_checkin_successful = True
+
+                has_runs = len(self._run_manager.all_runs) > 0
+                now = time.time()
+                if has_runs:
+                    ran_something = True
+                    last_time_ran = now
+
+                is_idle = now - last_time_ran > self._idle_seconds
+
                 if (
                     self._exit_when_idle
+                    and is_idle
                     and self._last_checkin_successful
-                    and len(self._run_manager.all_runs) == 0
                 ):
                     self._stop = True
                     break
@@ -69,6 +83,7 @@ class Worker(object):
                 traceback.print_exc()
                 time.sleep(1)
         self._run_manager.stop()
+        return ran_something
 
     def signal(self):
         self._stop = True
