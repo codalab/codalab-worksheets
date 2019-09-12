@@ -290,7 +290,7 @@ class LocalRunManager(BaseRunManager):
         )
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((container_ip, port))
-        s.sendall(message)
+        s.sendall(message.encode())
 
         total_data = []
         while True:

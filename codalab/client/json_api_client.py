@@ -442,7 +442,7 @@ class JsonApiClient(RestClient):
         :return: the response
         """
         request_path = '/bundles/%s/netcat/%s/' % (bundle_id, port)
-        return self._make_request('PUT', request_path, data=data)
+        return self._make_request('PUT', request_path, data=data, return_response=True)
 
     @wrap_exception('Unable to create {1}')
     def create(self, resource_type, data, params=None):
@@ -674,7 +674,7 @@ class JsonApiClient(RestClient):
             method='POST',
             path='/worksheets/%s/raw' % worksheet_id,
             headers={'Content-Type': 'text/plain'},
-            data='\n'.join(lines).encode(),
+            data='\n'.join(lines),
         )
 
     @wrap_exception('Unable to fetch worker information')
