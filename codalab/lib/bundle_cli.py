@@ -2226,7 +2226,6 @@ class BundleCLI(object):
         with closing(contents):
             shutil.copyfileobj(contents, self.stdout.buffer)
 
-
     @Commands.command(
         'cat',
         help=[
