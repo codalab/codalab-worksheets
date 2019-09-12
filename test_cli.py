@@ -1023,7 +1023,7 @@ def test(ctx):
     # test download stdout
     path = temp_path('')
     run_command([cl, 'download', uuid + '/stdout', '-o', path])
-    check_equals('hello', path_contents(path + '/stdout'))
+    check_equals('hello', path_contents(path))
     # get info
     check_equals('ready', run_command([cl, 'info', '-f', 'state', uuid]))
     check_contains(['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid]))
