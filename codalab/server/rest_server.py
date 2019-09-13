@@ -2,10 +2,8 @@ from http.client import INTERNAL_SERVER_ERROR, BAD_REQUEST
 import datetime
 import json
 import os
-import re
 import sys
 import textwrap
-import time
 import traceback
 import logging
 
@@ -28,6 +26,12 @@ from bottle import (
 
 from codalab.common import exception_to_http_error
 from codalab.lib import formatting, server_util
+from codalab.server.authenticated_plugin import PublicUserPlugin, UserVerifiedPlugin
+from codalab.server.cookie import CookieAuthenticationPlugin
+from codalab.server.json_api_plugin import JsonApiPlugin
+from codalab.server.oauth2_provider import oauth2_provider
+
+# Don't remove the following imports, as they are used to route the rest service
 import codalab.rest.account
 import codalab.rest.bundle_actions
 import codalab.rest.bundles
@@ -40,15 +44,9 @@ import codalab.rest.oauth2
 import codalab.rest.users
 import codalab.rest.workers
 import codalab.rest.worksheets
-from codalab.server.authenticated_plugin import PublicUserPlugin, UserVerifiedPlugin
-from codalab.server.cookie import CookieAuthenticationPlugin
-from codalab.server.json_api_plugin import JsonApiPlugin
-from codalab.server.oauth2_provider import oauth2_provider
+
 
 logger = logging.getLogger(__name__)
-
-# Don't log requests to routes matching these regexes.
-ROUTES_NOT_LOGGED_REGEXES = [re.compile(r'/oauth2/.*'), re.compile(r'/workers/.*')]
 
 
 class SaveEnvironmentPlugin(object):
@@ -93,47 +91,6 @@ class CheckJsonPlugin(object):
             return callback(*args, **kwargs)
 
         return wrapper
-
-
-class LoggingPlugin(object):
-    """Logs successful requests to the events log."""
-
-    api = 2
-
-    def apply(self, callback, route):
-        def wrapper(*args, **kwargs):
-            if not self._should_log(route.rule):
-                return callback(*args, **kwargs)
-
-            start_time = time.time()
-
-            res = callback(*args, **kwargs)
-
-            # Use explicitly defined route name or 'METHOD /rule'
-            command = route.name or (route.method + ' ' + route.rule)
-            query_dict = dict([(k, request.query[k]) for k in request.query])
-            args = [request.path, query_dict]
-            # if (route.method == 'POST'
-            #     and request.content_type == 'application/json'):
-            #     args.append(request.json)
-
-            local.model.update_events_log(
-                start_time=start_time,
-                user_id=getattr(getattr(local, 'user', None), 'user_id', ''),
-                user_name=getattr(getattr(local, 'user', None), 'user_name', ''),
-                command=command,
-                args=args,
-            )
-
-            return res
-
-        return wrapper
-
-    def _should_log(self, rule):
-        for regex in ROUTES_NOT_LOGGED_REGEXES:
-            if regex.match(rule):
-                return False
-        return True
 
 
 class ErrorAdapter(object):
@@ -267,7 +224,6 @@ def run_rest_server(manager, debug, num_processes, num_threads):
 
     install(SaveEnvironmentPlugin(manager))
     install(CheckJsonPlugin())
-    install(LoggingPlugin())
     install(oauth2_provider.check_oauth())
     install(CookieAuthenticationPlugin())
     install(UserVerifiedPlugin())
