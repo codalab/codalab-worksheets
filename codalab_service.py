@@ -26,7 +26,7 @@ import subprocess
 
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
 
-ALL_SERVICES = DEFAULT_SERVICES + ['test', 'monitor', 'worker-manager']
+ALL_SERVICES = DEFAULT_SERVICES + ['test', 'monitor', 'worker-manager-cpu', 'worker-manager-gpu']
 
 ALL_NO_SERVICES = [
     'no-' + service for service in ALL_SERVICES
@@ -39,7 +39,8 @@ SERVICE_TO_IMAGE = {
     'frontend': 'frontend',
     'rest-server': 'server',
     'bundle-manager': 'server',
-    'worker-manager': 'server',
+    'worker-manager-cpu': 'server',
+    'worker-manager-gpu': 'server',
     'monitor': 'server',
     'worker': 'worker',
 }
@@ -635,7 +636,8 @@ class CodalabServiceManager(object):
             )
 
         self.bring_up_service('bundle-manager')
-        self.bring_up_service('worker-manager')
+        self.bring_up_service('worker-manager-cpu')
+        self.bring_up_service('worker-manager-gpu')
         self.bring_up_service('frontend')
         self.bring_up_service('nginx')
         self.bring_up_service('worker')
