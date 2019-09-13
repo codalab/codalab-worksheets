@@ -3,7 +3,12 @@
 
 # For generating readthedocs
 -r requirements.docs.txt
-# TODO: include black once we're on Python3
+
+# For worker manager
+boto3=1.9.228
+
+# For formatting code
+black==18.9b0
 
 # For testing
 mock==1.3.0
