@@ -19,7 +19,7 @@ class WorkerManager(object):
         self.codalab_manager = CodaLabManager()
         self.codalab_client = self.codalab_manager.client(args.server)
         self.staged_uuids = []
-        self.pending_worker = False  # Started a worker, waiting for something to happen
+        self.wait_for_progress = False  # Started a worker, waiting for something to happen
         logger.info('Started worker manager.')
 
     def get_workers(self):
@@ -51,26 +51,30 @@ class WorkerManager(object):
         # Bundles that were staged but now aren't
         removed_uuids = [uuid for uuid in old_staged_uuids if uuid not in new_staged_uuids]
         self.staged_uuids = new_staged_uuids
-        logger.debug('Bundles: {}'.format(' '.join(new_staged_uuids)))
+        logger.info('Staged bundles [{}]: {}'.format(' '.join(keywords), ' '.join(new_staged_uuids)))
 
         # Get workers
         workers = self.get_workers()
-        logger.debug(
-            '{} staged bundles ({} removed from last time), {} workers'.format(
-                len(new_staged_uuids), len(removed_uuids), len(workers)
+
+        logger.info(
+            '{} staged bundles ({} removed since last time{}), {} workers'.format(
+                len(new_staged_uuids), len(removed_uuids),
+                ', waiting for non-zero' if self.wait_for_progress else '',
+                len(workers)
             )
         )
 
         # If we just started a worker and we haven't made any progress towards
-        # removing bundles from staged, don't launch another one.  This is so
+        # removing bundles from staged, don't launch another one yet.  This is so
         # that if someone starts a run that requires massive resources that we
         # can't handle, we don't keep on trying to launch workers to no avail.
         # Of course, there are many reasons that a bundle might be removed from
-        # staged (user might have deleted).  And the bundle that was removed
-        # might not be the one that we were originally intending to run.
-        if self.pending_worker and len(removed_uuids) == 0:
+        # staged (user might have deleted the bundle).  Also, the bundle that
+        # was removed might not be the one that we were originally intending to
+        # run.
+        if self.wait_for_progress and len(removed_uuids) == 0:
             return
-        self.pending_worker = False
+        self.wait_for_progress = False
 
         # Don't launch more than `max_workers`.
         if len(workers) >= self.args.max_workers:
@@ -81,8 +85,8 @@ class WorkerManager(object):
             return
 
         # Start a worker.
-        logger.debug(
+        logger.info(
             'Not enough workers ({} staged), starting a worker'.format(len(new_staged_uuids))
         )
         self.start_worker()
-        self.pending_worker = True
+        self.wait_for_progress = True

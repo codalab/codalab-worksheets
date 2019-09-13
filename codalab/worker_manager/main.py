@@ -25,7 +25,7 @@ def main():
     parser.add_argument(
         '--verbose', action='store_true', help='Whether to print out extra information'
     )
-    parser.add_argument('--sleep-time', help='Number of seconds to wait between checks', default=30)
+    parser.add_argument('--sleep-time', help='Number of seconds to wait between checks', default=10)
     parser.add_argument('--once', help='Just run once and exit', action='store_true')
     parser.add_argument(
         '--worker-idle-seconds',

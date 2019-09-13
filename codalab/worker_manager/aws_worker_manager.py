@@ -15,11 +15,10 @@ class AWSWorkerManager(WorkerManager):
 
     def get_workers(self):
         """Return list of workers."""
-        # Get all jobs that are not SUCCEEDED.  These represent the workers.
-        # Note we include FAILED so that if something goes wrong, we don't keep
-        # on trying to start workers to no avail.
+        # Get all jobs that are not SUCCEEDED or FAILED.  These represent the active workers.
+        # This isn't really used, but just used to help us monitor things.
         jobs = []
-        for status in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING', 'FAILED']:
+        for status in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING']:
             response = self.batch_client.list_jobs(jobQueue=self.args.queue, jobStatus=status)
             jobs.extend(response['jobSummaryList'])
         logger.info(
@@ -94,4 +93,4 @@ class AWSWorkerManager(WorkerManager):
         )
         logger.info('submit_job', response)
 
-        # TODO: Clean up after ourselves too; delete workers
+        # TODO: Clean up after ourselves too; delete workers?
