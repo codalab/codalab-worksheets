@@ -5,8 +5,9 @@ x-non-blocking-logging: &non-blocking-logging
   options:
     mode: non-blocking
 
+# Synchronize with codalab_service.py
 x-codalab-env: &codalab-env
-  - CODALAB_HOME=${CODALAB_HOME}
+  - CODALAB_VERSION=${CODALAB_VERSION}
   - CODALAB_USERNAME=${CODALAB_USERNAME}
   - CODALAB_PASSWORD=${CODALAB_PASSWORD}
   - CODALAB_MYSQL_HOST=${CODALAB_MYSQL_HOST}
@@ -14,6 +15,8 @@ x-codalab-env: &codalab-env
   - CODALAB_MYSQL_DATABASE=${CODALAB_MYSQL_DATABASE}
   - CODALAB_MYSQL_USERNAME=${CODALAB_MYSQL_USERNAME}
   - CODALAB_MYSQL_PASSWORD=${CODALAB_MYSQL_PASSWORD}
+  - CODALAB_HOME=${CODALAB_HOME}
+  - CODALAB_BUNDLE_MOUNT=${CODALAB_BUNDLE_MOUNT}
   - CODALAB_USER_DISK_QUOTA=${CODALAB_USER_DISK_QUOTA}
   - CODALAB_USER_TIME_QUOTA=${CODALAB_USER_TIME_QUOTA}
   - CODALAB_USER_PARALLEL_RUN_QUOTA=${CODALAB_USER_PARALLEL_RUN_QUOTA}
@@ -21,6 +24,8 @@ x-codalab-env: &codalab-env
   - CODALAB_EMAIL_HOST=${CODALAB_EMAIL_HOST}
   - CODALAB_EMAIL_USERNAME=${CODALAB_EMAIL_USERNAME}
   - CODALAB_EMAIL_PASSWORD=${CODALAB_EMAIL_PASSWORD}
+  - CODALAB_SERVER=${CODALAB_SERVER}
+  - CODALAB_SHARED_FILE_SYSTEM=${CODALAB_SHARED_FILE_SYSTEM}
   - CODALAB_WORKER_MANAGER_TYPE=${CODALAB_WORKER_MANAGER_TYPE}
   - CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
   - CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS=${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
@@ -67,13 +72,13 @@ services:
 
   worker-manager-cpu:
     image: codalab/server:${CODALAB_VERSION}
-    command: cl-worker-manager --worker-manager-type ${CODALAB_WORKER_MANAGER_TYPE} --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS} --queue ${CODALAB_WORKER_MANAGER_CPU_QUEUE} --search request_gpus=0
+    command: cl-worker-manager --worker-manager-type ${CODALAB_WORKER_MANAGER_TYPE} --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS} --server ${CODALAB_SERVER} --queue ${CODALAB_WORKER_MANAGER_CPU_QUEUE} --search request_gpus=0
     <<: *codalab-base
     <<: *codalab-server
 
   worker-manager-gpu:
     image: codalab/server:${CODALAB_VERSION}
-    command: cl-worker-manager --worker-manager-type ${CODALAB_WORKER_MANAGER_TYPE} --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS} --queue ${CODALAB_WORKER_MANAGER_GPU_QUEUE} --search request_gpus=1
+    command: cl-worker-manager --worker-manager-type ${CODALAB_WORKER_MANAGER_TYPE} --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS} --server ${CODALAB_SERVER} --queue ${CODALAB_WORKER_MANAGER_GPU_QUEUE} --search request_gpus=1
     <<: *codalab-base
     <<: *codalab-server
 

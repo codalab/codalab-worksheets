@@ -71,17 +71,25 @@ class AWSWorkerManager(WorkerManager):
                 ],
                 'mountPoints': [
                     {
-                        "sourceVolume": 'var_run_docker_sock',
+                        'sourceVolume': 'var_run_docker_sock',
                         'containerPath': '/var/run/docker.sock',
-                        "readOnly": False,
+                        'readOnly': False,
                     },
-                    {"sourceVolume": 'work_dir', 'containerPath': work_dir, "readOnly": False},
+                    {'sourceVolume': 'work_dir', 'containerPath': work_dir, 'readOnly': False},
                 ],
                 'readonlyRootFilesystem': False,
                 'user': 'root',  # TODO: if shared file system, use user
             },
             'retryStrategy': {'attempts': 1},
         }
+
+        # Allow worker to directly mount a directory.  Note that the worker
+        # needs to be set up a priori with this shared filesystem.
+        if os.environ.get('CODALAB_SHARED_FILE_SYSTEM'):
+            command.append('--shared-file-system')
+            bundle_mount = os.environ.get('CODALAB_BUNDLE_MOUNT')
+            job_definition['containerProperties']['volumes'].append({'host': {'sourcePath': bundle_mount}, 'name': 'shared_dir'})
+            job_definition['containerProperties']['mountPoints'].append({'sourceVolume': 'shared_dir', 'containerPath': bundle_mount, 'readOnly': False})
 
         # Create a job definition
         response = self.batch_client.register_job_definition(**job_definition)

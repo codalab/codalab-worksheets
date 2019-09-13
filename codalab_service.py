@@ -179,7 +179,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='bundle_mount',
         help='Path to bundle data (just for mounting into Docker)',
-        default='/tmp',
+        default=var_path(''),  # Put any non-empty path here
     ),
     CodalabArg(name='mysql_mount', help='Path to store MySQL data', default=var_path('mysql')),
     CodalabArg(
@@ -197,6 +197,12 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='frontend_port', help='Port for frontend', type=int, default=2700),
     CodalabArg(name='rest_port', help='Port for REST server', type=int, default=2900),
     CodalabArg(name='rest_num_processes', help='Number of processes', type=int, default=1),
+    CodalabArg(name='server', help='URL to server (used by external worker to connect to)'),
+    CodalabArg(
+        name='shared_file_system',
+        help='Whether worker has access to the bundle mount',
+        type=bool,
+    ),
     ### User
     CodalabArg(name='user_disk_quota', help='How much space a user can use', default='100g'),
     CodalabArg(name='user_time_quota', help='How much total time a user can use', default='100y'),
@@ -413,7 +419,7 @@ class CodalabServiceManager(object):
         for env_var in ['PATH', 'DOCKER_HOST']:
             if env_var in os.environ:
                 environment[env_var] = os.environ[env_var]
-        environment['HOSTNAME'] = socket.gethostname()  # Sometimes not available
+        environment['HOSTNAME'] = socket.gethostname()  # Set HOSTNAME since it's sometimes not available
         return environment
 
     def __init__(self, args):
@@ -604,6 +610,7 @@ class CodalabServiceManager(object):
                         'server/default_user_info/parallel_run_quota',
                         self.args.user_parallel_run_quota,
                     ),
+                    ('workers/shared_file_system', self.args.shared_file_system),
                     ('email/host', self.args.email_host),
                     ('email/username', self.args.email_username),
                     ('email/password', self.args.email_password),

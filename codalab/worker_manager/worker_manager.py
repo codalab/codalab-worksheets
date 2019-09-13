@@ -41,8 +41,8 @@ class WorkerManager(object):
     def run_one_iteration(self):
         # Get staged bundles
         keywords = ['state=' + State.STAGED] + self.args.search
-        # if self.args.worker_tag:
-        # keywords.append('request_queue=tag=' + self.args.worker_tag)
+        if self.args.worker_tag:
+            keywords.append('request_queue=tag=' + self.args.worker_tag)
         bundles = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
         )
@@ -51,16 +51,19 @@ class WorkerManager(object):
         # Bundles that were staged but now aren't
         removed_uuids = [uuid for uuid in old_staged_uuids if uuid not in new_staged_uuids]
         self.staged_uuids = new_staged_uuids
-        logger.info('Staged bundles [{}]: {}'.format(' '.join(keywords), ' '.join(new_staged_uuids)))
+        logger.info(
+            'Staged bundles [{}]: {}'.format(' '.join(keywords), ' '.join(new_staged_uuids))
+        )
 
         # Get workers
         workers = self.get_workers()
 
         logger.info(
             '{} staged bundles ({} removed since last time{}), {} workers'.format(
-                len(new_staged_uuids), len(removed_uuids),
-                ', waiting for non-zero' if self.wait_for_progress else '',
-                len(workers)
+                len(new_staged_uuids),
+                len(removed_uuids),
+                ', waiting for >0 before launching worker' if self.wait_for_progress else '',
+                len(workers),
             )
         )
 
