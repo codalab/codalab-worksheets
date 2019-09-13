@@ -49,29 +49,38 @@ class RestClient(object):
         return_response=False,
         authorized=True,
     ):
+        """
+        `data` can be one of the following:
+        - bytes
+        - string (text/plain)
+        - dict (application/json)
+        """
+        # Set headers
         if headers is None:
             headers = {}
-
+        headers['X-Requested-With'] = 'XMLHttpRequest'
         access_token = self._get_access_token()
         if authorized and access_token:
             headers['Authorization'] = 'Bearer ' + self._get_access_token()
 
-        if data is not None and isinstance(data, dict):
+        if isinstance(data, dict):
             headers['Content-Type'] = 'application/json'
-            data = json.dumps(data)
-        headers['X-Requested-With'] = 'XMLHttpRequest'
-        if query_params is not None:
-            path = path + '?' + urllib.parse.urlencode(query_params)
-
-        # Everything needs to be utf-8 encoded or else urllib will complain
-        if 'Content-Type' in headers:
-            headers['Content-Type'] += '; charset=utf-8'
+            data = json.dumps(data)  # Turn dict into string
         if isinstance(data, str):
-            data = data.encode()
-        request_url = self._base_url + path
+            data = data.encode()  # Turn string into bytes
+
+        # Emphasize utf-8 for non-bytes data.
+        if headers.get('Content-Type') in ('text/plain', 'application/json'):
+            headers['Content-Type'] += '; charset=utf-8'
 
         headers.update(self._extra_headers)
 
+        # Set path
+        if query_params is not None:
+            path = path + '?' + urllib.parse.urlencode(query_params)
+        request_url = self._base_url + path
+
+        # Make the actual request
         request = urllib.request.Request(request_url, data=data, headers=headers)
         request.get_method = lambda: method
         if return_response:

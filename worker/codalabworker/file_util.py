@@ -144,7 +144,7 @@ def un_gzip_stream(fileobj):
 
 def gzip_string(string):
     """
-    Gzips the given string.
+    Gzips the given string.  Return bytes.
     """
     with closing(BytesIO()) as output_fileobj:
         with gzip.GzipFile(None, 'wb', 6, output_fileobj) as fileobj:
@@ -154,7 +154,7 @@ def gzip_string(string):
 
 def un_gzip_string(bytestring):
     """
-    Gunzips the given bytestring.
+    Gunzips the given bytestring.  Return string.
 
     Raises an IOError if the archive is not valid.
     """
@@ -166,11 +166,12 @@ def un_gzip_string(bytestring):
 def read_file_section(file_path, offset, length):
     """
     Reads length bytes of the given file from the given offset.
+    Return bytes.
     """
     file_size = os.stat(file_path).st_size
     if offset >= file_size:
-        return ''
-    with open(file_path) as fileobj:
+        return b''
+    with open(file_path, 'rb') as fileobj:
         fileobj.seek(offset, os.SEEK_SET)
         return fileobj.read(length)
 
@@ -180,6 +181,7 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
     Summarizes the file at the given path, returning a string containing the
     given numbers of lines from beginning and end of the file. If the file needs
     to be truncated, places truncation_text at the truncation point.
+    Unlike other methods, this method treats everything as a Unicode string.
     """
     assert num_head_lines > 0 or num_tail_lines > 0
 

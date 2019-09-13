@@ -7,6 +7,7 @@ import sys
 import textwrap
 import time
 import traceback
+import logging
 
 import bottle
 from bottle import (
@@ -44,6 +45,7 @@ from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
 from codalab.server.oauth2_provider import oauth2_provider
 
+logger = logging.getLogger(__name__)
 
 # Don't log requests to routes matching these regexes.
 ROUTES_NOT_LOGGED_REGEXES = [re.compile(r'/oauth2/.*'), re.compile(r'/workers/.*')]
@@ -206,14 +208,14 @@ class ErrorAdapter(object):
         ).format(request, aux_info, traceback.format_exc())
 
         # Both print to console and send email
-        print(message, file=sys.stderr)
+        logger.error(message)
         self.send_email(exc, message)
 
     @server_util.rate_limited(max_calls_per_hour=6)
     def send_email(self, exc, message):
         # Caller is responsible for logging message anyway if desired
         if 'admin_email' not in local.config['server']:
-            print('Warning: No admin_email configured, so no email sent.', file=sys.stderr)
+            logger.warn('Warning: No admin_email configured, so no email sent.')
             return
 
         # Subject should be "ExceptionType: message"
@@ -258,6 +260,8 @@ def dummy_xmlrpc_app():
 
 def run_rest_server(manager, debug, num_processes, num_threads):
     """Runs the REST server."""
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+
     host = manager.config['server']['rest_host']
     port = manager.config['server']['rest_port']
 
