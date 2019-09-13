@@ -68,7 +68,7 @@ class AwsBatchRunManager(RunManagerBase):
     @property
     def gpus(self):
         # TODO Compute this from the batch queue
-        return 0
+        return 100000
 
     def create_run(self, bundle, bundle_path, resources):
         resources['request_memory'] = resources.get('request_memory') or BATCH_DEFAULT_MEMORY
@@ -362,6 +362,9 @@ class Setup(AwsBatchRunState):
         # TODO CPUs should really be in resources, but for some reason it isn't so use it or default in metadata
         cpus = max(self.metadata.get('request_cpus', 0), 1)
 
+        # gpus is optional, if it isn't present then use None
+        gpus = self.resources.get('request_gpus')
+
         # Note: The bundle path MUST be on a shared mount between the worker machine and the compute environment nodes.
         volumes_and_mounts = [self.volume_and_mount(
             host_path=self._bundle_path,
@@ -420,6 +423,12 @@ class Setup(AwsBatchRunState):
                 'attempts': 1
             }
         }
+
+        if gpus is not None:
+            job_definition['containerProperties']['resourceRequirements'] = [{
+                'type': 'GPU',
+                'value': str(gpus)
+            }]
 
         return job_definition
 

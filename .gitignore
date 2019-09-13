@@ -5,6 +5,9 @@
 .*project
 .settings
 
+# VSCode files.
+.vscode
+
 # Compiled source #
 ###################
 *.com
