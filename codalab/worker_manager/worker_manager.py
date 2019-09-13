@@ -33,7 +33,9 @@ class WorkerManager(object):
     def run_loop(self):
         while True:
             self.run_one_iteration()
-            break  # TMP
+            if self.args.once:
+                break
+            logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
             time.sleep(self.args.sleep_time)
 
     def run_one_iteration(self):

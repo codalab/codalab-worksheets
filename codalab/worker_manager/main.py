@@ -26,6 +26,12 @@ def main():
         '--verbose', action='store_true', help='Whether to print out extra information'
     )
     parser.add_argument('--sleep-time', help='Number of seconds to wait between checks', default=30)
+    parser.add_argument('--once', help='Just run once and exit', action='store_true')
+    parser.add_argument(
+        '--worker-idle-seconds',
+        help='Wait this long for extra runs before quitting ',
+        default=60 * 10,
+    )
     args = parser.parse_args()
 
     # Set up logging.

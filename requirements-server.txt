@@ -5,7 +5,7 @@
 -r requirements.docs.txt
 
 # For worker manager
-boto3=1.9.228
+boto3==1.9.228
 
 # For formatting code
 black==18.9b0
