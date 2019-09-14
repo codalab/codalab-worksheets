@@ -11,7 +11,6 @@ from codalabworker import formatting as worker_formatting
 
 
 NONE_PLACEHOLDER = '<none>'
-BINARY_PLACEHOLDER = '<binary>'
 
 
 def contents_str(input_string, verbose=False):
@@ -23,16 +22,7 @@ def contents_str(input_string, verbose=False):
     """
     if input_string is None:
         return NONE_PLACEHOLDER if verbose else ''
-
-    # Unicode is always printable
-    if isinstance(input_string, str):
-        return input_string
-
-    # Assume string is UTF-8 or else it contains arbitrary binary data that should not be rendered
-    try:
-        return input_string.decode('utf-8')
-    except UnicodeDecodeError:
-        return BINARY_PLACEHOLDER if verbose else ''
+    return str(input_string)
 
 
 def verbose_contents_str(input_string):
