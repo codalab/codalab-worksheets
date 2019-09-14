@@ -1739,6 +1739,7 @@ def test(ctx):
     check_equals(response['name'], uuid)
     check_equals(open(path, 'rb').read(), ctx.client.fetch_contents_blob(uuid, '/').read())
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
