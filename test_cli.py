@@ -30,6 +30,8 @@ import sys
 import time
 import traceback
 
+from codalab.lib.codalab_manager import CodaLabManager
+
 global cl
 # Directory where this script lives.
 base_path = os.path.dirname(os.path.abspath(__file__))
@@ -331,6 +333,10 @@ class ModuleContext(object):
         self.bundles = []
         self.groups = []
         self.error = None
+
+        # Allow for making REST calls
+        manager = CodaLabManager()
+        self.client = manager.current_client()
 
     def __enter__(self):
         """Prepares clean environment for test module."""
@@ -1720,6 +1726,18 @@ def test(ctx):
     worker_info = lines[2].split()
     check_equals(True, len(worker_info) >= 6)
 
+
+@TestModule.register('rest1')
+def test(ctx):
+    """
+    Call REST APIs.  Most things should be captured by CLI commands, but add things here that aren't.
+    """
+    # Basic getting info and blob contents of a bundle
+    path = test_path('a.txt')
+    uuid = run_command([cl, 'upload', path])
+    response = ctx.client.fetch_contents_info(uuid)
+    check_equals(response['name'], uuid)
+    check_equals(open(path, 'rb').read(), ctx.client.fetch_contents_blob(uuid, '/').read())
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
