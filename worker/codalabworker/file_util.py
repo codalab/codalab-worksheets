@@ -10,6 +10,7 @@ import bz2
 
 BINARY_PLACEHOLDER = '<binary>'
 
+
 def tar_gzip_directory(
     directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[]
 ):
@@ -217,9 +218,9 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 # should also be dropped.
                 fileobj.seek(file_size - num_tail_lines * max_line_length - 1, os.SEEK_SET)
                 try:
-                    tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(True)[1:][
-                        -num_tail_lines:
-                    ]
+                    tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(True)[
+                        1:
+                    ][-num_tail_lines:]
                 except UnicodeDecodeError:
                     return BINARY_PLACEHOLDER
                 ensure_ends_with_newline(tail_lines)
