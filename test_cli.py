@@ -30,7 +30,6 @@ import sys
 import time
 import traceback
 
-
 global cl
 # Directory where this script lives.
 base_path = os.path.dirname(os.path.abspath(__file__))
@@ -103,18 +102,17 @@ def get_uuid(line):
 
 def sanitize(string, max_chars=256):
     """Sanitize and truncate output so it can be printed on the command line.
-    Bytes are converted to strings, and all strings are converted to ASCII.
+    Don't print out binary.
     """
-    if type(string) is bytes:
-        string = "{}".format(string)
-    string = string.encode('ascii', errors='replace').decode()
+    if isinstance(string, bytes):
+        string = '<binary>'
     if len(string) > max_chars:
         string = string[:max_chars] + ' (...more...)'
     return string
 
 
 def run_command(
-    args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False, binary=False
+    args, expected_exit_code=0, max_output_chars=1024, env=None, include_stderr=False, binary=False
 ):
     """If we don't care about the exit code, set `expected_exit_code` to None.
     """
@@ -792,6 +790,14 @@ def test(ctx):
     check_contains(wuuid, run_command([cl, 'ls', '-w', '.']))
     # / is home worksheet
     check_contains('::home-', run_command([cl, 'ls', '-w', '/']))
+
+
+@TestModule.register('binary')
+def test(ctx):
+    # Upload a binary file and test it
+    uuid = run_command([cl, 'upload', '/bin/ls'])
+    run_command([cl, 'cat', uuid], binary=True)
+    run_command([cl, 'info', '--verbose', uuid])
 
 
 @TestModule.register('rm')
