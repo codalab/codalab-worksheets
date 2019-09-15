@@ -102,7 +102,9 @@ class LocalReader(Reader):
         """
 
         def read_file_section_thread(final_path):
-            bytestring = gzip_bytestring(read_file_section(final_path, args['offset'], args['length']))
+            bytestring = gzip_bytestring(
+                read_file_section(final_path, args['offset'], args['length'])
+            )
             reply_fn(None, {}, bytestring)
 
         self._threaded_read(run_state, path, read_file_section_thread, reply_fn)
