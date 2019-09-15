@@ -801,8 +801,9 @@ def test(ctx):
 @TestModule.register('binary')
 def test(ctx):
     # Upload a binary file and test it
-    uuid = run_command([cl, 'upload', '/bin/ls'])
-    run_command([cl, 'cat', uuid], binary=True)
+    path = '/bin/ls'
+    uuid = run_command([cl, 'upload', path])
+    check_equals(open(path, 'rb').read(), run_command([cl, 'cat', uuid], binary=True))
     run_command([cl, 'info', '--verbose', uuid])
 
 
