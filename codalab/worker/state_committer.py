@@ -1,5 +1,4 @@
 import tempfile
-import os
 import shutil
 from . import pyjson
 

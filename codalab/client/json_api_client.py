@@ -5,7 +5,7 @@ import six
 import urllib.request, urllib.parse, urllib.error
 
 from codalab.common import http_error_to_exception, precondition, UsageError
-from codalabworker.rest_client import RestClient, RestClientException
+from codalab.worker.rest_client import RestClient, RestClientException
 
 
 def wrap_exception(message):
