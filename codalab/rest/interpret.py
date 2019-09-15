@@ -265,7 +265,7 @@ def cat_target(target):
 MAX_BYTES_PER_LINE = 1024
 
 
-def head_target(target, max_num_lines, replace_non_unicode=False):
+def head_target(target, max_num_lines):
     """
     Return the first max_num_lines of target as a list of strings.
 
@@ -273,15 +273,12 @@ def head_target(target, max_num_lines, replace_non_unicode=False):
 
     :param target: (bundle_uuid, subpath)
     :param max_num_lines: max number of lines to fetch
-    :param replace_non_unicode: replace non-unicode characters with something printable
     """
     rest_util.check_target_has_read_permission(target)
+    # Note: summarize_file returns bytes, but should be decodable to a string.
     lines = local.download_manager.summarize_file(
         target[0], target[1], max_num_lines, 0, MAX_BYTES_PER_LINE, None, gzipped=False
-    ).splitlines(True)
-
-    if replace_non_unicode:
-        lines = list(map(formatting.verbose_contents_str, lines))
+    ).decode().splitlines(True)
 
     return lines
 
@@ -338,7 +335,6 @@ def resolve_interpreted_blocks(interpreted_blocks):
                                     block['target_genpath'],
                                 ),
                                 block['max_lines'],
-                                replace_non_unicode=True,
                             )
                         elif mode == BlockModes.image_block:
                             block['status']['code'] = FetchStatusCodes.ready
@@ -375,7 +371,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
                     except NotFoundError as e:
                         continue
                     if target_info['type'] == 'file':
-                        contents = head_target(target, block['max_lines'], replace_non_unicode=True)
+                        contents = head_target(target, block['max_lines'])
                         # Assume TSV file without header for now, just return each line as a row
                         info['points'] = points = []
                         for line in contents:

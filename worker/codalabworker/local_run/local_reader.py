@@ -124,7 +124,7 @@ class LocalReader(Reader):
                     args['num_tail_lines'],
                     args['max_line_length'],
                     args['truncation_text'],
-                )
+                ).encode()
             )
             reply_fn(None, {}, bytestring)
 
