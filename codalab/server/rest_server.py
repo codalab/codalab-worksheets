@@ -28,6 +28,12 @@ from bottle import (
 
 from codalab.common import exception_to_http_error
 from codalab.lib import formatting, server_util
+from codalab.server.authenticated_plugin import PublicUserPlugin, UserVerifiedPlugin
+from codalab.server.cookie import CookieAuthenticationPlugin
+from codalab.server.json_api_plugin import JsonApiPlugin
+from codalab.server.oauth2_provider import oauth2_provider
+
+# Don't remove the following imports, as they are used to route the rest service
 import codalab.rest.account
 import codalab.rest.bundle_actions
 import codalab.rest.bundles
@@ -40,10 +46,6 @@ import codalab.rest.oauth2
 import codalab.rest.users
 import codalab.rest.workers
 import codalab.rest.worksheets
-from codalab.server.authenticated_plugin import PublicUserPlugin, UserVerifiedPlugin
-from codalab.server.cookie import CookieAuthenticationPlugin
-from codalab.server.json_api_plugin import JsonApiPlugin
-from codalab.server.oauth2_provider import oauth2_provider
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@ import os
 import unittest
 import tempfile
 
-from codalabworker.state_committer import JsonStateCommitter
+from codalab.worker.state_committer import JsonStateCommitter
 
 
 class JsonStateCommitterTest(unittest.TestCase):

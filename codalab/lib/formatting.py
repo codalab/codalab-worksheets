@@ -7,7 +7,7 @@ import json
 import shlex
 import pipes
 
-from codalabworker import formatting as worker_formatting
+from codalab.worker import formatting as worker_formatting
 
 
 NONE_PLACEHOLDER = '<none>'

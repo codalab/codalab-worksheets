@@ -3,7 +3,6 @@ from contextlib import closing
 import http.client
 import json
 import socket
-import sys
 import threading
 import time
 import urllib.request, urllib.parse, urllib.error

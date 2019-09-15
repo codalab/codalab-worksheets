@@ -6,13 +6,13 @@ import time
 import traceback
 
 import docker
-import codalabworker.docker_utils as docker_utils
+import codalab.worker.docker_utils as docker_utils
 
-from codalabworker.file_util import remove_path, get_path_size
-from codalabworker.formatting import size_str, duration_str
-from codalabworker.bundle_state import State
-from codalabworker.fsm import DependencyStage, StateTransitioner
-from codalabworker.worker_thread import ThreadDict
+from codalab.worker.file_util import remove_path, get_path_size
+from codalab.worker.formatting import size_str, duration_str
+from codalab.worker.bundle_state import State
+from codalab.worker.fsm import DependencyStage, StateTransitioner
+from codalab.worker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
 
