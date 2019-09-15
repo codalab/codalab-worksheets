@@ -8,6 +8,8 @@ import tarfile
 import zlib
 import bz2
 
+BINARY_PLACEHOLDER = '<binary>'
+
 
 def tar_gzip_directory(
     directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[]
@@ -198,9 +200,12 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
             if num_head_lines > 0:
                 # To ensure that the last line is a whole line, we remove the
                 # last line if it doesn't have a newline character.
-                head_lines = fileobj.read(num_head_lines * max_line_length).splitlines(True)[
-                    :num_head_lines
-                ]
+                try:
+                    head_lines = fileobj.read(num_head_lines * max_line_length).splitlines(True)[
+                        :num_head_lines
+                    ]
+                except UnicodeDecodeError:
+                    return BINARY_PLACEHOLDER
                 ensure_ends_with_newline(head_lines, remove_line_without_newline=True)
 
             if num_tail_lines > 0:
@@ -212,9 +217,12 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 # read the extra character, would not be a whole line. Thus, it
                 # should also be dropped.
                 fileobj.seek(file_size - num_tail_lines * max_line_length - 1, os.SEEK_SET)
-                tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(True)[1:][
-                    -num_tail_lines:
-                ]
+                try:
+                    tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(True)[
+                        1:
+                    ][-num_tail_lines:]
+                except UnicodeDecodeError:
+                    return BINARY_PLACEHOLDER
                 ensure_ends_with_newline(tail_lines)
 
             if num_head_lines > 0 and num_tail_lines > 0:
@@ -224,7 +232,10 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
             else:
                 lines = tail_lines
         else:
-            lines = fileobj.readlines()
+            try:
+                lines = fileobj.readlines()
+            except UnicodeDecodeError:
+                return BINARY_PLACEHOLDER
             ensure_ends_with_newline(lines)
             if len(lines) > num_head_lines + num_tail_lines:
                 if num_head_lines > 0 and num_tail_lines > 0:
