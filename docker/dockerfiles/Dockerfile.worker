@@ -25,6 +25,6 @@ COPY setup.py setup.py
 RUN python3.6 -m pip install -e .
 
 # Allow non-root to read everything
-RUN chmod -R og=u-w codalab/worker
+RUN chmod -R og=u-w .
 
 EXPOSE 2900

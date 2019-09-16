@@ -178,7 +178,7 @@ The worker has to be designed to work with many different backends (local
 worker, Slurm, and Azure/AWS Batch).
 
 The worker's main entry point is
-[worker/codalabworker/main.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/main.py).
+[codalab/worker/main.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/main.py).
 
 The top-level
 [worker.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/worker.py)
