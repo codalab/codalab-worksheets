@@ -276,9 +276,13 @@ def head_target(target, max_num_lines):
     """
     rest_util.check_target_has_read_permission(target)
     # Note: summarize_file returns bytes, but should be decodable to a string.
-    lines = local.download_manager.summarize_file(
-        target[0], target[1], max_num_lines, 0, MAX_BYTES_PER_LINE, None, gzipped=False
-    ).decode().splitlines(True)
+    lines = (
+        local.download_manager.summarize_file(
+            target[0], target[1], max_num_lines, 0, MAX_BYTES_PER_LINE, None, gzipped=False
+        )
+        .decode()
+        .splitlines(True)
+    )
 
     return lines
 
