@@ -19,6 +19,7 @@ RUN python3.6 -m pip install --user --upgrade pip; \
     python3.6 -m pip install -r requirements.txt;
 
 # Install code
+COPY codalab/lib codalab/lib
 COPY codalab/worker codalab/worker
 COPY setup.py setup.py
 

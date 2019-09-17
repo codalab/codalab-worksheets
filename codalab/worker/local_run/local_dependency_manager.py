@@ -7,8 +7,8 @@ import traceback
 import time
 import shutil
 
+from codalab.lib.formatting import size_str
 from codalab.worker.file_util import remove_path, un_tar_directory
-from codalab.worker.formatting import size_str
 from codalab.worker.fsm import BaseDependencyManager, DependencyStage, StateTransitioner
 import codalab.worker.pyjson
 from codalab.worker.worker_thread import ThreadDict
