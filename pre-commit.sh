@@ -6,7 +6,6 @@ if ! [ -e venv ]; then
   virtualenv -p python3.6 venv || exit 1
   venv/bin/pip install -r requirements-server.txt || exit 1
   venv/bin/pip install -r requirements.docs.txt || exit 1
-  rm -rf worker/codalabworker.egg-info  # Need to clear because of different Python versions
   # Install for generating docs.
   venv/bin/pip install black==18.9b0 || exit 1
 fi
