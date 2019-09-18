@@ -1263,20 +1263,6 @@ def test(ctx):
     check_equals(cl_output, help_output)
 
 
-@TestModule.register('events', default=False)
-def test(ctx):
-    if 'localhost' in run_command([cl, 'work']):
-        run_command([cl, 'events'])
-        run_command([cl, 'events', '-n'])
-        run_command([cl, 'events', '-g', 'user', '-n'])
-        run_command([cl, 'events', '-g', 'command', '-n'])
-        run_command([cl, 'events', '-o', '1', '-l', '2'])
-        run_command([cl, 'events', '-a', '%true%', '-n'])
-    else:
-        # Shouldn't be allowed to run unless in local mode.
-        run_command([cl, 'events'], 1)
-
-
 @TestModule.register('batch')
 def test(ctx):
     """Test batch resolution of bundle uuids"""
