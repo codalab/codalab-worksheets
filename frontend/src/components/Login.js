@@ -56,7 +56,7 @@ class Login extends React.Component {
                                 name='username'
                                 placeholder='Username or e-mail'
                                 type='text'
-                                autoFocus=''
+                                autofocus="true"
                                 autoComplete='off'
                                 value={this.state.username}
                                 onChange={this.handleInputChange}
