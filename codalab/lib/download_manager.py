@@ -128,7 +128,7 @@ class DownloadManager(object):
             if gzipped:
                 return file_util.gzip_file(file_path)
             else:
-                return open(file_path)
+                return open(file_path, 'rb')
         else:
             worker = self._worker_model.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(
@@ -153,10 +153,10 @@ class DownloadManager(object):
         """
         if self._is_available_locally(uuid):
             file_path = self._get_target_path(uuid, path)
-            string = file_util.read_file_section(file_path, offset, length)
+            bytestring = file_util.read_file_section(file_path, offset, length)
             if gzipped:
-                string = file_util.gzip_string(string)
-            return string
+                bytestring = file_util.gzip_bytestring(bytestring)
+            return bytestring
         else:
             worker = self._worker_model.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(
@@ -165,33 +165,35 @@ class DownloadManager(object):
             try:
                 read_args = {'type': 'read_file_section', 'offset': offset, 'length': length}
                 self._send_read_message(worker, response_socket_id, uuid, path, read_args)
-                string = self._get_read_response(response_socket_id)
+                bytestring = self._get_read_response(response_socket_id)
             finally:
                 self._worker_model.deallocate_socket(response_socket_id)
 
+            # Note: all data from the worker is gzipped (see `local_reader.py`).
             if not gzipped:
-                string = file_util.un_gzip_string(string)
-            return string
+                bytestring = file_util.un_gzip_bytestring(bytestring)
+            return bytestring
 
     @retry_if_no_longer_running
     def summarize_file(
         self, uuid, path, num_head_lines, num_tail_lines, max_line_length, truncation_text, gzipped
     ):
         """
-        Summarizes the file at the given path in the bundle, returning a string
+        Summarizes the file at the given path in the bundle, returning bytes
         containing the given numbers of lines from beginning and end of the file.
         If the file needs to be truncated, places truncation_text at the
         truncation point.
-        This string is gzipped if gzipped is True.
+        The return value is gzipped if gzipped is True.
         """
         if self._is_available_locally(uuid):
             file_path = self._get_target_path(uuid, path)
-            string = file_util.summarize_file(
+            # Note: summarize_file returns string, but make it bytes for consistency.
+            bytestring = file_util.summarize_file(
                 file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text
-            )
+            ).encode()
             if gzipped:
-                string = file_util.gzip_string(string)
-            return string
+                bytestring = file_util.gzip_bytestring(bytestring)
+            return bytestring
         else:
             worker = self._worker_model.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(
@@ -206,13 +208,14 @@ class DownloadManager(object):
                     'truncation_text': truncation_text,
                 }
                 self._send_read_message(worker, response_socket_id, uuid, path, read_args)
-                string = self._get_read_response(response_socket_id)
+                bytestring = self._get_read_response(response_socket_id)
             finally:
                 self._worker_model.deallocate_socket(response_socket_id)
 
+            # Note: all data from the worker is gzipped (see `local_reader.py`).
             if not gzipped:
-                string = file_util.un_gzip_string(string)
-            return string
+                bytestring = file_util.un_gzip_bytestring(bytestring)
+            return bytestring
 
     def netcat(self, uuid, port, message):
         """
@@ -224,11 +227,11 @@ class DownloadManager(object):
         )
         try:
             self._send_netcat_message(worker, response_socket_id, uuid, port, message)
-            string = self._get_read_response(response_socket_id)
+            bytestring = self._get_read_response(response_socket_id)
         finally:
             self._worker_model.deallocate_socket(response_socket_id)
 
-        return string
+        return bytestring
 
     def _is_available_locally(self, uuid):
         if self._bundle_model.get_bundle_state(uuid) in [State.RUNNING, State.PREPARING]:
@@ -288,7 +291,6 @@ class DownloadManager(object):
 
     def _get_read_response(self, response_socket_id):
         with closing(self._get_read_response_stream(response_socket_id)) as fileobj:
-            # This function returns a binary string, as the file could be gzipped.
             return fileobj.read()
 
 
