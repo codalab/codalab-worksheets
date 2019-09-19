@@ -2,9 +2,9 @@ import logging
 from contextlib import closing
 
 from codalab.common import http_error_to_exception, precondition, UsageError, NotFoundError
-from codalabworker import download_util
-from codalabworker import file_util
-from codalabworker.bundle_state import State
+from codalab.worker import download_util
+from codalab.worker import file_util
+from codalab.worker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 

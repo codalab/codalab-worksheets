@@ -4,7 +4,7 @@ import tempfile
 import unittest
 
 from codalab.lib.upload_manager import UploadManager
-from codalabworker.file_util import gzip_bytestring, remove_path, tar_gzip_directory
+from codalab.worker.file_util import gzip_bytestring, remove_path, tar_gzip_directory
 
 
 class UploadManagerTest(unittest.TestCase):

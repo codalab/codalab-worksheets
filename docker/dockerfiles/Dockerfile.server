@@ -29,7 +29,6 @@ WORKDIR /opt/codalab-worksheets
 # Install dependencies
 COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
 RUN chmod a+rx /opt/wait-for-it.sh
-COPY worker worker
 COPY requirements.txt requirements.txt
 COPY requirements.docs.txt requirements.docs.txt
 COPY requirements-server.txt requirements-server.txt
@@ -47,7 +46,6 @@ COPY scripts scripts
 COPY setup.py setup.py
 COPY test_cli.py test_cli.py
 COPY tests tests
-COPY worker worker
 COPY views views
 
 RUN python3.6 -m pip install -e .

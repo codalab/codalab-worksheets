@@ -3,7 +3,7 @@ import tempfile
 import unittest
 import bz2
 
-from codalabworker.file_util import (
+from codalab.worker.file_util import (
     gzip_file,
     gzip_bytestring,
     remove_path,
