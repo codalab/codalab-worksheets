@@ -5,7 +5,8 @@ import os
 import re
 import sys
 import time
-
+from io import BytesIO
+from http.client import HTTPResponse
 
 from bottle import abort, get, post, put, delete, local, request, response
 from codalab.bundles import get_bundle_subclass, UploadedBundle
@@ -403,13 +404,13 @@ def _fetch_bundle_contents_info(uuid, path=''):
     return {'data': info}
 
 
-@put('/bundles/<uuid:re:%s>/netcat/<port:int>/' % spec_util.UUID_STR, name='netcat_bundle')
+@put('/bundles/<uuid:re:%s>/netcat/<port:int>' % spec_util.UUID_STR, name='netcat_bundle')
 def _netcat_bundle(uuid, port):
     """
     Send a raw bytestring into the specified port of the running bundle with uuid.
     Return the response from this bundle.
     """
-    check_bundles_have_all_permission(local.model, request.user, [uuid])
+    check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
     if bundle.state != State.RUNNING:
         abort(http.client.FORBIDDEN, 'Cannot netcat bundle, bundle not running.')
@@ -449,22 +450,36 @@ def _netcurl_bundle(uuid, port, path=''):
     try:
         request.path_shift(4)  # shift away the routing parts of the URL
 
+        # Put the request headers into the message
         headers_string = [
             '{}: {}'.format(h, request.headers.get(h)) for h in request.headers.keys()
         ]
         message = "{} {} HTTP/1.1\r\n".format(request.method, request.path)
         message += "\r\n".join(headers_string) + "\r\n"
         message += "\r\n"
-        message += request.body.read()
+        message += request.body.read().decode()  # Assume bytes can be decoded to string
 
         bytestring = local.download_manager.netcat(uuid, port, message)
+
+        # Parse the response
+        class FakeSocket():
+            def __init__(self, bytestring):
+                self._file = BytesIO(bytestring)
+            def makefile(self, *args, **kwargs):
+                return self._file
+        new_response = HTTPResponse(FakeSocket(bytestring))
+        new_response.begin()
+        # Copy the headers over
+        for k in new_response.headers:
+            response.headers[k] = new_response.headers[k]
+        # Return the response (which sends back the body)
+        return new_response
+
     except Exception:
-        print("{}".format(request.environ), file=sys.stderr)
+        logger.error("{}".format(request.environ), file=sys.stderr)
         raise
     finally:
         request.path_shift(-4)  # restore the URL
-
-    return bytestring
 
 
 @get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')

@@ -285,6 +285,7 @@ class LocalRunManager(BaseRunManager):
         Write `message` (string) to port of bundle with uuid and read the response.
         Returns a stream with the response contents (bytes).
         """
+        # TODO: handle this in a thread since this could take a while
         container_ip = docker_utils.get_container_ip(
             self.worker_docker_network.name, run_state.container
         )

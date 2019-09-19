@@ -1470,6 +1470,12 @@ def test(ctx):
     output = run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
     check_equals('Hi this is dawg', output)
 
+@TestModule.register('netcurl')
+def test(ctx):
+    uuid = run_command([cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'])
+    wait_until_running(uuid)
+    check_equals('hello', run_command(['curl', 'http://rest-server:8000/hello.txt']))
+
 
 @TestModule.register('anonymous')
 def test(ctx):

@@ -254,7 +254,7 @@ class LocalRunStateMachine(StateTransitioner):
                 runtime=self.docker_runtime,
             )
             self.worker_docker_network.connect(container)
-        except docker_utils.DockerException as e:
+        except Exception as e:
             run_state.info['failure_message'] = 'Cannot start Docker container: {}'.format(e)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
