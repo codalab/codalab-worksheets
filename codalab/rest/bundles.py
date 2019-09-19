@@ -462,11 +462,13 @@ def _netcurl_bundle(uuid, port, path=''):
         bytestring = local.download_manager.netcat(uuid, port, message)
 
         # Parse the response
-        class FakeSocket():
+        class FakeSocket:
             def __init__(self, bytestring):
                 self._file = BytesIO(bytestring)
+
             def makefile(self, *args, **kwargs):
                 return self._file
+
         new_response = HTTPResponse(FakeSocket(bytestring))
         new_response.begin()
         # Copy the headers over

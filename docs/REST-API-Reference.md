@@ -439,7 +439,7 @@ Response format:
 }
 ```
 
-### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/netcat/<port:int>/`
+### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/netcat/<port:int>`
 
 Send a raw bytestring into the specified port of the running bundle with uuid.
 Return the response from this bundle.
@@ -756,10 +756,6 @@ Otherwise, returns False, meaning the worker shouldn't run the bundle.
 Updates metadata related to a running bundle.
 
 ### `GET /workers/info`
-### `GET /workers/code.tar.gz`
-
-Returns .tar.gz archive containing the code of the worker.
-
 
 &uarr; [Back to Top](#table-of-contents)
 ## Worksheet Interpretation API
