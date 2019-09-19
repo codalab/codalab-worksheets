@@ -1,11 +1,8 @@
-import json
-import os
-import time
 import unittest
 from mock import Mock
 
 from codalab.objects.metadata_spec import MetadataSpec
-from codalab.worker.bundle_manager import BundleManager
+from codalab.server.bundle_manager import BundleManager
 from codalab.bundles import RunBundle
 
 

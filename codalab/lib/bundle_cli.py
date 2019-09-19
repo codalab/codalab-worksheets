@@ -74,12 +74,12 @@ from codalab.lib.completers import (
 )
 from codalab.lib.bundle_store import MultiDiskBundleStore
 from codalab.lib.print_util import FileTransferProgress
-from codalabworker.file_util import un_tar_directory
+from codalab.worker.file_util import un_tar_directory
 
 from codalab.lib.spec_util import generate_uuid
-from codalabworker.docker_utils import get_available_runtime, start_bundle_container
-from codalabworker.file_util import remove_path
-from codalabworker.bundle_state import State
+from codalab.worker.docker_utils import get_available_runtime, start_bundle_container
+from codalab.worker.file_util import remove_path
+from codalab.worker.bundle_state import State
 from codalab.rest.worksheet_block_schemas import BlockModes
 
 # Formatting Constants

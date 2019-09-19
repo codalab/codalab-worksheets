@@ -3,10 +3,10 @@ import http.client
 import os
 import threading
 
-from codalabworker.run_manager import Reader
-import codalabworker.download_util as download_util
-from codalabworker.download_util import get_target_path, PathException
-from codalabworker.file_util import (
+from codalab.worker.run_manager import Reader
+import codalab.worker.download_util as download_util
+from codalab.worker.download_util import get_target_path, PathException
+from codalab.worker.file_util import (
     gzip_file,
     gzip_bytestring,
     read_file_section,
