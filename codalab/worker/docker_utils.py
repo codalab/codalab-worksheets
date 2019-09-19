@@ -10,7 +10,7 @@ import logging
 import os
 import docker
 
-from .formatting import parse_size
+from codalab.lib.formatting import parse_size
 
 
 MIN_API_VERSION = '1.17'

@@ -44,7 +44,7 @@ from codalab.objects.worksheet import item_sort_key, Worksheet
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Client, OAuth2Token
 from codalab.objects.user import User
 from codalab.rest.util import get_group_info
-from codalabworker.bundle_state import State
+from codalab.worker.bundle_state import State
 
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')

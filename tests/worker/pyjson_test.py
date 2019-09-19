@@ -1,7 +1,7 @@
 import unittest
 from collections import namedtuple
 
-from codalabworker import pyjson
+from codalab.worker import pyjson
 
 
 class PyJSONTest(unittest.TestCase):

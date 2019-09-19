@@ -6,10 +6,10 @@ import time
 import socket
 
 import docker
-import codalabworker.docker_utils as docker_utils
+import codalab.worker.docker_utils as docker_utils
 
-from codalabworker.state_committer import JsonStateCommitter
-from codalabworker.run_manager import BaseRunManager
+from codalab.worker.state_committer import JsonStateCommitter
+from codalab.worker.run_manager import BaseRunManager
 from .local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
 from .local_reader import LocalReader
 
