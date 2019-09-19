@@ -404,7 +404,7 @@ def _fetch_bundle_contents_info(uuid, path=''):
     return {'data': info}
 
 
-@put('/bundles/<uuid:re:%s>/netcat/<port:int>' % spec_util.UUID_STR, name='netcat_bundle')
+@put('/bundles/<uuid:re:%s>/netcat/<port:int>/' % spec_util.UUID_STR, name='netcat_bundle')
 def _netcat_bundle(uuid, port):
     """
     Send a raw bytestring into the specified port of the running bundle with uuid.
