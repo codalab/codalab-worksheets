@@ -3,7 +3,7 @@
 # Run this script before you commit.
 
 if ! [ -e venv ]; then
-  virtualenv -p python3.6 venv || exit 1
+  virtualenv -p python3 venv || exit 1
   venv/bin/pip install -r requirements-server.txt || exit 1
   venv/bin/pip install -r requirements.docs.txt || exit 1
 fi

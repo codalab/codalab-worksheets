@@ -41,7 +41,7 @@ Checkout the CodaLab Worksheets repository (in the future, this should be availa
 Install all the dependencies:
 
     cd codalab-worksheets
-    virtualenv -p python3.6 venv
+    virtualenv -p python3 venv
     venv/bin/pip install -e .
 
 Now when you run the competition script with the help flag `-h`, you should see something like this:

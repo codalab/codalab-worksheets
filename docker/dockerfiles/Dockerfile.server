@@ -19,11 +19,14 @@ RUN apt-get update; apt-get install -y \
     python-virtualenv \
     python3-software-properties \
     zip;
+ 
+# Set Python3.6 as the default python3 version
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
 
-RUN python3.6 -m pip install --upgrade pip
+RUN python3 -m pip install --upgrade pip
 RUN mkdir /opt/codalab-worksheets
 WORKDIR /opt/codalab-worksheets
 
@@ -33,7 +36,7 @@ RUN chmod a+rx /opt/wait-for-it.sh
 COPY requirements.txt requirements.txt
 COPY requirements.docs.txt requirements.docs.txt
 COPY requirements-server.txt requirements-server.txt
-RUN python3.6 -m pip install -r requirements-server.txt
+RUN python3 -m pip install -r requirements-server.txt
 
 # Install code
 COPY alembic alembic
@@ -49,7 +52,7 @@ COPY test_cli.py test_cli.py
 COPY tests tests
 COPY views views
 
-RUN python3.6 -m pip install -e .
+RUN python3 -m pip install -e .
 
 # Allow non-root to read everything
 RUN chmod -R og=u-w .
