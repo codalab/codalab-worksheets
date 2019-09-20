@@ -3,7 +3,7 @@ MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa 
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa
 
 RUN apt-get update; apt-get install -y \
     build-essential \
@@ -19,7 +19,10 @@ RUN apt-get update; apt-get install -y \
     python-virtualenv \
     python3-software-properties \
     zip;
- 
+
+### Without this Python thinks we're ASCII and unicode chars fail
+ENV LANG C.UTF-8
+
 RUN python3.6 -m pip install --upgrade pip
 RUN mkdir /opt/codalab-worksheets
 WORKDIR /opt/codalab-worksheets
