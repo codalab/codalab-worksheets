@@ -29,7 +29,7 @@ class AWSWorkerManager(WorkerManager):
     def start_worker_job(self):
         image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         logger.debug('Starting worker with image {}'.format(image))
-        job_definition_name = 'codalab-worker-3'  # This is just an arbitrary identifier.
+        job_definition_name = 'codalab-worker-4'  # This is just an arbitrary identifier.
         # TODO: don't hard code these, get these from some config file.
         cpus = 4
         memory_mb = 1024 * 10
@@ -88,7 +88,7 @@ class AWSWorkerManager(WorkerManager):
 
         # Allow worker to directly mount a directory.  Note that the worker
         # needs to be set up a priori with this shared filesystem.
-        if os.environ.get('CODALAB_SHARED_FILE_SYSTEM'):
+        if os.environ.get('CODALAB_SHARED_FILE_SYSTEM') == 'true':
             command.append('--shared-file-system')
             bundle_mount = os.environ.get('CODALAB_BUNDLE_MOUNT')
             job_definition['containerProperties']['volumes'].append(
@@ -108,4 +108,4 @@ class AWSWorkerManager(WorkerManager):
         )
         logger.info('submit_job', response)
 
-        # TODO: Clean up after ourselves too; delete workers?
+        # TODO: Do we need to delete the jobs and job definitions?
