@@ -92,6 +92,11 @@ LocalRunState = namedtuple(
 class LocalRunStateMachine(StateTransitioner):
     """
     Manages the state machine of the runs running on the local machine
+
+    Note that in general there are two types of errors:
+    - User errors (fault of bundle) - we fail the bundle (move to CLEANING_UP state).
+    - System errors (fault of worker) - we freeze this worker (Exception is thrown up).
+    It's not always clear where the line is.
     """
 
     def __init__(
@@ -184,9 +189,9 @@ class LocalRunStateMachine(StateTransitioner):
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> CLEANING_UP
-            run_state.info['failure_message'] = (
-                'Failed to download Docker image: %s' % image_state.message
-            )
+            message = 'Failed to download Docker image: %s' % image_state.message
+            run_state.info['failure_message'] = message
+            logger.error(message)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
         # stop proceeding if dependency and image downloads aren't all done
@@ -209,7 +214,10 @@ class LocalRunStateMachine(StateTransitioner):
         for dep in run_state.bundle['dependencies']:
             child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep['child_path']))
             if not child_path.startswith(run_state.bundle_path):
-                raise Exception('Invalid key for dependency: %s' % (dep['child_path']))
+                message = 'Invalid key for dependency: %s' % (dep['child_path'])
+                run_state.info['failure_message'] = message
+                logger.error(message)
+                return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
             dependency_path = self.dependency_manager.get(
                 bundle_uuid, (dep['parent_uuid'], dep['parent_path'])
@@ -236,7 +244,10 @@ class LocalRunStateMachine(StateTransitioner):
                 run_state.resources['request_cpus'], run_state.resources['request_gpus']
             )
         except Exception:
-            run_state.info['failure_message'] = "Cannot assign enough resources"
+            message = "Cannot assign enough resources"
+            run_state.info['failure_message'] = message
+            logger.error(message)
+            logger.error(traceback.format_exc())
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
         # 4) Start container
@@ -255,8 +266,10 @@ class LocalRunStateMachine(StateTransitioner):
             )
             self.worker_docker_network.connect(container)
         except Exception as e:
-            run_state.info['failure_message'] = 'Cannot start Docker container: {}'.format(e)
-            return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
+            message = 'Cannot start Docker container: {}'.format(e)
+            logger.error(message)
+            logger.error(traceback.format_exc())
+            raise
 
         return run_state._replace(
             stage=LocalRunStage.RUNNING,
@@ -282,7 +295,7 @@ class LocalRunStateMachine(StateTransitioner):
             try:
                 finished, exitcode, failure_msg = docker_utils.check_finished(run_state.container)
             except docker_utils.DockerException:
-                traceback.print_exc()
+                logger.error(traceback.format_exc())
                 finished, exitcode, failure_msg = False, None, None
             new_info = dict(finished=finished, exitcode=exitcode, failure_message=failure_msg)
             run_state.info.update(new_info)
@@ -343,7 +356,7 @@ class LocalRunStateMachine(StateTransitioner):
                     self.disk_utilization[bundle_uuid]['disk_utilization'] = disk_utilization
                     running = self.disk_utilization[bundle_uuid]['running']
                 except Exception:
-                    traceback.print_exc()
+                    logger.error(traceback.format_exc())
                 end_time = time.time()
 
                 # To ensure that we don't hammer the disk for this computation when
@@ -364,7 +377,7 @@ class LocalRunStateMachine(StateTransitioner):
                 if not finished:
                     # If we can't kill a Running container, something is wrong
                     # Otherwise all well
-                    traceback.print_exc()
+                    logger.error(traceback.format_exc())
             self.disk_utilization[bundle_uuid]['running'] = False
             self.disk_utilization.remove(bundle_uuid)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP)
@@ -401,7 +414,7 @@ class LocalRunStateMachine(StateTransitioner):
                         run_state.container.remove(force=True)
                         break
                 except docker.errors.APIError:
-                    traceback.print_exc()
+                    logger.error(traceback.format_exc())
                     time.sleep(1)
 
         for dep in run_state.bundle['dependencies']:
@@ -411,7 +424,7 @@ class LocalRunStateMachine(StateTransitioner):
             try:
                 remove_path(child_path)
             except Exception:
-                traceback.print_exc()
+                logger.error(traceback.format_exc())
 
         if run_state.has_contents:
             return run_state._replace(
@@ -450,7 +463,7 @@ class LocalRunStateMachine(StateTransitioner):
                 self.uploading[bundle_uuid]['success'] = True
             except Exception as e:
                 self.uploading[bundle_uuid]['run_status'] = "Error while uploading: %s" % e
-                traceback.print_exc()
+                logger.error(traceback.format_exc())
 
         bundle_uuid = run_state.bundle['uuid']
         self.uploading.add_if_new(bundle_uuid, threading.Thread(target=upload_results, args=[]))
