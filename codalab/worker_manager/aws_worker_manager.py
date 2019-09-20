@@ -1,7 +1,7 @@
 import boto3
 import logging
 import os
-from .worker_manager import WorkerManager
+from .worker_manager import WorkerManager, WorkerJob
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class AWSWorkerManager(WorkerManager):
         image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         logger.debug('Starting worker with image {}'.format(image))
         # TODO: don't hard code these, get these from some config file.
-        job_definition_name = 'codalab-worker-2'
+        job_definition_name = 'codalab-worker-3'
         cpus = 4
         memory_mb = 1024 * 10
         work_dir = '/tmp/codalab-worker-scratch'

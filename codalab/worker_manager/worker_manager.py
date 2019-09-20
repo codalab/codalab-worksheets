@@ -13,7 +13,7 @@ WorkerJob = namedtuple('WorkerJob', [])
 class WorkerManager(object):
     """
     The abstract class for a worker manager.  Different backends like AWS,
-    Azure, Slurm should override `get_workers` and `start_worker`.
+    Azure, Slurm should override `get_worker_jobs` and `start_worker_job`.
 
     The basic architecture of the WorkerManager is extremely simple: to a
     first-order approximation, it simply launches `cl-worker`s as AWS/Azure
@@ -28,7 +28,7 @@ class WorkerManager(object):
     many worker jobs are running, and try to keep that between `min_workers`
     and `max_workers`.  It will also monitor the staged bundles that satisfy a
     certain `search` criterion.  If there are staged bundles then it will issue
-    a `start_worker()` call, provided some other conditions are met (e.g.,
+    a `start_worker_job()` call, provided some other conditions are met (e.g.,
     don't start workers too fast).
 
     The WorkerManager is all client-side code, so it can be customized as one
@@ -88,11 +88,13 @@ class WorkerManager(object):
         worker_jobs = self.get_worker_jobs()
 
         logger.info(
-            '{} staged bundles ({} removed since last time{}), {} worker jobs'.format(
+            '{} staged bundles ({} removed since last time{}), {} worker jobs (min={}, max={})'.format(
                 len(new_staged_uuids),
                 len(removed_uuids),
                 ', waiting for >0 before launching worker' if self.wait_for_progress else '',
                 len(worker_jobs),
+                self.args.min_workers,
+                self.args.max_workers,
             )
         )
 
@@ -127,6 +129,6 @@ class WorkerManager(object):
         logger.info(
             'Not enough workers ({} staged), starting a worker'.format(len(new_staged_uuids))
         )
-        self.start_worker()
+        self.start_worker_job()
         self.wait_for_progress = True
         self.last_worker_start_time = time.time()
