@@ -1476,7 +1476,10 @@ def test(ctx):
     uuid = run_command([cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'])
     wait_until_running(uuid)
     address = ctx.client.address
-    check_equals('hello', run_command(['curl', '{}/rest/bundles/{}/netcurl/8000/hello.txt'.format(address, uuid)]))
+    check_equals(
+        'hello',
+        run_command(['curl', '{}/rest/bundles/{}/netcurl/8000/hello.txt'.format(address, uuid)]),
+    )
 
 
 @TestModule.register('anonymous')

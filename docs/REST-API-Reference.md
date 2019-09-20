@@ -439,7 +439,7 @@ Response format:
 }
 ```
 
-### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/netcat/<port:int>`
+### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/netcat/<port:int>/`
 
 Send a raw bytestring into the specified port of the running bundle with uuid.
 Return the response from this bundle.
