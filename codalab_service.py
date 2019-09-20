@@ -386,7 +386,7 @@ class CodalabArgs(object):
                 # into the appropriate types.
                 value = os.environ[arg.env_var]
                 if arg.type == 'bool':
-                    value = (value == 'true')
+                    value = value == 'true'
                 elif arg.type == 'int':
                     value = int(value)
                 elif arg.type == 'float':

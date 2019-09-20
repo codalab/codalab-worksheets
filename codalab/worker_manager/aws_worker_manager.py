@@ -29,11 +29,11 @@ class AWSWorkerManager(WorkerManager):
     def start_worker_job(self):
         image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         logger.debug('Starting worker with image {}'.format(image))
+        job_definition_name = 'codalab-worker-3'  # This is just an arbitrary identifier.
         # TODO: don't hard code these, get these from some config file.
-        job_definition_name = 'codalab-worker-3'
         cpus = 4
         memory_mb = 1024 * 10
-        work_dir = '/tmp/codalab-worker-scratch'
+        work_dir = '/tmp'  # Need a directory outside the dockerized worker that already exists
         command = [
             'cl-worker',
             '--server',

@@ -12,7 +12,9 @@ def main():
     parser.add_argument(
         '--server', help='CodaLab instance to connect to', default='https://worksheets.codalab.org'
     )
-    parser.add_argument('-t', '--worker-manager-type', help='Type of worker manager', choices=['aws'], required=True)
+    parser.add_argument(
+        '-t', '--worker-manager-type', help='Type of worker manager', choices=['aws'], required=True
+    )
     parser.add_argument('--min-workers', help='Minimum number of workers', type=int, default=1)
     parser.add_argument('--max-workers', help='Maximum number of workers', type=int, default=10)
     parser.add_argument('--queue', help='Monitor and run workers on this queue (e.g., AWS Batch)')
@@ -24,7 +26,11 @@ def main():
         '--verbose', action='store_true', help='Whether to print out extra information'
     )
     parser.add_argument('--sleep-time', help='Number of seconds to wait between checks', default=5)
-    parser.add_argument('--once', help='Just run once and exit instead of looping (for debugging)', action='store_true')
+    parser.add_argument(
+        '--once',
+        help='Just run once and exit instead of looping (for debugging)',
+        action='store_true',
+    )
     parser.add_argument(
         '--worker-idle-seconds',
         help='Workers wait this long for extra runs before quitting',

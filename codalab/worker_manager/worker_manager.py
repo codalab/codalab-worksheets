@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 # For now, we don't need to keep any information.
 WorkerJob = namedtuple('WorkerJob', [])
 
+
 class WorkerManager(object):
     """
     The abstract class for a worker manager.  Different backends like AWS,
@@ -107,6 +108,7 @@ class WorkerManager(object):
         # was removed might not be the one that we were originally intending to
         # run.
         if self.wait_for_progress and len(removed_uuids) == 0:
+            logger.info('Just launched a worker, waiting for some bundle to move out of staged')
             return
         # Yay, we made progress.  Important that this logic is before the others below.
         self.wait_for_progress = False
@@ -115,20 +117,34 @@ class WorkerManager(object):
         # For now, only the number of workers is used to determine what workers
         # we launch.
         if len(worker_jobs) >= self.args.max_workers:
+            logger.info(
+                'Too many workers already ({} >= {}), not starting'.format(
+                    len(worker_jobs), self.args.max_workers
+                )
+            )
             return
 
         # Make sure we don't launch workers too quickly.
-        if time.time() - self.last_worker_start_time < self.args.min_seconds_between_workers:
+        seconds_since_last_worker = time.time() - self.last_worker_start_time
+        if seconds_since_last_worker < self.args.min_seconds_between_workers:
+            logger.info(
+                'Waited {} seconds since last worker, need to wait {} seconds'.format(
+                    seconds_since_last_worker, self.args.min_seconds_between_workers
+                )
+            )
             return
 
         # Don't launch if enough workers AND nothing to run AND it has been long enough.
         if len(worker_jobs) >= self.args.min_workers and len(new_staged_uuids) == 0:
+            logger.info(
+                'Enough workers ({} > {}) and no staged bundles to run'.format(
+                    len(worker_jobs), self.args.min_workers, len(new_staged_uuids)
+                )
+            )
             return
 
         # Start a worker.
-        logger.info(
-            'Not enough workers ({} staged), starting a worker'.format(len(new_staged_uuids))
-        )
+        logger.info('Starting a worker'.format(len(new_staged_uuids)))
         self.start_worker_job()
         self.wait_for_progress = True
         self.last_worker_start_time = time.time()
