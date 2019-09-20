@@ -3,12 +3,12 @@ import http.client
 import os
 import threading
 
-from codalabworker.run_manager import Reader
-import codalabworker.download_util as download_util
-from codalabworker.download_util import get_target_path, PathException
-from codalabworker.file_util import (
+from codalab.worker.run_manager import Reader
+import codalab.worker.download_util as download_util
+from codalab.worker.download_util import get_target_path, PathException
+from codalab.worker.file_util import (
     gzip_file,
-    gzip_string,
+    gzip_bytestring,
     read_file_section,
     summarize_file,
     tar_gzip_directory,
@@ -102,7 +102,9 @@ class LocalReader(Reader):
         """
 
         def read_file_section_thread(final_path):
-            bytestring = gzip_string(read_file_section(final_path, args['offset'], args['length']))
+            bytestring = gzip_bytestring(
+                read_file_section(final_path, args['offset'], args['length'])
+            )
             reply_fn(None, {}, bytestring)
 
         self._threaded_read(run_state, path, read_file_section_thread, reply_fn)
@@ -115,14 +117,14 @@ class LocalReader(Reader):
         """
 
         def summarize_file_thread(final_path):
-            bytestring = gzip_string(
+            bytestring = gzip_bytestring(
                 summarize_file(
                     final_path,
                     args['num_head_lines'],
                     args['num_tail_lines'],
                     args['max_line_length'],
                     args['truncation_text'],
-                )
+                ).encode()
             )
             reply_fn(None, {}, bytestring)
 

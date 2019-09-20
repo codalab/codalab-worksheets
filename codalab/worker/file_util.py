@@ -8,6 +8,8 @@ import tarfile
 import zlib
 import bz2
 
+BINARY_PLACEHOLDER = '<binary>'
+
 
 def tar_gzip_directory(
     directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[]
@@ -142,25 +144,24 @@ def un_gzip_stream(fileobj):
     return UnGzipStream(fileobj)
 
 
-def gzip_string(string):
+def gzip_bytestring(bytestring):
     """
-    Gzips the given string.  Return bytes.
+    Gzips the given bytestring.  Return bytes.
     """
     with closing(BytesIO()) as output_fileobj:
         with gzip.GzipFile(None, 'wb', 6, output_fileobj) as fileobj:
-            fileobj.write(string.encode())
+            fileobj.write(bytestring)
         return output_fileobj.getvalue()
 
 
-def un_gzip_string(bytestring):
+def un_gzip_bytestring(bytestring):
     """
-    Gunzips the given bytestring.  Return string.
-
+    Gunzips the given bytestring.  Return bytes.
     Raises an IOError if the archive is not valid.
     """
     with closing(BytesIO(bytestring)) as input_fileobj:
         with gzip.GzipFile(None, 'rb', fileobj=input_fileobj) as fileobj:
-            return fileobj.read().decode()
+            return fileobj.read()
 
 
 def read_file_section(file_path, offset, length):
@@ -181,7 +182,7 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
     Summarizes the file at the given path, returning a string containing the
     given numbers of lines from beginning and end of the file. If the file needs
     to be truncated, places truncation_text at the truncation point.
-    Unlike other methods, this method treats everything as a Unicode string.
+    Unlike other methods, which traffic bytes, this method returns a string.
     """
     assert num_head_lines > 0 or num_tail_lines > 0
 
@@ -198,9 +199,12 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
             if num_head_lines > 0:
                 # To ensure that the last line is a whole line, we remove the
                 # last line if it doesn't have a newline character.
-                head_lines = fileobj.read(num_head_lines * max_line_length).splitlines(True)[
-                    :num_head_lines
-                ]
+                try:
+                    head_lines = fileobj.read(num_head_lines * max_line_length).splitlines(True)[
+                        :num_head_lines
+                    ]
+                except UnicodeDecodeError:
+                    return BINARY_PLACEHOLDER
                 ensure_ends_with_newline(head_lines, remove_line_without_newline=True)
 
             if num_tail_lines > 0:
@@ -212,9 +216,12 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 # read the extra character, would not be a whole line. Thus, it
                 # should also be dropped.
                 fileobj.seek(file_size - num_tail_lines * max_line_length - 1, os.SEEK_SET)
-                tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(True)[1:][
-                    -num_tail_lines:
-                ]
+                try:
+                    tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(True)[
+                        1:
+                    ][-num_tail_lines:]
+                except UnicodeDecodeError:
+                    return BINARY_PLACEHOLDER
                 ensure_ends_with_newline(tail_lines)
 
             if num_head_lines > 0 and num_tail_lines > 0:
@@ -224,7 +231,10 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
             else:
                 lines = tail_lines
         else:
-            lines = fileobj.readlines()
+            try:
+                lines = fileobj.readlines()
+            except UnicodeDecodeError:
+                return BINARY_PLACEHOLDER
             ensure_ends_with_newline(lines)
             if len(lines) > num_head_lines + num_tail_lines:
                 if num_head_lines > 0 and num_tail_lines > 0:

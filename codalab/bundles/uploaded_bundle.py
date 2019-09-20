@@ -5,7 +5,7 @@ just a bundle store data hash and a metadata dict, and never need to be run.
 '''
 from codalab.bundles.named_bundle import NamedBundle
 from codalab.objects.metadata_spec import MetadataSpec
-from codalabworker.bundle_state import State
+from codalab.worker.bundle_state import State
 
 
 class UploadedBundle(NamedBundle):
