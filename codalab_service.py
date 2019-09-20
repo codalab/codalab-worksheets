@@ -199,9 +199,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='rest_num_processes', help='Number of processes', type=int, default=1),
     CodalabArg(name='server', help='URL to server (used by external worker to connect to)'),
     CodalabArg(
-        name='shared_file_system',
-        help='Whether worker has access to the bundle mount',
-        type=bool,
+        name='shared_file_system', help='Whether worker has access to the bundle mount', type=bool
     ),
     ### User
     CodalabArg(name='user_disk_quota', help='How much space a user can use', default='100g'),
@@ -419,7 +417,9 @@ class CodalabServiceManager(object):
         for env_var in ['PATH', 'DOCKER_HOST']:
             if env_var in os.environ:
                 environment[env_var] = os.environ[env_var]
-        environment['HOSTNAME'] = socket.gethostname()  # Set HOSTNAME since it's sometimes not available
+        environment[
+            'HOSTNAME'
+        ] = socket.gethostname()  # Set HOSTNAME since it's sometimes not available
         return environment
 
     def __init__(self, args):

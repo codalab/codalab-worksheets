@@ -8,7 +8,6 @@ if ! [ -e venv ]; then
   venv/bin/pip install -r requirements.docs.txt || exit 1
 fi
 
-venv/bin/pip install -e worker  # Not sure why this is necessary (TODO: get rid of this when we remove the codalabworker package)
 venv/bin/pip install -e .
 
 # Generate docs
@@ -18,4 +17,4 @@ venv/bin/mkdocs build || exit 1  # Outputs to `site`
 # Note: run `venv/bin/mkdocs serve` for a live preview
 
 # Fix style (mutates code!)
-venv/bin/black codalab worker scripts *.py || exit
+venv/bin/black codalab scripts *.py || exit

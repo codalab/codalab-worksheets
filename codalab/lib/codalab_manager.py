@@ -137,6 +137,7 @@ class CodaLabManager(object):
             self.init_config()
         self.config = read_json_or_die(self.config_path)
 
+        # TODO: get rid of this
         # Substitute environment variables
         codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

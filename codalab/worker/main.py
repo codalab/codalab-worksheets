@@ -9,9 +9,9 @@ import sys
 import multiprocessing
 
 
+from codalab.lib.formatting import parse_size
 from .bundle_service_client import BundleServiceClient, BundleAuthException
 from . import docker_utils
-from .formatting import parse_size
 from .worker import Worker
 from .local_run.local_dependency_manager import LocalFileSystemDependencyManager
 from .local_run.docker_image_manager import DockerImageManager

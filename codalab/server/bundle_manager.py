@@ -11,8 +11,8 @@ import traceback
 from codalab.objects.permission import check_bundles_have_read_permission
 from codalab.common import PermissionError
 from codalab.lib import bundle_util, formatting, path_util
-from codalabworker.file_util import remove_path
-from codalabworker.bundle_state import State
+from codalab.worker.file_util import remove_path
+from codalab.worker.bundle_state import State
 
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ class BundleManager(object):
             print('config.json file missing a workers section.', file=sys.stderr)
             exit(1)
 
-        from codalab.worker.default_bundle_manager import DefaultBundleManager
+        from codalab.server.default_bundle_manager import DefaultBundleManager
 
         self = DefaultBundleManager()
 

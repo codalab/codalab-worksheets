@@ -6,9 +6,9 @@ import logging
 
 import docker
 
-from codalabworker.fsm import DependencyStage
-from codalabworker.state_committer import JsonStateCommitter
-from codalabworker.worker_thread import ThreadDict
+from codalab.worker.fsm import DependencyStage
+from codalab.worker.state_committer import JsonStateCommitter
+from codalab.worker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
 

@@ -88,8 +88,12 @@ class AWSWorkerManager(WorkerManager):
         if os.environ.get('CODALAB_SHARED_FILE_SYSTEM'):
             command.append('--shared-file-system')
             bundle_mount = os.environ.get('CODALAB_BUNDLE_MOUNT')
-            job_definition['containerProperties']['volumes'].append({'host': {'sourcePath': bundle_mount}, 'name': 'shared_dir'})
-            job_definition['containerProperties']['mountPoints'].append({'sourceVolume': 'shared_dir', 'containerPath': bundle_mount, 'readOnly': False})
+            job_definition['containerProperties']['volumes'].append(
+                {'host': {'sourcePath': bundle_mount}, 'name': 'shared_dir'}
+            )
+            job_definition['containerProperties']['mountPoints'].append(
+                {'sourceVolume': 'shared_dir', 'containerPath': bundle_mount, 'readOnly': False}
+            )
 
         # Create a job definition
         response = self.batch_client.register_job_definition(**job_definition)

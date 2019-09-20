@@ -35,7 +35,7 @@ from codalab.rest.schemas import (
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-from codalabworker.bundle_state import State
+from codalab.worker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 

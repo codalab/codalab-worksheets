@@ -7,12 +7,12 @@ import traceback
 import time
 import shutil
 
-from codalabworker.file_util import remove_path, un_tar_directory
-from codalabworker.formatting import size_str
-from codalabworker.fsm import BaseDependencyManager, DependencyStage, StateTransitioner
-import codalabworker.pyjson
-from codalabworker.worker_thread import ThreadDict
-from codalabworker.state_committer import JsonStateCommitter
+from codalab.lib.formatting import size_str
+from codalab.worker.file_util import remove_path, un_tar_directory
+from codalab.worker.fsm import BaseDependencyManager, DependencyStage, StateTransitioner
+import codalab.worker.pyjson
+from codalab.worker.worker_thread import ThreadDict
+from codalab.worker.state_committer import JsonStateCommitter
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +186,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             with self._global_lock:
                 self._acquire_all_locks()
                 bytes_used = sum(dep.size_bytes for dep in self._dependencies.values())
-                serialized_length = len(codalabworker.pyjson.dumps(self._dependencies))
+                serialized_length = len(codalab.worker.pyjson.dumps(self._dependencies))
                 if (
                     bytes_used > self._max_cache_size_bytes
                     or serialized_length > LocalFileSystemDependencyManager.MAX_SERIALIZED_LEN
