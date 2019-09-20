@@ -68,6 +68,7 @@ http {
     server rest-server:2900;
   }
 
+  # Redirects all http traffic to https.
   server {	
     listen 80;	
     server_name 127.0.0.1 localhost;	
