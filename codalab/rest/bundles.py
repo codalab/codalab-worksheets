@@ -410,6 +410,11 @@ def _netcat_bundle(uuid, port):
     Send a raw bytestring into the specified port of the running bundle with uuid.
     Return the response from this bundle.
     """
+    # Note that read permission is enough to hit the port (same for netcurl).
+    # This allows users to host demos that the public can play with.  In
+    # general, this is not safe, since hitting a port can mutate what's
+    # happening in the bundle.  In the future, we might want to make people
+    # explicitly expose ports to the world.
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
     if bundle.state != State.RUNNING:
