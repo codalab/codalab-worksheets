@@ -58,8 +58,8 @@ class Worker(object):
                 self._last_checkin_successful = True
                 if (
                     self._exit_when_idle
-                    and self._last_checkin_successful
                     and len(self._run_manager.all_runs) == 0
+                    and self._last_checkin_successful
                 ):
                     self._stop = True
                     break
@@ -67,7 +67,9 @@ class Worker(object):
             except Exception:
                 self._last_checkin_successful = False
                 traceback.print_exc()
-                time.sleep(1)
+                # Sleep for a long time so we don't keep on failing.
+                logger.error('Sleeping for 1 hour due to exception...please help me!')
+                time.sleep(1 * 60 * 60)
         self._run_manager.stop()
 
     def signal(self):

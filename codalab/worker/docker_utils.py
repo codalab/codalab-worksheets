@@ -80,7 +80,7 @@ def get_nvidia_devices():
         cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
     )
     # Get newline delimited gpu-index, gpu-uuid list
-    output = output.decode('utf-8')
+    output = output.decode()
     print(output.split('\n')[:-1])
     return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}
 
