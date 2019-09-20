@@ -19,7 +19,9 @@ def send_verification_key(username, email, key):
     scheme = request.get_header('X-Forwarded-Proto')
     local.emailer.send_email(
         subject="Verify your CodaLab account",
-        body=template('email_verification_body', user=username, scheme=scheme, hostname=hostname, key=key),
+        body=template(
+            'email_verification_body', user=username, scheme=scheme, hostname=hostname, key=key
+        ),
         recipient=email,
     )
 
