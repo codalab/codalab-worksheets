@@ -382,7 +382,16 @@ class CodalabArgs(object):
             if getattr(args, arg.name, None):  # Skip if set
                 continue
             if arg.env_var in os.environ:
-                setattr(args, arg.name, os.environ[arg.env_var])
+                # All environment variables are string-valued.  Need to convert
+                # into the appropriate types.
+                value = os.environ[arg.env_var]
+                if arg.type == 'bool':
+                    value = (value == 'true')
+                elif arg.type == 'int':
+                    value = int(value)
+                elif arg.type == 'float':
+                    value = float(value)
+                setattr(args, arg.name, value)
 
         # Set constant default values
         for arg in CODALAB_ARGUMENTS:

@@ -13,10 +13,10 @@ class AWSWorkerManager(WorkerManager):
             raise Exception('Missing queue for AWS Batch')
         self.batch_client = boto3.client('batch', region_name='us-east-1')
 
-    def get_workers(self):
+    def get_worker_jobs(self):
         """Return list of workers."""
-        # Get all jobs that are not SUCCEEDED or FAILED.  These represent the active workers.
-        # This isn't really used, but just used to help us monitor things.
+        # Get all jobs that are not SUCCEEDED or FAILED.  Assume these
+        # represent the active workers (no one is sharing this queue).
         jobs = []
         for status in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING']:
             response = self.batch_client.list_jobs(jobQueue=self.args.queue, jobStatus=status)
@@ -24,13 +24,13 @@ class AWSWorkerManager(WorkerManager):
         logger.info(
             'Workers: {}'.format(' '.join(job['jobId'] + ':' + job['status'] for job in jobs))
         )
-        return jobs
+        return [WorkerJob() for job in jobs]
 
-    def start_worker(self):
-        job_definition_name = 'codalab-worker-2'
+    def start_worker_job(self):
         image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         logger.debug('Starting worker with image {}'.format(image))
         # TODO: don't hard code these, get these from some config file.
+        job_definition_name = 'codalab-worker-2'
         cpus = 4
         memory_mb = 1024 * 10
         work_dir = '/tmp/codalab-worker-scratch'
@@ -78,7 +78,10 @@ class AWSWorkerManager(WorkerManager):
                     {'sourceVolume': 'work_dir', 'containerPath': work_dir, 'readOnly': False},
                 ],
                 'readonlyRootFilesystem': False,
-                'user': 'root',  # TODO: if shared file system, use user
+                # TODO: if shared file system, use user
+                # Ideally, we should use user everywhere, but that's a
+                # different issue.
+                'user': 'root',
             },
             'retryStrategy': {'attempts': 1},
         }

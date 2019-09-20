@@ -1,9 +1,9 @@
+"""
+Main entry point for the worker managers.
+"""
+
 import argparse
 import logging
-import time
-import getpass
-from codalab.lib.codalab_manager import CodaLabManager
-from codalabworker.bundle_state import State
 from .aws_worker_manager import AWSWorkerManager
 
 
@@ -12,12 +12,10 @@ def main():
     parser.add_argument(
         '--server', help='CodaLab instance to connect to', default='https://worksheets.codalab.org'
     )
-    parser.add_argument('-t', '--worker-manager-type', help='Type of worker manager', required=True)
+    parser.add_argument('-t', '--worker-manager-type', help='Type of worker manager', choices=['aws'], required=True)
+    parser.add_argument('--min-workers', help='Minimum number of workers', type=int, default=1)
     parser.add_argument('--max-workers', help='Maximum number of workers', type=int, default=10)
-    # The worker manager has only crude knowledge about what the queues are
-    # doing (CPU versus GPU).  For finer-grained control, the user should
-    # request specific queues with --request-queue=...
-    parser.add_argument('--queue', help='Monitor and submit to this queue')
+    parser.add_argument('--queue', help='Monitor and run workers on this queue (e.g., AWS Batch)')
     parser.add_argument(
         '--search', nargs='*', help='Monitor only runs that satisfy these criteria', default=[]
     )
@@ -26,11 +24,16 @@ def main():
         '--verbose', action='store_true', help='Whether to print out extra information'
     )
     parser.add_argument('--sleep-time', help='Number of seconds to wait between checks', default=5)
-    parser.add_argument('--once', help='Just run once and exit', action='store_true')
+    parser.add_argument('--once', help='Just run once and exit instead of looping (for debugging)', action='store_true')
     parser.add_argument(
         '--worker-idle-seconds',
-        help='Wait this long for extra runs before quitting ',
-        default=60 * 10,
+        help='Workers wait this long for extra runs before quitting',
+        default=10 * 60,
+    )
+    parser.add_argument(
+        '--min-seconds-between-workers',
+        help='Minimum time to wait between launching workers',
+        default=1 * 60,
     )
     args = parser.parse_args()
 
@@ -46,6 +49,7 @@ def main():
     else:
         raise Exception('Invalid worker manager type: {}'.format(args.worker_manager_type))
 
+    # Go!
     manager.run_loop()
 
 
