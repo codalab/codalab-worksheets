@@ -2206,8 +2206,9 @@ class BundleCLI(object):
                 help='Arbitrary message to send.',
                 completer=NullCompleter,
             ),
+            Commands.Argument('-f', '--file', help='Add this file at end of message'),
             Commands.Argument(
-                '--verbose', help='Verbose mode for BundleFUSE.', action='store_true', default=False
+                '--verbose', help='Verbose mode.', action='store_true', default=False
             ),
             Commands.Argument(
                 '-w',
@@ -2222,7 +2223,11 @@ class BundleCLI(object):
         client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(
             client, worksheet_uuid, args.bundle_spec
         )
-        contents = client.netcat(bundle_uuid, port=args.port, data={"message": args.message})
+        message = args.message
+        if args.file:
+            with open(args.file) as f:
+                message += f.read()
+        contents = client.netcat(bundle_uuid, port=args.port, data={"message": message})
         with closing(contents):
             shutil.copyfileobj(contents, self.stdout.buffer)
 
