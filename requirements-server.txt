@@ -7,7 +7,7 @@
 # For worker manager
 boto3==1.9.228
 
-# For formatting code
+# For style
 black==18.9b0
 
 # For testing
