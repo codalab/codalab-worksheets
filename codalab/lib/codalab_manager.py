@@ -491,6 +491,7 @@ class CodaLabManager(object):
             print('Requesting access at %s' % cache_key)
         if username is None:
             sys.stdout.write('Username: ')  # Use write to avoid extra space
+            sys.stdout.flush()
             username = sys.stdin.readline().rstrip()
         if password is None:
             password = getpass.getpass()
