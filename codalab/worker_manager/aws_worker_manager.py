@@ -22,7 +22,9 @@ class AWSWorkerManager(WorkerManager):
             response = self.batch_client.list_jobs(jobQueue=self.args.queue, jobStatus=status)
             jobs.extend(response['jobSummaryList'])
         logger.info(
-            'Workers: {}'.format(' '.join(job['jobId'] + ':' + job['status'] for job in jobs) or '(none)')
+            'Workers: {}'.format(
+                ' '.join(job['jobId'] + ':' + job['status'] for job in jobs) or '(none)'
+            )
         )
         return [WorkerJob() for job in jobs]
 

@@ -84,7 +84,9 @@ class WorkerManager(object):
             self.wait_for_progress = False
         self.staged_uuids = new_staged_uuids
         logger.info(
-            'Staged bundles [{}]: {}'.format(' '.join(keywords), ' '.join(new_staged_uuids) or '(none)')
+            'Staged bundles [{}]: {}'.format(
+                ' '.join(keywords), ' '.join(new_staged_uuids) or '(none)'
+            )
         )
 
         # Get worker jobs
@@ -107,7 +109,11 @@ class WorkerManager(object):
 
         # 1) We have fewer than min_workers.
         if len(worker_jobs) < self.args.min_workers:
-            logger.info('Want to launch a worker because we are under the minimum ({} < {})'.format(len(worker_jobs), self.args.min_workers))
+            logger.info(
+                'Want to launch a worker because we are under the minimum ({} < {})'.format(
+                    len(worker_jobs), self.args.min_workers
+                )
+            )
             want_more_workers = True
 
         # 2) There is a staged bundle AND we have made progress running the
@@ -121,9 +127,15 @@ class WorkerManager(object):
         # bundle).  Also, the bundle that was removed might not be the one that
         # we were originally intending to run.
         if len(new_staged_uuids) > 0:
-            logger.info('Want to launch a worker because we have {} > 0 staged bundles'.format(len(new_staged_uuids)))
+            logger.info(
+                'Want to launch a worker because we have {} > 0 staged bundles'.format(
+                    len(new_staged_uuids)
+                )
+            )
             if self.wait_for_progress and len(removed_uuids) == 0:
-                logger.info('But we already launched a worker and waiting for some progress first (previous bundles to be removed from staged)')
+                logger.info(
+                    'But we already launched a worker and waiting for some progress first (previous bundles to be removed from staged)'
+                )
                 return
             want_more_workers = True
 
