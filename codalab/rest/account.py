@@ -16,9 +16,12 @@ from codalab.server.cookie import LoginCookie
 def send_verification_key(username, email, key):
     # Send verification key to given email address
     hostname = request.get_header('X-Forwarded-Host') or request.get_header('Host')
+    scheme = request.get_header('X-Forwarded-Proto')
     local.emailer.send_email(
         subject="Verify your CodaLab account",
-        body=template('email_verification_body', user=username, current_site=hostname, key=key),
+        body=template(
+            'email_verification_body', user=username, scheme=scheme, hostname=hostname, key=key
+        ),
         recipient=email,
     )
 
@@ -170,11 +173,12 @@ def request_reset():
 
     # Send code
     hostname = request.get_header('X-Forwarded-Host') or request.get_header('Host')
+    scheme = request.get_header('X-Forwarded-Proto')
     user_name = request.user.first_name or request.user.user_name
     local.emailer.send_email(
         subject="CodaLab password reset link",
         body=template(
-            'password_reset_body', user=user_name, current_site=hostname, code=reset_code
+            'password_reset_body', user=user_name, scheme=scheme, hostname=hostname, code=reset_code
         ),
         recipient=request.user.email,
     )
@@ -201,11 +205,12 @@ def request_reset():
 
     # Send code
     hostname = request.get_header('X-Forwarded-Host') or request.get_header('Host')
+    scheme = request.get_header('X-Forwarded-Proto')
     user_name = user.first_name or user.user_name
     local.emailer.send_email(
         subject="CodaLab password reset link",
         body=template(
-            'password_reset_body', user=user_name, current_site=hostname, code=reset_code
+            'password_reset_body', user=user_name, scheme=scheme, hostname=hostname, code=reset_code
         ),
         recipient=email,
     )
