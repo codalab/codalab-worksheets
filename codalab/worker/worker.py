@@ -47,7 +47,7 @@ class Worker(object):
         self._run_manager = create_run_manager(self)
 
     def start(self):
-        """Return whether ran anything."""
+        """Return whether we ran anything."""
         self._run_manager.start()
         last_time_ran = None  # When was the last time we ran something?
         while not self._stop:
