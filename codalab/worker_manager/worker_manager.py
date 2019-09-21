@@ -18,7 +18,7 @@ class WorkerManager(object):
 
     The basic architecture of the WorkerManager is extremely simple: to a
     first-order approximation, it simply launches `cl-worker`s as AWS/Azure
-    batch jobs as long as there staged bundles.
+    batch jobs as long as there are staged bundles.
 
     The simplicity means that we don't need to manage state about how workers
     and bundles are related - that logic is complex and is done by the usual
