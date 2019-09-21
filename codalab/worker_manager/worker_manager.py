@@ -36,8 +36,10 @@ class WorkerManager(object):
     sees fit.
 
     Notes:
-    - The worker manager is not visible via CodaLab.  One needs to monitor the
-      AWS/Azure Batch system separately.
+    - The worker manager is not visible via CodaLab (i.e., CodaLab has no
+      notion of a worker manager or what it's trying to do - all it sees is
+      bundles and workers).  One needs to monitor the AWS/Azure Batch system
+      separately.
     - Resource handling is not currently supported.  Generally, the safe thing
       is to create a separate queue for different resource needs and put the
       burden of deciding on the user.

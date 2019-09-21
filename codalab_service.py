@@ -220,7 +220,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='ssl_cert_file', help='Path to the cert file for SSL'),
     CodalabArg(name='ssl_key_file', help='Path to the key file for SSL'),
     ### Worker manager
-    CodalabArg(name='worker_manager_type', help='Type of worker manager (e.g., aws, azure, slurm)'),
+    CodalabArg(name='worker_manager_type', help='Type of worker manager (e.g., aws-batch, azure-batch, slurm); only aws-batch supported right now'),
     CodalabArg(
         name='worker_manager_cpu_queue',
         help='Name of queue to submit CPU jobs',
@@ -233,13 +233,13 @@ CODALAB_ARGUMENTS = [
     ),
     CodalabArg(
         name='worker_manager_max_cpu_workers',
-        help='Maximum number of CPU workers',
+        help='Maximum number of CPU workers per worker manager',
         type=int,
         default=10,
     ),
     CodalabArg(
         name='worker_manager_max_gpu_workers',
-        help='Maximum number of GPU workers',
+        help='Maximum number of GPU workers per worker manager',
         type=int,
         default=10,
     ),

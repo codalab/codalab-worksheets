@@ -4,7 +4,7 @@ Main entry point for the worker managers.
 
 import argparse
 import logging
-from .aws_worker_manager import AWSWorkerManager
+from .aws_batch_worker_manager import AWSBatchWorkerManager
 
 
 def main():
@@ -50,8 +50,8 @@ def main():
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
     # Choose the worker manager type.
-    if args.worker_manager_type == 'aws':
-        manager = AWSWorkerManager(args)
+    if args.worker_manager_type == 'aws-batch':
+        manager = AWSBatchWorkerManager(args)
     else:
         raise Exception('Invalid worker manager type: {}'.format(args.worker_manager_type))
 
