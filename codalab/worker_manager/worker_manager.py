@@ -80,14 +80,17 @@ class WorkerManager(object):
         old_staged_uuids = self.staged_uuids
         # Bundles that were staged but now aren't
         removed_uuids = [uuid for uuid in old_staged_uuids if uuid not in new_staged_uuids]
+        if len(removed_uuids) > 0:
+            self.wait_for_progress = False
         self.staged_uuids = new_staged_uuids
         logger.info(
-            'Staged bundles [{}]: {}'.format(' '.join(keywords), ' '.join(new_staged_uuids))
+            'Staged bundles [{}]: {}'.format(' '.join(keywords), ' '.join(new_staged_uuids) or '(none)')
         )
 
-        # Get workers
+        # Get worker jobs
         worker_jobs = self.get_worker_jobs()
 
+        # Print status
         logger.info(
             '{} staged bundles ({} removed since last time{}), {} worker jobs (min={}, max={})'.format(
                 len(new_staged_uuids),
@@ -99,52 +102,54 @@ class WorkerManager(object):
             )
         )
 
-        # If we just started a worker and we haven't made any progress towards
-        # removing bundles from staged, don't launch another one yet.  This is so
-        # that if someone starts a run that requires massive resources that we
-        # can't handle, we don't keep on trying to launch workers to no avail.
-        # Of course, there are many reasons that a bundle might be removed from
-        # staged (user might have deleted the bundle).  Also, the bundle that
-        # was removed might not be the one that we were originally intending to
-        # run.
-        if self.wait_for_progress and len(removed_uuids) == 0:
-            logger.info('Just launched a worker, waiting for some bundle to move out of staged')
-            return
-        # Yay, we made progress.  Important that this logic is before the others below.
-        self.wait_for_progress = False
+        # There are two conditions under which we want more workers.
+        want_more_workers = False
 
-        # Don't launch more than `max_workers`.
-        # For now, only the number of workers is used to determine what workers
-        # we launch.
-        if len(worker_jobs) >= self.args.max_workers:
-            logger.info(
-                'Too many workers already ({} >= {}), not starting'.format(
-                    len(worker_jobs), self.args.max_workers
+        # 1) We have fewer than min_workers.
+        if len(worker_jobs) < self.args.min_workers:
+            logger.info('Want to launch a worker because we are under the minimum ({} < {})'.format(len(worker_jobs), self.args.min_workers))
+            want_more_workers = True
+
+        # 2) There is a staged bundle AND we have made progress running the
+        # previously staged bundles.
+        # To expand on this, if we just started a worker and we haven't made any
+        # progress towards removing bundles from staged, don't launch another
+        # one yet.  This is so that if someone starts a run that requires
+        # massive resources that we can't handle, we don't keep on trying to
+        # launch workers to no avail.  Of course, there are many reasons that a
+        # bundle might be removed from staged (user might have deleted the
+        # bundle).  Also, the bundle that was removed might not be the one that
+        # we were originally intending to run.
+        if len(new_staged_uuids) > 0:
+            logger.info('Want to launch a worker because we have {} > 0 staged bundles'.format(len(new_staged_uuids)))
+            if self.wait_for_progress and len(removed_uuids) == 0:
+                logger.info('But we already launched a worker and waiting for some progress first (previous bundles to be removed from staged)')
+                return
+            want_more_workers = True
+
+        if want_more_workers:
+            # Make sure we don't launch workers too quickly.
+            seconds_since_last_worker = int(time.time() - self.last_worker_start_time)
+            if seconds_since_last_worker < self.args.min_seconds_between_workers:
+                logger.info(
+                    'Don\'t launch becaused waited {} < {} seconds since last worker'.format(
+                        seconds_since_last_worker, self.args.min_seconds_between_workers
+                    )
                 )
-            )
-            return
+                return
 
-        # Make sure we don't launch workers too quickly.
-        seconds_since_last_worker = time.time() - self.last_worker_start_time
-        if seconds_since_last_worker < self.args.min_seconds_between_workers:
-            logger.info(
-                'Waited {} seconds since last worker, need to wait {} seconds'.format(
-                    seconds_since_last_worker, self.args.min_seconds_between_workers
+            # Don't launch more than `max_workers`.
+            # For now, only the number of workers is used to determine what workers
+            # we launch.
+            if len(worker_jobs) >= self.args.max_workers:
+                logger.info(
+                    'Don\'t launch because too many workers already ({} >= {})'.format(
+                        len(worker_jobs), self.args.max_workers
+                    )
                 )
-            )
-            return
+                return
 
-        # Don't launch if enough workers AND nothing to run AND it has been long enough.
-        if len(worker_jobs) >= self.args.min_workers and len(new_staged_uuids) == 0:
-            logger.info(
-                'Enough workers ({} > {}) and no staged bundles to run'.format(
-                    len(worker_jobs), self.args.min_workers, len(new_staged_uuids)
-                )
-            )
-            return
-
-        # Start a worker.
-        logger.info('Starting a worker'.format(len(new_staged_uuids)))
-        self.start_worker_job()
-        self.wait_for_progress = True
-        self.last_worker_start_time = time.time()
+            logger.info('Starting a worker!')
+            self.start_worker_job()
+            self.wait_for_progress = True  # Need to wait for progress to happen
+            self.last_worker_start_time = time.time()
