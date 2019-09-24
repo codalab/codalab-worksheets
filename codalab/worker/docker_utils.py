@@ -10,7 +10,7 @@ import logging
 import os
 import docker
 
-from .formatting import parse_size
+from codalab.lib.formatting import parse_size
 
 
 MIN_API_VERSION = '1.17'
@@ -80,6 +80,7 @@ def get_nvidia_devices():
         cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
     )
     # Get newline delimited gpu-index, gpu-uuid list
+    output = output.decode()
     print(output.split('\n')[:-1])
     return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}
 
@@ -215,6 +216,8 @@ def get_container_stats(container):
 def check_finished(container):
     # Unfortunately docker SDK doesn't update the status of Container objects
     # so we re-fetch them from the API again to get the most recent state
+    if container is None:
+        return (True, None, 'Docker container not found')
     container = client.containers.get(container.id)
     if container.status != 'running':
         # If the logs are nonempty, then something might have gone
@@ -222,6 +225,7 @@ def check_finished(container):
         # such as bash or cd.
         stderr = container.logs(stderr=True, stdout=False)
         # Strip non-ASCII chars since failure_message is not Unicode
+        # TODO: don't need to strip since we can support unicode?
         if len(stderr) > 0:
             failure_msg = stderr.decode('ascii', errors='ignore')
         else:

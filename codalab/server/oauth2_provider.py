@@ -560,6 +560,7 @@ class OAuth2RequestValidator(RequestValidator):
         .. _`Section 4.3.2`: http://tools.ietf.org/html/rfc6749#section-4.3.2
         .. _`Section 4.1.3`: http://tools.ietf.org/html/rfc6749#section-4.1.3
         .. _`Section 6`: http://tools.ietf.org/html/rfc6749#section-6
+
         """
 
         if request.grant_type == 'password':

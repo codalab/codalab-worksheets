@@ -30,6 +30,7 @@ import sys
 import time
 import traceback
 
+from codalab.lib.codalab_manager import CodaLabManager
 
 global cl
 # Directory where this script lives.
@@ -103,22 +104,21 @@ def get_uuid(line):
 
 def sanitize(string, max_chars=256):
     """Sanitize and truncate output so it can be printed on the command line.
-    Bytes are converted to strings, and all strings are converted to ASCII.
+    Don't print out binary.
     """
-    if type(string) is bytes:
-        string = "{}".format(string)
-    string = string.encode('ascii', errors='replace').decode()
+    if isinstance(string, bytes):
+        string = '<binary>'
     if len(string) > max_chars:
         string = string[:max_chars] + ' (...more...)'
     return string
 
 
 def run_command(
-    args, expected_exit_code=0, max_output_chars=256, env=None, include_stderr=False, binary=False
+    args, expected_exit_code=0, max_output_chars=1024, env=None, include_stderr=False, binary=False
 ):
-    print(
-        ">>", *[a.encode('ascii', errors='replace') if type(a) is str else a for a in args], sep=" "
-    )
+    """If we don't care about the exit code, set `expected_exit_code` to None.
+    """
+    print(">>", *map(str, args), sep=" ")
     sys.stdout.flush()
 
     try:
@@ -137,7 +137,7 @@ def run_command(
     except Exception as e:
         output = traceback.format_exc()
         exitcode = 'test-cli exception'
-    if exitcode != expected_exit_code:
+    if expected_exit_code is not None and exitcode != expected_exit_code:
         colorize = Colorizer.red
         extra = ' BAD'
     else:
@@ -334,6 +334,10 @@ class ModuleContext(object):
         self.groups = []
         self.error = None
 
+        # Allow for making REST calls
+        manager = CodaLabManager()
+        self.client = manager.current_client()
+
     def __enter__(self):
         """Prepares clean environment for test module."""
         print("[*][*] SWITCHING TO TEMPORARY WORKSHEET")
@@ -379,7 +383,7 @@ class ModuleContext(object):
                 try:
                     if run_command([cl, 'info', '-f', 'state', bundle]) not in ('ready', 'failed'):
                         run_command([cl, 'kill', bundle])
-                        run_command([cl, 'wait', bundle])
+                        run_command([cl, 'wait', bundle], expected_exit_code=1)
                 except AssertionError:
                     print('CAUGHT')
                     pass
@@ -794,6 +798,15 @@ def test(ctx):
     check_contains('::home-', run_command([cl, 'ls', '-w', '/']))
 
 
+@TestModule.register('binary')
+def test(ctx):
+    # Upload a binary file and test it
+    path = '/bin/ls'
+    uuid = run_command([cl, 'upload', path])
+    check_equals(open(path, 'rb').read(), run_command([cl, 'cat', uuid], binary=True))
+    run_command([cl, 'info', '--verbose', uuid])
+
+
 @TestModule.register('rm')
 def test(ctx):
     uuid = run_command([cl, 'upload', test_path('a.txt')])
@@ -1020,6 +1033,10 @@ def test(ctx):
     check_contains(name, run_command([cl, 'search', name]))
     check_equals(uuid, run_command([cl, 'search', name, '-u']))
     run_command([cl, 'search', name, '--append'])
+    # test download stdout
+    path = temp_path('')
+    run_command([cl, 'download', uuid + '/stdout', '-o', path])
+    check_equals('hello', path_contents(path))
     # get info
     check_equals('ready', run_command([cl, 'info', '-f', 'state', uuid]))
     check_contains(['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid]))
@@ -1246,20 +1263,6 @@ def test(ctx):
     check_equals(cl_output, help_output)
 
 
-@TestModule.register('events', default=False)
-def test(ctx):
-    if 'localhost' in run_command([cl, 'work']):
-        run_command([cl, 'events'])
-        run_command([cl, 'events', '-n'])
-        run_command([cl, 'events', '-g', 'user', '-n'])
-        run_command([cl, 'events', '-g', 'command', '-n'])
-        run_command([cl, 'events', '-o', '1', '-l', '2'])
-        run_command([cl, 'events', '-a', '%true%', '-n'])
-    else:
-        # Shouldn't be allowed to run unless in local mode.
-        run_command([cl, 'events'], 1)
-
-
 @TestModule.register('batch')
 def test(ctx):
     """Test batch resolution of bundle uuids"""
@@ -1466,6 +1469,17 @@ def test(ctx):
     time.sleep(5)
     output = run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
     check_equals('Hi this is dawg', output)
+
+
+@TestModule.register('netcurl')
+def test(ctx):
+    uuid = run_command([cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'])
+    wait_until_running(uuid)
+    address = ctx.client.address
+    check_equals(
+        'hello',
+        run_command(['curl', '{}/rest/bundles/{}/netcurl/8000/hello.txt'.format(address, uuid)]),
+    )
 
 
 @TestModule.register('anonymous')
@@ -1709,6 +1723,19 @@ def test(ctx):
     # Check number of not null values. First 6 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
     check_equals(True, len(worker_info) >= 6)
+
+
+@TestModule.register('rest1')
+def test(ctx):
+    """
+    Call REST APIs.  Most things should be captured by CLI commands, but add things here that aren't.
+    """
+    # Basic getting info and blob contents of a bundle
+    path = test_path('a.txt')
+    uuid = run_command([cl, 'upload', path])
+    response = ctx.client.fetch_contents_info(uuid)
+    check_equals(response['name'], uuid)
+    check_equals(open(path, 'rb').read(), ctx.client.fetch_contents_blob(uuid, '/').read())
 
 
 if __name__ == '__main__':

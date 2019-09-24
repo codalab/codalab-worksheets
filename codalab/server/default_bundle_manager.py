@@ -1,8 +1,8 @@
 import logging
 
-from codalab.worker.bundle_manager import BundleManager
-from codalab.worker.worker_info_accessor import WorkerInfoAccessor
-from codalabworker.bundle_state import State
+from codalab.server.bundle_manager import BundleManager
+from codalab.server.worker_info_accessor import WorkerInfoAccessor
+from codalab.worker.bundle_state import State
 from codalab.lib.formatting import size_str, duration_str
 
 

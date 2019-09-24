@@ -4,7 +4,7 @@ import sys
 from collections import OrderedDict
 
 from codalab.lib import path_util, spec_util
-from codalabworker.bundle_state import State
+from codalab.worker.bundle_state import State
 from functools import reduce
 
 

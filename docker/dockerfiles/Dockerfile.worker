@@ -3,25 +3,27 @@ MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa 
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa
 
 RUN apt-get update; apt-get install -y \
-  python3.6 \
-  python3.6-dev \
-  python3-pip;
- 
+    python3.6 \
+    python3.6-dev \
+    python3-pip;
+
+WORKDIR /opt
+RUN mkdir ${WORKDIR}/codalab
 
 # Install dependencies
-COPY worker/requirements.txt /opt
+COPY requirements.txt requirements.txt
 RUN python3.6 -m pip install --user --upgrade pip; \
-    python3.6 -m pip install -r /opt/requirements.txt;
+    python3.6 -m pip install -r requirements.txt;
 
-# Update the code
-COPY worker /opt/worker
+# Install code
+COPY codalab/lib codalab/lib
+COPY codalab/worker codalab/worker
+COPY setup.py setup.py
 
-# Install dependencies again
-RUN python3.6 -m pip install --user --upgrade pip; \
-    python3.6 -m pip install -e /opt/worker;
+RUN python3.6 -m pip install -e .
 
 # Allow non-root to read everything
-RUN chmod -R og=u-w /opt/worker
+RUN chmod -R og=u-w .
