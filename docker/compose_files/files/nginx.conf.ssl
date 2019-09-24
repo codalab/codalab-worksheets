@@ -70,10 +70,9 @@ http {
 
   # Redirects all http traffic to https.
   server {	
-    listen 80;	
-    server_name 127.0.0.1 localhost;	
+    listen 80;		
     location / {	
-      rewrite ^ https://$server_name$request_uri permanent;	
+      rewrite ^ https://$host$request_uri permanent;	
     }	
   }
 
