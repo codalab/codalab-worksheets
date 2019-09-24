@@ -13,7 +13,7 @@ from codalab.common import UsageError
 
 from codalab.lib.completers import DockerImagesCompleter
 from codalab.objects.metadata_spec import MetadataSpec
-from codalabworker.bundle_state import State
+from codalab.worker.bundle_state import State
 
 
 class RunBundle(DerivedBundle):

@@ -137,6 +137,7 @@ class CodaLabManager(object):
             self.init_config()
         self.config = read_json_or_die(self.config_path)
 
+        # TODO: get rid of this
         # Substitute environment variables
         codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -490,6 +491,7 @@ class CodaLabManager(object):
             print('Requesting access at %s' % cache_key)
         if username is None:
             sys.stdout.write('Username: ')  # Use write to avoid extra space
+            sys.stdout.flush()
             username = sys.stdin.readline().rstrip()
         if password is None:
             password = getpass.getpass()

@@ -261,7 +261,8 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
           port                  Port
           message               Arbitrary message to send.
-          --verbose             Verbose mode for BundleFUSE.
+          -f, --file            Add this file at end of message
+          --verbose             Verbose mode.
           -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
 
@@ -334,7 +335,7 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           --force         Delete worksheet even if it is non-empty and frozen.
 
       wls (wsearch, ws):
-        List worksheets on the current instance matching the given keywords.
+        List worksheets on the current instance matching the given keywords (returns 10 results by default).
           wls tag=paper           : List worksheets tagged as "paper".
           wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.
           wls .mine               : List my worksheets.

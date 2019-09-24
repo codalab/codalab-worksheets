@@ -11,7 +11,7 @@ import tempfile
 
 from codalab.common import UsageError
 from codalab.lib import path_util
-from codalabworker.file_util import (
+from codalab.worker.file_util import (
     gzip_file,
     tar_gzip_directory,
     un_bz2_file,

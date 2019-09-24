@@ -9,13 +9,7 @@ usage()
 
 VER=$1
 
-echo "==> Packaging codalabworker"
-cd ./worker
-python3.6 setup.py sdist
-echo "==> Uploading codalabworker"
-twine upload dist/codalabworker-$VER.tar.gz
 echo "==> Packaging codalab"
-cd ..
 python3.6 setup.py sdist
 echo "==> Uploading codalab"
 twine upload dist/codalab-$VER.tar.gz

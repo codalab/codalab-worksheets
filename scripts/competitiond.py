@@ -50,7 +50,7 @@ from codalab.lib.spec_util import UUID_STR
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.rest.schemas import BundleDependencySchema, validate_uuid
 from codalab.server.auth import RestOAuthHandler
-from codalabworker.bundle_state import State
+from codalab.worker.bundle_state import State
 
 
 logger = logging.getLogger(__name__)

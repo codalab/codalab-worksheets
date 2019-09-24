@@ -5,7 +5,8 @@ import os
 import re
 import sys
 import time
-
+from io import BytesIO
+from http.client import HTTPResponse
 
 from bottle import abort, get, post, put, delete, local, request, response
 from codalab.bundles import get_bundle_subclass, UploadedBundle
@@ -35,7 +36,7 @@ from codalab.rest.schemas import (
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-from codalabworker.bundle_state import State
+from codalab.worker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 
@@ -410,13 +411,16 @@ def _netcat_bundle(uuid, port):
     Send a raw bytestring into the specified port of the running bundle with uuid.
     Return the response from this bundle.
     """
+    # Note that read permission is enough to hit the port (same for netcurl).
+    # This allows users to host demos that the public can play with.  In
+    # general, this is not safe, since hitting a port can mutate what's
+    # happening in the bundle.  In the future, we might want to make people
+    # explicitly expose ports to the world.
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
-    print(bundle.state)
     if bundle.state != State.RUNNING:
         abort(http.client.FORBIDDEN, 'Cannot netcat bundle, bundle not running.')
-    info = local.download_manager.netcat(uuid, port, request.json['message'])
-    return {'data': info}
+    return local.download_manager.netcat(uuid, port, request.json['message'])
 
 
 @post(
@@ -452,22 +456,38 @@ def _netcurl_bundle(uuid, port, path=''):
     try:
         request.path_shift(4)  # shift away the routing parts of the URL
 
+        # Put the request headers into the message
         headers_string = [
             '{}: {}'.format(h, request.headers.get(h)) for h in request.headers.keys()
         ]
         message = "{} {} HTTP/1.1\r\n".format(request.method, request.path)
         message += "\r\n".join(headers_string) + "\r\n"
         message += "\r\n"
-        message += request.body.read()
+        message += request.body.read().decode()  # Assume bytes can be decoded to string
 
-        info = local.download_manager.netcat(uuid, port, message)
+        bytestring = local.download_manager.netcat(uuid, port, message)
+
+        # Parse the response
+        class FakeSocket:
+            def __init__(self, bytestring):
+                self._file = BytesIO(bytestring)
+
+            def makefile(self, *args, **kwargs):
+                return self._file
+
+        new_response = HTTPResponse(FakeSocket(bytestring))
+        new_response.begin()
+        # Copy the headers over
+        for k in new_response.headers:
+            response.headers[k] = new_response.headers[k]
+        # Return the response (which sends back the body)
+        return new_response
+
     except Exception:
-        print("{}".format(request.environ), file=sys.stderr)
+        logger.error("{}".format(request.environ), file=sys.stderr)
         raise
     finally:
         request.path_shift(-4)  # restore the URL
-
-    return info
 
 
 @get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')

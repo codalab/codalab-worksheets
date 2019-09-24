@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.4.0_
+_version 0.4.1_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -756,10 +756,6 @@ Otherwise, returns False, meaning the worker shouldn't run the bundle.
 Updates metadata related to a running bundle.
 
 ### `GET /workers/info`
-### `GET /workers/code.tar.gz`
-
-Returns .tar.gz archive containing the code of the worker.
-
 
 &uarr; [Back to Top](#table-of-contents)
 ## Worksheet Interpretation API

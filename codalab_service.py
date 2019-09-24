@@ -92,9 +92,13 @@ def main():
 
 def get_default_version():
     """Get the current git branch."""
-    return subprocess.check_output(
-        ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8'
-    ).strip()
+    return (
+        subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8')
+        .strip()
+        .replace(
+            "/", "_"
+        )  # This is required so that branches with "/" in their name do not fail CI.
+    )
 
 
 def var_path(name):
@@ -173,7 +177,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='bundle_mount',
         help='Path to bundle data (just for mounting into Docker)',
-        default=var_path('home'),
+        default='/tmp',
     ),
     CodalabArg(name='mysql_mount', help='Path to store MySQL data', default=var_path('mysql')),
     CodalabArg(
