@@ -7,7 +7,6 @@ import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import WorksheetItemList from './WorksheetItemList';
 import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from './ExtraWorksheetHTML';
-import ColdStartItem from './items/ColdStartItem';
 import 'bootstrap';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
@@ -117,6 +116,9 @@ class Worksheet extends React.Component {
             updatingBundleUuids: {},
             isUpdatingBundles: false,
             anchorEl: null,
+            showNewUpload: false,
+            showNewRun: false,
+            showNewText: false,
         };
     }
 
@@ -813,6 +815,12 @@ class Worksheet extends React.Component {
                 reloadWorksheet={this.reloadWorksheet}
                 openWorksheet={this.openWorksheet}
                 ensureIsArray={this.ensureIsArray}
+                showNewUpload={this.state.showNewUpload}
+                showNewRun={this.state.showNewRun}
+                showNewText={this.state.showNewText}
+                onHideNewUpload={() => this.setState({showNewUpload: false})}
+                onHideNewRun={() => this.setState({showNewRun: false})}
+                onHideNewText={() => this.setState({showNewText: false})}
             />
         );
 
@@ -830,6 +838,9 @@ class Worksheet extends React.Component {
                     editButtons={editButtons}
                     anchorEl={anchorEl}
                     setAnchorEl={e => this.setState({ anchorEl: e })}
+                    onShowNewUpload={() => this.setState({showNewUpload: true})}
+                    onShowNewRun={() => this.setState({showNewRun: true})}
+                    onShowNewText={() => this.setState({showNewText: true})}
                     />
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
@@ -838,17 +849,6 @@ class Worksheet extends React.Component {
                                 <div className={classes.worksheetInner}>
                                     <div id='worksheet_content' className={editableClassName + ' worksheet_content'}>
                                         {worksheet_display}
-                                    </div>
-                                    <div className={ classes.bottomButtons }
-                                        onMouseMove={ (ev) => { ev.stopPropagation(); } }
-                                        onMouseLeave={ (ev) => { ev.stopPropagation(); } }
-                                    >
-                                        <ColdStartItem
-                                            after_sort_key={ last_key }
-                                            reloadWorksheet={this.reloadWorksheet}
-                                            worksheetUUID={info && info.uuid}
-                                            ws={this.state.ws}
-                                        />
                                     </div>
                                 </div>
                             </div>
