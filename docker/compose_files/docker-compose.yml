@@ -53,24 +53,33 @@ services:
     command: cl server
     <<: *codalab-base
     <<: *codalab-server
+    depends_on:
+      - mysql
 
   bundle-manager:
     image: codalab/server:${CODALAB_VERSION}
     command: cl bundle-manager
     <<: *codalab-base
     <<: *codalab-server
+    depends_on:
+      - mysql
 
   frontend:
     image: codalab/frontend:${CODALAB_VERSION}
     command: serve -s build -l ${CODALAB_FRONTEND_PORT}
     <<: *codalab-base
     <<: *codalab-root
+    depends_on:
+      - rest-server
 
   nginx:
     image: nginx:1.12.0
     command: nginx
     <<: *codalab-base
     <<: *codalab-root
+    depends_on:
+      - frontend
+      - rest-server
     ports:
       - ${CODALAB_HTTP_PORT}:80
     volumes:
@@ -93,6 +102,8 @@ services:
     command: cl-worker --server http://rest-server:${CODALAB_REST_PORT} --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_NAME} --id ${HOSTNAME}
     <<: *codalab-base
     <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
+    depends_on:
+      - rest-server
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
