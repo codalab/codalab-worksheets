@@ -50,7 +50,6 @@ class WorkerManager(object):
         self.codalab_manager = CodaLabManager()
         self.codalab_client = self.codalab_manager.client(args.server)
         self.staged_uuids = []
-        self.wait_for_progress = False  # Started a worker, waiting for something to happen
         self.last_worker_start_time = 0
         logger.info('Started worker manager.')
 
@@ -82,8 +81,6 @@ class WorkerManager(object):
         old_staged_uuids = self.staged_uuids
         # Bundles that were staged but now aren't
         removed_uuids = [uuid for uuid in old_staged_uuids if uuid not in new_staged_uuids]
-        if len(removed_uuids) > 0:
-            self.wait_for_progress = False
         self.staged_uuids = new_staged_uuids
         logger.info(
             'Staged bundles [{}]: {}'.format(
@@ -96,10 +93,9 @@ class WorkerManager(object):
 
         # Print status
         logger.info(
-            '{} staged bundles ({} removed since last time{}), {} worker jobs (min={}, max={})'.format(
+            '{} staged bundles ({} removed since last time), {} worker jobs (min={}, max={})'.format(
                 len(new_staged_uuids),
                 len(removed_uuids),
-                ', waiting for >0 before launching worker' if self.wait_for_progress else '',
                 len(worker_jobs),
                 self.args.min_workers,
                 self.args.max_workers,
@@ -134,11 +130,6 @@ class WorkerManager(object):
                     len(new_staged_uuids)
                 )
             )
-            if self.wait_for_progress and len(removed_uuids) == 0:
-                logger.info(
-                    'But we already launched a worker and waiting for some progress first (previous bundles to be removed from staged)'
-                )
-                return
             want_more_workers = True
 
         if want_more_workers:
@@ -165,5 +156,4 @@ class WorkerManager(object):
 
             logger.info('Starting a worker!')
             self.start_worker_job()
-            self.wait_for_progress = True  # Need to wait for progress to happen
             self.last_worker_start_time = time.time()
