@@ -196,7 +196,9 @@ class Worksheet extends React.Component {
                 pos = -1000000; // Scroll all the way to the top
             } else {
                 var item = this.refs.list.refs['item' + index];
-                if (this._numTableRows(item.props.item) !== null) item = item.refs['row' + subIndex]; // Specifically, the row
+                if (this._numTableRows(item.props.item)) {
+                    item = item.refs['row' + subIndex]; // Specifically, the row
+                }
                 var node = ReactDOM.findDOMNode(item);
                 pos = node.getBoundingClientRect().top;
             }
