@@ -6,7 +6,7 @@ from .worker_manager import WorkerManager, WorkerJob
 logger = logging.getLogger(__name__)
 
 
-class AWSWorkerManager(WorkerManager):
+class AWSBatchWorkerManager(WorkerManager):
     def __init__(self, args):
         super().__init__(args)
         if not args.queue:
