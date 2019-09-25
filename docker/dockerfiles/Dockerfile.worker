@@ -6,9 +6,12 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa
 
 RUN apt-get update; apt-get install -y \
-    python3.6 \
-    python3.6-dev \
-    python3-pip;
+  python3.6 \
+  python3.6-dev \
+  python3-pip;
+
+# Set Python3.6 as the default python3 version
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 
 WORKDIR /opt
 RUN mkdir ${WORKDIR}/codalab
@@ -23,7 +26,7 @@ COPY codalab/lib codalab/lib
 COPY codalab/worker codalab/worker
 COPY setup.py setup.py
 
-RUN python3.6 -m pip install -e .
+RUN python3 -m pip install -e .
 
 # Allow non-root to read everything
 RUN chmod -R og=u-w .
