@@ -36,6 +36,7 @@ setup(
             'cl=codalab.bin.cl:main',
             'codalab-service=codalab_service:main',
             'cl-worker=codalab.worker.main:main',
+            'cl-competitiond=scripts.competitiond:main',
         ]
     },
     zip_safe=False,
