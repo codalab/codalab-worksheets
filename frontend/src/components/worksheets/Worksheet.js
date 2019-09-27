@@ -185,6 +185,9 @@ class Worksheet extends React.Component {
             focusIndex: index,
             subFocusIndex: subIndex,
             focusedBundleUuidList: focusedBundleUuidList,
+            showNewUpload: false,
+            showNewRun: false,
+            showNewText: false,
         });
         if (shouldScroll) this.scrollToItem(index, subIndex);
     };
