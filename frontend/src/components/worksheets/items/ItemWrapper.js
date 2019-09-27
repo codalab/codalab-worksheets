@@ -11,58 +11,6 @@ import NewUpload from '../NewUpload';
 import TextEditorItem from './TextEditorItem';
 import { getMinMaxKeys } from '../../../util/worksheet_utils';
 
-class InsertButtons extends React.Component<{
-    classes: {},
-    showNewUpload: () => void,
-    showNewRun: () => void,
-    showNewText: () => void,
-}> {
-    render() {
-        const { classes, showNewUpload, showNewRun, showNewText } = this.props;
-        return (
-            <div
-                onMouseMove={(ev) => {
-                    ev.stopPropagation();
-                }}
-                className={classes.buttonsPanel}
-            >
-                <Button
-                    variant='outlined'
-                    size='small'
-                    color='primary'
-                    aria-label='Add New Upload'
-                    onClick={showNewUpload}
-                    classes={{ root: classes.buttonRoot }}
-                >
-                    <UploadIcon className={classes.buttonIcon} />
-                    Upload
-                </Button>
-                <Button
-                    variant='outlined'
-                    size='small'
-                    color='primary'
-                    aria-label='Add New Run'
-                    onClick={showNewRun}
-                    classes={{ root: classes.buttonRoot }}
-                >
-                    <RunIcon className={classes.buttonIcon} />
-                    Run
-                </Button>
-                <Button
-                    variant='outlined'
-                    size='small'
-                    color='primary'
-                    aria-label='Add Text'
-                    onClick={showNewText}
-                    classes={{ root: classes.buttonRoot }}
-                >
-                    <TextIcon className={classes.buttonIcon} />
-                    Text
-                </Button>
-            </div>
-        );
-    }
-}
 
 function getIds(item) {
    if (item.mode === 'markup_block') {
@@ -79,31 +27,9 @@ const SENSOR_HEIGHT = 12;
 
 class ItemWrapper extends React.Component {
     state = {
-        showNewUpload: 0,
-        showNewRun: 0,
-        showNewText: 0,
-        showInsertButtons: 0,
-    };
-
-    showButtons = (ev) => {
-        const row = ev.currentTarget;
-        const { top, height } = row.getBoundingClientRect();
-        const { clientY } = ev;
-        const onTop = clientY >= top && clientY <= top + SENSOR_HEIGHT;
-        const onBotttom = clientY >= top + height - SENSOR_HEIGHT && clientY <= top + height;
-        if (onTop) {
-            this.setState({
-                showInsertButtons: -1,
-            });
-        } else if (onBotttom) {
-            this.setState({
-                showInsertButtons: 1,
-            });
-        } else {
-            this.setState({
-                showInsertButtons: 0,
-            });
-        }
+        showNewUpload: false,
+        showNewRun: false,
+        showNewText: false,
     };
 
     render() {
@@ -116,7 +42,8 @@ class ItemWrapper extends React.Component {
             worksheetUUID,
             reloadWorksheet,
         } = this.props;
-        const { showInsertButtons, showNewUpload, showNewRun, showNewText } = this.state;
+        const showInsertButtons = false;
+        const { showNewUpload, showNewRun, showNewText } = this.props;
 
         if (!item) {
             return null;
@@ -135,77 +62,27 @@ class ItemWrapper extends React.Component {
         return (
             <div
                 className={classes.container}
-                onMouseMove={this.showButtons}
-                onMouseLeave={() => {
-                    this.setState({
-                        showInsertButtons: 0,
-                    });
-                }}
             >
-                {showInsertButtons === -1 && isWorkSheetItem && (
-                    <InsertButtons
-                        classes={classes}
-                        showNewUpload={() => {
-                            this.setState({ showNewUpload: -1 });
-                        }}
-                        showNewRun={() => {
-                            this.setState({ showNewRun: -1 });
-                        }}
-                        showNewText={() => {
-                            this.setState({ showNewText: -1 });
-                        }}
-                    />
-                )}
-                {showNewUpload === -1 && (
-                    <NewUpload
-                        after_sort_key={prevItemKeys.maxKey || itemKeys.minKey - 10}
-                        worksheetUUID={worksheetUUID}
-                        reloadWorksheet={reloadWorksheet}
-                        onClose={() => this.setState({ showNewUpload: 0 })}
-                    />
-                )}
-                {showNewRun === -1 && (
-                    <div className={classes.insertBox}>
-                        <NewRun
-                            after_sort_key={prevItemKeys.maxKey || itemKeys.minKey - 10}
-                            ws={this.props.ws}
-                            reloadWorksheet={reloadWorksheet}
-                            onSubmit={() => this.setState({ showNewRun: 0 })}
-                        />
-                    </div>
-                )}
-                {showNewText === -1 && (
-                    <TextEditorItem
-                        ids={ids}
-                        mode="create"
-                        after_sort_key={prevItemKeys.maxKey || itemKeys.minKey - 10}
-                        worksheetUUID={worksheetUUID}
-                        reloadWorksheet={reloadWorksheet}
-                        closeEditor={() => {
-                            this.setState({ showNewText: 0 });
-                        }}
-                    />
-                )}
                 <div className={classes.main}>{children}</div>
-                {showNewUpload === 1 && (
+                {showNewUpload && (
                     <NewUpload
                         after_sort_key={itemKeys.maxKey}
                         worksheetUUID={worksheetUUID}
                         reloadWorksheet={reloadWorksheet}
-                        onClose={() => this.setState({ showNewUpload: 0 })}
+                        onClose={() => this.props.onHideNewUpload()}
                     />
                 )}
-                {showNewRun === 1 && (
+                {showNewRun && (
                     <div className={classes.insertBox}>
                         <NewRun
                             after_sort_key={itemKeys.maxKey}
                             ws={this.props.ws}
-                            onSubmit={() => this.setState({ showNewRun: 0 })}
+                            onSubmit={() => this.props.onHideNewRun()}
                             reloadWorksheet={reloadWorksheet}
                         />
                     </div>
                 )}
-                {showNewText === 1 && (
+                {showNewText && (
                     <TextEditorItem
                         ids={ids}
                         mode="create"
@@ -213,21 +90,7 @@ class ItemWrapper extends React.Component {
                         worksheetUUID={worksheetUUID}
                         reloadWorksheet={reloadWorksheet}
                         closeEditor={() => {
-                            this.setState({ showNewText: 0 });
-                        }}
-                    />
-                )}
-                {showInsertButtons === 1 && isWorkSheetItem && (
-                    <InsertButtons
-                        classes={classes}
-                        showNewUpload={() => {
-                            this.setState({ showNewUpload: 1 });
-                        }}
-                        showNewRun={() => {
-                            this.setState({ showNewRun: 1 });
-                        }}
-                        showNewText={() => {
-                            this.setState({ showNewText: 1 });
+                            this.props.onHideNewText();
                         }}
                     />
                 )}
