@@ -13,7 +13,11 @@ def main():
         '--server', help='CodaLab instance to connect to', default='https://worksheets.codalab.org'
     )
     parser.add_argument(
-        '-t', '--worker-manager-type', help='Type of worker manager', choices=['aws-batch'], required=True
+        '-t',
+        '--worker-manager-type',
+        help='Type of worker manager',
+        choices=['aws-batch'],
+        required=True,
     )
     parser.add_argument('--min-workers', help='Minimum number of workers', type=int, default=1)
     parser.add_argument('--max-workers', help='Maximum number of workers', type=int, default=10)
