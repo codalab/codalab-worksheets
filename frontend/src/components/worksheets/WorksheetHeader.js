@@ -5,17 +5,19 @@ import { WorksheetEditableField } from '../EditableField';
 import PermissionDialog from './PermissionDialog';
 import Sticky from 'react-stickynode';
 import { NAVBAR_HEIGHT } from '../../constants';
+import ItemWrapper from './items/ItemWrapper';
+import ActionButtons from './items/ActionButtons';
 
 const styles = {
     backgroundColor: "white",
     paddingLeft: 36,
     paddingRight: 36,
     paddingTop: 10,
-    paddingBottom: 10,
+    paddingBottom: 20,
     boxShadow: "0px 2px 4px -2px rgba(0,0,0,0.2), 0px 4px 5px -1px rgba(0,0,0,0.14), 0px 1px 10px -1px rgba(0,0,0,0.12)"
 };
 
-export default ({ canEdit, info, classes, renderPermissions, reloadWorksheet, editButtons, anchorEl, setAnchorEl }) =>
+export default ({ onShowNewUpload, onShowNewRun, onShowNewText, canEdit, info, classes, renderPermissions, reloadWorksheet, editButtons, anchorEl, setAnchorEl }) =>
     <Sticky top={NAVBAR_HEIGHT} innerZ={99999}>
         <div className='worksheet_content' style={styles}>
             <div className='header-row'>
@@ -106,6 +108,13 @@ export default ({ canEdit, info, classes, renderPermissions, reloadWorksheet, ed
                                 </div>
                             </Grid>
                         </Grid>
+                    </Grid>
+                    <Grid item sm={12}>
+                        <ActionButtons
+                            onShowNewUpload={onShowNewUpload}
+                            onShowNewRun={onShowNewRun}
+                            onShowNewText={onShowNewText}
+                        />
                     </Grid>
                 </Grid>
             </div>

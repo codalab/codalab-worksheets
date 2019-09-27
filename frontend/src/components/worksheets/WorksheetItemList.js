@@ -67,6 +67,12 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             ws={props.ws}
             worksheetUUID={props.worksheetUUID}
             reloadWorksheet={props.reloadWorksheet}
+            showNewUpload={props.focused && props.showNewUpload}
+            showNewRun={props.focused && props.showNewRun}
+            showNewText={props.focused && props.showNewText}
+            onHideNewUpload={props.onHideNewUpload}
+            onHideNewRun={props.onHideNewRun}
+            onHideNewText={props.onHideNewText}
         >
             {elem}
         </ItemWrapper>,
@@ -211,6 +217,12 @@ class WorksheetItemList extends React.Component {
                         handleContextMenu: this.handleContextMenu,
                         reloadWorksheet: this.props.reloadWorksheet,
                         ws: this.props.ws,
+                        showNewUpload: this.props.showNewUpload,
+                        showNewRun: this.props.showNewRun,
+                        showNewText: this.props.showNewText,
+                        onHideNewUpload: this.props.onHideNewUpload,
+                        onHideNewRun: this.props.onHideNewRun,
+                        onHideNewText: this.props.onHideNewText,
                     };
                     addWorksheetItems(
                         props,
