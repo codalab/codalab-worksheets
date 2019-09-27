@@ -855,6 +855,10 @@ def test(ctx):
     run_command([cl, 'add', 'text', '% add data_hash data_hash s/0x/HEAD'])
     run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"'])
     run_command([cl, 'add', 'text', '% display table foo'])
+    # display image
+    uuid = run_command([cl, 'upload', test_path('codalab.png')])
+    run_command([cl, 'add', 'text', '% display image / width=800\n[dataset codalab.png]{' + uuid + '}'])
+
     run_command([cl, 'add', 'bundle', uuid])
     run_command(
         [cl, 'add', 'bundle', uuid, '--dest-worksheet', wuuid]
