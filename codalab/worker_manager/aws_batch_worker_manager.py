@@ -1,6 +1,7 @@
 import boto3
 import logging
 import os
+import uuid
 from .worker_manager import WorkerManager, WorkerJob
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,8 @@ class AWSBatchWorkerManager(WorkerManager):
             str(self.args.worker_idle_seconds),
             '--work-dir',
             work_dir,
+            '--id',
+            uuid.uuid4().hex,
         ]
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])
