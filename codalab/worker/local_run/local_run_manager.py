@@ -85,7 +85,7 @@ class LocalRunManager(BaseRunManager):
                 logger.debug('Network %s already exists, reusing', name)
                 return self._docker.networks.list(names=[name])[0]
 
-        self.worker_docker_network = create_or_get_network(docker_network_prefix, True)
+        self.worker_docker_network = create_or_get_network(docker_network_prefix + "_general", True)
         self.docker_network_external = create_or_get_network(docker_network_prefix + "_ext", False)
         self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", True)
 
