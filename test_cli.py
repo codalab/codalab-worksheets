@@ -1726,12 +1726,11 @@ def test(ctx):
     # display image
     wuuid = run_command([cl, 'work', '-u'])
     uuid = run_command([cl, 'upload', test_path('codalab.png')])
-    run_command(
-        [cl, 'add', 'text', '% display image / width=800']
-    )
+    run_command([cl, 'add', 'text', '% display image / width=800'])
     run_command([cl, 'add', 'bundle', uuid])
     response = ctx.client.fetch_interpreted_worksheet(wuuid)
     print(response)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
