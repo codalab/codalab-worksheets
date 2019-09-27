@@ -7861,6 +7861,9 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
   max-width: 1700px;
   background-color: inherit;
 }
+#command_line .font {
+  display: none;
+}
 /*
  * The following has been adapted from jquery terminal
  *
