@@ -791,7 +791,7 @@ class Worksheet extends React.Component {
         var editPermission = info && info.edit_permission;
         var canEdit = this.canEdit() && this.state.editMode;
 
-        var searchClassName = !this.state.showActionBar ? 'search-hidden' : '';
+        var searchClassName = 'search-hidden';
         var editableClassName = canEdit ? 'editable' : '';
         var viewClass = !canEdit && !this.state.editMode ? 'active' : '';
         var rawClass = this.state.editMode ? 'active' : '';
