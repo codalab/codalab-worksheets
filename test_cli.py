@@ -1723,13 +1723,13 @@ def test(ctx):
     check_equals(response['name'], uuid)
     check_equals(open(path, 'rb').read(), ctx.client.fetch_contents_blob(uuid, '/').read())
 
-    # display image
+    # Display image - should not crash
     wuuid = run_command([cl, 'work', '-u'])
     uuid = run_command([cl, 'upload', test_path('codalab.png')])
     run_command([cl, 'add', 'text', '% display image / width=800'])
     run_command([cl, 'add', 'bundle', uuid])
     response = ctx.client.fetch_interpreted_worksheet(wuuid)
-    print(response)
+    check_equals(response['uuid'], wuuid)
 
 
 if __name__ == '__main__':

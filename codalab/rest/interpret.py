@@ -351,7 +351,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
                                         )
                                     )
                                 )
-                            )
+                            ).decode('utf-8')
                     else:
                         block['status']['code'] = FetchStatusCodes.not_found
                         if mode == BlockModes.contents_block:
