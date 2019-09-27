@@ -278,8 +278,7 @@ class Worksheet extends React.Component {
     handleActionBarFocus = (event) => {	
         this.setState({ activeComponent: 'action' });	
         // just scroll to the top of the page.	
-        // Add the stop() to keep animation events from building up in the queue	
-        $('#worksheet_panel').addClass('actionbar-focus');	
+        // Add the stop() to keep animation events from building up in the queue		
         $('#command_line').data('resizing', null);	
         $('body')	
             .stop(true)	
@@ -290,9 +289,6 @@ class Worksheet extends React.Component {
         // $('#command_line').terminal().focus(false);	
         this.setState({ activeComponent: 'list' });	
         $('#command_line').data('resizing', null);	
-        $('#worksheet_panel')	
-            .removeClass('actionbar-focus')	
-            .removeAttr('style');	
         $('#ws_search').removeAttr('style');	
     };
     setupEventHandlers() {

@@ -224,8 +224,7 @@ class WorksheetActionBar extends React.Component {
     resizePanel(e) {	
         var actionbar = $('#ws_search');	
         var topOffset = actionbar.offset().top;	
-        var worksheetHeight = $('#worksheet').height();	
-        var worksheetPanel = $('#worksheet_panel');	
+        var worksheetHeight = $('#worksheet').height();
         var commandLine = $('#command_line');	
         $(document).mousemove(function(e) {	
             e.preventDefault();	
@@ -234,11 +233,9 @@ class WorksheetActionBar extends React.Component {
             var actionbarHeightPercentage = (actionbarHeight / worksheetHeight) * 100;	
             if (65 < actionbarHeight && actionbarHeightPercentage < 90) {	
                 // minimum height: 65px; maximum height: 90% of worksheet height	
-                worksheetPanel.removeClass('actionbar-focus').addClass('actionbar-resized');	
                 actionbar.css('height', actionbarHeight);	
                 ACTIONBAR_DRAGHEIGHT = actionbarHeight - 20;	
-                commandLine.terminal().resize(commandLine.width(), ACTIONBAR_DRAGHEIGHT);	
-                worksheetPanel.css('padding-top', actionbarHeight);	
+                commandLine.terminal().resize(commandLine.width(), ACTIONBAR_DRAGHEIGHT);
             }	
         });	
     }	

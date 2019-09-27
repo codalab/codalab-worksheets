@@ -6774,28 +6774,6 @@ body,
   width: 2px;
   cursor: col-resize;
 }
-#worksheet #worksheet_panel {
-  padding-top: 45px !important;
-}
-#worksheet #worksheet_panel:before,
-#worksheet #worksheet_panel:after {
-  content: " ";
-  display: table;
-}
-#worksheet #worksheet_panel:after {
-  clear: both;
-}
-#worksheet #worksheet_panel:before,
-#worksheet #worksheet_panel:after {
-  content: " ";
-  display: table;
-}
-#worksheet #worksheet_panel:after {
-  clear: both;
-}
-#worksheet #worksheet_panel.actionbar-focus {
-  padding-top: 45px !important;
-}
 #worksheet .ws-button-group {
   white-space: nowrap;
 }
@@ -7754,10 +7732,6 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
   .worksheet_content .type-table table,
   .worksheet_content .type-record table {
     margin-bottom: 16px;
-  }
-  #worksheet #worksheet_panel,
-  #worksheet #worksheet_panel.actionbar-focus {
-    padding-top: 0;
   }
   #worksheet #ws_search,
   #worksheet .ws-panel,
