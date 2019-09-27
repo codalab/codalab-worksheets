@@ -141,9 +141,11 @@ def start_bundle_container(
         # nvidia-docker runtime uses this env variable to allocate GPUs
         environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else 'all'
 
+    # Name the container same as the UUID to avoid network name clashes
     container = client.containers.run(
         image=docker_image,
         command=docker_command,
+        name=uuid,
         network=network,
         mem_limit=memory_bytes,
         cpuset_cpus=cpuset_str,
