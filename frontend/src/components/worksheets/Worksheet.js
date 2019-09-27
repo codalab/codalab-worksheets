@@ -11,6 +11,7 @@ import 'bootstrap';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import { NAVBAR_HEIGHT } from '../../constants';
+import WorksheetActionBar from './WorksheetActionBar';
 
 /*
 Information about the current worksheet and its items.
@@ -108,6 +109,7 @@ class Worksheet extends React.Component {
             activeComponent: 'list', // Where the focus is (action, list, or side_panel)
             editMode: false, // Whether we're editing the worksheet
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind editMode)
+            showActionBar: true, // Whether the action bar is shown
             focusIndex: -1, // Which worksheet items to be on (-1 is none)
             subFocusIndex: 0, // For tables, which row in the table
             numOfBundles: -1, // Number of bundles in this worksheet (-1 is just the initial value)
@@ -273,6 +275,26 @@ class Worksheet extends React.Component {
     editMode = () => {
         this.toggleEditMode(true);
     };
+    handleActionBarFocus = (event) => {	
+        this.setState({ activeComponent: 'action' });	
+        // just scroll to the top of the page.	
+        // Add the stop() to keep animation events from building up in the queue	
+        $('#worksheet_panel').addClass('actionbar-focus');	
+        $('#command_line').data('resizing', null);	
+        $('body')	
+            .stop(true)	
+            .animate({ scrollTop: 0 }, 250);	
+    };	
+    handleActionBarBlur = (event) => {	
+        // explicitly close terminal because we're leaving the action bar	
+        // $('#command_line').terminal().focus(false);	
+        this.setState({ activeComponent: 'list' });	
+        $('#command_line').data('resizing', null);	
+        $('#worksheet_panel')	
+            .removeClass('actionbar-focus')	
+            .removeAttr('style');	
+        $('#ws_search').removeAttr('style');	
+    };
     setupEventHandlers() {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
@@ -316,6 +338,22 @@ class Worksheet extends React.Component {
                 this.reloadWorksheet();
                 return false;
             }.bind(this),
+        );
+
+        // Show/hide web terminal (action bar)	
+        Mousetrap.bind(	
+            ['shift+c'],	
+            function(e) {	
+                this.toggleActionBar();	
+            }.bind(this),	
+        );	
+
+        // Focus on web terminal (action bar)	
+        Mousetrap.bind(	
+            ['c'],	
+            function(e) {	
+                this.focusActionBar();	
+            }.bind(this),	
         );
 
         // Toggle edit mode
@@ -552,6 +590,18 @@ class Worksheet extends React.Component {
         }
     }
 
+    toggleActionBar() {	
+        this.setState({ showActionBar: !this.state.showActionBar });	
+    }	
+
+    focusActionBar() {	
+        this.setState({ activeComponent: 'action' });	
+        this.setState({ showActionBar: true });	
+        $('#command_line')	
+            .terminal()	
+            .focus();	
+    }
+
     ensureIsArray(bundle_info) {
         if (!bundle_info) return null;
         if (!Array.isArray(bundle_info)) {
@@ -745,7 +795,7 @@ class Worksheet extends React.Component {
         var editPermission = info && info.edit_permission;
         var canEdit = this.canEdit() && this.state.editMode;
 
-        var searchClassName = 'search-hidden';
+        var searchClassName = !this.state.showActionBar ? 'search-hidden' : '';
         var editableClassName = canEdit ? 'editable' : '';
         var viewClass = !canEdit && !this.state.editMode ? 'active' : '';
         var rawClass = this.state.editMode ? 'active' : '';
@@ -805,6 +855,20 @@ class Worksheet extends React.Component {
             </div>
         );
 
+        var action_bar_display = (	
+            <WorksheetActionBar	
+                ref={'action'}	
+                ws={this.state.ws}	
+                handleFocus={this.handleActionBarFocus}	
+                handleBlur={this.handleActionBarBlur}	
+                active={this.state.activeComponent === 'action'}	
+                reloadWorksheet={this.reloadWorksheet}	
+                openWorksheet={this.openWorksheet}	
+                editMode={this.editMode}	
+                setFocus={this.setFocus}	
+            />	
+        );
+
         var items_display = (
             <WorksheetItemList
                 ref={'list'}
@@ -817,6 +881,7 @@ class Worksheet extends React.Component {
                 setFocus={this.setFocus}
                 reloadWorksheet={this.reloadWorksheet}
                 openWorksheet={this.openWorksheet}
+                focusActionBar={this.focusActionBar}
                 ensureIsArray={this.ensureIsArray}
                 showNewUpload={this.state.showNewUpload}
                 showNewRun={this.state.showNewRun}
@@ -832,6 +897,7 @@ class Worksheet extends React.Component {
 
         return (
             <React.Fragment>
+                {action_bar_display}
                 <WorksheetHeader
                     canEdit={this.canEdit()}
                     info={info}
