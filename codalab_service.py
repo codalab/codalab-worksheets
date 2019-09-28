@@ -1,4 +1,4 @@
-#! /usr/bin/python3.6
+#! /usr/bin/python3
 
 """
 The main entry point for bringing up CodaLab services.  This is used for both
@@ -634,7 +634,7 @@ class CodalabServiceManager(object):
             print_header('Creating root user')
             self.run_service_cmd(
                 wait_mysql(
-                    'python3.6 scripts/create-root-user.py {}'.format(self.args.codalab_password)
+                    'python3 scripts/create-root-user.py {}'.format(self.args.codalab_password)
                 )
             )
 
@@ -664,7 +664,7 @@ class CodalabServiceManager(object):
         if should_run_service(self.args, 'test'):
             print_header('Running tests')
             self.run_service_cmd(
-                wait_rest_server('python3.6 test_cli.py --instance {} default'.format(rest_url))
+                wait_rest_server('python3 test_cli.py --instance {} default'.format(rest_url))
             )
 
         self.bring_up_service('monitor')

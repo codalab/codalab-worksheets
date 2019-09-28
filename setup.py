@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import setuptools
 
 # should match codalab/common.py#CODALAB_VERSION
-CODALAB_VERSION = "0.4.0"
+CODALAB_VERSION = "0.4.1"
 
 if int(setuptools.__version__.split('.')[0]) < 25:
     print(
@@ -37,6 +37,7 @@ setup(
             'codalab-service=codalab_service:main',
             'cl-worker=codalab.worker.main:main',
             'cl-worker-manager=codalab.worker_manager.main:main',
+            'cl-competitiond=scripts.competitiond:main',
         ]
     },
     zip_safe=False,

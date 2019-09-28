@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# For information about the design of the worker, see design.pdf in the same
+# directory as this file. For information about running a worker, see the
+# tutorial on the CodaLab documentation.
+
 import argparse
 import getpass
 import os

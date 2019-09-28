@@ -525,15 +525,13 @@ def test(ctx):
 @TestModule.register('gen-rest-docs')
 def test(ctx):
     """Generate REST API docs."""
-    run_command(
-        ['python3.6', os.path.join(base_path, 'scripts/gen-rest-docs.py'), '--docs', '/tmp']
-    )
+    run_command(['python3', os.path.join(base_path, 'scripts/gen-rest-docs.py'), '--docs', '/tmp'])
 
 
 @TestModule.register('gen-cli-docs')
 def test(ctx):
     """Generate CLI docs."""
-    run_command(['python3.6', os.path.join(base_path, 'scripts/gen-cli-docs.py'), '--docs', '/tmp'])
+    run_command(['python3', os.path.join(base_path, 'scripts/gen-cli-docs.py'), '--docs', '/tmp'])
 
 
 @TestModule.register('gen-readthedocs')
@@ -1504,7 +1502,7 @@ def test(ctx):
     wait(uuid)
     check_contains('2.7', run_command([cl, 'cat', uuid + '/stderr']))
     uuid = run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3.6 --version']
+        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3 --version']
     )
     wait(uuid)
     check_contains('3.6', run_command([cl, 'cat', uuid + '/stdout']))
@@ -1547,7 +1545,7 @@ def test(ctx):
             cl,
             'run',
             '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import tensorflow"',
+            'python3 -c "import tensorflow"',
         ]
     )
     wait(uuid)
@@ -1556,7 +1554,7 @@ def test(ctx):
             cl,
             'run',
             '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import torch"',
+            'python3 -c "import torch"',
         ]
     )
     wait(uuid)
@@ -1565,7 +1563,20 @@ def test(ctx):
             cl,
             'run',
             '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import numpy"',
+            'python3 -c "import numpy"',
+        ]
+    )
+    wait(uuid)
+    uuid = run_command(
+        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3 -c "import nltk"']
+    )
+    wait(uuid)
+    uuid = run_command(
+        [
+            cl,
+            'run',
+            '--request-docker-image=codalab/default-cpu:latest',
+            'python3 -c "import spacy"',
         ]
     )
     wait(uuid)
@@ -1574,25 +1585,7 @@ def test(ctx):
             cl,
             'run',
             '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import nltk"',
-        ]
-    )
-    wait(uuid)
-    uuid = run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import spacy"',
-        ]
-    )
-    wait(uuid)
-    uuid = run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import matplotlib"',
+            'python3 -c "import matplotlib"',
         ]
     )
     wait(uuid)
@@ -1649,15 +1642,7 @@ def test(ctx):
 
     out_file = temp_path('-competition-out.json')
     try:
-        run_command(
-            [
-                'python3.6',
-                os.path.join(base_path, 'scripts/competitiond.py'),
-                config_file,
-                out_file,
-                '--verbose',
-            ]
-        )
+        run_command(['cl-competitiond', config_file, out_file, '--verbose'])
 
         # Check that eval bundle gets created
         results = run_command([cl, 'search', 'tags=' + eval_tag, '-u'])
