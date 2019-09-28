@@ -53,22 +53,22 @@ class LoginCookie(object):
                 cls.KEY, secret=local.config['server']['secret_key'], default=None
             )
         except UnicodeDecodeError:
-            # Sometimes, the cookie may already be stored in the old pickle format (which is unreadable), so don't error when that happens.
             return None
         if not cookie:
             return None
         try:
             cookie = json.loads(cookie)
-            cookie = LoginCookie(
-                user_id=cookie["user_id"],
-                max_age=cookie["max_age"],
-                expires=datetime.datetime.fromtimestamp(cookie["expires"]),
-            )
-            if cookie.expires > datetime.datetime.utcnow():
-                return cookie
-            else:
-                return None
-        except json.JSONDecodeError:
+        except (TypeError, json.JSONDecodeError):
+            # TypeError is raised when the cookie is stored in the old pickle format.
+            return None
+        cookie = LoginCookie(
+            user_id=cookie["user_id"],
+            max_age=cookie["max_age"],
+            expires=datetime.datetime.fromtimestamp(cookie["expires"]),
+        )
+        if cookie.expires > datetime.datetime.utcnow():
+            return cookie
+        else:
             return None
 
     @classmethod
@@ -94,6 +94,7 @@ class CookieAuthenticationPlugin(object):
                 if cookie:
                     request.user = local.model.get_user(user_id=cookie.user_id)
                 else:
+                    LoginCookie.clear()
                     request.user = None
 
             return callback(*args, **kwargs)
