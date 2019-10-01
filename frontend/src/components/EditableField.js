@@ -103,7 +103,7 @@ export class EditableField extends React.Component<{
         if (!this.state.editing) {
             return (
                 <a className='editable editable-click' onClick={this.onClick}>
-                    {this.state.value === '' ? 'untitled' : this.state.value}
+                    {this.state.value === '' ? '(empty)' : this.state.value}
                 </a>
             );
         } else {
