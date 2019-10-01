@@ -872,7 +872,7 @@ class Worksheet extends React.Component {
                                                             key={'title' + this.canEdit()}
                                                             canEdit={this.canEdit()}
                                                             fieldName='title'
-                                                            value={info && info.title}
+                                                            value={info && info.title || "untitled"}
                                                             uuid={info && info.uuid}
                                                             onChange={() => this.reloadWorksheet()}
                                                         />
