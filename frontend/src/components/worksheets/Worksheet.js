@@ -139,7 +139,7 @@ class Worksheet extends React.Component {
         }
     }
 
-    handleClickForUnFocus = (event) => {
+    handleClickForDeselect = (event) => {
         this.setFocus(-1, 0);
     };
 
@@ -849,7 +849,7 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({showNewRun: true})}
                     onShowNewText={() => this.setState({showNewText: true})}
                     />
-                <div id='worksheet_container'  onClick={this.handleClickForUnFocus}>
+                <div id='worksheet_container'  onClick={this.handleClickForDeselect}>
                     <div id='worksheet' className={searchClassName}>
                         <div className={classes.worksheetDesktop}>
                             <div className={classes.worksheetOuter}>
