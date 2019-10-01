@@ -10,6 +10,7 @@ class ContentsItem extends React.Component {
     }
 
     handleClick = (event) => {
+        event.stopPropagation();
         this.props.setFocus(this.props.focusIndex, 0);
     };
 

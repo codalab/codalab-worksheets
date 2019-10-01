@@ -114,12 +114,14 @@ class TableWorksheetRow extends React.Component {
         this.state = {};
     }
 
-    handleRowClick = () => {
+    handleRowClick = (event) => {
         // Select row
+        event.stopPropagation();
         this.props.updateRowIndex(this.props.rowIndex, false);
     };
 
     handleTextClick = (event) => {
+        event.stopPropagation();
         var newWindow = true;
         // TODO: same window is broken, so always open in new window
         //var newWindow = event.ctrlKey;

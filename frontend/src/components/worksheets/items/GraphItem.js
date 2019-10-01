@@ -10,7 +10,8 @@ class GraphItem extends React.Component {
         this.state = {};
     }
 
-    handleClick = () => {
+    handleClick = (event) => {
+        event.stopPropagation();
         this.props.setFocus(this.props.focusIndex, 0);
     };
 
