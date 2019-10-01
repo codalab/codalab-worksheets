@@ -6741,21 +6741,15 @@ body,
   border-radius: 4px;
   box-shadow: 1px 1px 1px 1px gray;
 }
-#worksheet #ws_search {
+#ws_search {
   position: fixed;
   width: 100%;
   margin: 0;
   padding: 10px 0;
   text-align: center;
-  z-index: 1000;
   background-color: #F8F9FA;
-  margin-top: -2px;
-}
-#worksheet.search-hidden {
-  margin-top: -61px;
-}
-#worksheet.search-hidden #ws_search {
-  top: -7px;
+  margin-top: 0px;
+  z-index: 999999;
 }
 #worksheet #dragbar_horizontal {
   position: absolute;
@@ -7733,7 +7727,7 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
   .worksheet_content .type-record table {
     margin-bottom: 16px;
   }
-  #worksheet #ws_search,
+  #ws_search,
   #worksheet .ws-panel,
   #worksheet .dragbar {
     display: none;
@@ -7834,6 +7828,7 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
   margin-right: auto;
   max-width: 1700px;
   background-color: inherit;
+  opacity: .8;
 }
 #command_line .font {
   display: none;

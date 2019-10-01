@@ -791,7 +791,6 @@ class Worksheet extends React.Component {
         var editPermission = info && info.edit_permission;
         var canEdit = this.canEdit() && this.state.editMode;
 
-        var searchClassName = 'search-hidden';
         var editableClassName = canEdit ? 'editable' : '';
         var viewClass = !canEdit && !this.state.editMode ? 'active' : '';
         var rawClass = this.state.editMode ? 'active' : '';
@@ -908,7 +907,7 @@ class Worksheet extends React.Component {
                     onShowNewText={() => this.setState({showNewText: true})}
                     />
                 <div id='worksheet_container'>
-                    <div id='worksheet' className={searchClassName}>
+                    <div id='worksheet'>
                         <div className={classes.worksheetDesktop}>
                             <div className={classes.worksheetOuter}>
                                 <div className={classes.worksheetInner}>
