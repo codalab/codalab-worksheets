@@ -125,6 +125,6 @@ services:
 
 networks:
   worker:
-    name: ${CODALAB_WORKER_NETWORK_NAME}
+    name: ${CODALAB_WORKER_NETWORK_NAME}_general
     internal: True
   service:
