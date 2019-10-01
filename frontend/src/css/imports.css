@@ -6268,6 +6268,13 @@ fieldset[disabled] .btn-secondary.active {
 #ws_search:focus {
   background: white;
 }
+#ws_search.search-hidden {
+  top: -7px;
+  z-index: 0;
+}
+#worksheet.search-hidden {
+  margin-top: -61px;
+}
 .worksheet-icon-sm {
   background: url('../img/icon_worksheet_sm.png') no-repeat 0 10px;
   padding-left: 50px;

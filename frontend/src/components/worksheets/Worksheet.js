@@ -525,7 +525,7 @@ class Worksheet extends React.Component {
         }
     }
 
-    componentDidUpdate(props, state, root) {
+    componentDidUpdate(prevProps, prevState) {
         if (this.state.editMode && !this.state.editorEnabled) {
             this.setState({ editorEnabled: true });
             var editor = ace.edit('worksheet-editor');
@@ -584,6 +584,12 @@ class Worksheet extends React.Component {
                 editor.renderer.scrollToRow(rawIndex);
             }
         }
+        if (prevState.showActionBar !== this.state.showActionBar) {
+            // Hack to make sure that the <Sticky> component in WorksheetHeader.js updates.
+            // This is needed because otherwise the header doesn't move up or down as needed
+            // when the action bar is shown / hidden.
+            window.scrollTo(window.scrollX, window.scrollY + 1);
+        }
     }
 
     toggleActionBar() {	
@@ -592,7 +598,7 @@ class Worksheet extends React.Component {
 
     focusActionBar() {	
         this.setState({ activeComponent: 'action' });	
-        this.setState({ showActionBar: true });	
+        this.setState({ showActionBar: true });
         $('#command_line')	
             .terminal()	
             .focus();	
@@ -791,6 +797,7 @@ class Worksheet extends React.Component {
         var editPermission = info && info.edit_permission;
         var canEdit = this.canEdit() && this.state.editMode;
 
+        var searchClassName = this.state.showActionBar ? '': 'search-hidden';
         var editableClassName = canEdit ? 'editable' : '';
         var viewClass = !canEdit && !this.state.editMode ? 'active' : '';
         var rawClass = this.state.editMode ? 'active' : '';
@@ -860,7 +867,8 @@ class Worksheet extends React.Component {
                 reloadWorksheet={this.reloadWorksheet}	
                 openWorksheet={this.openWorksheet}	
                 editMode={this.editMode}	
-                setFocus={this.setFocus}	
+                setFocus={this.setFocus}
+                hidden={!this.state.showActionBar}	
             />	
         );
 
@@ -894,6 +902,8 @@ class Worksheet extends React.Component {
             <React.Fragment>
                 {action_bar_display}
                 <WorksheetHeader
+                    key={"codalab-worksheet-header-" + this.state.showActionBar}
+                    showActionBar={this.state.showActionBar}
                     canEdit={this.canEdit()}
                     info={info}
                     classes={classes}
@@ -907,7 +917,7 @@ class Worksheet extends React.Component {
                     onShowNewText={() => this.setState({showNewText: true})}
                     />
                 <div id='worksheet_container'>
-                    <div id='worksheet'>
+                    <div id='worksheet' className={searchClassName}>
                         <div className={classes.worksheetDesktop}>
                             <div className={classes.worksheetOuter}>
                                 <div className={classes.worksheetInner}>

@@ -241,7 +241,7 @@ class WorksheetActionBar extends React.Component {
     }	
     render() {	
         return (	
-            <div id='ws_search'>	
+            <div id='ws_search' className={this.props.hidden ? "search-hidden": ""}>	
                 <div className=''>	
                     <div id='command_line' />	
                 </div>	
