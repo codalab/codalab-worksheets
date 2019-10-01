@@ -85,6 +85,8 @@ class LocalRunManager(BaseRunManager):
                 logger.debug('Network %s already exists, reusing', name)
                 return self._docker.networks.list(names=[name])[0]
 
+        # Right now the suffix to the general worker network is hardcoded to manually match the suffix
+        # in the docker-compose file, so make sure any changes here are synced to there.
         self.worker_docker_network = create_or_get_network(docker_network_prefix + "_general", True)
         self.docker_network_external = create_or_get_network(docker_network_prefix + "_ext", False)
         self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", True)

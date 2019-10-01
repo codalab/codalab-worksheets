@@ -99,7 +99,7 @@ services:
 
   worker:
     image: codalab/worker:${CODALAB_VERSION}
-    command: cl-worker --server http://rest-server:${CODALAB_REST_PORT} --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_NAME} --id ${HOSTNAME}
+    command: cl-worker --server http://rest-server:${CODALAB_REST_PORT} --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX} --id ${HOSTNAME}
     <<: *codalab-base
     <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
     depends_on:
@@ -125,6 +125,6 @@ services:
 
 networks:
   worker:
-    name: ${CODALAB_WORKER_NETWORK_NAME}_general
+    name: ${CODALAB_WORKER_NETWORK_PREFIX}_general # Make sure this is synced with the suffix set in worker/worker.py in network initialization.
     internal: True
   service:
