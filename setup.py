@@ -33,7 +33,8 @@ setup(
     include_package_data=True,
     entry_points={
         'console_scripts': [
-            'cl=codalab.bin.cl:main',
+            'cl-server=codalab.bin.server:main',
+            'cl-bundle-manager=codalab.bin.bundle_manager:main',
             'codalab-service=codalab_service:main',
             'cl-worker=codalab.worker.main:main',
             'cl-competitiond=scripts.competitiond:main',
