@@ -255,8 +255,7 @@ class BundleModel(object):
         - .count: just return the number of bundles
         - .shared: shared with me through a group
         - .mine: sugar for owner_id=user_id
-        - .last: sugar for id=sort-
-        - .group: return bundles shared with this group
+        - .last: sugar for id=.sort-
         Keys are one of the following:
         - Bundle fields (e.g., uuid)
         - Metadata fields (e.g., time)
