@@ -11,8 +11,6 @@ class State(object):
     STAGED = 'staged'
     # Creating a make bundle.
     MAKING = 'making'
-    # Waiting for the worker to start up.
-    WAITING_FOR_WORKER_STARTUP = 'waiting_for_worker_startup'
     # Wait for the worker to start running the bundle.
     STARTING = 'starting'
     # Wait for worker to download dependencies and docker images
@@ -34,7 +32,6 @@ class State(object):
         CREATED,
         STAGED,
         MAKING,
-        WAITING_FOR_WORKER_STARTUP,
         STARTING,
         RUNNING,
         READY,
@@ -42,5 +39,5 @@ class State(object):
         PREPARING,
         FINALIZING,
     }
-    ACTIVE_STATES = {MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, FINALIZING, PREPARING}
+    ACTIVE_STATES = {MAKING, STARTING, RUNNING, FINALIZING, PREPARING}
     FINAL_STATES = {READY, FAILED, KILLED}
