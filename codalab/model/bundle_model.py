@@ -1770,11 +1770,7 @@ class BundleModel(object):
         """
         Helper function to serialize DataTime
         """
-        return (
-            obj.isoformat()
-            if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date)
-            else None
-        )
+        return obj.isoformat() if isinstance(obj, (datetime.date, datetime.datetime)) else None
 
     def add_chat_log_info(self, query_info):
         """
@@ -1810,7 +1806,7 @@ class BundleModel(object):
         """
         user_id1 = query_info.get('user_id')
         if user_id1 is None:
-            return
+            return None
         limit = query_info.get('limit')
         with self.engine.begin() as connection:
             query = select(
