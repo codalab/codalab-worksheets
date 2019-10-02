@@ -419,7 +419,7 @@ class LocalRunStateMachine(StateTransitioner):
                         try:
                             run_state.container.kill()
                         except docker.errors.APIError:
-                            traceback.print_exc()
+                            logger.error(traceback.format_exc())
                 except docker.errors.APIError:
                     logger.error(traceback.format_exc())
                     time.sleep(1)
