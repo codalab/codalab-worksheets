@@ -306,9 +306,8 @@ class LocalRunStateMachine(StateTransitioner):
             kill_messages = []
 
             run_stats = docker_utils.get_container_stats(run_state.container)
-            time_used = time.time() - run_state.start_time
+            time_total = time.time() - run_state.start_time
 
-            run_state = run_state._replace(time_used=time_used)
             run_state = run_state._replace(
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
             )
@@ -316,9 +315,15 @@ class LocalRunStateMachine(StateTransitioner):
                 disk_utilization=self.disk_utilization[bundle_uuid]['disk_utilization']
             )
 
+            run_state = run_state._replace(
+                time=time_total,
+                time_user=run_stats.get('time_user', run_state.time_user),
+                time_system=run_stats.get('time_system', run_state.time_system),
+            )
+
             if (
                 run_state.resources['request_time']
-                and run_state.time_used > run_state.resources['request_time']
+                and run_state.time > run_state.resources['request_time']
             ):
                 kill_messages.append(
                     'Time limit %s exceeded.' % duration_str(run_state.resources['request_time'])
