@@ -284,7 +284,7 @@ class BundleManager(object):
                 worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
             ):
                 logger.info('Acknowledged finalization of run bundle %s', bundle.uuid)
-                self._model.finish_bundle(bundle)
+                self._model.transition_bundle_finished(bundle)
 
     def _bring_offline_stuck_running_bundles(self, workers):
         """
