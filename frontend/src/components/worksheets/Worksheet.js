@@ -140,7 +140,10 @@ class Worksheet extends React.Component {
     }
 
     handleClickForDeselect = (event) => {
-        this.setFocus(-1, 0);
+        //Deselecting when clicking outside worksheet_items component
+        if (event.target === event.currentTarget){
+            this.setFocus(-1, 0);
+        }
     };
 
     setFocus = (index, subIndex, shouldScroll) => {
@@ -849,11 +852,11 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({showNewRun: true})}
                     onShowNewText={() => this.setState({showNewText: true})}
                     />
-                <div id='worksheet_container'  onClick={this.handleClickForDeselect}>
+                <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
-                        <div className={classes.worksheetDesktop}>
-                            <div className={classes.worksheetOuter}>
-                                <div className={classes.worksheetInner}>
+                        <div className={classes.worksheetDesktop} onClick={this.handleClickForDeselect}>
+                            <div className={classes.worksheetOuter} onClick={this.handleClickForDeselect}>
+                                <div className={classes.worksheetInner} onClick={this.handleClickForDeselect}>
                                     <div id='worksheet_content' className={editableClassName + ' worksheet_content'}>
                                         {worksheet_display}
                                     </div>

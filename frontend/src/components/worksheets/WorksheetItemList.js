@@ -191,6 +191,13 @@ class WorksheetItemList extends React.Component {
         );
     };
 
+    handleClickForDeselect = (event) => {
+        //Deselect if clicking between worksheet row items
+        if (event.target === event.currentTarget){
+            this.props.setFocus(-1, 0);
+        }
+    };
+
     render() {
         this.capture_keys(); // each item capture keys are handled dynamically after this call
 
@@ -238,7 +245,7 @@ class WorksheetItemList extends React.Component {
         }
         if (info && info.error)
             items_display = <p className='alert-danger'>Error in worksheet: {info.error}</p>;
-        return (<div id='worksheet_items'>{items_display}</div>);
+        return (<div id='worksheet_items' onClick={this.handleClickForDeselect}>{items_display}</div>);
     }
 }
 
