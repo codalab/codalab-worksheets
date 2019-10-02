@@ -136,7 +136,7 @@ CODALAB_ARGUMENTS = [
         default='codalab',
     ),
     CodalabArg(
-        name='worker_network_name',
+        name='worker_network_prefix',
         help='Network name for the worker',
         default=lambda args: args.instance_name + '-worker-network',
     ),
