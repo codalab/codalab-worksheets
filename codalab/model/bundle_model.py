@@ -746,9 +746,9 @@ class BundleModel(object):
         return True
 
     def bundle_checkin(self, bundle, bundle_update, user_id, worker_id):
-        '''
+        """
         Updates the database tables with the most recent bundle information from worker
-        '''
+        """
         state = bundle_update['state']
         with self.engine.begin() as connection:
             # If bundle isn't in db anymore the user deleted it so cancel
@@ -777,9 +777,9 @@ class BundleModel(object):
                 return False
 
     def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, connection):
-        '''
+        """
         Marks the bundle as running. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
-        '''
+        """
         if row.state == State.WORKER_OFFLINE:
             run_row = connection.execute(
                 cl_worker_run.select().where(cl_worker_run.c.run_uuid == bundle.uuid)
@@ -840,10 +840,10 @@ class BundleModel(object):
         return True
 
     def finish_bundle(self, bundle):
-        '''
+        """
         Updates the given FINALIZING bundle to FINISHED state so the server stops
         telling the worker it is finalized
-        '''
+        """
         metadata = bundle.metadata.to_dict()
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
@@ -1959,13 +1959,13 @@ class BundleModel(object):
         return user_id, verification_key
 
     def delete_user(self, user_id=None):
-        '''
+        """
         Delete the user with the given uuid.
         Delete all items in the database with a
         foreign key that references the user.
 
         :param user_id: id of user to delete
-        '''
+        """
         with self.engine.begin() as connection:
 
             # User verification
