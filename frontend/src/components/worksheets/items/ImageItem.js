@@ -27,7 +27,7 @@ class ImageItem extends React.Component {
         if (this.props.item.hasOwnProperty('width')) {
             styles['width'] = this.props.item.width + 'px';
         }
-        
+
         return (
             <div className='ws-item' onClick={this.handleClick}>
                 <div className={className} ref={this.props.item.ref}>
