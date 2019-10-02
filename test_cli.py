@@ -855,6 +855,7 @@ def test(ctx):
     run_command([cl, 'add', 'text', '% add data_hash data_hash s/0x/HEAD'])
     run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"'])
     run_command([cl, 'add', 'text', '% display table foo'])
+
     run_command([cl, 'add', 'bundle', uuid])
     run_command(
         [cl, 'add', 'bundle', uuid, '--dest-worksheet', wuuid]
@@ -1721,6 +1722,14 @@ def test(ctx):
     response = ctx.client.fetch_contents_info(uuid)
     check_equals(response['name'], uuid)
     check_equals(open(path, 'rb').read(), ctx.client.fetch_contents_blob(uuid, '/').read())
+
+    # Display image - should not crash
+    wuuid = run_command([cl, 'work', '-u'])
+    uuid = run_command([cl, 'upload', test_path('codalab.png')])
+    run_command([cl, 'add', 'text', '% display image / width=800'])
+    run_command([cl, 'add', 'bundle', uuid])
+    response = ctx.client.fetch_interpreted_worksheet(wuuid)
+    check_equals(response['uuid'], wuuid)
 
 
 if __name__ == '__main__':
