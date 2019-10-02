@@ -119,7 +119,6 @@ class LocalRunStateMachine(StateTransitioner):
         )
         self.add_transition(LocalRunStage.FINALIZING, self._transition_from_FINALIZING)
         self.add_terminal(LocalRunStage.FINISHED)
-        self.add_exception_handler(self._handle_exception)
 
         self.dependency_manager = dependency_manager
         self.docker_image_manager = docker_image_manager
@@ -141,24 +140,6 @@ class LocalRunStateMachine(StateTransitioner):
             self.disk_utilization[uuid]['running'] = False
         self.disk_utilization.stop()
         self.uploading.stop()
-
-    def _handle_exception(self, run_state, exception):
-        """
-        Default exception handler that gets called by the state machine
-        if an otherwise unhandled exception occurs during state transitions.
-        All states get failed and moved to CLEANING_UP
-        If exception occurs during upload, it is moved to CLEANING_UP, but with
-        has_contents set to False so UPLOAD is not retried at the end.
-        """
-        if run_state.stage == LocalRunStage.UPLOADING_RESULTS and run_state.has_contents:
-            run_state.info['failure_message'] = "Unhandled exception during result upload: %s" % (
-                exception
-            )
-            return run_state._replace(
-                stage=LocalRunStage.CLEANING_UP, info=run_state.info, has_contents=False
-            )
-        run_state.info['failure_message'] = "Unhandled exception during run: %s" % (exception)
-        return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
     def _transition_from_PREPARING(self, run_state):
         """
