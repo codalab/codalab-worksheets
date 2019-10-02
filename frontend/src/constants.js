@@ -1,1 +1,2 @@
-export const CODALAB_VERSION = '0.3.2';
+// Should match codalab/common.py#CODALAB_VERSION
+export const CODALAB_VERSION = '0.4.2';

@@ -4,7 +4,6 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 
 import collections
 import datetime
-import json
 import re
 import time
 from uuid import uuid4
@@ -31,7 +30,6 @@ from codalab.model.tables import (
     worksheet as cl_worksheet,
     worksheet_tag as cl_worksheet_tag,
     worksheet_item as cl_worksheet_item,
-    event as cl_event,
     user as cl_user,
     chat as cl_chat,
     user_verification as cl_user_verification,
@@ -46,7 +44,7 @@ from codalab.objects.worksheet import item_sort_key, Worksheet
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Client, OAuth2Token
 from codalab.objects.user import User
 from codalab.rest.util import get_group_info
-from codalabworker.bundle_state import State
+from codalab.worker.bundle_state import State
 
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
@@ -130,7 +128,7 @@ class BundleModel(object):
         If a value is a LikeQuery, produce a LIKE clause on that column.
         """
         clauses = [true()]
-        for (key, value) in kwargs.iteritems():
+        for (key, value) in kwargs.items():
             clauses.append(self.make_clause(getattr(table.c, key), value))
         return and_(*clauses)
 
@@ -624,7 +622,7 @@ class BundleModel(object):
 
         # Make a dictionary for each bundle with both data and metadata.
         bundle_values = {row.uuid: str_key_dict(row) for row in bundle_rows}
-        for bundle_value in bundle_values.itervalues():
+        for bundle_value in bundle_values.values():
             bundle_value['dependencies'] = []
             bundle_value['metadata'] = []
         for dep_row in dependency_rows:
@@ -637,8 +635,9 @@ class BundleModel(object):
             bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
 
         # Construct and validate all of the retrieved bundles.
-        sorted_values = sorted(bundle_values.itervalues(), key=lambda r: r['id'])
+        sorted_values = sorted(bundle_values.values(), key=lambda r: r['id'])
         bundles = [
+            #
             get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
             for bundle_value in sorted_values
         ]
@@ -744,11 +743,11 @@ class BundleModel(object):
 
             return True
 
-    def start_bundle(self, bundle, user_id, worker_id, hostname, start_time):
+    def start_bundle(self, bundle, user_id, worker_id, start_time, remote):
         """
         Marks the bundle as running but only if it is still scheduled to run
         on the given worker (done by checking the worker_run table). Returns
-        True if it is. Updates a few metadata fields and the events log.
+        True if it is.
         """
         with self.engine.begin() as connection:
             # Check that still assigned to this worker.
@@ -760,21 +759,13 @@ class BundleModel(object):
 
             bundle_update = {
                 'state': State.PREPARING,
-                'metadata': {'remote': hostname, 'started': start_time, 'last_updated': start_time},
+                'metadata': {'started': start_time, 'last_updated': start_time, 'remote': remote},
             }
             self.update_bundle(bundle, bundle_update, connection)
 
-        self.update_events_log(
-            user_id=bundle.owner_id,
-            user_name=None,  # Don't know
-            command='start_bundle',
-            args=(bundle.uuid),
-            uuid=bundle.uuid,
-        )
-
         return True
 
-    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id, hostname):
+    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id):
         '''
         Updates the database tables with the most recent bundle information from worker
         '''
@@ -789,9 +780,7 @@ class BundleModel(object):
 
             if state == State.FINALIZING:
                 # update bundle metadata using resume_bundle one last time before finalizing it
-                self.resume_bundle(
-                    bundle, bundle_update, row, user_id, worker_id, hostname, connection
-                )
+                self.resume_bundle(bundle, bundle_update, row, user_id, worker_id, connection)
                 return self.finalize_bundle(
                     bundle,
                     user_id,
@@ -801,16 +790,15 @@ class BundleModel(object):
                 )
             elif state in [State.PREPARING, State.RUNNING]:
                 return self.resume_bundle(
-                    bundle, bundle_update, row, user_id, worker_id, hostname, connection
+                    bundle, bundle_update, row, user_id, worker_id, connection
                 )
             else:
                 # State isn't one we can check in for
                 return False
 
-    def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, hostname, connection):
+    def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, connection):
         '''
         Marks the bundle as running. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
-        Updates a few metadata fields and the events log.
         '''
         if row.state == State.WORKER_OFFLINE:
             run_row = connection.execute(
@@ -830,6 +818,7 @@ class BundleModel(object):
             'run_status': bundle_update['run_status'],
             'last_updated': int(time.time()),
             'time': time.time() - bundle_update['start_time'],
+            'remote': bundle_update['remote'],
         }
 
         if bundle_update['docker_image'] is not None:
@@ -839,20 +828,12 @@ class BundleModel(object):
             bundle, {'state': bundle_update['state'], 'metadata': metadata_update}, connection
         )
 
-        self.update_events_log(
-            user_id=bundle.owner_id,
-            user_name=None,  # Don't know
-            command='resume_bundle',
-            args=(bundle.uuid),
-            uuid=bundle.uuid,
-        )
-
         return True
 
     def finalize_bundle(self, bundle, user_id, exitcode, failure_message, connection):
         """
-        Marks the bundle as READY / KILLED / FAILED, updating a few metadata fields, the
-        events log and removing the worker_run row. Additionally, if the user
+        Marks the bundle as READY / KILLED / FAILED, updating a few metadata fields and
+        removing the worker_run row. Additionally, if the user
         running the bundle was the CodaLab root user, increments the time
         used by the bundle owner.
         """
@@ -875,14 +856,6 @@ class BundleModel(object):
 
         if user_id == self.root_user_id:
             self.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
-
-        self.update_events_log(
-            user_id=bundle.owner_id,
-            user_name=None,  # Don't know
-            command='finalize_bundle',
-            args=(bundle.uuid, state, bundle.metadata.to_dict()),
-            uuid=bundle.uuid,
-        )
 
         return True
 
@@ -919,13 +892,10 @@ class BundleModel(object):
         # (Clients should check for this case ahead of time if they want to
         # silently skip over creating bundles that already exist.)
         with self.engine.begin() as connection:
-            try:
-                result = connection.execute(cl_bundle.insert().values(bundle_value))
-                self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
-                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-                bundle.id = result.lastrowid
-            except UnicodeError:
-                raise UsageError("Invalid character detected; use ascii characters only.")
+            result = connection.execute(cl_bundle.insert().values(bundle_value))
+            self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
+            self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            bundle.id = result.lastrowid
 
     def update_bundle(self, bundle, update, connection=None):
         """
@@ -941,7 +911,7 @@ class BundleModel(object):
         # Apply the column and metadata updates in memory and validate the result.
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
-        for (key, value) in metadata_update.iteritems():
+        for (key, value) in metadata_update.items():
             bundle.metadata.set_metadata_key(key, value)
         bundle.validate()
         # Construct clauses and update lists for updating certain bundle columns.
@@ -1075,12 +1045,12 @@ class BundleModel(object):
         # Make a dictionary for each worksheet with both its main row and its items.
         worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
         # Set tags
-        for value in worksheet_values.itervalues():
+        for value in worksheet_values.values():
             value['tags'] = []
         for row in tag_rows:
             worksheet_values[row.worksheet_uuid]['tags'].append(row.tag)
         if fetch_items:
-            for value in worksheet_values.itervalues():
+            for value in worksheet_values.values():
                 value['items'] = []
             for item_row in sorted(item_rows, key=item_sort_key):
                 if item_row.worksheet_uuid not in worksheet_values:
@@ -1088,7 +1058,7 @@ class BundleModel(object):
                 item_row = dict(item_row)
                 item_row['value'] = self.decode_str(item_row['value'])
                 worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
-        return [Worksheet(value) for value in worksheet_values.itervalues()]
+        return [Worksheet(value) for value in worksheet_values.values()]
 
     def search_worksheets(self, user_id, keywords):
         """
@@ -1099,7 +1069,7 @@ class BundleModel(object):
         """
         clauses = []
         offset = 0
-        limit = 1000
+        limit = 10
         sort_key = [cl_worksheet.c.name]
 
         # Number nested subqueries
@@ -1125,7 +1095,6 @@ class BundleModel(object):
                     return field == value
             return None
 
-        clauses = []
         for keyword in keywords:
             keyword = keyword.replace('.*', '%')
             # Sugar
@@ -1361,7 +1330,6 @@ class BundleModel(object):
                 }
                 new_items.append(new_item)
                 connection.execute(cl_worksheet_item.insert().values(new_item))
-            # sqlite doesn't support batch insertion
 
     def update_worksheet_items(self, worksheet_uuid, last_item_id, length, new_items):
         """
@@ -1410,8 +1378,6 @@ class BundleModel(object):
         """
         if 'name' in info:
             worksheet.name = info['name']
-        if 'title' in info:
-            worksheet.title = info['title']
         if 'frozen' in info:
             worksheet.frozen = info['frozen']
         if 'owner_id' in info:
@@ -1503,7 +1469,7 @@ class BundleModel(object):
             if not rows:
                 return []
         values = {row.uuid: str_key_dict(row) for row in rows}
-        return [value for value in values.itervalues()]
+        return [value for value in values.values()]
 
     def batch_get_all_groups(self, spec_filters, group_filters, user_group_filters):
         """
@@ -1554,7 +1520,7 @@ class BundleModel(object):
             q2 = q2.where(user_group_clause)
 
         # Union
-        q0 = union(*filter(lambda q: q is not None, [q0, q1, q2]))
+        q0 = union(*[q for q in [q0, q1, q2] if q is not None])
 
         with self.engine.begin() as connection:
             rows = connection.execute(q0).fetchall()
@@ -1569,7 +1535,7 @@ class BundleModel(object):
                     row['owner_id'] = str(row['owner_id'])
                 rows[i] = row
             values = {row['uuid']: row for row in rows}
-            return [value for value in values.itervalues()]
+            return [value for value in values.values()]
 
     def delete_group(self, uuid):
         """
@@ -1796,117 +1762,6 @@ class BundleModel(object):
             cl_group_worksheet_permission, user_id, worksheet_uuids, owner_ids
         )
 
-    # Operations on the events log.
-
-    def get_events_log_info(self, query_info, offset, limit):
-        """
-        Return an info object with
-        - |max_entries| entries matching the given |query|.
-        """
-        # Group by
-        field_name = query_info.get('group_by')
-        field = None
-        if field_name is not None:
-            if field_name == 'user':
-                field = cl_event.c.user_name
-            elif field_name == 'command':
-                field = cl_event.c.command
-            elif field_name == 'uuid':
-                field = cl_event.c.uuid
-            elif field_name == 'date':
-                field = cl_event.c.date
-            else:
-                raise UsageError(
-                    "Invalid field: '%s', expected user|command|uuid|date" % field_name
-                )
-
-        # Build up query
-        if query_info.get('count'):
-            select_args = []
-            if field is not None:
-                select_args.append(field)
-            select_args.append(func.count(cl_event.c.id).label('cnt'))
-        else:
-            select_args = [cl_event]
-        query = select(select_args)
-        if query_info.get('user') is not None:
-            query = query.where(
-                or_(
-                    cl_event.c.user_id == query_info['user'],
-                    cl_event.c.user_name == query_info['user'],
-                )
-            )
-        if query_info.get('command') is not None:
-            query = query.where(cl_event.c.command == query_info['command'])
-        if query_info.get('args') is not None:
-            query = query.where(cl_event.c.args.like(query_info['args']))
-        if query_info.get('uuid') is not None:
-            query = query.where(cl_event.c.uuid == query_info['uuid'])
-        if query_info.get('date') is not None:
-            query = query.where(cl_event.c.date == query_info['date'])
-
-        if query_info.get('count'):
-            # Sort by decreasing count
-            query = query.order_by('cnt DESC')
-            if field is not None:
-                query = query.group_by(field)
-        else:
-            # Sort from latest event to earliest
-            query = query.order_by(cl_event.c.id.desc())
-            if field is not None:
-                raise UsageError('If specify field, must count')
-
-        if offset is not None:
-            query = query.offset(offset)
-        if limit is not None:
-            query = query.limit(limit)
-
-        # Make query
-        info = {}
-        with self.engine.begin() as connection:
-            # print query
-            rows = connection.execute(query).fetchall()
-            if query_info.get('count'):
-                info['counts'] = rows
-            else:
-                info['events'] = reversed(rows)
-        return info
-
-    def update_events_log(self, user_id, user_name, command, args, start_time=None, uuid=None):
-        # Find the first uuid in args, so we can index that as a separate column in the DB.
-        # Note that the uuid could be either a worksheet or a bundle.
-        def find_uuid(x):
-            if isinstance(x, basestring):
-                if spec_util.UUID_REGEX.match(x):
-                    return x
-            elif isinstance(x, tuple):
-                return find_uuid(list(x))
-            elif isinstance(x, list):
-                for y in x:
-                    z = find_uuid(y)
-                    if z is not None:
-                        return z
-            return None
-
-        with self.engine.begin() as connection:
-            end_time = time.time()
-            if start_time is None:
-                start_time = end_time
-            if uuid is None:
-                uuid = find_uuid(args)
-            info = {
-                'start_time': datetime.datetime.fromtimestamp(start_time),
-                'end_time': datetime.datetime.fromtimestamp(end_time),
-                'date': datetime.datetime.fromtimestamp(end_time).strftime('%Y-%m-%d'),
-                'duration': end_time - start_time,
-                'user_id': user_id,
-                'user_name': user_name,
-                'command': command[:63],  # Truncate
-                'args': json.dumps(args),
-                'uuid': uuid,
-            }
-            connection.execute(cl_event.insert().values(info))
-
     # Operations on the query log
     def date_handler(self, obj):
         """
@@ -2095,6 +1950,7 @@ class BundleModel(object):
                         "is_verified": is_verified,
                         "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
+                        "time_quota": self.default_user_info['time_quota'],
                         "parallel_run_quota": self.default_user_info['parallel_run_quota'],
                         "time_used": 0,
                         "disk_quota": self.default_user_info['disk_quota'],
@@ -2152,9 +2008,6 @@ class BundleModel(object):
 
             # User Groups
             connection.execute(cl_user_group.delete().where(cl_user_group.c.user_id == user_id))
-
-            # Event
-            connection.execute(cl_event.delete().where(cl_event.c.user_id == user_id))
 
             # Chat
             connection.execute(
@@ -2322,12 +2175,15 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
+    def get_user_time_quota_left(self, user_id):
+        user_info = self.get_user_info(user_id)
+        time_quota = user_info['time_quota']
+        time_used = user_info['time_used']
+        return time_quota - time_used
+
     def get_user_parallel_run_quota_left(self, user_id):
         user_info = self.get_user_info(user_id)
         parallel_run_quota = user_info['parallel_run_quota']
-        if user_id == self.root_user_id:
-            # Root user has no parallel run quota
-            return parallel_run_quota
         with self.engine.begin() as connection:
             # Get all the runs belonging to this user whose workers are not personal workers
             # of the user themselves

@@ -3,35 +3,58 @@ MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa
+
 RUN apt-get update; apt-get install -y \
     build-essential \
+    curl \
     git \
     libfuse-dev \
     libjpeg-dev \
     libmysqlclient-dev \
     mysql-client \
-    python-dev \
-    python-pip \
-    python-software-properties \
+    python3.6 \
+    python3.6-dev \
+    python3-pip \
     python-virtualenv \
-    software-properties-common \
+    python3-software-properties \
     zip;
+ 
+# Set Python3.6 as the default python3 version
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+
+### Without this Python thinks we're ASCII and unicode chars fail
+ENV LANG C.UTF-8
+
+RUN python3 -m pip install --upgrade pip
+RUN mkdir /opt/codalab-worksheets
+WORKDIR /opt/codalab-worksheets
 
 # Install dependencies
 COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
-RUN mkdir /opt/codalab-worksheets
-COPY worker /opt/codalab-worksheets/worker
-COPY requirements.txt /opt/codalab-worksheets
-COPY requirements-server.txt /opt/codalab-worksheets
-COPY setup.sh /opt/codalab-worksheets
-RUN cd /opt/codalab-worksheets && ./setup.sh server
+RUN chmod a+rx /opt/wait-for-it.sh
+COPY requirements.txt requirements.txt
+COPY requirements.docs.txt requirements.docs.txt
+COPY requirements-server.txt requirements-server.txt
+RUN python3 -m pip install -r requirements-server.txt
 
 # Install code
-COPY . /opt/codalab-worksheets
+COPY alembic alembic
+COPY alembic.ini alembic.ini
+COPY codalab codalab
+COPY codalab_service.py codalab_service.py
+COPY docs docs
+COPY mkdocs.yml mkdocs.yml
+COPY monitor.py monitor.py
+COPY scripts scripts
+COPY setup.py setup.py
+COPY test_cli.py test_cli.py
+COPY tests tests
+COPY views views
 
-ENV PATH="/opt/codalab-worksheets/codalab/bin:${PATH}"
-ENV CODALAB_HOME=/home/codalab
+RUN python3 -m pip install -e .
+
+# Allow non-root to read everything
+RUN chmod -R og=u-w .
 
 EXPOSE 2900
-
-ENTRYPOINT ["/opt/codalab-worksheets/codalab/bin/cl"]

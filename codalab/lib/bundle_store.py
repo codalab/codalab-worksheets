@@ -4,61 +4,11 @@ import sys
 from collections import OrderedDict
 
 from codalab.lib import path_util, spec_util
-from codalabworker.bundle_state import State
+from codalab.worker.bundle_state import State
+from functools import reduce
 
 
-class BundleStoreCleanupMixin(object):
-    """A mixin for BundleStores that wish to support a cleanup operation
-    """
-
-    def cleanup(self, uuid, dry_run):
-        """
-        Cleanup a given bundle. If dry_run is True, do not actually
-        delete the bundle from storage.
-        """
-        pass
-
-
-class BundleStoreHealthCheckMixin(object):
-    """
-    This mixin defines functionality on a BundleStore that supports some sort of health-check mechanism.
-
-    Health check is an intentionally broad term that leaves its definition up to the interpretation of each
-    BundleStore. Note that this method IS allowed to perform operations destructive to objects stored in the bundle
-    store, i.e. this is not an idempotent operation, and calling this method should be done with care.
-    """
-
-    def health_check(self, model, force):
-        pass
-
-
-class BaseBundleStore(object):
-    """
-    BaseBundleStore defines the basic interface that all subclasses are *required* to implement. Concrete subtypes of
-    this class my introduce new functionality, but they must all support at least these interfaces.
-    """
-
-    def __init__(self):
-        """
-        Create and initialize a new instance of the bundle store.
-        """
-        self.initialize_store()
-
-    def initialize_store(self):
-        """
-        Initialize the bundle store with whatever structure is needed for use.
-        """
-        pass
-
-    def get_bundle_location(self, data_hash):
-        """
-        Gets the location of the bundle with cryptographic hash digest data_hash. Returns the location in the method
-        that makes the most sense for the storage mechanism being used.
-        """
-        pass
-
-
-class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStoreHealthCheckMixin):
+class MultiDiskBundleStore(object):
     """
     Responsible for taking a set of locations and load-balancing the placement of
     bundle data between the locations.
@@ -71,9 +21,6 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
     # Location where MultiDiskBundleStore data and temp data is kept relative to CODALAB_HOME
     DATA_SUBDIRECTORY = 'bundles'
     CACHE_SIZE = 1 * 1000 * 1000  # number of entries to cache
-    MISC_TEMP_SUBDIRECTORY = (
-        'misc_temp'
-    )  # BundleServer writes out to here, so should have a different name
 
     def require_partitions(f):
         """Decorator added to MultiDiskBundleStore methods that require a disk to
@@ -84,12 +31,15 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
         def wrapper(*args, **kwargs):
             self = args[0]
             if len(self.nodes) < 1:
-                print >>sys.stderr, """
+                print(
+                    """
     Error: No partitions available.
     To use MultiDiskBundleStore, you must add at least one partition. Try the following:
 
         $ cl help bs-add-partition
-    """
+    """,
+                    file=sys.stderr,
+                )
                 sys.exit(1)
             else:
                 return f(*args, **kwargs)
@@ -100,14 +50,17 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
         self.codalab_home = path_util.normalize(codalab_home)
 
         self.partitions = os.path.join(self.codalab_home, 'partitions')
-        self.mtemp = os.path.join(self.codalab_home, MultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
+        path_util.make_directory(self.partitions)
 
-        # Perform initialization first to ensure that directories will be populated
-        super(MultiDiskBundleStore, self).__init__()
+        self.refresh_partitions()
+        if self.__get_num_partitions() == 0:  # Ensure at least one partition exists.
+            self.add_partition(None, 'default')
+
+        self.lru_cache = OrderedDict()
+
+    def refresh_partitions(self):
         nodes, _ = path_util.ls(self.partitions)
         self.nodes = nodes
-        self.lru_cache = OrderedDict()
-        super(MultiDiskBundleStore, self).__init__()
 
     def get_node_avail(self, node):
         # get absolute free space
@@ -147,48 +100,41 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
         self.lru_cache[uuid] = disk
         return os.path.join(self.partitions, disk, MultiDiskBundleStore.DATA_SUBDIRECTORY, uuid)
 
-    def initialize_store(self):
-        """
-        Initializes the multi-disk bundle store.
-        """
-        path_util.make_directory(self.partitions)
-        path_util.make_directory(self.mtemp)
-
-        # Create the default partition, if there are no partitions currently
-        if self.__get_num_partitions() == 0:
-            # Create a default partition that links to the codalab_home
-            path_util.make_directory(
-                os.path.join(self.codalab_home, MultiDiskBundleStore.DATA_SUBDIRECTORY)
-            )
-            default_partition = os.path.join(self.partitions, 'default')
-            path_util.soft_link(self.codalab_home, default_partition)
-
     def add_partition(self, target, new_partition_name):
         """
-        MultiDiskBundleStore specific method. Add a new partition to the bundle store. The "target" is actually a symlink to
-        the target directory, which the user has configured as the mountpoint for some desired partition.
+        MultiDiskBundleStore specific method. Add a new partition to the bundle
+        store, which is actually a symlink to the target directory, which the
+        user has configured as the mountpoint for some desired partition.
+        If `target` is None, then make the `new_partition_name` the actual directory.
         """
-        target = os.path.abspath(target)
+        if target is not None:
+            target = os.path.abspath(target)
         new_partition_location = os.path.join(self.partitions, new_partition_name)
 
-        print >>sys.stderr, "Adding new partition as %s..." % new_partition_location
-        path_util.soft_link(target, new_partition_location)
+        print("Adding new partition as %s..." % new_partition_location, file=sys.stderr)
+        if target is None:
+            path_util.make_directory(new_partition_location)
+        else:
+            path_util.soft_link(target, new_partition_location)
 
+        # Where the bundles are stored
         mdata = os.path.join(new_partition_location, MultiDiskBundleStore.DATA_SUBDIRECTORY)
 
         try:
             path_util.make_directory(mdata)
         except Exception as e:
-            print >>sys.stderr, e
-            print >>sys.stderr, "Could not make directory %s on partition %s, aborting" % (
-                mdata,
-                target,
+            print(e, file=sys.stderr)
+            print(
+                "Could not make directory %s on partition %s, aborting" % (mdata, target),
+                file=sys.stderr,
             )
             sys.exit(1)
 
-        self.nodes.append(new_partition_name)
+        self.refresh_partitions()
 
-        print >>sys.stderr, "Successfully added partition '%s' to the pool." % new_partition_name
+        print(
+            "Successfully added partition '%s' to the pool." % new_partition_name, file=sys.stderr
+        )
 
     def __get_num_partitions(self):
         """
@@ -207,8 +153,11 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             """
             Prevent foot-shooting
             """
-            print >>sys.stderr, "Error, cannot remove last partition. If you really wish to delete CodaLab, please run the following command:"
-            print >>sys.stderr, "      rm -rf %s" % self.codalab_home
+            print(
+                "Error, cannot remove last partition. If you really wish to delete CodaLab, please run the following command:",
+                file=sys.stderr,
+            )
+            print("      rm -rf %s" % self.codalab_home, file=sys.stderr)
             return
 
         partition_abs_path = os.path.join(self.partitions, partition)
@@ -217,15 +166,21 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             print(partition_abs_path)
             path_util.check_isvalid(partition_abs_path, 'rm-partition')
         except:
-            print >>sys.stderr, "Partition with name '%s' does not exist. Run `cl ls-partitions` to see a list of mounted partitions." % partition
+            print(
+                "Partition with name '%s' does not exist. Run `cl ls-partitions` to see a list of mounted partitions."
+                % partition,
+                file=sys.stderr,
+            )
             sys.exit(1)
 
-        print >>sys.stderr, "Unlinking partition %s from CodaLab deployment..." % partition
+        print("Unlinking partition %s from CodaLab deployment..." % partition, file=sys.stderr)
         path_util.remove(partition_abs_path)
-        nodes, _ = path_util.ls(self.partitions)
-        self.nodes = nodes
-        print >>sys.stderr, "Partition removed successfully from bundle store pool"
-        print >>sys.stdout, "Warning: this does not affect the bundles in the removed partition or any entries in the bundle database"
+        self.refresh_partitions()
+        print("Partition removed successfully from bundle store pool", file=sys.stderr)
+        print(
+            "Warning: this does not affect the bundles in the removed partition or any entries in the bundle database",
+            file=sys.stdout,
+        )
         self.lru_cache = OrderedDict()
 
     def ls_partitions(self):
@@ -240,8 +195,10 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
                 path_util.ls(os.path.join(partition_path, MultiDiskBundleStore.DATA_SUBDIRECTORY)),
             )
             print(
-                '- %-016s\n\tmountpoint: %s\n\t%d %s'
-                % (d, real_path, len(bundles), 'bundle' if len(bundles) == 1 else 'bundles')
+                (
+                    '- %-016s\n\tmountpoint: %s\n\t%d %s'
+                    % (d, real_path, len(bundles), 'bundle' if len(bundles) == 1 else 'bundles')
+                )
             )
 
     def cleanup(self, uuid, dry_run):
@@ -249,7 +206,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
         Remove the bundle with given UUID from on-disk storage.
         '''
         absolute_path = self.get_bundle_location(uuid)
-        print >>sys.stderr, "cleanup: data %s" % absolute_path
+        print("cleanup: data %s" % absolute_path, file=sys.stderr)
         if not dry_run:
             path_util.remove(absolute_path)
 
@@ -307,7 +264,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
                     dep_paths = [
                         os.path.join(bundle_path, dep.child_path) for dep in bundle.dependencies
                     ]
-                    to_delete += filter(os.path.exists, dep_paths)
+                    to_delete += list(filter(os.path.exists, dep_paths))
             return to_delete
 
         def _check_other_paths(other_paths, db_bundle_by_uuid):
@@ -329,25 +286,27 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
                         to_delete += [path]
                         continue
                     elif '.' in path:
-                        print >>sys.stderr, 'WARNING: File %s is likely junk.' % path
+                        print('WARNING: File %s is likely junk.' % path, file=sys.stderr)
             return to_delete
 
         partitions, _ = path_util.ls(self.partitions)
         trash_count = 0
 
         for partition in partitions:
-            print >>sys.stderr, 'Looking for trash in partition %s...' % partition
+            print('Looking for trash in partition %s...' % partition, file=sys.stderr)
             partition_path = os.path.join(
                 self.partitions, partition, MultiDiskBundleStore.DATA_SUBDIRECTORY
             )
-            entries = map(
-                lambda f: os.path.join(partition_path, f),
-                reduce(lambda d, f: d + f, path_util.ls(partition_path)),
+            entries = list(
+                map(
+                    lambda f: os.path.join(partition_path, f),
+                    reduce(lambda d, f: d + f, path_util.ls(partition_path)),
+                )
             )
-            bundle_paths = filter(_is_bundle, entries)
+            bundle_paths = list(filter(_is_bundle, entries))
             other_paths = set(entries) - set(bundle_paths)
 
-            uuids = map(_get_uuid, bundle_paths)
+            uuids = list(map(_get_uuid, bundle_paths))
             db_bundles = model.batch_get_bundles(uuid=uuids)
             db_bundle_by_uuid = dict()
             for bundle in db_bundles:
@@ -364,7 +323,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             # Check for each bundle if we need to compute its data_hash
             data_hash_recomputed = 0
 
-            print >>sys.stderr, 'Checking data_hash of bundles in partition %s...' % partition
+            print('Checking data_hash of bundles in partition %s...' % partition, file=sys.stderr)
             for bundle_path in bundle_paths:
                 uuid = _get_uuid(bundle_path)
                 bundle = db_bundle_by_uuid.get(uuid, None)
@@ -379,28 +338,31 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
                     data_hash = '0x%s' % path_util.hash_directory(bundle_path, dirs_and_files)
                     if bundle.data_hash == None:
                         data_hash_recomputed += 1
-                        print >>sys.stderr, 'Giving bundle %s data_hash %s' % (
-                            bundle_path,
-                            data_hash,
+                        print(
+                            'Giving bundle %s data_hash %s' % (bundle_path, data_hash),
+                            file=sys.stderr,
                         )
                         if force:
                             db_update = dict(data_hash=data_hash)
                             model.update_bundle(bundle, db_update)
                     elif compute_data_hash and data_hash != bundle.data_hash:
                         data_hash_recomputed += 1
-                        print >>sys.stderr, 'Bundle %s should have data_hash %s, actual digest is %s' % (
-                            bundle_path,
-                            bundle.data_hash,
-                            data_hash,
+                        print(
+                            'Bundle %s should have data_hash %s, actual digest is %s'
+                            % (bundle_path, bundle.data_hash, data_hash),
+                            file=sys.stderr,
                         )
                         if repair_hashes and force:
                             db_update = dict(data_hash=data_hash)
                             model.update_bundle(bundle, db_update)
 
         if force:
-            print >>sys.stderr, '\tDeleted %d objects from the bundle store' % trash_count
-            print >>sys.stderr, '\tRecomputed data_hash for %d bundles' % data_hash_recomputed
+            print('\tDeleted %d objects from the bundle store' % trash_count, file=sys.stderr)
+            print('\tRecomputed data_hash for %d bundles' % data_hash_recomputed, file=sys.stderr)
         else:
-            print >>sys.stderr, 'Dry-Run Statistics, re-run with --force to perform updates:'
-            print >>sys.stderr, '\tObjects marked for deletion: %d' % trash_count
-            print >>sys.stderr, '\tBundles that need data_hash recompute: %d' % data_hash_recomputed
+            print('Dry-Run Statistics, re-run with --force to perform updates:', file=sys.stderr)
+            print('\tObjects marked for deletion: %d' % trash_count, file=sys.stderr)
+            print(
+                '\tBundles that need data_hash recompute: %d' % data_hash_recomputed,
+                file=sys.stderr,
+            )

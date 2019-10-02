@@ -1,91 +1,127 @@
 version: '3.5'
 
-x-non-blocking-logging:
-  &non-blocking-logging
+x-non-blocking-logging: &non-blocking-logging
   driver: json-file
   options:
     mode: non-blocking
 
-x-codalab-env:
-  &codalab-env
-  - CODALAB_HOME=${CODALAB_SERVICE_HOME}
-  - CODALAB_USERNAME=${CODALAB_ROOT_USER}
-  - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+x-codalab-env: &codalab-env
+  - CODALAB_HOME=${CODALAB_HOME}
+  - CODALAB_USERNAME=${CODALAB_USERNAME}
+  - CODALAB_PASSWORD=${CODALAB_PASSWORD}
+  - CODALAB_MYSQL_HOST=${CODALAB_MYSQL_HOST}
+  - CODALAB_MYSQL_PORT=${CODALAB_MYSQL_PORT}
+  - CODALAB_MYSQL_DATABASE=${CODALAB_MYSQL_DATABASE}
+  - CODALAB_MYSQL_USERNAME=${CODALAB_MYSQL_USERNAME}
+  - CODALAB_MYSQL_PASSWORD=${CODALAB_MYSQL_PASSWORD}
+  - CODALAB_USER_DISK_QUOTA=${CODALAB_USER_DISK_QUOTA}
+  - CODALAB_USER_TIME_QUOTA=${CODALAB_USER_TIME_QUOTA}
+  - CODALAB_USER_PARALLEL_RUN_QUOTA=${CODALAB_USER_PARALLEL_RUN_QUOTA}
+  - CODALAB_ADMIN_EMAIL=${CODALAB_ADMIN_EMAIL}
+  - CODALAB_EMAIL_HOST=${CODALAB_EMAIL_HOST}
+  - CODALAB_EMAIL_USERNAME=${CODALAB_EMAIL_USERNAME}
+  - CODALAB_EMAIL_PASSWORD=${CODALAB_EMAIL_PASSWORD}
+  - HOSTNAME=${HOSTNAME}
+
+# Properties that every service inherits.
+x-codalab-base: &codalab-base
+  environment:
+    *codalab-env
+  logging:
+    *non-blocking-logging
+  user: ${CODALAB_UID}
+  networks:
+    - service
+
+# We mostly want to run in user mode when we need to save files to disk.
+# But if we don't, easier to run as root.
+x-codalab-root: &codalab-root
+  user: 0:0
+
+# Services that need direct access to disk.
+x-codalab-server: &codalab-server
+  volumes:
+  - "${CODALAB_HOME}:${CODALAB_HOME}"
+  - "${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}"
+  - "${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}"
+
+############################################################
 
 services:
   rest-server:
     image: codalab/server:${CODALAB_VERSION}
-    command: server
-    environment:
-      *codalab-env
-    networks:
-      - service
-    ports:
-      - ${CODALAB_REST_PORT}:2900
-    logging:
-      *non-blocking-logging
+    command: cl server
+    <<: *codalab-base
+    <<: *codalab-server
+    depends_on:
+      - mysql
 
   bundle-manager:
     image: codalab/server:${CODALAB_VERSION}
-    command: bundle-manager
-    environment:
-      *codalab-env
+    command: cl bundle-manager
+    <<: *codalab-base
+    <<: *codalab-server
     depends_on:
-      - rest-server
-    networks:
-      - service
-    logging:
-      *non-blocking-logging
+      - mysql
 
   frontend:
     image: codalab/frontend:${CODALAB_VERSION}
+    command: serve -s build -l ${CODALAB_FRONTEND_PORT}
+    <<: *codalab-base
+    <<: *codalab-root
     depends_on:
       - rest-server
-    networks:
-      - service
-    logging:
-      *non-blocking-logging
 
   nginx:
     image: nginx:1.12.0
-    command: /opt/wait-for-it.sh rest-server:2900 -- nginx
+    command: nginx
+    <<: *codalab-base
+    <<: *codalab-root
+    depends_on:
+      - frontend
+      - rest-server
     ports:
       - ${CODALAB_HTTP_PORT}:80
     volumes:
       - ./files/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./files/wait-for-it.sh:/opt/wait-for-it.sh
-    depends_on:
-      - frontend
-    networks:
-      - service
-    logging:
-      *non-blocking-logging
+
+  mysql:
+    # https://hub.docker.com/_/mysql
+    image: mysql:5.5.53
+    <<: *codalab-base
+    environment:
+      - MYSQL_ROOT_PASSWORD=${CODALAB_MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${CODALAB_MYSQL_DATABASE}
+      - MYSQL_USER=${CODALAB_MYSQL_USERNAME}
+      - MYSQL_PASSWORD=${CODALAB_MYSQL_PASSWORD}
+    volumes:
+      - ${CODALAB_MYSQL_MOUNT}:/var/lib/mysql
 
   worker:
     image: codalab/worker:${CODALAB_VERSION}
-    environment:
-      *codalab-env
+    command: cl-worker --server http://rest-server:${CODALAB_REST_PORT} --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_NAME} --id ${HOSTNAME}
+    <<: *codalab-base
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
     depends_on:
-      - bundle-manager
+      - rest-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
     networks:
       - service
       - worker
-    logging:
-      *non-blocking-logging
 
-  tests:
+  monitor:
     image: codalab/server:${CODALAB_VERSION}
-    working_dir: /opt/codalab-worksheets/
-    entrypoint: ./venv/bin/python ./test-cli.py
-    command: all --instance http://rest-server:2900
-    environment:
-      *codalab-env
+    command: python3.6 monitor.py --log-path ${CODALAB_MONITOR_DIR}/monitor.log --backup-path ${CODALAB_MONITOR_DIR}
+    <<: *codalab-base
     depends_on:
       - rest-server
-    networks:
-      - service
-    logging:
-      *non-blocking-logging
+    volumes:
+      - /var/lib/docker:/var/lib/docker
+      - ${CODALAB_HOME}:${CODALAB_HOME}
+      - ${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}
+      - ${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}
 
 networks:
   worker:

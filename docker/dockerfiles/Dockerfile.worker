@@ -1,21 +1,32 @@
 FROM ubuntu:16.04
-MAINTAINER Percy Liang <pliang@cs.stanford.edu>
+MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
-# Install dependencies
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa
+
 RUN apt-get update; apt-get install -y \
-  python-dev \
-  python-pip;
+  python3.6 \
+  python3.6-dev \
+  python3-pip;
 
-COPY worker/requirements.txt /opt
-RUN /usr/bin/env python -m pip install --user --upgrade pip; \
-    /usr/bin/env python -m pip install -r /opt/requirements.txt;
+# Set Python3.6 as the default python3 version
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 
-# Install dependencies again
-COPY worker /opt/worker
+WORKDIR /opt
+RUN mkdir ${WORKDIR}/codalab
 
-RUN /usr/bin/env python -m pip install --user --upgrade pip; \
-    /usr/bin/env python -m pip install -e /opt/worker;
+# Install dependencies
+COPY requirements.txt requirements.txt
+RUN python3.6 -m pip install --user --upgrade pip; \
+    python3.6 -m pip install -r requirements.txt;
 
-ENTRYPOINT ["cl-worker"]
+# Install code
+COPY codalab/lib codalab/lib
+COPY codalab/worker codalab/worker
+COPY setup.py setup.py
+
+RUN python3 -m pip install -e .
+
+# Allow non-root to read everything
+RUN chmod -R og=u-w .

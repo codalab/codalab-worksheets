@@ -2,7 +2,7 @@ from __future__ import (
     absolute_import,
 )  # Without this line "from worker.worker import VERSION" doesn't work.
 from contextlib import closing
-import httplib
+import http.client
 import json
 import os
 import subprocess
@@ -24,22 +24,23 @@ def checkin(worker_id):
     """
     WAIT_TIME_SECS = 3.0
 
+    # Old workers might not have all the fields, so allow subsets to be
+    # missing.
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id,
         worker_id,
-        request.json["tag"],
-        request.json["cpus"],
-        request.json["gpus"],
-        request.json["memory_bytes"],
+        request.json.get("tag"),
+        request.json.get("cpus"),
+        request.json.get("gpus"),
+        request.json.get("memory_bytes"),
+        request.json.get("free_disk_bytes"),
         request.json["dependencies"],
     )
 
     for uuid, run in request.json["runs"].items():
         try:
             bundle = local.model.get_bundle(uuid)
-            local.model.bundle_checkin(
-                bundle, run, request.user.user_id, worker_id, request.json["hostname"]
-            )
+            local.model.bundle_checkin(bundle, run, request.user.user_id, worker_id)
         except Exception:
             pass
 
@@ -53,7 +54,7 @@ def check_reply_permission(worker_id, socket_id):
     reply to messages on the given socket ID.
     """
     if not local.worker_model.has_reply_permission(request.user.user_id, worker_id, socket_id):
-        abort(httplib.FORBIDDEN, "Not your socket ID!")
+        abort(http.client.FORBIDDEN, "Not your socket ID!")
 
 
 @post(
@@ -86,12 +87,12 @@ def reply_data(worker_id, socket_id):
     The contents of the second message go in the body of the HTTP request.
     """
     if "header_message" not in request.query:
-        abort(httplib.BAD_REQUEST, "Missing header message.")
+        abort(http.client.BAD_REQUEST, "Missing header message.")
 
     try:
         header_message = json.loads(request.query.header_message)
     except ValueError:
-        abort(httplib.BAD_REQUEST, "Header message should be in JSON format.")
+        abort(http.client.BAD_REQUEST, "Header message should be in JSON format.")
 
     check_reply_permission(worker_id, socket_id)
     local.worker_model.send_json_message(socket_id, header_message, 60, autoretry=False)
@@ -103,7 +104,7 @@ def check_run_permission(bundle):
     Checks whether the current user can run the bundle.
     """
     if not check_bundle_have_run_permission(local.model, request.user.user_id, bundle):
-        abort(httplib.FORBIDDEN, "User does not have permission to run bundle.")
+        abort(http.client.FORBIDDEN, "User does not have permission to run bundle.")
 
 
 @post(
@@ -124,8 +125,8 @@ def start_bundle(worker_id, uuid):
         bundle,
         request.user.user_id,
         worker_id,
-        request.json["hostname"],
-        request.json["start_time"],
+        start_time=request.json["start_time"],
+        remote=request.json["hostname"],
     ):
         print("Started bundle %s" % uuid)
         return json.dumps(True)
@@ -157,7 +158,7 @@ def update_bundle_metadata(worker_id, uuid):
         ]
     )
     metadata_update = {}
-    for key, value in request.json.iteritems():
+    for key, value in request.json.items():
         if key in allowed_keys:
             metadata_update[key] = value
     local.model.update_bundle(bundle, {"metadata": metadata_update})
@@ -166,7 +167,7 @@ def update_bundle_metadata(worker_id, uuid):
 @get("/workers/info", name="workers_info", apply=AuthenticatedPlugin())
 def workers_info():
     if request.user.user_id != local.model.root_user_id:
-        abort(httplib.UNAUTHORIZED, "User is not root user")
+        abort(http.client.UNAUTHORIZED, "User is not root user")
 
     data = local.worker_model.get_workers()
 
@@ -183,21 +184,3 @@ def workers_info():
         worker["gpus_in_use"] = sum(bundle.metadata.request_gpus for bundle in running_bundles)
 
     return {"data": data}
-
-
-@get("/workers/code.tar.gz", name="worker_download_code")
-def code():
-    """
-    Returns .tar.gz archive containing the code of the worker.
-    """
-    response.set_header("Content-Disposition", 'attachment; filename="code.tar.gz"')
-    response.set_header("Content-Type", "application/gzip")
-    codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    code_dir = os.path.join(codalab_cli, "worker", "codalabworker")
-    args = ["tar", "czf", "-", "-C", code_dir]
-    for filename in os.listdir(code_dir):
-        if filename.endswith(".py") or filename.endswith(".sh"):
-            args.append(filename)
-    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-    result = proc.stdout.read()
-    return result

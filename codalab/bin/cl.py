@@ -1,6 +1,4 @@
-#!/usr/bin/env python
 # Main entry point for CodaLab.
-# Run 'cl' rather than this script.
 import os
 import signal
 import sys
@@ -104,7 +102,7 @@ def do_rest_server_command(bundle_cli, args):
 )
 def do_bundle_manager_command(bundle_cli, args):
     bundle_cli._fail_if_headless(args)
-    from codalab.worker.bundle_manager import BundleManager
+    from codalab.server.bundle_manager import BundleManager
     manager = BundleManager.create(bundle_cli.manager)
 
     # Register a signal handler to ensure safe shutdown.

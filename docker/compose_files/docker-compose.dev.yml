@@ -1,15 +1,13 @@
 version: '3.5'
 
 services:
+  # 1) Hot load the React code
   frontend:
-    build:
-      context: ./../..
-      dockerfile: docker/Dockerfile.frontend-dev
-    image: codalab/frontend-dev:${CODALAB_VERSION}
-    command: npm run start
+    command: npm start
     volumes:
-      - ./../../frontend:/opt/frontend
-    depends_on:
-      - rest-server
-    networks:
-      - service
+      - ./../../frontend/src:/opt/frontend/src
+  # 2) Hot load the alembic version files so that we can create new database migrations (which need to written out
+  # of Docker into the `alembic` source directory)
+  rest-server:
+    volumes:
+      - ./../../alembic/:/opt/codalab-worksheets/alembic/

@@ -22,12 +22,12 @@ class ImageItem extends React.Component {
         var src = 'data:image/png;base64,' + this.props.item.image_data;
         var styles = {};
         if (this.props.item.hasOwnProperty('height')) {
-            styles['height'] = this.props.item.height + 'px;';
+            styles['height'] = this.props.item.height + 'px';
         }
         if (this.props.item.hasOwnProperty('width')) {
-            styles['width'] = this.props.item.width + 'px;';
+            styles['width'] = this.props.item.width + 'px';
         }
-
+        
         return (
             <div className='ws-item' onClick={this.handleClick}>
                 <div className={className} ref={this.props.item.ref}>

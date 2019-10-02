@@ -2,7 +2,7 @@
 Sends email notifications to users with notifications set to a certain
 threshold.  Keeps track of partial progress in a file.
 
-    venv/bin/python scripts/send_email.py \
+    python scripts/send_email.py \
         --subject "Hello World" \
         --body-file body.html \
         --sent-file sent.jsonl \
@@ -39,7 +39,7 @@ def get_to_send_list(model, threshold):
                 ]
             ).where(cl_user.c.notifications >= threshold)
         ).fetchall()
-        return [dict(zip(HEADER, row)) for row in rows if row.email]
+        return [dict(list(zip(HEADER, row))) for row in rows if row.email]
 
 
 def get_sent_list(sent_file):
@@ -82,22 +82,24 @@ def main(args):
         info['sent_time'] = time.time()
 
         print(
-            'Sending %s/%s (%s>=%s, doit=%s): [%s] %s'
-            % (
-                i,
-                len(pending_to_send_list),
-                info['notifications'],
-                args.threshold,
-                args.doit,
-                info['user_name'],
-                info['email_description'],
+            (
+                'Sending %s/%s (%s>=%s, doit=%s): [%s] %s'
+                % (
+                    i,
+                    len(pending_to_send_list),
+                    info['notifications'],
+                    args.threshold,
+                    args.doit,
+                    info['user_name'],
+                    info['email_description'],
+                )
             )
         )
 
         # Apply template to get body of message
         body = body_template
         for field, value in info.items():
-            body = body.replace('{{' + field + '}}', unicode(value or ''))
+            body = body.replace('{{' + field + '}}', str(value or ''))
 
         if args.verbose >= 1:
             print('To      : %s' % info['email_description'])
@@ -115,7 +117,7 @@ def main(args):
 
         # Record that we sent
         with open(args.sent_file, 'a') as f:
-            print >> f, json.dumps(info)
+            print(json.dumps(info), file=f)
             f.flush()
 
 
