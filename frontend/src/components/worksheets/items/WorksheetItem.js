@@ -114,7 +114,7 @@ class TableWorksheetRow extends React.Component {
         this.state = {};
     }
 
-    handleRowClick = (event) => {
+    handleRowClick = () => {
         // Select row
         this.props.updateRowIndex(this.props.rowIndex, false);
     };
