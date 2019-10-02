@@ -58,7 +58,7 @@ class ItemWrapper extends React.Component {
             // This item isn't really a worksheet item.
             isWorkSheetItem = false;
         }
-        
+
         return (
             <div
                 className={classes.container}
