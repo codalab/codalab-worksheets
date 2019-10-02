@@ -818,8 +818,8 @@ class BundleModel(object):
             'run_status': bundle_update['run_status'],
             'last_updated': int(time.time()),
             'time': bundle_update['time'],
-            'time': bundle_update['time_user'],
-            'time': bundle_update['time_system'],
+            'time_user': bundle_update['time_user'],
+            'time_system': bundle_update['time_system'],
             'remote': bundle_update['remote'],
         }
 
