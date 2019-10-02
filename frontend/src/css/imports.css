@@ -6268,6 +6268,13 @@ fieldset[disabled] .btn-secondary.active {
 #ws_search:focus {
   background: white;
 }
+#ws_search.search-hidden {
+  top: -7px;
+  z-index: 0;
+}
+#worksheet.search-hidden {
+  margin-top: -61px;
+}
 .worksheet-icon-sm {
   background: url('../img/icon_worksheet_sm.png') no-repeat 0 10px;
   padding-left: 50px;
@@ -6741,21 +6748,15 @@ body,
   border-radius: 4px;
   box-shadow: 1px 1px 1px 1px gray;
 }
-#worksheet #ws_search {
+#ws_search {
   position: fixed;
   width: 100%;
   margin: 0;
   padding: 10px 0;
   text-align: center;
-  z-index: 1000;
   background-color: #F8F9FA;
-  margin-top: -2px;
-}
-#worksheet.search-hidden {
-  margin-top: -61px;
-}
-#worksheet.search-hidden #ws_search {
-  top: -7px;
+  margin-top: 0px;
+  z-index: 999999;
 }
 #worksheet #dragbar_horizontal {
   position: absolute;
@@ -6773,28 +6774,6 @@ body,
   right: 25%;
   width: 2px;
   cursor: col-resize;
-}
-#worksheet #worksheet_panel {
-  padding-top: 45px !important;
-}
-#worksheet #worksheet_panel:before,
-#worksheet #worksheet_panel:after {
-  content: " ";
-  display: table;
-}
-#worksheet #worksheet_panel:after {
-  clear: both;
-}
-#worksheet #worksheet_panel:before,
-#worksheet #worksheet_panel:after {
-  content: " ";
-  display: table;
-}
-#worksheet #worksheet_panel:after {
-  clear: both;
-}
-#worksheet #worksheet_panel.actionbar-focus {
-  padding-top: 45px !important;
 }
 #worksheet .ws-button-group {
   white-space: nowrap;
@@ -7755,11 +7734,7 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
   .worksheet_content .type-record table {
     margin-bottom: 16px;
   }
-  #worksheet #worksheet_panel,
-  #worksheet #worksheet_panel.actionbar-focus {
-    padding-top: 0;
-  }
-  #worksheet #ws_search,
+  #ws_search,
   #worksheet .ws-panel,
   #worksheet .dragbar {
     display: none;
@@ -7860,6 +7835,10 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
   margin-right: auto;
   max-width: 1700px;
   background-color: inherit;
+  opacity: .8;
+}
+#command_line .font {
+  display: none;
 }
 /*
  * The following has been adapted from jquery terminal

@@ -212,7 +212,7 @@ class WorksheetItemList extends React.Component {
                         focusIndex: index,
                         subFocusIndex: focused ? this.props.subFocusIndex : null,
                         setFocus: this.props.setFocus,
-                        focusActionBar: () => null,
+                        focusActionBar: this.props.focusActionBar,
                         openWorksheet: this.props.openWorksheet,
                         handleContextMenu: this.handleContextMenu,
                         reloadWorksheet: this.props.reloadWorksheet,
