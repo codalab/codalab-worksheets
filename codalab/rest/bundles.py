@@ -242,6 +242,7 @@ def _create_bundles():
             bundle['state'] = State.CREATED
         bundle['is_anonymous'] = worksheet.is_anonymous  # inherit worksheet anonymity
         bundle.setdefault('metadata', {})['created'] = int(time.time())
+        bundle['metadata']['last_updated'] = int(time.time())
         for dep in bundle.setdefault('dependencies', []):
             dep['child_uuid'] = bundle_uuid
 

@@ -42,7 +42,6 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('memory_max', float, 'Maximum amount of memory (bytes) used by this run at any time during execution.', generated=True, formatting='size'))
 
     METADATA_SPECS.append(MetadataSpec('started', int, 'Time when this bundle started executing.', generated=True, formatting='date'))
-    METADATA_SPECS.append(MetadataSpec('last_updated', int, 'Time when information about this bundle was last updated.', generated=True, formatting='date'))
     METADATA_SPECS.append(MetadataSpec('run_status', str, 'Execution status of the bundle.', generated=True))
 
     # Information about running
