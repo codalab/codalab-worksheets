@@ -21,13 +21,14 @@ class AWSBatchWorkerManager(WorkerManager):
         jobs = []
         for status in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING']:
             response = self.batch_client.list_jobs(jobQueue=self.args.queue, jobStatus=status)
-            jobs.extend(response['jobSummaryList'], status == 'RUNNING')
+            jobs.extend(response['jobSummaryList'])
         logger.info(
             'Workers: {}'.format(
                 ' '.join(job['jobId'] + ':' + job['status'] for job in jobs) or '(none)'
             )
         )
-        return [WorkerJob(active) for job, active in jobs]
+        # Only RUNNING jobs are `active` (see WorkerJob definition for meaning of active)
+        return [WorkerJob(job['status'] == 'RUNNING') for job in jobs]
 
     def start_worker_job(self):
         image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
