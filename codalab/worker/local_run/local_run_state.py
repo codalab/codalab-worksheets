@@ -376,8 +376,6 @@ class LocalRunStateMachine(StateTransitioner):
                 except docker.errors.APIError:
                     finished, _, _ = docker_utils.check_finished(run_state.container)
                     if not finished:
-                        # If we can't kill a Running container, something is wrong
-                        # Otherwise all well
                         logger.error(traceback.format_exc())
             self.disk_utilization[bundle_uuid]['running'] = False
             self.disk_utilization.remove(bundle_uuid)
@@ -420,6 +418,7 @@ class LocalRunStateMachine(StateTransitioner):
                             run_state.container.kill()
                         except docker.errors.APIError:
                             logger.error(traceback.format_exc())
+                            time.sleep(1)
                 except docker.errors.APIError:
                     logger.error(traceback.format_exc())
                     time.sleep(1)
