@@ -325,6 +325,9 @@ class LocalRunManager(BaseRunManager):
                 bundle_uuid: {
                     'run_status': run_state.run_status,
                     'start_time': run_state.start_time,
+                    'time': run_state.time,
+                    'time_user': run_state.time_user,
+                    'time_system': run_state.time_system,
                     'docker_image': run_state.docker_image,
                     'info': run_state.info,
                     'state': LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
