@@ -17,17 +17,17 @@ class AWSBatchWorkerManager(WorkerManager):
     def get_worker_jobs(self):
         """Return list of workers."""
         # Get all jobs that are not SUCCEEDED or FAILED.  Assume these
-        # represent the active workers (no one is sharing this queue).
+        # represent workers we launched (no one is sharing this queue).
         jobs = []
         for status in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING']:
             response = self.batch_client.list_jobs(jobQueue=self.args.queue, jobStatus=status)
-            jobs.extend(response['jobSummaryList'])
+            jobs.extend(response['jobSummaryList'], status == 'RUNNING')
         logger.info(
             'Workers: {}'.format(
                 ' '.join(job['jobId'] + ':' + job['status'] for job in jobs) or '(none)'
             )
         )
-        return [WorkerJob() for job in jobs]
+        return [WorkerJob(active) for job, active in jobs]
 
     def start_worker_job(self):
         image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')

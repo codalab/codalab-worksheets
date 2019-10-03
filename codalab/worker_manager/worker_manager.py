@@ -7,8 +7,9 @@ from collections import namedtuple
 logger = logging.getLogger(__name__)
 
 # Represents a AWS/Azure job that runs a single cl-worker.
-# For now, we don't need to keep any information.
-WorkerJob = namedtuple('WorkerJob', [])
+# `active` is a Boolean field that's set to true if the worker is
+# actively running at the moment. (As opposed to being staged, queued, preparing etc)
+WorkerJob = namedtuple('WorkerJob', ['active'])
 
 
 class WorkerManager(object):
@@ -84,21 +85,27 @@ class WorkerManager(object):
         self.staged_uuids = new_staged_uuids
         logger.info(
             'Staged bundles [{}]: {}'.format(
-                ' '.join(keywords), ' '.join(new_staged_uuids) or '(none)'
+                ' '.join(keywords), ' '.join(self.staged_uuids) or '(none)'
             )
         )
 
         # Get worker jobs
         worker_jobs = self.get_worker_jobs()
+        pending_jobs, active_jobs = [], []
+
+        for job in worker_jobs:
+            (active_jobs if job.active else pending_jobs).append(job)
 
         # Print status
         logger.info(
-            '{} staged bundles ({} removed since last time), {} worker jobs (min={}, max={})'.format(
-                len(new_staged_uuids),
+            '{} staged bundles ({} removed since last time), {} worker jobs (min={}, max={}) ({} active, {} pending)'.format(
+                len(self.staged_uuids),
                 len(removed_uuids),
                 len(worker_jobs),
                 self.args.min_workers,
                 self.args.max_workers,
+                len(active_jobs),
+                len(pending_jobs),
             )
         )
 
@@ -114,20 +121,11 @@ class WorkerManager(object):
             )
             want_more_workers = True
 
-        # 2) There is a staged bundle AND we have made progress running the
-        # previously staged bundles.
-        # To expand on this, if we just started a worker and we haven't made any
-        # progress towards removing bundles from staged, don't launch another
-        # one yet.  This is so that if someone starts a run that requires
-        # massive resources that we can't handle, we don't keep on trying to
-        # launch workers to no avail.  Of course, there are many reasons that a
-        # bundle might be removed from staged (user might have deleted the
-        # bundle).  Also, the bundle that was removed might not be the one that
-        # we were originally intending to run.
-        if len(new_staged_uuids) > 0:
+        # 2) There is a staged bundle AND there aren't any workers that are still booting up/starting
+        if len(self.staged_uuids) > 0:
             logger.info(
                 'Want to launch a worker because we have {} > 0 staged bundles'.format(
-                    len(new_staged_uuids)
+                    len(self.staged_uuids)
                 )
             )
             want_more_workers = True
@@ -139,6 +137,16 @@ class WorkerManager(object):
                 logger.info(
                     'Don\'t launch becaused waited {} < {} seconds since last worker'.format(
                         seconds_since_last_worker, self.args.min_seconds_between_workers
+                    )
+                )
+                return
+
+            if len(pending_jobs) >= len(self.staged_uuids):
+                # Make sure we don't queue up more workers than staged UUIDs if there are
+                # more workers still booting up than staged bundles
+                logger.info(
+                    'Don\'t launch because still more pending workers than staged bundles ({} >= {})'.format(
+                        len(pending_jobs), self.staged_uuids
                     )
                 )
                 return
