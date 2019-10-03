@@ -141,9 +141,9 @@ class WorkerManager(object):
                 )
                 return
 
+            # Make sure we don't queue up more workers than staged UUIDs if there are
+            # more workers still booting up than staged bundles
             if len(pending_worker_jobs) >= len(self.staged_uuids):
-                # Make sure we don't queue up more workers than staged UUIDs if there are
-                # more workers still booting up than staged bundles
                 logger.info(
                     'Don\'t launch because still more pending workers than staged bundles ({} >= {})'.format(
                         len(pending_worker_jobs), len(self.staged_uuids)
