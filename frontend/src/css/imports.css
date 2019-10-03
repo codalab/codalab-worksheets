@@ -7105,6 +7105,7 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
   background-color: #e2f0f5;
   border-left: #1d91c0 solid 3px;
   padding-left: 4px;
+  width:100%;
 }
 .worksheet_content.editable .ws-item {
   margin-left: 24px;
