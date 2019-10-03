@@ -73,7 +73,11 @@ LocalRunState = namedtuple(
         'bundle',
         'bundle_path',
         'resources',
-        'start_time',
+        'bundle_start_time',
+        'container_start_time',
+        'container_time_total',
+        'container_time_user',
+        'container_time_system',
         'container',
         'container_id',
         'docker_image',
@@ -81,9 +85,6 @@ LocalRunState = namedtuple(
         'has_contents',
         'cpuset',
         'gpuset',
-        'time',
-        'time_user',
-        'time_system',
         'max_memory',
         'disk_utilization',
         'info',
@@ -275,7 +276,7 @@ class LocalRunStateMachine(StateTransitioner):
 
         return run_state._replace(
             stage=LocalRunStage.RUNNING,
-            start_time=time.time(),
+            container_start_time=time.time(),
             run_status='Running job in Docker container',
             container_id=container.id,
             container=container,
@@ -308,7 +309,6 @@ class LocalRunStateMachine(StateTransitioner):
             kill_messages = []
 
             run_stats = docker_utils.get_container_stats(run_state.container)
-            time_total = time.time() - run_state.start_time
 
             run_state = run_state._replace(
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
@@ -317,18 +317,27 @@ class LocalRunStateMachine(StateTransitioner):
                 disk_utilization=self.disk_utilization[bundle_uuid]['disk_utilization']
             )
 
+            container_time_total = time.time() - run_state.container_start_time
             run_state = run_state._replace(
-                time=time_total,
-                time_user=run_stats.get('time_user', run_state.time_user),
-                time_system=run_stats.get('time_system', run_state.time_system),
+                container_time_total=container_time_total,
+                container_time_user=run_stats.get(
+                    'container_time_user', run_state.container_time_user
+                ),
+                container_time_system=run_stats.get(
+                    'container_time_system', run_state.container_time_system
+                ),
             )
 
             if (
                 run_state.resources['request_time']
-                and run_state.time > run_state.resources['request_time']
+                and container_time_total > run_state.resources['request_time']
             ):
                 kill_messages.append(
-                    'Time limit %s exceeded.' % duration_str(run_state.resources['request_time'])
+                    'Time limit exceeded. (Container uptime %s > time limit %s)'
+                    % (
+                        duration_str(container_time_total),
+                        duration_str(run_state.resources['request_time']),
+                    )
                 )
 
             if (

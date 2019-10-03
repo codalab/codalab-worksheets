@@ -35,7 +35,7 @@ class RunBundle(DerivedBundle):
 
     METADATA_SPECS.append(MetadataSpec('actions', list, 'Actions (e.g., kill) that were performed on this run.', generated=True))
 
-    METADATA_SPECS.append(MetadataSpec('time', float, 'Amount of time (seconds) used by this run command in total (user+system).', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time', float, 'Amount of wall clock time (seconds) used by this run command in total. [Runtime of the Docker container excluding CodaLab related steps such as preparing/uploading results]', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_user', float, 'Amount of user time (seconds) used by this run command.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_system', float, 'Amount of system time (seconds) used by this run command.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('memory', float, 'Amount of memory (bytes) used by this run.', generated=True, formatting='size'))
