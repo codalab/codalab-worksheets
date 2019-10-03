@@ -91,10 +91,10 @@ class WorkerManager(object):
 
         # Get worker jobs
         worker_jobs = self.get_worker_jobs()
-        pending_jobs, active_jobs = [], []
+        pending_worker_jobs, active_worker_jobs = [], []
 
         for job in worker_jobs:
-            (active_jobs if job.active else pending_jobs).append(job)
+            (active_worker_jobs if job.active else pending_worker_jobs).append(job)
 
         # Print status
         logger.info(
@@ -104,8 +104,8 @@ class WorkerManager(object):
                 len(worker_jobs),
                 self.args.min_workers,
                 self.args.max_workers,
-                len(active_jobs),
-                len(pending_jobs),
+                len(active_worker_jobs),
+                len(pending_worker_jobs),
             )
         )
 
@@ -141,12 +141,12 @@ class WorkerManager(object):
                 )
                 return
 
-            if len(pending_jobs) >= len(self.staged_uuids):
+            if len(pending_worker_jobs) >= len(self.staged_uuids):
                 # Make sure we don't queue up more workers than staged UUIDs if there are
                 # more workers still booting up than staged bundles
                 logger.info(
                     'Don\'t launch because still more pending workers than staged bundles ({} >= {})'.format(
-                        len(pending_jobs), len(self.staged_uuids)
+                        len(pending_worker_jobs), len(self.staged_uuids)
                     )
                 )
                 return
