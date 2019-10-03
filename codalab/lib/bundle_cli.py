@@ -145,9 +145,7 @@ GROUP_AND_PERMISSION_COMMANDS = (
 USER_COMMANDS = ('uinfo', 'uedit', 'ufarewell')
 
 SERVER_COMMANDS = (
-    'server',
     'workers',
-    'bundle-manager',
     'bs-add-partition',
     'bs-rm-partition',
     'bs-ls-partitions',
