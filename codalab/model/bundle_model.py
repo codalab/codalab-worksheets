@@ -857,9 +857,7 @@ class BundleModel(object):
         self.update_bundle(bundle, bundle_update, connection)
 
         if user_id == self.root_user_id:
-            self.increment_user_time_used(
-                bundle.owner_id, getattr(bundle.metadata, 'container_time_total', 0)
-            )
+            self.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
 
         return True
 
