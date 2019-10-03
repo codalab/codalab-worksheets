@@ -432,21 +432,8 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
 
 
     Commands for managing server:
-      server:
-        Start an instance of a CodaLab bundle service with a REST API.
-        Arguments:
-          --watch          Restart the server on code changes.
-          -p, --processes  Number of processes to use. A production deployment should use more than 1 process to make the best use of multiple CPUs.
-          -t, --threads    Number of threads to use. The server will be able to handle (--processes) x (--threads) requests at the same time.
-          -d, --debug      Run the development server for debugging.
-
       workers:
         Display worker information of this CodaLab instance. Root user only.
-
-      bundle-manager:
-        Start the bundle manager that executes run and make bundles.
-        Arguments:
-          --sleep-time  Number of seconds to wait between successive actions.
 
       bs-add-partition:
         Add another partition for storage (MultiDiskBundleStore only)
