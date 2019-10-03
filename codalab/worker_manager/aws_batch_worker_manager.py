@@ -38,6 +38,8 @@ class AWSBatchWorkerManager(WorkerManager):
         cpus = 4
         memory_mb = 1024 * 10
         work_dir = '/tmp'  # Need a directory outside the dockerized worker that already exists
+        worker_id = uuid.uuid4().hex
+        worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         command = [
             'cl-worker',
             '--server',
@@ -49,7 +51,9 @@ class AWSBatchWorkerManager(WorkerManager):
             '--work-dir',
             work_dir,
             '--id',
-            uuid.uuid4().hex,
+            worker_id,
+            '--network-prefix',
+            worker_network_prefix,
         ]
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])
