@@ -146,7 +146,7 @@ class WorkerManager(object):
                 # more workers still booting up than staged bundles
                 logger.info(
                     'Don\'t launch because still more pending workers than staged bundles ({} >= {})'.format(
-                        len(pending_jobs), self.staged_uuids
+                        len(pending_jobs), len(self.staged_uuids)
                     )
                 )
                 return
