@@ -244,9 +244,13 @@ class LocalRunManager(BaseRunManager):
                     gpuset -= run_state.gpuset
 
         if len(cpuset) < request_cpus:
-            raise Exception("Requested more CPUs (%d) than available (%d)" % (request_cpus, len(cpuset)))
+            raise Exception(
+                "Requested more CPUs (%d) than available (%d)" % (request_cpus, len(cpuset))
+            )
         if len(gpuset) < request_gpus:
-            raise Exception("Requested more GPUs (%d) than available (%d)" % (request_gpus, len(gpuset)))
+            raise Exception(
+                "Requested more GPUs (%d) than available (%d)" % (request_gpus, len(gpuset))
+            )
 
         def propose_set(resource_set, request_count):
             return set(str(el) for el in list(resource_set)[:request_count])
