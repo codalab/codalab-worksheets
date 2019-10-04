@@ -6,8 +6,8 @@ CodaLab features.
 # Requirements
 
 All you need is a version of Docker and docker-compose compatible with docker-compose file version 3.5.
-Note that while Docker/docker-compose should be cross-platform, we have only tested Ubuntu.
-If you try to use CodaLab on MacOS or Windows and run into issues, feel free to let us know, but those platforms
+Note that while Docker/docker-compose should be cross-platform, we have only tested Ubuntu and MacOS.
+If you try to use CodaLab on Windows and run into issues, feel free to let us know, but those platforms
 are not officially supported at the moment.
 
 * [docker](https://docs.docker.com/install/) version 17.12.0+
@@ -240,3 +240,13 @@ service on the same machine, be careful about the following:
 * Avoid port clashing: If you're exposing ports, make sure you set different
   ports for different instances, at the very least you need to configure the
   `http-port` of later instances to something other than `80`.
+
+## Troubleshooting
+
+For macOS, you might come across an error with `gunicorn` when running `./codalab_service.py start -bd`
+
+The issue is documented in detail [here](https://github.com/benoitc/gunicorn/issues/1388), and the fix
+is to unselect `/tmp` in Docker's preferences under file sharing.
+
+The image below shows where the file sharing pane is.
+<img src="images/docker-preferences.png" />
