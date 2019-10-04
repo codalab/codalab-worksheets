@@ -125,7 +125,14 @@ class DockerImageManager:
 
     def get(self, image_spec):
         """
-        Request the docker image, starting its download if it's not available on the system
+        Always request the newest docker image from Dockerhub if it's not in downloading thread and return the current
+        downloading status(READY, FAILED, or DOWNLOADING).
+        When the requested image in the following states:
+        1. If it's not available on the platform, we download the image and return DOWNLOADING status.
+        2. If another thread is actively downloading it, we return DOWNLOADING status.
+        3. If another thread was downloading it but not active by the time the request was sent, we return the following status:
+            * READY if the image was downloaded successfully.
+            * FAILED if the image wasn't able to be downloaded due to any reason.
         :param image_spec: Repo image_spec of docker image being requested
         :returns: A DockerAvailabilityState object with the state of the docker image
         """
@@ -143,82 +150,60 @@ class DockerImageManager:
             # Hence, we append the latest tag to the image spec if there's no tag specified otherwise at the very beginning
             image_spec += ':latest'
         try:
-            image = self._docker.images.get(image_spec)
-            digests = image.attrs.get('RepoDigests', [image_spec])
-            if len(digests) == 0:
+            if image_spec in self._downloading:
+                with self._downloading[image_spec]['lock']:
+                    if self._downloading[image_spec].is_alive():
+                        return ImageAvailabilityState(
+                            digest=None,
+                            stage=DependencyStage.DOWNLOADING,
+                            message=self._downloading[image_spec]['status'],
+                        )
+                    else:
+                        if self._downloading[image_spec]['success']:
+                            image = self._docker.images.get(image_spec)
+                            digest = image.attrs.get('RepoDigests', [image_spec])[0]
+                            with self._lock:
+                                self._image_cache[digest] = ImageCacheEntry(
+                                    id=image.id,
+                                    digest=digest,
+                                    last_used=time.time(),
+                                    virtual_size=image.attrs['VirtualSize'],
+                                    marginal_size=image.attrs['Size'],
+                                )
+                            status = ImageAvailabilityState(
+                                digest=digest, stage=DependencyStage.READY, message='Image ready'
+                            )
+                        else:
+                            status = ImageAvailabilityState(
+                                digest=None,
+                                stage=DependencyStage.FAILED,
+                                message=self._downloading[image_spec]['message'],
+                            )
+                        self._downloading.remove(image_spec)
+                        return status
+            else:
+
+                def download():
+                    logger.debug('Downloading Docker image %s', image_spec)
+                    try:
+                        self._docker.images.pull(image_spec)
+                        logger.debug('Download for Docker image %s complete', image_spec)
+                        self._downloading[image_spec]['success'] = True
+                        self._downloading[image_spec]['message'] = "Downloading image"
+                    except (docker.errors.APIError, docker.errors.ImageNotFound) as ex:
+                        logger.debug('Download for Docker image %s failed: %s', image_spec, ex)
+                        self._downloading[image_spec]['success'] = False
+                        self._downloading[image_spec][
+                            'message'
+                        ] = "Can't download image: {}".format(ex)
+
+                self._downloading.add_if_new(image_spec, threading.Thread(target=download, args=[]))
                 return ImageAvailabilityState(
                     digest=None,
-                    stage=DependencyStage.FAILED,
-                    message='No digest available for {}, probably because it was built locally; delete the Docker image on the worker and try again'.format(
-                        image_spec
-                    ),
+                    stage=DependencyStage.DOWNLOADING,
+                    message=self._downloading[image_spec]['status'],
                 )
-            digest = digests[0]
-            with self._lock:
-                self._image_cache[digest] = ImageCacheEntry(
-                    id=image.id,
-                    digest=digest,
-                    last_used=time.time(),
-                    virtual_size=image.attrs['VirtualSize'],
-                    marginal_size=image.attrs['Size'],
-                )
-            # We can remove the download thread if it still exists
-            if image_spec in self._downloading:
-                self._downloading.remove(image_spec)
-            return ImageAvailabilityState(
-                digest=digest, stage=DependencyStage.READY, message='Image ready'
-            )
-        except docker.errors.ImageNotFound:
-            return self._pull_or_report(image_spec)  # type: DockerAvailabilityState
         except Exception as ex:
             return ImageAvailabilityState(
                 digest=None, stage=DependencyStage.FAILED, message=str(ex)
-            )
-
-    def _pull_or_report(self, image_spec):
-        if image_spec in self._downloading:
-            with self._downloading[image_spec]['lock']:
-                if self._downloading[image_spec].is_alive():
-                    return ImageAvailabilityState(
-                        digest=None,
-                        stage=DependencyStage.DOWNLOADING,
-                        message=self._downloading[image_spec]['status'],
-                    )
-                else:
-                    if self._downloading[image_spec]['success']:
-                        digest = self._docker.images.get(image_spec).attrs.get(
-                            'RepoDigests', [image_spec]
-                        )[0]
-                        status = ImageAvailabilityState(
-                            digest=digest,
-                            stage=DependencyStage.READY,
-                            message=self._downloading[image_spec]['message'],
-                        )
-                    else:
-                        status = ImageAvailabilityState(
-                            digest=None,
-                            stage=DependencyStage.FAILED,
-                            message=self._downloading[image_spec]['message'],
-                        )
-                    self._downloading.remove(image_spec)
-                    return status
-        else:
-
-            def download():
-                logger.debug('Downloading Docker image %s', image_spec)
-                try:
-                    self._docker.images.pull(image_spec)
-                    logger.debug('Download for Docker image %s complete', image_spec)
-                    self._downloading[image_spec]['success'] = True
-                    self._downloading[image_spec]['message'] = "Downloading image"
-                except (docker.errors.APIError, docker.errors.ImageNotFound) as ex:
-                    logger.debug('Download for Docker image %s failed: %s', image_spec, ex)
-                    self._downloading[image_spec]['success'] = False
-                    self._downloading[image_spec]['message'] = "Can't download image: {}".format(ex)
-
-            self._downloading.add_if_new(image_spec, threading.Thread(target=download, args=[]))
-            return ImageAvailabilityState(
-                digest=None,
-                stage=DependencyStage.DOWNLOADING,
-                message=self._downloading[image_spec]['status'],
             )
