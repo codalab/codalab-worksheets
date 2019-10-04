@@ -662,7 +662,6 @@ class BundleModel(object):
     def transition_bundle_starting(self, bundle, user_id, worker_id):
         """
         Transitions bundle to STARTING state:
-            Updates the last_updated metadata.
             Adds a worker_run row that tracks which worker will run the bundle.
         """
         with self.engine.begin() as connection:
@@ -674,10 +673,7 @@ class BundleModel(object):
                 # The user deleted the bundle.
                 return False
 
-            bundle_update = {
-                'state': State.STARTING,
-                'metadata': {'last_updated': int(time.time())},
-            }
+            bundle_update = {'state': State.STARTING}
             self.update_bundle(bundle, bundle_update, connection)
 
             worker_run_row = {'user_id': user_id, 'worker_id': worker_id, 'run_uuid': bundle.uuid}
@@ -703,8 +699,8 @@ class BundleModel(object):
                 # that has started running.
                 return False
 
-            update_message = {'state': State.STAGED, 'metadata': {'job_handle': None}}
-            self.update_bundle(bundle, update_message, connection)
+            bundle_update = {'state': State.STAGED, 'metadata': {'job_handle': None}}
+            self.update_bundle(bundle, bundle_update, connection)
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
@@ -728,13 +724,13 @@ class BundleModel(object):
 
             bundle_update = {
                 'state': State.PREPARING,
-                'metadata': {'started': start_time, 'last_updated': start_time, 'remote': remote},
+                'metadata': {'started': start_time, 'remote': remote},
             }
             self.update_bundle(bundle, bundle_update, connection)
 
         return True
 
-    def transition_bundle_running(self, bundle, bundle_update, row, user_id, worker_id, connection):
+    def transition_bundle_running(self, bundle, worker_bundle_update, row, user_id, worker_id, connection):
         """
         Transitions bundle to RUNNING state:
             If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
@@ -753,26 +749,24 @@ class BundleModel(object):
             worker_run_row = {'user_id': user_id, 'worker_id': worker_id, 'run_uuid': bundle.uuid}
             connection.execute(cl_worker_run.insert().values(worker_run_row))
 
-        metadata_update = {
-            'run_status': bundle_update['run_status'],
-            'last_updated': int(time.time()),
-            'time': time.time() - bundle_update['start_time'],
-            'remote': bundle_update['remote'],
+        bundle_update = {
+            'state': worker_bundle_update['state'],
+            'metadata': {
+                'run_status': worker_bundle_update['run_status'],
+                'time': time.time() - worker_bundle_update['start_time'],
+                'remote': worker_bundle_update['remote'],
+            }
         }
 
-        if bundle_update['docker_image'] is not None:
-            metadata_update['docker_image'] = bundle_update['docker_image']
+        if worker_bundle_update['docker_image'] is not None:
+            bundle_update['metadata']['docker_image'] = worker_bundle_update['docker_image']
 
-        self.update_bundle(
-            bundle, {'state': bundle_update['state'], 'metadata': metadata_update}, connection
-        )
-
+        self.update_bundle(bundle, bundle_update, connection)
         return True
 
     def transition_bundle_worker_offline(self, bundle):
         """
         Transitions bundle to WORKER_OFFLINE state:
-            Updates the last_updated metadata.
             Removes the corresponding row from worker_run if it exists.
         """
         with self.engine.begin() as connection:
@@ -792,10 +786,7 @@ class BundleModel(object):
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
 
-            bundle_update = {
-                'state': State.WORKER_OFFLINE,
-                'metadata': {'last_updated': int(time.time())},
-            }
+            bundle_update = {'state': State.WORKER_OFFLINE}
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
@@ -837,10 +828,8 @@ class BundleModel(object):
         if failure_message == 'Kill requested':
             state = State.KILLED
 
-        metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
-
         with self.engine.begin() as connection:
-            self.update_bundle(bundle, {'state': state, 'metadata': metadata}, connection)
+            self.update_bundle(bundle, {'state': state, 'metadata': {'run_status': 'Finished'}}, connection)
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
@@ -913,6 +902,7 @@ class BundleModel(object):
         precondition('id' not in update and 'uuid' not in update, message)
         # Apply the column and metadata updates in memory and validate the result.
         metadata_update = update.pop('metadata', {})
+        metadata_update['last_updated'] = int(time.time())
         bundle.update_in_memory(update)
         for (key, value) in metadata_update.items():
             bundle.metadata.set_metadata_key(key, value)
