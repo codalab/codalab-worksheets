@@ -37,8 +37,8 @@ class AWSBatchWorkerManager(WorkerManager):
         # TODO: don't hard code these, get these from some config file.
         cpus = 4
         memory_mb = 1024 * 10
-        work_dir = '/tmp'  # Need a directory outside the dockerized worker that already exists
         worker_id = uuid.uuid4().hex
+        work_dir = '/tmp/cl_worker_{}_work_dir'.format(worker_id)  # Need a directory outside the dockerized worker that already exists
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         command = [
             'cl-worker',
