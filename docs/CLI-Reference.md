@@ -123,17 +123,33 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
 
       search (s):
         Search for bundles on a CodaLab instance (returns 10 results by default).
-          search <keyword> ... <keyword> : Match name and description.
-          search name=<name>             : More targeted search of using metadata fields.
-          search group=<group_spec>      : Search bundles shared with the group identfied by group_spec.
-          search size=.sort              : Sort by a particular field.
-          search size=.sort-             : Sort by a particular field in reverse.
-          search size=.sum               : Compute total of a particular field.
-          search .mine                   : Match only bundles I own.
-          search .shared                 : Search bundles that have been shared with any of the groups I am in.
-          search .floating               : Match bundles that aren't on any worksheet.
-          search .count                  : Count the number of bundles.
-          search .limit=10               : Limit the number of results to the top 10.
+          search <keyword> ... <keyword>         : Name or uuid contains each <keyword>.',
+          search name=<value>                    : Name is <value>, where `name` can be any metadata field (e.g., description).',
+          search type=<type>                     : Bundle type is <type> (`run` or `dataset`).',
+          search id=<id>                         : Has <id> (integer used for sorting, strictly increasing over time).',
+          search uuid=<uuid>                     : UUID is <uuid> (e.g., 0x...).',
+          search state=<state>                   : State is <state> (e.g., staged, running, ready, failed).',
+          search command=<command>               : Command to run is <command>.',
+          search dependency=<uuid>               : Has a dependency with <uuid>.',
+          search dependency/<name>=<uuid>        : Has a dependency <name>:<uuid>.',
+          ,
+          search owner=<owner>                   : Owned by <owner> (e.g., `pliang`).',
+          search .mine                           : Owned by me.',
+          search group=<group>                   : Shared with <group>.',
+          search .shared                         : Shared with any of the groups I\'m in.',
+          ,
+          search host_worksheet=<worksheet>      : On <worksheet>.',
+          search .floating                       : Not on any worksheet.',
+          ,
+          search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).',
+          search .offset=<offset>                : Return results starting at <offset>.',
+          ,
+          search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).',
+          search size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).',
+          search .last                           : Sort in reverse chronological order (equivalent to id=.sort-).',
+          search .count                          : Count the number of matching bundles.',
+          search size=.sum                       : Compute total of a particular field (e.g., `size`).',
+          search .format=<format>                : Apply <format> function (see worksheet markdown).',
         Arguments:
           keywords              Keywords to search for.
           -a, --append          Append these bundles to the current worksheet.
@@ -432,21 +448,8 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
 
 
     Commands for managing server:
-      server:
-        Start an instance of a CodaLab bundle service with a REST API.
-        Arguments:
-          --watch          Restart the server on code changes.
-          -p, --processes  Number of processes to use. A production deployment should use more than 1 process to make the best use of multiple CPUs.
-          -t, --threads    Number of threads to use. The server will be able to handle (--processes) x (--threads) requests at the same time.
-          -d, --debug      Run the development server for debugging.
-
       workers:
         Display worker information of this CodaLab instance. Root user only.
-
-      bundle-manager:
-        Start the bundle manager that executes run and make bundles.
-        Arguments:
-          --sleep-time  Number of seconds to wait between successive actions.
 
       bs-add-partition:
         Add another partition for storage (MultiDiskBundleStore only)

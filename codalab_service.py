@@ -586,6 +586,12 @@ class CodalabServiceManager(object):
             ]
             self.run_service_cmd(' && '.join(commands))
 
+            print_header('Initializing the database with alembic')
+            # We need to upgrade the current database revision to the most recent revision before any other database operations.
+            self.run_service_cmd(
+                'if [ $(alembic current | wc -l) -gt 0 ]; then echo upgrade; alembic upgrade head; fi'
+            )
+
             print_header('Creating root user')
             self.run_service_cmd(
                 wait_mysql(
@@ -593,10 +599,10 @@ class CodalabServiceManager(object):
                 )
             )
 
-            print_header('Initializing/migrating the database with alembic')
-            # The first time, we need to stamp; after that upgrade.
+            print_header('Stamping the database with alembic')
+            # We stamp the revision table with the given revision.
             self.run_service_cmd(
-                'if [ $(alembic current | wc -l) -gt 0 ]; then echo upgrade; alembic upgrade head; else echo stamp; alembic stamp head; fi'
+                'if [ $(alembic current | wc -l) -eq 0 ]; then echo stamp; alembic stamp head; fi'
             )
 
         self.bring_up_service('rest-server')
