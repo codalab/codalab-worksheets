@@ -83,17 +83,6 @@ Start the CodaLab service as follows:
 
     ./codalab_service.py start -bd
 
-If your default python version is not python 3.6+, then you might have to use:
-
-    python3 codalab_service.py start -bd
-
-For macOS, you might come across an error with `gunicorn` when running the above command.
-The issue is documented [here](https://github.com/benoitc/gunicorn/issues/1388), and the fix
-is to unselect `/tmp` in Docker's preferences under file sharing.
-
-See below to find where the setting is located.
-<img src="images/docker-preferences.png" />
-
 If you modify the frontend, you can do so without restarting.  If you would
 like to modify the rest server, bundle manager, or worker, then you can edit
 the code and then start only that single Docker container.  For example, for
@@ -251,3 +240,13 @@ service on the same machine, be careful about the following:
 * Avoid port clashing: If you're exposing ports, make sure you set different
   ports for different instances, at the very least you need to configure the
   `http-port` of later instances to something other than `80`.
+
+## Troubleshooting
+
+For macOS, you might come across an error with `gunicorn` when running `./codalab_service.py start -bd`
+
+The issue is documented in detail [here](https://github.com/benoitc/gunicorn/issues/1388), and the fix
+is to unselect `/tmp` in Docker's preferences under file sharing.
+
+The image below shows where the file sharing pane is.
+<img src="images/docker-preferences.png" />
