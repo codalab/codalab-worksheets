@@ -1329,7 +1329,7 @@ def test(ctx):
         )
         wait(run_uuid, expected_exit_code)
         if expected_failure_message:
-            check_equals(expected_failure_message, get_info(run_uuid, 'failure_message'))
+            check_contains(expected_failure_message, get_info(run_uuid, 'failure_message'))
 
     # Good
     stress(
@@ -1352,7 +1352,7 @@ def test(ctx):
         use_disk=10,
         request_disk=100,
         expected_exit_code=1,
-        expected_failure_message='Time limit 1.0s exceeded.',
+        expected_failure_message='Time limit exceeded.',
     )
 
     # Too much memory
