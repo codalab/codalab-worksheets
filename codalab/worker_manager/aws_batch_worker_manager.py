@@ -38,7 +38,9 @@ class AWSBatchWorkerManager(WorkerManager):
         cpus = 4
         memory_mb = 1024 * 10
         worker_id = uuid.uuid4().hex
-        work_dir = '/tmp/cl_worker_{}_work_dir'.format(worker_id)  # Need a directory outside the dockerized worker that already exists
+        work_dir = '/tmp/cl_worker_{}_work_dir'.format(
+            worker_id
+        )  # This needs to be a unique directory since Batch jobs may share a host
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         command = [
             'cl-worker',
