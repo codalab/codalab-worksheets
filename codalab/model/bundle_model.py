@@ -754,7 +754,7 @@ class BundleModel(object):
         bundle_update = {
             'state': worker_bundle_update['state'],
             'metadata': {
-                'run_status': worker_bundle_update['run_status'],         
+                'run_status': worker_bundle_update['run_status'],
                 'time': worker_bundle_update['container_time_total'],
                 'time_user': worker_bundle_update['container_time_user'],
                 'time_system': worker_bundle_update['container_time_system'],
