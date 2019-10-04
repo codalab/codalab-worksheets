@@ -751,10 +751,6 @@ Checks whether the bundle is still assigned to run on the worker with the
 given worker_id. If so, reports that it's starting to run and returns True.
 Otherwise, returns False, meaning the worker shouldn't run the bundle.
 
-### `PUT /workers/<worker_id>/update_bundle_metadata/<uuid:re:0x[0-9a-f]{32}>`
-
-Updates metadata related to a running bundle.
-
 ### `GET /workers/info`
 
 &uarr; [Back to Top](#table-of-contents)
