@@ -730,7 +730,9 @@ class BundleModel(object):
 
         return True
 
-    def transition_bundle_running(self, bundle, worker_bundle_update, row, user_id, worker_id, connection):
+    def transition_bundle_running(
+        self, bundle, worker_bundle_update, row, user_id, worker_id, connection
+    ):
         """
         Transitions bundle to RUNNING state:
             If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
@@ -755,7 +757,7 @@ class BundleModel(object):
                 'run_status': worker_bundle_update['run_status'],
                 'time': time.time() - worker_bundle_update['start_time'],
                 'remote': worker_bundle_update['remote'],
-            }
+            },
         }
 
         if worker_bundle_update['docker_image'] is not None:
@@ -828,8 +830,9 @@ class BundleModel(object):
         if failure_message == 'Kill requested':
             state = State.KILLED
 
+        bundle_update = {'state': state, 'metadata': {'run_status': 'Finished'}}
         with self.engine.begin() as connection:
-            self.update_bundle(bundle, {'state': state, 'metadata': {'run_status': 'Finished'}}, connection)
+            self.update_bundle(bundle, bundle_update, connection)
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
