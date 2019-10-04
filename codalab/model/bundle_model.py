@@ -70,6 +70,10 @@ class BundleModel(object):
         self.public_group_uuid = ''
         self.create_tables()
 
+    # ==========================================================================
+    # Database helper methods
+    # ==========================================================================
+
     # TODO: Remove these methods below when all appropriate table columns have
     # been converted to the appropriate types that perform automatic encoding.
     # (See tables.py for more details.)
@@ -96,10 +100,10 @@ class BundleModel(object):
         self._create_default_groups()
         self._create_default_clients()
 
-    def do_multirow_insert(self, connection, table, values):
+    @staticmethod
+    def do_multirow_insert(connection, table, values):
         """
         Insert multiple rows into the given table.
-
         This method may be overridden by models that use more powerful SQL dialects.
         """
         # This is a lowest-common-denominator implementation of a multi-row insert.
@@ -111,15 +115,15 @@ class BundleModel(object):
             with connection.begin():
                 connection.execute(table.insert(), values)
 
-    def make_clause(self, key, value):
+    @staticmethod
+    def make_clause(key, value):
         if isinstance(value, (list, set, tuple)):
             if not value:
                 return False
             return key.in_(value)
-        elif isinstance(value, LikeQuery):
+        if isinstance(value, LikeQuery):
             return key.like(value)
-        else:
-            return key == value
+        return key == value
 
     def make_kwargs_clause(self, table, kwargs):
         """
@@ -132,6 +136,29 @@ class BundleModel(object):
             clauses.append(self.make_clause(getattr(table.c, key), value))
         return and_(*clauses)
 
+    @staticmethod
+    def _render_query(query):
+        """
+        Return string representing SQL query.
+        """
+        query = query.compile()
+        s = str(query)
+        for k, v in query.params.items():
+            s = s.replace(':' + k, str(v))
+        return s
+
+    def _execute_query(self, query):
+        """
+        Execute the given query and return the first matching row
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(query).fetchall()
+        return [row[0] for row in rows]
+
+    # ==========================================================================
+    # Bundle info accessor methods
+    # ==========================================================================
+
     def get_bundle(self, uuid):
         """
         Retrieve a bundle from the database given its uuid.
@@ -140,7 +167,7 @@ class BundleModel(object):
         bundles = self.batch_get_bundles(uuid=uuid)
         if not bundles:
             raise NotFoundError('Could not find bundle with uuid %s' % (uuid,))
-        elif len(bundles) > 1:
+        if len(bundles) > 1:
             raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
         return bundles[0]
 
@@ -304,10 +331,9 @@ class BundleModel(object):
                 # Ordinary value
                 if isinstance(value, list):
                     return field.in_(value)
-                elif '%' in value:
+                if '%' in value:
                     return field.like(value)
-                else:
-                    return field == value
+                return field == value
             return None
 
         shortcuts = {'type': 'bundle_type', 'size': 'data_size', 'worksheet': 'host_worksheet'}
@@ -587,19 +613,6 @@ class BundleModel(object):
 
         return self._execute_query(query)
 
-    # Helper function: return string representing SQL query.
-    def _render_query(self, query):
-        query = query.compile()
-        s = str(query)
-        for k, v in query.params.items():
-            s = s.replace(':' + k, str(v))
-        return s
-
-    def _execute_query(self, query):
-        with self.engine.begin() as connection:
-            rows = connection.execute(query).fetchall()
-        return [row[0] for row in rows]
-
     def batch_get_bundles(self, **kwargs):
         """
         Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.
@@ -642,30 +655,15 @@ class BundleModel(object):
         ]
         return bundles
 
-    def set_waiting_for_worker_startup_bundle(self, bundle, job_handle):
-        """
-        Sets the bundle to WAITING_FOR_WORKER_STARTUP, updating the job_handle
-        and last_updated metadata.
-        """
-        with self.engine.begin() as connection:
-            # Check that it still exists.
-            row = connection.execute(
-                cl_bundle.select().where(cl_bundle.c.id == bundle.id)
-            ).fetchone()
-            if not row:
-                # The user deleted the bundle.
-                return
+    # ==========================================================================
+    # Server-side bundle state machine methods
+    # ==========================================================================
 
-            bundle_update = {
-                'state': State.WAITING_FOR_WORKER_STARTUP,
-                'metadata': {'job_handle': job_handle, 'last_updated': int(time.time())},
-            }
-            self.update_bundle(bundle, bundle_update, connection)
-
-    def set_starting_bundle(self, bundle, user_id, worker_id):
+    def transition_bundle_starting(self, bundle, user_id, worker_id):
         """
-        Sets the bundle to STARTING, updating the last_updated metadata. Adds
-        a worker_run row that tracks which worker will run the bundle.
+        Transitions bundle to STARTING state:
+            Updates the last_updated metadata.
+            Adds a worker_run row that tracks which worker will run the bundle.
         """
         with self.engine.begin() as connection:
             # Check that it still exists.
@@ -687,40 +685,11 @@ class BundleModel(object):
 
             return True
 
-    def set_offline_bundle(self, bundle):
+    def transition_bundle_staged(self, bundle):
         """
-        Sets the bundle to WORKER_OFFLINE, updating the last_updated metadata.
-        Remove the corresponding row from worker_run if it exists.
-        """
-        with self.engine.begin() as connection:
-            # Check that it still exists and is running
-            row = connection.execute(
-                cl_bundle.select().where(
-                    cl_bundle.c.id == bundle.id
-                    and (cl_bundle.c.state == State.RUNNING or cl_bundle.c.state == State.PREPARING)
-                )
-            ).fetchone()
-            if not row:
-                # The user deleted the bundle or the bundle finished
-                return False
-
-            # Delete row in worker_run
-            connection.execute(
-                cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
-            )
-
-            bundle_update = {
-                'state': State.WORKER_OFFLINE,
-                'metadata': {'last_updated': int(time.time())},
-            }
-            self.update_bundle(bundle, bundle_update, connection)
-        return True
-
-    def restage_bundle(self, bundle):
-        """
-        Sets a bundle back from STARTING to STAGED, returning False if the
-        bundle was not in STARTING state. Clears the job_handle metadata and
-        removes the worker_run row.
+        Transitions bundle to STAGED state:
+            Returns False if the bundle was not in STARTING state.
+            Clears the job_handle metadata and removes the worker_run row.
         """
         with self.engine.begin() as connection:
             # Make sure it's still starting.
@@ -742,11 +711,12 @@ class BundleModel(object):
 
             return True
 
-    def start_bundle(self, bundle, user_id, worker_id, start_time, remote):
+    def transition_bundle_preparing(self, bundle, user_id, worker_id, start_time, remote):
         """
-        Marks the bundle as running but only if it is still scheduled to run
-        on the given worker (done by checking the worker_run table). Returns
-        True if it is.
+        Transitions bundle to PREPARING state:
+            Only if the bundle is still scheduled to run on the given worker
+            (done by checking the worker_run table).
+            Returns True if it is.
         """
         with self.engine.begin() as connection:
             # Check that still assigned to this worker.
@@ -764,41 +734,11 @@ class BundleModel(object):
 
         return True
 
-    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id):
-        '''
-        Updates the database tables with the most recent bundle information from worker
-        '''
-        state = bundle_update['state']
-        with self.engine.begin() as connection:
-            # If bundle isn't in db anymore the user deleted it so cancel
-            row = connection.execute(
-                cl_bundle.select().where(cl_bundle.c.id == bundle.id)
-            ).fetchone()
-            if not row:
-                return False
-
-            if state == State.FINALIZING:
-                # update bundle metadata using resume_bundle one last time before finalizing it
-                self.resume_bundle(bundle, bundle_update, row, user_id, worker_id, connection)
-                return self.finalize_bundle(
-                    bundle,
-                    user_id,
-                    bundle_update['info']['exitcode'],
-                    bundle_update['info']['failure_message'],
-                    connection,
-                )
-            elif state in [State.PREPARING, State.RUNNING]:
-                return self.resume_bundle(
-                    bundle, bundle_update, row, user_id, worker_id, connection
-                )
-            else:
-                # State isn't one we can check in for
-                return False
-
-    def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, connection):
-        '''
-        Marks the bundle as running. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
-        '''
+    def transition_bundle_running(self, bundle, bundle_update, row, user_id, worker_id, connection):
+        """
+        Transitions bundle to RUNNING state:
+            If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
+        """
         if row.state == State.WORKER_OFFLINE:
             run_row = connection.execute(
                 cl_worker_run.select().where(cl_worker_run.c.run_uuid == bundle.uuid)
@@ -829,19 +769,45 @@ class BundleModel(object):
 
         return True
 
-    def finalize_bundle(self, bundle, user_id, exitcode, failure_message, connection):
+    def transition_bundle_worker_offline(self, bundle):
         """
-        Marks the bundle as READY / KILLED / FAILED, updating a few metadata fields and
-        removing the worker_run row. Additionally, if the user
-        running the bundle was the CodaLab root user, increments the time
-        used by the bundle owner.
+        Transitions bundle to WORKER_OFFLINE state:
+            Updates the last_updated metadata.
+            Removes the corresponding row from worker_run if it exists.
         """
-        state = State.FAILED if failure_message or exitcode else State.READY
-        if failure_message == 'Kill requested':
-            state = State.KILLED
+        with self.engine.begin() as connection:
+            # Check that it still exists and is running
+            row = connection.execute(
+                cl_bundle.select().where(
+                    cl_bundle.c.id == bundle.id
+                    and (cl_bundle.c.state == State.RUNNING or cl_bundle.c.state == State.PREPARING)
+                )
+            ).fetchone()
+            if not row:
+                # The user deleted the bundle or the bundle finished
+                return False
+
+            # Delete row in worker_run
+            connection.execute(
+                cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
+            )
+
+            bundle_update = {
+                'state': State.WORKER_OFFLINE,
+                'metadata': {'last_updated': int(time.time())},
+            }
+            self.update_bundle(bundle, bundle_update, connection)
+        return True
+
+    def transition_bundle_finalizing(self, bundle, user_id, exitcode, failure_message, connection):
+        """
+        Transitions bundle to FINALIZING state:
+            Saves the failure message and exit code from the worker
+            If the user running the bundle was the CodaLab root user,
+            increments the time used by the bundle owner.
+        """
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
-
         # Build metadata
         metadata = {}
         if failure_message is not None:
@@ -858,11 +824,12 @@ class BundleModel(object):
 
         return True
 
-    def finish_bundle(self, bundle):
-        '''
-        Updates the given FINALIZING bundle to FINISHED state so the server stops
-        telling the worker it is finalized
-        '''
+    def transition_bundle_finished(self, bundle):
+        """
+        Transitions bundle to READY or FAILED state:
+            The final state is determined by whether a failure message or exitcode
+            was recorded during finalization of the bundle.
+        """
         metadata = bundle.metadata.to_dict()
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
@@ -877,6 +844,43 @@ class BundleModel(object):
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
+
+    # ==========================================================================
+    # Bundle state machine helper functions
+    # ==========================================================================
+
+    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id):
+        """
+        Updates the database tables with the most recent bundle information from worker
+        """
+        state = bundle_update['state']
+        with self.engine.begin() as connection:
+            # If bundle isn't in db anymore the user deleted it so cancel
+            row = connection.execute(
+                cl_bundle.select().where(cl_bundle.c.id == bundle.id)
+            ).fetchone()
+            if not row:
+                return False
+
+            if state == State.FINALIZING:
+                # update bundle metadata using transition_bundle_running one last time before finalizing it
+                self.transition_bundle_running(
+                    bundle, bundle_update, row, user_id, worker_id, connection
+                )
+                return self.transition_bundle_finalizing(
+                    bundle,
+                    user_id,
+                    bundle_update['info']['exitcode'],
+                    bundle_update['info']['failure_message'],
+                    connection,
+                )
+
+            if state in [State.PREPARING, State.RUNNING]:
+                return self.transition_bundle_running(
+                    bundle, bundle_update, row, user_id, worker_id, connection
+                )
+            # State isn't one we can check in for
+            return False
 
     def save_bundle(self, bundle):
         """
@@ -989,9 +993,9 @@ class BundleModel(object):
                 cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None})
             )
 
-    #############################################################################
+    # ==========================================================================
     # Worksheet-related model methods follow!
-    #############################################################################
+    # ==========================================================================
 
     def get_worksheet(self, uuid, fetch_items):
         """
@@ -1001,7 +1005,7 @@ class BundleModel(object):
         worksheets = self.batch_get_worksheets(fetch_items=fetch_items, uuid=uuid)
         if not worksheets:
             raise NotFoundError('Could not find worksheet with uuid %s' % (uuid,))
-        elif len(worksheets) > 1:
+        if len(worksheets) > 1:
             raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
         return worksheets[0]
 
@@ -1088,10 +1092,9 @@ class BundleModel(object):
                 # Ordinary value
                 if isinstance(value, list):
                     return field.in_(value)
-                elif '%' in value:
+                if '%' in value:
                     return field.like(value)
-                else:
-                    return field == value
+                return field == value
             return None
 
         for keyword in keywords:
@@ -1287,10 +1290,10 @@ class BundleModel(object):
     def add_worksheet_item(self, worksheet_uuid, item):
         """
         Appends a new item to the end of the given worksheet. The item should be
-        a (bundle_uuid, value, type) pair, where the bundle_uuid may be None and the
+        a (bundle_uuid, value, item_type) pair, where the bundle_uuid may be None and the
         value must be a string.
         """
-        (bundle_uuid, subworksheet_uuid, value, type) = item
+        (bundle_uuid, subworksheet_uuid, value, item_type) = item
         if value is None:
             value = ''  # TODO: change tables.py to allow nulls
         item_value = {
@@ -1298,7 +1301,7 @@ class BundleModel(object):
             'bundle_uuid': bundle_uuid,
             'subworksheet_uuid': subworksheet_uuid,
             'value': self.encode_str(value),
-            'type': type,
+            'type': item_type,
             'sort_key': None,
         }
         with self.engine.begin() as connection:
@@ -1358,10 +1361,10 @@ class BundleModel(object):
                 'bundle_uuid': bundle_uuid,
                 'subworksheet_uuid': subworksheet_uuid,
                 'value': self.encode_str(value),
-                'type': type,
+                'type': item_type,
                 'sort_key': (last_item_id + i - len(new_items)),
             }
-            for (i, (bundle_uuid, subworksheet_uuid, value, type)) in enumerate(new_items)
+            for (i, (bundle_uuid, subworksheet_uuid, value, item_type)) in enumerate(new_items)
         ]
         with self.engine.begin() as connection:
             result = connection.execute(cl_worksheet_item.delete().where(clause))
@@ -1426,9 +1429,9 @@ class BundleModel(object):
             )
             connection.execute(cl_worksheet.delete().where(cl_worksheet.c.uuid == worksheet_uuid))
 
-    #############################################################################
-    # Group and permission -related methods follow!
-    #############################################################################
+    # ===========================================================================
+    # Group and permission-related methods
+    # ===========================================================================
 
     def _create_default_groups(self):
         """
@@ -1503,10 +1506,9 @@ class BundleModel(object):
                 .where(spec_clause)
                 .where(cl_group.c.uuid == cl_user_group.c.group_uuid)
             )
-        if True:
-            if q0 is None:
-                q0 = select(fetch_cols0)
-            q0 = q0.where(cl_group.c.uuid == self.public_group_uuid)
+        if q0 is None:
+            q0 = select(fetch_cols0)
+        q0 = q0.where(cl_group.c.uuid == self.public_group_uuid)
         if group_filters:
             group_clause = self.make_kwargs_clause(cl_group, group_filters)
             if q1 is None:
@@ -1762,15 +1764,12 @@ class BundleModel(object):
         )
 
     # Operations on the query log
-    def date_handler(self, obj):
+    @staticmethod
+    def date_handler(obj):
         """
         Helper function to serialize DataTime
         """
-        return (
-            obj.isoformat()
-            if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date)
-            else None
-        )
+        return obj.isoformat() if isinstance(obj, (datetime.date, datetime.datetime)) else None
 
     def add_chat_log_info(self, query_info):
         """
@@ -1806,7 +1805,7 @@ class BundleModel(object):
         """
         user_id1 = query_info.get('user_id')
         if user_id1 is None:
-            return
+            return None
         limit = query_info.get('limit')
         with self.engine.begin() as connection:
             query = select(
@@ -1842,9 +1841,9 @@ class BundleModel(object):
             ]
             return result
 
-    #############################################################################
+    # ===========================================================================
     # User-related methods follow!
-    #############################################################################
+    # ===========================================================================
 
     def find_user(self, user_spec, check_active=True):
         user = self.get_user(user_id=user_spec, username=user_spec, check_active=check_active)
@@ -1978,13 +1977,13 @@ class BundleModel(object):
         return user_id, verification_key
 
     def delete_user(self, user_id=None):
-        '''
+        """
         Delete the user with the given uuid.
         Delete all items in the database with a
         foreign key that references the user.
 
         :param user_id: id of user to delete
-        '''
+        """
         with self.engine.begin() as connection:
 
             # User verification
@@ -2147,9 +2146,7 @@ class BundleModel(object):
                     user_info['date_joined'] = user_info['date_joined'].strftime('%Y-%m-%d')
                 if 'last_login' in user_info and user_info['last_login'] is not None:
                     user_info['last_login'] = user_info['last_login'].strftime('%Y-%m-%d')
-                user_info['is_root_user'] = (
-                    True if user_info['user_id'] == self.root_user_id else False
-                )
+                user_info['is_root_user'] = user_info['user_id'] == self.root_user_id
                 user_info['root_user_id'] = self.root_user_id
                 user_info['system_user_id'] = self.system_user_id
             else:
@@ -2224,9 +2221,9 @@ class BundleModel(object):
         user_info['disk_used'] = self._get_disk_used(user_id)
         self.update_user_info(user_info)
 
-    #############################################################################
+    # ===========================================================================
     # OAuth-related methods follow!
-    #############################################################################
+    # ===========================================================================
 
     def _create_default_clients(self):
         DEFAULT_CLIENTS = [
