@@ -12,6 +12,7 @@ import Typography from '@material-ui/core/Typography';
 
 import DeleteIcon from '@material-ui/icons/Delete';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import UploadIcon from '@material-ui/icons/CloudUpload';
 import AddIcon from '@material-ui/icons/PlayCircleFilled';
 
@@ -189,13 +190,20 @@ class BundleRow extends Component {
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
-        var rowCells = this.props.headerItems.map(function(headerKey, col) {
+        var rowCells = this.props.headerItems.map((headerKey, col) => {
             var rowContent = rowItems[headerKey];
 
             // See if there's a link
             var url;
+            var showDetailButton;
             if (col === 0) {
                 url = baseUrl;
+                showDetailButton = 
+                        <IconButton onClick={this.handleDetailClick}>
+                            {this.state.showDetail?
+                            <ExpandLessIcon/>:
+                            <ExpandMoreIcon/>}
+                        </IconButton>;
             } else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
                 url = '/rest/bundles/' + uuid + '/contents/blob' + rowContent['path'];
                 if ('text' in rowContent) {
@@ -208,9 +216,9 @@ class BundleRow extends Component {
             }
             if (url)
                 rowContent = (
-                    <a href={url} className='bundle-link' target='_blank'>
-                        {rowContent}
-                    </a>
+                        <a href={url} className='bundle-link' target='_blank' style={{ display: 'inline-block', width: 60 }}>
+                            {rowContent}
+                        </a>
                 );
             // else rowContent = rowContent + '';
 
@@ -220,8 +228,9 @@ class BundleRow extends Component {
                     classes={{
                         root: classes.root,
                     }}
-                >
+                >                       
                     {rowContent}
+                    {showDetailButton}
                 </TableCell>
             );
         });
@@ -319,9 +328,6 @@ class BundleRow extends Component {
                         [classes.lowlight]: !this.props.focused && this.state.showDetail,
                     })}
                 >
-                    <IconButton onClick={this.handleDetailClick}>                    
-                        <ExpandMoreIcon />
-                    </IconButton>
                     {rowCells}
                 </TableRow>
                 {/** ---------------------------------------------------------------------------------------------------
