@@ -6,6 +6,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
+import AccessTimeIcon from '@material-ui/icons/AccessTime';
 
 import { FileBrowserLite } from '../../FileBrowser';
 
@@ -30,7 +31,15 @@ class MainContent extends React.Component<
 		const stateSpecClass = bundleInfo.state === 'failed'
             ? 'failedState'
             : (bundleInfo.state === 'ready' ? 'readyState' : 'otherState');
-		
+        //Get the correct run time display, truncate to 5 decimals
+        let bundleRunTime;
+        if (bundleInfo.metadata.time){
+            bundleRunTime = bundleInfo.metadata.time < 0.00001? '< 0.00001s' : bundleInfo.metadata.time.toFixed(5) + 's';
+        }
+        else{
+            bundleRunTime = '-- --';
+        }
+
 		return (
             <div className={ classes.outter }>
                 <div className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`}>
@@ -38,13 +47,6 @@ class MainContent extends React.Component<
                 </div>
     			<Grid container classes={ { container: classes.container } } spacing={16}>
                     { /** Run bundle specific components =========================================================== */}
-                    { isRunBundle &&
-                        <Grid item xs={12} md="auto">
-                            <Typography variant="body1">
-                                run time: { bundleInfo.metadata.time || '-- --' }
-                            </Typography>
-                        </Grid>
-                    }
                     { isRunBundle &&
                         <Grid item xs={12}>  
                             <CopyToClipboard
@@ -61,6 +63,18 @@ class MainContent extends React.Component<
                                     </Tooltip>
                                 </div>
                             </CopyToClipboard>
+                        </Grid>
+                    }
+                    { isRunBundle &&
+                        <Grid container xs={12} md="auto" direction="row" justify='flex-end' style={{marginRight: 10}}>
+                            <Grid item style={{ marginRight: 2 }}>
+                                <AccessTimeIcon/>
+                            </Grid>
+                            <Grid item>
+                                <Typography variant="body1">
+                                    run time: { bundleRunTime }
+                                </Typography>
+                            </Grid>
                         </Grid>
                     }
                     { /** Stdout/stderr components ================================================================= */}
