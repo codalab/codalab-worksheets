@@ -11,6 +11,7 @@ import Paper from '@material-ui/core/Paper';
 import Typography from '@material-ui/core/Typography';
 
 import DeleteIcon from '@material-ui/icons/Delete';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import UploadIcon from '@material-ui/icons/CloudUpload';
 import AddIcon from '@material-ui/icons/PlayCircleFilled';
 
@@ -87,13 +88,16 @@ class BundleRow extends Component {
         this.setState({ bundleInfoUpdates });
     };
 
-    handleClick = () => {
-        this.props.updateRowIndex(this.props.rowIndex);
+    handleDetailClick = () => {
         const { showDetail } = this.state;
         this.setState({
             showDetail: !showDetail,
         });
     };
+
+    handleSelectRowClick = () => {
+        this.props.updateRowIndex(this.props.rowIndex);
+    }
 
     showNewUpload = (val) => () => {
         this.setState({ showNewUpload: val });
@@ -300,7 +304,7 @@ class BundleRow extends Component {
                   */}
                 <TableRow
                     hover
-                    onClick={this.handleClick}
+                    onClick={this.handleSelectRowClick}
                     onContextMenu={this.props.handleContextMenu.bind(
                         null,
                         bundleInfo.uuid,
@@ -315,6 +319,9 @@ class BundleRow extends Component {
                         [classes.lowlight]: !this.props.focused && this.state.showDetail,
                     })}
                 >
+                    <IconButton onClick={this.handleDetailClick}>                    
+                        <ExpandMoreIcon />
+                    </IconButton>
                     {rowCells}
                 </TableRow>
                 {/** ---------------------------------------------------------------------------------------------------
