@@ -131,6 +131,7 @@ class LocalRunManager(BaseRunManager):
         self._run_state_manager.stop()
         self.save_state()
         try:
+            self.worker_docker_network.remove()
             self.docker_network_internal.remove()
             self.docker_network_external.remove()
         except docker.errors.APIError as e:
