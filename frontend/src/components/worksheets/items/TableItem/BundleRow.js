@@ -216,9 +216,9 @@ class BundleRow extends Component {
             }
             if (url)
                 rowContent = (
-                        <a href={url} className='bundle-link' target='_blank' style={{ display: 'inline-block', width: 60 }}>
-                            {rowContent}
-                        </a>
+                    <a href={url} className='bundle-link' target='_blank' style={{ display: 'inline-block', width: 60 }}>
+                        {rowContent}
+                    </a>
                 );
             // else rowContent = rowContent + '';
 
