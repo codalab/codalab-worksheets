@@ -33,11 +33,21 @@ class MainContent extends React.Component<
             : (bundleInfo.state === 'ready' ? 'readyState' : 'otherState');
         //Get the correct run time display, truncate to 5 decimals
         let bundleRunTime;
-        if (bundleInfo.metadata.time){
-            bundleRunTime = bundleInfo.metadata.time < 0.00001? '< 0.00001s' : bundleInfo.metadata.time.toFixed(5) + 's';
+        if (!bundleInfo.metadata.time){
+            //undefined
+            bundleRunTime = '-- --';
+        }
+        else if (bundleInfo.metadata.time > 1){
+            //more than a second display in hh:mm:ss
+            let date = new Date(null);
+            date.setSeconds(bundleInfo.metadata.time);
+            bundleRunTime = date.toISOString().substr(11, 8);
         }
         else{
-            bundleRunTime = '-- --';
+            //less than a second display
+            bundleRunTime = bundleInfo.metadata.time < 0.00001 
+                            ? '< 0.00001s' 
+                            : bundleInfo.metadata.time.toFix(5) + 's'; 
         }
 
 		return (
