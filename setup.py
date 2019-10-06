@@ -10,6 +10,17 @@ if int(setuptools.__version__.split('.')[0]) < 25:
         "Recommended command: `pip3 install -U setuptools`"
     )
 
+
+def get_requirements(*requirements_file_paths):
+    requirements = []
+    for requirements_file_path in requirements_file_paths:
+        with open(requirements_file_path) as requirements_file:
+            for line in requirements_file:
+                if line[0:2] != '-r' and line.find('git') == -1:
+                    requirements.append(line.strip())
+    return requirements
+
+
 setup(
     name='codalab',
     version=CODALAB_VERSION,
@@ -31,6 +42,7 @@ setup(
     ],
     python_requires='~=3.6',
     include_package_data=True,
+    install_requires=get_requirements('requirements.txt'),
     entry_points={
         'console_scripts': [
             'cl=codalab.bin.cl:main',
