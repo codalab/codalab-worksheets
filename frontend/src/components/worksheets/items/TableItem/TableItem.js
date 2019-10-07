@@ -50,7 +50,6 @@ class TableItem extends React.Component<{
         var headerItems = item.header;
         var headerHtml = headerItems.map(function(item, index) {
             let styleDict;
-            console.log('index', index)
             if (index == 0){
                 styleDict = {paddingLeft: 42}; 
             }
