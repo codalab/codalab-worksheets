@@ -32,15 +32,11 @@ class MainContent extends React.Component<
 		const stateSpecClass = bundleInfo.state === 'failed'
             ? 'failedState'
             : (bundleInfo.state === 'ready' ? 'readyState' : 'otherState');
+        
         //Get the correct run time display
-        let bundleRunTime;
-        if (!bundleInfo.metadata.time){
-            //undefined
-            bundleRunTime = '-- --';
-        }
-        else {
-            bundleRunTime = renderDuration(bundleInfo.metadata.time);
-        }
+        const bundleRunTime = bundleInfo.metadata.time
+                                ? renderDuration(bundleInfo.metadata.time)
+                                : "-- --";
 
 		return (
             <div className={ classes.outter }>
