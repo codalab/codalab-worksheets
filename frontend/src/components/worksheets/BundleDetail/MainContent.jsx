@@ -35,8 +35,8 @@ class MainContent extends React.Component<
         
         //Get the correct run time display
         const bundleRunTime = bundleInfo.metadata.time
-                                ? renderDuration(bundleInfo.metadata.time)
-                                : "-- --";
+            ? renderDuration(bundleInfo.metadata.time)
+            : "-- --";
 
 		return (
             <div className={ classes.outter }>
