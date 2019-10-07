@@ -9,6 +9,7 @@ import zlib
 import bz2
 
 BINARY_PLACEHOLDER = '<binary>'
+NONE_PLACEHOLDER = '<none>'
 
 
 def tar_gzip_directory(
@@ -193,7 +194,11 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
             else:
                 lines[-1] += '\n'
 
-    file_size = os.stat(file_path).st_size
+    try:
+        file_size = os.stat(file_path).st_size
+    except FileNotFoundError:
+        return NONE_PLACEHOLDER
+
     with open(file_path) as fileobj:
         if file_size > (num_head_lines + num_tail_lines) * max_line_length:
             if num_head_lines > 0:

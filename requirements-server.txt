@@ -4,6 +4,9 @@
 # For generating readthedocs
 -r requirements.docs.txt
 
+# For worker manager
+boto3==1.9.228
+
 # For style
 black==18.9b0
 

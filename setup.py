@@ -50,6 +50,7 @@ setup(
             'cl-bundle-manager=codalab.bin.bundle_manager:main',
             'codalab-service=codalab_service:main',
             'cl-worker=codalab.worker.main:main',
+            'cl-worker-manager=codalab.worker_manager.main:main',
             'cl-competitiond=scripts.competitiond:main',
         ]
     },
