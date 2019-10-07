@@ -7,6 +7,7 @@ import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import AccessTimeIcon from '@material-ui/icons/AccessTime';
+import {renderDuration} from '../../../util/worksheet_utils';
 
 import { FileBrowserLite } from '../../FileBrowser';
 
@@ -37,17 +38,8 @@ class MainContent extends React.Component<
             //undefined
             bundleRunTime = '-- --';
         }
-        else if (bundleInfo.metadata.time > 1){
-            //more than a second display in hh:mm:ss
-            let date = new Date(null);
-            date.setSeconds(bundleInfo.metadata.time);
-            bundleRunTime = date.toISOString().substr(11, 8);
-        }
-        else{
-            //less than a second display
-            bundleRunTime = bundleInfo.metadata.time < 0.00001 
-                            ? '< 0.00001s' 
-                            : bundleInfo.metadata.time.toFix(5) + 's'; 
+        else {
+            bundleRunTime = renderDuration(bundleInfo.metadata.time);
         }
 
 		return (
