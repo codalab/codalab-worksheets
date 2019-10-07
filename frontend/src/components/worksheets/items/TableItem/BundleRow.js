@@ -229,8 +229,8 @@ class BundleRow extends Component {
                         root: classes.root,
                     }}
                 >
-                    {rowContent}
                     {showDetailButton}
+                    {rowContent}
                 </TableCell>
             );
         });
