@@ -49,10 +49,7 @@ class TableItem extends React.Component<{
         var bundleInfos = item.bundles_spec.bundle_infos;
         var headerItems = item.header;
         var headerHtml = headerItems.map(function(item, index) {
-            let styleDict;
-            if (index == 0){
-                styleDict = {paddingLeft: 42}; 
-            }
+            let styleDict = index == 0 ?  {paddingLeft: 42} : {};
             return (
                 <TableCell component='th' key={index} style={ styleDict }>
                     {item}
