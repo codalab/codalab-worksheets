@@ -26,7 +26,7 @@ import subprocess
 
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
 
-ALL_SERVICES = DEFAULT_SERVICES + ['test', 'monitor']
+ALL_SERVICES = DEFAULT_SERVICES + ['test', 'monitor', 'worker-manager-cpu', 'worker-manager-gpu']
 
 ALL_NO_SERVICES = [
     'no-' + service for service in ALL_SERVICES
@@ -39,6 +39,8 @@ SERVICE_TO_IMAGE = {
     'frontend': 'frontend',
     'rest-server': 'server',
     'bundle-manager': 'server',
+    'worker-manager-cpu': 'server',
+    'worker-manager-gpu': 'server',
     'monitor': 'server',
     'worker': 'worker',
 }
@@ -177,7 +179,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='bundle_mount',
         help='Path to bundle data (just for mounting into Docker)',
-        default='/tmp',
+        default=var_path(''),  # Put any non-empty path here
     ),
     CodalabArg(name='mysql_mount', help='Path to store MySQL data', default=var_path('mysql')),
     CodalabArg(
@@ -195,6 +197,10 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='frontend_port', help='Port for frontend', type=int, default=2700),
     CodalabArg(name='rest_port', help='Port for REST server', type=int, default=2900),
     CodalabArg(name='rest_num_processes', help='Number of processes', type=int, default=1),
+    CodalabArg(name='server', help='URL to server (used by external worker to connect to)'),
+    CodalabArg(
+        name='shared_file_system', help='Whether worker has access to the bundle mount', type=bool
+    ),
     ### User
     CodalabArg(name='user_disk_quota', help='How much space a user can use', default='100g'),
     CodalabArg(name='user_time_quota', help='How much total time a user can use', default='100y'),
@@ -213,6 +219,33 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='use_ssl', help='Use HTTPS instead of HTTP', type=bool, default=False),
     CodalabArg(name='ssl_cert_file', help='Path to the cert file for SSL'),
     CodalabArg(name='ssl_key_file', help='Path to the key file for SSL'),
+    ### Worker manager
+    CodalabArg(
+        name='worker_manager_type',
+        help='Type of worker manager (e.g., aws-batch, azure-batch, slurm); only aws-batch supported right now',
+    ),
+    CodalabArg(
+        name='worker_manager_cpu_queue',
+        help='Name of queue to submit CPU jobs',
+        default='codalab-cpu',
+    ),
+    CodalabArg(
+        name='worker_manager_gpu_queue',
+        help='Name of queue to submit GPU jobs',
+        default='codalab-gpu',
+    ),
+    CodalabArg(
+        name='worker_manager_max_cpu_workers',
+        help='Maximum number of CPU workers per worker manager',
+        type=int,
+        default=10,
+    ),
+    CodalabArg(
+        name='worker_manager_max_gpu_workers',
+        help='Maximum number of GPU workers per worker manager',
+        type=int,
+        default=10,
+    ),
 ]
 
 
@@ -352,7 +385,16 @@ class CodalabArgs(object):
             if getattr(args, arg.name, None):  # Skip if set
                 continue
             if arg.env_var in os.environ:
-                setattr(args, arg.name, os.environ[arg.env_var])
+                # All environment variables are string-valued.  Need to convert
+                # into the appropriate types.
+                value = os.environ[arg.env_var]
+                if arg.type == 'bool':
+                    value = value == 'true'
+                elif arg.type == 'int':
+                    value = int(value)
+                elif arg.type == 'float':
+                    value = float(value)
+                setattr(args, arg.name, value)
 
         # Set constant default values
         for arg in CODALAB_ARGUMENTS:
@@ -387,7 +429,9 @@ class CodalabServiceManager(object):
         for env_var in ['PATH', 'DOCKER_HOST']:
             if env_var in os.environ:
                 environment[env_var] = os.environ[env_var]
-        environment['HOSTNAME'] = socket.gethostname()  # Sometimes not available
+        environment[
+            'HOSTNAME'
+        ] = socket.gethostname()  # Set HOSTNAME since it's sometimes not available
         return environment
 
     def __init__(self, args):
@@ -578,6 +622,7 @@ class CodalabServiceManager(object):
                         'server/default_user_info/parallel_run_quota',
                         self.args.user_parallel_run_quota,
                     ),
+                    ('workers/shared_file_system', self.args.shared_file_system),
                     ('email/host', self.args.email_host),
                     ('email/username', self.args.email_username),
                     ('email/password', self.args.email_password),
@@ -616,6 +661,8 @@ class CodalabServiceManager(object):
             )
 
         self.bring_up_service('bundle-manager')
+        self.bring_up_service('worker-manager-cpu')
+        self.bring_up_service('worker-manager-gpu')
         self.bring_up_service('frontend')
         self.bring_up_service('nginx')
         self.bring_up_service('worker')

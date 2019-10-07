@@ -246,8 +246,8 @@ class LocalRunStateMachine(StateTransitioner):
             cpuset, gpuset = self.assign_cpu_and_gpu_sets_fn(
                 run_state.resources['request_cpus'], run_state.resources['request_gpus']
             )
-        except Exception:
-            message = "Cannot assign enough resources"
+        except Exception as e:
+            message = "Cannot assign enough resources: %s" % str(e)
             run_state.info['failure_message'] = message
             logger.error(message)
             logger.error(traceback.format_exc())

@@ -131,6 +131,7 @@ class LocalRunManager(BaseRunManager):
         self._run_state_manager.stop()
         self.save_state()
         try:
+            self.worker_docker_network.remove()
             self.docker_network_internal.remove()
             self.docker_network_external.remove()
         except docker.errors.APIError as e:
@@ -246,8 +247,16 @@ class LocalRunManager(BaseRunManager):
                     cpuset -= run_state.cpuset
                     gpuset -= run_state.gpuset
 
-        if len(cpuset) < request_cpus or len(gpuset) < request_gpus:
-            raise Exception("Not enough cpus or gpus to assign!")
+        if len(cpuset) < request_cpus:
+            raise Exception(
+                "Requested more CPUs (%d) than available (%d currently out of %d on the machine)"
+                % (request_cpus, len(cpuset), len(self._cpuset))
+            )
+        if len(gpuset) < request_gpus:
+            raise Exception(
+                "Requested more GPUs (%d) than available (%d currently out of %d on the machine)"
+                % (request_gpus, len(gpuset), len(self._gpuset))
+            )
 
         def propose_set(resource_set, request_count):
             return set(str(el) for el in list(resource_set)[:request_count])

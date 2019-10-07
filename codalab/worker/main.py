@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
-    parser.add_argument('--tag', help='Tag that allows for scheduling runs on specific ' 'workers.')
+    parser.add_argument('--tag', help='Tag that allows for scheduling runs on specific workers.')
     parser.add_argument(
         '--server',
         default='https://worksheets.codalab.org',
@@ -93,6 +93,12 @@ def main():
         '--exit-when-idle',
         action='store_true',
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
+    )
+    parser.add_argument(
+        '--idle-seconds',
+        help='Not running anything for this many seconds constitutes idle',
+        type=int,
+        default=0,
     )
     parser.add_argument(
         '--id',
@@ -196,6 +202,7 @@ chmod 600 %s"""
         args.tag,
         args.work_dir,
         args.exit_when_idle,
+        args.idle_seconds,
         bundle_service,
     )
 
