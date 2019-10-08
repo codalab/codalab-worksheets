@@ -28,5 +28,4 @@ class ErrorMessage extends React.Component{
     }
 }
 
-
 export default ErrorMessage;
