@@ -5460,7 +5460,7 @@ button.close {
 }
 .tooltip {
   position: absolute;
-  z-index: 1070;
+  z-index: 1090;
   display: block;
   visibility: visible;
   font-size: 13px;
@@ -5562,7 +5562,7 @@ button.close {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 1060;
+  z-index: 1090;
   display: none;
   max-width: 276px;
   padding: 1px;
@@ -6756,7 +6756,7 @@ body,
   text-align: center;
   background-color: #F8F9FA;
   margin-top: 0px;
-  z-index: 999999;
+  z-index: 1070;
 }
 #worksheet #dragbar_horizontal {
   position: absolute;
