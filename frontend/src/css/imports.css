@@ -6756,7 +6756,7 @@ body,
   text-align: center;
   background-color: #F8F9FA;
   margin-top: 0px;
-  z-index: 999999;
+  z-index: 1060;
 }
 #worksheet #dragbar_horizontal {
   position: absolute;

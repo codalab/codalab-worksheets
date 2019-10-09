@@ -6,10 +6,11 @@ import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import IconButton from '@material-ui/core/IconButton';
 import Button from '@material-ui/core/Button';
-import Modal from '@material-ui/core/Modal';
-import Paper from '@material-ui/core/Paper';
-import Typography from '@material-ui/core/Typography';
-
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
+import DialogTitle from '@material-ui/core/DialogTitle';
 import DeleteIcon from '@material-ui/icons/Delete';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
@@ -331,7 +332,7 @@ class BundleRow extends Component {
                     {rowCells}
                 </TableRow>
                 {/** ---------------------------------------------------------------------------------------------------
-                  *  Deletion Modal (floating)
+                  *  Deletion Dialog (floating)
                   */}
                 <TableRow classes={{ root: classes.panelContainer }}>
                     <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
@@ -342,31 +343,28 @@ class BundleRow extends Component {
                             >
                                 <DeleteIcon />
                             </IconButton>
-                            <Modal
-                                aria-labelledby="deletion-confirmation"
-                                aria-describedby="deletion-confirmation"
+                            <Dialog
                                 open={openDelete}
                                 onClose={this.toggleDeletePopup}
+                                aria-labelledby="deletion-confirmation-title"
+                                aria-describedby="deletion-confirmation-description"
                             >
-                                <Paper className={classes.modal}>
-                                    <Typography variant="h6">
-                                        Delete this bundle?
-                                    </Typography>
-                                    <div className={ classes.flexRow } >
-                                        <Button variant='text' color='primary'
-                                            onClick={ this.toggleDeletePopup }
-                                        >
-                                            Cancel
-                                        </Button>
-                                        &nbsp;&nbsp;
-                                        <Button variant='contained' color='primary'
-                                            onClick={ this.deleteItem }
-                                        >
-                                            Yes
-                                        </Button>
-                                    </div>
-                                </Paper>
-                            </Modal>
+                                <DialogTitle id="deletion-confirmation-title">{"Delete this bundle?"}</DialogTitle>
+                                <DialogContent>
+                                    <DialogContentText id="alert-dialog-description">
+                                        Deletion cannot be undone.
+                                    </DialogContentText>
+                                </DialogContent>
+                                <DialogActions>
+                                    <Button color='primary' onClick={this.toggleDeletePopup}>
+                                        CANCEL
+                                    </Button>
+                                    <Button color='primary' onClick={this.deleteItem} autoFocus>
+                                        DELETE
+                                    </Button>
+                                </DialogActions>
+                            </Dialog>
+
                         </div>
                     </TableCell>
                 </TableRow>
@@ -521,20 +519,6 @@ const styles = (theme) => ({
     contentRow: {
         height: 36,
         borderBottom: '2px solid #ddd',
-    },
-    modal: {
-        position: 'absolute',
-        width: 300,
-        top: '50vh',
-        left: '50vw',
-        padding: theme.spacing.larger,
-        transform: 'translateY(-50%) translateX(-50%)',
-    },
-    flexRow: {
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
     },
     highlight: {
         backgroundColor: `${theme.color.primary.lightest} !important`,
