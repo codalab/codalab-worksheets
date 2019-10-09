@@ -11,6 +11,8 @@ import Paper from '@material-ui/core/Paper';
 import Typography from '@material-ui/core/Typography';
 
 import DeleteIcon from '@material-ui/icons/Delete';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import UploadIcon from '@material-ui/icons/CloudUpload';
 import AddIcon from '@material-ui/icons/PlayCircleFilled';
 
@@ -87,13 +89,16 @@ class BundleRow extends Component {
         this.setState({ bundleInfoUpdates });
     };
 
-    handleClick = () => {
-        this.props.updateRowIndex(this.props.rowIndex);
+    handleDetailClick = () => {
         const { showDetail } = this.state;
         this.setState({
             showDetail: !showDetail,
         });
     };
+
+    handleSelectRowClick = () => {
+        this.props.updateRowIndex(this.props.rowIndex);
+    }
 
     showNewUpload = (val) => () => {
         this.setState({ showNewUpload: val });
@@ -185,13 +190,20 @@ class BundleRow extends Component {
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
-        var rowCells = this.props.headerItems.map(function(headerKey, col) {
+        var rowCells = this.props.headerItems.map((headerKey, col) => {
             var rowContent = rowItems[headerKey];
 
             // See if there's a link
             var url;
+            var showDetailButton;
             if (col === 0) {
                 url = baseUrl;
+                showDetailButton = 
+                        <IconButton onClick={this.handleDetailClick}>
+                            {this.state.showDetail?
+                            <ExpandLessIcon/>:
+                            <ExpandMoreIcon/>}
+                        </IconButton>;
             } else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
                 url = '/rest/bundles/' + uuid + '/contents/blob' + rowContent['path'];
                 if ('text' in rowContent) {
@@ -204,7 +216,7 @@ class BundleRow extends Component {
             }
             if (url)
                 rowContent = (
-                    <a href={url} className='bundle-link' target='_blank'>
+                    <a href={url} className='bundle-link' target='_blank' style={{ display: 'inline-block', width: 60 }}>
                         {rowContent}
                     </a>
                 );
@@ -217,6 +229,7 @@ class BundleRow extends Component {
                         root: classes.root,
                     }}
                 >
+                    {showDetailButton}
                     {rowContent}
                 </TableCell>
             );
@@ -300,7 +313,7 @@ class BundleRow extends Component {
                   */}
                 <TableRow
                     hover
-                    onClick={this.handleClick}
+                    onClick={this.handleSelectRowClick}
                     onContextMenu={this.props.handleContextMenu.bind(
                         null,
                         bundleInfo.uuid,
