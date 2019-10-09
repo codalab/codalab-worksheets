@@ -520,7 +520,6 @@ const styles = (theme) => ({
         height: 36,
         borderBottom: '2px solid #ddd',
     },
-
     highlight: {
         backgroundColor: `${theme.color.primary.lightest} !important`,
     },
