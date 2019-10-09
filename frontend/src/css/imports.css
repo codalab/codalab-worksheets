@@ -7104,6 +7104,7 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
 .worksheet_content .ws-item > .focused {
   background-color: #e2f0f5;
   border-left: #1d91c0 solid 3px;
+  box-shadow: 5px 0 5px 5px #e2f0f5;
   padding-left: 4px;
   width: 100%;
 }
