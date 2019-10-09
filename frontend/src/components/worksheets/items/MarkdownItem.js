@@ -37,7 +37,7 @@ class MarkdownItem extends React.Component {
             this.state.showEdit !== nextState.showEdit
         );
     }
-    handleClick = (event) => {
+    handleClick = () => {
         this.props.setFocus(this.props.focusIndex, 0);
     };
 
