@@ -18,7 +18,7 @@ const styles = {
 };
 
 export default ({ showActionBar, onShowNewUpload, onShowNewRun, onShowNewText, canEdit, info, classes, renderPermissions, reloadWorksheet, editButtons, anchorEl, setAnchorEl }) =>
-    <Sticky top={NAVBAR_HEIGHT - 6 + (showActionBar ? 60: 0)} innerZ={99999}>
+    <Sticky top={NAVBAR_HEIGHT - 6 + (showActionBar ? 60: 0)} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
             <div className='header-row'>
                 <Grid container alignItems="flex-end">
