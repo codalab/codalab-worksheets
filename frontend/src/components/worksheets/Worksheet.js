@@ -167,12 +167,12 @@ class Worksheet extends React.Component {
             console.log('out of bound');
             return; // Out of bounds (note index = -1 is okay)
         }
+        let focusedBundleUuidList = [];
         if (index !== -1) {
             // index !== -1 means something is selected.
             // focusedBundleUuidList is a list of uuids of all bundles after the selected bundle (itself included)
             // Say the selected bundle has focusIndex 1 and subFocusIndex 2, then focusedBundleUuidList will include the uuids of
             // all the bundles that have focusIndex 1 and subFocusIndex >= 2, and also all the bundles that have focusIndex > 1
-            var focusedBundleUuidList = [];
             for (var i = index; i < info.items.length; i++) {
                 if (info.items[i].bundles_spec) {
                     var j = i === index ? subIndex : 0;
