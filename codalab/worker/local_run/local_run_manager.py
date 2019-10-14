@@ -11,6 +11,7 @@ import codalab.worker.docker_utils as docker_utils
 
 from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.run_manager import BaseRunManager
+from codalab.worker.bundle_state import BundleInfo, RunResources, WorkerRun
 from .local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
 from .local_reader import LocalReader
 
@@ -197,8 +198,7 @@ class LocalRunManager(BaseRunManager):
         if self._stop:
             # Run Manager stopped, refuse more runs
             return
-        bundle_uuid = bundle['uuid']
-        bundle_path = os.path.join(self._bundles_dir, bundle_uuid)
+        bundle_path = os.path.join(self._bundles_dir, bundle.uuid)
         now = time.time()
         run_state = LocalRunState(
             stage=LocalRunStage.PREPARING,
@@ -223,7 +223,7 @@ class LocalRunManager(BaseRunManager):
             info={},
         )
         with self._lock:
-            self._runs[bundle_uuid] = run_state
+            self._runs[bundle.uuid] = run_state
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
@@ -324,7 +324,7 @@ class LocalRunManager(BaseRunManager):
         with self._lock:
             run_state.info['kill_message'] = 'Kill requested'
             run_state = run_state._replace(info=run_state.info, is_killed=True)
-            self._runs[run_state.bundle['uuid']] = run_state
+            self._runs[run_state.bundle.uuid] = run_state
 
     @property
     def all_runs(self):
@@ -333,18 +333,18 @@ class LocalRunManager(BaseRunManager):
         """
         with self._lock:
             result = {
-                bundle_uuid: {
-                    'run_status': run_state.run_status,
-                    'bundle_start_time': run_state.bundle_start_time,
-                    'container_start_time': run_state.container_start_time,
-                    'container_time_total': run_state.container_time_total,
-                    'container_time_user': run_state.container_time_user,
-                    'container_time_system': run_state.container_time_system,
-                    'docker_image': run_state.docker_image,
-                    'info': run_state.info,
-                    'state': LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
-                    'remote': self._worker.id,
-                }
+                bundle_uuid: WorkerRun(
+                    run_status=run_state.run_status,
+                    bundle_start_time=run_state.bundle_start_time,
+                    container_start_time=run_state.container_start_time,
+                    container_time_total=run_state.container_time_total,
+                    container_time_user=run_state.container_time_user,
+                    container_time_system=run_state.container_time_system,
+                    docker_image=run_state.docker_image,
+                    info=run_state.info,
+                    state=LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
+                    remote=self._worker.id,
+                )
                 for bundle_uuid, run_state in self._runs.items()
             }
             return result

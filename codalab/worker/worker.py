@@ -8,6 +8,7 @@ import sys
 from .bundle_service_client import BundleServiceException
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
+from .bundle_state import BundleInfo, RunResources, WorkerRun
 
 VERSION = 20
 
@@ -100,7 +101,7 @@ class Worker(object):
             'free_disk_bytes': self._run_manager.free_disk_bytes,
             'dependencies': self._run_manager.all_dependencies,
             'hostname': socket.gethostname(),
-            'runs': self._run_manager.all_runs,
+            'runs': [run.to_dict for run in self._run_manager.all_runs],
         }
         response = self._bundle_service.checkin(self.id, request)
         if response:
@@ -135,6 +136,8 @@ class Worker(object):
         start_message = {'hostname': socket.gethostname(), 'start_time': int(now)}
 
         if self._bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
+            bundle = BundleInfo.from_dict(bundle)
+            resources = RunResources.from_dict(bundle)
             self._run_manager.create_run(bundle, resources)
         else:
             print(
@@ -148,7 +151,7 @@ class Worker(object):
 
         try:
             run_state = self._run_manager.get_run(uuid)
-            dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
+            dep_paths = set([dep['child_path'] for dep in run_state.bundle.dependencies])
             self._run_manager.read(run_state, path, dep_paths, read_args, reply)
         except BundleServiceException:
             traceback.print_exc()
@@ -173,7 +176,7 @@ class Worker(object):
 
     def _write(self, uuid, subpath, string):
         run_state = self._run_manager.get_run(uuid)
-        dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
+        dep_paths = set([dep['child_path'] for dep in run_state.bundle.dependencies])
         self._run_manager.write(run_state, subpath, dep_paths, string)
 
     def _kill(self, uuid):
@@ -206,12 +209,13 @@ class Worker(object):
         else:
             self._bundle_service.reply(self.id, socket_id, message)
 
-    def _execute_bundle_service_command_with_retry(self, f):
+    @staticmethod
+    def _execute_bundle_service_command_with_retry(cmd):
         retries_left = COMMAND_RETRY_SECONDS
         while True:
             try:
                 retries_left -= 1
-                f()
+                cmd()
                 return
             except BundleServiceException as e:
                 if not e.client_error and retries_left > 0:
