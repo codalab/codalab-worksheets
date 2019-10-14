@@ -332,18 +332,27 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
 
 
 def is_file_genpath(genpath):
-    # Return whether the genpath is a file (e.g., '/stdout') or not (e.g., 'command')
+    """
+    Determine whether the genpath is a file (e.g., '/stdout') or not (e.g., 'command')
+    :param genpath: a generalized path
+    :return: a boolean value indicating if the genpath is a file.
+    """
     return genpath.startswith('/')
 
 
-def interpret_genpath(bundle_info, genpath):
+def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
     """
     Quickly interpret the genpaths (generalized path) that only require looking
     bundle_info (e.g., 'time', 'command').  The interpretation of generalized
     paths that require reading files is done by interpret_file_genpath.
+    If genpath is referring to a file, then just returns instructions for fetching that file rather than actually doing it.
+    :param bundle_info: dictionary which contains metadata of current bundle's information, e.g. uuid, bundle_type, owner_id, etc.
+    :param genpath: a generalized path, e.g. column names(summary, owner_name, etc.), args.
+    :param db_model (optional): database model which is used to query database
+    :param owner_cache (optional): a dictionary stores mappings from owner_id to owner_name
+    :return: the interpretation of genpath
     """
-    # If genpath is referring to a file, then just returns instructions for
-    # fetching that file rather than actually doing it.
+
     if is_file_genpath(genpath):
         return (bundle_info['uuid'], genpath)
 
@@ -434,6 +443,15 @@ def interpret_genpath(bundle_info, genpath):
             # FIXME(sckoo): we will be passing the old permissions format into this
             # which has been updated to accommodate the new formatting
             return group_permissions_str(bundle_info['group_permissions'])
+    elif genpath == 'owner_name':
+        if 'owner_id' in bundle_info:
+            if owner_cache is not None and bundle_info['owner_id'] in owner_cache:
+                return owner_cache[bundle_info['owner_id']]
+            else:
+                # We might batch this database operation in the future
+                owner = db_model.get_user(user_id=bundle_info['owner_id'])
+                owner_cache[bundle_info['owner_id']] = owner.user_name
+                return owner.user_name
 
     # Bundle field?
     value = bundle_info.get(genpath)
@@ -581,14 +599,17 @@ def get_default_schemas():
 
 
 def get_command(value_obj):  # For directives only
+
     return value_obj[0] if len(value_obj) > 0 else None
 
 
-def interpret_items(schemas, raw_items):
+def interpret_items(schemas, raw_items, db_model=None):
     """
-    schemas: initial mapping from name to list of schema items (columns of a table)
-    raw_items: list of (raw) worksheet items (triples) to interpret
-    Return {'items': interpreted_items, ...}, where interpreted_items is a list of:
+    Interpret different items based on their types.
+    :param schemas: initial mapping from name to list of schema items (columns of a table)
+    :param raw_items: list of (raw) worksheet items (triples) to interpret
+    :param db_model: database model which is used to query database
+    :return: {'items': interpreted_items, ...}, where interpreted_items is a list of:
     {
         'mode': display mode ('markup' | 'contents' | 'image' | 'html', etc.)
         'interpreted': one of
@@ -755,11 +776,18 @@ def interpret_items(schemas, raw_items):
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             processed_bundle_infos = []
+            # Cache the mapping between owner_id to owner_name on current worksheet
+            owner_cache = {}
             for item_index, bundle_info in bundle_infos:
                 if 'metadata' in bundle_info:
                     rows.append(
                         {
-                            name: apply_func(post, interpret_genpath(bundle_info, genpath))
+                            name: apply_func(
+                                post,
+                                interpret_genpath(
+                                    bundle_info, genpath, db_model=db_model, owner_cache=owner_cache
+                                ),
+                            )
                             for (name, genpath, post) in schema
                         }
                     )
@@ -777,6 +805,7 @@ def interpret_items(schemas, raw_items):
                         }
                     )
                     processed_bundle_infos.append(processed_bundle_info)
+
             blocks.append(
                 TableBlockSchema()
                 .load(
