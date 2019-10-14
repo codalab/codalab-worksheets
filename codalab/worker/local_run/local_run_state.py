@@ -237,14 +237,14 @@ class LocalRunStateMachine(StateTransitioner):
             dependencies.append((dependency_path, docker_dependency_path))
 
         # 3) Set up container
-        if run_state.resources['request_network']:
+        if run_state.resources['network']:
             docker_network = self.docker_network_external.name
         else:
             docker_network = self.docker_network_internal.name
 
         try:
             cpuset, gpuset = self.assign_cpu_and_gpu_sets_fn(
-                run_state.resources['request_cpus'], run_state.resources['request_gpus']
+                run_state.resources['cpus'], run_state.resources['gpus']
             )
         except Exception as e:
             message = "Cannot assign enough resources: %s" % str(e)
@@ -264,7 +264,7 @@ class LocalRunStateMachine(StateTransitioner):
                 network=docker_network,
                 cpuset=cpuset,
                 gpuset=gpuset,
-                memory_bytes=run_state.resources['request_memory'],
+                memory_bytes=run_state.resources['memory'],
                 runtime=self.docker_runtime,
             )
             self.worker_docker_network.connect(container)
@@ -328,32 +328,29 @@ class LocalRunStateMachine(StateTransitioner):
                 ),
             )
 
-            if (
-                run_state.resources['request_time']
-                and container_time_total > run_state.resources['request_time']
-            ):
+            if run_state.resources['time'] and container_time_total > run_state.resources['time']:
                 kill_messages.append(
                     'Time limit exceeded. (Container uptime %s > time limit %s)'
                     % (
                         duration_str(container_time_total),
-                        duration_str(run_state.resources['request_time']),
+                        duration_str(run_state.resources['time']),
                     )
                 )
 
             if (
-                run_state.max_memory > run_state.resources['request_memory']
+                run_state.max_memory > run_state.resources['memory']
                 or run_state.info.get('exitcode', '0') == '137'
             ):
                 kill_messages.append(
-                    'Memory limit %s exceeded.' % size_str(run_state.resources['request_memory'])
+                    'Memory limit %s exceeded.' % size_str(run_state.resources['memory'])
                 )
 
             if (
-                run_state.resources['request_disk']
-                and run_state.disk_utilization > run_state.resources['request_disk']
+                run_state.resources['disk']
+                and run_state.disk_utilization > run_state.resources['disk']
             ):
                 kill_messages.append(
-                    'Disk limit %sb exceeded.' % size_str(run_state.resources['request_disk'])
+                    'Disk limit %sb exceeded.' % size_str(run_state.resources['disk'])
                 )
 
             if kill_messages:

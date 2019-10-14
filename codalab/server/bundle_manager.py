@@ -11,12 +11,12 @@ import traceback
 from codalab.objects.permission import check_bundles_have_read_permission
 from codalab.common import PermissionError
 from codalab.lib import bundle_util, formatting, path_util
+from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
 from codalab.worker.bundle_state import State
 
 
 logger = logging.getLogger(__name__)
-
 
 WORKER_TIMEOUT_SECONDS = 60
 SECONDS_PER_DAY = 60 * 60 * 24
@@ -29,16 +29,11 @@ class BundleManager(object):
     Assigns run bundles to workers and makes make bundles.
     """
 
-    @staticmethod
-    def create(codalab_manager):
+    def __init__(self, codalab_manager):
         config = codalab_manager.config.get('workers')
         if not config:
             print('config.json file missing a workers section.', file=sys.stderr)
-            exit(1)
-
-        from codalab.server.default_bundle_manager import DefaultBundleManager
-
-        self = DefaultBundleManager()
+            sys.exit(1)
 
         self._model = codalab_manager.model()
         self._worker_model = codalab_manager.worker_model()
@@ -62,8 +57,6 @@ class BundleManager(object):
         self._default_gpu_image = config.get('default_gpu_image')
 
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
-
-        return self
 
     def run(self, sleep_time):
         logger.info('Bundle manager running!')
@@ -329,8 +322,6 @@ class BundleManager(object):
             for worker in workers_list:
                 if self._try_start_bundle(workers, worker, bundle):
                     break
-                else:
-                    continue  # Try the next worker.
 
     def _deduct_worker_resources(self, workers_list):
         """
@@ -441,7 +432,8 @@ class BundleManager(object):
         else:
             return False
 
-    def _compute_request_cpus(self, bundle):
+    @staticmethod
+    def _compute_request_cpus(bundle):
         """
         Compute the CPU limit used for scheduling the run.
         The default of 1 is for backwards compatibilty for
@@ -451,7 +443,8 @@ class BundleManager(object):
             return 1
         return bundle.metadata.request_cpus
 
-    def _compute_request_gpus(self, bundle):
+    @staticmethod
+    def _compute_request_gpus(bundle):
         """
         Compute the GPU limit used for scheduling the run.
         The default of 0 is for backwards compatibilty for
@@ -461,7 +454,8 @@ class BundleManager(object):
             return 0
         return bundle.metadata.request_gpus
 
-    def _compute_request_memory(self, bundle):
+    @staticmethod
+    def _compute_request_memory(bundle):
         """
         Compute the memory limit used for scheduling the run.
         The default of 2g is for backwards compatibilty for
@@ -524,14 +518,14 @@ class BundleManager(object):
         # Figure out the resource requirements.
         resources = message['resources'] = {}
 
-        resources['request_cpus'] = self._compute_request_cpus(bundle)
-        resources['request_gpus'] = self._compute_request_gpus(bundle)
+        resources['cpus'] = self._compute_request_cpus(bundle)
+        resources['gpus'] = self._compute_request_gpus(bundle)
 
         resources['docker_image'] = self._get_docker_image(bundle)
-        resources['request_time'] = self._compute_request_time(bundle)
-        resources['request_memory'] = self._compute_request_memory(bundle)
-        resources['request_disk'] = self._compute_request_disk(bundle)
-        resources['request_network'] = bundle.metadata.request_network
+        resources['time'] = self._compute_request_time(bundle)
+        resources['memory'] = self._compute_request_memory(bundle)
+        resources['disk'] = self._compute_request_disk(bundle)
+        resources['network'] = bundle.metadata.request_network
 
         return message
 
@@ -555,6 +549,106 @@ class BundleManager(object):
                     bundle.state, BUNDLE_TIMEOUT_DAYS
                 )
                 logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
+                self._model.update_bundle(
+                    bundle,
+                    {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
+                )
+
+    def _schedule_run_bundles(self):
+        """
+        This method implements a state machine. The states are:
+
+        STAGED, no worker_run DB entry:
+            Ready to send run message to available worker.
+        STARTING, has worker_run DB entry:
+            Run message sent, waiting for the run to start.
+        RUNNING, has worker_run DB entry:
+            Worker reported that the run has started.
+        READY / FAILED, no worker_run DB entry:
+            Finished.
+        """
+        workers = WorkerInfoAccessor(self._worker_model.get_workers())
+
+        # Handle some exceptional cases.
+        self._cleanup_dead_workers(workers)
+        self._restage_stuck_starting_bundles(workers)
+        self._bring_offline_stuck_running_bundles(workers)
+        self._fail_on_too_many_resources()
+        self._acknowledge_recently_finished_bundles(workers)
+
+        # Schedule, preferring user-owned workers.
+        self._schedule_run_bundles_on_workers(workers, user_owned=True)
+        self._schedule_run_bundles_on_workers(workers, user_owned=False)
+
+    @staticmethod
+    def _check_resource_failure(
+        value,
+        user_fail_string=None,
+        global_fail_string=None,
+        user_max=None,
+        global_max=None,
+        pretty_print=lambda x: str(x),
+    ):
+        """
+        Returns a failure message in case a certain resource limit is not respected.
+        If value > user_max, user_fail_string is formatted with value and user_max in that order
+        If value > global_max, global_fail_strintg is formatted with value and global_max in that order
+        Pretty print is applied to both the value and max values before they're passed on to the functions
+        The strings should expect string inputs for formatting and pretty_print should convert values to strings
+        """
+        if value:
+            if user_max and value > user_max:
+                return user_fail_string % (pretty_print(value), pretty_print(user_max))
+            elif global_max and value > global_max:
+                return global_fail_string % (pretty_print(value), pretty_print(global_max))
+        return None
+
+    def _fail_on_too_many_resources(self):
+        """
+        Fails bundles that request more resources than available for the given user.
+        Note: allow more resources than available on any worker because new
+        workers might get spun up in response to the presence of this run.
+        """
+        for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
+            failures = []
+
+            failures.append(
+                self._check_resource_failure(
+                    self._compute_request_disk(bundle),
+                    user_fail_string='Requested more disk (%s) than user disk quota left (%s)',
+                    user_max=self._model.get_user_disk_quota_left(bundle.owner_id),
+                    global_fail_string='Maximum job disk size (%s) exceeded (%s)',
+                    global_max=self._max_request_disk,
+                    pretty_print=formatting.size_str,
+                )
+            )
+
+            failures.append(
+                self._check_resource_failure(
+                    self._compute_request_time(bundle),
+                    user_fail_string='Requested more time (%s) than user time quota left (%s)',
+                    user_max=self._model.get_user_time_quota_left(bundle.owner_id),
+                    global_fail_string='Maximum job time (%s) exceeded (%s)',
+                    global_max=self._max_request_time,
+                    pretty_print=formatting.duration_str,
+                )
+            )
+
+            failures.append(
+                self._check_resource_failure(
+                    self._compute_request_memory(bundle),
+                    global_fail_string='Requested more memory (%s) than maximum limit (%s)',
+                    global_max=self._max_request_memory,
+                    pretty_print=formatting.size_str,
+                )
+            )
+
+            failures = [f for f in failures if f is not None]
+
+            if len(failures) > 0:
+                failure_message = '. '.join(failures)
+                logger.info('Failing %s: %s', bundle.uuid, failure_message)
+
                 self._model.update_bundle(
                     bundle,
                     {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
