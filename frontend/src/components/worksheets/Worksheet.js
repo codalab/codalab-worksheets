@@ -903,9 +903,8 @@ class Worksheet extends React.Component {
         var editButtons = this.state.editMode ? editModeFeatures : editFeatures;
         if (!this.state.isValid){
             return <ErrorMessage 
-                        message={'Unable to fetch worksheet with uuid ' 
-                                + this.state.ws.uuid 
-                                + ', please check the uuid in url'} 
+                        message={'Not found: \'/worksheets/' 
+                                + this.state.ws.uuid +"\'" } 
                     />;
         }
 
