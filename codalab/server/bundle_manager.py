@@ -13,7 +13,7 @@ from codalab.common import PermissionError
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
-from codalab.worker.bundle_state import State
+from codalab.worker.bundle_state import State, RunResources
 
 
 logger = logging.getLogger(__name__)
@@ -317,7 +317,9 @@ class BundleManager(object):
                     continue  # Don't start this bundle yet
                 workers_list = workers.user_owned_workers(self._model.root_user_id)
 
-            workers_list = self._filter_and_sort_workers(workers_list, bundle)
+            self._deduct_worker_resources(workers_list)
+            bundle_resources = self._compute_bundle_resources(bundle)
+            workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
 
             for worker in workers_list:
                 if self._try_start_bundle(workers, worker, bundle):
@@ -330,11 +332,13 @@ class BundleManager(object):
         for worker in workers_list:
             for uuid in worker['run_uuids']:
                 bundle = self._model.get_bundle(uuid)
-                worker['cpus'] -= self._compute_request_cpus(bundle)
-                worker['gpus'] -= self._compute_request_gpus(bundle)
-                worker['memory_bytes'] -= self._compute_request_memory(bundle)
+                bundle_resources = self._compute_bundle_resources(bundle)
+                worker['cpus'] -= bundle_resources.cpus
+                worker['gpus'] -= bundle_resources.gpus
+                worker['memory_bytes'] -= bundle_resources.memory
 
-    def _filter_and_sort_workers(self, workers_list, bundle):
+    @staticmethod
+    def _filter_and_sort_workers(workers_list, bundle, bundle_resources):
         """
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
@@ -346,25 +350,21 @@ class BundleManager(object):
             worker_id = worker['worker_id']
             has_gpu[worker_id] = worker['gpus'] > 0
 
-        # deduct worker resources based on running bundles
-        self._deduct_worker_resources(workers_list)
-
         # Filter by CPUs.
-        request_cpus = self._compute_request_cpus(bundle)
-        if request_cpus:
-            workers_list = [worker for worker in workers_list if worker['cpus'] >= request_cpus]
+        workers_list = [
+            worker for worker in workers_list if worker['cpus'] >= bundle_resources.cpus
+        ]
 
         # Filter by GPUs.
-        request_gpus = self._compute_request_gpus(bundle)
-        if request_gpus:
-            workers_list = [worker for worker in workers_list if worker['gpus'] >= request_gpus]
+        if bundle_resources.gpus:
+            workers_list = [
+                worker for worker in workers_list if worker['gpus'] >= bundle_resources.gpus
+            ]
 
         # Filter by memory.
-        request_memory = self._compute_request_memory(bundle)
-        if request_memory:
-            workers_list = [
-                worker for worker in workers_list if worker['memory_bytes'] >= request_memory
-            ]
+        workers_list = [
+            worker for worker in workers_list if worker['memory_bytes'] >= bundle_resources.memory
+        ]
 
         # Filter by tag.
         request_queue = bundle.metadata.request_queue
@@ -397,7 +397,7 @@ class BundleManager(object):
             worker_id = worker['worker_id']
 
             # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
-            gpu_priority = self._compute_request_gpus(bundle) or not has_gpu[worker_id]
+            gpu_priority = bundle_resources.gpus or not has_gpu[worker_id]
             return (gpu_priority, len(needed_deps & deps), worker['cpus'], random.random())
 
         workers_list.sort(key=get_sort_key, reverse=True)
@@ -516,18 +516,19 @@ class BundleManager(object):
                 )
 
         # Figure out the resource requirements.
-        resources = message['resources'] = {}
+        bundle_resources = self._compute_bundle_resources(bundle)
+        message['resources'] = bundle_resources.to_dict()
 
-        resources['cpus'] = self._compute_request_cpus(bundle)
-        resources['gpus'] = self._compute_request_gpus(bundle)
-
-        resources['docker_image'] = self._get_docker_image(bundle)
-        resources['time'] = self._compute_request_time(bundle)
-        resources['memory'] = self._compute_request_memory(bundle)
-        resources['disk'] = self._compute_request_disk(bundle)
-        resources['network'] = bundle.metadata.request_network
-
-        return message
+    def _compute_bundle_resources(self, bundle):
+        return RunResources(
+            cpus=self._compute_request_cpus(bundle),
+            gpus=self._compute_request_gpus(bundle),
+            docker_image=self._get_docker_image(bundle),
+            time=self._compute_request_time(bundle),
+            memory=self._compute_request_memory(bundle),
+            disk=self._compute_request_disk(bundle),
+            network=bundle.metadata.request_network,
+        )
 
     def _fail_unresponsive_bundles(self):
         """
@@ -610,11 +611,12 @@ class BundleManager(object):
         workers might get spun up in response to the presence of this run.
         """
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
+            bundle_resources = self._compute_bundle_resources(bundle)
             failures = []
 
             failures.append(
                 self._check_resource_failure(
-                    self._compute_request_disk(bundle),
+                    bundle_resources.disk,
                     user_fail_string='Requested more disk (%s) than user disk quota left (%s)',
                     user_max=self._model.get_user_disk_quota_left(bundle.owner_id),
                     global_fail_string='Maximum job disk size (%s) exceeded (%s)',
@@ -625,7 +627,7 @@ class BundleManager(object):
 
             failures.append(
                 self._check_resource_failure(
-                    self._compute_request_time(bundle),
+                    bundle_resources.time,
                     user_fail_string='Requested more time (%s) than user time quota left (%s)',
                     user_max=self._model.get_user_time_quota_left(bundle.owner_id),
                     global_fail_string='Maximum job time (%s) exceeded (%s)',
@@ -636,7 +638,7 @@ class BundleManager(object):
 
             failures.append(
                 self._check_resource_failure(
-                    self._compute_request_memory(bundle),
+                    bundle_resources.memory,
                     global_fail_string='Requested more memory (%s) than maximum limit (%s)',
                     global_max=self._max_request_memory,
                     pretty_print=formatting.size_str,
