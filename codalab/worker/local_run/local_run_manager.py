@@ -45,9 +45,7 @@ class LocalRunManager(BaseRunManager):
         docker_network_prefix='codalab_worker_network',  # type: str
     ):
         self._worker = worker
-        self._state_committer = JsonStateCommitter(
-            commit_file, pre_commit_transform=self._pre_commit, post_load_transform=self._post_load
-        )
+        self._state_committer = JsonStateCommitter(commit_file)
         self._reader = LocalReader()
         self._docker = docker.from_env()
         self._bundles_dir = os.path.join(work_dir, LocalRunManager.BUNDLES_DIR_NAME)
@@ -96,21 +94,18 @@ class LocalRunManager(BaseRunManager):
         self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", True)
 
     def save_state(self):
-        self._state_committer.commit(self._runs)
-
-    @staticmethod
-    def _pre_commit(runs):
         # Remove complex container objects from state before serializing, these can be retrieved
-        return {
+        runs = {
             uuid: state._replace(
                 container=None, bundle=state.bundle.to_dict(), resources=state.resources.to_dict()
             )
-            for uuid, state in runs.items()
+            for uuid, state in self._runs.items()
         }
+        self._state_committer.commit(self._runs)
 
-    def _post_load(self, runs):
+    def load_state(self):
+        runs = self._state_committer.load()
         # Retrieve the complex container objects from the Docker API
-        processed_runs = {}
         for uuid, run_state in runs.items():
             if run_state.container_id:
                 try:
@@ -120,14 +115,10 @@ class LocalRunManager(BaseRunManager):
                 except docker.errors.NotFound as ex:
                     logger.debug('Error getting the container for the run: %s', ex)
                     run_state = run_state._replace(container_id=None)
-            processed_runs[uuid] = run_state._replace(
+            self._runs[uuid] = run_state._replace(
                 bundle=BundleInfo.from_dict(run_state.bundle),
                 resources=RunResources.from_dict(run_state.resources),
             )
-        return processed_runs
-
-    def load_state(self):
-        self._runs = self._state_committer.load()
 
     def start(self):
         """
