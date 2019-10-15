@@ -39,7 +39,11 @@ class DependencyKey(object):
     for caching dependencies
     """
 
-    def __init__(self, parent_uuid, parent_path):
+    def __init__(
+            self,
+            parent_uuid,  # type: str
+            parent_path,  # type: str
+        ):
         self.parent_uuid = parent_uuid
         self.parent_path = parent_path
 
@@ -65,12 +69,12 @@ class Dependency(object):
 
     def __init__(
         self,
-        parent_name,
-        parent_path,
-        parent_uuid,
-        child_path,
-        child_uuid,
-        location=None,
+        parent_name,  # type: str
+        parent_path,  # type: str
+        parent_uuid,  # type: str child_path,  # type: str
+        child_uuid,  # type: str
+        child_path,  # type: str
+        location=None,  # type: Optional[str]
     ):
         self.parent_name = parent_name
         self.parent_path = parent_path
@@ -92,27 +96,27 @@ class BundleInfo(object):
 
     def __init__(
         self,
-        uuid,
-        bundle_type,
-        owner_id,
-        command,
-        data_hash,
-        state,
-        is_anonymous,
-        metadata,
-        dependencies,  # List[str, Dict[str, str]]
-        args,
-        location=None,
+        uuid,  # type: str
+        bundle_type,  # type: str
+        owner_id,  # type: str
+        command,  # type: str
+        data_hash,  # type: str
+        state,  # type: State
+        is_anonymous,  # type: bool
+        metadata,  # type: Dict[Any, Any]
+        dependencies,  # type: List[str, Dict[str, str]]
+        args,  # type: Any
+        location=None,  # type: Optional[str]
     ):
-        self.uuid = uuid  # type: str
-        self.bundle_type = bundle_type  # type: str
-        self.owner_id = owner_id  # type: str
-        self.command = command  # type: str
-        self.data_hash = data_hash  # type: str
-        self.state = state  # type: State
-        self.is_anonymous = is_anonymous  # type: bool
-        self.metadata = metadata  # type: Dict[Any, Any]
-        self.args = args  # type: Any
+        self.uuid = uuid
+        self.bundle_type = bundle_type
+        self.owner_id = owner_id
+        self.command = command
+        self.data_hash = data_hash
+        self.state = state
+        self.is_anonymous = is_anonymous
+        self.metadata = metadata
+        self.args = args
         self.dependencies = {
             DependencyKey(dep["parent_uuid"], dep["parent_path"]): Dependency(
                 parent_name=dep["parent_name"],
@@ -124,7 +128,7 @@ class BundleInfo(object):
             )
             for dep in dependencies
         }  # type: Dict[DependencyKey, Dependency]
-        self.location = location  # type: Optional[str] set if local filesystem
+        self.location = location  # set if local filesystem
 
     def to_dict(self):
         dct = generic_to_dict(self)
@@ -156,14 +160,23 @@ class RunResources(object):
     Defines all the resource fields the server propagates to the worker for its runs
     """
 
-    def __init__(self, cpus, gpus, docker_image, time, memory, disk, network):
-        self.cpus = cpus  # type: int
-        self.gpus = gpus  # type: str
-        self.docker_image = docker_image  # type: str
-        self.time = time  # type: int
-        self.memory = memory  # type: int
-        self.disk = disk  # type: int
-        self.network = network  # type: bool
+    def __init__(
+            self,
+            cpus,  # type: int
+            gpus,  # type: int
+            docker_image,  # type: str
+            time,  # type: int
+            memory,  # type: int
+            disk,  # type: int
+            network, # type: bool
+        ):
+        self.cpus = cpus
+        self.gpus = gpus
+        self.docker_image = docker_image
+        self.time = time
+        self.memory = memory
+        self.disk = disk
+        self.network = network
 
     def to_dict(self):
         return generic_to_dict(self)
@@ -186,7 +199,19 @@ class WorkerRun(object):
     Defines all the field the worker needs to check in with the server for its runs
     """
 
-    def __init__(self, run_status, bundle_start_time, container_start_time, container_time_total, container_time_user, container_time_system, docker_image, info, state, remote):
+    def __init__(
+            self,
+            run_status,  # type: str
+            bundle_start_time,  # type: int
+            container_start_time,  # type: int
+            container_time_total,  # type: int
+            container_time_user,  # type: int
+            container_time_system,  # type: int
+            docker_image,  # type: str
+            info,  # type: Dict[str, Any]
+            state,  # type: State
+            remote,  # type: str
+    ):
         self.run_status = run_status
         self.bundle_start_time = bundle_start_time
         self.container_start_time = container_start_time

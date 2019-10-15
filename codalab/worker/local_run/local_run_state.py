@@ -329,10 +329,7 @@ class LocalRunStateMachine(StateTransitioner):
             if run_state.resources.time and container_time_total > run_state.resources.time:
                 kill_messages.append(
                     'Time limit exceeded. (Container uptime %s > time limit %s)'
-                    % (
-                        duration_str(container_time_total),
-                        duration_str(run_state.resources.time),
-                    )
+                    % (duration_str(container_time_total), duration_str(run_state.resources.time))
                 )
 
             if (
@@ -343,10 +340,7 @@ class LocalRunStateMachine(StateTransitioner):
                     'Memory limit %s exceeded.' % size_str(run_state.resources.memory)
                 )
 
-            if (
-                run_state.resources.disk
-                and run_state.disk_utilization > run_state.resources.disk
-            ):
+            if run_state.resources.disk and run_state.disk_utilization > run_state.resources.disk:
                 kill_messages.append(
                     'Disk limit %sb exceeded.' % size_str(run_state.resources.disk)
                 )
@@ -364,7 +358,9 @@ class LocalRunStateMachine(StateTransitioner):
                 start_time = time.time()
                 try:
                     disk_utilization = get_path_size(run_state.bundle_path)
-                    self.disk_utilization[run_state.bundle.uuid]['disk_utilization'] = disk_utilization
+                    self.disk_utilization[run_state.bundle.uuid][
+                        'disk_utilization'
+                    ] = disk_utilization
                     running = self.disk_utilization[run_state.bundle.uuid]['running']
                 except Exception:
                     logger.error(traceback.format_exc())
@@ -434,7 +430,9 @@ class LocalRunStateMachine(StateTransitioner):
                     time.sleep(1)
 
         for dep in run_state.bundle['dependencies']:
-            self.dependency_manager.release(run_state.bundle.uuid, (dep.parent_uuid, dep.parent_path))
+            self.dependency_manager.release(
+                run_state.bundle.uuid, (dep.parent_uuid, dep.parent_path)
+            )
 
             child_path = os.path.join(run_state.bundle_path, dep.child_path)
             try:
@@ -475,16 +473,24 @@ class LocalRunStateMachine(StateTransitioner):
                     self.uploading[run_state.bundle.uuid]['run_status'] = run_status
                     return True
 
-                self.upload_bundle_callback(run_state.bundle.uuid, run_state.bundle_path, progress_callback)
+                self.upload_bundle_callback(
+                    run_state.bundle.uuid, run_state.bundle_path, progress_callback
+                )
                 self.uploading[run_state.bundle.uuid]['success'] = True
             except Exception as e:
-                self.uploading[run_state.bundle.uuid]['run_status'] = "Error while uploading: %s" % e
+                self.uploading[run_state.bundle.uuid]['run_status'] = (
+                    "Error while uploading: %s" % e
+                )
                 logger.error(traceback.format_exc())
 
-        self.uploading.add_if_new(run_state.bundle.uuid, threading.Thread(target=upload_results, args=[]))
+        self.uploading.add_if_new(
+            run_state.bundle.uuid, threading.Thread(target=upload_results, args=[])
+        )
 
         if self.uploading[run_state.bundle.uuid].is_alive():
-            return run_state._replace(run_status=self.uploading[run_state.bundle.uuid]['run_status'])
+            return run_state._replace(
+                run_status=self.uploading[run_state.bundle.uuid]['run_status']
+            )
         elif not self.uploading[run_state.bundle.uuid]['success']:
             # upload failed
             failure_message = run_state.info.get('failure_message', None)
@@ -493,7 +499,9 @@ class LocalRunStateMachine(StateTransitioner):
                     failure_message + '. ' + self.uploading[run_state.bundle.uuid]['run_status']
                 )
             else:
-                run_state.info['failure_message'] = self.uploading[run_state.bundle.uuid]['run_status']
+                run_state.info['failure_message'] = self.uploading[run_state.bundle.uuid][
+                    'run_status'
+                ]
 
         self.uploading.remove(run_state.bundle.uuid)
         return self.finalize_run(run_state)
