@@ -1,5 +1,6 @@
 import logging
 import os
+import psutil
 from subprocess import check_output, PIPE, Popen
 import threading
 import time
@@ -374,11 +375,7 @@ class LocalRunManager(BaseRunManager):
         """
         Total installed memory of this RunManager
         """
-        try:
-            return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
-        except ValueError:
-            # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
-            return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
+        return psutil.virtual_memory().total
 
     @property
     def free_disk_bytes(self):

@@ -311,7 +311,7 @@ class BundleManager(object):
                     continue  # Don't start this bundle yet
                 workers_list = workers.user_owned_workers(self._model.root_user_id)
 
-            self._deduct_worker_resources(workers_list)
+            workers_list = self._deduct_worker_resources(workers_list)
             bundle_resources = self._compute_bundle_resources(bundle)
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
 
@@ -330,6 +330,7 @@ class BundleManager(object):
                 worker['cpus'] -= bundle_resources.cpus
                 worker['gpus'] -= bundle_resources.gpus
                 worker['memory_bytes'] -= bundle_resources.memory
+        return workers_list
 
     @staticmethod
     def _filter_and_sort_workers(workers_list, bundle, bundle_resources):
@@ -518,6 +519,7 @@ class BundleManager(object):
         # Figure out the resource requirements.
         bundle_resources = self._compute_bundle_resources(bundle)
         message['resources'] = bundle_resources.to_dict()
+        return message
 
     def _compute_bundle_resources(self, bundle):
         return RunResources(
