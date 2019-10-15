@@ -201,6 +201,7 @@ class WorkerRun(object):
 
     def __init__(
             self,
+            uuid,  # type: str
             run_status,  # type: str
             bundle_start_time,  # type: int
             container_start_time,  # type: int
@@ -212,6 +213,7 @@ class WorkerRun(object):
             state,  # type: State
             remote,  # type: str
     ):
+        self.uuid = uuid
         self.run_status = run_status
         self.bundle_start_time = bundle_start_time
         self.container_start_time = container_start_time
@@ -226,6 +228,7 @@ class WorkerRun(object):
     @classmethod
     def from_dict(cls, dct):
         return cls(
+            uuid=dct['uuid'],
             run_status=dct['run_status'],
             bundle_start_time=dct['bundle_start_time'],
             container_start_time=dct['container_start_time'],

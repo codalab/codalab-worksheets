@@ -37,9 +37,9 @@ def checkin(worker_id):
         request.json["dependencies"],
     )
 
-    for uuid, run in request.json["runs"].items():
+    for run in request.json["runs"]:
         try:
-            bundle = local.model.get_bundle(uuid)
+            bundle = local.model.get_bundle(run['uuid'])
             local.model.bundle_checkin(bundle, run, request.user.user_id, worker_id)
         except Exception:
             pass

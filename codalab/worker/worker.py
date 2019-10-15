@@ -8,7 +8,7 @@ import sys
 from .bundle_service_client import BundleServiceException
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
-from .bundle_state import BundleInfo, RunResources, WorkerRun
+from .bundle_state import BundleInfo, RunResources
 
 VERSION = 20
 
@@ -101,7 +101,7 @@ class Worker(object):
             'free_disk_bytes': self._run_manager.free_disk_bytes,
             'dependencies': self._run_manager.all_dependencies,
             'hostname': socket.gethostname(),
-            'runs': [run.to_dict for run in self._run_manager.all_runs],
+            'runs': [run.to_dict() for run in self._run_manager.all_runs],
         }
         response = self._bundle_service.checkin(self.id, request)
         if response:

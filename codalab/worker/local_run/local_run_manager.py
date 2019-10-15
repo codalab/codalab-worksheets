@@ -332,8 +332,9 @@ class LocalRunManager(BaseRunManager):
         Returns a list of all the runs managed by this RunManager
         """
         with self._lock:
-            result = {
-                bundle_uuid: WorkerRun(
+            return [
+                WorkerRun(
+                    uuid=run_state.bundle.uuid,
                     run_status=run_state.run_status,
                     bundle_start_time=run_state.bundle_start_time,
                     container_start_time=run_state.container_start_time,
@@ -345,9 +346,8 @@ class LocalRunManager(BaseRunManager):
                     state=LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
                     remote=self._worker.id,
                 )
-                for bundle_uuid, run_state in self._runs.items()
-            }
-            return result
+                for run_state in self._runs.values()
+            ]
 
     @property
     def all_dependencies(self):
