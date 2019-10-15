@@ -101,7 +101,7 @@ class LocalRunManager(BaseRunManager):
             )
             for uuid, state in self._runs.items()
         }
-        self._state_committer.commit(self._runs)
+        self._state_committer.commit(runs)
 
     def load_state(self):
         runs = self._state_committer.load()

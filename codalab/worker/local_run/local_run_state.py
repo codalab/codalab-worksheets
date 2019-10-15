@@ -220,9 +220,7 @@ class LocalRunStateMachine(StateTransitioner):
                 logger.error(message)
                 return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
-            dependency_path = self.dependency_manager.get(
-                run_state.bundle.uuid, dep_key
-            ).path
+            dependency_path = self.dependency_manager.get(run_state.bundle.uuid, dep_key).path
             dependency_path = os.path.join(
                 self.dependency_manager.dependencies_dir, dependency_path
             )
@@ -429,9 +427,7 @@ class LocalRunStateMachine(StateTransitioner):
                     time.sleep(1)
 
         for dep_key, dep in run_state.bundle.dependencies.items():
-            self.dependency_manager.release(
-                run_state.bundle.uuid, dep_key
-            )
+            self.dependency_manager.release(run_state.bundle.uuid, dep_key)
 
             child_path = os.path.join(run_state.bundle_path, dep.child_path)
             try:

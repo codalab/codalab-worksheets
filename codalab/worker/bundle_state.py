@@ -1,3 +1,6 @@
+from collections import namedtuple
+
+
 class State(object):
     """
     An enumeration of states that a bundle can be in.
@@ -33,55 +36,10 @@ class State(object):
     FINAL_STATES = {READY, FAILED, KILLED}
 
 
-class DependencyKey(object):
-    """
-    Defines the uniquely identifying properties of a dependency that can be used as a key
-    for caching dependencies
-    """
-
-    def __init__(
-        self,
-        parent_uuid,  # type: str
-        parent_path,  # type: str
-    ):
-        self.parent_uuid = parent_uuid
-        self.parent_path = parent_path
-
-    def __eq__(self, other):
-        return self.parent_uuid == other.parent_uuid and self.parent_path == other.parent_path
-
-    def __hash__(self):
-        return hash((self.parent_uuid, self.parent_path))
-
-    def to_dict(self):
-        return generic_to_dict(self)
-
-
-class Dependency(object):
-    """
-    Defines a RunBundle dependency passed from server to worker.
-    Refer to codalab/lib/bundle_util.py#bundle_to_bundle_info() for how the
-    dict to construct this object is created on server side.
-    """
-
-    def __init__(
-        self,
-        parent_name,  # type: str
-        parent_path,  # type: str
-        parent_uuid,  # type: str child_path,  # type: str
-        child_uuid,  # type: str
-        child_path,  # type: str
-        location=None,  # type: Optional[str]
-    ):
-        self.parent_name = parent_name
-        self.parent_path = parent_path
-        self.parent_uuid = parent_uuid
-        self.child_path = child_path
-        self.child_uuid = child_uuid
-        self.location = location  # Set if local filesystem dependency
-
-    def to_dict(self):
-        return generic_to_dict(self)
+DependencyKey = namedtuple('DependencyKey', 'parent_uuid parent_path')
+Dependency = namedtuple(
+    'Dependency', 'parent_name parent_path parent_uuid child_path child_uuid location'
+)
 
 
 class BundleInfo(object):
