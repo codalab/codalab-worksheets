@@ -85,12 +85,6 @@ class BundleManager(object):
         self._schedule_run_bundles()
         self._fail_unresponsive_bundles()
 
-    def _schedule_run_bundles(self):
-        """
-        Sub classes should implement this. See DefaultBundleManager
-        """
-        raise NotImplementedError
-
     def _stage_bundles(self):
         """
         Stages bundles by:
@@ -492,13 +486,19 @@ class BundleManager(object):
         Set docker image to be the default if not specified
         Unlike other metadata fields this can actually be None
         from client
+        Also add the `latest` tag if no tag is specified to be
+        consistent with Docker's own behavior.
         """
         if not bundle.metadata.request_docker_image:
             if bundle.metadata.request_gpus:
-                return self._default_gpu_image
+                docker_image = self._default_gpu_image
             else:
-                return self._default_cpu_image
-        return bundle.metadata.request_docker_image
+                docker_image = self._default_cpu_image
+        else:
+            docker_image = bundle.metadata.request_docker_image
+        if ':' not in docker_image:
+            docker_image += ':latest'
+        return docker_image
 
     def _construct_run_message(self, worker, bundle):
         """

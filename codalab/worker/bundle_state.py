@@ -47,9 +47,6 @@ class RunResources(object):
         self.disk = disk  # type: int
         self.network = network  # type: bool
 
-        if ":" not in self.docker_image:
-            self.docker_image += ":latest"
-
     def to_dict(self):
         return generic_to_dict(self)
 
