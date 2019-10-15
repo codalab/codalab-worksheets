@@ -68,26 +68,26 @@ class LocalRunStage(object):
 LocalRunState = namedtuple(
     'RunState',
     [
-        'stage',
-        'run_status',
-        'bundle',
-        'bundle_path',
-        'resources',
-        'bundle_start_time',
-        'container_start_time',
-        'container_time_total',
-        'container_time_user',
-        'container_time_system',
-        'container',
-        'container_id',
-        'docker_image',
-        'is_killed',
-        'has_contents',
-        'cpuset',
-        'gpuset',
-        'max_memory',
-        'disk_utilization',
-        'info',
+        'stage',  # type: LocalRunStage
+        'run_status',  # type: str
+        'bundle',  # type: BundleInfo
+        'bundle_path',  # type: str
+        'resources',  # type: RunResources
+        'bundle_start_time',  # type: int
+        'container_start_time',  # type: Optional[int]
+        'container_time_total',  # type: int
+        'container_time_user',  # type: int
+        'container_time_system',  # type: int
+        'container',  # type: Optional[docker.Container]
+        'container_id',  # type: Optional[str]
+        'docker_image',  # type: Optional[str]
+        'is_killed',  # type: bool
+        'has_contents',  # type: bool
+        'cpuset',  # type: Optional[Set[str]]
+        'gpuset',  # type: Optional[Set[str]]
+        'max_memory',  # type: int
+        'disk_utilization',  # type: int
+        'info',  # type: Dict[str, Any]
     ],
 )
 
@@ -429,7 +429,7 @@ class LocalRunStateMachine(StateTransitioner):
                     logger.error(traceback.format_exc())
                     time.sleep(1)
 
-        for dep in run_state.bundle['dependencies']:
+        for dep in run_state.bundle.dependencies:
             self.dependency_manager.release(
                 run_state.bundle.uuid, (dep.parent_uuid, dep.parent_path)
             )

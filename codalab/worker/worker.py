@@ -137,7 +137,7 @@ class Worker(object):
 
         if self._bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
             bundle = BundleInfo.from_dict(bundle)
-            resources = RunResources.from_dict(bundle)
+            resources = RunResources.from_dict(resources)
             self._run_manager.create_run(bundle, resources)
         else:
             print(

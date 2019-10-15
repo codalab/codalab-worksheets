@@ -40,18 +40,15 @@ class DependencyKey(object):
     """
 
     def __init__(
-            self,
-            parent_uuid,  # type: str
-            parent_path,  # type: str
-        ):
+        self,
+        parent_uuid,  # type: str
+        parent_path,  # type: str
+    ):
         self.parent_uuid = parent_uuid
         self.parent_path = parent_path
 
     def __eq__(self, other):
-        return (
-            self.parent_uuid == other.parent_uuid
-            and self.parent_path == other.parent_path
-        )
+        return self.parent_uuid == other.parent_uuid and self.parent_path == other.parent_path
 
     def __hash__(self):
         return hash((self.parent_uuid, self.parent_path))
@@ -132,7 +129,7 @@ class BundleInfo(object):
 
     def to_dict(self):
         dct = generic_to_dict(self)
-        dct['dependencies'] = [v for k,v  in dct['dependencies'].items()]
+        dct['dependencies'] = [v for k, v in dct['dependencies'].items()]
         return dct
 
     def __str__(self):
@@ -161,15 +158,15 @@ class RunResources(object):
     """
 
     def __init__(
-            self,
-            cpus,  # type: int
-            gpus,  # type: int
-            docker_image,  # type: str
-            time,  # type: int
-            memory,  # type: int
-            disk,  # type: int
-            network, # type: bool
-        ):
+        self,
+        cpus,  # type: int
+        gpus,  # type: int
+        docker_image,  # type: str
+        time,  # type: int
+        memory,  # type: int
+        disk,  # type: int
+        network,  # type: bool
+    ):
         self.cpus = cpus
         self.gpus = gpus
         self.docker_image = docker_image
@@ -200,18 +197,18 @@ class WorkerRun(object):
     """
 
     def __init__(
-            self,
-            uuid,  # type: str
-            run_status,  # type: str
-            bundle_start_time,  # type: int
-            container_start_time,  # type: int
-            container_time_total,  # type: int
-            container_time_user,  # type: int
-            container_time_system,  # type: int
-            docker_image,  # type: str
-            info,  # type: Dict[str, Any]
-            state,  # type: State
-            remote,  # type: str
+        self,
+        uuid,  # type: str
+        run_status,  # type: str
+        bundle_start_time,  # type: int
+        container_start_time,  # type: int
+        container_time_total,  # type: int
+        container_time_user,  # type: int
+        container_time_system,  # type: int
+        docker_image,  # type: str
+        info,  # type: Dict[str, Any]
+        state,  # type: State
+        remote,  # type: str
     ):
         self.uuid = uuid
         self.run_status = run_status
@@ -243,6 +240,7 @@ class WorkerRun(object):
 
     def to_dict(self):
         return generic_to_dict(self)
+
 
 def generic_to_dict(obj):
     dct = {}
