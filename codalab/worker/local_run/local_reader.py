@@ -36,7 +36,7 @@ class LocalReader(Reader):
             - Otherwise starts a thread calling stream_fn on the computed final path
         """
         try:
-            final_path = get_target_path(run_state.bundle_path, run_state.bundle['uuid'], path)
+            final_path = get_target_path(run_state.bundle_path, run_state.bundle.uuid, path)
         except PathException as e:
             reply_fn((http.client.NOT_FOUND, str(e)), None, None)
         read_thread = threading.Thread(target=stream_fn, args=[final_path])
@@ -47,12 +47,11 @@ class LocalReader(Reader):
         """
         Return target_info of path in bundle as a message on the reply_fn
         """
-        bundle_uuid = run_state.bundle['uuid']
         target_info = None
 
         # if path is a dependency raise an error
         if path and os.path.normpath(path) in dep_paths:
-            err = (http.client.NOT_FOUND, '{} not found in bundle {}'.format(path, bundle_uuid))
+            err = (http.client.NOT_FOUND, '{} not found in bundle {}'.format(path, bundle.uuid))
             reply_fn(err, None, None)
             return
         else:
