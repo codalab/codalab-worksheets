@@ -164,9 +164,8 @@ class LocalRunStateMachine(StateTransitioner):
         status_messages = []
 
         # get dependencies
-        for dep in run_state.bundle.dependencies:
-            dependency = (dep.parent_uuid, dep.parent_path)
-            dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dependency)
+        for dep_key, dep in run_state.bundle.dependencies.items():
+            dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
             if dependency_state.stage == DependencyStage.DOWNLOADING:
                 status_messages.append(
                     'Downloading dependency %s: %s done (archived size)'
@@ -213,7 +212,7 @@ class LocalRunStateMachine(StateTransitioner):
         # 2) Set up symlinks
         dependencies = []
         docker_dependencies_path = '/' + run_state.bundle.uuid + '_dependencies'
-        for dep in run_state.bundle.dependencies:
+        for dep_key, dep in run_state.bundle.dependencies.items():
             child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
             if not child_path.startswith(run_state.bundle_path):
                 message = 'Invalid key for dependency: %s' % (dep.child_path)
@@ -222,7 +221,7 @@ class LocalRunStateMachine(StateTransitioner):
                 return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
             dependency_path = self.dependency_manager.get(
-                run_state.bundle.uuid, (dep.parent_uuid, dep.parent_path)
+                run_state.bundle.uuid, dep_key
             ).path
             dependency_path = os.path.join(
                 self.dependency_manager.dependencies_dir, dependency_path
@@ -429,9 +428,9 @@ class LocalRunStateMachine(StateTransitioner):
                     logger.error(traceback.format_exc())
                     time.sleep(1)
 
-        for dep in run_state.bundle.dependencies:
+        for dep_key, dep in run_state.bundle.dependencies.items():
             self.dependency_manager.release(
-                run_state.bundle.uuid, (dep.parent_uuid, dep.parent_path)
+                run_state.bundle.uuid, dep_key
             )
 
             child_path = os.path.join(run_state.bundle_path, dep.child_path)
