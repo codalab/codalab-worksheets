@@ -41,6 +41,7 @@ class LocalRunManager(BaseRunManager):
         cpuset,  # type: Set[str]
         gpuset,  # type: Set[str]
         work_dir,  # type: str
+        shared_file_system=False,  # type: bool
         docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
     ):
@@ -48,10 +49,12 @@ class LocalRunManager(BaseRunManager):
         self._state_committer = JsonStateCommitter(commit_file)
         self._reader = LocalReader()
         self._docker = docker.from_env()
-        self._bundles_dir = os.path.join(work_dir, LocalRunManager.BUNDLES_DIR_NAME)
-        if not os.path.exists(self._bundles_dir):
-            logger.info('{} doesn\'t exist, creating.'.format(self._bundles_dir))
-            os.makedirs(self._bundles_dir, 0o770)
+        self._shared_file_system = shared_file_system
+        if not shared_file_system:
+            self._bundles_dir = os.path.join(work_dir, LocalRunManager.BUNDLES_DIR_NAME)
+            if not os.path.exists(self._bundles_dir):
+                logger.info('%s doesn\'t exist, creating.', self._bundles_dir)
+                os.makedirs(self._bundles_dir, 0o770)
 
         self._image_manager = image_manager
         self._dependency_manager = dependency_manager
@@ -72,6 +75,7 @@ class LocalRunManager(BaseRunManager):
             docker_runtime=docker_runtime,
             upload_bundle_callback=self._worker.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
+            shared_file_system=shared_file_system,
         )
 
     def _init_docker_networks(self, docker_network_prefix):
@@ -126,7 +130,8 @@ class LocalRunManager(BaseRunManager):
         """
         self.load_state()
         self._image_manager.start()
-        self._dependency_manager.start()
+        if not self._shared_file_system:
+            self._dependency_manager.start()
 
     def stop(self):
         """
@@ -136,7 +141,8 @@ class LocalRunManager(BaseRunManager):
         logger.info("Stopping Local Run Manager")
         self._stop = True
         self._image_manager.stop()
-        self._dependency_manager.stop()
+        if not self._shared_file_system:
+            self._dependency_manager.stop()
         self._run_state_manager.stop()
         self.save_state()
         try:
@@ -204,7 +210,10 @@ class LocalRunManager(BaseRunManager):
         if self._stop:
             # Run Manager stopped, refuse more runs
             return
-        bundle_path = os.path.join(self._bundles_dir, bundle.uuid)
+        if self._shared_file_system:
+            bundle_path = bundle.location
+        else:
+            bundle_path = os.path.join(self._bundles_dir, bundle.uuid)
         now = time.time()
         run_state = LocalRunState(
             stage=LocalRunStage.PREPARING,
@@ -364,6 +373,8 @@ class LocalRunManager(BaseRunManager):
         """
         Returns a list of all dependencies available in this RunManager
         """
+        if self._shared_file_system:
+            return []
         return self._dependency_manager.all_dependencies
 
     @property
