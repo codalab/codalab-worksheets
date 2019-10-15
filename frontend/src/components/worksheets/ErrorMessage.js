@@ -8,7 +8,7 @@ class ErrorMessage extends React.Component{
     render() {
         return <Grid container direction="column" justify="center" alignItems="center" style={{ marginTop: 100 }}>
                     <Grid className='alert alert-danger alert-dismissable'>
-                        <Grid item style={{ fontSize: '120%', marginLeft: 10}}> 
+                        <Grid item style={{ fontSize: '16px', marginLeft: 10}}> 
                             {this.props.message}
                         </Grid>
                     </Grid>  
