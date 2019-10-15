@@ -51,7 +51,7 @@ class LocalReader(Reader):
 
         # if path is a dependency raise an error
         if path and os.path.normpath(path) in dep_paths:
-            err = (http.client.NOT_FOUND, '{} not found in bundle {}'.format(path, bundle.uuid))
+            err = (http.client.NOT_FOUND, '{} not found in bundle {}'.format(path, run_state.bundle.uuid))
             reply_fn(err, None, None)
             return
         else:
