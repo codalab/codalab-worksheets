@@ -151,7 +151,7 @@ class Worker(object):
 
         try:
             run_state = self._run_manager.get_run(uuid)
-            dep_paths = set([dep['child_path'] for dep in run_state.bundle.dependencies])
+            dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies.values()])
             self._run_manager.read(run_state, path, dep_paths, read_args, reply)
         except BundleServiceException:
             traceback.print_exc()
@@ -176,7 +176,7 @@ class Worker(object):
 
     def _write(self, uuid, subpath, string):
         run_state = self._run_manager.get_run(uuid)
-        dep_paths = set([dep['child_path'] for dep in run_state.bundle.dependencies])
+        dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies.values()])
         self._run_manager.write(run_state, subpath, dep_paths, string)
 
     def _kill(self, uuid):

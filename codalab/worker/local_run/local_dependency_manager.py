@@ -265,7 +265,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 self._dependency_locks[dependency_key].acquire()
                 self._dependencies[dependency_key] = DependencyState(
                     stage=DependencyStage.DOWNLOADING,
-                    dependency=dependency_key,
+                    dependency_key=dependency_key,
                     path=self._assign_path(dependency_key),
                     size_bytes=0,
                     dependents=set([uuid]),
