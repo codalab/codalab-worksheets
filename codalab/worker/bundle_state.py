@@ -31,3 +31,49 @@ class State(object):
     OPTIONS = {CREATED, STAGED, MAKING, STARTING, RUNNING, READY, FAILED, PREPARING, FINALIZING}
     ACTIVE_STATES = {MAKING, STARTING, RUNNING, FINALIZING, PREPARING}
     FINAL_STATES = {READY, FAILED, KILLED}
+
+
+class RunResources(object):
+    """
+    Defines all the resource fields the server propagates to the worker for its runs
+    """
+
+    def __init__(self, cpus, gpus, docker_image, time, memory, disk, network):
+        self.cpus = cpus  # type: int
+        self.gpus = gpus  # type: str
+        self.docker_image = docker_image  # type: str
+        self.time = time  # type: int
+        self.memory = memory  # type: int
+        self.disk = disk  # type: int
+        self.network = network  # type: bool
+
+    def to_dict(self):
+        return generic_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, dct):
+        return cls(
+            cpus=int(dct["cpus"]),
+            gpus=dct["gpus"],
+            docker_image=dct["docker_image"],
+            time=int(dct["time"]),
+            memory=int(dct["memory"]),
+            disk=int(dct["disk"]),
+            network=bool(dct["network"]),
+        )
+
+
+def generic_to_dict(obj):
+    dct = {}
+    if isinstance(obj, dict):
+        iter_dict = obj
+    elif hasattr(obj, '__dict__'):
+        iter_dict = obj.__dict__
+    else:
+        return obj
+    for k, v in iter_dict.items():
+        if isinstance(v, dict) or hasattr(v, '__dict__'):
+            dct[k] = generic_to_dict(v)
+        else:
+            dct[k] = v
+    return dct

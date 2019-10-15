@@ -3,16 +3,11 @@ from mock import Mock
 
 from codalab.objects.metadata_spec import MetadataSpec
 from codalab.server.bundle_manager import BundleManager
+from codalab.worker.bundle_state import RunResources
 from codalab.bundles import RunBundle
 
 
 class BundleManagerTest(unittest.TestCase):
-    def setUp(self):
-        self.manager = BundleManager()
-        self.manager._default_request_cpus = 1
-        self.manager._default_request_gpus = 0
-        self.manager._default_request_queue = None
-
     def get_sample_workers_list(self):
         workers_list = [
             {
@@ -45,20 +40,17 @@ class BundleManagerTest(unittest.TestCase):
         ]
         return workers_list
 
-    def tearDown(self):
-        pass
-
     def test__filter_and_sort_workers(self):
         bundle = Mock(spec=RunBundle, metadata=Mock(spec=MetadataSpec))
         bundle.dependencies = []
-        bundle.metadata.request_cpus = 1
-        bundle.metadata.request_gpus = 0
-        bundle.metadata.request_memory = '1000'
         bundle.metadata.request_queue = None
+        bundle_resources = RunResources(
+            cpus=1, gpus=0, docker_image='', time=100, memory=1000, disk=1000, network=False
+        )
 
         # gpu worker should be last in the filtered and sorted list
-        sorted_workers_list = self.manager._filter_and_sort_workers(
-            self.get_sample_workers_list(), bundle
+        sorted_workers_list = BundleManager._filter_and_sort_workers(
+            self.get_sample_workers_list(), bundle, bundle_resources
         )
         self.assertEqual(len(sorted_workers_list), 3)
         self.assertEqual(sorted_workers_list[0]['gpus'], 0)
@@ -66,9 +58,9 @@ class BundleManagerTest(unittest.TestCase):
         self.assertEqual(sorted_workers_list[-1]['gpus'], 1)
 
         # gpu worker should be the only worker in the filtered and sorted list
-        bundle.metadata.request_gpus = 1
-        sorted_workers_list = self.manager._filter_and_sort_workers(
-            self.get_sample_workers_list(), bundle
+        bundle_resources.gpus = 1
+        sorted_workers_list = BundleManager._filter_and_sort_workers(
+            self.get_sample_workers_list(), bundle, bundle_resources
         )
         self.assertEqual(len(sorted_workers_list), 1)
         self.assertEqual(sorted_workers_list[0]['gpus'], 1)

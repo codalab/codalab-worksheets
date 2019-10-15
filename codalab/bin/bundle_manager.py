@@ -15,7 +15,7 @@ def main():
     )
     args = parser.parse_args()
 
-    manager = BundleManager.create(CodaLabManager())
+    manager = BundleManager(CodaLabManager())
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
         signal.signal(sig, lambda signup, frame: manager.signal())
