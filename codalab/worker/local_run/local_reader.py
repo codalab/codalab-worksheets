@@ -57,7 +57,7 @@ class LocalReader(Reader):
         else:
             try:
                 target_info = download_util.get_target_info(
-                    run_state.bundle_path, bundle_uuid, path, args['depth']
+                    run_state.bundle_path, run_state.bundle.uuid, path, args['depth']
                 )
             except PathException as e:
                 err = (http.client.NOT_FOUND, str(e))
