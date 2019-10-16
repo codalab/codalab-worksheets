@@ -59,11 +59,15 @@ class ItemWrapper extends React.Component {
             isWorkSheetItem = false;
         }
 
+        const {isDummyItem} = item;
+
         return (
             <div
-                className={classes.container}
+                className={isDummyItem ? "": classes.container}
             >
-                <div className={classes.main}>{children}</div>
+                {!isDummyItem && 
+                    <div className={classes.main}>{children}</div>
+                }
                 {showNewUpload && (
                     <NewUpload
                         after_sort_key={itemKeys.maxKey}
