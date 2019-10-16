@@ -211,7 +211,7 @@ class WorksheetItemList extends React.Component {
             var worksheet_items = [];
             info.items.forEach(
                 function(item, index) {
-                    var focused = (index === this.props.focusIndex) ||
+                    const focused = (index === this.props.focusIndex) ||
                         // If nothing is focused, append to the end by default.
                         (this.props.focusIndex === -1 && index === info.items.length - 1);
                     var props = {
