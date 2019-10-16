@@ -7,7 +7,6 @@ from codalab.lib import worksheet_util
 from codalab.worker.bundle_state import BundleInfo
 
 
-
 def bundle_to_bundle_info(model, bundle):
     """
     Helper: Convert bundle to bundle_info.
