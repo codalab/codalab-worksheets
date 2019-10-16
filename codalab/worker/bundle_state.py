@@ -63,7 +63,7 @@ class BundleInfo(object):
         state,  # type: State
         is_anonymous,  # type: bool
         metadata,  # type: Dict[Any, Any]
-        dependencies,  # type: List[str, Dict[str, str]]
+        dependencies,  # type: List[Dict[str, str]]
         args,  # type: Any
         location=None,  # type: Optional[str]
     ):
