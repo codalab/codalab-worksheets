@@ -1,11 +1,7 @@
 // @flow
-import * as React from 'react';
-import Button from '@material-ui/core/Button';
+import React, { useRef } from 'react';
 import { withStyles } from '@material-ui/core/styles';
-import RunIcon from '@material-ui/icons/PlayCircleFilled';
-import UploadIcon from '@material-ui/icons/CloudUpload';
-import TextIcon from '@material-ui/icons/FontDownload';
-
+import { useDrag, useDrop } from 'react-dnd';
 import NewRun from '../NewRun';
 import NewUpload from '../NewUpload';
 import TextEditorItem from './TextEditorItem';
@@ -142,4 +138,34 @@ const styles = (theme) => ({
     },
 });
 
-export default withStyles(styles)(ItemWrapper);
+const ItemWrapperWithStyles = withStyles(styles)(ItemWrapper);
+
+const ItemTypes = {
+    ITEM_WRAPPER: "ItemWrapper"
+};
+
+const ItemWrapperDraggable = (props) => {
+    // Sortable example: https://codesandbox.io/s/github/react-dnd/react-dnd/tree/gh-pages/examples_hooks_js/04-sortable/simple?from-embed
+    const ref = useRef(null);
+    const [{ opacity }, drag] = useDrag({
+      item: { type: ItemTypes.ITEM_WRAPPER },
+      collect: monitor => ({
+        opacity: monitor.isDragging() ? 0.5 : 1,
+      }),
+    });
+    const [{ isOver }, drop] = useDrop({
+		accept: ItemTypes.ITEM_WRAPPER,
+		drop: () => console.log("dropped", isOver),
+		collect: monitor => ({
+			isOver: !!monitor.isOver(),
+		}),
+    });
+    drag(drop(ref))
+    return (
+      <div ref={ref} style={{ opacity }}>
+        <ItemWrapperWithStyles {...props} />
+      </div>
+    )
+  }
+
+export default ItemWrapperDraggable;
