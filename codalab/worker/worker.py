@@ -99,7 +99,7 @@ class Worker(object):
             'gpus': self._run_manager.gpus,
             'memory_bytes': self._run_manager.memory_bytes,
             'free_disk_bytes': self._run_manager.free_disk_bytes,
-            'dependencies': self._run_manager.all_dependencies,
+            'dependencies': [(dep_key.parent_uuid, dep_key.parent_path) for dep_key in self._run_manager.all_dependencies],
             'hostname': socket.gethostname(),
             'runs': [run.to_dict() for run in self._run_manager.all_runs],
         }
