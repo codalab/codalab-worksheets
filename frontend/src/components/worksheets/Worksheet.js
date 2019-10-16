@@ -19,6 +19,8 @@ import DeleteIcon from '@material-ui/icons/DeleteOutline';
 import UndoIcon from '@material-ui/icons/UndoOutlined';
 import ContractIcon from '@material-ui/icons/ChevronLeftOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandLessOutlined';
+import ErrorMessage from './ErrorMessage';
+
 /*
 Information about the current worksheet and its items.
 */
@@ -127,6 +129,7 @@ class Worksheet extends React.Component {
             showNewUpload: false,
             showNewRun: false,
             showNewText: false,
+            isValid: true,
         };
     }
 
@@ -247,8 +250,10 @@ class Worksheet extends React.Component {
                 $('#worksheet-message')
                     .html(xhr.responseText)
                     .addClass('alert-danger alert');
-                $('#worksheet_container').hide();
-            },
+                this.setState({
+                    isValid: false,
+                });
+            }.bind(this),
         });
     }
 
@@ -935,6 +940,12 @@ class Worksheet extends React.Component {
 
         var worksheet_display = this.state.editMode ? raw_display : items_display;
         var editButtons = this.state.editMode ? editModeFeatures : editFeatures;
+        if (!this.state.isValid){
+            return <ErrorMessage 
+                        message={'Not found: \'/worksheets/' 
+                                + this.state.ws.uuid +"\'" } 
+                    />;
+        }
 
         return (
             <React.Fragment>
