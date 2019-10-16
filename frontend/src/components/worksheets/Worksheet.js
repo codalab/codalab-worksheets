@@ -813,11 +813,9 @@ class Worksheet extends React.Component {
         var searchClassName = this.state.showActionBar ? '': 'search-hidden';
         var editableClassName = canEdit ? 'editable' : '';
         var disableWorksheetEditing = this.canEdit() ? '' : 'disabled';
-        var sourceStr = editPermission ? 'Edit' : 'View';
+        var sourceStr = editPermission ? 'Edit Source' : 'View Source';
         var editFeatures = (
-            <div onMouseMove={(ev) => {
-                ev.stopPropagation();
-            }} style={{display:'inline-block'}}>
+            <div style={{display:'inline-block'}}>
             <Button
                 onClick={this.editMode}
                 size='small'
@@ -940,7 +938,7 @@ class Worksheet extends React.Component {
 
         return (
             <React.Fragment>
-                                {action_bar_display}
+                {action_bar_display}
                 <WorksheetHeader
                     key={"codalab-worksheet-header-" + this.state.showActionBar}
                     showActionBar={this.state.showActionBar}
@@ -956,7 +954,6 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({showNewRun: true})}
                     onShowNewText={() => this.setState({showNewText: true})}
                     />
-
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
                         <div className={classes.worksheetDesktop} onClick={this.handleClickForDeselect}>
@@ -983,7 +980,7 @@ const styles = (theme) => ({
         paddingBottom: 25,  // Height of Footer
     },
     worksheetOuter: {
-        maxWidth: 1960, // Worksheet width
+        maxWidth: 1200, // Worksheet width
         minHeight: 600,  // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color

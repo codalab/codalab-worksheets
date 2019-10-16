@@ -19,7 +19,6 @@ class ActionButtons extends React.Component<{
                 onMouseMove={(ev) => {
                     ev.stopPropagation();
                 }}
-                // className={classes.buttonsPanel}
             >
                 <Button
                     size='small'
@@ -35,8 +34,6 @@ class ActionButtons extends React.Component<{
                     color='inherit'
                     aria-label='Add New Upload'
                     onClick={onShowNewUpload}
-                    // classes={{ root: classes.buttonRoot }}
-                    // startIcon={<UploadIcon />}
                 >
                     <UploadIcon className={classes.buttonIcon} />
                     Upload
@@ -46,7 +43,6 @@ class ActionButtons extends React.Component<{
                     color='inherit'
                     aria-label='Add New Run'
                     onClick={onShowNewRun}
-                    // startIcon={<RunIcon />}
                 >
                     <RunIcon className={classes.buttonIcon} />
                     Run
@@ -70,32 +66,8 @@ const styles = (theme) => ({
             border: `2px solid ${theme.color.grey.base}`,
         }
     },
-    buttonsPanel: {
-        display: 'flex',
-        flexDirection: 'row',
-        overflow: 'visible',
-        justifyContent: 'center',
-        width: '100%',
-        height: 0,
-        transform: 'translateY(-16px)',
-        zIndex: 20,
-    },
-    buttonRoot: {
-        width: 120,
-        height: 32,
-        marginLeft: theme.spacing.unit,
-        marginRight: theme.spacing.unit,
-        backgroundColor: '#f7f7f7',
-        '&:hover': {
-            backgroundColor: '#f7f7f7',
-        },
-    },
     buttonIcon: {
         marginRight: theme.spacing.large,
-    },
-    insertBox: {
-        border: `2px solid ${theme.color.primary.base}`,
-        margin: '32px 64px !important',
     },
 });
 

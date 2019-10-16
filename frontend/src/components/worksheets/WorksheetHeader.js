@@ -23,22 +23,20 @@ export default ({ showActionBar, onShowNewUpload, onShowNewRun, onShowNewText, c
             <div className='header-row'>
                 <Grid container direction="column">
                     <Grid container item xs={12} spacing={2} alignItems="flex-start" justify="space-between">
-                        <Grid item>
-                            <h5 className='worksheet-title'>
-                                {/*TODO: use html-content-editable*/}
-                                <WorksheetEditableField
-                                    key={'title' + canEdit}
-                                    canEdit={canEdit}
-                                    fieldName='title'
-                                    value={(info && info.title) || "Untitled"}
-                                    uuid={info && info.uuid}
-                                    onChange={() => reloadWorksheet()}
-                                />
-                            </h5>
-                        </Grid>
+                        <h5 className='worksheet-title'>
+                            {/*TODO: use html contenteditable*/}
+                            <WorksheetEditableField
+                                key={'title' + canEdit}
+                                canEdit={canEdit}
+                                fieldName='title'
+                                value={(info && info.title) || "Untitled"}
+                                uuid={info && info.uuid}
+                                onChange={() => reloadWorksheet()}
+                            />
+                        </h5>
                         <Grid item style={{paddingTop: '10px'}}>
                         {info && (
-                            <div>
+                            <React.Fragment>
                                 <WorksheetEditableField
                                     canEdit={canEdit}
                                     fieldName='name'
@@ -81,9 +79,8 @@ export default ({ showActionBar, onShowNewUpload, onShowNewRun, onShowNewText, c
                                         />
                                     </div>
                                 </Popover>
-                            </div>
-
-                        )}
+                            </React.Fragment>
+                            )}
                         </Grid>
                     </Grid>
                     <Grid container item xs={12} spacing={2} alignItems="flex-end" justify="space-between">

@@ -7832,6 +7832,7 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
 #command_line {
   text-align: left;
   margin-right: auto;
+  max-width: 1700px;
   background-color: inherit;
   opacity: .8;
 }
