@@ -205,7 +205,20 @@ class WorksheetItemList extends React.Component {
         var items_display;
         var info = this.props.ws.info;
         if (info && info.items.length === 0) { // Create a "dummy" item at the beginning so that only empty text can be added.
-            info.items = [{"isDummyItem": true, "text":"","mode":"markup_block","sort_keys":[-1],"ids":[null],"is_refined":true}];
+            info.items = [
+                {
+                    "isDummyItem": true,
+                    "text": "",
+                    "mode": "markup_block",
+                    "sort_keys": [
+                        -1
+                    ],
+                    "ids": [
+                        null
+                    ],
+                    "is_refined": true
+                }
+            ];
         }
         if (info && info.items.length > 0) {
             var worksheet_items = [];
