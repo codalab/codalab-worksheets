@@ -12,7 +12,13 @@ import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import { NAVBAR_HEIGHT } from '../../constants';
 import WorksheetActionBar from './WorksheetActionBar';
-
+import Button from '@material-ui/core/Button';
+import EditIcon from '@material-ui/icons/EditOutlined';
+import SaveIcon from '@material-ui/icons/SaveOutlined';
+import DeleteIcon from '@material-ui/icons/DeleteOutline';
+import UndoIcon from '@material-ui/icons/UndoOutlined';
+import ContractIcon from '@material-ui/icons/ChevronLeftOutlined';
+import ExpandIcon from '@material-ui/icons/ExpandLessOutlined';
 /*
 Information about the current worksheet and its items.
 */
@@ -806,40 +812,67 @@ class Worksheet extends React.Component {
 
         var searchClassName = this.state.showActionBar ? '': 'search-hidden';
         var editableClassName = canEdit ? 'editable' : '';
-        var viewClass = !canEdit && !this.state.editMode ? 'active' : '';
-        var rawClass = this.state.editMode ? 'active' : '';
         var disableWorksheetEditing = this.canEdit() ? '' : 'disabled';
-        var sourceStr = editPermission ? 'Edit Source' : 'View Source';
+        var sourceStr = editPermission ? 'Edit' : 'View';
         var editFeatures = (
-            <div className='edit-features'>
-                <div className='btn-group'>
-                    <button className={viewClass} onClick={this.viewMode}>
-                        View
-                    </button>
-                    <button className={rawClass} onClick={this.editMode}>
-                        {sourceStr}
-                    </button>
-                    <button className={rawClass} onClick={e => this.delete()}>
-                        {"Delete"}
-                    </button>
-                </div>
-            </div>
+            <div onMouseMove={(ev) => {
+                ev.stopPropagation();
+            }} style={{display:'inline-block'}}>
+            <Button
+                onClick={this.editMode}
+                size='small'
+                color='inherit'
+                aria-label='Edit Source'
+                >
+                    <EditIcon className={classes.buttonIcon} />
+                    {sourceStr}
+                </Button>
+            <Button
+                onClick={e => this.delete()}
+                size='small'
+                color='inherit'
+                aria-label='Delete Worksheet'
+                >
+                    <DeleteIcon className={classes.buttonIcon} />
+                    Delete
+                </Button>
+            <Button
+                onClick={e => this.toggleActionBar()}
+                size='small'
+                color='inherit'
+                aria-label='Expand CLI'
+                >
+                    {this.state.showActionBar ? <ContractIcon className={classes.buttonIcon} />
+                : <ExpandIcon className={classes.buttonIcon} />}
+                    {this.state.showActionBar ? 'HIDE TERMINAL'
+                : 'SHOW TERMINAL'}
+                </Button>
+        </div>
         );
 
         var editModeFeatures = (
-            <div className='edit-features'>
-                <div className='btn-group'>
-                    <button
-                        className={viewClass}
-                        onClick={this.viewMode}
-                        disabled={disableWorksheetEditing}
+            <div onMouseMove={(ev) => {
+                ev.stopPropagation();
+            }} style={{display:'inline-block'}}>
+                <Button
+                    onClick={this.viewMode}
+                    disabled={disableWorksheetEditing}
+                    size='small'
+                    color='inherit'
+                    aria-label='Save Edit'
                     >
+                        <SaveIcon className={classes.buttonIcon} />
                         Save
-                    </button>
-                    <button className={viewClass} onClick={this.discardChanges}>
-                        Discard Changes
-                    </button>
-                </div>
+                    </Button>
+                <Button
+                    onClick={this.discardChanges}
+                    size='small'
+                    color='inherit'
+                    aria-label='Discard Edit'
+                    >
+                        <UndoIcon className={classes.buttonIcon} />
+                        Discard
+                    </Button>
             </div>
         );
 
@@ -907,7 +940,7 @@ class Worksheet extends React.Component {
 
         return (
             <React.Fragment>
-                {action_bar_display}
+                                {action_bar_display}
                 <WorksheetHeader
                     key={"codalab-worksheet-header-" + this.state.showActionBar}
                     showActionBar={this.state.showActionBar}
@@ -923,6 +956,7 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({showNewRun: true})}
                     onShowNewText={() => this.setState({showNewText: true})}
                     />
+
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
                         <div className={classes.worksheetDesktop} onClick={this.handleClickForDeselect}>
@@ -949,7 +983,7 @@ const styles = (theme) => ({
         paddingBottom: 25,  // Height of Footer
     },
     worksheetOuter: {
-        maxWidth: 1200, // Worksheet width
+        maxWidth: 1960, // Worksheet width
         minHeight: 600,  // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
@@ -981,6 +1015,9 @@ const styles = (theme) => ({
     },
     noTransform: {
         transform: 'none !important',
+    },
+    buttonIcon: {
+        marginRight: theme.spacing.large,
     },
 });
 

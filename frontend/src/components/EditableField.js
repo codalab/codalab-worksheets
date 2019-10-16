@@ -99,38 +99,6 @@ class EditableFieldBase extends React.Component<{
     }
 
     render() {
-        const { canEdit, classes } = this.props;
-        const { editing } = this.state;
-        if (!canEdit) {
-            return (
-                <div className={classes.editableLinkContainer}>
-                    <Typography variant='body1'>{this.state.value || '<none>'}</Typography>
-                </div>
-            );
-        }
-        return editing ? (
-            <form onSubmit={this.onBlur}>
-                <input
-                    autoFocus
-                    value={this.state.value}
-                    onBlur={this.onBlur}
-                    onChange={this.handleChange}
-                    onKeyDown={this.handleKeyPress}
-                />
-                {!this.state.isValid && (
-                    <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>
-                )}
-            </form>
-        ) : (
-            <div className={classes.editableLinkContainer}>
-                <a className={classes.editableLink} onClick={this.onClick}>
-                    {this.state.value || '<none>'}
-                </a>
-            </div>
-        );
-    }
-
-    render() {
         if (!this.state.editing) {
             return (
                 <a className='editable editable-click' onClick={this.onClick}>

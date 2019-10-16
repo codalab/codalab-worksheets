@@ -2,9 +2,9 @@
 import * as React from 'react';
 import Button from '@material-ui/core/Button';
 import { withStyles } from '@material-ui/core/styles';
-import RunIcon from '@material-ui/icons/PlayCircleFilled';
-import UploadIcon from '@material-ui/icons/CloudUpload';
-import TextIcon from '@material-ui/icons/FontDownload';
+import RunIcon from '@material-ui/icons/PlayCircleOutline';
+import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
+import AddIcon from '@material-ui/icons/AddBoxOutlined';
 
 class ActionButtons extends React.Component<{
     classes: {},
@@ -19,40 +19,37 @@ class ActionButtons extends React.Component<{
                 onMouseMove={(ev) => {
                     ev.stopPropagation();
                 }}
-                className={classes.buttonsPanel}
+                // className={classes.buttonsPanel}
             >
                 <Button
-                    variant='outlined'
                     size='small'
-                    color='primary'
+                    color='inherit'
+                    aria-label='Add Text'
+                    onClick={onShowNewText}
+                >
+                    <AddIcon className={classes.buttonIcon} />
+                    Cell
+                </Button>
+                <Button
+                    size='small'
+                    color='inherit'
                     aria-label='Add New Upload'
                     onClick={onShowNewUpload}
-                    classes={{ root: classes.buttonRoot }}
+                    // classes={{ root: classes.buttonRoot }}
+                    // startIcon={<UploadIcon />}
                 >
                     <UploadIcon className={classes.buttonIcon} />
                     Upload
                 </Button>
                 <Button
-                    variant='outlined'
                     size='small'
-                    color='primary'
+                    color='inherit'
                     aria-label='Add New Run'
                     onClick={onShowNewRun}
-                    classes={{ root: classes.buttonRoot }}
+                    // startIcon={<RunIcon />}
                 >
                     <RunIcon className={classes.buttonIcon} />
                     Run
-                </Button>
-                <Button
-                    variant='outlined'
-                    size='small'
-                    color='primary'
-                    aria-label='Add Text'
-                    onClick={onShowNewText}
-                    classes={{ root: classes.buttonRoot }}
-                >
-                    <TextIcon className={classes.buttonIcon} />
-                    Text
                 </Button>
             </div>
         );
