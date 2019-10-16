@@ -53,7 +53,6 @@ class EditableFieldBase extends React.Component<{
 
         this.setState({ editing: false });
         event.preventDefault();
-        console.log(this.props.url)
         $.ajax({
             type: this.props.method,
             url: this.props.url,
