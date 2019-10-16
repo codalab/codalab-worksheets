@@ -204,11 +204,29 @@ class WorksheetItemList extends React.Component {
         // Create items
         var items_display;
         var info = this.props.ws.info;
+        if (info && info.items.length === 0) { // Create a "dummy" item at the beginning so that only empty text can be added.
+            info.items = [
+                {
+                    "isDummyItem": true,
+                    "text": "",
+                    "mode": "markup_block",
+                    "sort_keys": [
+                        -1
+                    ],
+                    "ids": [
+                        null
+                    ],
+                    "is_refined": true
+                }
+            ];
+        }
         if (info && info.items.length > 0) {
             var worksheet_items = [];
             info.items.forEach(
                 function(item, index) {
-                    var focused = index === this.props.focusIndex;
+                    const focused = (index === this.props.focusIndex) ||
+                        // If nothing is focused, append to the end by default.
+                        (this.props.focusIndex === -1 && index === info.items.length - 1);
                     var props = {
                         worksheetUUID: info.uuid,
                         item: item,

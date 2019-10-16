@@ -58,6 +58,9 @@ class TextEditorItem extends React.Component<{
             /* Pressed ctrl+enter or ctrl+s */
             this.saveText();
         }
+        if (pressed.includes('27')) { // Close editor upon pressing Escape
+            this.props.closeEditor();
+        }
     };
 
     updateText = (ev) => {
