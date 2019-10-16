@@ -734,7 +734,7 @@ class BundleModel(object):
 
         return True
 
-    def transition_bundle_running(self, bundle, bundle_update, row, user_id, worker_id, connection):
+    def transition_bundle_running(self, bundle, worker_run, row, user_id, worker_id, connection):
         """
         Transitions bundle to RUNNING state:
             If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
@@ -754,19 +754,19 @@ class BundleModel(object):
             connection.execute(cl_worker_run.insert().values(worker_run_row))
 
         metadata_update = {
-            'run_status': bundle_update['run_status'],
+            'run_status': worker_run.run_status,
             'last_updated': int(time.time()),
-            'time': bundle_update['container_time_total'],
-            'time_user': bundle_update['container_time_user'],
-            'time_system': bundle_update['container_time_system'],
-            'remote': bundle_update['remote'],
+            'time': worker_run.container_time_total,
+            'time_user': worker_run.container_time_user,
+            'time_system': worker_run.container_time_system,
+            'remote': worker_run.remote,
         }
 
-        if bundle_update['docker_image'] is not None:
-            metadata_update['docker_image'] = bundle_update['docker_image']
+        if worker_run.docker_image is not None:
+            metadata_update['docker_image'] = worker_run.docker_image
 
         self.update_bundle(
-            bundle, {'state': bundle_update['state'], 'metadata': metadata_update}, connection
+            bundle, {'state': worker_run.state, 'metadata': metadata_update}, connection
         )
 
         return True
@@ -801,13 +801,14 @@ class BundleModel(object):
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finalizing(self, bundle, user_id, exitcode, failure_message, connection):
+    def transition_bundle_finalizing(self, bundle, user_id, worker_run, connection):
         """
         Transitions bundle to FINALIZING state:
             Saves the failure message and exit code from the worker
             If the user running the bundle was the CodaLab root user,
             increments the time used by the bundle owner.
         """
+        failure_message, exitcode = worker_run.failure_message, worker_run.exitcode
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
         # Build metadata
@@ -851,11 +852,10 @@ class BundleModel(object):
     # Bundle state machine helper functions
     # ==========================================================================
 
-    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id):
+    def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """
         Updates the database tables with the most recent bundle information from worker
         """
-        state = bundle_update['state']
         with self.engine.begin() as connection:
             # If bundle isn't in db anymore the user deleted it so cancel
             row = connection.execute(
@@ -864,22 +864,21 @@ class BundleModel(object):
             if not row:
                 return False
 
-            if state == State.FINALIZING:
+            if worker_run.state == State.FINALIZING:
                 # update bundle metadata using transition_bundle_running one last time before finalizing it
                 self.transition_bundle_running(
-                    bundle, bundle_update, row, user_id, worker_id, connection
+                    bundle, worker_run, row, user_id, worker_id, connection
                 )
                 return self.transition_bundle_finalizing(
                     bundle,
                     user_id,
-                    bundle_update.exitcode,
-                    bundle_update.failure_message,
+                    worker_run,
                     connection,
                 )
 
             if state in [State.PREPARING, State.RUNNING]:
                 return self.transition_bundle_running(
-                    bundle, bundle_update, row, user_id, worker_id, connection
+                    bundle, worker_run, row, user_id, worker_id, connection
                 )
             # State isn't one we can check in for
             return False
