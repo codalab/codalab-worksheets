@@ -381,7 +381,7 @@ class Competition(object):
         self, submissions, previous_submission_ids, num_total_submissions, num_period_submissions
     ):
         # Drop submission if user has exceeded their quota
-        for key, bundle in submissions.items():
+        for key, bundle in list(submissions.items()):
             # Drop submission if we already ran it before
             if bundle['id'] in previous_submission_ids:
                 logger.debug(
@@ -708,7 +708,10 @@ class Competition(object):
 
         # Sort by the scores, descending
         leaderboard.sort(
-            key=lambda e: tuple(e['scores'][spec['name']] for spec in self.config['score_specs']),
+            key=lambda e: [
+                (e['scores'][spec['name']] is not None, e['scores'][spec['name']])
+                for spec in self.config['score_specs']
+            ],
             reverse=True,
         )
 
