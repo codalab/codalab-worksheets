@@ -211,12 +211,14 @@ def generic_to_dict(obj):
     dct = {}
     if isinstance(obj, dict):
         iter_dict = obj
+    elif hasattr(obj, '_asdict'):
+        iter_dict = obj._asdict()
     elif hasattr(obj, '__dict__'):
         iter_dict = obj.__dict__
     else:
         return obj
     for k, v in iter_dict.items():
-        if isinstance(v, dict) or hasattr(v, '__dict__'):
+        if isinstance(v, dict) or hasattr(v, '__dict__') or hasattr(v, '_asdict'):
             dct[k] = generic_to_dict(v)
         else:
             dct[k] = v
