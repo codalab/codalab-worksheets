@@ -6898,7 +6898,7 @@ body,
 .worksheet_content .glossary-link,
 .worksheet_content .controls label {
   font-weight: normal;
-  font-size: 13px;
+  font-size: 10px;
 }
 .worksheet_content .glossary-link:hover,
 .worksheet_content .controls label:hover {
@@ -6916,12 +6916,10 @@ body,
 }
 .worksheet_content .worksheet-title {
   text-indent: 0;
-  margin: 0;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 500;
   line-height: 1.1em;
-  padding-top: 40px;
-  min-height: 60px;
+  padding-top: 0px;
 }
 .worksheet_content .worksheet-name {
   font-size: 14px;
@@ -7833,7 +7831,6 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
 }
 #command_line {
   text-align: left;
-  margin-left: auto;
   margin-right: auto;
   max-width: 1700px;
   background-color: inherit;
