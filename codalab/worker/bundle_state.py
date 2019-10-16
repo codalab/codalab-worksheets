@@ -36,7 +36,11 @@ class State(object):
     FINAL_STATES = {READY, FAILED, KILLED}
 
 
+# Used to uniquely identify dependencies on a worker. We don't use child features here since
+# multiple dependent child bundles can use the same parent dependency
 DependencyKey = namedtuple('DependencyKey', 'parent_uuid parent_path')
+# Location is an optional key that holds the actual path to the dependency bundle on shared bundle
+# mount worker machines
 Dependency = namedtuple(
     'Dependency', 'parent_name parent_path parent_uuid child_path child_uuid location'
 )
