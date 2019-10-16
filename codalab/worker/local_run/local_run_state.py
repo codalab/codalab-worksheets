@@ -68,26 +68,30 @@ class LocalRunStage(object):
 LocalRunState = namedtuple(
     'RunState',
     [
-        'stage',  # type: LocalRunStage
-        'run_status',  # type: str
-        'bundle',  # type: BundleInfo
-        'bundle_path',  # type: str
-        'resources',  # type: RunResources
-        'bundle_start_time',  # type: int
-        'container_start_time',  # type: Optional[int]
-        'container_time_total',  # type: int
-        'container_time_user',  # type: int
-        'container_time_system',  # type: int
-        'container',  # type: Optional[docker.Container]
-        'container_id',  # type: Optional[str]
-        'docker_image',  # type: Optional[str]
-        'is_killed',  # type: bool
-        'has_contents',  # type: bool
-        'cpuset',  # type: Optional[Set[str]]
-        'gpuset',  # type: Optional[Set[str]]
-        'max_memory',  # type: int
-        'disk_utilization',  # type: int
-        'info',  # type: Dict[str, Any]
+        'stage',  # LocalRunStage
+        'run_status',  # str
+        'bundle',  # BundleInfo
+        'bundle_path',  # str
+        'resources',  # RunResources
+        'bundle_start_time',  # int
+        'container_start_time',  # Optional[int]
+        'container_time_total',  # int
+        'container_time_user',  # int
+        'container_time_system',  # int
+        'container',  # Optional[docker.Container]
+        'container_id',  # Optional[str]
+        'docker_image',  # Optional[str]
+        'is_killed',  # bool
+        'has_contents',  # bool
+        'cpuset',  # Optional[Set[str]]
+        'gpuset',  # Optional[Set[str]]
+        'max_memory',  # int
+        'disk_utilization',  # int
+        'exitcode',  # Optionall[str]
+        'failure_message',  # Optional[str]
+        'kill_message',  # Optional[str]
+        'finished',  # bool
+        'finalized',  # bool
     ],
 )
 
@@ -174,11 +178,11 @@ class LocalRunStateMachine(StateTransitioner):
                 dependencies_ready = False
             elif dependency_state.stage == DependencyStage.FAILED:
                 # Failed to download dependency; -> CLEANING_UP
-                run_state.info['failure_message'] = 'Failed to download dependency %s: %s' % (
-                    dep.child_path,
-                    '',
+                return run_state._replace(
+                    stage=LocalRunStage.CLEANING_UP,
+                    failure_message='Failed to download dependency %s: %s'
+                    % (dep.child_path, dependency_state.message),
                 )
-                return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
         # get the docker image
         docker_image = run_state.resources.docker_image
@@ -191,9 +195,8 @@ class LocalRunStateMachine(StateTransitioner):
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> CLEANING_UP
             message = 'Failed to download Docker image: %s' % image_state.message
-            run_state.info['failure_message'] = message
             logger.error(message)
-            return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP, failure_message=message)
 
         # stop proceeding if dependency and image downloads aren't all done
         if not dependencies_ready:
@@ -216,9 +219,8 @@ class LocalRunStateMachine(StateTransitioner):
             child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
             if not child_path.startswith(run_state.bundle_path):
                 message = 'Invalid key for dependency: %s' % (dep.child_path)
-                run_state.info['failure_message'] = message
                 logger.error(message)
-                return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
+                return run_state._replace(stage=LocalRunStage.CLEANING_UP, failure_message=message)
 
             dependency_path = self.dependency_manager.get(run_state.bundle.uuid, dep_key).path
             dependency_path = os.path.join(
@@ -244,10 +246,9 @@ class LocalRunStateMachine(StateTransitioner):
             )
         except Exception as e:
             message = "Cannot assign enough resources: %s" % str(e)
-            run_state.info['failure_message'] = message
             logger.error(message)
             logger.error(traceback.format_exc())
-            return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP, failure_message=message)
 
         # 4) Start container
         try:
@@ -295,10 +296,9 @@ class LocalRunStateMachine(StateTransitioner):
             except docker_utils.DockerException:
                 logger.error(traceback.format_exc())
                 finished, exitcode, failure_msg = False, None, None
-            new_info = dict(finished=finished, exitcode=exitcode, failure_message=failure_msg)
-            run_state.info.update(new_info)
-            run_state = run_state._replace(info=run_state.info)
-            return run_state
+            return run_state._replace(
+                finished=finished, exitcode=exitcode, failure_message=failure_msg
+            )
 
         def check_resource_utilization(run_state):
             kill_messages = []
@@ -329,10 +329,7 @@ class LocalRunStateMachine(StateTransitioner):
                     % (duration_str(container_time_total), duration_str(run_state.resources.time))
                 )
 
-            if (
-                run_state.max_memory > run_state.resources.memory
-                or run_state.info.get('exitcode', '0') == '137'
-            ):
+            if run_state.max_memory > run_state.resources.memory or run_state.exitcode == '137':
                 kill_messages.append(
                     'Memory limit %s exceeded.' % size_str(run_state.resources.memory)
                 )
@@ -343,9 +340,7 @@ class LocalRunStateMachine(StateTransitioner):
                 )
 
             if kill_messages:
-                new_info = run_state.info
-                new_info['kill_message'] = ' '.join(kill_messages)
-                run_state = run_state._replace(info=new_info, is_killed=True)
+                run_state = run_state._replace(kill_message=' '.join(kill_messages), is_killed=True)
 
             return run_state
 
@@ -384,12 +379,12 @@ class LocalRunStateMachine(StateTransitioner):
             self.disk_utilization[run_state.bundle.uuid]['running'] = False
             self.disk_utilization.remove(run_state.bundle.uuid)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP)
-        if run_state.info['finished']:
+        if run_state.finished:
             logger.debug(
                 'Finished run with UUID %s, exitcode %s, failure_message %s',
                 run_state.bundle.uuid,
-                run_state.info['exitcode'],
-                run_state.info['failure_message'],
+                run_state.exitcode,
+                run_state.failure_message,
             )
             self.disk_utilization[run_state.bundle.uuid]['running'] = False
             self.disk_utilization.remove(run_state.bundle.uuid)
@@ -488,15 +483,17 @@ class LocalRunStateMachine(StateTransitioner):
             )
         elif not self.uploading[run_state.bundle.uuid]['success']:
             # upload failed
-            failure_message = run_state.info.get('failure_message', None)
+            failure_message = run_state.failure_message
             if failure_message:
-                run_state.info['failure_message'] = (
-                    failure_message + '. ' + self.uploading[run_state.bundle.uuid]['run_status']
+                run_state = run_state._replace(
+                    failure_message=(
+                        failure_message + '. ' + self.uploading[run_state.bundle.uuid]['run_status']
+                    )
                 )
             else:
-                run_state.info['failure_message'] = self.uploading[run_state.bundle.uuid][
-                    'run_status'
-                ]
+                run_state = run_state._replace(
+                    failure_message=self.uploading[run_state.bundle.uuid]['run_status']
+                )
 
         self.uploading.remove(run_state.bundle.uuid)
         return self.finalize_run(run_state)
@@ -505,15 +502,9 @@ class LocalRunStateMachine(StateTransitioner):
         """
         Prepare the finalize message to be sent with the next checkin
         """
-        failure_message = run_state.info.get('failure_message', None)
-        if 'exitcode' not in run_state.info:
-            run_state.info['exitcode'] = None
-        if not failure_message and run_state.is_killed:
-            run_state.info['failure_message'] = run_state.info['kill_message']
-        run_state.info['finalized'] = False
-        return run_state._replace(
-            stage=LocalRunStage.FINALIZING, info=run_state.info, run_status="Finalizing bundle"
-        )
+        if not run_state.failure_message and run_state.is_killed:
+            run_state = run_state._replace(failure_message=run_state.kill_message)
+        return run_state._replace(stage=LocalRunStage.FINALIZING, run_status="Finalizing bundle")
 
     @staticmethod
     def _transition_from_FINALIZING(run_state):
@@ -521,7 +512,7 @@ class LocalRunStateMachine(StateTransitioner):
         If a full worker cycle has passed since we got into FINALIZING we already reported to
         server so can move on to FINISHED. Can also remove bundle_path now
         """
-        if run_state.info['finalized']:
+        if run_state.finalized:
             remove_path(run_state.bundle_path)
             return run_state._replace(stage=LocalRunStage.FINISHED, run_status='Finished')
         else:

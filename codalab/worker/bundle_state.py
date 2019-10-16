@@ -164,9 +164,10 @@ class WorkerRun(object):
         container_time_user,  # type: int
         container_time_system,  # type: int
         docker_image,  # type: str
-        info,  # type: Dict[str, Any]
         state,  # type: State
         remote,  # type: str
+        exitcode,  # type: Optional[str]
+        failure_message,  # type: Optional[str]
     ):
         self.uuid = uuid
         self.run_status = run_status
@@ -176,9 +177,10 @@ class WorkerRun(object):
         self.container_time_user = container_time_user
         self.container_time_system = container_time_system
         self.docker_image = docker_image
-        self.info = info
         self.state = state
         self.remote = remote
+        self.exitcode = exitcode
+        self.failure_message = failure_message
 
     @classmethod
     def from_dict(cls, dct):
@@ -191,9 +193,10 @@ class WorkerRun(object):
             container_time_user=dct['container_time_user'],
             container_time_system=dct['container_time_system'],
             docker_image=dct['docker_image'],
-            info=dct['info'],
             state=dct['state'],
             remote=dct['remote'],
+            exitcode=dct['exitcode'],
+            failure_message=dct['failure_message'],
         )
 
     def to_dict(self):

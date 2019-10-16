@@ -1,7 +1,7 @@
 import logging
 import os
 import psutil
-from subprocess import check_output, PIPE, Popen
+from subprocess import PIPE, Popen
 import threading
 import time
 import socket
@@ -157,8 +157,7 @@ class LocalRunManager(BaseRunManager):
         with self._lock:
             for uuid in self._runs.keys():
                 run_state = self._runs[uuid]
-                run_state.info['kill_message'] = 'Worker stopped'
-                run_state = run_state._replace(info=run_state.info, is_killed=True)
+                run_state = run_state._replace(kill_message='Worker stopped', is_killed=True)
                 self._runs[uuid] = run_state
         # Wait until all runs finished or KILL_TIMEOUT seconds pas
         for attempt in range(LocalRunManager.KILL_TIMEOUT):
@@ -227,7 +226,11 @@ class LocalRunManager(BaseRunManager):
             gpuset=None,
             max_memory=0,
             disk_utilization=0,
-            info={},
+            exitcode=None,
+            failure_message=None,
+            kill_message=None,
+            finished=False,
+            finalized=False,
         )
         with self._lock:
             self._runs[bundle.uuid] = run_state
@@ -285,7 +288,7 @@ class LocalRunManager(BaseRunManager):
         """
         if uuid in self._runs:
             with self._lock:
-                self._runs[uuid].info['finalized'] = True
+                self._runs[uuid] = self._runs[uuid]._replace(finalized=True)
 
     def read(self, run_state, path, dep_paths, args, reply):
         """
@@ -329,8 +332,7 @@ class LocalRunManager(BaseRunManager):
         Kill bundle with uuid
         """
         with self._lock:
-            run_state.info['kill_message'] = 'Kill requested'
-            run_state = run_state._replace(info=run_state.info, is_killed=True)
+            run_state = run_state._replace(kill_message='Kill requested', is_killed=True)
             self._runs[run_state.bundle.uuid] = run_state
 
     @property
@@ -349,9 +351,10 @@ class LocalRunManager(BaseRunManager):
                     container_time_user=run_state.container_time_user,
                     container_time_system=run_state.container_time_system,
                     docker_image=run_state.docker_image,
-                    info=run_state.info,
                     state=LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
                     remote=self._worker.id,
+                    exitcode=run_state.exitcode,
+                    failure_message=run_state.failure_message,
                 )
                 for run_state in self._runs.values()
             ]
