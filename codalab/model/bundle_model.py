@@ -869,12 +869,7 @@ class BundleModel(object):
                 self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
-                return self.transition_bundle_finalizing(
-                    bundle,
-                    user_id,
-                    worker_run,
-                    connection,
-                )
+                return self.transition_bundle_finalizing(bundle, user_id, worker_run, connection)
 
             if state in [State.PREPARING, State.RUNNING]:
                 return self.transition_bundle_running(
