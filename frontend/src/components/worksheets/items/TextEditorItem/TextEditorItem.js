@@ -84,14 +84,11 @@ class TextEditorItem extends React.Component<{
 
         let url = `/rest/worksheets/${worksheetUUID}/add-items`;
         const items = this.text.split(/[\n]/);
-        // Interleave items with empty lines, so they can be rendered as separate blocks
-        // const items = [];
-        // raw_items.forEach((item, idx) => {
-        //     items.push(item);
-        //     if (idx < raw_items.length - 1) {
-        //         items.push('');
-        //     }
-        // });
+        if (mode === 'create') {
+            // Add an extra line to the beginning of new text items,
+            // so they are separate from previous items.
+            items.unshift('');
+        }
 
         const data = { items };
 
