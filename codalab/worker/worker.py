@@ -5,7 +5,6 @@ import socket
 import http.client
 import sys
 
-from codalab.common import CODALAB_VERSION
 from .bundle_service_client import BundleServiceException
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
@@ -92,7 +91,6 @@ class Worker(object):
         processes must be handled asynchronously.
         """
         request = {
-            'version': CODALAB_VERSION,
             'tag': self._tag,
             'cpus': self._run_manager.cpus,
             'gpus': self._run_manager.gpus,
@@ -106,12 +104,6 @@ class Worker(object):
             'runs': [run.to_dict() for run in self._run_manager.all_runs],
         }
         response = self._bundle_service.checkin(self.id, request)
-        if response['meta']['version'] != CODALAB_VERSION:
-            logger.warn(
-                "Version mismatch! Your worker is running on Codalab version %s whereas the server you're connecting to is running Codalab version %s . Please make sure to run the same version worker as the server!",
-                CODALAB_VERSION,
-                response['meta']['version'],
-            )
         if response:
             action_type = response['type']
             logger.debug('Received %s message: %s', action_type, response)

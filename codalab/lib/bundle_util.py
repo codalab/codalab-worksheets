@@ -7,12 +7,13 @@ from codalab.lib import worksheet_util
 from codalab.worker.bundle_state import BundleInfo
 
 
+
 def bundle_to_bundle_info(model, bundle):
     """
     Helper: Convert bundle to bundle_info.
     """
     # See tables.py
-    dependencies = ([dep.to_dict() for dep in bundle.dependencies],)
+    dependencies = [dep.to_dict() for dep in bundle.dependencies]
     if dependencies:
         dep_names = model.get_bundle_names([dep['parent_uuid'] for dep in dependencies])
         for dep in dependencies:
