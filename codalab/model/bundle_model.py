@@ -1287,6 +1287,10 @@ class BundleModel(object):
             worksheet.id = result.lastrowid
 
     def add_worksheet_items(self, worksheet_uuid, items, after_sort_key=None, replace=[]):
+        """
+        Add worksheet items *items* to the position *after_sort_key* to the worksheet,
+        removing items specified by *replace* if necessary.
+        """
         with self.engine.begin() as connection:
             if len(replace) > 0:
                 # Remove the old items.
@@ -1298,7 +1302,7 @@ class BundleModel(object):
                 return
             if after_sort_key is not None:
                 after_sort_key = int(after_sort_key)
-                # Shift existing items' sort_keys for items that original came after
+                # Shift existing items' sort_keys for items that originally came after
                 # the after_sort_key
                 offset = len(items)
                 clause = and_(
@@ -1329,13 +1333,13 @@ class BundleModel(object):
                             'subworksheet_uuid': item.subworksheet_uuid,
                             'value': item.value,
                             'type': item.type,
-                            'sort_key': item_sort_key(item) * 2 + offset,
+                            'sort_key': item_sort_key(item) + offset,
                         }
                         for item in after_items
                     ]
                     self.do_multirow_insert(connection, cl_worksheet_item, new_after_items)
             # Insert new items
-            items_2_insert = [
+            items_to_insert = [
                 {
                     'worksheet_uuid': worksheet_uuid,
                     'bundle_uuid': bundle_uuid,
@@ -1346,7 +1350,7 @@ class BundleModel(object):
                 }
                 for idx, (bundle_uuid, subworksheet_uuid, value, type) in enumerate(items)
             ]
-            self.do_multirow_insert(connection, cl_worksheet_item, items_2_insert)
+            self.do_multirow_insert(connection, cl_worksheet_item, items_to_insert)
 
     def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):
         """
