@@ -133,18 +133,18 @@ export function renderPermissions(state) {
 
     return (
         <div>
-            you({wrapPermissionInColorSpan(state.permission_spec)})
+            &nbsp;&#91;you({wrapPermissionInColorSpan(state.permission_spec)})
             {_.map(state.group_permissions || [], function(perm) {
                 return (
                     <span key={perm.group_name}>
-                        {' '}
+                        &nbsp;
                         {perm.group_name}
                         {'('}
                         {wrapPermissionInColorSpan(perm.permission_spec)}
                         {')'}
                     </span>
                 );
-            })}
+            })}&#93;
         </div>
     );
 }

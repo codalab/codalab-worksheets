@@ -12,6 +12,13 @@ import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import { NAVBAR_HEIGHT } from '../../constants';
 import WorksheetActionBar from './WorksheetActionBar';
+import Button from '@material-ui/core/Button';
+import EditIcon from '@material-ui/icons/EditOutlined';
+import SaveIcon from '@material-ui/icons/SaveOutlined';
+import DeleteIcon from '@material-ui/icons/DeleteOutline';
+import UndoIcon from '@material-ui/icons/UndoOutlined';
+import ContractIcon from '@material-ui/icons/ChevronLeftOutlined';
+import ExpandIcon from '@material-ui/icons/ExpandLessOutlined';
 import ErrorMessage from './ErrorMessage';
 
 /*
@@ -810,40 +817,65 @@ class Worksheet extends React.Component {
 
         var searchClassName = this.state.showActionBar ? '': 'search-hidden';
         var editableClassName = canEdit ? 'editable' : '';
-        var viewClass = !canEdit && !this.state.editMode ? 'active' : '';
-        var rawClass = this.state.editMode ? 'active' : '';
         var disableWorksheetEditing = this.canEdit() ? '' : 'disabled';
         var sourceStr = editPermission ? 'Edit Source' : 'View Source';
         var editFeatures = (
-            <div className='edit-features'>
-                <div className='btn-group'>
-                    <button className={viewClass} onClick={this.viewMode}>
-                        View
-                    </button>
-                    <button className={rawClass} onClick={this.editMode}>
-                        {sourceStr}
-                    </button>
-                    <button className={rawClass} onClick={e => this.delete()}>
-                        {"Delete"}
-                    </button>
-                </div>
-            </div>
+            <div style={{display:'inline-block'}}>
+            <Button
+                onClick={this.editMode}
+                size='small'
+                color='inherit'
+                aria-label='Edit Source'
+                >
+                    <EditIcon className={classes.buttonIcon} />
+                    {sourceStr}
+                </Button>
+            <Button
+                onClick={e => this.delete()}
+                size='small'
+                color='inherit'
+                aria-label='Delete Worksheet'
+                >
+                    <DeleteIcon className={classes.buttonIcon} />
+                    Delete
+                </Button>
+            <Button
+                onClick={e => this.toggleActionBar()}
+                size='small'
+                color='inherit'
+                aria-label='Expand CLI'
+                >
+                    {this.state.showActionBar ? <ContractIcon className={classes.buttonIcon} />
+                : <ExpandIcon className={classes.buttonIcon} />}
+                    {this.state.showActionBar ? 'HIDE TERMINAL'
+                : 'SHOW TERMINAL'}
+                </Button>
+        </div>
         );
 
         var editModeFeatures = (
-            <div className='edit-features'>
-                <div className='btn-group'>
-                    <button
-                        className={viewClass}
-                        onClick={this.viewMode}
-                        disabled={disableWorksheetEditing}
+            <div onMouseMove={(ev) => {
+                ev.stopPropagation();
+            }} style={{display:'inline-block'}}>
+                <Button
+                    onClick={this.viewMode}
+                    disabled={disableWorksheetEditing}
+                    size='small'
+                    color='inherit'
+                    aria-label='Save Edit'
                     >
+                        <SaveIcon className={classes.buttonIcon} />
                         Save
-                    </button>
-                    <button className={viewClass} onClick={this.discardChanges}>
-                        Discard Changes
-                    </button>
-                </div>
+                    </Button>
+                <Button
+                    onClick={this.discardChanges}
+                    size='small'
+                    color='inherit'
+                    aria-label='Discard Edit'
+                    >
+                        <UndoIcon className={classes.buttonIcon} />
+                        Discard
+                    </Button>
             </div>
         );
 
@@ -991,6 +1023,9 @@ const styles = (theme) => ({
     },
     noTransform: {
         transform: 'none !important',
+    },
+    buttonIcon: {
+        marginRight: theme.spacing.large,
     },
 });
 
