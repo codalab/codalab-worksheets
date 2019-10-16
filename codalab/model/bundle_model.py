@@ -872,8 +872,8 @@ class BundleModel(object):
                 return self.transition_bundle_finalizing(
                     bundle,
                     user_id,
-                    bundle_update['info']['exitcode'],
-                    bundle_update['info']['failure_message'],
+                    bundle_update.exitcode,
+                    bundle_update.failure_message,
                     connection,
                 )
 
