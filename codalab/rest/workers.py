@@ -40,9 +40,9 @@ def checkin(worker_id):
 
     for run in request.json["runs"]:
         try:
-            bundle_update = WorkerRun.from_dict(run)
-            bundle = local.model.get_bundle(run['uuid'])
-            local.model.bundle_checkin(bundle, bundle_update, request.user.user_id, worker_id)
+            worker_run = WorkerRun.from_dict(run)
+            bundle = local.model.get_bundle(worker_run.uuid)
+            local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id)
         except Exception:
             pass
 
