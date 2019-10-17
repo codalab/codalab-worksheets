@@ -64,7 +64,9 @@ def should_run_service(args, service):
     services = [] if args.services is None else args.services
     if 'default' in args.services:
         services.extend(DEFAULT_SERVICES)
-
+    # 'shared-filesystem-worker` is just `worker` but with a different argument, so they're equivalent for us
+    if service == 'shared-filesystem-worker':
+        service = 'worker'
     return (service in services) and ('no-' + service not in services)
 
 
@@ -665,7 +667,10 @@ class CodalabServiceManager(object):
         self.bring_up_service('worker-manager-gpu')
         self.bring_up_service('frontend')
         self.bring_up_service('nginx')
-        self.bring_up_service('worker')
+        if self.args.shared_file_system:
+            self.bring_up_service('shared-filesystem-worker')
+        else:
+            self.bring_up_service('worker')
 
         if should_run_service(self.args, 'test'):
             print_header('Running tests')
