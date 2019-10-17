@@ -540,14 +540,14 @@ class LocalRunStateMachine(StateTransitioner):
             run_state = run_state._replace(failure_message=run_state.kill_message)
         return run_state._replace(stage=LocalRunStage.FINALIZING, run_status="Finalizing bundle")
 
-    @staticmethod
-    def _transition_from_FINALIZING(run_state):
+    def _transition_from_FINALIZING(self, run_state):
         """
         If a full worker cycle has passed since we got into FINALIZING we already reported to
         server so can move on to FINISHED. Can also remove bundle_path now
         """
         if run_state.finalized:
-            remove_path(run_state.bundle_path)
+            if not self.shared_file_system:
+                remove_path(run_state.bundle_path)  # don't remove bundle if shared FS
             return run_state._replace(stage=LocalRunStage.FINISHED, run_status='Finished')
         else:
             return run_state
