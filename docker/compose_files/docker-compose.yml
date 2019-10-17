@@ -143,6 +143,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
+      - ${CODALAB_HOME}:${CODALAB_HOME}
+      - ${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}
     networks:
       - service
       - worker

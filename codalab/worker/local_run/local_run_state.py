@@ -214,7 +214,7 @@ class LocalRunStateMachine(StateTransitioner):
         # 1) Set up a directory to store the bundle.
         if self.shared_file_system:
             try:
-                self._wait_for_bundle_folder(run_state.bundle_path)
+                self._wait_for_bundle_folder(run_state)
             except self.NoBundleFolderException as ex:
                 message = 'Bundle folder unavailable: %s' % str(ex)
                 logger.error(message)
