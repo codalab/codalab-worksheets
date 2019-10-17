@@ -5,10 +5,13 @@ from collections import namedtuple
 class PyJSONEncoder(json.JSONEncoder):
     """
     Use with json.dumps to allow Python sets and (named)tuples to be encoded to JSON
-    Also allows dicts with tuple keys to be JSON-encoded (as long as the keys don't include
+    Also allows dicts with namedtuple and tuple keys to be JSON-encoded (as long as the keys don't include
     the special token strings used for encoding)
     """
 
+    NAMEDTUPLE_NAME_STR = ' _namedtuple_name_'
+    NAMEDTUPLE_FIELD_STR = ' _namedtuple_field_'
+    NAMEDTUPLE_VAL_STR = ' _namedtuple_val_'
     TUPLE_KEY_STR = '_tuple_key_'
     TUPLE_ELEM_STR = '_tuple_sep_'
 
@@ -18,8 +21,51 @@ class PyJSONEncoder(json.JSONEncoder):
         """
         if not (isinstance(key, tuple) or isinstance(key, str) or isinstance(key, str)):
             raise Exception('PyJSON can only encode dicts with str, unicode or tuple keys')
+        if hasattr(key, '_asdict'):  # detect namedtuple
+            nt_name = type(key).__name__
+            nt_fields = key._asdict().keys()
+            nt_vals = key._asdict().values()
+            if PyJSONEncoder.NAMEDTUPLE_FIELD_STR in nt_name:
+                raise Exception(
+                    '%s is reserved for pyjson encoder but found in namedtuple name. Can\'t encode this dict'
+                    % PyJSONEncoder.NAMEDTUPLE_FIELD_STR
+                )
+            if PyJSONEncoder.NAMEDTUPLE_VAL_STR in nt_name:
+                raise Exception(
+                    '%s is reserved for pyjson encoder but found in namedtuple name. Can\'t encode this dict'
+                    % PyJSONEncoder.NAMEDTUPLE_VAL_STR
+                )
+            if PyJSONEncoder.NAMEDTUPLE_FIELD_STR in nt_fields:
+                raise Exception(
+                    '%s is reserved for pyjson encoder but found in namedtuple field name. Can\'t encode this dict'
+                    % PyJSONEncoder.NAMEDTUPLE_FIELD_STR
+                )
+            if PyJSONEncoder.NAMEDTUPLE_VAL_STR in nt_fields:
+                raise Exception(
+                    '%s is reserved for pyjson encoder but found in namedtuple field name. Can\'t encode this dict'
+                    % PyJSONEncoder.NAMEDTUPLE_VAL_STR
+                )
+            if PyJSONEncoder.NAMEDTUPLE_FIELD_STR in nt_vals:
+                raise Exception(
+                    '%s is reserved for pyjson encoder but found in namedtuple value. Can\'t encode this dict'
+                    % PyJSONEncoder.NAMEDTUPLE_FIELD_STR
+                )
+            if PyJSONEncoder.NAMEDTUPLE_VAL_STR in nt_vals:
+                raise Exception(
+                    '%s is reserved for pyjson encoder but found in namedtuple value. Can\'t encode this dict'
+                    % PyJSONEncoder.NAMEDTUPLE_VAL_STR
+                )
+
+            key = '%s%s%s%s%s%s' % (
+                PyJSONEncoder.NAMEDTUPLE_NAME_STR,
+                nt_name,
+                PyJSONEncoder.NAMEDTUPLE_FIELD_STR,
+                PyJSONEncoder.NAMEDTUPLE_FIELD_STR.join(nt_fields),
+                PyJSONEncoder.NAMEDTUPLE_VAL_STR,
+                PyJSONEncoder.NAMEDTUPLE_VAL_STR.join(nt_vals),
+            )
         if isinstance(key, tuple):
-            if not all(isinstance(tuple_el, str) or isinstance(tuple_el, str) for tuple_el in key):
+            if not all(isinstance(tuple_el, str) for tuple_el in key):
                 raise Exception(
                     'Tuple elements need to be all strings (or unicode) for PyJSON to work'
                 )
@@ -74,6 +120,28 @@ class PyJSONDecoder(json.JSONDecoder):
         if isinstance(key, str) and key.startswith(PyJSONEncoder.TUPLE_KEY_STR):
             key_str = key[len(PyJSONEncoder.TUPLE_KEY_STR) :]
             return tuple(key_str.split(PyJSONEncoder.TUPLE_ELEM_STR))
+        elif isinstance(key, str) and key.startswith(PyJSONEncoder.NAMEDTUPLE_NAME_STR):
+            namedtuple_name = key[
+                len(PyJSONEncoder.NAMEDTUPLE_NAME_STR) : key.find(
+                    PyJSONEncoder.NAMEDTUPLE_FIELD_STR
+                )
+            ]
+            namedtuple_fields = (
+                key[
+                    key.find(PyJSONEncoder.NAMEDTUPLE_FIELD_STR) : key.find(
+                        PyJSONEncoder.NAMEDTUPLE_VAL_STR
+                    )
+                ]
+                .strip(PyJSONEncoder.NAMEDTUPLE_FIELD_STR)
+                .split(PyJSONEncoder.NAMEDTUPLE_FIELD_STR)
+            )
+            namedtuple_vals = (
+                key[key.find(PyJSONEncoder.NAMEDTUPLE_VAL_STR) :]
+                .strip(PyJSONEncoder.NAMEDTUPLE_VAL_STR)
+                .split(PyJSONEncoder.NAMEDTUPLE_VAL_STR)
+            )
+            ntc = namedtuple(namedtuple_name, namedtuple_fields)
+            return ntc(*namedtuple_vals)
         return key
 
     def json_as_python(self, dct):
