@@ -1,7 +1,7 @@
 import logging
 import os
 import psutil
-from subprocess import check_output, PIPE, Popen
+from subprocess import PIPE, Popen
 import threading
 import time
 import socket
@@ -11,6 +11,7 @@ import codalab.worker.docker_utils as docker_utils
 
 from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.run_manager import BaseRunManager
+from codalab.worker.bundle_state import BundleInfo, RunResources, WorkerRun
 from .local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
 from .local_reader import LocalReader
 
@@ -94,8 +95,13 @@ class LocalRunManager(BaseRunManager):
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved
-        simple_runs = {uuid: state._replace(container=None) for uuid, state in self._runs.items()}
-        self._state_committer.commit(simple_runs)
+        runs = {
+            uuid: state._replace(
+                container=None, bundle=state.bundle.to_dict(), resources=state.resources.to_dict()
+            )
+            for uuid, state in self._runs.items()
+        }
+        self._state_committer.commit(runs)
 
     def load_state(self):
         runs = self._state_committer.load()
@@ -109,8 +115,10 @@ class LocalRunManager(BaseRunManager):
                 except docker.errors.NotFound as ex:
                     logger.debug('Error getting the container for the run: %s', ex)
                     run_state = run_state._replace(container_id=None)
-                finally:
-                    self._runs[uuid] = run_state
+            self._runs[uuid] = run_state._replace(
+                bundle=BundleInfo.from_dict(run_state.bundle),
+                resources=RunResources.from_dict(run_state.resources),
+            )
 
     def start(self):
         """
@@ -149,8 +157,7 @@ class LocalRunManager(BaseRunManager):
         with self._lock:
             for uuid in self._runs.keys():
                 run_state = self._runs[uuid]
-                run_state.info['kill_message'] = 'Worker stopped'
-                run_state = run_state._replace(info=run_state.info, is_killed=True)
+                run_state = run_state._replace(kill_message='Worker stopped', is_killed=True)
                 self._runs[uuid] = run_state
         # Wait until all runs finished or KILL_TIMEOUT seconds pas
         for attempt in range(LocalRunManager.KILL_TIMEOUT):
@@ -197,8 +204,7 @@ class LocalRunManager(BaseRunManager):
         if self._stop:
             # Run Manager stopped, refuse more runs
             return
-        bundle_uuid = bundle['uuid']
-        bundle_path = os.path.join(self._bundles_dir, bundle_uuid)
+        bundle_path = os.path.join(self._bundles_dir, bundle.uuid)
         now = time.time()
         run_state = LocalRunState(
             stage=LocalRunStage.PREPARING,
@@ -220,10 +226,14 @@ class LocalRunManager(BaseRunManager):
             gpuset=None,
             max_memory=0,
             disk_utilization=0,
-            info={},
+            exitcode=None,
+            failure_message=None,
+            kill_message=None,
+            finished=False,
+            finalized=False,
         )
         with self._lock:
-            self._runs[bundle_uuid] = run_state
+            self._runs[bundle.uuid] = run_state
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
@@ -278,7 +288,7 @@ class LocalRunManager(BaseRunManager):
         """
         if uuid in self._runs:
             with self._lock:
-                self._runs[uuid].info['finalized'] = True
+                self._runs[uuid] = self._runs[uuid]._replace(finalized=True)
 
     def read(self, run_state, path, dep_paths, args, reply):
         """
@@ -322,9 +332,8 @@ class LocalRunManager(BaseRunManager):
         Kill bundle with uuid
         """
         with self._lock:
-            run_state.info['kill_message'] = 'Kill requested'
-            run_state = run_state._replace(info=run_state.info, is_killed=True)
-            self._runs[run_state.bundle['uuid']] = run_state
+            run_state = run_state._replace(kill_message='Kill requested', is_killed=True)
+            self._runs[run_state.bundle.uuid] = run_state
 
     @property
     def all_runs(self):
@@ -332,22 +341,23 @@ class LocalRunManager(BaseRunManager):
         Returns a list of all the runs managed by this RunManager
         """
         with self._lock:
-            result = {
-                bundle_uuid: {
-                    'run_status': run_state.run_status,
-                    'bundle_start_time': run_state.bundle_start_time,
-                    'container_start_time': run_state.container_start_time,
-                    'container_time_total': run_state.container_time_total,
-                    'container_time_user': run_state.container_time_user,
-                    'container_time_system': run_state.container_time_system,
-                    'docker_image': run_state.docker_image,
-                    'info': run_state.info,
-                    'state': LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
-                    'remote': self._worker.id,
-                }
-                for bundle_uuid, run_state in self._runs.items()
-            }
-            return result
+            return [
+                WorkerRun(
+                    uuid=run_state.bundle.uuid,
+                    run_status=run_state.run_status,
+                    bundle_start_time=run_state.bundle_start_time,
+                    container_start_time=run_state.container_start_time,
+                    container_time_total=run_state.container_time_total,
+                    container_time_user=run_state.container_time_user,
+                    container_time_system=run_state.container_time_system,
+                    docker_image=run_state.docker_image,
+                    state=LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
+                    remote=self._worker.id,
+                    exitcode=run_state.exitcode,
+                    failure_message=run_state.failure_message,
+                )
+                for run_state in self._runs.values()
+            ]
 
     @property
     def all_dependencies(self):

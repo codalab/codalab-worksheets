@@ -128,7 +128,7 @@ class Reader(object):
         }
 
     def read(self, run_state, path, dep_paths, read_args, reply):
-        dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
+        dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies.values()])
         read_type = read_args['type']
         handler = self.read_handlers.get(read_type, None)
         if handler:

@@ -474,7 +474,7 @@ class CodalabServiceManager(object):
         elif command == 'delete':
             self._run_compose_cmd('down --remove-orphans -v')
         else:
-            raise Exception('Bad command: ' + self.command)
+            raise Exception('Bad command: ' + command)
 
     def build_image(self, image):
         print_header('Building {} image'.format(image))

@@ -13,6 +13,7 @@ from bottle import abort, get, local, post, put, request, response
 from codalab.lib import spec_util
 from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalab.worker.bundle_state import WorkerRun
 
 
 @post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedPlugin())
@@ -37,10 +38,11 @@ def checkin(worker_id):
         request.json["dependencies"],
     )
 
-    for uuid, run in request.json["runs"].items():
+    for run in request.json["runs"]:
         try:
-            bundle = local.model.get_bundle(uuid)
-            local.model.bundle_checkin(bundle, run, request.user.user_id, worker_id)
+            worker_run = WorkerRun.from_dict(run)
+            bundle = local.model.get_bundle(worker_run.uuid)
+            local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id)
         except Exception:
             pass
 
