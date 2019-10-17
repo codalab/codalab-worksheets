@@ -11,9 +11,7 @@ jobs:
       services:
         - docker
       env:
-        - CODALAB_SHARED_FILESYTEM=false CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
-        - CODALAB_SHARED_FILESYTEM=true CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
-      python: 3.6
+        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
       before_install:
         - sudo rm /usr/local/bin/docker-compose
         - curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
@@ -24,6 +22,8 @@ jobs:
         - python3 codalab_service.py build services --version ${TRAVIS_BRANCH} --pull $([ -z "${CODALAB_DOCKER_USERNAME}" ] || echo "--push")
       script:
         - python3 codalab_service.py start --services default monitor test --version ${TRAVIS_BRANCH}
+        - python3 codalab_service.py stop
+        - python3 codalab_service.py start --services default monitor test --version ${TRAVIS_BRANCH} --shared-file-system
     - stage: deploy
       script: echo "Deploying"
       language: python
