@@ -335,6 +335,7 @@ class ModuleContext(object):
 
         # Allow for making REST calls
         from codalab.lib.codalab_manager import CodaLabManager
+
         manager = CodaLabManager()
         self.client = manager.current_client()
 
