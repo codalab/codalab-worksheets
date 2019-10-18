@@ -203,6 +203,7 @@ chmod 600 %s"""
         args.exit_when_idle,
         args.idle_seconds,
         bundle_service,
+        args.shared_file_system,
     )
 
     # Register a signal handler to ensure safe shutdown.
