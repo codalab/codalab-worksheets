@@ -388,12 +388,16 @@ class BundleManager(object):
         needed_deps = set([(dep.parent_uuid, dep.parent_path) for dep in bundle.dependencies])
 
         def get_sort_key(worker):
-            deps = set(worker['dependencies'])
+            if worker['shared_file_system']:
+                num_available_deps = len(neded_deps)
+            else:
+                deps = set(worker['dependencies'])
+                num_available_deps = len(needed_deps & deps)
             worker_id = worker['worker_id']
 
             # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
             gpu_priority = bundle_resources.gpus or not has_gpu[worker_id]
-            return (gpu_priority, len(needed_deps & deps), worker['cpus'], random.random())
+            return (gpu_priority, num_available_deps, worker['cpus'], random.random())
 
         workers_list.sort(key=get_sort_key, reverse=True)
 
