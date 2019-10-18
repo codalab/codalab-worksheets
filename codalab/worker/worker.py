@@ -33,6 +33,7 @@ class Worker(object):
         exit_when_idle,  # type: str
         idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
+        shared_file_system,  # type: bool
     ):
         self.id = worker_id
         self._state_committer = JsonStateCommitter(commit_file)
@@ -44,6 +45,7 @@ class Worker(object):
         self._stop = False
         self._last_checkin_successful = False
         self._run_manager = create_run_manager(self)
+        self._shared_file_system = shared_file_system
 
     def start(self):
         """Return whether we ran anything."""
@@ -102,6 +104,7 @@ class Worker(object):
             ],
             'hostname': socket.gethostname(),
             'runs': [run.to_dict() for run in self._run_manager.all_runs],
+            'shared_file_system': self._shared_file_system,
         }
         response = self._bundle_service.checkin(self.id, request)
         if response:

@@ -406,10 +406,7 @@ class BundleManager(object):
         """
         if self._model.transition_bundle_starting(bundle, worker['user_id'], worker['worker_id']):
             workers.set_starting(bundle.uuid, worker)
-            if (
-                self._worker_model.shared_file_system
-                and worker['user_id'] == self._model.root_user_id
-            ):
+            if worker['shared_file_system']:
                 # On a shared file system we create the path here to avoid NFS
                 # directory cache issues.
                 path = self._bundle_store.get_bundle_location(bundle.uuid)
@@ -509,7 +506,7 @@ class BundleManager(object):
         message = {}
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
-        if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
+        if worker['shared_file_system']:
             message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
             for dependency in message['bundle']['dependencies']:
                 dependency['location'] = self._bundle_store.get_bundle_location(

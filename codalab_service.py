@@ -624,7 +624,6 @@ class CodalabServiceManager(object):
                         'server/default_user_info/parallel_run_quota',
                         self.args.user_parallel_run_quota,
                     ),
-                    ('workers/shared_file_system', self.args.shared_file_system),
                     ('email/host', self.args.email_host),
                     ('email/username', self.args.email_username),
                     ('email/password', self.args.email_password),

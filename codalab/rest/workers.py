@@ -36,6 +36,7 @@ def checkin(worker_id):
         request.json.get("memory_bytes"),
         request.json.get("free_disk_bytes"),
         request.json["dependencies"],
+        request.json.get("shared_file_system"),
     )
 
     for run in request.json["runs"]:

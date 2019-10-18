@@ -234,14 +234,7 @@ class DownloadManager(object):
         return bytestring
 
     def _is_available_locally(self, uuid):
-        if self._bundle_model.get_bundle_state(uuid) in [State.RUNNING, State.PREPARING]:
-            if self._worker_model.shared_file_system:
-                worker = self._worker_model.get_bundle_worker(uuid)
-                return worker['user_id'] == self._bundle_model.root_user_id
-            else:
-                return False
-
-        return True
+        return self._worker_model.get_bundle_worker(uuid)['shared_file_system']
 
     def _get_target_path(self, uuid, path):
         bundle_path = self._bundle_store.get_bundle_location(uuid)
