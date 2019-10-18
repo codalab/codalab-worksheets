@@ -330,12 +330,24 @@ class CodalabArgs(object):
                 default=False,
             )
             cmd.add_argument(
-                '--images',
+                (
+                    'images' if cmd == build_cmd else '--images'
+                ),  # For the explicit build command make this argument positional
                 default='services',
                 help='Images to build. \'services\' for server-side images (frontend, server, worker) \
                         \'all\' to include default execution images',
                 choices=CodalabServiceManager.ALL_IMAGES + ['all', 'services'],
                 nargs='*',
+            )
+            cmd.add_argument(
+                (
+                    'tests' if cmd == test_cmd else '--tests'
+                ),  # For the explicit test command make this argument positional
+                metavar='TEST',
+                nargs='+',
+                type=str,
+                choices=list(TestModule.modules.keys()) + ['all', 'default'],
+                help='Tests to run. One of: {%(choices)s}',
             )
             cmd.add_argument(
                 '--dev',
@@ -383,16 +395,6 @@ class CodalabArgs(object):
             help='Service container to run command on',
         )
         run_cmd.add_argument('command', metavar='CMD', type=str, help='Command to run')
-
-        # Arguments for `test`
-        test_cmd.add_argument(
-            'test_suite',
-            metavar='TEST',
-            nargs='+',
-            type=str,
-            choices=list(TestModule.modules.keys()) + ['all', 'default'],
-            help='Tests to run. One of: {%(choices)s}',
-        )
 
         return parser
 
@@ -498,14 +500,7 @@ class CodalabServiceManager(object):
         elif command == 'delete':
             self._run_compose_cmd('down --remove-orphans -v')
         elif command == 'test':
-            print_header('Running tests')
-            self.run_service_cmd(
-                self.wait_rest_server(
-                    'python3 test_cli.py --instance http://rest-server:{} {}'.format(
-                        self.args.rest_port, ' '.join(self.args.test_suite)
-                    )
-                )
-            )
+            self.run_tests()
         else:
             raise Exception('Bad command: ' + command)
 
@@ -703,12 +698,19 @@ class CodalabServiceManager(object):
         self.bring_up_service('worker')
 
         if should_run_service(self.args, 'test'):
-            print_header('Running tests')
-            self.run_service_cmd(
-                self.wait_rest_server('python3 test_cli.py --instance {} default'.format(rest_url))
-            )
+            self.run_tests()
 
         self.bring_up_service('monitor')
+
+    def run_tests(self):
+        print_header('Running tests')
+        self.run_service_cmd(
+            self.wait_rest_server(
+                'python3 test_cli.py --instance http://rest-server:{} {}'.format(
+                    self.args.rest_port, ' '.join(self.args.tests)
+                )
+            )
+        )
 
     def pull_images(self):
         for image in self.SERVICE_IMAGES:
