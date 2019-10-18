@@ -389,7 +389,7 @@ class BundleManager(object):
 
         def get_sort_key(worker):
             if worker['shared_file_system']:
-                num_available_deps = len(neded_deps)
+                num_available_deps = len(needed_deps)
             else:
                 deps = set(worker['dependencies'])
                 num_available_deps = len(needed_deps & deps)
