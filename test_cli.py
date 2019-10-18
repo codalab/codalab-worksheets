@@ -30,7 +30,6 @@ import sys
 import time
 import traceback
 
-from codalab.lib.codalab_manager import CodaLabManager
 
 global cl
 # Directory where this script lives.
@@ -335,6 +334,7 @@ class ModuleContext(object):
         self.error = None
 
         # Allow for making REST calls
+        from codalab.lib.codalab_manager import CodaLabManager
         manager = CodaLabManager()
         self.client = manager.current_client()
 
