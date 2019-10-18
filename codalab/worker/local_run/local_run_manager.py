@@ -372,6 +372,9 @@ class LocalRunManager(BaseRunManager):
     def all_dependencies(self):
         """
         Returns a list of all dependencies available in this RunManager
+        If on a shared filesystem, reports nothing since all bundles are on the
+        same filesystem and the concept of caching dependencies doesn't apply
+        to this worker.
         """
         if self._shared_file_system:
             return []

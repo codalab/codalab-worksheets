@@ -169,8 +169,8 @@ class LocalRunStateMachine(StateTransitioner):
         dependencies_ready = True
         status_messages = []
 
-        # get dependencies
         if not self.shared_file_system:
+            # No need to download dependencies if we're in the shared FS since they're already in our FS
             for dep_key, dep in run_state.bundle.dependencies.items():
                 dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
                 if dependency_state.stage == DependencyStage.DOWNLOADING:
@@ -214,9 +214,13 @@ class LocalRunStateMachine(StateTransitioner):
         # 1) Set up a directory to store the bundle.
         if self.shared_file_system:
             try:
-                self._wait_for_bundle_folder(run_state)
+                self._wait_for_bundle_directory(run_state)
             except self.NoBundleFolderException as ex:
-                message = 'Bundle folder unavailable: %s' % str(ex)
+                message = (
+                    'Bundle directory unavailable. Please make sure the bundle store is properly mounted'
+                    ' on your worker host machine or contact your Codalab administrators: %s'
+                    % str(ex)
+                )
                 logger.error(message)
                 return run_state._replace(stage=LocalRunStage.CLEANING_UP, failure_message=message)
         else:
@@ -231,25 +235,27 @@ class LocalRunStateMachine(StateTransitioner):
         for dep_key, dep in run_state.bundle.dependencies.items():
             full_child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
             if not full_child_path.startswith(run_state.bundle_path):
+                # Dependencies should end up in their bundles (ie prevent using relative paths like ..
+                # to get out of their parent bundles
                 message = 'Invalid key for dependency: %s' % (dep.child_path)
                 logger.error(message)
                 return run_state._replace(stage=LocalRunStage.CLEANING_UP, failure_message=message)
+            docker_dependency_path = os.path.join(docker_dependencies_path, dep.child_path)
             if self.shared_file_system:
-                child_path = os.path.join(docker_dependencies_path, dep.child_path)
+                # On a shared FS, we know where the dep is stored and can get the contents directly
                 dependency_path = os.path.realpath(
                     os.path.join(os.path.realpath(dep.location), dep.parent_path)
                 )
-                docker_dependencies.append((dependency_path, child_path))
             else:
-                dependency_path = self.dependency_manager.get(run_state.bundle.uuid, dep_key).path
+                # On a dependency_manager setup ask the manager where the dependency is
                 dependency_path = os.path.join(
-                    self.dependency_manager.dependencies_dir, dependency_path
+                    self.dependency_manager.dependencies_dir,
+                    self.dependency_manager.get(run_state.bundle.uuid, dep_key).path,
                 )
-                docker_dependency_path = os.path.join(docker_dependencies_path, dep.child_path)
                 os.symlink(docker_dependency_path, full_child_path)
-                # These are turned into docker volume bindings like:
-                #   dependency_path:docker_dependency_path:ro
-                docker_dependencies.append((dependency_path, docker_dependency_path))
+            # These are turned into docker volume bindings like:
+            #   dependency_path:docker_dependency_path:ro
+            docker_dependencies.append((dependency_path, docker_dependency_path))
 
         # 3) Set up container
         if run_state.resources.network:
@@ -303,11 +309,11 @@ class LocalRunStateMachine(StateTransitioner):
     class NoBundleFolderException(Exception):
         pass
 
-    def _wait_for_bundle_folder(self, run_state):
+    def _wait_for_bundle_directory(self, run_state):
         """
         To avoid NFS directory caching issues, the bundle manager creates
-        the bundle folder on shared filesystems. Here we wait for the cache
-        to be renewed on the worker machine and for the folder to show up
+        the bundle directory on shared filesystems. Here we wait for the cache
+        to be renewed on the worker machine and for the directory to show up
         """
         retries_left = 120
         while not os.path.exists(run_state.bundle_path) and retries_left > 0:
@@ -432,7 +438,7 @@ class LocalRunStateMachine(StateTransitioner):
     def _transition_from_CLEANING_UP(self, run_state):
         """
         1- delete the container if still existent
-        2- clean up the dependencies from bundle folder
+        2- clean up the dependencies from bundle directory
         3- release the dependencies in dependency manager
         4- If bundle has contents to upload (i.e. was RUNNING at some point),
             move to UPLOADING_RESULTS state
@@ -457,7 +463,7 @@ class LocalRunStateMachine(StateTransitioner):
                     time.sleep(1)
 
         for dep_key, dep in run_state.bundle.dependencies.items():
-            if not self.shared_file_system:
+            if not self.shared_file_system:  # No dependencies if shared fs worker
                 self.dependency_manager.release(run_state.bundle.uuid, dep_key)
 
             child_path = os.path.join(run_state.bundle_path, dep.child_path)
@@ -467,6 +473,7 @@ class LocalRunStateMachine(StateTransitioner):
                 logger.error(traceback.format_exc())
 
         if not self.shared_file_system and run_state.has_contents:
+            # No need to upload results since results are directly written to bundle store
             return run_state._replace(
                 stage=LocalRunStage.UPLOADING_RESULTS,
                 run_status='Uploading results',

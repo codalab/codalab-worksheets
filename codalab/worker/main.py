@@ -108,7 +108,7 @@ def main():
     parser.add_argument(
         '--shared-file-system',
         action='store_true',
-        help='Internal use: If specified, the worker expects to find bundles mounted on its filesystem.',
+        help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
     args = parser.parse_args()
 
