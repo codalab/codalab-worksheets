@@ -225,7 +225,7 @@ class LocalRunStateMachine(StateTransitioner):
 
         # 2) Set up symlinks
         docker_dependencies = []
-        docker_dependencies_path = '/' + run_state.bundle.uuid + '_dependencies'
+        docker_dependencies_path = '/' + run_state.bundle.uuid + ('_dependencies' if not self.shared_file_system else '')
         for dep_key, dep in run_state.bundle.dependencies.items():
             full_child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
             if not full_child_path.startswith(run_state.bundle_path):

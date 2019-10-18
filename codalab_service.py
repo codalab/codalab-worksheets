@@ -370,7 +370,7 @@ class CodalabArgs(object):
             choices=ALL_SERVICES,
             help='Service container to run command on',
         )
-        run_cmd.add_argument('command', metavar='CMD', type=str, help='Command to run')
+        run_cmd.add_argument('service_command', metavar='CMD', type=str, help='Command to run')
 
         return parser
 
@@ -463,7 +463,7 @@ class CodalabServiceManager(object):
                 self.build_images()
             self.start_services()
         elif command == 'run':
-            self.run_service_cmd(self.args.command, service=self.args.service)
+            self.run_service_cmd(self.args.service_command, service=self.args.service)
         elif command == 'logs':
             cmd_str = 'logs'
             if self.args.tail is not None:
