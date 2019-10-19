@@ -1,14 +1,10 @@
 // @flow
 import * as React from 'react';
 import Typography from '@material-ui/core/Typography';
-import CopyIcon from '@material-ui/icons/FileCopy';
-import Tooltip from '@material-ui/core/Tooltip';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
 import AccessTimeIcon from '@material-ui/icons/AccessTime';
 import {renderDuration} from '../../../util/worksheet_utils';
-
 import { FileBrowserLite } from '../../FileBrowser';
 
 class MainContent extends React.Component<
@@ -23,15 +19,13 @@ class MainContent extends React.Component<
 	
 	render() {
 		const {
-			classes, bundleInfo, stdout, stderr, fileContents } = this.props;
+            classes, bundleInfo, stdout, stderr, fileContents } = this.props;
+        console.log(classes);
 		const bundleState = (bundleInfo.state == 'running' &&
 							bundleInfo.metadata.run_status != 'Running')
 					? bundleInfo.metadata.run_status
 					: bundleInfo.state;
         const isRunBundle = bundleInfo.bundle_type === 'run';
-		const stateSpecClass = bundleInfo.state === 'failed'
-            ? 'failedState'
-            : (bundleInfo.state === 'ready' ? 'readyState' : 'otherState');
 
         //Get the correct run time display
         const bundleRunTime = bundleInfo.metadata.time
@@ -40,41 +34,7 @@ class MainContent extends React.Component<
 
 		return (
             <div className={ classes.outter }>
-                <div className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`}>
-                    { bundleState }
-                </div>
-    			<Grid container classes={ { container: classes.container } } spacing={16}>
-                    { /** Run bundle specific components =========================================================== */}
-                    { isRunBundle &&
-                        <Grid item xs={12}>  
-                            <CopyToClipboard
-                                text={ bundleInfo.command }
-                            >
-                                <div
-                                    className={ `${ classes.row } ${ classes.command }` }
-                                >
-                                    <span>{ bundleInfo.command }</span>
-                                    <Tooltip title="Copy to clipboard">
-                                        <CopyIcon
-                                            style={ { color: 'white', marginLeft: 8 } }
-                                        />
-                                    </Tooltip>
-                                </div>
-                            </CopyToClipboard>
-                        </Grid>
-                    }
-                    { isRunBundle &&
-                        <Grid container xs={12} md="auto" direction="row" justify='flex-end' style={{marginRight: 10}}>
-                            <Grid item style={{ marginRight: 2 }}>
-                                <AccessTimeIcon/>
-                            </Grid>
-                            <Grid item>
-                                <Typography variant="body1">
-                                    run time: { bundleRunTime }
-                                </Typography>
-                            </Grid>
-                        </Grid>
-                    }
+    			<Grid container classes={ { container: classes.container } } spacing={16}>    
                     { /** Stdout/stderr components ================================================================= */}
                     <Grid item xs={12}>
                         <Grid container>
@@ -96,6 +56,7 @@ class MainContent extends React.Component<
             				}
                         </Grid>
                     </Grid>
+                    
                     { /** Bundle contents browser ================================================================== */}
                     <Grid item xs={12}>
         				{ fileContents
@@ -107,6 +68,19 @@ class MainContent extends React.Component<
                             />
         				}
                     </Grid>
+                    { /** Run bundle specific components =========================================================== */}
+                    { isRunBundle &&
+                        <Grid container xs={12} md="auto" direction="row" justify='flex-end' style={{marginRight: 10}}>
+                            <Grid item style={{ marginRight: 2 }}>
+                                <AccessTimeIcon/>
+                            </Grid>
+                            <Grid item>
+                                <Typography variant="body1">
+                                    run time: { bundleRunTime }
+                                </Typography>
+                            </Grid>
+                        </Grid>
+                    }
     			</Grid>
             </div>
 		);
@@ -126,31 +100,6 @@ const styles = (theme) => ({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    stateBox: {
-        color: 'white',
-        fontSize: '1.25rem',
-        width: `calc(100% + ${ 2*theme.spacing.larger }px)`,
-        textAlign: 'center',
-        marginTop: -theme.spacing.larger,
-        marginLeft: -theme.spacing.larger,
-    },
-    readyState: {
-        backgroundColor: theme.color.green.base,
-    },
-    failedState: {
-        backgroundColor: theme.color.red.base,
-    },
-    otherState: {
-        backgroundColor: theme.color.yellow.base,
-    },
-	command: {
-        flex: 1,
-		backgroundColor: '#333',
-		color: 'white',
-		fontFamily: 'monospace',
-		padding: theme.spacing.large,
-        borderRadius: theme.spacing.unit,
-	},
 	snippet: {
 		fontFamily: 'monospace',
 		backgroundColor: theme.color.grey.lightest,
