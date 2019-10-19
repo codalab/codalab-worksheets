@@ -503,7 +503,9 @@ const styles = (theme) => ({
     },
     iconButtonRoot: {
         backgroundColor: theme.color.grey.lighter,
-        marginBottom: 6,
+        padding: "1px 2px",
+        marginBottom: 3,
+        marginRight: 1,
     },
     buttonRoot: {
         width: 120,
