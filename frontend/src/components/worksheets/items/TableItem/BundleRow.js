@@ -121,7 +121,7 @@ class BundleRow extends Component {
             if (col === 0) {
                 url = baseUrl;
                 showDetailButton = 
-                        <IconButton onClick={this.handleDetailClick}>
+                        <IconButton onClick={this.handleDetailClick} style={{ padding: 2 }}>
                             {this.state.showDetail?
                             <ExpandLessIcon/>:
                             <ExpandMoreIcon/>}
@@ -148,7 +148,7 @@ class BundleRow extends Component {
                 <TableCell
                     key={col}
                     classes={{
-                        root: classes.root,
+                        root: classes.rootNoPad,
                     }}
                 >
                     {showDetailButton}
@@ -319,8 +319,9 @@ const styles = (theme) => ({
         marginRight: theme.spacing.large,
     },
     contentRow: {
-        height: 36,
+        height: 26,
         borderBottom: '2px solid #ddd',
+        padding: 0,
     },
     highlight: {
         backgroundColor: `${theme.color.primary.lightest} !important`,
