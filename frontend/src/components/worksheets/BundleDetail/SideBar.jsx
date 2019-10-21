@@ -26,7 +26,7 @@ class Dependency extends React.PureComponent<
 > {
 
   render() {
-    const { classes, bundleInfo } = this.props;
+    const { bundleInfo } = this.props;
     let dependencies_table = [];
     if (!bundleInfo.dependencies || bundleInfo.dependencies.length == 0) return <div />;
 
@@ -35,16 +35,12 @@ class Dependency extends React.PureComponent<
         dependencies_table.push(
             <TableRow key={ dep.parent_uuid + i }>
                 <TableCell>
-                    <Typography variant="body1">{ dep.child_path }</Typography>
-                </TableCell>
-                <TableCell>
-                    <Typography variant="body1">
+                    { dep.child_path }
                         &rarr; { dep.parent_name }(
                         <a href={ dep_bundle_url } target="_blank">
                           { shorten_uuid(dep.parent_uuid) }
                         </a>)
                         { dep.parent_path ? '/' + dep.parent_path : '' }
-                    </Typography>
                 </TableCell>
             </TableRow>
         );
@@ -52,7 +48,6 @@ class Dependency extends React.PureComponent<
 
     return (
         <div>
-            <Typography variant="body1">Dependencies</Typography>
             <Table>
                 <TableBody>{ dependencies_table }</TableBody>
             </Table>
@@ -162,7 +157,8 @@ class SideBar extends React.Component{
                         </div>
                     :null
                 }
-                { isRunBundle && <Dependency bundleInfo={ bundleInfo }/> }
+                <ConfigLabel label="Dependencies:" />
+                { isRunBundle? <Dependency bundleInfo={ bundleInfo }/> : <div>None</div>}
                 <div>
                     <ConfigLabel label="Permissions:" inline={true}/>
                     <div
@@ -184,7 +180,7 @@ class SideBar extends React.Component{
                     :   null
                     }
                 </div>
-                <ConfigLabel label="Attached to Worksheets" />
+                <ConfigLabel label="Attached to these Worksheets:" />
                 {
                     bundleInfo.host_worksheets.length > 0
                     ?   bundleInfo.host_worksheets.map((worksheet) =>
