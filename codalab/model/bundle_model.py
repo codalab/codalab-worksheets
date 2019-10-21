@@ -221,7 +221,9 @@ class BundleModel(object):
             row = conn.execute(
                 cl_worker_run.select().where(cl_worker_run.c.run_uuid == uuid)
             ).fetchone()
-            precondition(row, 'Trying to find worker for bundle that is not running.')
+            precondition(
+                row, 'Trying to find worker for bundle {} that is not running.'.format(uuid)
+            )
             worker_row = conn.execute(
                 cl_worker.select().where(
                     and_(cl_worker.c.user_id == row.user_id, cl_worker.c.worker_id == row.worker_id)

@@ -271,7 +271,11 @@ class BundleManager(object):
             elif self._worker_model.send_json_message(
                 worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
             ):
-                logger.info('Acknowledged finalization of run bundle %s', bundle.uuid)
+                logger.info(
+                    'Acknowledged finalization of run bundle {} on worker {}'.format(
+                        bundle.uuid, worker['worker_id']
+                    )
+                )
                 bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
                 self._model.transition_bundle_finished(bundle, bundle_location)
 
@@ -421,7 +425,9 @@ class BundleManager(object):
             if self._worker_model.send_json_message(
                 worker['socket_id'], self._construct_run_message(worker, bundle), 0.2
             ):
-                logger.info('Starting run bundle %s', bundle.uuid)
+                logger.info(
+                    'Starting run bundle {} on worker {}'.format(bundle.uuid, worker['worker_id'])
+                )
                 return True
             else:
                 self._model.transition_bundle_staged(bundle)
