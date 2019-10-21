@@ -36,7 +36,7 @@ class Dependency extends React.PureComponent<
             <TableRow key={ dep.parent_uuid + i }>
                 <TableCell>
                     { dep.child_path }
-                        &rarr; { dep.parent_name }(
+                        <br/> &rarr; { dep.parent_name }(
                         <a href={ dep_bundle_url } target="_blank">
                           { shorten_uuid(dep.parent_uuid) }
                         </a>)
@@ -47,11 +47,9 @@ class Dependency extends React.PureComponent<
     });
 
     return (
-        <div>
-            <Table>
-                <TableBody>{ dependencies_table }</TableBody>
-            </Table>
-        </div>
+        <Table>
+            <TableBody>{ dependencies_table }</TableBody>
+        </Table>
     );
   }
 }
@@ -81,7 +79,6 @@ class SideBar extends React.Component{
 
         return (
             <div>
-                { metadata.failure_message && <Typography variant="body1">{ metadata.failure_message }</Typography> }
                 {/** ----------------------------------------------------------------------------------------------- */}
                 <ConfigLabel label="Name" />
                 <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>
@@ -111,6 +108,7 @@ class SideBar extends React.Component{
                     <div className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`} style={{ display: 'inline' }}>
                         { bundleState }
                     </div>
+                    { metadata.failure_message && <Typography variant="body1">{ metadata.failure_message }</Typography> }
                 </div>
                 { isRunBundle &&
                         <Grid item xs={12}>  
@@ -159,6 +157,24 @@ class SideBar extends React.Component{
                 }
                 <ConfigLabel label="Dependencies:" />
                 { isRunBundle? <Dependency bundleInfo={ bundleInfo }/> : <div>None</div>}
+                <ConfigLabel label="Attached to these Worksheets:" />
+                {
+                    bundleInfo.host_worksheets.length > 0
+                    ?   bundleInfo.host_worksheets.map((worksheet) =>
+                            <div
+                                key={ worksheet.uuid }
+                            >
+                                <a
+                                    href={ `/worksheets/${ worksheet.uuid }`}
+                                    className={ classes.uuidLink }
+                                    target="_blank"
+                                >
+                                    { worksheet.name }
+                                </a>
+                            </div>
+                        )
+                    : <div>None</div>
+                }
                 <div>
                     <ConfigLabel label="Permissions:" inline={true}/>
                     <div
@@ -180,24 +196,6 @@ class SideBar extends React.Component{
                     :   null
                     }
                 </div>
-                <ConfigLabel label="Attached to these Worksheets:" />
-                {
-                    bundleInfo.host_worksheets.length > 0
-                    ?   bundleInfo.host_worksheets.map((worksheet) =>
-                            <div
-                                key={ worksheet.uuid }
-                            >
-                                <a
-                                    href={ `/worksheets/${ worksheet.uuid }`}
-                                    className={ classes.uuidLink }
-                                    target="_blank"
-                                >
-                                    { worksheet.name }
-                                </a>
-                            </div>
-                        )
-                    : <div>None</div>
-                }
                 {/** ----------------------------------------------------------------------------------------------- */}
                 
                 <div>
