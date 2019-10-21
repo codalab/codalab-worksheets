@@ -826,15 +826,14 @@ class BundleModel(object):
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finalizing(
-        self, bundle, bundle_location, user_id, worker_run, connection
-    ):
+    def transition_bundle_finalizing(self, bundle, user_id, worker_run, connection):
         """
         Transitions bundle to FINALIZING state:
             Saves the failure message and exit code from the worker
             If the user running the bundle was the CodaLab root user,
             increments the time used by the bundle owner.
         """
+
         failure_message, exitcode = worker_run.failure_message, worker_run.exitcode
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
@@ -852,18 +851,9 @@ class BundleModel(object):
         if user_id == self.root_user_id:
             self.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
 
-        worker = self.get_bundle_worker(bundle.uuid)
-        if worker['shared_file_system']:
-            # Update metadata and save loops over each file in the bundle to calculate size on disk
-            # so it might potentially take a very long time, so we just fire this thread and respond
-            metadata_update_thread = threading.Thread(
-                self.update_metadata_and_save, args=(bundle, bundle_location)
-            )
-            metadata_update_thread.start()
-
         return True
 
-    def transition_bundle_finished(self, bundle):
+    def transition_bundle_finished(self, bundle, bundle_location):
         """
         Transitions bundle to READY or FAILED state:
             The final state is determined by whether a failure message or exitcode
@@ -875,6 +865,10 @@ class BundleModel(object):
         state = State.FAILED if failure_message or exitcode else State.READY
         if failure_message == 'Kill requested':
             state = State.KILLED
+
+        worker = self.get_bundle_worker(bundle.uuid)
+        if worker['shared_file_system']:
+            self.update_metadata_and_save(bundle, bundle_location)
 
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
 
@@ -909,7 +903,7 @@ class BundleModel(object):
         self.update_bundle(bundle, bundle_update)
         self.update_user_disk_used(bundle.owner_id)
 
-    def bundle_checkin(self, bundle, worker_run, user_id, worker_id, bundle_location):
+    def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """
         Updates the database tables with the most recent bundle information from worker
         """
@@ -927,7 +921,7 @@ class BundleModel(object):
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
                 return self.transition_bundle_finalizing(
-                    bundle, bundle_location, user_id, worker_run, connection
+                    bundle, user_id, worker_run, connection
                 )
 
             if worker_run.state in [State.PREPARING, State.RUNNING]:
