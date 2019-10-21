@@ -678,7 +678,7 @@ def _update_bundle_contents_blob(uuid):
         )  # See UploadManager for full explanation of 'simplify'
 
         bundle_location = local.bundle_store.get_bundle_location(uuid)
-        local.model.update_metadata_and_save(bundle, bundle_location, enforce_disk_quota=True)
+        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error

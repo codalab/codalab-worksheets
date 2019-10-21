@@ -868,7 +868,7 @@ class BundleModel(object):
 
         worker = self.get_bundle_worker(bundle.uuid)
         if worker['shared_file_system']:
-            self.update_metadata_and_save(bundle, bundle_location)
+            self.update_disk_metadata(bundle, bundle_location)
 
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
 
@@ -882,7 +882,7 @@ class BundleModel(object):
     # Bundle state machine helper functions
     # ==========================================================================
 
-    def update_metadata_and_save(self, bundle, bundle_location, enforce_disk_quota=False):
+    def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False):
         dirs_and_files = None
         if os.path.isdir(bundle_location):
             dirs_and_files = path_util.recursive_ls(bundle_location)
