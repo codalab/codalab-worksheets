@@ -89,17 +89,19 @@ class SideBar extends React.Component{
                 { metadata.failure_message && <Typography variant="body1">{ metadata.failure_message }</Typography> }
                 {/** ----------------------------------------------------------------------------------------------- */}
                 <ConfigLabel label="Name" />
-                <BundleEditableField
-                    dataType={ metadataType.name }
-                    fieldName="name"
-                    uuid={ bundleInfo.uuid }
-                    value={ metadata.name }
-                    canEdit={ hasEditPermission && editableMetadataFields.includes("name") }
-                    onChange={ (name) => onUpdate({ name }) }
-                />
+                <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>
+                    <BundleEditableField
+                        dataType={ metadataType.name }
+                        fieldName="name"
+                        uuid={ bundleInfo.uuid }
+                        value={ metadata.name }
+                        canEdit={ hasEditPermission && editableMetadataFields.includes("name") }
+                        onChange={ (name) => onUpdate({ name }) }
+                    />
+                </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
                 <ConfigLabel label="Description" />
-                <div style={{ maxWidth: 100, flexWrap: 'wrap', flexShrink: 1}}>
+                <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>
                     <BundleEditableField
                         dataType={ metadataType.description }
                         fieldName="description"
@@ -115,21 +117,24 @@ class SideBar extends React.Component{
                         { bundleState }
                     </div>
                 </div>
-                <ConfigLabel label="Command" />
                 { isRunBundle &&
                         <Grid item xs={12}>  
                             <CopyToClipboard
                                 text={ bundleInfo.command }
                             >
-                                <div
-                                    className={ `${ classes.row } ${ classes.command }` }
-                                >
-                                    <span>{ bundleInfo.command }</span>
-                                    <Tooltip title="Copy to clipboard">
-                                        <CopyIcon
-                                            style={ { color: 'white', marginLeft: 8 } }
-                                        />
-                                    </Tooltip>
+                                <div>
+                                <div style={{ display: 'inline'}}>
+                                <ConfigLabel label="Command" inline={true}/>
+                                    <div className={classes.copyBox} style={{ display: 'inline' }}>
+                                        Copy
+                                    </div>
+                                </div>
+                                
+                                <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>
+
+                                
+                                    {bundleInfo.command}
+                                </div>
                                 </div>
                             </CopyToClipboard>
                         </Grid>
@@ -233,7 +238,7 @@ const styles = (theme) => ({
     },
     stateBox: {
         color: 'white',
-        fontSize: '14px',
+        fontSize: '12px',
         width: `50px`,
         textAlign: 'center',
         paddingLeft: 3,
@@ -241,6 +246,19 @@ const styles = (theme) => ({
         marginLeft: 3,
         border: '1px solid',
         borderRadius: '5px!important'
+    },
+    copyBox: {
+        color: 'white',
+        fontSize: '12px',
+        width: `50px`,
+        textAlign: 'center',
+        paddingLeft: 3,
+        paddingRight: 3,
+        marginLeft: 3,
+        border: '1px solid',
+        borderRadius: '5px!important',
+        backgroundColor: 'black',
+        cursor: 'copy',
     },
     readyState: {
         backgroundColor: theme.color.green.base,
@@ -252,12 +270,14 @@ const styles = (theme) => ({
         backgroundColor: theme.color.yellow.base,
     },
     command: {
-        flex: 1,
 		backgroundColor: '#333',
 		color: 'white',
 		fontFamily: 'monospace',
 		padding: theme.spacing.large,
         borderRadius: theme.spacing.unit,
+        wordWrap: 'break-all',
+        maxWidth: 300,
+        flexWrap: 'wrap',
     },
     permissions: {
         cursor: 'pointer',

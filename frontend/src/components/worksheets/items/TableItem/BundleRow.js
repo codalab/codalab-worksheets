@@ -481,11 +481,15 @@ const styles = (theme) => ({
     root: {
         verticalAlign: 'middle !important',
         border: 'none !important',
+        wordWrap: 'break-word',
+        maxWidth: 100,
     },
     rootNoPad: {
         verticalAlign: 'middle !important',
         border: 'none !important',
         padding: '0px !important',
+        wordWrap: 'break-word',
+        maxWidth: 100,
     },
     insertPanel: {
         verticalAlign: 'middle !important',

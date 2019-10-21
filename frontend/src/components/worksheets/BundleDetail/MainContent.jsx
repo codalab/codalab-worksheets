@@ -6,6 +6,9 @@ import { withStyles } from '@material-ui/core/styles';
 import AccessTimeIcon from '@material-ui/icons/AccessTime';
 import {renderDuration} from '../../../util/worksheet_utils';
 import { FileBrowserLite } from '../../FileBrowser';
+import Button from '@material-ui/core/Button';
+import ChevronRightIcon from '@material-ui/icons/ChevronRight';
+import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
 
 class MainContent extends React.Component<
 		{
@@ -13,18 +16,20 @@ class MainContent extends React.Component<
 			stdout: string | null,
 			strerr: string | null,
 			fileContents: string | null,
-			classes: {},
+            classes: {},
 		}
 > {	
+    state = {
+        showFileBrowser: this.props.bundleInfo.bundle_type !== 'run',
+    }
+
+    toggleFileViewer() {
+        this.setState({showFileBrowser: !this.state.showFileBrowser});
+    }
 	
 	render() {
 		const {
             classes, bundleInfo, stdout, stderr, fileContents } = this.props;
-        console.log(classes);
-		const bundleState = (bundleInfo.state == 'running' &&
-							bundleInfo.metadata.run_status != 'Running')
-					? bundleInfo.metadata.run_status
-					: bundleInfo.state;
         const isRunBundle = bundleInfo.bundle_type === 'run';
 
         //Get the correct run time display
@@ -34,30 +39,20 @@ class MainContent extends React.Component<
 
 		return (
             <div className={ classes.outter }>
-    			<Grid container classes={ { container: classes.container } } spacing={16}>    
-                    { /** Stdout/stderr components ================================================================= */}
-                    <Grid item xs={12}>
-                        <Grid container>
-            				{ stdout &&
-                                <Grid item xs={12}>
-                                    <Typography variant="subtitle1">stdout</Typography>
-                					<div className={ classes.snippet }>
-                						{ stdout }
-                					</div>
-                                </Grid>
-            				}
-            				{ stderr &&
-                                <Grid item xs={12}>
-                                    <Typography variant="subtitle1">stderr</Typography>
-                					<div className={ classes.snippet }>
-                						{ stderr }
-                					</div>
-                                </Grid>
-            				}
-                        </Grid>
-                    </Grid>
-                    
+    			<Grid container>    
                     { /** Bundle contents browser ================================================================== */}
+                    <Button
+                        onClick={e => this.toggleFileViewer()}
+                        size='small'
+                        color='inherit'
+                        aria-label='Expand file viewer'
+                        >
+                            
+                            {'Show contents'}
+                        {this.state.showFileBrowser ? <KeyboardArrowDownIcon />
+                        : <ChevronRightIcon />}
+                    </Button>
+                    {this.state.showFileBrowser?
                     <Grid item xs={12}>
         				{ fileContents
         					? <div className={ classes.snippet }>
@@ -67,6 +62,25 @@ class MainContent extends React.Component<
                                 uuid={ bundleInfo.uuid }
                             />
         				}
+                    </Grid>:null}
+                    { /** Stdout/stderr components ================================================================= */}
+                    <Grid container>    
+                        { stdout &&
+                            <Grid item xs={12}>
+                                <Typography variant="subtitle1">stdout</Typography>
+                                <div className={ classes.snippet }>
+                                    { stdout }
+                                </div>
+                            </Grid>
+                        }
+                        { stderr &&
+                            <Grid item xs={12}>
+                                <Typography variant="subtitle1">stderr</Typography>
+                                <div className={ classes.snippet }>
+                                    { stderr }
+                                </div>
+                            </Grid>
+                        }
                     </Grid>
                     { /** Run bundle specific components =========================================================== */}
                     { isRunBundle &&
@@ -89,11 +103,8 @@ class MainContent extends React.Component<
 
 const styles = (theme) => ({
     outter: {
-        flex: 1,
+       // flex: 1,
     },
-	container: {
-		padding: theme.spacing.larger,
-	},
     row: {
         display: 'flex',
         flexDirection: 'row',
@@ -102,10 +113,10 @@ const styles = (theme) => ({
     },
 	snippet: {
 		fontFamily: 'monospace',
-		backgroundColor: theme.color.grey.lightest,
-		height: 160,
-		marginBottom: theme.spacing.large,
-        overflow: 'auto',
+        backgroundColor: theme.color.grey.lightest,
+        height: 300,
+        width: 680,
+        padding: 10,
 	},
 });
 
