@@ -315,7 +315,7 @@ worker = Table(
     Column('socket_id', Integer, nullable=False),  # Socket ID worker listens for messages on.
     Column(
         'shared_file_system', Boolean, nullable=False
-    ),  # Whether the worker is on a shared FS with server.
+    ),  # Whether the worker and the server have a shared filesystem.
 )
 
 # Store information about all sockets currently allocated to each worker.

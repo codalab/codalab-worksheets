@@ -215,7 +215,7 @@ class LocalRunStateMachine(StateTransitioner):
         if self.shared_file_system:
             try:
                 self._wait_for_bundle_directory(run_state)
-            except self.NoBundleFolderException as ex:
+            except self.NoBundleDirectoryException as ex:
                 message = (
                     'Bundle directory unavailable. Please make sure the bundle store is properly mounted'
                     ' on your worker host machine or contact your Codalab administrators: %s'
@@ -244,7 +244,7 @@ class LocalRunStateMachine(StateTransitioner):
             if self.shared_file_system:
                 # On a shared FS, we know where the dep is stored and can get the contents directly
                 dependency_path = os.path.realpath(
-                    os.path.join(os.path.realpath(dep.location), dep.parent_path)
+                    os.path.join(dep.location, dep.parent_path)
                 )
             else:
                 # On a dependency_manager setup ask the manager where the dependency is
@@ -306,7 +306,7 @@ class LocalRunStateMachine(StateTransitioner):
             gpuset=gpuset,
         )
 
-    class NoBundleFolderException(Exception):
+    class NoBundleDirectoryException(Exception):
         pass
 
     def _wait_for_bundle_directory(self, run_state):
@@ -320,7 +320,7 @@ class LocalRunStateMachine(StateTransitioner):
             retries_left -= 1
             time.sleep(0.5)
         if not retries_left:
-            raise self.NoBundleFolderException(
+            raise self.NoBundleDirectoryException(
                 "Bundle location {} not found".format(run_state.bundle_path)
             )
 
