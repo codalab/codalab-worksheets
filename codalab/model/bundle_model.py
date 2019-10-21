@@ -4,8 +4,10 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 
 import collections
 import datetime
+import os
 import re
 import time
+import threading
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, not_, select, union, desc, func
@@ -13,7 +15,7 @@ from sqlalchemy.sql.expression import literal, true
 
 from codalab.bundles import get_bundle_subclass
 from codalab.common import IntegrityError, NotFoundError, precondition, UsageError
-from codalab.lib import crypt_util, spec_util, worksheet_util
+from codalab.lib import crypt_util, spec_util, worksheet_util, path_util
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
     bundle as cl_bundle,
@@ -37,6 +39,7 @@ from codalab.model.tables import (
     oauth2_client,
     oauth2_token,
     oauth2_auth_code,
+    worker as cl_worker,
     worker_run as cl_worker_run,
     db_metadata,
 )
@@ -209,6 +212,28 @@ class BundleModel(object):
 
     def get_worksheet_owner_ids(self, uuids):
         return self.get_owner_ids(cl_worksheet, uuids)
+
+    def get_bundle_worker(self, uuid):
+        """
+        Returns information about the worker that the given bundle is running
+        on. This method should be called only for bundles that are running.
+        """
+        with self.engine.begin() as conn:
+            row = conn.execute(
+                cl_worker_run.select().where(cl_worker_run.c.run_uuid == uuid)
+            ).fetchone()
+            precondition(row, 'Trying to find worker for bundle that is not running.')
+            worker_row = conn.execute(
+                cl_worker.select().where(
+                    and_(cl_worker.c.user_id == row.user_id, cl_worker.c.worker_id == row.worker_id)
+                )
+            ).fetchone()
+            return {
+                'user_id': worker_row.user_id,
+                'worker_id': worker_row.worker_id,
+                'shared_file_system': worker_row.shared_file_system,
+                'socket_id': worker_row.socket_id,
+            }
 
     def get_children_uuids(self, uuids):
         """
@@ -801,7 +826,9 @@ class BundleModel(object):
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finalizing(self, bundle, user_id, worker_run, connection):
+    def transition_bundle_finalizing(
+        self, bundle, bundle_location, user_id, worker_run, connection
+    ):
         """
         Transitions bundle to FINALIZING state:
             Saves the failure message and exit code from the worker
@@ -824,6 +851,15 @@ class BundleModel(object):
 
         if user_id == self.root_user_id:
             self.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
+
+        worker = self.get_bundle_worker(bundle.uuid)
+        if worker['shared_file_system']:
+            # Update metadata and save loops over each file in the bundle to calculate size on disk
+            # so it might potentially take a very long time, so we just fire this thread and respond
+            metadata_update_thread = threading.Thread(
+                self.update_metadata_and_save, args=(bundle, bundle_location)
+            )
+            metadata_update_thread.start()
 
         return True
 
@@ -852,7 +888,28 @@ class BundleModel(object):
     # Bundle state machine helper functions
     # ==========================================================================
 
-    def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
+    def update_metadata_and_save(self, bundle, bundle_location, enforce_disk_quota=False):
+        dirs_and_files = None
+        if os.path.isdir(bundle_location):
+            dirs_and_files = path_util.recursive_ls(bundle_location)
+        else:
+            dirs_and_files = [], [bundle_location]
+
+        data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
+        data_size = path_util.get_size(bundle_location, dirs_and_files)
+        if enforce_disk_quota:
+            disk_left = self.get_user_disk_quota_left(bundle.owner_id)
+            if data_size > disk_left:
+                raise UsageError(
+                    "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
+                    % (data_size, disk_left)
+                )
+
+        bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
+        self.update_bundle(bundle, bundle_update)
+        self.update_user_disk_used(bundle.owner_id)
+
+    def bundle_checkin(self, bundle, worker_run, user_id, worker_id, bundle_location):
         """
         Updates the database tables with the most recent bundle information from worker
         """
@@ -869,7 +926,9 @@ class BundleModel(object):
                 self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
-                return self.transition_bundle_finalizing(bundle, user_id, worker_run, connection)
+                return self.transition_bundle_finalizing(
+                    bundle, bundle_location, user_id, worker_run, connection
+                )
 
             if worker_run.state in [State.PREPARING, State.RUNNING]:
                 return self.transition_bundle_running(

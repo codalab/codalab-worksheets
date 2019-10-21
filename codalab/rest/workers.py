@@ -43,7 +43,10 @@ def checkin(worker_id):
         try:
             worker_run = WorkerRun.from_dict(run)
             bundle = local.model.get_bundle(worker_run.uuid)
-            local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id)
+            bundle_location = local.bundle_store.get_bundle_location(worker_run.uuid)
+            local.model.bundle_checkin(
+                bundle, worker_run, request.user.user_id, worker_id, bundle_location
+            )
         except Exception:
             pass
 

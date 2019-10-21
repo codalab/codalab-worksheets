@@ -180,7 +180,8 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
-            path = os.path.normpath(self._bundle_store.get_bundle_location(bundle.uuid))
+            bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+            path = os.path.normpath(bundle_location)
 
             deps = []
             for dep in bundle.dependencies:
@@ -213,7 +214,7 @@ class BundleManager(object):
                 for dependency_path, child_path in deps:
                     path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
-            self._upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
+            self._model.update_metadata_and_save(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
         except Exception as e:
