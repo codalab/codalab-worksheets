@@ -883,6 +883,10 @@ class BundleModel(object):
     # ==========================================================================
 
     def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False):
+        """
+        Computes the disk use and data hash of the given bundle.
+        Updates the database rows for the bundle and user with the new disk use
+        """
         dirs_and_files = None
         if os.path.isdir(bundle_location):
             dirs_and_files = path_util.recursive_ls(bundle_location)
