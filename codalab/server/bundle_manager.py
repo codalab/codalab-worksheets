@@ -262,7 +262,7 @@ class BundleManager(object):
         Acknowledge recently finished bundles to workers so they can discard run information.
         """
         for bundle in self._model.batch_get_bundles(state=State.FINALIZING, bundle_type='run'):
-            worker = workers.get_bundle_worker(bundle.uuid)
+            worker = self._model.get_bundle_worker(bundle.uuid)
             if worker is None:
                 logger.info(
                     'Bringing bundle offline %s: %s', bundle.uuid, 'No worker claims bundle'

@@ -189,28 +189,6 @@ class WorkerModel(object):
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
         return list(worker_dict.values())
 
-    def get_bundle_worker(self, uuid):
-        """
-        Returns information about the worker that the given bundle is running
-        on. This method should be called only for bundles that are running.
-        """
-        with self._engine.begin() as conn:
-            row = conn.execute(
-                cl_worker_run.select().where(cl_worker_run.c.run_uuid == uuid)
-            ).fetchone()
-            precondition(row, 'Trying to find worker for bundle that is not running.')
-            worker_row = conn.execute(
-                cl_worker.select().where(
-                    and_(cl_worker.c.user_id == row.user_id, cl_worker.c.worker_id == row.worker_id)
-                )
-            ).fetchone()
-            return {
-                'user_id': worker_row.user_id,
-                'worker_id': worker_row.worker_id,
-                'shared_file_system': worker_row.shared_file_system,
-                'socket_id': worker_row.socket_id,
-            }
-
     def allocate_socket(self, user_id, worker_id, conn=None):
         """
         Allocates a unique socket ID.
