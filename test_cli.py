@@ -1704,7 +1704,18 @@ def test(ctx):
     # Check header which includes 8 columns in total from output.
     header = lines[0]
     check_contains(
-        ['worker_id', 'cpus', 'gpus', 'memory', 'free_disk', 'last_checkin', 'tag', 'runs', 'shared_file_system'], header
+        [
+            'worker_id',
+            'cpus',
+            'gpus',
+            'memory',
+            'free_disk',
+            'last_checkin',
+            'tag',
+            'runs',
+            'shared_file_system',
+        ],
+        header,
     )
 
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
