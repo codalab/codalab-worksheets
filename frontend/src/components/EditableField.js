@@ -1,7 +1,6 @@
 // @flow
 import * as React from 'react';
 import * as $ from 'jquery';
-import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 import { renderFormat, serializeFormat } from '../util/worksheet_utils';
 
@@ -101,19 +100,26 @@ class EditableFieldBase extends React.Component<{
     render() {
         if (!this.state.editing) {
             return (
-                <a className='editable editable-click' onClick={this.onClick}>
+                <span className='editable-field' onClick={this.onClick}>
                     {this.state.value === '' ? '<none>' : this.state.value}
-                </a>
+                </span>
             );
         } else {
             return (
                 <form onSubmit={this.onBlur}>
                     <input
+                        type="text"
                         autoFocus
                         value={this.state.value}
                         onBlur={this.onBlur}
                         onChange={this.handleChange}
                         onKeyDown={this.handleKeyPress}
+                        maxLength="259"
+                        style={{ textOverflow: 'ellipsis',
+                        whiteSpace: 'pre',
+                        maxWidth: '100%',
+                        minWidth: '65px',
+                        padding: '0 4px 0 3px'}}
                     />
                     {!this.state.isValid && (
                         <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>
