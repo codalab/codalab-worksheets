@@ -110,27 +110,27 @@ class WorkerManager(object):
         )
 
         # There are two conditions under which we want more workers.
-        want_more_workers = False
-
         # 1) We have fewer than min_workers.
+        less_than_min_workers = False
         if len(worker_jobs) < self.args.min_workers:
             logger.info(
                 'Want to launch a worker because we are under the minimum ({} < {})'.format(
                     len(worker_jobs), self.args.min_workers
                 )
             )
-            want_more_workers = True
+            less_than_min_workers = True
 
         # 2) There is a staged bundle AND there aren't any workers that are still booting up/starting
+        staged_bundles = False
         if len(self.staged_uuids) > 0:
             logger.info(
                 'Want to launch a worker because we have {} > 0 staged bundles'.format(
                     len(self.staged_uuids)
                 )
             )
-            want_more_workers = True
+            staged_bundles = True
 
-        if want_more_workers:
+        if less_than_min_workers or staged_bundles:
             # Make sure we don't launch workers too quickly.
             seconds_since_last_worker = int(time.time() - self.last_worker_start_time)
             if seconds_since_last_worker < self.args.min_seconds_between_workers:
@@ -143,7 +143,8 @@ class WorkerManager(object):
 
             # Make sure we don't queue up more workers than staged UUIDs if there are
             # more workers still booting up than staged bundles
-            if len(pending_worker_jobs) >= len(self.staged_uuids):
+            # However override this if we have less than minimum number of workers
+            if len(pending_worker_jobs) >= len(self.staged_uuids) and not less_than_min_workers:
                 logger.info(
                     'Don\'t launch because still more pending workers than staged bundles ({} >= {})'.format(
                         len(pending_worker_jobs), len(self.staged_uuids)
