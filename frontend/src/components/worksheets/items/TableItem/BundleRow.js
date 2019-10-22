@@ -238,7 +238,7 @@ class BundleRow extends Component {
 
          // Keyboard opening/closing
          if (this.props.focused) {
-             //need the e.preventDefault to avoid openning selected link
+             // Use e.preventDefault to avoid openning selected link
              Mousetrap.bind(
                 ['enter'], 
                 (e) => {
