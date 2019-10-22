@@ -15,7 +15,7 @@ class MainContent extends React.Component<
 			bundleInfo: {},
 			stdout: string | null,
 			strerr: string | null,
-			fileContents: string | null,
+            fileContents: string | null,
             classes: {},
 		}
 > {	
@@ -110,20 +110,21 @@ class MainContent extends React.Component<
                             ? <KeyboardArrowDownIcon />
                             : <ChevronRightIcon />}
                     </Button>
-                    {this.state.showFileBrowser?
-                    <Grid item xs={12}>
-        				{ fileContents
-        					?   <div className={ classes.fileSnippet }>
-        						    { fileContents }
-        					    </div>
-        					:   
-                                <div className={ classes.fileSnippet }>
-        						    <FileBrowserLite
-                                    uuid={ bundleInfo.uuid }
-                                />
-        					    </div>
-        				}
-                    </Grid>:null}
+                    {this.state.showFileBrowser
+                        ?   <Grid item xs={12}>
+                                { fileContents
+                                    ?   <div className={ classes.fileSnippet }>
+                                            { fileContents }
+                                        </div>
+                                    :   
+                                        <div className={ classes.fileSnippet }>
+                                            <FileBrowserLite
+                                            uuid={ bundleInfo.uuid }
+                                        />
+                                        </div>
+                                }
+                            </Grid>
+                        :   null}
     			</Grid>
             </div>
 		);
