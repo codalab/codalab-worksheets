@@ -302,6 +302,19 @@ const styles = (theme) => ({
         padding: '0px !important',
         wordWrap: 'break-word',
         maxWidth: 100,
+<<<<<<< HEAD
+=======
+    },
+    insertPanel: {
+        verticalAlign: 'middle !important',
+        padding: '32px 64px !important',
+        backgroundColor: 'white',
+        borderLeft: '4px solid white !important',  // Erase highlight border.
+        borderRight: '4px solid white !important',  // Erase highlight border.
+    },
+    insertBox: {
+        border: `2px solid ${theme.color.primary.base}`,
+>>>>>>> 7863148b9d0f89f88271d4e4df78e1b41209b1d5
     },
     bundleDetail: {
         paddingLeft: `${theme.spacing.largest}px !important`,
