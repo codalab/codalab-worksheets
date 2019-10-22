@@ -85,8 +85,14 @@ class EditableFieldBase extends React.Component<{
         }
     };
 
-    handleChange = (event) => {
+    handleAsciiChange = (event) => {
+        // only ascii
         this.setState({ value: event.target.value, isValid: isAscii(event.target.value) });
+    };
+
+    handleFreeChange = (event) => {
+        // allows non-ascii
+        this.setState({ value: event.target.value });
     };
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -112,7 +118,7 @@ class EditableFieldBase extends React.Component<{
                         autoFocus
                         value={this.state.value}
                         onBlur={this.onBlur}
-                        onChange={this.handleChange}
+                        onChange={this.props.allowASCII ? this.handleFreeChange : this.handleAsciiChange}
                         onKeyDown={this.handleKeyPress}
                     />
                     {!this.state.isValid && (
@@ -169,6 +175,10 @@ export class WorksheetEditableField extends React.Component<{
             />
         );
     }
+}
+
+WorksheetEditableField.defaultProps = {
+    allowASCII: false,
 }
 
 export class BundleEditableField extends React.Component<{
