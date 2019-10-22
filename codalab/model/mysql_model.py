@@ -66,7 +66,6 @@ class MySQLModel(BundleModel):
     # To correctly use it, we should find all codes on the backend side that
     # actually stores/gets the encoded field
 
-
     def encode_str(self, value):
         return value.encode()
 
