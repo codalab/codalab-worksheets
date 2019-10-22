@@ -24,8 +24,8 @@ jobs:
         - python3 codalab_service.py start --services default monitor --version ${TRAVIS_BRANCH}
       script:
         - python3 codalab_service.py test default --version ${TRAVIS_BRANCH}
-          # Make sure restarting worker doesn't cause any issues (ie in serialization/deserialization
-        - docker stop codalab_worker_1 && python3 codalab_service.py start --services worker --version ${TRAVIS_BRANCH} && python3 codalab_service.py test run --version ${TRAVIS_BRANCH}
+          # Make sure restarting worker doesn't cause any issues (ie in serialization/deserialization)
+        - docker restart codalab_worker_1 && python3 codalab_service.py test run --version ${TRAVIS_BRANCH}
     - stage: deploy
       script: echo "Deploying"
       language: python
