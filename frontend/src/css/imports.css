@@ -7739,10 +7739,6 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
   #worksheet .dragbar {
     display: none;
   }
-  #worksheet .ws-container {
-    right: 0;
-    padding: 0;
-  }
 }
 #bundle-upload-form {
   display: none;

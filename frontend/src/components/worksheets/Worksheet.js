@@ -157,8 +157,7 @@ class Worksheet extends React.Component {
         }
     };
 
-    setFocus = (index, subIndex, shouldScroll) => {
-        if (shouldScroll === undefined) shouldScroll = true;
+    setFocus = (index, subIndex, shouldScroll=true) => {
         var info = this.state.ws.info;
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
@@ -207,7 +206,9 @@ class Worksheet extends React.Component {
             showNewRun: false,
             showNewText: false,
         });
-        if (shouldScroll) this.scrollToItem(index, subIndex);
+        if (shouldScroll) {
+            this.scrollToItem(index, subIndex);
+        }
     };
 
     scrollToItem = (index, subIndex) => {
