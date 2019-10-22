@@ -4,8 +4,6 @@ from __future__ import (
 from contextlib import closing
 import http.client
 import json
-import os
-import subprocess
 from datetime import datetime
 
 from bottle import abort, get, local, post, put, request, response
@@ -36,6 +34,7 @@ def checkin(worker_id):
         request.json.get("memory_bytes"),
         request.json.get("free_disk_bytes"),
         request.json["dependencies"],
+        request.json.get("shared_file_system"),
     )
 
     for run in request.json["runs"]:

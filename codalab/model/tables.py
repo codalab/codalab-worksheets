@@ -313,6 +313,9 @@ worker = Table(
         'checkin_time', DateTime, nullable=False
     ),  # When the worker last checked in with the bundle service.
     Column('socket_id', Integer, nullable=False),  # Socket ID worker listens for messages on.
+    Column(
+        'shared_file_system', Boolean, nullable=False
+    ),  # Whether the worker and the server have a shared filesystem.
 )
 
 # Store information about all sockets currently allocated to each worker.

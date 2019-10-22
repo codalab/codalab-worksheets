@@ -72,7 +72,7 @@ class DownloadManager(object):
             # system since 1) due to NFS caching the worker has more up to date
             # information on directory contents, and 2) the logic of hiding
             # the dependency paths doesn't need to be re-implemented here.
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self._bundle_model.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
             )
@@ -100,11 +100,24 @@ class DownloadManager(object):
         Returns a file-like object containing a tarred and gzipped archive
         of the given directory.
         """
-        if self._is_available_locally(uuid):
+        bundle_state = self._bundle_model.get_bundle_state(uuid)
+        # Raises NotFoundException if uuid is invalid
+
+        if bundle_state == State.PREPARING:
+            raise NotFoundError(
+                "Bundle {} hasn't started running yet, files not available".format(uuid)
+            )
+        elif bundle_state != State.RUNNING:
             directory_path = self._get_target_path(uuid, path)
             return file_util.tar_gzip_directory(directory_path)
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            # stream_tarred_gzipped_directory calls are sent to the worker even
+            # on a shared filesystem since
+            # 1) due to NFS caching the worker has more up to date
+            #   information on directory contents
+            # 2) the logic of hiding
+            #   the dependency paths doesn't need to be re-implemented here.
+            worker = self._bundle_model.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
             )
@@ -130,7 +143,7 @@ class DownloadManager(object):
             else:
                 return open(file_path, 'rb')
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self._bundle_model.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
             )
@@ -158,7 +171,7 @@ class DownloadManager(object):
                 bytestring = file_util.gzip_bytestring(bytestring)
             return bytestring
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self._bundle_model.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
             )
@@ -195,7 +208,7 @@ class DownloadManager(object):
                 bytestring = file_util.gzip_bytestring(bytestring)
             return bytestring
         else:
-            worker = self._worker_model.get_bundle_worker(uuid)
+            worker = self._bundle_model.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
             )
@@ -221,7 +234,7 @@ class DownloadManager(object):
         """
         Sends a raw bytestring into the specified port of a running bundle, then return the response.
         """
-        worker = self._worker_model.get_bundle_worker(uuid)
+        worker = self._bundle_model.get_bundle_worker(uuid)
         response_socket_id = self._worker_model.allocate_socket(
             worker['user_id'], worker['worker_id']
         )
@@ -235,12 +248,7 @@ class DownloadManager(object):
 
     def _is_available_locally(self, uuid):
         if self._bundle_model.get_bundle_state(uuid) in [State.RUNNING, State.PREPARING]:
-            if self._worker_model.shared_file_system:
-                worker = self._worker_model.get_bundle_worker(uuid)
-                return worker['user_id'] == self._bundle_model.root_user_id
-            else:
-                return False
-
+            return self._bundle_model.get_bundle_worker(uuid)['shared_file_system']
         return True
 
     def _get_target_path(self, uuid, path):

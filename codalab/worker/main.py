@@ -108,9 +108,7 @@ def main():
     parser.add_argument(
         '--shared-file-system',
         action='store_true',
-        help='Internal use: Whether the file system containing '
-        'bundle data is shared between the bundle service '
-        'and the worker.',
+        help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
     args = parser.parse_args()
 
@@ -191,6 +189,7 @@ chmod 600 %s"""
             cpuset,
             gpuset,
             args.work_dir,
+            args.shared_file_system,
             docker_runtime=docker_runtime,
             docker_network_prefix=args.network_prefix,
         )
@@ -204,6 +203,7 @@ chmod 600 %s"""
         args.exit_when_idle,
         args.idle_seconds,
         bundle_service,
+        args.shared_file_system,
     )
 
     # Register a signal handler to ensure safe shutdown.

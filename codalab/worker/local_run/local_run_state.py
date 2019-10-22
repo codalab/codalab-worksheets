@@ -72,6 +72,7 @@ LocalRunState = namedtuple(
         'run_status',  # str
         'bundle',  # BundleInfo
         'bundle_path',  # str
+        'bundle_dir_wait_num_tries',  # Optional[int]
         'resources',  # RunResources
         'bundle_start_time',  # int
         'container_start_time',  # Optional[int]
@@ -116,6 +117,7 @@ class LocalRunStateMachine(StateTransitioner):
         docker_runtime,  # Docker runtime to use for containers (nvidia or runc)
         upload_bundle_callback,  # Function to call to upload bundle results to the server
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
+        shared_file_system,  # If True, bundle mount is shared with server
     ):
         super(LocalRunStateMachine, self).__init__()
         self.add_transition(LocalRunStage.PREPARING, self._transition_from_PREPARING)
@@ -141,6 +143,7 @@ class LocalRunStateMachine(StateTransitioner):
         )
         self.upload_bundle_callback = upload_bundle_callback
         self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
+        self.shared_file_system = shared_file_system
 
     def stop(self):
         for uuid in self.disk_utilization.keys():
@@ -167,22 +170,23 @@ class LocalRunStateMachine(StateTransitioner):
         dependencies_ready = True
         status_messages = []
 
-        # get dependencies
-        for dep_key, dep in run_state.bundle.dependencies.items():
-            dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
-            if dependency_state.stage == DependencyStage.DOWNLOADING:
-                status_messages.append(
-                    'Downloading dependency %s: %s done (archived size)'
-                    % (dep.child_path, size_str(dependency_state.size_bytes))
-                )
-                dependencies_ready = False
-            elif dependency_state.stage == DependencyStage.FAILED:
-                # Failed to download dependency; -> CLEANING_UP
-                return run_state._replace(
-                    stage=LocalRunStage.CLEANING_UP,
-                    failure_message='Failed to download dependency %s: %s'
-                    % (dep.child_path, dependency_state.message),
-                )
+        if not self.shared_file_system:
+            # No need to download dependencies if we're in the shared FS since they're already in our FS
+            for dep_key, dep in run_state.bundle.dependencies.items():
+                dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
+                if dependency_state.stage == DependencyStage.DOWNLOADING:
+                    status_messages.append(
+                        'Downloading dependency %s: %s done (archived size)'
+                        % (dep.child_path, size_str(dependency_state.size_bytes))
+                    )
+                    dependencies_ready = False
+                elif dependency_state.stage == DependencyStage.FAILED:
+                    # Failed to download dependency; -> CLEANING_UP
+                    return run_state._replace(
+                        stage=LocalRunStage.CLEANING_UP,
+                        failure_message='Failed to download dependency %s: %s'
+                        % (dep.child_path, dependency_state.message),
+                    )
 
         # get the docker image
         docker_image = run_state.resources.docker_image
@@ -209,30 +213,53 @@ class LocalRunStateMachine(StateTransitioner):
 
         # All dependencies ready! Set up directories, symlinks and container. Start container.
         # 1) Set up a directory to store the bundle.
-        remove_path(run_state.bundle_path)
-        os.mkdir(run_state.bundle_path)
+        if self.shared_file_system:
+            if not os.path.exists(run_state.bundle_path):
+                if run_state.bundle_dir_wait_num_tries == 0:
+                    message = (
+                        "Bundle directory cannot be found on the shared filesystem. "
+                        "Please ensure the shared fileystem between the server and "
+                        "your worker is mounted properly or contact your administrators."
+                    )
+                    logger.error(message)
+                    return run_state._replace(
+                        stage=LocalRunStage.CLEANING_UP, failure_message=message
+                    )
+                return run_state._replace(
+                    run_status="Waiting for bundle directory to be created by the server",
+                    bundle_dir_wait_num_tries=run_state.bundle_dir_wait_num_tries - 1,
+                )
+        else:
+            remove_path(run_state.bundle_path)
+            os.mkdir(run_state.bundle_path)
 
         # 2) Set up symlinks
-        dependencies = []
-        docker_dependencies_path = '/' + run_state.bundle.uuid + '_dependencies'
+        docker_dependencies = []
+        docker_dependencies_path = (
+            '/' + run_state.bundle.uuid + ('_dependencies' if not self.shared_file_system else '')
+        )
         for dep_key, dep in run_state.bundle.dependencies.items():
-            child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
-            if not child_path.startswith(run_state.bundle_path):
+            full_child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
+            if not full_child_path.startswith(run_state.bundle_path):
+                # Dependencies should end up in their bundles (ie prevent using relative paths like ..
+                # to get out of their parent bundles
                 message = 'Invalid key for dependency: %s' % (dep.child_path)
                 logger.error(message)
                 return run_state._replace(stage=LocalRunStage.CLEANING_UP, failure_message=message)
-
-            dependency_path = self.dependency_manager.get(run_state.bundle.uuid, dep_key).path
-            dependency_path = os.path.join(
-                self.dependency_manager.dependencies_dir, dependency_path
-            )
-
             docker_dependency_path = os.path.join(docker_dependencies_path, dep.child_path)
-
-            os.symlink(docker_dependency_path, child_path)
+            if self.shared_file_system:
+                # On a shared FS, we know where the dep is stored and can get the contents directly
+                dependency_path = os.path.realpath(os.path.join(dep.location, dep.parent_path))
+            else:
+                # On a dependency_manager setup ask the manager where the dependency is
+                dependency_path = os.path.join(
+                    self.dependency_manager.dependencies_dir,
+                    self.dependency_manager.get(run_state.bundle.uuid, dep_key).path,
+                )
+                os.symlink(docker_dependency_path, full_child_path)
             # These are turned into docker volume bindings like:
             #   dependency_path:docker_dependency_path:ro
-            dependencies.append((dependency_path, docker_dependency_path))
+            docker_dependencies.append((dependency_path, docker_dependency_path))
 
         # 3) Set up container
         if run_state.resources.network:
@@ -255,7 +282,7 @@ class LocalRunStateMachine(StateTransitioner):
             container = docker_utils.start_bundle_container(
                 run_state.bundle_path,
                 run_state.bundle.uuid,
-                dependencies,
+                docker_dependencies,
                 run_state.bundle.command,
                 run_state.resources.docker_image,
                 network=docker_network,
@@ -397,7 +424,7 @@ class LocalRunStateMachine(StateTransitioner):
     def _transition_from_CLEANING_UP(self, run_state):
         """
         1- delete the container if still existent
-        2- clean up the dependencies from bundle folder
+        2- clean up the dependencies from bundle directory
         3- release the dependencies in dependency manager
         4- If bundle has contents to upload (i.e. was RUNNING at some point),
             move to UPLOADING_RESULTS state
@@ -422,7 +449,8 @@ class LocalRunStateMachine(StateTransitioner):
                     time.sleep(1)
 
         for dep_key, dep in run_state.bundle.dependencies.items():
-            self.dependency_manager.release(run_state.bundle.uuid, dep_key)
+            if not self.shared_file_system:  # No dependencies if shared fs worker
+                self.dependency_manager.release(run_state.bundle.uuid, dep_key)
 
             child_path = os.path.join(run_state.bundle_path, dep.child_path)
             try:
@@ -430,7 +458,8 @@ class LocalRunStateMachine(StateTransitioner):
             except Exception:
                 logger.error(traceback.format_exc())
 
-        if run_state.has_contents:
+        if not self.shared_file_system and run_state.has_contents:
+            # No need to upload results since results are directly written to bundle store
             return run_state._replace(
                 stage=LocalRunStage.UPLOADING_RESULTS,
                 run_status='Uploading results',
@@ -506,14 +535,14 @@ class LocalRunStateMachine(StateTransitioner):
             run_state = run_state._replace(failure_message=run_state.kill_message)
         return run_state._replace(stage=LocalRunStage.FINALIZING, run_status="Finalizing bundle")
 
-    @staticmethod
-    def _transition_from_FINALIZING(run_state):
+    def _transition_from_FINALIZING(self, run_state):
         """
         If a full worker cycle has passed since we got into FINALIZING we already reported to
         server so can move on to FINISHED. Can also remove bundle_path now
         """
         if run_state.finalized:
-            remove_path(run_state.bundle_path)
+            if not self.shared_file_system:
+                remove_path(run_state.bundle_path)  # don't remove bundle if shared FS
             return run_state._replace(stage=LocalRunStage.FINISHED, run_status='Finished')
         else:
             return run_state

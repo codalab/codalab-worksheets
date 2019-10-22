@@ -180,7 +180,8 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
-            path = os.path.normpath(self._bundle_store.get_bundle_location(bundle.uuid))
+            bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+            path = os.path.normpath(bundle_location)
 
             deps = []
             for dep in bundle.dependencies:
@@ -213,7 +214,7 @@ class BundleManager(object):
                 for dependency_path, child_path in deps:
                     path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
-            self._upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
+            self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
         except Exception as e:
@@ -261,7 +262,7 @@ class BundleManager(object):
         Acknowledge recently finished bundles to workers so they can discard run information.
         """
         for bundle in self._model.batch_get_bundles(state=State.FINALIZING, bundle_type='run'):
-            worker = workers.get_bundle_worker(bundle.uuid)
+            worker = self._model.get_bundle_worker(bundle.uuid)
             if worker is None:
                 logger.info(
                     'Bringing bundle offline %s: %s', bundle.uuid, 'No worker claims bundle'
@@ -271,7 +272,8 @@ class BundleManager(object):
                 worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
             ):
                 logger.info('Acknowledged finalization of run bundle %s', bundle.uuid)
-                self._model.transition_bundle_finished(bundle)
+                bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+                self._model.transition_bundle_finished(bundle, bundle_location)
 
     def _bring_offline_stuck_running_bundles(self, workers):
         """
@@ -388,12 +390,16 @@ class BundleManager(object):
         needed_deps = set([(dep.parent_uuid, dep.parent_path) for dep in bundle.dependencies])
 
         def get_sort_key(worker):
-            deps = set(worker['dependencies'])
+            if worker['shared_file_system']:
+                num_available_deps = len(needed_deps)
+            else:
+                deps = set(worker['dependencies'])
+                num_available_deps = len(needed_deps & deps)
             worker_id = worker['worker_id']
 
             # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
             gpu_priority = bundle_resources.gpus or not has_gpu[worker_id]
-            return (gpu_priority, len(needed_deps & deps), worker['cpus'], random.random())
+            return (gpu_priority, num_available_deps, worker['cpus'], random.random())
 
         workers_list.sort(key=get_sort_key, reverse=True)
 
@@ -406,10 +412,7 @@ class BundleManager(object):
         """
         if self._model.transition_bundle_starting(bundle, worker['user_id'], worker['worker_id']):
             workers.set_starting(bundle.uuid, worker)
-            if (
-                self._worker_model.shared_file_system
-                and worker['user_id'] == self._model.root_user_id
-            ):
+            if worker['shared_file_system']:
                 # On a shared file system we create the path here to avoid NFS
                 # directory cache issues.
                 path = self._bundle_store.get_bundle_location(bundle.uuid)
@@ -509,7 +512,7 @@ class BundleManager(object):
         message = {}
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
-        if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
+        if worker['shared_file_system']:
             message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
             for dependency in message['bundle']['dependencies']:
                 dependency['location'] = self._bundle_store.get_bundle_location(

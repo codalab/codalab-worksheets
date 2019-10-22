@@ -18,6 +18,7 @@ class BundleManagerTest(unittest.TestCase):
                 'tag': None,
                 'run_uuids': [],
                 'dependencies': [],
+                'shared_file_system': False,
             },
             {
                 'worker_id': 2,
@@ -27,6 +28,7 @@ class BundleManagerTest(unittest.TestCase):
                 'tag': None,
                 'run_uuids': [],
                 'dependencies': [],
+                'shared_file_system': False,
             },
             {
                 'worker_id': 3,
@@ -36,6 +38,7 @@ class BundleManagerTest(unittest.TestCase):
                 'tag': None,
                 'run_uuids': [],
                 'dependencies': [],
+                'shared_file_system': False,
             },
         ]
         return workers_list
