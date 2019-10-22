@@ -128,7 +128,6 @@ const kDefaultCpu = 1;
 const kDefaultGpu = 0;
 const kDefaultDockerCpu = "codalab/default-cpu:latest";
 const kDefaultDockerGpu = "codalab/default-gpu:latest";
-const kDefaultDisk = "10g";
 const kDefaultMemory = "4g";
 
 class NewRun extends React.Component<{
