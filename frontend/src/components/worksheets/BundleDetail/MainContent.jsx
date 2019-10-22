@@ -133,7 +133,7 @@ class MainContent extends React.Component<
 
 const styles = (theme) => ({
     outter: {
-       // flex: 1,
+        flex: 1,
     },
     row: {
         display: 'flex',
