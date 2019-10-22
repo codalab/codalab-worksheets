@@ -100,10 +100,23 @@ class DownloadManager(object):
         Returns a file-like object containing a tarred and gzipped archive
         of the given directory.
         """
-        if self._is_available_locally(uuid):
+        bundle_state = self._bundle_model.get_bundle_state(uuid)
+        # Raises NotFoundException if uuid is invalid
+
+        if bundle_state == State.PREPARING:
+            raise NotFoundError(
+                "Bundle {} hasn't started running yet, files not available".format(uuid)
+            )
+        elif bundle_state != State.RUNNING:
             directory_path = self._get_target_path(uuid, path)
             return file_util.tar_gzip_directory(directory_path)
         else:
+            # stream_tarred_gzipped_directory calls are sent to the worker even
+            # on a shared filesystem since
+            # 1) due to NFS caching the worker has more up to date
+            #   information on directory contents
+            # 2) the logic of hiding
+            #   the dependency paths doesn't need to be re-implemented here.
             worker = self._bundle_model.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
