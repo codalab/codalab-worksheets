@@ -142,7 +142,7 @@ class TableWorksheetRow extends React.Component {
                 <td>
                     <div onClick={this.handleRowClick}>
                         <a href='javascript:void(0)' onClick={this.handleTextClick}>
-                            {`${decodeURI(item.title) + " "}[${decodeURI(item.name)}]`}
+                            {`${decodeURIComponent(item.title) + " "}[${item.name}]`}
                         </a>
                     </div>
                 </td>

@@ -56,7 +56,7 @@ class EditableFieldBase extends React.Component<{
         $.ajax({
             type: this.props.method,
             url: this.props.url,
-            data: JSON.stringify(this.props.buildPayload(encodeURI(this.state.value))),
+            data: JSON.stringify(this.props.buildPayload(encodeURIComponent(this.state.value))),
             contentType: 'application/json; charset=UTF-8',
             dataType: 'json',
             cache: false,

@@ -145,6 +145,7 @@ def get_worksheet_uuid(model, user, base_worksheet_uuid, worksheet_spec):
         )
         message = "uuid starting with '%s'" % (worksheet_spec,)
     else:
+        spec_util.check_name(worksheet_spec)
         worksheets = model.batch_get_worksheets(
             fetch_items=False, name=worksheet_spec, base_worksheet_uuid=base_worksheet_uuid
         )
