@@ -325,7 +325,6 @@ class BundleRow extends Component {
                     className={classNames({
                         [classes.contentRow]: true,
                         [classes.highlight]: this.props.focused,
-                        [classes.cursor]: this.props.focused,
                         [classes.lowlight]: !this.props.focused && this.state.showDetail,
                     })}
                 >
@@ -525,9 +524,6 @@ const styles = (theme) => ({
     },
     lowlight: {
         backgroundColor: `${theme.color.grey.light} !important`,
-    },
-    cursor: {
-        borderLeft: '#1d91c0 solid 3px',
     },
 });
 
