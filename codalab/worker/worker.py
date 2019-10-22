@@ -111,8 +111,8 @@ class Worker(object):
             action_type = response['type']
             logger.debug('Received %s message: %s', action_type, response)
             if action_type in ['read', 'netcat']:
+                socket_id = response['socket_id']
                 if not self._run_manager.has_run(response['uuid']):
-                    socket_id = response['socket_id']
                     self.read_run_missing(socket_id)
                     return
             if action_type == 'run':
