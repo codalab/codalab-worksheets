@@ -133,6 +133,7 @@ class TableWorksheetRow extends React.Component {
             this.props.updateRowIndex(this.props.rowIndex, true);
         }
     };
+
     render() {
         var item = this.props.item;
         var className = /*'type-worksheet' + */ this.props.focused ? ' focused' : '';
