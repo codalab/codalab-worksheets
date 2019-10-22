@@ -60,7 +60,12 @@ class MySQLModel(BundleModel):
     # been converted to the appropriate types that perform automatic encoding.
     # (See tables.py for more details.)
     # These two methods are currently used for: worksheet title, body
-    # Please update this comment if more fields are using this encoding hack
+    # Please update the line above if more fields are using this encoding hack
+    # These two methods are needed right now for unicode support because the
+    # database configuration doesn't support storing unicode directly.
+    # To correctly use it, we should find all codes on the backend side that
+    # actually stores/gets the encoded field
+
 
     def encode_str(self, value):
         return value.encode()
