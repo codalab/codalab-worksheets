@@ -1043,6 +1043,7 @@ class BundleCLI(object):
             'last_checkin',
             'tag',
             'runs',
+            'shared_file_system',
         ]
 
         data = []
@@ -1060,6 +1061,7 @@ class BundleCLI(object):
                     ),
                     'tag': worker['tag'],
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
+                    'shared_file_system': worker['shared_file_system'],
                 }
             )
 

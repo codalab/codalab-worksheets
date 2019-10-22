@@ -133,6 +133,22 @@ services:
       - service
       - worker
 
+  worker-shared-file-system:
+    image: codalab/worker:${CODALAB_VERSION}
+    command: cl-worker --server http://rest-server:${CODALAB_REST_PORT} --verbose --work-dir ${CODALAB_WORKER_DIR} --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX} --id ${HOSTNAME} --shared-file-system
+    <<: *codalab-base
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
+    depends_on:
+      - rest-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
+      - ${CODALAB_HOME}:${CODALAB_HOME}
+      - ${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}
+    networks:
+      - service
+      - worker
+
   monitor:
     image: codalab/server:${CODALAB_VERSION}
     command: python3.6 monitor.py --log-path ${CODALAB_MONITOR_DIR}/monitor.log --backup-path ${CODALAB_MONITOR_DIR}
