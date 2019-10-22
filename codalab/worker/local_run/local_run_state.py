@@ -72,6 +72,7 @@ LocalRunState = namedtuple(
         'run_status',  # str
         'bundle',  # BundleInfo
         'bundle_path',  # str
+        'bundle_dir_wait_num_tries',  # Optional[int]
         'resources',  # RunResources
         'bundle_start_time',  # int
         'container_start_time',  # Optional[int]
@@ -213,16 +214,21 @@ class LocalRunStateMachine(StateTransitioner):
         # All dependencies ready! Set up directories, symlinks and container. Start container.
         # 1) Set up a directory to store the bundle.
         if self.shared_file_system:
-            try:
-                self._wait_for_bundle_directory(run_state)
-            except self.NoBundleDirectoryException as ex:
-                message = (
-                    'Bundle directory unavailable. Please make sure the bundle store is properly mounted'
-                    ' on your worker host machine or contact your Codalab administrators: %s'
-                    % str(ex)
+            if not os.path.exists(run_state.bundle_path):
+                if run_state.bundle_dir_wait_num_tries == 0:
+                    message = (
+                        "Bundle directory cannot be found on the shared filesystem. "
+                        "Please ensure the shared fileystem between the server and "
+                        "your worker is mounted properly or contact your administrators."
+                    )
+                    logger.error(message)
+                    return run_state._replace(
+                        stage=LocalRunStage.CLEANING_UP, failure_message=message
+                    )
+                return run_state._replace(
+                    run_status="Waiting for bundle directory to be created by the server",
+                    bundle_dir_wait_num_tries=run_state.bundle_dir_wait_num_tries - 1,
                 )
-                logger.error(message)
-                return run_state._replace(stage=LocalRunStage.CLEANING_UP, failure_message=message)
         else:
             remove_path(run_state.bundle_path)
             os.mkdir(run_state.bundle_path)
@@ -303,24 +309,6 @@ class LocalRunStateMachine(StateTransitioner):
             cpuset=cpuset,
             gpuset=gpuset,
         )
-
-    class NoBundleDirectoryException(Exception):
-        pass
-
-    def _wait_for_bundle_directory(self, run_state):
-        """
-        To avoid NFS directory caching issues, the bundle manager creates
-        the bundle directory on shared filesystems. Here we wait for the cache
-        to be renewed on the worker machine and for the directory to show up
-        """
-        retries_left = 120
-        while not os.path.exists(run_state.bundle_path) and retries_left > 0:
-            retries_left -= 1
-            time.sleep(0.5)
-        if not retries_left:
-            raise self.NoBundleDirectoryException(
-                "Bundle location {} not found".format(run_state.bundle_path)
-            )
 
     def _transition_from_RUNNING(self, run_state):
         """

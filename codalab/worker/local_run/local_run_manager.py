@@ -31,6 +31,8 @@ class LocalRunManager(BaseRunManager):
     KILL_TIMEOUT = 100
     # Directory name to store running bundles in worker filesystem
     BUNDLES_DIR_NAME = 'runs'
+    # Number of loops to check for bundle directory creation by server on shared FS workers
+    BUNDLE_DIR_WAIT_NUM_TRIES = 120
 
     def __init__(
         self,
@@ -220,6 +222,7 @@ class LocalRunManager(BaseRunManager):
             run_status='',
             bundle=bundle,
             bundle_path=os.path.realpath(bundle_path),
+            bundle_dir_wait_num_tries=LocalRunManager.BUNDLE_DIR_WAIT_NUM_TRIES,
             resources=resources,
             bundle_start_time=now,
             container_start_time=None,
