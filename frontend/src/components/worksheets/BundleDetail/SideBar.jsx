@@ -7,16 +7,15 @@ import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
-import CopyIcon from '@material-ui/icons/FileCopy';
-import Tooltip from '@material-ui/core/Tooltip';
+import {renderDuration} from '../../../util/worksheet_utils';
+import { Icon } from '@material-ui/core';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { BundleEditableField } from '../../EditableField';
 import PermissionDialog from '../PermissionDialog';
 import { renderFormat, shorten_uuid } from '../../../util/worksheet_utils';
 import { ConfigLabel } from '../ConfigPanel';
 import { renderPermissions } from '../../../util/worksheet_utils';
-import Popover from '@material-ui/core/Popover';
-
+import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
 
 class Dependency extends React.PureComponent<
     {
@@ -76,12 +75,15 @@ class SideBar extends React.Component{
         const stateSpecClass = bundleInfo.state === 'failed'
             ? 'failedState'
             : (bundleInfo.state === 'ready' ? 'readyState' : 'otherState');
+        const bundleRunTime = bundleInfo.metadata.time
+            ? renderDuration(bundleInfo.metadata.time)
+            : "-- --";
 
         return (
             <div>
                 {/** ----------------------------------------------------------------------------------------------- */}
                 <ConfigLabel label="Name" />
-                <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>
+                <div className={classes.wrappableText}>
                     <BundleEditableField
                         dataType={ metadataType.name }
                         fieldName="name"
@@ -93,7 +95,7 @@ class SideBar extends React.Component{
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
                 <ConfigLabel label="Description" />
-                <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>
+                <div className={classes.wrappableText}>
                     <BundleEditableField
                         dataType={ metadataType.description }
                         fieldName="description"
@@ -108,8 +110,20 @@ class SideBar extends React.Component{
                     <div className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`} style={{ display: 'inline' }}>
                         { bundleState }
                     </div>
-                    { metadata.failure_message && <Typography variant="body1">{ metadata.failure_message }</Typography> }
+                    {metadata.failure_message  
+                        &&  <div className={classes.wrappableText} style={{ color: 'red', display: 'inline'}}>      
+                                ({metadata.failure_message})
+                            </div>}
                 </div>
+                { isRunBundle ?
+                    <div>
+                        <ConfigLabel label="Run time: " inline={true}/>
+                        <div className={classes.dataText}>
+                            { bundleRunTime }
+                        </div>
+                    </div>
+                    :null
+                }
                 { isRunBundle &&
                         <Grid item xs={12}>  
                             <CopyToClipboard
@@ -121,19 +135,14 @@ class SideBar extends React.Component{
                                     <div className={classes.copyBox} style={{ display: 'inline' }}>
                                         Copy
                                     </div>
-                                </div>
-                                
-                                <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>
-
-                                
+                                </div>        
+                                <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>      
                                     {bundleInfo.command}
                                 </div>
                                 </div>
                             </CopyToClipboard>
                         </Grid>
                     }
-                
-                {/** ----------------------------------------------------------------------------------------------- */}
                 <div>
                     <ConfigLabel label="Owner:" inline={true}/>
                     <div className={classes.dataText}>
@@ -153,10 +162,12 @@ class SideBar extends React.Component{
                                 {renderFormat(metadata.data_size, metadataType.data_size) }
                             </div>
                         </div>
-                    :null
+                    :   null
                 }
                 <ConfigLabel label="Dependencies:" />
-                { isRunBundle? <Dependency bundleInfo={ bundleInfo }/> : <div>None</div>}
+                { isRunBundle && <Dependency bundleInfo={ bundleInfo }/>
+                    ? <Dependency bundleInfo={ bundleInfo }/> 
+                    : <div>None</div>}
                 <ConfigLabel label="Attached to these Worksheets:" />
                 {
                     bundleInfo.host_worksheets.length > 0
@@ -173,38 +184,46 @@ class SideBar extends React.Component{
                                 </a>
                             </div>
                         )
-                    : <div>None</div>
+                    :   <div>None</div>
                 }
                 <div>
                     <ConfigLabel label="Permissions:" inline={true}/>
                     <div
                         onClick={() => { this.setState({ showPermisson: !this.state.showPermisson}) }}
                         className={classes.permissions}
-                    >
-                        {renderPermissions(bundleInfo)}
+                    >   
+                        <Grid container>
+                            <Grid inline style={{ paddingTop: 2 }}>
+                                {renderPermissions(bundleInfo)}
+                            </Grid>
+                            <Grid inline>
+                                <Icon fontSize={'small'}>
+                                    <KeyboardArrowDownIcon />
+                                </Icon>
+                            </Grid>
+                        </Grid>
                     </div>
                     {this.state.showPermisson
-                    ?   <div>
-                            <PermissionDialog
-                                uuid={bundleInfo.uuid}
-                                permission_spec={bundleInfo.permission_spec}
-                                group_permissions={bundleInfo.group_permissions}
-                                onChange={this.props.onMetaDataChange}
-                                wperm
-                            />
-                        </div>
-                    :   null
+                        ?   <div>
+                                <PermissionDialog
+                                    uuid={bundleInfo.uuid}
+                                    permission_spec={bundleInfo.permission_spec}
+                                    group_permissions={bundleInfo.group_permissions}
+                                    onChange={this.props.onMetaDataChange}
+                                    wperm
+                                />
+                            </div>
+                        :   null
                     }
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
-                
                 <div>
                     <a
                         href={ `/bundles/${ bundleInfo.uuid }` }
                         className={ classes.uuidLink }
                         target="_blank"
                     >
-                        More details
+                        View Bundle details
                     </a>
                 </div>
             </div>
@@ -284,6 +303,11 @@ const styles = (theme) => ({
         fontSize: 14, 
         verticalAlign: 'middle', 
         paddingLeft: 2,
+    },
+    wrappableText: {
+        maxWidth: 300, 
+        flexWrap: 'wrap', 
+        flexShrink: 1,
     },
 });
 
