@@ -53,10 +53,13 @@ class EditableFieldBase extends React.Component<{
 
         this.setState({ editing: false });
         event.preventDefault();
+        let data = this.props.allowASCII
+                ? encodeURIComponent(this.state.value) 
+                : this.state.value;
         $.ajax({
             type: this.props.method,
             url: this.props.url,
-            data: JSON.stringify(this.props.buildPayload(encodeURIComponent(this.state.value))),
+            data: JSON.stringify(this.props.buildPayload(data)),
             contentType: 'application/json; charset=UTF-8',
             dataType: 'json',
             cache: false,
@@ -84,7 +87,13 @@ class EditableFieldBase extends React.Component<{
         }
     };
 
-    handleChange = (event) => {
+    handleAsciiChange = (event) => {
+        //only ascii
+        this.setState({ value: event.target.value, isValid: isAscii(event.target.value) });
+    };
+
+    handleFreeChange = (event) => {
+        //allows non-ascii
         this.setState({ value: event.target.value });
     };
 
@@ -111,9 +120,12 @@ class EditableFieldBase extends React.Component<{
                         autoFocus
                         value={this.state.value}
                         onBlur={this.onBlur}
-                        onChange={this.handleChange}
+                        onChange={this.props.allowASCII? this.handleFreeChange: this.handleAsciiChange}
                         onKeyDown={this.handleKeyPress}
                     />
+                    {!this.state.isValid && (
+                        <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>
+                    )}
                 </form>
             );
         }
@@ -165,6 +177,10 @@ export class WorksheetEditableField extends React.Component<{
             />
         );
     }
+}
+
+WorksheetEditableField.defaultProps = {
+    allowASCII: false,
 }
 
 export class BundleEditableField extends React.Component<{

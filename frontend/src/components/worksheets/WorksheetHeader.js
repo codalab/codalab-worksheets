@@ -29,9 +29,10 @@ export default ({ showActionBar, onShowNewUpload, onShowNewRun, onShowNewText, c
                                 key={'title' + canEdit}
                                 canEdit={canEdit}
                                 fieldName='title'
-                                value={(info && decodeURI(info.title)) || "Untitled"}
+                                value={(info && decodeURIComponent(info.title)) || "Untitled"}
                                 uuid={info && info.uuid}
                                 onChange={() => reloadWorksheet()}
+                                allowASCII={true}
                             />
                         </h5>
                         <Grid item style={{paddingTop: '10px'}}>
