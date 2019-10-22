@@ -165,7 +165,7 @@ class NewRun extends React.Component<{
         name: 'untitled-run',
         description: '',
         tags: [],
-        disk: kDefaultDisk,
+        disk: '',
         memory: kDefaultMemory,
         cpu: kDefaultCpu,
         gpu: kDefaultGpu,
@@ -361,12 +361,12 @@ class NewRun extends React.Component<{
                                 <ConfigLabel
                                     label="Disk"
                                     tooltip="Amount of disk space allocated for this run.
-                                    Defaults to amount of user quota left."
+                                    If left blank, the default is all remaining user quota."
                                 />
                                 <ConfigTextInput
                                     value={this.state.disk}
                                     onValueChange={(value) => this.setState({ disk: value })}
-                                    placeholder={`${kDefaultDisk}`}
+                                    placeholder={`${'disk space (g)'}`}
                                 />
                             </Grid>
                             <Grid item xs={6}>
