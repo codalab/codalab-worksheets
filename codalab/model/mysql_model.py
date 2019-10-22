@@ -59,6 +59,8 @@ class MySQLModel(BundleModel):
     # TODO: Remove these methods below when all appropriate table columns have
     # been converted to the appropriate types that perform automatic encoding.
     # (See tables.py for more details.)
+    # These two methods are currently used for: worksheet title, body
+    # Please update this comment if more fields are using this encoding hack
 
     def encode_str(self, value):
         return value.encode()

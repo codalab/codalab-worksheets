@@ -86,12 +86,12 @@ class EditableFieldBase extends React.Component<{
     };
 
     handleAsciiChange = (event) => {
-        //only ascii
+        // only ascii
         this.setState({ value: event.target.value, isValid: isAscii(event.target.value) });
     };
 
     handleFreeChange = (event) => {
-        //allows non-ascii
+        // allows non-ascii
         this.setState({ value: event.target.value });
     };
 
@@ -118,7 +118,7 @@ class EditableFieldBase extends React.Component<{
                         autoFocus
                         value={this.state.value}
                         onBlur={this.onBlur}
-                        onChange={this.props.allowASCII? this.handleFreeChange: this.handleAsciiChange}
+                        onChange={this.props.allowASCII ? this.handleFreeChange : this.handleAsciiChange}
                         onKeyDown={this.handleKeyPress}
                     />
                     {!this.state.isValid && (
