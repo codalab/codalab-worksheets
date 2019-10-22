@@ -43,11 +43,12 @@ class LocalReader(Reader):
         read_thread.start()
         self.read_threads.append(read_thread)
 
-    def get_target_info(self, run_state, path, dep_paths, args, reply_fn):
+    def get_target_info(self, run_state, path, args, reply_fn):
         """
         Return target_info of path in bundle as a message on the reply_fn
         """
         target_info = None
+        dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies])
 
         # if path is a dependency raise an error
         if path and os.path.normpath(path) in dep_paths:
@@ -74,10 +75,11 @@ class LocalReader(Reader):
 
         reply_fn(None, {'target_info': target_info}, None)
 
-    def stream_directory(self, run_state, path, dep_paths, args, reply_fn):
+    def stream_directory(self, run_state, path, args, reply_fn):
         """
         Stream the directory at path using a separate thread
         """
+        dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies])
         exclude_names = [] if path else dep_paths
 
         def stream_thread(final_path):
@@ -86,7 +88,7 @@ class LocalReader(Reader):
 
         self._threaded_read(run_state, path, stream_thread, reply_fn)
 
-    def stream_file(self, run_state, path, dep_paths, args, reply_fn):
+    def stream_file(self, run_state, path, args, reply_fn):
         """
         Stream the file  at path using a separate thread
         """
@@ -97,7 +99,7 @@ class LocalReader(Reader):
 
         self._threaded_read(run_state, path, stream_file, reply_fn)
 
-    def read_file_section(self, run_state, path, dep_paths, args, reply_fn):
+    def read_file_section(self, run_state, path, args, reply_fn):
         """
         Read the section of file at path of length args['length'] starting at
         args['offset'] (bytes) using a separate thread
@@ -111,7 +113,7 @@ class LocalReader(Reader):
 
         self._threaded_read(run_state, path, read_file_section_thread, reply_fn)
 
-    def summarize_file(self, run_state, path, dep_paths, args, reply_fn):
+    def summarize_file(self, run_state, path, args, reply_fn):
         """
         Summarize the file including args['num_head_lines'] and
         args['num_tail_lines'] but limited with args['max_line_length'] using

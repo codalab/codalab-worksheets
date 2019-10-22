@@ -299,17 +299,17 @@ class LocalRunManager(BaseRunManager):
             with self._lock:
                 self._runs[uuid] = self._runs[uuid]._replace(finalized=True)
 
-    def read(self, run_state, path, dep_paths, args, reply):
+    def read(self, run_state, path, args, reply):
         """
         Use your Reader helper to invoke the given read command
         """
-        self._reader.read(run_state, path, dep_paths, args, reply)
+        self._reader.read(run_state, path, args, reply)
 
-    def write(self, run_state, path, dep_paths, string):
+    def write(self, run_state, path, string):
         """
         Write `string` (string) to path in bundle with uuid.
         """
-        if os.path.normpath(path) in dep_paths:
+        if os.path.normpath(path) in set(dep.child_path for dep in run_state.bundle.dependencies):
             return
         with open(os.path.join(run_state.bundle_path, path), 'w') as f:
             f.write(string)
