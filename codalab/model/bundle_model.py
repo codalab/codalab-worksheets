@@ -1048,7 +1048,8 @@ class BundleModel(object):
         # Set tags
         for value in worksheet_values.values():
             value['tags'] = []
-            value['title'] = self.decode_str(value['title'])
+            if value['title']:
+                value['title'] = self.decode_str(value['title'])
         for row in tag_rows:
             worksheet_values[row.worksheet_uuid]['tags'].append(row.tag)
         if fetch_items:
