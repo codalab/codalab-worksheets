@@ -56,6 +56,7 @@ class EditableFieldBase extends React.Component<{
         let data = this.props.allowASCII
                 ? encodeURIComponent(this.state.value) 
                 : this.state.value;
+                
         $.ajax({
             type: this.props.method,
             url: this.props.url,
