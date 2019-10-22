@@ -162,7 +162,7 @@ class NewRun extends React.Component<{
     defaultConfig = {
         dependencies: [],
         command: "",
-        name: 'untitled-run',
+        name: '',
         description: '',
         tags: [],
         disk: kDefaultDisk,
@@ -322,7 +322,7 @@ class NewRun extends React.Component<{
                         <ConfigTextInput
                             value={this.state.name}
                             onValueChange={(value) => this.setState({ name: value })}
-                            placeholder="untitled-run"
+                            optional
                         />
 
                         <ConfigLabel
