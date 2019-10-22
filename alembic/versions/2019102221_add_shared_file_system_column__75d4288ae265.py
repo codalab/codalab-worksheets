@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    op.add_column('worker', sa.Column('shared_file_system', sa.Boolean(), nullable=False, server_default=0))
+    op.add_column('worker', sa.Column('shared_file_system', sa.Boolean(), nullable=False, server_default='0'))
 
 
 def downgrade():
