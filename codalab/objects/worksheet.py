@@ -33,7 +33,6 @@ class Worksheet(ORMObject):
         spec_util.check_uuid(self.uuid)
         spec_util.check_name(self.name)
 
-
     def __repr__(self):
         return 'Worksheet(uuid=%r, name=%r)' % (self.uuid, self.name)
 
