@@ -7101,7 +7101,9 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
 }
 .worksheet_content .ws-item > .focused {
   background-color: #e2f0f5;
-  box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.4);
+  border-left: #1d91c0 solid 3px;
+  box-shadow: 5px 0 5px 5px #e2f0f5;
+  margin-left: -3px;
   width: 100%;
 }
 .worksheet_content.editable .ws-item {
@@ -7134,6 +7136,7 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
 }
 .worksheet_content .type-markup > * {
   margin-bottom: 20px;
+  margin-left: 4px;
 }
 .worksheet_content .type-markup > *:last-child {
   margin-bottom: 0;
