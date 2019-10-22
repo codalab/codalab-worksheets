@@ -100,18 +100,22 @@ class DownloadManager(object):
         Returns a file-like object containing a tarred and gzipped archive
         of the given directory.
         """
-        worker = self._bundle_model.get_bundle_worker(uuid)
-        response_socket_id = self._worker_model.allocate_socket(
-            worker['user_id'], worker['worker_id']
-        )
-        try:
-            read_args = {'type': 'stream_directory'}
-            self._send_read_message(worker, response_socket_id, uuid, path, read_args)
-            fileobj = self._get_read_response_stream(response_socket_id)
-            return Deallocating(fileobj, self._worker_model, response_socket_id)
-        except Exception:
-            self._worker_model.deallocate_socket(response_socket_id)
-            raise
+        if self._is_available_locally(uuid):
+            directory_path = self._get_target_path(uuid, path)
+            return file_util.tar_gzip_directory(directory_path)
+        else:
+            worker = self._bundle_model.get_bundle_worker(uuid)
+            response_socket_id = self._worker_model.allocate_socket(
+                worker['user_id'], worker['worker_id']
+            )
+            try:
+                read_args = {'type': 'stream_directory'}
+                self._send_read_message(worker, response_socket_id, uuid, path, read_args)
+                fileobj = self._get_read_response_stream(response_socket_id)
+                return Deallocating(fileobj, self._worker_model, response_socket_id)
+            except Exception:
+                self._worker_model.deallocate_socket(response_socket_id)
+                raise
 
     @retry_if_no_longer_running
     def stream_file(self, uuid, path, gzipped):
