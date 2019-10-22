@@ -111,6 +111,7 @@ class SideBar extends React.Component<
                         onChange={ (description) => onUpdate({ description }) }
                     />
                 </div>
+                {/** ----------------------------------------------------------------------------------------------- */}
                 <div>
                     <ConfigLabel label="Status" inline={true}/>
                     <div className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`} style={{ display: 'inline' }}>
@@ -121,6 +122,7 @@ class SideBar extends React.Component<
                                 ({metadata.failure_message})
                             </div>}
                 </div>
+                {/** ----------------------------------------------------------------------------------------------- */}
                 { isRunBundle ?
                     <div>
                         <ConfigLabel label="Run time: " inline={true}/>
@@ -130,25 +132,27 @@ class SideBar extends React.Component<
                     </div>
                     :null
                 }
+                {/** ----------------------------------------------------------------------------------------------- */}
                 { isRunBundle &&
-                        <Grid item xs={12}>  
-                            <CopyToClipboard
-                                text={ bundleInfo.command }
-                            >
-                                <div>
-                                <div style={{ display: 'inline'}}>
-                                <ConfigLabel label="Command" inline={true}/>
-                                    <div className={classes.copyBox} style={{ display: 'inline' }}>
-                                        Copy
-                                    </div>
-                                </div>        
-                                <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>      
-                                    {bundleInfo.command}
+                    <Grid item xs={12}>  
+                        <CopyToClipboard
+                            text={ bundleInfo.command }
+                        >
+                            <div>
+                            <div style={{ display: 'inline'}}>
+                            <ConfigLabel label="Command" inline={true}/>
+                                <div className={classes.copyBox} style={{ display: 'inline' }}>
+                                    Copy
                                 </div>
-                                </div>
-                            </CopyToClipboard>
-                        </Grid>
-                    }
+                            </div>        
+                            <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>      
+                                {bundleInfo.command}
+                            </div>
+                            </div>
+                        </CopyToClipboard>
+                    </Grid>
+                }
+                {/** ----------------------------------------------------------------------------------------------- */}
                 <div>
                     <ConfigLabel label="Owner:" inline={true}/>
                     <div className={classes.dataText}>
@@ -170,10 +174,12 @@ class SideBar extends React.Component<
                         </div>
                     :   null
                 }
+                {/** ----------------------------------------------------------------------------------------------- */}
                 <ConfigLabel label="Dependencies:" />
                 { isRunBundle && <Dependency bundleInfo={ bundleInfo }/>
                     ? <Dependency bundleInfo={ bundleInfo }/> 
                     : <div>None</div>}
+                {/** ----------------------------------------------------------------------------------------------- */}
                 <ConfigLabel label="Attached to these Worksheets:" />
                 {
                     bundleInfo.host_worksheets.length > 0
@@ -192,6 +198,7 @@ class SideBar extends React.Component<
                         )
                     :   <div>None</div>
                 }
+                {/** ----------------------------------------------------------------------------------------------- */}
                 <div>
                     <ConfigLabel label="Permissions:" inline={true}/>
                     <div
