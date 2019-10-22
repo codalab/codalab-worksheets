@@ -185,7 +185,7 @@ class BundleDetail extends React.Component<
 
         return (
             <ConfigurationPanel
-                buttons={ <BundleActions bundleInfo={ bundleInfo } rerunItem={ rerunItem } onComplete={ bundleMetadataChanged } fileContents={ fileContents } /> }
+                buttons={ <BundleActions bundleInfo={ bundleInfo } rerunItem={ rerunItem } onComplete={ bundleMetadataChanged } /> }
                 sidebar={ <SideBar bundleInfo={ bundleInfo } onUpdate={ onUpdate } onMetaDataChange={ this.fetchBundleMetaData } /> }
             >
                 <MainContent
