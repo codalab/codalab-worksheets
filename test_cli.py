@@ -1146,8 +1146,12 @@ def test(ctx):
         # Download the whole bundle.
         path = temp_path('')
         run_command([cl, 'download', uuid, '-o', path])
-        assert not os.path.exists(os.path.join(path, 'dir')), '"dir" should not be in downloaded bundle'
-        assert not os.path.exists(os.path.join(path, 'file')), '"file" should not be in downloaded bundle'
+        assert not os.path.exists(
+            os.path.join(path, 'dir')
+        ), '"dir" should not be in downloaded bundle'
+        assert not os.path.exists(
+            os.path.join(path, 'file')
+        ), '"file" should not be in downloaded bundle'
         with open(os.path.join(path, 'stdout')) as fileobj:
             check_contains('5\n6\n7', fileobj.read())
         shutil.rmtree(path)
