@@ -62,8 +62,7 @@ class SideBar extends React.Component<
         bundleInfo: {},
         onUpdate: () => any,
     }
->
-    {
+>{
     state= {
         showPermisson: false,
     }
