@@ -1,9 +1,8 @@
 // @flow
 import * as React from 'react';
-import Typography from '@material-ui/core/Typography';
+import classNames from 'classnames';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
-import AccessTimeIcon from '@material-ui/icons/AccessTime';
 import {renderDuration} from '../../../util/worksheet_utils';
 import { FileBrowserLite } from '../../FileBrowser';
 import Button from '@material-ui/core/Button';
@@ -69,7 +68,7 @@ class MainContent extends React.Component<
                                 </Button>
                                 {this.state.showStdOut &&
                                     <Grid item xs={12}>
-                                        <div className={ classes.snippet }>
+                                        <div className={ classNames({[classes.snippet]:true, [classes.greyBackground]:true })}>
                                             { stdout }
                                         </div>
                                     </Grid>}
@@ -91,7 +90,7 @@ class MainContent extends React.Component<
                                 </Button>
                                 {this.state.showStdError &&
                                     <Grid item xs={12}>
-                                        <div className={ classes.snippet }>
+                                        <div className={ classNames({[classes.snippet]:true, [classes.greyBackground]:true })}>
                                             { stderr }
                                         </div>
                                     </Grid>}
@@ -113,11 +112,11 @@ class MainContent extends React.Component<
                     {this.state.showFileBrowser
                         ?   <Grid item xs={12}>
                                 { fileContents
-                                    ?   <div className={ classes.fileSnippet }>
+                                    ?   <div className={ classes.snippet }>
                                             { fileContents }
                                         </div>
                                     :   
-                                        <div className={ classes.fileSnippet }>
+                                        <div className={ classes.snippet }>
                                             <FileBrowserLite
                                             uuid={ bundleInfo.uuid }
                                         />
@@ -143,7 +142,6 @@ const styles = (theme) => ({
     },
 	snippet: {
 		fontFamily: 'monospace',
-        backgroundColor: theme.color.grey.lightest,
         maxHeight: 300, 
         width: 680,
         padding: 10,
@@ -151,14 +149,9 @@ const styles = (theme) => ({
         flexShrink: 1,
         overflow:'auto',
     },
-    fileSnippet: {
-		fontFamily: 'monospace',
-        maxHeight: 300, 
-        width: 680,
-        padding: 10,
-        flexShrink: 1,
-        overflow:'auto',
-    },
+    greyBackground: {
+        backgroundColor: theme.color.grey.lightest,
+    }
 });
 
 export default withStyles(styles)(MainContent);
