@@ -53,14 +53,11 @@ class EditableFieldBase extends React.Component<{
 
         this.setState({ editing: false });
         event.preventDefault();
-        let data = this.props.allowASCII
-                ? encodeURIComponent(this.state.value) 
-                : this.state.value;
-                
+
         $.ajax({
             type: this.props.method,
             url: this.props.url,
-            data: JSON.stringify(this.props.buildPayload(data)),
+            data: JSON.stringify(this.props.buildPayload(this.state.value)),
             contentType: 'application/json; charset=UTF-8',
             dataType: 'json',
             cache: false,

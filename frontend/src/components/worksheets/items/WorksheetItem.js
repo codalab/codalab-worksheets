@@ -133,7 +133,6 @@ class TableWorksheetRow extends React.Component {
             this.props.updateRowIndex(this.props.rowIndex, true);
         }
     };
-
     render() {
         var item = this.props.item;
         var className = /*'type-worksheet' + */ this.props.focused ? ' focused' : '';
@@ -142,7 +141,7 @@ class TableWorksheetRow extends React.Component {
                 <td>
                     <div onClick={this.handleRowClick}>
                         <a href='javascript:void(0)' onClick={this.handleTextClick}>
-                            {`${decodeURIComponent(item.title) + " "}[${item.name}]`}
+                            {`${item.title + " "}[${item.name}]`}
                         </a>
                     </div>
                 </td>
