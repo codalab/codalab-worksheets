@@ -44,10 +44,10 @@ class BaseRunManager(object, metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def get_run(self, uuid):
+    def has_run(self, uuid):
         """
-        Returns the state of the run with the given UUID if it is managed
-        by this RunManager, returns None otherwise
+        Returns True if the run with the given UUID is managed
+        by this RunManager, False otherwise
         """
         raise NotImplementedError
 

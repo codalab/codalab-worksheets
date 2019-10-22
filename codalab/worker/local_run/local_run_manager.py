@@ -286,13 +286,13 @@ class LocalRunManager(BaseRunManager):
 
         return propose_set(cpuset, request_cpus), propose_set(gpuset, request_gpus)
 
-    def get_run(self, uuid):
+    def has_run(self, uuid):
         """
-        Returns the state of the run with the given UUID if it is managed
-        by this RunManager, returns None otherwise
+        Returns True if the run with the given UUID is managed
+        by this RunManager, False otherwise
         """
         with self._lock:
-            return self._runs.get(uuid, None)
+            return uuid in self._runs
 
     def mark_finalized(self, uuid):
         """
@@ -302,27 +302,30 @@ class LocalRunManager(BaseRunManager):
             with self._lock:
                 self._runs[uuid] = self._runs[uuid]._replace(finalized=True)
 
-    def read(self, run_state, path, args, reply):
+    def read(self, uuid, path, args, reply):
         """
         Use your Reader helper to invoke the given read command
         """
+        run_state = self._runs[uuid]
         self._reader.read(run_state, path, args, reply)
 
-    def write(self, run_state, path, string):
+    def write(self, uuid, path, string):
         """
         Write `string` (string) to path in bundle with uuid.
         """
+        run_state = self._runs[uuid]
         if os.path.normpath(path) in set(dep.child_path for dep in run_state.bundle.dependencies):
             return
         with open(os.path.join(run_state.bundle_path, path), 'w') as f:
             f.write(string)
 
-    def netcat(self, run_state, port, message, reply):
+    def netcat(self, uuid, port, message, reply):
         """
         Write `message` (string) to port of bundle with uuid and read the response.
         Returns a stream with the response contents (bytes).
         """
         # TODO: handle this in a thread since this could take a while
+        run_state = self._runs[uuid]
         container_ip = docker_utils.get_container_ip(
             self.worker_docker_network.name, run_state.container
         )
@@ -339,10 +342,11 @@ class LocalRunManager(BaseRunManager):
         s.close()
         reply(None, {}, b''.join(total_data))
 
-    def kill(self, run_state):
+    def kill(self, uuid):
         """
         Kill bundle with uuid
         """
+        run_state = self._runs[uuid]
         with self._lock:
             run_state = run_state._replace(kill_message='Kill requested', is_killed=True)
             self._runs[run_state.bundle.uuid] = run_state
