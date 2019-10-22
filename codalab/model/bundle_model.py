@@ -4,6 +4,7 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 
 import collections
 import datetime
+import os
 import re
 import time
 from uuid import uuid4
@@ -13,7 +14,7 @@ from sqlalchemy.sql.expression import literal, true
 
 from codalab.bundles import get_bundle_subclass
 from codalab.common import IntegrityError, NotFoundError, precondition, UsageError
-from codalab.lib import crypt_util, spec_util, worksheet_util
+from codalab.lib import crypt_util, spec_util, worksheet_util, path_util
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
     bundle as cl_bundle,
@@ -37,6 +38,7 @@ from codalab.model.tables import (
     oauth2_client,
     oauth2_token,
     oauth2_auth_code,
+    worker as cl_worker,
     worker_run as cl_worker_run,
     db_metadata,
 )
@@ -209,6 +211,28 @@ class BundleModel(object):
 
     def get_worksheet_owner_ids(self, uuids):
         return self.get_owner_ids(cl_worksheet, uuids)
+
+    def get_bundle_worker(self, uuid):
+        """
+        Returns information about the worker that the given bundle is running
+        on. This method should be called only for bundles that are running.
+        """
+        with self.engine.begin() as conn:
+            row = conn.execute(
+                cl_worker_run.select().where(cl_worker_run.c.run_uuid == uuid)
+            ).fetchone()
+            precondition(row, 'Trying to find worker for bundle that is not running.')
+            worker_row = conn.execute(
+                cl_worker.select().where(
+                    and_(cl_worker.c.user_id == row.user_id, cl_worker.c.worker_id == row.worker_id)
+                )
+            ).fetchone()
+            return {
+                'user_id': worker_row.user_id,
+                'worker_id': worker_row.worker_id,
+                'shared_file_system': worker_row.shared_file_system,
+                'socket_id': worker_row.socket_id,
+            }
 
     def get_children_uuids(self, uuids):
         """
@@ -827,7 +851,7 @@ class BundleModel(object):
 
         return True
 
-    def transition_bundle_finished(self, bundle):
+    def transition_bundle_finished(self, bundle, bundle_location):
         """
         Transitions bundle to READY or FAILED state:
             The final state is determined by whether a failure message or exitcode
@@ -840,6 +864,10 @@ class BundleModel(object):
         if failure_message == 'Kill requested':
             state = State.KILLED
 
+        worker = self.get_bundle_worker(bundle.uuid)
+        if worker['shared_file_system']:
+            self.update_disk_metadata(bundle, bundle_location)
+
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
 
         with self.engine.begin() as connection:
@@ -851,6 +879,31 @@ class BundleModel(object):
     # ==========================================================================
     # Bundle state machine helper functions
     # ==========================================================================
+
+    def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False):
+        """
+        Computes the disk use and data hash of the given bundle.
+        Updates the database rows for the bundle and user with the new disk use
+        """
+        dirs_and_files = None
+        if os.path.isdir(bundle_location):
+            dirs_and_files = path_util.recursive_ls(bundle_location)
+        else:
+            dirs_and_files = [], [bundle_location]
+
+        data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
+        data_size = path_util.get_size(bundle_location, dirs_and_files)
+        if enforce_disk_quota:
+            disk_left = self.get_user_disk_quota_left(bundle.owner_id)
+            if data_size > disk_left:
+                raise UsageError(
+                    "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
+                    % (data_size, disk_left)
+                )
+
+        bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
+        self.update_bundle(bundle, bundle_update)
+        self.update_user_disk_used(bundle.owner_id)
 
     def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """

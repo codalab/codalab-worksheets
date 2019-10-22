@@ -677,7 +677,8 @@ def _update_bundle_contents_blob(uuid):
             simplify_archives=query_get_bool('simplify', default=True),
         )  # See UploadManager for full explanation of 'simplify'
 
-        local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
+        bundle_location = local.bundle_store.get_bundle_location(uuid)
+        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error

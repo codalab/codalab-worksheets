@@ -1146,8 +1146,12 @@ def test(ctx):
         # Download the whole bundle.
         path = temp_path('')
         run_command([cl, 'download', uuid, '-o', path])
-        assert not os.path.exists(os.path.join(path, 'dir')), '"dir" should not be in bundle'
-        assert not os.path.exists(os.path.join(path, 'file')), '"file" should not be in bundle'
+        assert not os.path.exists(
+            os.path.join(path, 'dir')
+        ), '"dir" should not be in downloaded bundle'
+        assert not os.path.exists(
+            os.path.join(path, 'file')
+        ), '"file" should not be in downloaded bundle'
         with open(os.path.join(path, 'stdout')) as fileobj:
             check_contains('5\n6\n7', fileobj.read())
         shutil.rmtree(path)
@@ -1704,12 +1708,23 @@ def test(ctx):
     # Check header which includes 8 columns in total from output.
     header = lines[0]
     check_contains(
-        ['worker_id', 'cpus', 'gpus', 'memory', 'free_disk', 'last_checkin', 'tag', 'runs'], header
+        [
+            'worker_id',
+            'cpus',
+            'gpus',
+            'memory',
+            'free_disk',
+            'last_checkin',
+            'tag',
+            'runs',
+            'shared_file_system',
+        ],
+        header,
     )
 
-    # Check number of not null values. First 6 columns should be not null. Column "tag" and "runs" could be empty.
+    # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
-    check_equals(True, len(worker_info) >= 6)
+    check_equals(True, len(worker_info) >= 7)
 
 
 @TestModule.register('rest1')

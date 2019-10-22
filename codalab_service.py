@@ -66,7 +66,9 @@ def should_run_service(args, service):
     services = [] if args.services is None else args.services
     if 'default' in args.services:
         services.extend(DEFAULT_SERVICES)
-
+    # 'worker-shared-file-system` is just `worker` but with a different argument, so they're equivalent for us
+    if service == 'worker-shared-file-system':
+        service = 'worker'
     return (service in services) and ('no-' + service not in services)
 
 
@@ -394,7 +396,7 @@ class CodalabArgs(object):
             choices=ALL_SERVICES,
             help='Service container to run command on',
         )
-        run_cmd.add_argument('command', metavar='CMD', type=str, help='Command to run')
+        run_cmd.add_argument('service_command', metavar='CMD', type=str, help='Command to run')
 
         return parser
 
@@ -487,7 +489,7 @@ class CodalabServiceManager(object):
                 self.build_images()
             self.start_services()
         elif command == 'run':
-            self.run_service_cmd(self.args.command, service=self.args.service)
+            self.run_service_cmd(self.args.service_command, service=self.args.service)
         elif command == 'logs':
             cmd_str = 'logs'
             if self.args.tail is not None:
@@ -652,7 +654,6 @@ class CodalabServiceManager(object):
                         'server/default_user_info/parallel_run_quota',
                         self.args.user_parallel_run_quota,
                     ),
-                    ('workers/shared_file_system', self.args.shared_file_system),
                     ('email/host', self.args.email_host),
                     ('email/username', self.args.email_username),
                     ('email/password', self.args.email_password),
@@ -695,7 +696,10 @@ class CodalabServiceManager(object):
         self.bring_up_service('worker-manager-gpu')
         self.bring_up_service('frontend')
         self.bring_up_service('nginx')
-        self.bring_up_service('worker')
+        if self.args.shared_file_system:
+            self.bring_up_service('worker-shared-file-system')
+        else:
+            self.bring_up_service('worker')
 
         if should_run_service(self.args, 'test'):
             self.run_tests()
