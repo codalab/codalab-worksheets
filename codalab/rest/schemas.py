@@ -110,9 +110,9 @@ class WorksheetPermissionSchema(Schema):
 class WorksheetSchema(Schema):
     id = fields.String(validate=validate_uuid, attribute='uuid')
     uuid = fields.String(attribute='uuid')  # for backwards compatibility
-    name = fields.String(validate=validate_name)
+    name = fields.String()
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
-    title = fields.String(validate=validate_ascii)
+    title = fields.String()
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
     tags = fields.List(fields.String(validate=validate_ascii))

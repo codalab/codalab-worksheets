@@ -53,11 +53,11 @@ class EditableFieldBase extends React.Component<{
 
         this.setState({ editing: false });
         event.preventDefault();
-
+        console.log(this.props.url)
         $.ajax({
             type: this.props.method,
             url: this.props.url,
-            data: JSON.stringify(this.props.buildPayload(this.state.value)),
+            data: JSON.stringify(this.props.buildPayload(encodeURI(this.state.value))),
             contentType: 'application/json; charset=UTF-8',
             dataType: 'json',
             cache: false,
@@ -86,7 +86,7 @@ class EditableFieldBase extends React.Component<{
     };
 
     handleChange = (event) => {
-        this.setState({ value: event.target.value, isValid: isAscii(event.target.value) });
+        this.setState({ value: event.target.value });
     };
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -115,9 +115,6 @@ class EditableFieldBase extends React.Component<{
                         onChange={this.handleChange}
                         onKeyDown={this.handleKeyPress}
                     />
-                    {!this.state.isValid && (
-                        <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>
-                    )}
                 </form>
             );
         }

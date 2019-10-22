@@ -29,7 +29,7 @@ export default ({ showActionBar, onShowNewUpload, onShowNewRun, onShowNewText, c
                                 key={'title' + canEdit}
                                 canEdit={canEdit}
                                 fieldName='title'
-                                value={(info && info.title) || "Untitled"}
+                                value={(info && decodeURI(info.title)) || "Untitled"}
                                 uuid={info && info.uuid}
                                 onChange={() => reloadWorksheet()}
                             />

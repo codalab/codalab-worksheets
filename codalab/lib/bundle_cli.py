@@ -26,6 +26,7 @@ import shutil
 import sys
 import time
 import textwrap
+import urllib
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
@@ -2922,9 +2923,9 @@ class BundleCLI(object):
             # Update the worksheet metadata.
             info = {'id': worksheet_info['id']}
             if args.name is not None:
-                info['name'] = args.name
+                info['name'] = urllib.parse.quote(args.name)
             if args.title is not None:
-                info['title'] = args.title
+                info['title'] = urllib.parse.quote(args.title)
             if args.tags is not None:
                 info['tags'] = args.tags
             if args.owner_spec is not None:
