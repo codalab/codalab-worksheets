@@ -26,7 +26,6 @@ import shutil
 import sys
 import time
 import textwrap
-import urllib
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
