@@ -109,28 +109,18 @@ class WorkerManager(object):
             )
         )
 
-        # There are two conditions under which we want more workers.
-        want_more_workers = False
+        want_workers = False
 
-        # 1) We have fewer than min_workers.
-        if len(worker_jobs) < self.args.min_workers:
-            logger.info(
-                'Want to launch a worker because we are under the minimum ({} < {})'.format(
-                    len(worker_jobs), self.args.min_workers
-                )
-            )
-            want_more_workers = True
-
-        # 2) There is a staged bundle AND there aren't any workers that are still booting up/starting
+        # There is a staged bundle AND there aren't any workers that are still booting up/starting
         if len(self.staged_uuids) > 0:
             logger.info(
                 'Want to launch a worker because we have {} > 0 staged bundles'.format(
                     len(self.staged_uuids)
                 )
             )
-            want_more_workers = True
+            want_workers = True
 
-        if want_more_workers:
+        if want_workers:
             # Make sure we don't launch workers too quickly.
             seconds_since_last_worker = int(time.time() - self.last_worker_start_time)
             if seconds_since_last_worker < self.args.min_seconds_between_workers:
@@ -139,7 +129,7 @@ class WorkerManager(object):
                         seconds_since_last_worker, self.args.min_seconds_between_workers
                     )
                 )
-                return
+                want_workers = False
 
             # Make sure we don't queue up more workers than staged UUIDs if there are
             # more workers still booting up than staged bundles
@@ -149,7 +139,7 @@ class WorkerManager(object):
                         len(pending_worker_jobs), len(self.staged_uuids)
                     )
                 )
-                return
+                want_workers = False
 
             # Don't launch more than `max_workers`.
             # For now, only the number of workers is used to determine what workers
@@ -160,8 +150,18 @@ class WorkerManager(object):
                         len(worker_jobs), self.args.max_workers
                     )
                 )
-                return
+                want_workers = False
 
+        # We have fewer than min_workers, so launch one regardless of other constraints
+        if len(worker_jobs) < self.args.min_workers:
+            logger.info(
+                'Launch a worker because we are under the minimum ({} < {})'.format(
+                    len(worker_jobs), self.args.min_workers
+                )
+            )
+            want_workers = True
+
+        if want_workers:
             logger.info('Starting a worker!')
             self.start_worker_job()
             self.last_worker_start_time = time.time()
