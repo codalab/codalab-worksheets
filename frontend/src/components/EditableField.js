@@ -100,7 +100,9 @@ class EditableFieldBase extends React.Component<{
     render() {
         if (!this.state.editing) {
             return (
-                <span className='editable-field' onClick={this.onClick}>
+                <span className='editable-field'
+                onClick={this.onClick}
+                style={{ color: '#225ea8'}}>
                     {this.state.value === '' ? '<none>' : this.state.value}
                 </span>
             );
@@ -115,11 +117,13 @@ class EditableFieldBase extends React.Component<{
                         onChange={this.handleChange}
                         onKeyDown={this.handleKeyPress}
                         maxLength="259"
-                        style={{ textOverflow: 'ellipsis',
+                        style={{
+                        textOverflow: 'ellipsis',
                         whiteSpace: 'pre',
                         maxWidth: '100%',
                         minWidth: '65px',
-                        padding: '0 4px 0 3px'}}
+                        padding: '0 4px 0 3px',
+                        color: '#225ea8'}}
                     />
                     {!this.state.isValid && (
                         <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>

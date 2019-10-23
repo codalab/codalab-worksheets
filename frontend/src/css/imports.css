@@ -6746,8 +6746,7 @@ body,
 }
 .editable-field:hover {
   cursor: text;
-  border: 2px solid #eeeeee;
-  border-radius: 2px;
+  outline: 2px solid #eeeeee;
 }
 #ws_search {
   position: fixed;
@@ -6755,7 +6754,7 @@ body,
   margin: 0;
   padding: 10px 0;
   text-align: center;
-  background: rgba(245, 245, 245, 0.55);
+  background: rgba(245, 245, 245, 0.9);
   margin-top: 0px;
   z-index: 1060;
 }
