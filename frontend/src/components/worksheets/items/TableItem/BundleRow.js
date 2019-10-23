@@ -138,7 +138,8 @@ class BundleRow extends Component {
             }
             if (url)
                 rowContent = (
-                    <a href={url} className='bundle-link' target='_blank' style={{ display: 'inline-block', width: 60 }}>
+                    <a href={url} className='bundle-link' target='_blank' style={{ display: 'inline-block', width: 60 }}
+                        onMouseDown={(e)=>{e.preventDefault(); window.open(e.target.href, '_blank')}}>
                         {rowContent}
                     </a>
                 );
