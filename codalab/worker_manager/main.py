@@ -53,7 +53,10 @@ def main():
     else:
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
     if args.max_workers < args.min_workers:
-        raise ValueError('Minimum # of workers (%d) greater than maximum # of workers (%d)' % (args.min_workers, args.max_workers))
+        raise ValueError(
+            'Minimum # of workers (%d) greater than maximum # of workers (%d)'
+            % (args.min_workers, args.max_workers)
+        )
 
     # Choose the worker manager type.
     if args.worker_manager_type == 'aws-batch':
