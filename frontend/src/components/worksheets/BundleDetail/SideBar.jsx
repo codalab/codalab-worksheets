@@ -62,7 +62,7 @@ class SideBar extends React.Component<
         bundleInfo: {},
         onUpdate: () => any,
     }
->{
+>   {
     state= {
         showPermisson: false,
     }
@@ -236,7 +236,7 @@ class SideBar extends React.Component<
                         className={ classes.uuidLink }
                         target="_blank"
                     >
-                        View Bundle details
+                        More details
                     </a>
                 </div>
             </div>
