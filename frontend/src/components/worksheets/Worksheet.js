@@ -218,7 +218,7 @@ class Worksheet extends React.Component {
             // Compute the current position of the focused item.
             var pos;
             if (index === -1) {
-                pos = -1000000; // Scroll all the way to the top
+                return; // If nothing is selected, don't scroll.
             } else {
                 var item = this.refs.list.refs['item' + index];
                 if (this._numTableRows(item.props.item)) {
