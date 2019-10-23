@@ -616,7 +616,7 @@ class Worksheet extends React.Component {
     }
 
     toggleActionBar() {	
-        this.setState({ showActionBar: !this.state.showActionBar });	
+        this.setState({ showActionBar: !this.state.showActionBar });
     }	
 
     focusActionBar() {	
@@ -961,7 +961,6 @@ class Worksheet extends React.Component {
             <React.Fragment>
                 {context_menu_display}
                 <WorksheetHeader
-                    key={"codalab-worksheet-header-" + this.state.showActionBar}
                     showActionBar={this.state.showActionBar}
                     canEdit={this.canEdit()}
                     info={info}

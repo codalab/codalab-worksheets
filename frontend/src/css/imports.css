@@ -6273,8 +6273,12 @@ fieldset[disabled] .btn-secondary.active {
   top: -7px;
   z-index: 0;
 }
+#worksheet {
+  height: calc(100vh - 70px - 70px - 83px);
+}
 #worksheet.search-hidden {
   margin-top: -61px;
+  height: calc(100vh - 70px - 83px);
 }
 .worksheet-icon-sm {
   background: url('../img/icon_worksheet_sm.png') no-repeat 0 10px;
@@ -6720,9 +6724,11 @@ a.bundle-state:focus {
   background-color: #c9302c;
 }
 html,
-body,
-#worksheet_container {
+body {
   height: 100%;
+}
+#worksheet_container {
+  overflow: auto;
 }
 #worksheet-message {
   position: absolute;
@@ -6742,7 +6748,6 @@ body,
   -o-transition: margin-top 0.35s ease;
   transition: margin-top 0.35s ease;
   position: relative;
-  height: calc(100% - 20px - 25px);
 }
 .editable-field:hover {
   cursor: text;
