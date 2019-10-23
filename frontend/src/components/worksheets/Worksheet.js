@@ -20,6 +20,7 @@ import UndoIcon from '@material-ui/icons/UndoOutlined';
 import ContractIcon from '@material-ui/icons/ChevronLeftOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandLessOutlined';
 import ErrorMessage from './ErrorMessage';
+import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
 
 /*
 Information about the current worksheet and its items.
@@ -345,6 +346,7 @@ class Worksheet extends React.Component {
             if ($('#glossaryModal').hasClass('in')) {
                 $('#glossaryModal').modal('hide');
             }
+            ContextMenuMixin.closeContextMenu();
         });
 
         Mousetrap.bind(
@@ -939,6 +941,10 @@ class Worksheet extends React.Component {
             />
         );
 
+        const context_menu_display = (
+            <ContextMenu userInfo={this.state.userInfo} ws={this.state.ws} />
+        );
+
         var worksheet_display = this.state.editMode ? raw_display : items_display;
         var editButtons = this.state.editMode ? editModeFeatures : editFeatures;
         if (!this.state.isValid){
@@ -951,6 +957,7 @@ class Worksheet extends React.Component {
         return (
             <React.Fragment>
                 {action_bar_display}
+                {context_menu_display}
                 <WorksheetHeader
                     key={"codalab-worksheet-header-" + this.state.showActionBar}
                     showActionBar={this.state.showActionBar}
