@@ -194,8 +194,14 @@ const ItemWrapperDraggable = (props) => {
         },
 		accept: ItemTypes.ITEM_WRAPPER,
 		drop: async (draggedItemProps, monitor, component) => {
-            console.log("dropped", props.item, draggedItemProps.item);
-            // await addItems({worksheetUUID: p, })
+            // console.log(props, props.item, draggedItemProps.item);
+            await addItems({
+                worksheetUUID,
+                ids: draggedItemProps.item.ids,
+                items: draggedItemProps.item.text.split(/[\n]/),
+                after_sort_key: borderTop ? props.item.sort_keys[0] : props.item.sort_keys[props.item.sort_keys.length]
+            });
+            // reloadWorksheet();
             // alert(createAlertText(this.url, jqHXR.responseText));
         },
         hover(draggedItemProps, monitor, component) {
