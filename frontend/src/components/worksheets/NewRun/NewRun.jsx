@@ -128,7 +128,6 @@ const kDefaultCpu = 1;
 const kDefaultGpu = 0;
 const kDefaultDockerCpu = "codalab/default-cpu:latest";
 const kDefaultDockerGpu = "codalab/default-gpu:latest";
-const kDefaultDisk = "10g";
 const kDefaultMemory = "4g";
 
 class NewRun extends React.Component<{
@@ -165,7 +164,7 @@ class NewRun extends React.Component<{
         name: '',
         description: '',
         tags: [],
-        disk: kDefaultDisk,
+        disk: '',
         memory: kDefaultMemory,
         cpu: kDefaultCpu,
         gpu: kDefaultGpu,
@@ -361,12 +360,12 @@ class NewRun extends React.Component<{
                                 <ConfigLabel
                                     label="Disk"
                                     tooltip="Amount of disk space allocated for this run.
-                                    Defaults to amount of user quota left."
+                                    If left blank, the default is all remaining user quota."
                                 />
                                 <ConfigTextInput
                                     value={this.state.disk}
                                     onValueChange={(value) => this.setState({ disk: value })}
-                                    placeholder={`${kDefaultDisk}`}
+                                    placeholder={`${'disk space (g)'}`}
                                 />
                             </Grid>
                             <Grid item xs={6}>

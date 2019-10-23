@@ -64,12 +64,12 @@ class ContextMenu extends React.Component {
 
     handleOpenEvent = (payload) => {
         this.setState(Immutable({ ...payload, mouseState: mouse }));
-        $('.ws-container').css({ overflow: 'hidden' });
+        $('#worksheet_container').css({ overflow: 'hidden' });
     };
 
     closeMenu = () => {
         this.setState(this.getInitialState());
-        $('.ws-container').css({ overflow: 'auto' });
+        $('#worksheet_container').css({ overflow: 'auto' });
     };
 
     render() {

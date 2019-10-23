@@ -121,7 +121,7 @@ class BundleRow extends Component {
             if (col === 0) {
                 url = baseUrl;
                 showDetailButton = 
-                        <IconButton onClick={this.handleDetailClick}>
+                        <IconButton onClick={this.handleDetailClick} style={{ padding: 2 }}>
                             {this.state.showDetail?
                             <ExpandLessIcon/>:
                             <ExpandMoreIcon/>}
@@ -148,7 +148,7 @@ class BundleRow extends Component {
                 <TableCell
                     key={col}
                     classes={{
-                        root: classes.root,
+                        root: classes.rootNoPad,
                     }}
                 >
                     {showDetailButton}
@@ -159,7 +159,15 @@ class BundleRow extends Component {
 
          // Keyboard opening/closing
          if (this.props.focused) {
-             Mousetrap.bind(['enter'], (e) => this.setState((state) => ({ showDetail: !state.showDetail })), 'keydown');
+             // Use e.preventDefault to avoid openning selected link
+             Mousetrap.bind(
+                ['enter'], 
+                (e) => {
+                    e.preventDefault();
+                    this.setState((state) => ({ showDetail: !state.showDetail }))
+                    }, 
+                'keydown'
+            );
              Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
          }
 
@@ -184,7 +192,6 @@ class BundleRow extends Component {
                     className={classNames({
                         [classes.contentRow]: true,
                         [classes.highlight]: this.props.focused,
-                        [classes.cursor]: this.props.focused,
                         [classes.lowlight]: !this.props.focused && this.state.showDetail,
                     })}
                 >
@@ -223,8 +230,8 @@ class BundleRow extends Component {
                                     </Button>
                                 </DialogActions>
                             </Dialog>
-
-                        </div>
+                            
+                            </div>
                     </TableCell>
                 </TableRow>
                 {/** ---------------------------------------------------------------------------------------------------
@@ -309,6 +316,9 @@ const styles = (theme) => ({
     },
     iconButtonRoot: {
         backgroundColor: theme.color.grey.lighter,
+        padding: "1px 2px",
+        marginBottom: 3,
+        marginRight: 1,
     },
     buttonRoot: {
         width: 120,
@@ -323,17 +333,15 @@ const styles = (theme) => ({
         marginRight: theme.spacing.large,
     },
     contentRow: {
-        height: 36,
+        height: 26,
         borderBottom: '2px solid #ddd',
+        padding: 0,
     },
     highlight: {
         backgroundColor: `${theme.color.primary.lightest} !important`,
     },
     lowlight: {
         backgroundColor: `${theme.color.grey.light} !important`,
-    },
-    cursor: {
-        borderLeft: '#1d91c0 solid 3px',
     },
 });
 

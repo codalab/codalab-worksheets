@@ -14,15 +14,16 @@ const styles = {
     backgroundColor: "white",
     paddingLeft: 28,
     paddingRight: 28,
-    boxShadow: "0px 2px 4px -2px rgba(0,0,0,0.2), 0px 4px 5px -1px rgba(0,0,0,0.14), 0px 1px 10px -1px rgba(0,0,0,0.12)"
+    position: 'relative',
+    // overflow: 'hidden',
 };
 
 export default ({ showActionBar, onShowNewUpload, onShowNewRun, onShowNewText, canEdit, info, classes, renderPermissions, reloadWorksheet, editButtons, anchorEl, setAnchorEl }) =>
-    <Sticky top={NAVBAR_HEIGHT - 6 + (showActionBar ? NAVBAR_HEIGHT : 0)} innerZ={1059}>
+    <Sticky top={NAVBAR_HEIGHT + 6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
             <div className='header-row'>
                 <Grid container direction="column">
-                    <Grid container item xs={12} spacing={2} alignItems="flex-start" justify="space-between">
+                    <Grid container item xs={12} spacing={0} alignItems="flex-start" justify="space-between">
                         <h5 className='worksheet-title'>
                             {/*TODO: use html contenteditable*/}
                             <WorksheetEditableField
@@ -32,6 +33,7 @@ export default ({ showActionBar, onShowNewUpload, onShowNewRun, onShowNewText, c
                                 value={(info && info.title) || "Untitled"}
                                 uuid={info && info.uuid}
                                 onChange={() => reloadWorksheet()}
+                                allowASCII={true}
                             />
                         </h5>
                         <Grid item style={{paddingTop: '10px'}}>
@@ -83,7 +85,8 @@ export default ({ showActionBar, onShowNewUpload, onShowNewRun, onShowNewText, c
                             )}
                         </Grid>
                     </Grid>
-                    <Grid container item xs={12} spacing={2} alignItems="flex-end" justify="space-between">
+                    <Grid container item xs={12} spacing={0} alignItems="flex-end" justify="space-between"
+                    style={{lineHeight: 2.5}}>
                         <Grid item>
                             <ActionButtons
                                 onShowNewUpload={onShowNewUpload}
