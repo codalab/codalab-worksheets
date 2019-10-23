@@ -1677,7 +1677,7 @@ def test(ctx):
 
     # unicode in worksheet title
     run_command([cl, 'wedit', wuuid, '--title', 'fáncy ünicode 你好世界😊'], 0)
-    # check_contains('fáncy ünicode 你好世界😊', run_command([cl, 'print']))
+    check_contains('fáncy ünicode 你好世界😊', run_command([cl, 'print', wuuid]))
 
     # Non-unicode in file contents
     uuid = run_command([cl, 'upload', '--contents', 'nounicode'])
