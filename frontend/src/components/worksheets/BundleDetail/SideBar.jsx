@@ -114,9 +114,9 @@ class SideBar extends React.Component<
                 {/** ----------------------------------------------------------------------------------------------- */}
                 <div>
                     <ConfigLabel label="Status" inline={true}/>
-                    <div className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`} style={{ display: 'inline' }}>
-                        { bundleState }
-                    </div>
+                    <span className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`} style={{ display: 'inline' }}>
+                        <Typography inline color='inherit'>{bundleState}</Typography>
+                    </span>
                     {metadata.failure_message  
                         &&  <div className={classes.wrappableText} style={{ color: 'red', display: 'inline'}}>      
                                 ({metadata.failure_message})
@@ -138,18 +138,16 @@ class SideBar extends React.Component<
                         <CopyToClipboard
                             text={ bundleInfo.command }
                         >
-                            <div>
-                            <div style={{ display: 'inline'}}>
-                            <ConfigLabel label="Command" inline={true}/>
-                                <div className={classes.copyBox} style={{ display: 'inline' }}>
-                                    Copy
-                                </div>
-                            </div>        
-                            <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>      
-                                {bundleInfo.command}
-                            </div>
-                            </div>
+                                <div style={{ display: 'inline'}}>
+                                    <ConfigLabel label="Command" inline={true}/>
+                                    <span className={ `${ classes.stateBox } ${ classes.copy }`} style={{ display: 'inline' }}>
+                                        <Typography color='inherit' inline>copy</Typography>
+                                    </span>
+                                </div>        
                         </CopyToClipboard>
+                        <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>      
+                            {bundleInfo.command}
+                        </div>
                     </Grid>
                 }
                 {/** ----------------------------------------------------------------------------------------------- */}
@@ -264,27 +262,21 @@ const styles = (theme) => ({
     },
     stateBox: {
         color: 'white',
-        fontSize: '12px',
         width: `50px`,
         textAlign: 'center',
         paddingLeft: 3,
         paddingRight: 3,
+        paddingTop: 1,
+        paddingBottom: 1,
         marginLeft: 3,
-        border: '1px solid',
-        borderRadius: '5px!important'
-    },
-    copyBox: {
-        color: 'white',
-        fontSize: '12px',
-        width: `50px`,
-        textAlign: 'center',
-        paddingLeft: 3,
-        paddingRight: 3,
-        marginLeft: 3,
-        border: '1px solid',
+        marginRight: 3,
+        border: '0px',
+        verticalAlign: 'middle',
         borderRadius: '5px!important',
+    },
+    copy: {
         backgroundColor: 'black',
-        cursor: 'copy',
+        cursor: 'copy'
     },
     readyState: {
         backgroundColor: theme.color.green.base,
