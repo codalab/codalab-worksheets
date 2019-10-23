@@ -158,7 +158,7 @@ class Worksheet extends React.Component {
         }
     };
 
-    setFocus = (index, subIndex, shouldScroll=true) => {
+    setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
@@ -385,6 +385,7 @@ class Worksheet extends React.Component {
         Mousetrap.bind(
             ['up', 'k'],
             function(e) {
+                e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                 var focusIndex = this.state.focusIndex;
                 var subFocusIndex = this.state.subFocusIndex;
                 var wsItems = this.state.ws.info.items;
@@ -411,6 +412,7 @@ class Worksheet extends React.Component {
         Mousetrap.bind(
             ['down', 'j'],
             function(e) {
+                e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                 var focusIndex = this.state.focusIndex;
                 var subFocusIndex = this.state.subFocusIndex;
                 var wsItems = this.state.ws.info.items;
