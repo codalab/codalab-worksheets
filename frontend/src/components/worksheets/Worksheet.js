@@ -721,6 +721,8 @@ class Worksheet extends React.Component {
                         var focus = this.getFocusAfterBundleRemoved(items);
                         this.setFocus(focus[0], focus[1]);
                     } else {
+                        // if the change has no impact on bundles, but on adding an item
+                        // then we want the focus to be the one below the current focus
                         this.setFocus(this.state.focusIndex + 1, this.state.subFocusIndex);
                     }
                     this.setState({
