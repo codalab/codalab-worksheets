@@ -718,8 +718,12 @@ class Worksheet extends React.Component {
                         // If the number of bundles decreases, then focus should be on the same bundle as before
                         // unless that bundle doesn't exist anymore, in which case we select the closest bundle that does exist,
                         // where closest means 'next' by default or 'last' if there is no next bundle.
-                        var focus = this.getFocusAfterBundleRemoved();
+                        var focus = this.getFocusAfterBundleRemoved(items);
                         this.setFocus(focus[0], focus[1]);
+                    } else {
+                        // if the change has no impact on bundles, but on adding an item
+                        // then we want the focus to be the one below the current focus
+                        this.setFocus(this.state.focusIndex + 1, 0);
                     }
                     this.setState({
                         updating: false,

@@ -61,7 +61,7 @@ class MarkdownItem extends React.Component {
     };
 
     deleteItem = () => {
-        const { reloadWorksheet, item, worksheetUUID, setFocus } = this.props;
+        const { reloadWorksheet, item, worksheetUUID, setFocus, focused, focusIndex } = this.props;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
 
         $.ajax({
@@ -71,8 +71,8 @@ class MarkdownItem extends React.Component {
             type: 'POST',
             success: (data, status, jqXHR) => {
                 reloadWorksheet();
-                if (this.props.focused) {
-                    setFocus(-1, 0);
+                if (focused) {
+                    setFocus(focusIndex < 1 ? -1 : this.props.focusIndex - 1, 0);
                 }
             },
             error: (jqHXR, status, error) => {
