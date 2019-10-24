@@ -1666,9 +1666,9 @@ def test(ctx):
     run_command([cl, 'wedit', wuuid, '--title', 'nonunicode'])
     check_contains('nonunicode', run_command([cl, 'print', wuuid]))
 
-    # TODO: enable with Unicode support.
-    run_command([cl, 'wedit', wuuid, '--title', 'fáncy ünicode 你好世界😊'], 1)
-    # check_contains('fáncy ünicode 你好世界😊', run_command([cl, 'print']))
+    # unicode in worksheet title
+    run_command([cl, 'wedit', wuuid, '--title', 'fáncy ünicode 你好世界😊'], 0)
+    check_contains('fáncy ünicode 你好世界😊', run_command([cl, 'print', wuuid]))
 
     # Non-unicode in file contents
     uuid = run_command([cl, 'upload', '--contents', 'nounicode'])
