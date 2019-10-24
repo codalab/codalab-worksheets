@@ -116,8 +116,6 @@ class AWSBatchWorkerManager(WorkerManager):
                     {'sourceVolume': 'work_dir', 'containerPath': work_dir, 'readOnly': False},
                 ],
                 'readonlyRootFilesystem': False,
-                # Ideally, we should use user everywhere, but that's a
-                # different issue.
                 'user': self.config.user,
             },
             'retryStrategy': {'attempts': 1},
