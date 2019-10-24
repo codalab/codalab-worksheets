@@ -723,7 +723,7 @@ class Worksheet extends React.Component {
                     } else {
                         // if the change has no impact on bundles, but on adding an item
                         // then we want the focus to be the one below the current focus
-                        this.setFocus(this.state.focusIndex + 1, this.state.subFocusIndex);
+                        this.setFocus(this.state.focusIndex + 1, 0);
                     }
                     this.setState({
                         updating: false,
