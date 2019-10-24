@@ -1099,6 +1099,8 @@ class BundleModel(object):
         # Set tags
         for value in worksheet_values.values():
             value['tags'] = []
+            if value['title']:
+                value['title'] = self.decode_str(value['title'])
         for row in tag_rows:
             worksheet_values[row.worksheet_uuid]['tags'].append(row.tag)
         if fetch_items:
@@ -1318,7 +1320,8 @@ class BundleModel(object):
             row = str_key_dict(row)
             row['group_permissions'] = uuid_group_permissions[row['uuid']]
             row_dicts.append(row)
-
+            if row['title']:
+                row['title'] = self.decode_str(row['title'])
         return row_dicts
 
     def new_worksheet(self, worksheet):
@@ -1433,6 +1436,8 @@ class BundleModel(object):
             worksheet.frozen = info['frozen']
         if 'owner_id' in info:
             worksheet.owner_id = info['owner_id']
+        if 'title' in info:
+            info['title'] = self.encode_str(info['title'])
         worksheet.validate()
         with self.engine.begin() as connection:
             if 'tags' in info:

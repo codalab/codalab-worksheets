@@ -875,6 +875,7 @@ class Worksheet extends React.Component {
                                                             value={info && info.title || '(untitled)'}
                                                             uuid={info && info.uuid}
                                                             onChange={() => this.reloadWorksheet()}
+                                                            allowASCII={true}
                                                         />
                                                     </h4>
                                                 </div>
