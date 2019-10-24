@@ -21,7 +21,6 @@ def main():
     )
     parser.add_argument('--min-workers', help='Minimum number of workers', type=int, default=1)
     parser.add_argument('--max-workers', help='Maximum number of workers', type=int, default=10)
-    parser.add_argument('--queue', help='Monitor and run workers on this queue (e.g., AWS Batch)')
     parser.add_argument(
         '--search', nargs='*', help='Monitor only runs that satisfy these criteria', default=[]
     )
@@ -44,6 +43,11 @@ def main():
         '--min-seconds-between-workers',
         help='Minimum time to wait between launching workers',
         default=1 * 60,
+    )
+    parser.add_argument(
+        '--queue-config-file',
+        help='Path to a JSON config file that sets config values specific '
+        'to your Worker Manager type. (eg AWS Batch)',
     )
     args = parser.parse_args()
 

@@ -1,4 +1,5 @@
 import boto3
+import json
 import logging
 import os
 import uuid
@@ -7,12 +8,42 @@ from .worker_manager import WorkerManager, WorkerJob
 logger = logging.getLogger(__name__)
 
 
+class AWSBatchWorkerManagerConfig:
+    DEFAULT_CONFIG = {
+        'region': 'us-east-1',
+        'job_definition_name': 'codalab-worker-4',
+        'cpus': 4,
+        'memory_mb': 1024 * 10,
+        'user': 'root',
+        'queue': 'codalab-batch-cpu',
+    }
+
+    def __init__(self, config_filename):
+        try:
+            with open(config_filename, 'r') as config_file:
+                config = json.load(config_file)
+        except (IOError, ValueError, json.decoder.JSONDecodeError) as ex:
+            logger.error(
+                "Problem loading config file [%s]: %s. Using the default config.",
+                config_filename,
+                str(ex),
+            )
+            config = AWSBatchWorkerManagerConfig.DEFAULT_CONFIG
+        self.region = config.get('region', self.DEFAULT_CONFIG['region'])
+        self.job_definition_name = config.get(
+            'job_definition_name', self.DEFAULT_CONFIG['job_definition_name']
+        )
+        self.cpus = config.get('cpus', self.DEFAULT_CONFIG['cpus'])
+        self.memory_mb = config.get('memory_mb', self.DEFAULT_CONFIG['memory_mb'])
+        self.user = config.get('user', self.DEFAULT_CONFIG['user'])
+        self.queue = config.get('queue', self.DEFAULT_CONFIG['queue'])
+
+
 class AWSBatchWorkerManager(WorkerManager):
     def __init__(self, args):
         super().__init__(args)
-        if not args.queue:
-            raise Exception('Missing queue for AWS Batch')
-        self.batch_client = boto3.client('batch', region_name='us-east-1')
+        self.config = AWSBatchWorkerManagerConfig(args.queue_config_file)
+        self.batch_client = boto3.client('batch', region_name=self.config.region)
 
     def get_worker_jobs(self):
         """Return list of workers."""
@@ -20,7 +51,7 @@ class AWSBatchWorkerManager(WorkerManager):
         # represent workers we launched (no one is sharing this queue).
         jobs = []
         for status in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING']:
-            response = self.batch_client.list_jobs(jobQueue=self.args.queue, jobStatus=status)
+            response = self.batch_client.list_jobs(jobQueue=self.config.queue, jobStatus=status)
             jobs.extend(response['jobSummaryList'])
         logger.info(
             'Workers: {}'.format(
@@ -32,11 +63,6 @@ class AWSBatchWorkerManager(WorkerManager):
 
     def start_worker_job(self):
         image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
-        logger.debug('Starting worker with image {}'.format(image))
-        job_definition_name = 'codalab-worker-4'  # This is just an arbitrary identifier.
-        # TODO: don't hard code these, get these from some config file.
-        cpus = 4
-        memory_mb = 1024 * 10
         worker_id = uuid.uuid4().hex
         work_dir = '/tmp/cl_worker_{}_work_dir'.format(
             worker_id
@@ -65,13 +91,13 @@ class AWSBatchWorkerManager(WorkerManager):
         # - docker.sock to enable us to start docker in docker
         # - work_dir so that the run bundle's output is visible to the worker
         job_definition = {
-            'jobDefinitionName': job_definition_name,
+            'jobDefinitionName': self.config.job_definition_name,
             'type': 'container',
             'parameters': {},
             'containerProperties': {
                 'image': image,
-                'vcpus': cpus,
-                'memory': memory_mb,
+                'vcpus': self.config.cpus,
+                'memory': self.config.memory_mb,
                 'command': command,
                 'environment': [
                     {'name': 'CODALAB_USERNAME', 'value': os.environ.get('CODALAB_USERNAME')},
@@ -90,10 +116,9 @@ class AWSBatchWorkerManager(WorkerManager):
                     {'sourceVolume': 'work_dir', 'containerPath': work_dir, 'readOnly': False},
                 ],
                 'readonlyRootFilesystem': False,
-                # TODO: if shared file system, use user
                 # Ideally, we should use user everywhere, but that's a
                 # different issue.
-                'user': 'root',
+                'user': self.config.user,
             },
             'retryStrategy': {'attempts': 1},
         }
@@ -112,12 +137,14 @@ class AWSBatchWorkerManager(WorkerManager):
 
         # Create a job definition
         response = self.batch_client.register_job_definition(**job_definition)
-        logger.info('register_job_definition', response)
+        logger.info('register_job_definition: %s', response)
 
         # Submit the job
         response = self.batch_client.submit_job(
-            jobName=job_definition_name, jobQueue=self.args.queue, jobDefinition=job_definition_name
+            jobName=self.config.job_definition_name,
+            jobQueue=self.config.queue,
+            jobDefinition=self.config.job_definition_name,
         )
-        logger.info('submit_job', response)
+        logger.info('submit_job: %s', response)
 
         # TODO: Do we need to delete the jobs and job definitions?
