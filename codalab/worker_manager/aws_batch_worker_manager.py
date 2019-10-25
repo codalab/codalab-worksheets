@@ -19,24 +19,21 @@ class AWSBatchWorkerManagerConfig:
     }
 
     def __init__(self, config_filename):
+        # First set everything to default
+        for attr, value in self.DEFAULT_CONFIG.items():
+            setattr(self, attr, value)
         try:
             with open(config_filename, 'r') as config_file:
                 config = json.load(config_file)
+            # Overwrite only attributes defined in the config file
+            for attr, value in config.items():
+                setattr(self, attr, value)
         except (IOError, ValueError, json.decoder.JSONDecodeError) as ex:
             logger.error(
                 "Problem loading config file [%s]: %s. Using the default config.",
                 config_filename,
                 str(ex),
             )
-            config = AWSBatchWorkerManagerConfig.DEFAULT_CONFIG
-        self.region = config.get('region', self.DEFAULT_CONFIG['region'])
-        self.job_definition_name = config.get(
-            'job_definition_name', self.DEFAULT_CONFIG['job_definition_name']
-        )
-        self.cpus = config.get('cpus', self.DEFAULT_CONFIG['cpus'])
-        self.memory_mb = config.get('memory_mb', self.DEFAULT_CONFIG['memory_mb'])
-        self.user = config.get('user', self.DEFAULT_CONFIG['user'])
-        self.queue = config.get('queue', self.DEFAULT_CONFIG['queue'])
 
 
 class AWSBatchWorkerManager(WorkerManager):
