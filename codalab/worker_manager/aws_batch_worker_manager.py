@@ -39,7 +39,7 @@ class AWSBatchWorkerManagerConfig:
 class AWSBatchWorkerManager(WorkerManager):
     def __init__(self, args):
         super().__init__(args)
-        self.config = AWSBatchWorkerManagerConfig(args.queue_config_file)
+        self.config = AWSBatchWorkerManagerConfig(args.config_file)
         self.batch_client = boto3.client('batch', region_name=self.config.region)
 
     def get_worker_jobs(self):
@@ -61,6 +61,7 @@ class AWSBatchWorkerManager(WorkerManager):
     def start_worker_job(self):
         image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         worker_id = uuid.uuid4().hex
+        logger.debug('Starting worker %s with image %s', worker_id, image)
         work_dir = '/tmp/cl_worker_{}_work_dir'.format(
             worker_id
         )  # This needs to be a unique directory since Batch jobs may share a host

@@ -45,9 +45,9 @@ def main():
         default=1 * 60,
     )
     parser.add_argument(
-        '--queue-config-file',
+        '--config-file',
         help='Path to a JSON config file that sets config values specific '
-        'to your Worker Manager type. (eg AWS Batch)',
+        'to your Worker Manager type. (e.g., AWS Batch)',
     )
     args = parser.parse_args()
 
