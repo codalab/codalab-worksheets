@@ -158,8 +158,7 @@ class Worksheet extends React.Component {
         }
     };
 
-    setFocus = (index, subIndex, shouldScroll) => {
-        if (shouldScroll === undefined) shouldScroll = true;
+    setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
@@ -208,7 +207,9 @@ class Worksheet extends React.Component {
             showNewRun: false,
             showNewText: false,
         });
-        if (shouldScroll) this.scrollToItem(index, subIndex);
+        if (shouldScroll) {
+            this.scrollToItem(index, subIndex);
+        }
     };
 
     scrollToItem = (index, subIndex) => {
@@ -217,7 +218,7 @@ class Worksheet extends React.Component {
             // Compute the current position of the focused item.
             var pos;
             if (index === -1) {
-                pos = -1000000; // Scroll all the way to the top
+                return; // If nothing is selected, don't scroll.
             } else {
                 var item = this.refs.list.refs['item' + index];
                 if (this._numTableRows(item.props.item)) {
@@ -384,6 +385,7 @@ class Worksheet extends React.Component {
         Mousetrap.bind(
             ['up', 'k'],
             function(e) {
+                e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                 var focusIndex = this.state.focusIndex;
                 var subFocusIndex = this.state.subFocusIndex;
                 var wsItems = this.state.ws.info.items;
@@ -399,7 +401,7 @@ class Worksheet extends React.Component {
                     } else {
                         this.setFocus(focusIndex, subFocusIndex - 1);
                     }
-                } else {
+                } else if (focusIndex > 0) {
                     // worksheet_items.jsx
                     this.setFocus(focusIndex - 1, 'end');
                 }
@@ -410,6 +412,7 @@ class Worksheet extends React.Component {
         Mousetrap.bind(
             ['down', 'j'],
             function(e) {
+                e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                 var focusIndex = this.state.focusIndex;
                 var subFocusIndex = this.state.subFocusIndex;
                 var wsItems = this.state.ws.info.items;
@@ -613,7 +616,7 @@ class Worksheet extends React.Component {
     }
 
     toggleActionBar() {	
-        this.setState({ showActionBar: !this.state.showActionBar });	
+        this.setState({ showActionBar: !this.state.showActionBar });
     }	
 
     focusActionBar() {	
@@ -962,7 +965,6 @@ class Worksheet extends React.Component {
             <React.Fragment>
                 {context_menu_display}
                 <WorksheetHeader
-                    key={"codalab-worksheet-header-" + this.state.showActionBar}
                     showActionBar={this.state.showActionBar}
                     canEdit={this.canEdit()}
                     info={info}
