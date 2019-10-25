@@ -67,9 +67,9 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             ws={props.ws}
             worksheetUUID={props.worksheetUUID}
             reloadWorksheet={props.reloadWorksheet}
-            showNewUpload={props.focused && props.showNewUpload}
-            showNewRun={props.focused && props.showNewRun}
-            showNewText={props.focused && props.showNewText}
+            showNewUpload={props.focusedForButtons && props.showNewUpload}
+            showNewRun={props.focusedForButtons && props.showNewRun}
+            showNewText={props.focusedForButtons && props.showNewText}
             onHideNewUpload={props.onHideNewUpload}
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
@@ -224,15 +224,20 @@ class WorksheetItemList extends React.Component {
             var worksheet_items = [];
             info.items.forEach(
                 function(item, index) {
-                    const focused = (index === this.props.focusIndex) ||
-                        // If nothing is focused, append to the end by default.
+                    const focused = index === this.props.focusIndex;
+                    
+                    // focusedForButtons determines whether clicking on Cell/Upload/Run will
+                    // apply to this cell. If nothing is focused (focusIndex = -1),
+                    // append to the end by default.
+                    const focusedForButtons = focused ||
                         (this.props.focusIndex === -1 && index === info.items.length - 1);
                     var props = {
                         worksheetUUID: info.uuid,
                         item: item,
                         version: this.props.version,
                         active: this.props.active,
-                        focused: focused,
+                        focused,
+                        focusedForButtons,
                         canEdit: this.props.canEdit,
                         focusIndex: index,
                         subFocusIndex: focused ? this.props.subFocusIndex : null,
