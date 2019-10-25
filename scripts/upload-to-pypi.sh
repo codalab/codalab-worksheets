@@ -10,6 +10,6 @@ usage()
 VER=$1
 
 echo "==> Packaging codalab"
-python3.6 setup.py sdist
+python3 setup.py sdist
 echo "==> Uploading codalab"
 twine upload dist/codalab-$VER.tar.gz

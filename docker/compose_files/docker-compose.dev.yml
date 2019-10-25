@@ -1,8 +1,13 @@
 version: '3.5'
 
-# Hotload the React code.
 services:
+  # 1) Hot load the React code
   frontend:
     command: npm start
     volumes:
       - ./../../frontend/src:/opt/frontend/src
+  # 2) Hot load the alembic version files so that we can create new database migrations (which need to written out
+  # of Docker into the `alembic` source directory)
+  rest-server:
+    volumes:
+      - ./../../alembic/:/opt/codalab-worksheets/alembic/

@@ -36,29 +36,32 @@ class LocalReader(Reader):
             - Otherwise starts a thread calling stream_fn on the computed final path
         """
         try:
-            final_path = get_target_path(run_state.bundle_path, run_state.bundle['uuid'], path)
+            final_path = get_target_path(run_state.bundle_path, run_state.bundle.uuid, path)
         except PathException as e:
             reply_fn((http.client.NOT_FOUND, str(e)), None, None)
         read_thread = threading.Thread(target=stream_fn, args=[final_path])
         read_thread.start()
         self.read_threads.append(read_thread)
 
-    def get_target_info(self, run_state, path, dep_paths, args, reply_fn):
+    def get_target_info(self, run_state, path, args, reply_fn):
         """
         Return target_info of path in bundle as a message on the reply_fn
         """
-        bundle_uuid = run_state.bundle['uuid']
         target_info = None
+        dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies.values()])
 
         # if path is a dependency raise an error
         if path and os.path.normpath(path) in dep_paths:
-            err = (http.client.NOT_FOUND, '{} not found in bundle {}'.format(path, bundle_uuid))
+            err = (
+                http.client.NOT_FOUND,
+                '{} not found in bundle {}'.format(path, run_state.bundle.uuid),
+            )
             reply_fn(err, None, None)
             return
         else:
             try:
                 target_info = download_util.get_target_info(
-                    run_state.bundle_path, bundle_uuid, path, args['depth']
+                    run_state.bundle_path, run_state.bundle.uuid, path, args['depth']
                 )
             except PathException as e:
                 err = (http.client.NOT_FOUND, str(e))
@@ -72,10 +75,11 @@ class LocalReader(Reader):
 
         reply_fn(None, {'target_info': target_info}, None)
 
-    def stream_directory(self, run_state, path, dep_paths, args, reply_fn):
+    def stream_directory(self, run_state, path, args, reply_fn):
         """
         Stream the directory at path using a separate thread
         """
+        dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies.values()])
         exclude_names = [] if path else dep_paths
 
         def stream_thread(final_path):
@@ -84,7 +88,7 @@ class LocalReader(Reader):
 
         self._threaded_read(run_state, path, stream_thread, reply_fn)
 
-    def stream_file(self, run_state, path, dep_paths, args, reply_fn):
+    def stream_file(self, run_state, path, args, reply_fn):
         """
         Stream the file  at path using a separate thread
         """
@@ -95,7 +99,7 @@ class LocalReader(Reader):
 
         self._threaded_read(run_state, path, stream_file, reply_fn)
 
-    def read_file_section(self, run_state, path, dep_paths, args, reply_fn):
+    def read_file_section(self, run_state, path, args, reply_fn):
         """
         Read the section of file at path of length args['length'] starting at
         args['offset'] (bytes) using a separate thread
@@ -109,7 +113,7 @@ class LocalReader(Reader):
 
         self._threaded_read(run_state, path, read_file_section_thread, reply_fn)
 
-    def summarize_file(self, run_state, path, dep_paths, args, reply_fn):
+    def summarize_file(self, run_state, path, args, reply_fn):
         """
         Summarize the file including args['num_head_lines'] and
         args['num_tail_lines'] but limited with args['max_line_length'] using

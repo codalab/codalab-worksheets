@@ -1,6 +1,7 @@
 import logging
 import os
-from subprocess import check_output, PIPE, Popen
+import psutil
+from subprocess import PIPE, Popen
 import threading
 import time
 import socket
@@ -10,6 +11,7 @@ import codalab.worker.docker_utils as docker_utils
 
 from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.run_manager import BaseRunManager
+from codalab.worker.bundle_state import BundleInfo, RunResources, WorkerRun
 from .local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
 from .local_reader import LocalReader
 
@@ -29,6 +31,8 @@ class LocalRunManager(BaseRunManager):
     KILL_TIMEOUT = 100
     # Directory name to store running bundles in worker filesystem
     BUNDLES_DIR_NAME = 'runs'
+    # Number of loops to check for bundle directory creation by server on shared FS workers
+    BUNDLE_DIR_WAIT_NUM_TRIES = 120
 
     def __init__(
         self,
@@ -39,6 +43,7 @@ class LocalRunManager(BaseRunManager):
         cpuset,  # type: Set[str]
         gpuset,  # type: Set[str]
         work_dir,  # type: str
+        shared_file_system=False,  # type: bool
         docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
     ):
@@ -46,10 +51,12 @@ class LocalRunManager(BaseRunManager):
         self._state_committer = JsonStateCommitter(commit_file)
         self._reader = LocalReader()
         self._docker = docker.from_env()
-        self._bundles_dir = os.path.join(work_dir, LocalRunManager.BUNDLES_DIR_NAME)
-        if not os.path.exists(self._bundles_dir):
-            logger.info('{} doesn\'t exist, creating.'.format(self._bundles_dir))
-            os.makedirs(self._bundles_dir, 0o770)
+        self._shared_file_system = shared_file_system
+        if not shared_file_system:
+            self._bundles_dir = os.path.join(work_dir, LocalRunManager.BUNDLES_DIR_NAME)
+            if not os.path.exists(self._bundles_dir):
+                logger.info('%s doesn\'t exist, creating.', self._bundles_dir)
+                os.makedirs(self._bundles_dir, 0o770)
 
         self._image_manager = image_manager
         self._dependency_manager = dependency_manager
@@ -70,6 +77,7 @@ class LocalRunManager(BaseRunManager):
             docker_runtime=docker_runtime,
             upload_bundle_callback=self._worker.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
+            shared_file_system=shared_file_system,
         )
 
     def _init_docker_networks(self, docker_network_prefix):
@@ -85,14 +93,21 @@ class LocalRunManager(BaseRunManager):
                 logger.debug('Network %s already exists, reusing', name)
                 return self._docker.networks.list(names=[name])[0]
 
-        self.worker_docker_network = create_or_get_network(docker_network_prefix, True)
+        # Right now the suffix to the general worker network is hardcoded to manually match the suffix
+        # in the docker-compose file, so make sure any changes here are synced to there.
+        self.worker_docker_network = create_or_get_network(docker_network_prefix + "_general", True)
         self.docker_network_external = create_or_get_network(docker_network_prefix + "_ext", False)
         self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", True)
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved
-        simple_runs = {uuid: state._replace(container=None) for uuid, state in self._runs.items()}
-        self._state_committer.commit(simple_runs)
+        runs = {
+            uuid: state._replace(
+                container=None, bundle=state.bundle.to_dict(), resources=state.resources.to_dict()
+            )
+            for uuid, state in self._runs.items()
+        }
+        self._state_committer.commit(runs)
 
     def load_state(self):
         runs = self._state_committer.load()
@@ -106,8 +121,10 @@ class LocalRunManager(BaseRunManager):
                 except docker.errors.NotFound as ex:
                     logger.debug('Error getting the container for the run: %s', ex)
                     run_state = run_state._replace(container_id=None)
-                finally:
-                    self._runs[uuid] = run_state
+            self._runs[uuid] = run_state._replace(
+                bundle=BundleInfo.from_dict(run_state.bundle),
+                resources=RunResources.from_dict(run_state.resources),
+            )
 
     def start(self):
         """
@@ -115,7 +132,8 @@ class LocalRunManager(BaseRunManager):
         """
         self.load_state()
         self._image_manager.start()
-        self._dependency_manager.start()
+        if not self._shared_file_system:
+            self._dependency_manager.start()
 
     def stop(self):
         """
@@ -125,10 +143,12 @@ class LocalRunManager(BaseRunManager):
         logger.info("Stopping Local Run Manager")
         self._stop = True
         self._image_manager.stop()
-        self._dependency_manager.stop()
+        if not self._shared_file_system:
+            self._dependency_manager.stop()
         self._run_state_manager.stop()
         self.save_state()
         try:
+            self.worker_docker_network.remove()
             self.docker_network_internal.remove()
             self.docker_network_external.remove()
         except docker.errors.APIError as e:
@@ -145,8 +165,7 @@ class LocalRunManager(BaseRunManager):
         with self._lock:
             for uuid in self._runs.keys():
                 run_state = self._runs[uuid]
-                run_state.info['kill_message'] = 'Worker stopped'
-                run_state = run_state._replace(info=run_state.info, is_killed=True)
+                run_state = run_state._replace(kill_message='Worker stopped', is_killed=True)
                 self._runs[uuid] = run_state
         # Wait until all runs finished or KILL_TIMEOUT seconds pas
         for attempt in range(LocalRunManager.KILL_TIMEOUT):
@@ -193,16 +212,23 @@ class LocalRunManager(BaseRunManager):
         if self._stop:
             # Run Manager stopped, refuse more runs
             return
-        bundle_uuid = bundle['uuid']
-        bundle_path = os.path.join(self._bundles_dir, bundle_uuid)
+        if self._shared_file_system:
+            bundle_path = bundle.location
+        else:
+            bundle_path = os.path.join(self._bundles_dir, bundle.uuid)
         now = time.time()
         run_state = LocalRunState(
             stage=LocalRunStage.PREPARING,
             run_status='',
             bundle=bundle,
             bundle_path=os.path.realpath(bundle_path),
+            bundle_dir_wait_num_tries=LocalRunManager.BUNDLE_DIR_WAIT_NUM_TRIES,
             resources=resources,
-            start_time=now,
+            bundle_start_time=now,
+            container_start_time=None,
+            container_time_total=0,
+            container_time_user=0,
+            container_time_system=0,
             container_id=None,
             container=None,
             docker_image=None,
@@ -210,13 +236,16 @@ class LocalRunManager(BaseRunManager):
             has_contents=False,
             cpuset=None,
             gpuset=None,
-            time_used=0,
             max_memory=0,
             disk_utilization=0,
-            info={},
+            exitcode=None,
+            failure_message=None,
+            kill_message=None,
+            finished=False,
+            finalized=False,
         )
         with self._lock:
-            self._runs[bundle_uuid] = run_state
+            self._runs[bundle.uuid] = run_state
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
@@ -241,21 +270,29 @@ class LocalRunManager(BaseRunManager):
                     cpuset -= run_state.cpuset
                     gpuset -= run_state.gpuset
 
-        if len(cpuset) < request_cpus or len(gpuset) < request_gpus:
-            raise Exception("Not enough cpus or gpus to assign!")
+        if len(cpuset) < request_cpus:
+            raise Exception(
+                "Requested more CPUs (%d) than available (%d currently out of %d on the machine)"
+                % (request_cpus, len(cpuset), len(self._cpuset))
+            )
+        if len(gpuset) < request_gpus:
+            raise Exception(
+                "Requested more GPUs (%d) than available (%d currently out of %d on the machine)"
+                % (request_gpus, len(gpuset), len(self._gpuset))
+            )
 
         def propose_set(resource_set, request_count):
             return set(str(el) for el in list(resource_set)[:request_count])
 
         return propose_set(cpuset, request_cpus), propose_set(gpuset, request_gpus)
 
-    def get_run(self, uuid):
+    def has_run(self, uuid):
         """
-        Returns the state of the run with the given UUID if it is managed
-        by this RunManager, returns None otherwise
+        Returns True if the run with the given UUID is managed
+        by this RunManager, False otherwise
         """
         with self._lock:
-            return self._runs.get(uuid, None)
+            return uuid in self._runs
 
     def mark_finalized(self, uuid):
         """
@@ -263,29 +300,32 @@ class LocalRunManager(BaseRunManager):
         """
         if uuid in self._runs:
             with self._lock:
-                self._runs[uuid].info['finalized'] = True
+                self._runs[uuid] = self._runs[uuid]._replace(finalized=True)
 
-    def read(self, run_state, path, dep_paths, args, reply):
+    def read(self, uuid, path, args, reply):
         """
         Use your Reader helper to invoke the given read command
         """
-        self._reader.read(run_state, path, dep_paths, args, reply)
+        run_state = self._runs[uuid]
+        self._reader.read(run_state, path, args, reply)
 
-    def write(self, run_state, path, dep_paths, string):
+    def write(self, uuid, path, string):
         """
         Write `string` (string) to path in bundle with uuid.
         """
-        if os.path.normpath(path) in dep_paths:
+        run_state = self._runs[uuid]
+        if os.path.normpath(path) in set(dep.child_path for dep in run_state.bundle.dependencies):
             return
         with open(os.path.join(run_state.bundle_path, path), 'w') as f:
             f.write(string)
 
-    def netcat(self, run_state, port, message, reply):
+    def netcat(self, uuid, port, message, reply):
         """
         Write `message` (string) to port of bundle with uuid and read the response.
         Returns a stream with the response contents (bytes).
         """
         # TODO: handle this in a thread since this could take a while
+        run_state = self._runs[uuid]
         container_ip = docker_utils.get_container_ip(
             self.worker_docker_network.name, run_state.container
         )
@@ -302,14 +342,14 @@ class LocalRunManager(BaseRunManager):
         s.close()
         reply(None, {}, b''.join(total_data))
 
-    def kill(self, run_state):
+    def kill(self, uuid):
         """
         Kill bundle with uuid
         """
+        run_state = self._runs[uuid]
         with self._lock:
-            run_state.info['kill_message'] = 'Kill requested'
-            run_state = run_state._replace(info=run_state.info, is_killed=True)
-            self._runs[run_state.bundle['uuid']] = run_state
+            run_state = run_state._replace(kill_message='Kill requested', is_killed=True)
+            self._runs[run_state.bundle.uuid] = run_state
 
     @property
     def all_runs(self):
@@ -317,24 +357,34 @@ class LocalRunManager(BaseRunManager):
         Returns a list of all the runs managed by this RunManager
         """
         with self._lock:
-            result = {
-                bundle_uuid: {
-                    'run_status': run_state.run_status,
-                    'start_time': run_state.start_time,
-                    'docker_image': run_state.docker_image,
-                    'info': run_state.info,
-                    'state': LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
-                    'remote': self._worker.id,
-                }
-                for bundle_uuid, run_state in self._runs.items()
-            }
-            return result
+            return [
+                WorkerRun(
+                    uuid=run_state.bundle.uuid,
+                    run_status=run_state.run_status,
+                    bundle_start_time=run_state.bundle_start_time,
+                    container_start_time=run_state.container_start_time,
+                    container_time_total=run_state.container_time_total,
+                    container_time_user=run_state.container_time_user,
+                    container_time_system=run_state.container_time_system,
+                    docker_image=run_state.docker_image,
+                    state=LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
+                    remote=self._worker.id,
+                    exitcode=run_state.exitcode,
+                    failure_message=run_state.failure_message,
+                )
+                for run_state in self._runs.values()
+            ]
 
     @property
     def all_dependencies(self):
         """
         Returns a list of all dependencies available in this RunManager
+        If on a shared filesystem, reports nothing since all bundles are on the
+        same filesystem and the concept of caching dependencies doesn't apply
+        to this worker.
         """
+        if self._shared_file_system:
+            return []
         return self._dependency_manager.all_dependencies
 
     @property
@@ -356,11 +406,7 @@ class LocalRunManager(BaseRunManager):
         """
         Total installed memory of this RunManager
         """
-        try:
-            return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
-        except ValueError:
-            # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
-            return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
+        return psutil.virtual_memory().total
 
     @property
     def free_disk_bytes(self):

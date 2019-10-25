@@ -8,8 +8,7 @@ import sys
 from .bundle_service_client import BundleServiceException
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
-
-VERSION = 20
+from .bundle_state import BundleInfo, RunResources
 
 COMMAND_RETRY_SECONDS = 60 * 12
 
@@ -32,7 +31,9 @@ class Worker(object):
         tag,  # type: str
         work_dir,  # type: str
         exit_when_idle,  # type: str
+        idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
+        shared_file_system,  # type: bool
     ):
         self.id = worker_id
         self._state_committer = JsonStateCommitter(commit_file)
@@ -40,12 +41,16 @@ class Worker(object):
         self._work_dir = work_dir
         self._bundle_service = bundle_service
         self._exit_when_idle = exit_when_idle
+        self._idle_seconds = idle_seconds
         self._stop = False
         self._last_checkin_successful = False
         self._run_manager = create_run_manager(self)
+        self._shared_file_system = shared_file_system
 
     def start(self):
+        """Return whether we ran anything."""
         self._run_manager.start()
+        last_time_ran = None  # When was the last time we ran something?
         while not self._stop:
             try:
                 self._run_manager.process_runs()
@@ -56,11 +61,17 @@ class Worker(object):
                 if not self._last_checkin_successful:
                     logger.info('Connected! Successful check in!')
                 self._last_checkin_successful = True
-                if (
-                    self._exit_when_idle
-                    and len(self._run_manager.all_runs) == 0
-                    and self._last_checkin_successful
-                ):
+
+                has_runs = len(self._run_manager.all_runs) > 0
+                now = time.time()
+                if has_runs:
+                    last_time_ran = now
+
+                if last_time_ran is None:
+                    last_time_ran = now
+                is_idle = now - last_time_ran > self._idle_seconds
+
+                if self._exit_when_idle and is_idle and self._last_checkin_successful:
                     self._stop = True
                     break
 
@@ -82,24 +93,26 @@ class Worker(object):
         processes must be handled asynchronously.
         """
         request = {
-            'version': VERSION,
             'tag': self._tag,
             'cpus': self._run_manager.cpus,
             'gpus': self._run_manager.gpus,
             'memory_bytes': self._run_manager.memory_bytes,
             'free_disk_bytes': self._run_manager.free_disk_bytes,
-            'dependencies': self._run_manager.all_dependencies,
+            'dependencies': [
+                (dep_key.parent_uuid, dep_key.parent_path)
+                for dep_key in self._run_manager.all_dependencies
+            ],
             'hostname': socket.gethostname(),
-            'runs': self._run_manager.all_runs,
+            'runs': [run.to_dict() for run in self._run_manager.all_runs],
+            'shared_file_system': self._shared_file_system,
         }
         response = self._bundle_service.checkin(self.id, request)
         if response:
             action_type = response['type']
             logger.debug('Received %s message: %s', action_type, response)
             if action_type in ['read', 'netcat']:
-                run_state = self._run_manager.get_run(response['uuid'])
                 socket_id = response['socket_id']
-                if run_state is None:
+                if not self._run_manager.has_run(response['uuid']):
                     self.read_run_missing(socket_id)
                     return
             if action_type == 'run':
@@ -125,6 +138,8 @@ class Worker(object):
         start_message = {'hostname': socket.gethostname(), 'start_time': int(now)}
 
         if self._bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
+            bundle = BundleInfo.from_dict(bundle)
+            resources = RunResources.from_dict(resources)
             self._run_manager.create_run(bundle, resources)
         else:
             print(
@@ -137,9 +152,7 @@ class Worker(object):
             self._bundle_service_reply(socket_id, err, message, data)
 
         try:
-            run_state = self._run_manager.get_run(uuid)
-            dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
-            self._run_manager.read(run_state, path, dep_paths, read_args, reply)
+            self._run_manager.read(uuid, path, read_args, reply)
         except BundleServiceException:
             traceback.print_exc()
         except Exception as e:
@@ -152,8 +165,7 @@ class Worker(object):
             self._bundle_service_reply(socket_id, err, message, data)
 
         try:
-            run_state = self._run_manager.get_run(uuid)
-            self._run_manager.netcat(run_state, port, message, reply)
+            self._run_manager.netcat(uuid, port, message, reply)
         except BundleServiceException:
             traceback.print_exc()
         except Exception as e:
@@ -162,13 +174,10 @@ class Worker(object):
             reply(err)
 
     def _write(self, uuid, subpath, string):
-        run_state = self._run_manager.get_run(uuid)
-        dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
-        self._run_manager.write(run_state, subpath, dep_paths, string)
+        self._run_manager.write(uuid, subpath, string)
 
     def _kill(self, uuid):
-        run_state = self._run_manager.get_run(uuid)
-        self._run_manager.kill(run_state)
+        self._run_manager.kill(uuid)
 
     def _mark_finalized(self, uuid):
         self._run_manager.mark_finalized(uuid)
@@ -196,12 +205,13 @@ class Worker(object):
         else:
             self._bundle_service.reply(self.id, socket_id, message)
 
-    def _execute_bundle_service_command_with_retry(self, f):
+    @staticmethod
+    def _execute_bundle_service_command_with_retry(cmd):
         retries_left = COMMAND_RETRY_SECONDS
         while True:
             try:
                 retries_left -= 1
-                f()
+                cmd()
                 return
             except BundleServiceException as e:
                 if not e.client_error and retries_left > 0:

@@ -4,8 +4,6 @@ from __future__ import (
 from contextlib import closing
 import http.client
 import json
-import os
-import subprocess
 from datetime import datetime
 
 from bottle import abort, get, local, post, put, request, response
@@ -13,6 +11,7 @@ from bottle import abort, get, local, post, put, request, response
 from codalab.lib import spec_util
 from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalab.worker.bundle_state import WorkerRun
 
 
 @post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedPlugin())
@@ -35,12 +34,14 @@ def checkin(worker_id):
         request.json.get("memory_bytes"),
         request.json.get("free_disk_bytes"),
         request.json["dependencies"],
+        request.json.get("shared_file_system"),
     )
 
-    for uuid, run in request.json["runs"].items():
+    for run in request.json["runs"]:
         try:
-            bundle = local.model.get_bundle(uuid)
-            local.model.bundle_checkin(bundle, run, request.user.user_id, worker_id)
+            worker_run = WorkerRun.from_dict(run)
+            bundle = local.model.get_bundle(worker_run.uuid)
+            local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id)
         except Exception:
             pass
 
@@ -121,7 +122,7 @@ def start_bundle(worker_id, uuid):
     bundle = local.model.get_bundle(uuid)
     check_run_permission(bundle)
     response.content_type = "application/json"
-    if local.model.start_bundle(
+    if local.model.transition_bundle_preparing(
         bundle,
         request.user.user_id,
         worker_id,
@@ -131,37 +132,6 @@ def start_bundle(worker_id, uuid):
         print("Started bundle %s" % uuid)
         return json.dumps(True)
     return json.dumps(False)
-
-
-@put(
-    "/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>" % spec_util.UUID_STR,
-    name="worker_update_bundle_metadata",
-    apply=AuthenticatedPlugin(),
-)
-def update_bundle_metadata(worker_id, uuid):
-    """
-    Updates metadata related to a running bundle.
-    """
-    bundle = local.model.get_bundle(uuid)
-    check_run_permission(bundle)
-    allowed_keys = set(
-        [
-            "run_status",
-            "time",
-            "time_user",
-            "time_system",
-            "memory",
-            "memory_max",
-            "data_size",
-            "last_updated",
-            "docker_image",
-        ]
-    )
-    metadata_update = {}
-    for key, value in request.json.items():
-        if key in allowed_keys:
-            metadata_update[key] = value
-    local.model.update_bundle(bundle, {"metadata": metadata_update})
 
 
 @get("/workers/info", name="workers_info", apply=AuthenticatedPlugin())

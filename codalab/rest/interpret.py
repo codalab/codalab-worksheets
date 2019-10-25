@@ -189,7 +189,9 @@ def fetch_interpreted_worksheet(uuid):
     # Go and fetch more information about the worksheet contents by
     # resolving the interpreted items.
     try:
-        interpreted_blocks = interpret_items(get_default_schemas(), worksheet_info['items'])
+        interpreted_blocks = interpret_items(
+            get_default_schemas(), worksheet_info['items'], db_model=local.model
+        )
     except UsageError as e:
         interpreted_blocks = {'blocks': []}
         worksheet_info['error'] = str(e)
@@ -352,7 +354,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
                                         )
                                     )
                                 )
-                            )
+                            ).decode('utf-8')
                     else:
                         block['status']['code'] = FetchStatusCodes.not_found
                         if mode == BlockModes.contents_block:
