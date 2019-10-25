@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3
 # For information about the design of the worker, see design.pdf in the same
 # directory as this file. For information about running a worker, see the
 # tutorial on the CodaLab documentation.
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
-    parser.add_argument('--tag', help='Tag that allows for scheduling runs on specific ' 'workers.')
+    parser.add_argument('--tag', help='Tag that allows for scheduling runs on specific workers.')
     parser.add_argument(
         '--server',
         default='https://worksheets.codalab.org',
@@ -95,6 +95,12 @@ def main():
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
     )
     parser.add_argument(
+        '--idle-seconds',
+        help='Not running anything for this many seconds constitutes idle',
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
         '--id',
         default='%s(%d)' % (socket.gethostname(), os.getpid()),
         help='Internal use: ID to use for the worker.',
@@ -102,9 +108,7 @@ def main():
     parser.add_argument(
         '--shared-file-system',
         action='store_true',
-        help='Internal use: Whether the file system containing '
-        'bundle data is shared between the bundle service '
-        'and the worker.',
+        help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
     args = parser.parse_args()
 
@@ -185,6 +189,7 @@ chmod 600 %s"""
             cpuset,
             gpuset,
             args.work_dir,
+            args.shared_file_system,
             docker_runtime=docker_runtime,
             docker_network_prefix=args.network_prefix,
         )
@@ -196,7 +201,9 @@ chmod 600 %s"""
         args.tag,
         args.work_dir,
         args.exit_when_idle,
+        args.idle_seconds,
         bundle_service,
+        args.shared_file_system,
     )
 
     # Register a signal handler to ensure safe shutdown.

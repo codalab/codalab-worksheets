@@ -30,7 +30,6 @@ import sys
 import time
 import traceback
 
-from codalab.lib.codalab_manager import CodaLabManager
 
 global cl
 # Directory where this script lives.
@@ -335,6 +334,8 @@ class ModuleContext(object):
         self.error = None
 
         # Allow for making REST calls
+        from codalab.lib.codalab_manager import CodaLabManager
+
         manager = CodaLabManager()
         self.client = manager.current_client()
 
@@ -525,15 +526,13 @@ def test(ctx):
 @TestModule.register('gen-rest-docs')
 def test(ctx):
     """Generate REST API docs."""
-    run_command(
-        ['python3.6', os.path.join(base_path, 'scripts/gen-rest-docs.py'), '--docs', '/tmp']
-    )
+    run_command(['python3', os.path.join(base_path, 'scripts/gen-rest-docs.py'), '--docs', '/tmp'])
 
 
 @TestModule.register('gen-cli-docs')
 def test(ctx):
     """Generate CLI docs."""
-    run_command(['python3.6', os.path.join(base_path, 'scripts/gen-cli-docs.py'), '--docs', '/tmp'])
+    run_command(['python3', os.path.join(base_path, 'scripts/gen-cli-docs.py'), '--docs', '/tmp'])
 
 
 @TestModule.register('gen-readthedocs')
@@ -857,6 +856,7 @@ def test(ctx):
     run_command([cl, 'add', 'text', '% add data_hash data_hash s/0x/HEAD'])
     run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"'])
     run_command([cl, 'add', 'text', '% display table foo'])
+
     run_command([cl, 'add', 'bundle', uuid])
     run_command(
         [cl, 'add', 'bundle', uuid, '--dest-worksheet', wuuid]
@@ -1146,8 +1146,12 @@ def test(ctx):
         # Download the whole bundle.
         path = temp_path('')
         run_command([cl, 'download', uuid, '-o', path])
-        assert not os.path.exists(os.path.join(path, 'dir')), '"dir" should not be in bundle'
-        assert not os.path.exists(os.path.join(path, 'file')), '"file" should not be in bundle'
+        assert not os.path.exists(
+            os.path.join(path, 'dir')
+        ), '"dir" should not be in downloaded bundle'
+        assert not os.path.exists(
+            os.path.join(path, 'file')
+        ), '"file" should not be in downloaded bundle'
         with open(os.path.join(path, 'stdout')) as fileobj:
             check_contains('5\n6\n7', fileobj.read())
         shutil.rmtree(path)
@@ -1330,7 +1334,7 @@ def test(ctx):
         )
         wait(run_uuid, expected_exit_code)
         if expected_failure_message:
-            check_equals(expected_failure_message, get_info(run_uuid, 'failure_message'))
+            check_contains(expected_failure_message, get_info(run_uuid, 'failure_message'))
 
     # Good
     stress(
@@ -1353,7 +1357,7 @@ def test(ctx):
         use_disk=10,
         request_disk=100,
         expected_exit_code=1,
-        expected_failure_message='Time limit 1.0s exceeded.',
+        expected_failure_message='Time limit exceeded.',
     )
 
     # Too much memory
@@ -1504,7 +1508,7 @@ def test(ctx):
     wait(uuid)
     check_contains('2.7', run_command([cl, 'cat', uuid + '/stderr']))
     uuid = run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3.6 --version']
+        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3 --version']
     )
     wait(uuid)
     check_contains('3.6', run_command([cl, 'cat', uuid + '/stdout']))
@@ -1547,7 +1551,7 @@ def test(ctx):
             cl,
             'run',
             '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import tensorflow"',
+            'python3 -c "import tensorflow"',
         ]
     )
     wait(uuid)
@@ -1556,7 +1560,7 @@ def test(ctx):
             cl,
             'run',
             '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import torch"',
+            'python3 -c "import torch"',
         ]
     )
     wait(uuid)
@@ -1565,7 +1569,20 @@ def test(ctx):
             cl,
             'run',
             '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import numpy"',
+            'python3 -c "import numpy"',
+        ]
+    )
+    wait(uuid)
+    uuid = run_command(
+        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3 -c "import nltk"']
+    )
+    wait(uuid)
+    uuid = run_command(
+        [
+            cl,
+            'run',
+            '--request-docker-image=codalab/default-cpu:latest',
+            'python3 -c "import spacy"',
         ]
     )
     wait(uuid)
@@ -1574,25 +1591,7 @@ def test(ctx):
             cl,
             'run',
             '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import nltk"',
-        ]
-    )
-    wait(uuid)
-    uuid = run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import spacy"',
-        ]
-    )
-    wait(uuid)
-    uuid = run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3.6 -c "import matplotlib"',
+            'python3 -c "import matplotlib"',
         ]
     )
     wait(uuid)
@@ -1649,15 +1648,7 @@ def test(ctx):
 
     out_file = temp_path('-competition-out.json')
     try:
-        run_command(
-            [
-                'python3.6',
-                os.path.join(base_path, 'scripts/competitiond.py'),
-                config_file,
-                out_file,
-                '--verbose',
-            ]
-        )
+        run_command(['cl-competitiond', config_file, out_file, '--verbose'])
 
         # Check that eval bundle gets created
         results = run_command([cl, 'search', 'tags=' + eval_tag, '-u'])
@@ -1677,7 +1668,7 @@ def test(ctx):
 
     # unicode in worksheet title
     run_command([cl, 'wedit', wuuid, '--title', 'fáncy ünicode 你好世界😊'], 0)
-    # check_contains('fáncy ünicode 你好世界😊', run_command([cl, 'print']))
+    check_contains('fáncy ünicode 你好世界😊', run_command([cl, 'print', wuuid]))
 
     # Non-unicode in file contents
     uuid = run_command([cl, 'upload', '--contents', 'nounicode'])
@@ -1717,12 +1708,23 @@ def test(ctx):
     # Check header which includes 8 columns in total from output.
     header = lines[0]
     check_contains(
-        ['worker_id', 'cpus', 'gpus', 'memory', 'free_disk', 'last_checkin', 'tag', 'runs'], header
+        [
+            'worker_id',
+            'cpus',
+            'gpus',
+            'memory',
+            'free_disk',
+            'last_checkin',
+            'tag',
+            'runs',
+            'shared_file_system',
+        ],
+        header,
     )
 
-    # Check number of not null values. First 6 columns should be not null. Column "tag" and "runs" could be empty.
+    # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
-    check_equals(True, len(worker_info) >= 6)
+    check_equals(True, len(worker_info) >= 7)
 
 
 @TestModule.register('rest1')
@@ -1736,6 +1738,14 @@ def test(ctx):
     response = ctx.client.fetch_contents_info(uuid)
     check_equals(response['name'], uuid)
     check_equals(open(path, 'rb').read(), ctx.client.fetch_contents_blob(uuid, '/').read())
+
+    # Display image - should not crash
+    wuuid = run_command([cl, 'work', '-u'])
+    uuid = run_command([cl, 'upload', test_path('codalab.png')])
+    run_command([cl, 'add', 'text', '% display image / width=800'])
+    run_command([cl, 'add', 'bundle', uuid])
+    response = ctx.client.fetch_interpreted_worksheet(wuuid)
+    check_equals(response['uuid'], wuuid)
 
 
 if __name__ == '__main__':

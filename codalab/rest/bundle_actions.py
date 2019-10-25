@@ -23,7 +23,7 @@ def create_bundle_actions():
         if bundle.state not in [State.RUNNING, State.PREPARING]:
             raise UsageError('Cannot execute this action on a bundle that is not running.')
 
-        worker = local.worker_model.get_bundle_worker(action['uuid'])
+        worker = local.model.get_bundle_worker(action['uuid'])
         precondition(
             local.worker_model.send_json_message(worker['socket_id'], action, 60),
             'Unable to reach worker.',

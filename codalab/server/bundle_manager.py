@@ -11,12 +11,12 @@ import traceback
 from codalab.objects.permission import check_bundles_have_read_permission
 from codalab.common import PermissionError
 from codalab.lib import bundle_util, formatting, path_util
+from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
-from codalab.worker.bundle_state import State
+from codalab.worker.bundle_state import State, RunResources
 
 
 logger = logging.getLogger(__name__)
-
 
 WORKER_TIMEOUT_SECONDS = 60
 SECONDS_PER_DAY = 60 * 60 * 24
@@ -29,16 +29,11 @@ class BundleManager(object):
     Assigns run bundles to workers and makes make bundles.
     """
 
-    @staticmethod
-    def create(codalab_manager):
+    def __init__(self, codalab_manager):
         config = codalab_manager.config.get('workers')
         if not config:
             print('config.json file missing a workers section.', file=sys.stderr)
-            exit(1)
-
-        from codalab.server.default_bundle_manager import DefaultBundleManager
-
-        self = DefaultBundleManager()
+            sys.exit(1)
 
         self._model = codalab_manager.model()
         self._worker_model = codalab_manager.worker_model()
@@ -62,8 +57,6 @@ class BundleManager(object):
         self._default_gpu_image = config.get('default_gpu_image')
 
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
-
-        return self
 
     def run(self, sleep_time):
         logger.info('Bundle manager running!')
@@ -91,12 +84,6 @@ class BundleManager(object):
         self._make_bundles()
         self._schedule_run_bundles()
         self._fail_unresponsive_bundles()
-
-    def _schedule_run_bundles(self):
-        """
-        Sub classes should implement this. See DefaultBundleManager
-        """
-        raise NotImplementedError
 
     def _stage_bundles(self):
         """
@@ -193,7 +180,8 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
-            path = os.path.normpath(self._bundle_store.get_bundle_location(bundle.uuid))
+            bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+            path = os.path.normpath(bundle_location)
 
             deps = []
             for dep in bundle.dependencies:
@@ -226,7 +214,7 @@ class BundleManager(object):
                 for dependency_path, child_path in deps:
                     path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
-            self._upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
+            self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
         except Exception as e:
@@ -266,7 +254,7 @@ class BundleManager(object):
                 or time.time() - bundle.metadata.last_updated > 5 * 60
             ):  # Run message went missing.
                 logger.info('Re-staging run bundle %s', bundle.uuid)
-                if self._model.restage_bundle(bundle):
+                if self._model.transition_bundle_staged(bundle):
                     workers.restage(bundle.uuid)
 
     def _acknowledge_recently_finished_bundles(self, workers):
@@ -274,17 +262,18 @@ class BundleManager(object):
         Acknowledge recently finished bundles to workers so they can discard run information.
         """
         for bundle in self._model.batch_get_bundles(state=State.FINALIZING, bundle_type='run'):
-            worker = workers.get_bundle_worker(bundle.uuid)
+            worker = self._model.get_bundle_worker(bundle.uuid)
             if worker is None:
                 logger.info(
                     'Bringing bundle offline %s: %s', bundle.uuid, 'No worker claims bundle'
                 )
-                self._model.set_offline_bundle(bundle)
+                self._model.transition_bundle_worker_offline(bundle)
             elif self._worker_model.send_json_message(
                 worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
             ):
                 logger.info('Acknowledged finalization of run bundle %s', bundle.uuid)
-                self._model.finish_bundle(bundle)
+                bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+                self._model.transition_bundle_finished(bundle, bundle_location)
 
     def _bring_offline_stuck_running_bundles(self, workers):
         """
@@ -304,7 +293,7 @@ class BundleManager(object):
                 failure_message = 'Worker offline'
             if failure_message is not None:
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
-                self._model.set_offline_bundle(bundle)
+                self._model.transition_bundle_worker_offline(bundle)
 
     def _schedule_run_bundles_on_workers(self, workers, user_owned):
         """
@@ -324,13 +313,13 @@ class BundleManager(object):
                     continue  # Don't start this bundle yet
                 workers_list = workers.user_owned_workers(self._model.root_user_id)
 
-            workers_list = self._filter_and_sort_workers(workers_list, bundle)
+            workers_list = self._deduct_worker_resources(workers_list)
+            bundle_resources = self._compute_bundle_resources(bundle)
+            workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
 
             for worker in workers_list:
                 if self._try_start_bundle(workers, worker, bundle):
                     break
-                else:
-                    continue  # Try the next worker.
 
     def _deduct_worker_resources(self, workers_list):
         """
@@ -339,11 +328,14 @@ class BundleManager(object):
         for worker in workers_list:
             for uuid in worker['run_uuids']:
                 bundle = self._model.get_bundle(uuid)
-                worker['cpus'] -= self._compute_request_cpus(bundle)
-                worker['gpus'] -= self._compute_request_gpus(bundle)
-                worker['memory_bytes'] -= self._compute_request_memory(bundle)
+                bundle_resources = self._compute_bundle_resources(bundle)
+                worker['cpus'] -= bundle_resources.cpus
+                worker['gpus'] -= bundle_resources.gpus
+                worker['memory_bytes'] -= bundle_resources.memory
+        return workers_list
 
-    def _filter_and_sort_workers(self, workers_list, bundle):
+    @staticmethod
+    def _filter_and_sort_workers(workers_list, bundle, bundle_resources):
         """
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
@@ -355,25 +347,21 @@ class BundleManager(object):
             worker_id = worker['worker_id']
             has_gpu[worker_id] = worker['gpus'] > 0
 
-        # deduct worker resources based on running bundles
-        self._deduct_worker_resources(workers_list)
-
         # Filter by CPUs.
-        request_cpus = self._compute_request_cpus(bundle)
-        if request_cpus:
-            workers_list = [worker for worker in workers_list if worker['cpus'] >= request_cpus]
+        workers_list = [
+            worker for worker in workers_list if worker['cpus'] >= bundle_resources.cpus
+        ]
 
         # Filter by GPUs.
-        request_gpus = self._compute_request_gpus(bundle)
-        if request_gpus:
-            workers_list = [worker for worker in workers_list if worker['gpus'] >= request_gpus]
+        if bundle_resources.gpus:
+            workers_list = [
+                worker for worker in workers_list if worker['gpus'] >= bundle_resources.gpus
+            ]
 
         # Filter by memory.
-        request_memory = self._compute_request_memory(bundle)
-        if request_memory:
-            workers_list = [
-                worker for worker in workers_list if worker['memory_bytes'] >= request_memory
-            ]
+        workers_list = [
+            worker for worker in workers_list if worker['memory_bytes'] >= bundle_resources.memory
+        ]
 
         # Filter by tag.
         request_queue = bundle.metadata.request_queue
@@ -402,12 +390,16 @@ class BundleManager(object):
         needed_deps = set([(dep.parent_uuid, dep.parent_path) for dep in bundle.dependencies])
 
         def get_sort_key(worker):
-            deps = set(worker['dependencies'])
+            if worker['shared_file_system']:
+                num_available_deps = len(needed_deps)
+            else:
+                deps = set(worker['dependencies'])
+                num_available_deps = len(needed_deps & deps)
             worker_id = worker['worker_id']
 
             # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
-            gpu_priority = self._compute_request_gpus(bundle) or not has_gpu[worker_id]
-            return (gpu_priority, len(needed_deps & deps), worker['cpus'], random.random())
+            gpu_priority = bundle_resources.gpus or not has_gpu[worker_id]
+            return (gpu_priority, num_available_deps, worker['cpus'], random.random())
 
         workers_list.sort(key=get_sort_key, reverse=True)
 
@@ -418,12 +410,9 @@ class BundleManager(object):
         Tries to start running the bundle on the given worker, returning False
         if that failed.
         """
-        if self._model.set_starting_bundle(bundle, worker['user_id'], worker['worker_id']):
+        if self._model.transition_bundle_starting(bundle, worker['user_id'], worker['worker_id']):
             workers.set_starting(bundle.uuid, worker)
-            if (
-                self._worker_model.shared_file_system
-                and worker['user_id'] == self._model.root_user_id
-            ):
+            if worker['shared_file_system']:
                 # On a shared file system we create the path here to avoid NFS
                 # directory cache issues.
                 path = self._bundle_store.get_bundle_location(bundle.uuid)
@@ -435,13 +424,14 @@ class BundleManager(object):
                 logger.info('Starting run bundle %s', bundle.uuid)
                 return True
             else:
-                self._model.restage_bundle(bundle)
+                self._model.transition_bundle_staged(bundle)
                 workers.restage(bundle.uuid)
                 return False
         else:
             return False
 
-    def _compute_request_cpus(self, bundle):
+    @staticmethod
+    def _compute_request_cpus(bundle):
         """
         Compute the CPU limit used for scheduling the run.
         The default of 1 is for backwards compatibilty for
@@ -451,7 +441,8 @@ class BundleManager(object):
             return 1
         return bundle.metadata.request_cpus
 
-    def _compute_request_gpus(self, bundle):
+    @staticmethod
+    def _compute_request_gpus(bundle):
         """
         Compute the GPU limit used for scheduling the run.
         The default of 0 is for backwards compatibilty for
@@ -461,7 +452,8 @@ class BundleManager(object):
             return 0
         return bundle.metadata.request_gpus
 
-    def _compute_request_memory(self, bundle):
+    @staticmethod
+    def _compute_request_memory(bundle):
         """
         Compute the memory limit used for scheduling the run.
         The default of 2g is for backwards compatibilty for
@@ -498,13 +490,19 @@ class BundleManager(object):
         Set docker image to be the default if not specified
         Unlike other metadata fields this can actually be None
         from client
+        Also add the `latest` tag if no tag is specified to be
+        consistent with Docker's own behavior.
         """
         if not bundle.metadata.request_docker_image:
             if bundle.metadata.request_gpus:
-                return self._default_gpu_image
+                docker_image = self._default_gpu_image
             else:
-                return self._default_cpu_image
-        return bundle.metadata.request_docker_image
+                docker_image = self._default_cpu_image
+        else:
+            docker_image = bundle.metadata.request_docker_image
+        if ':' not in docker_image:
+            docker_image += ':latest'
+        return docker_image
 
     def _construct_run_message(self, worker, bundle):
         """
@@ -514,7 +512,7 @@ class BundleManager(object):
         message = {}
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
-        if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
+        if worker['shared_file_system']:
             message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
             for dependency in message['bundle']['dependencies']:
                 dependency['location'] = self._bundle_store.get_bundle_location(
@@ -522,18 +520,20 @@ class BundleManager(object):
                 )
 
         # Figure out the resource requirements.
-        resources = message['resources'] = {}
-
-        resources['request_cpus'] = self._compute_request_cpus(bundle)
-        resources['request_gpus'] = self._compute_request_gpus(bundle)
-
-        resources['docker_image'] = self._get_docker_image(bundle)
-        resources['request_time'] = self._compute_request_time(bundle)
-        resources['request_memory'] = self._compute_request_memory(bundle)
-        resources['request_disk'] = self._compute_request_disk(bundle)
-        resources['request_network'] = bundle.metadata.request_network
-
+        bundle_resources = self._compute_bundle_resources(bundle)
+        message['resources'] = bundle_resources.to_dict()
         return message
+
+    def _compute_bundle_resources(self, bundle):
+        return RunResources(
+            cpus=self._compute_request_cpus(bundle),
+            gpus=self._compute_request_gpus(bundle),
+            docker_image=self._get_docker_image(bundle),
+            time=self._compute_request_time(bundle),
+            memory=self._compute_request_memory(bundle),
+            disk=self._compute_request_disk(bundle),
+            network=bundle.metadata.request_network,
+        )
 
     def _fail_unresponsive_bundles(self):
         """
@@ -555,6 +555,107 @@ class BundleManager(object):
                     bundle.state, BUNDLE_TIMEOUT_DAYS
                 )
                 logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
+                self._model.update_bundle(
+                    bundle,
+                    {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
+                )
+
+    def _schedule_run_bundles(self):
+        """
+        This method implements a state machine. The states are:
+
+        STAGED, no worker_run DB entry:
+            Ready to send run message to available worker.
+        STARTING, has worker_run DB entry:
+            Run message sent, waiting for the run to start.
+        RUNNING, has worker_run DB entry:
+            Worker reported that the run has started.
+        READY / FAILED, no worker_run DB entry:
+            Finished.
+        """
+        workers = WorkerInfoAccessor(self._worker_model.get_workers())
+
+        # Handle some exceptional cases.
+        self._cleanup_dead_workers(workers)
+        self._restage_stuck_starting_bundles(workers)
+        self._bring_offline_stuck_running_bundles(workers)
+        self._fail_on_too_many_resources()
+        self._acknowledge_recently_finished_bundles(workers)
+
+        # Schedule, preferring user-owned workers.
+        self._schedule_run_bundles_on_workers(workers, user_owned=True)
+        self._schedule_run_bundles_on_workers(workers, user_owned=False)
+
+    @staticmethod
+    def _check_resource_failure(
+        value,
+        user_fail_string=None,
+        global_fail_string=None,
+        user_max=None,
+        global_max=None,
+        pretty_print=lambda x: str(x),
+    ):
+        """
+        Returns a failure message in case a certain resource limit is not respected.
+        If value > user_max, user_fail_string is formatted with value and user_max in that order
+        If value > global_max, global_fail_strintg is formatted with value and global_max in that order
+        Pretty print is applied to both the value and max values before they're passed on to the functions
+        The strings should expect string inputs for formatting and pretty_print should convert values to strings
+        """
+        if value:
+            if user_max and value > user_max:
+                return user_fail_string % (pretty_print(value), pretty_print(user_max))
+            elif global_max and value > global_max:
+                return global_fail_string % (pretty_print(value), pretty_print(global_max))
+        return None
+
+    def _fail_on_too_many_resources(self):
+        """
+        Fails bundles that request more resources than available for the given user.
+        Note: allow more resources than available on any worker because new
+        workers might get spun up in response to the presence of this run.
+        """
+        for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
+            bundle_resources = self._compute_bundle_resources(bundle)
+            failures = []
+
+            failures.append(
+                self._check_resource_failure(
+                    bundle_resources.disk,
+                    user_fail_string='Requested more disk (%s) than user disk quota left (%s)',
+                    user_max=self._model.get_user_disk_quota_left(bundle.owner_id),
+                    global_fail_string='Maximum job disk size (%s) exceeded (%s)',
+                    global_max=self._max_request_disk,
+                    pretty_print=formatting.size_str,
+                )
+            )
+
+            failures.append(
+                self._check_resource_failure(
+                    bundle_resources.time,
+                    user_fail_string='Requested more time (%s) than user time quota left (%s)',
+                    user_max=self._model.get_user_time_quota_left(bundle.owner_id),
+                    global_fail_string='Maximum job time (%s) exceeded (%s)',
+                    global_max=self._max_request_time,
+                    pretty_print=formatting.duration_str,
+                )
+            )
+
+            failures.append(
+                self._check_resource_failure(
+                    bundle_resources.memory,
+                    global_fail_string='Requested more memory (%s) than maximum limit (%s)',
+                    global_max=self._max_request_memory,
+                    pretty_print=formatting.size_str,
+                )
+            )
+
+            failures = [f for f in failures if f is not None]
+
+            if len(failures) > 0:
+                failure_message = '. '.join(failures)
+                logger.info('Failing %s: %s', bundle.uuid, failure_message)
+
                 self._model.update_bundle(
                     bundle,
                     {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},

@@ -6,8 +6,8 @@ CodaLab features.
 # Requirements
 
 All you need is a version of Docker and docker-compose compatible with docker-compose file version 3.5.
-Note that while Docker/docker-compose should be cross-platform, we have only tested Ubuntu.
-If you try to use CodaLab on MacOS or Windows and run into issues, feel free to let us know, but those platforms
+Note that while Docker/docker-compose should be cross-platform, we have only tested Ubuntu and MacOS.
+If you try to use CodaLab on Windows and run into issues, feel free to let us know, but those platforms
 are not officially supported at the moment.
 
 * [docker](https://docs.docker.com/install/) version 17.12.0+
@@ -127,7 +127,7 @@ To run the tests against an instance that you've already set up:
 
 Or to run a specific test (e.g., basic):
 
-    docker exec codalab_rest-server_1 python test_cli.py basic
+    docker exec codalab_rest-server_1 python3 test_cli.py basic
 
 You can also start an instance and run tests on it:
 
@@ -172,15 +172,11 @@ If you want to modify the database schema, use `alembic` to create a migration. 
 
         ./codalab_service.py start -bd -s rest-server
 
-1. Auto-generate the migration script:
+1. Auto-generate the migration script. Running the following command generates a file named by a format similar to `2019091920_description_of_your_migration_1975ea83b712.py`. Note that when running `codalab_service.py` with `-d` option (dev mode), this script will be stored at a volume mounted into the Docker container in the `alembic` directory:
 
         docker exec codalab_rest-server_1 alembic revision --autogenerate -m "description of your migration"
 
-1. The migration script is created in the Docker image (the file name of the script is printed to stdout, call it <file>), which you need to copy out into your local codebase:
-
-        docker cp codalab_rest-server_1:/opt/codalab-worksheets/alembic/versions/<file> alembic/versions
-
-1. Modify the migration script `<file>` as necessary.
+1. Modify the migration script `2019091920_description_of_your_migration_1975ea83b712.py` as necessary.
 
 1. Rebuild the Docker image:
 
@@ -244,3 +240,13 @@ service on the same machine, be careful about the following:
 * Avoid port clashing: If you're exposing ports, make sure you set different
   ports for different instances, at the very least you need to configure the
   `http-port` of later instances to something other than `80`.
+
+## Troubleshooting
+
+For macOS, you might come across an error with `gunicorn` when running `./codalab_service.py start -bd`
+
+The issue is documented in detail [here](https://github.com/benoitc/gunicorn/issues/1388), and the fix
+is to unselect `/tmp` in Docker's preferences under file sharing.
+
+The image below shows where the file sharing pane is.
+<img src="images/docker-preferences.png" />

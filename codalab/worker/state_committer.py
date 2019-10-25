@@ -26,7 +26,6 @@ class JsonStateCommitter(BaseStateCommitter):
 
     def commit(self, state):
         """ Write out the state in JSON format to a temporary file and rename it into place """
-
         with tempfile.NamedTemporaryFile() as f:
             f.write(pyjson.dumps(state).encode())
             f.flush()
