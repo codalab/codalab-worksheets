@@ -1,37 +1,45 @@
 // @flow
 import * as React from 'react';
-import Typography from '@material-ui/core/Typography';
-import CopyIcon from '@material-ui/icons/FileCopy';
-import Tooltip from '@material-ui/core/Tooltip';
+import classNames from 'classnames';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
-import AccessTimeIcon from '@material-ui/icons/AccessTime';
 import {renderDuration} from '../../../util/worksheet_utils';
-
 import { FileBrowserLite } from '../../FileBrowser';
+import Button from '@material-ui/core/Button';
+import ChevronRightIcon from '@material-ui/icons/ChevronRight';
+import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
 
 class MainContent extends React.Component<
 		{
 			bundleInfo: {},
 			stdout: string | null,
 			strerr: string | null,
-			fileContents: string | null,
-			classes: {},
+            fileContents: string | null,
+            classes: {},
 		}
 > {	
+    state = {
+        showStdOut: true,
+        showStdError: true,
+        showFileBrowser: true,
+    }
+
+    toggleFileViewer() {
+        this.setState({showFileBrowser: !this.state.showFileBrowser});
+    }
+
+    toggleStdOut() {
+        this.setState({showStdOut: !this.state.showStdOut});
+    }
+
+    toggleStdError() {
+        this.setState({showStdError: !this.state.showStdError});
+    }
 	
 	render() {
 		const {
-			classes, bundleInfo, stdout, stderr, fileContents } = this.props;
-		const bundleState = (bundleInfo.state == 'running' &&
-							bundleInfo.metadata.run_status != 'Running')
-					? bundleInfo.metadata.run_status
-					: bundleInfo.state;
+            classes, bundleInfo, stdout, stderr, fileContents } = this.props;
         const isRunBundle = bundleInfo.bundle_type === 'run';
-		const stateSpecClass = bundleInfo.state === 'failed'
-            ? 'failedState'
-            : (bundleInfo.state === 'ready' ? 'readyState' : 'otherState');
 
         //Get the correct run time display
         const bundleRunTime = bundleInfo.metadata.time
@@ -40,73 +48,82 @@ class MainContent extends React.Component<
 
 		return (
             <div className={ classes.outter }>
-                <div className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`}>
-                    { bundleState }
-                </div>
-    			<Grid container classes={ { container: classes.container } } spacing={16}>
-                    { /** Run bundle specific components =========================================================== */}
-                    { isRunBundle &&
-                        <Grid item xs={12}>  
-                            <CopyToClipboard
-                                text={ bundleInfo.command }
-                            >
-                                <div
-                                    className={ `${ classes.row } ${ classes.command }` }
-                                >
-                                    <span>{ bundleInfo.command }</span>
-                                    <Tooltip title="Copy to clipboard">
-                                        <CopyIcon
-                                            style={ { color: 'white', marginLeft: 8 } }
-                                        />
-                                    </Tooltip>
-                                </div>
-                            </CopyToClipboard>
-                        </Grid>
-                    }
-                    { isRunBundle &&
-                        <Grid container xs={12} md="auto" direction="row" justify='flex-end' style={{marginRight: 10}}>
-                            <Grid item style={{ marginRight: 2 }}>
-                                <AccessTimeIcon/>
-                            </Grid>
-                            <Grid item>
-                                <Typography variant="body1">
-                                    run time: { bundleRunTime }
-                                </Typography>
-                            </Grid>
-                        </Grid>
-                    }
+    			<Grid container>    
+                    
                     { /** Stdout/stderr components ================================================================= */}
-                    <Grid item xs={12}>
-                        <Grid container>
-            				{ stdout &&
-                                <Grid item xs={12}>
-                                    <Typography variant="subtitle1">stdout</Typography>
-                					<div className={ classes.snippet }>
-                						{ stdout }
-                					</div>
-                                </Grid>
-            				}
-            				{ stderr &&
-                                <Grid item xs={12}>
-                                    <Typography variant="subtitle1">stderr</Typography>
-                					<div className={ classes.snippet }>
-                						{ stderr }
-                					</div>
-                                </Grid>
-            				}
-                        </Grid>
+                    <Grid container>
+                        { stdout &&
+                            <Grid container>
+                                <Button
+                                onClick={e => this.toggleStdOut()}
+                                size='small'
+                                color='inherit'
+                                aria-label='Show stdout'
+                                >
+                                    
+                                    {'Stdout'}
+                                {this.state.showStdOut 
+                                    ? <KeyboardArrowDownIcon />
+                                    : <ChevronRightIcon />}
+                                </Button>
+                                {this.state.showStdOut &&
+                                    <Grid item xs={12}>
+                                        <div className={ classNames({[classes.snippet]:true, [classes.greyBackground]:true })}>
+                                            { stdout }
+                                        </div>
+                                    </Grid>}
+                            </Grid>
+                        }
+                        { stderr &&
+                            <Grid container>
+                                <Button
+                                onClick={e => this.toggleStdError()}
+                                size='small'
+                                color='inherit'
+                                aria-label='Show stderr'
+                                >
+                                    
+                                    {'Stderr'}
+                                {this.state.showStdError 
+                                    ? <KeyboardArrowDownIcon />
+                                    : <ChevronRightIcon />}
+                                </Button>
+                                {this.state.showStdError &&
+                                    <Grid item xs={12}>
+                                        <div className={ classNames({[classes.snippet]:true, [classes.greyBackground]:true })}>
+                                            { stderr }
+                                        </div>
+                                    </Grid>}
+                            </Grid>
+                        }
                     </Grid>
                     { /** Bundle contents browser ================================================================== */}
-                    <Grid item xs={12}>
-        				{ fileContents
-        					? <div className={ classes.snippet }>
-        						{ fileContents }
-        					</div>
-        					: <FileBrowserLite
-                                uuid={ bundleInfo.uuid }
-                            />
-        				}
-                    </Grid>
+                    <Button
+                        onClick={e => this.toggleFileViewer()}
+                        size='small'
+                        color='inherit'
+                        aria-label='Expand file viewer'
+                        >
+                        {'Files'}
+                        {this.state.showFileBrowser 
+                            ? <KeyboardArrowDownIcon />
+                            : <ChevronRightIcon />}
+                    </Button>
+                    {this.state.showFileBrowser
+                        ?   <Grid item xs={12}>
+                                { fileContents
+                                    ?   <div className={ classes.snippet }>
+                                            { fileContents }
+                                        </div>
+                                    :   
+                                        <div className={ classes.snippet }>
+                                            <FileBrowserLite
+                                            uuid={ bundleInfo.uuid }
+                                        />
+                                        </div>
+                                }
+                            </Grid>
+                        :   null}
     			</Grid>
             </div>
 		);
@@ -117,47 +134,24 @@ const styles = (theme) => ({
     outter: {
         flex: 1,
     },
-	container: {
-		padding: theme.spacing.larger,
-	},
     row: {
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    stateBox: {
-        color: 'white',
-        fontSize: '1.25rem',
-        width: `calc(100% + ${ 2*theme.spacing.larger }px)`,
-        textAlign: 'center',
-        marginTop: -theme.spacing.larger,
-        marginLeft: -theme.spacing.larger,
-    },
-    readyState: {
-        backgroundColor: theme.color.green.base,
-    },
-    failedState: {
-        backgroundColor: theme.color.red.base,
-    },
-    otherState: {
-        backgroundColor: theme.color.yellow.base,
-    },
-	command: {
-        flex: 1,
-		backgroundColor: '#333',
-		color: 'white',
-		fontFamily: 'monospace',
-		padding: theme.spacing.large,
-        borderRadius: theme.spacing.unit,
-	},
 	snippet: {
 		fontFamily: 'monospace',
-		backgroundColor: theme.color.grey.lightest,
-		height: 160,
-		marginBottom: theme.spacing.large,
-        overflow: 'auto',
-	},
+        maxHeight: 300, 
+        width: 680,
+        padding: 10,
+        flexWrap: 'wrap', 
+        flexShrink: 1,
+        overflow:'auto',
+    },
+    greyBackground: {
+        backgroundColor: theme.color.grey.lightest,
+    }
 });
 
 export default withStyles(styles)(MainContent);

@@ -376,6 +376,7 @@ const rowCenter = {
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
+    cursor: 'pointer',
 };
 
 const iconStyle = {
@@ -410,7 +411,9 @@ class FileBrowserItemLite extends React.Component<{
                     <TableCell>
                         <div style={rowCenter}>
                             <FolderIcon style={iconStyle} />
-                            <a target='_blank'>{this.props.index}</a>
+                            <a target='_blank'>
+                                {this.props.index}
+                            </a>
                         </div>
                     </TableCell>
                     <TableCell align='right'>{size}</TableCell>

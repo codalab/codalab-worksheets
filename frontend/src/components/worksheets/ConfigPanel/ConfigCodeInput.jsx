@@ -15,7 +15,7 @@ class ConfigCodeInput extends React.Component<{
     autoFocus?: boolean,
 }> {
     render() {
-        const { classes, placeholder, multiline, maxRows, value, onValueChange, autoFocus } = this.props;
+        const { classes, placeholder, multiline, maxRows, value, onValueChange, onKeyDown, autoFocus } = this.props;
         return (
             <TextField
                 value={value}
@@ -23,6 +23,7 @@ class ConfigCodeInput extends React.Component<{
                 placeholder={placeholder}
                 multiline={multiline}
                 autoFocus={autoFocus}
+                onKeyDown={onKeyDown}
                 margin="dense"
                 variant="filled"
                 fullWidth
