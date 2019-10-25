@@ -401,7 +401,7 @@ class Worksheet extends React.Component {
                     } else {
                         this.setFocus(focusIndex, subFocusIndex - 1);
                     }
-                } else {
+                } else if (focusIndex > 0) {
                     // worksheet_items.jsx
                     this.setFocus(focusIndex - 1, 'end');
                 }
