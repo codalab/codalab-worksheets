@@ -36,9 +36,7 @@ class ItemWrapper extends React.Component {
             prevItem,
             item,
             worksheetUUID,
-            reloadWorksheet,
-            borderTop,
-            borderBottom
+            reloadWorksheet
         } = this.props;
         const { showNewUpload, showNewRun, showNewText } = this.props;
 
@@ -60,9 +58,7 @@ class ItemWrapper extends React.Component {
 
         return (
             <div
-                className={classNames(isDummyItem ? "": classes.container,
-                    borderTop ? classes.borderTop: "",
-                    borderBottom ? classes.borderBottom: "")}
+                className={isDummyItem ? "": classes.container}
             >
                 {!isDummyItem && 
                     <div className={classes.main}>{children}</div>
@@ -105,14 +101,7 @@ class ItemWrapper extends React.Component {
 const styles = (theme) => ({
     container: {
         position: 'relative',
-        marginBottom: 20,
         zIndex: 5,
-    },
-    borderTop: {
-        borderTop: "#1d91c0 solid 2px"
-    },
-    borderBottom: {
-        borderBottom: "#1d91c0 solid 2px"
     },
     main: {
         zIndex: 10,
@@ -229,13 +218,24 @@ const ItemWrapperDraggable = (props) => {
         canDrop: (draggedItemProps, monitor) => {
             // Only allow dropping to/from items with defined sort keys.
             const {maxKey} = getMinMaxKeys(draggedItemProps.item);
-            return maxKey !== null;
+            return borderBottom && maxKey !== null;
         }
     });
-    drag(drop(ref))
+    drag(drop(ref));
+    const styles = {
+        opacity,
+        paddingBottom: 20,
+        boxSizing: "border-box",
+        ...(borderTop && {
+            boxShadow: "0 -2px 0 #1d91c0",
+        }),
+        ...(borderBottom && {
+            boxShadow: "0 2px 0 #1d91c0",
+        })
+    }
     return (
-      <div ref={ref} style={{ opacity }}>
-        <ItemWrapperWithStyles {...props} borderTop={borderTop} borderBottom={borderBottom} />
+      <div ref={ref} style={ styles }>
+        <ItemWrapperWithStyles {...props} />
       </div>
     )
   }
