@@ -221,6 +221,9 @@ class Worksheet extends React.Component {
                 return; // If nothing is selected, don't scroll.
             } else {
                 var item = this.refs.list.refs['item' + index];
+                if (!item) {
+                    return;
+                }
                 if (this._numTableRows(item.props.item)) {
                     item = item.refs['row' + subIndex]; // Specifically, the row
                 }
