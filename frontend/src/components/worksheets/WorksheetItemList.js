@@ -4,13 +4,6 @@ import $ from 'jquery';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import { buildTerminalCommand } from '../../util/worksheet_utils';
 import { ContextMenuEnum, ContextMenuMixin } from './ContextMenu';
-import ContentsItem from './items/ContentsItem';
-import GraphItem from './items/GraphItem';
-import ImageItem from './items/ImageItem';
-import MarkdownItem from './items/MarkdownItem';
-import RecordItem from './items/RecordItem';
-import TableItem from './items/TableItem';
-import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
 
 ////////////////////////////////////////////////////////////
@@ -39,26 +32,6 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
     props.url = url;
     props.prevItem = prevItem;
 
-    var constructor = {
-        markup_block: MarkdownItem,
-        table_block: TableItem,
-        contents_block: ContentsItem,
-        subworksheets_block: WorksheetItem,
-        record_block: RecordItem,
-        image_block: ImageItem,
-        graph_block: GraphItem,
-    }[item.mode];
-
-    var elem;
-    if (constructor) {
-        elem = React.createElement(constructor, props);
-    } else {
-        elem = React.createElement(
-            'div',
-            null,
-            React.createElement('strong', null, 'Internal error: ', item.mode),
-        );
-    }
     worksheet_items.push(
         <ItemWrapper
             prevItem={prevItem}
@@ -73,9 +46,8 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             onHideNewUpload={props.onHideNewUpload}
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
-        >
-            {elem}
-        </ItemWrapper>,
+            blockProps={props}
+        />
     );
 };
 

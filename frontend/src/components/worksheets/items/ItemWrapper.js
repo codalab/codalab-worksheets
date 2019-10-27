@@ -1,12 +1,18 @@
 // @flow
 import React, { useRef } from 'react';
 import $ from "jquery";
-import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 import { useDrag, useDrop } from 'react-dnd';
 import NewRun from '../NewRun';
 import NewUpload from '../NewUpload';
 import TextEditorItem from './TextEditorItem';
+import ContentsItem from './ContentsItem';
+import GraphItem from './GraphItem';
+import ImageItem from './ImageItem';
+import MarkdownItem from './MarkdownItem';
+import RecordItem from './RecordItem';
+import TableItem from './TableItem';
+import WorksheetItem from './WorksheetItem';
 import { getMinMaxKeys } from '../../../util/worksheet_utils';
 
 function getIds(item) {
@@ -31,12 +37,12 @@ class ItemWrapper extends React.Component {
 
     render() {
         const {
-            children,
             classes,
             prevItem,
             item,
             worksheetUUID,
-            reloadWorksheet
+            reloadWorksheet,
+            blockProps
         } = this.props;
         const { showNewUpload, showNewRun, showNewText } = this.props;
 
@@ -56,12 +62,28 @@ class ItemWrapper extends React.Component {
 
         const {isDummyItem} = item;
 
+        let BlockElement = {
+            markup_block: MarkdownItem,
+            table_block: TableItem,
+            contents_block: ContentsItem,
+            subworksheets_block: WorksheetItem,
+            record_block: RecordItem,
+            image_block: ImageItem,
+            graph_block: GraphItem,
+        }[item.mode];
+
+        if (!BlockElement) {
+            BlockElement = () => <strong>Internal error: {item.mode}</strong>;
+        }
+
         return (
             <div
                 className={isDummyItem ? "": classes.container}
             >
                 {!isDummyItem && 
-                    <div className={classes.main}>{children}</div>
+                    <div className={classes.main}>
+                        <BlockElement {...blockProps} />
+                    </div>
                 }
                 {showNewUpload && (
                     <NewUpload
