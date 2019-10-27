@@ -46,6 +46,8 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             onHideNewUpload={props.onHideNewUpload}
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
+            setFocus={props.setFocus}
+            focusIndex={props.focusIndex}
             blockProps={props}
         />
     );

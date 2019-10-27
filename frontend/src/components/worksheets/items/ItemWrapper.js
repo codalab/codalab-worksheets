@@ -194,9 +194,12 @@ const ItemWrapperDraggable = (props) => {
         opacity: monitor.isDragging() ? 0.5 : 1,
       }),
       canDrag: () => {
-        // Only allow dropping to/from items with defined sort keys.
+        // Only allow dragging from an item with defined sort keys.
         const {maxKey} = getMinMaxKeys(props.item);
         return maxKey !== null;
+      },
+      begin: () => {
+        props.setFocus(props.focusIndex, 0);
       }
     });
     const [{ borderTop, borderBottom }, drop] = useDrop({
@@ -233,7 +236,7 @@ const ItemWrapperDraggable = (props) => {
                     throw "No sort key to insert found";
                 }
                 let items = draggedItemProps.item.text.split(/[\n]/);
-                items = [...items, ''];
+                items = [...items, '']; // Add empty line at end of text so it remains a separate item from the item after it.
                 await addItems({
                     worksheetUUID,
                     ids: draggedItemProps.item.ids,
@@ -246,7 +249,16 @@ const ItemWrapperDraggable = (props) => {
                 // TODO: Add error handling here.
                 return;
             }
-            reloadWorksheet();
+            let {focusIndex, subFocusIndex} = props;
+            const { maxKey: draggedItem } = getMinMaxKeys(draggedItemProps.item);
+            const { maxKey: droppedItem } = getMinMaxKeys(props.item);
+            
+            // If we are dragging upwards, increment the focusIndex so that
+            // the same item is still focused at the end of dragging.
+            if (droppedItem < draggedItem) {
+                focusIndex++;
+            }
+            reloadWorksheet(undefined, undefined, [focusIndex, subFocusIndex]);
         },
         hover(draggedItemProps, monitor, component) {
             // TODO: Move items out of the way.

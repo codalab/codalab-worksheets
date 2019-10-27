@@ -676,11 +676,12 @@ class Worksheet extends React.Component {
 
     // If partialUpdateItems is undefined, we will fetch the whole worksheet.
     // Otherwise, partialUpdateItems is a list of item parallel to ws.info.items that contain only items that need updating.
-    // More spefically, all items that don't contain run bundles that need updating are null.
+    // More specifically, all items that don't contain run bundles that need updating are null.
     // Also, a non-null item could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
     // The bundle_infos for bundles that don't need updating are also null.
     // If rawIndexAfterEditMode is defined, this reloadWorksheet is called right after toggling editMode. It should resolve rawIndex to (focusIndex, subFocusIndex) pair.
-    reloadWorksheet = (partialUpdateItems, rawIndexAfterEditMode) => {
+    // If newFocusIndexPair (an array of [index, subindex]) is defined, the new focus index will be set to this value.
+    reloadWorksheet = (partialUpdateItems, rawIndexAfterEditMode, newFocusIndexPair) => {
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
             this.setState({ updating: true });
@@ -726,6 +727,8 @@ class Worksheet extends React.Component {
                         // where closest means 'next' by default or 'last' if there is no next bundle.
                         var focus = this.getFocusAfterBundleRemoved(items);
                         this.setFocus(focus[0], focus[1]);
+                    } else if (newFocusIndexPair) {
+                        this.setFocus(newFocusIndexPair[0], newFocusIndexPair[1]);
                     } else {
                         // if the change has no impact on bundles, but on adding an item
                         // then we want the focus to be the one below the current focus
