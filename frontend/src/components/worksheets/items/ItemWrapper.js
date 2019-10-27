@@ -204,7 +204,9 @@ const ItemWrapperDraggable = (props) => {
                 const middle = top + height / 2;
                 const mouseY = offset.y;
                 return {
-                    borderTop: mouseY <= middle && false, // TODO: allow dragging things to the top
+                    borderTop: mouseY <= middle && false,
+                    // We only allow dragging after a defined item.
+                    // TODO: allow dragging to the top of the page
                     borderBottom: true // mouseY > middle
                 }
             }
@@ -215,15 +217,14 @@ const ItemWrapperDraggable = (props) => {
         },
 		accept: ItemTypes.ITEM_WRAPPER,
 		drop: async (draggedItemProps, monitor, component) => {
-            console.log(props, props.item, draggedItemProps.item);
             try {
                 const {minKey, maxKey} = getMinMaxKeys(props.item);
-                const after_sort_key = maxKey + 1; // borderTop ? minKey - 1 : maxKey + 1;
+                const after_sort_key = maxKey + 1;
                 if (!after_sort_key) {
                     throw "No sort key to insert found";
                 }
                 let items = draggedItemProps.item.text.split(/[\n]/);
-                items = [...items, '']; // borderBottom ? ['', ...items]: [...items, ''];
+                items = [...items, ''];
                 await addItems({
                     worksheetUUID,
                     ids: draggedItemProps.item.ids,
