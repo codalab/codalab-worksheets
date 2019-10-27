@@ -202,14 +202,19 @@ const ItemWrapperDraggable = (props) => {
             const isOver = monitor.isOver();
             const offset = monitor.getSourceClientOffset();
             if (isOver && offset && ref.current) {
-                const {top, height} = ref.current.getBoundingClientRect();
-                const middle = top + height / 2;
-                const mouseY = offset.y;
+                if (!props.prevItem) {
+                    // Allow dragging to the top of an item, only for the first item.
+                    const {top, height} = ref.current.getBoundingClientRect();
+                    const middle = top + height / 2;
+                    const mouseY = offset.y;
+                    return {
+                        borderTop: mouseY <= middle,
+                        borderBottom: mouseY > middle
+                    }
+                }
                 return {
-                    borderTop: mouseY <= middle && false,
-                    // We only allow dragging after a defined item.
-                    // TODO: allow dragging to the top of the page
-                    borderBottom: true // mouseY > middle
+                    borderTop: false,
+                    borderBottom: true
                 }
             }
             return {
@@ -221,7 +226,7 @@ const ItemWrapperDraggable = (props) => {
 		drop: async (draggedItemProps, monitor, component) => {
             try {
                 const {minKey, maxKey} = getMinMaxKeys(props.item);
-                const after_sort_key = maxKey + 1;
+                const after_sort_key = borderBottom ? maxKey + 1: minKey - 1;
                 if (!after_sort_key) {
                     throw "No sort key to insert found";
                 }
@@ -247,10 +252,11 @@ const ItemWrapperDraggable = (props) => {
             const { maxKey: draggedItem } = getMinMaxKeys(draggedItemProps.item);
             const { maxKey: droppedItem } = getMinMaxKeys(props.item);
             const { maxKey: droppedAfterItem } = getMinMaxKeys(props.afterItem);
-            return borderBottom &&
-                draggedItem !== null && // Don't allow dropping onto an item without a defined sort key.
+            return draggedItem !== null && // Don't allow dropping onto an item without a defined sort key.
                 draggedItem !== droppedItem && // Don't allow dropping onto the same item
-                droppedAfterItem !== draggedItem // Don't allow dropping onto the previous item (as this would end up in the same location)
+                (borderTop || droppedAfterItem !== draggedItem)
+                // Don't allow dropping onto the previous item (as this would end up in the same location),
+                // EXCEPT for when dragging to above the first item in the worksheet (when borderTop is true).
                 ;
         }
     });
