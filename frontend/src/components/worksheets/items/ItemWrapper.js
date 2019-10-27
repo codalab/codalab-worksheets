@@ -173,6 +173,10 @@ const ItemWrapperDraggable = (props) => {
       collect: monitor => ({
         opacity: monitor.isDragging() ? 0.5 : 1,
       }),
+      canDrag: () => {
+        // Only allow dropping to/from items with defined sort keys.
+        return (props.item && props.item.sort_keys && props.item.sort_keys[0]);
+      }
     });
     const [{ borderTop, borderBottom }, drop] = useDrop({
         collect: monitor => {
@@ -194,7 +198,7 @@ const ItemWrapperDraggable = (props) => {
         },
 		accept: ItemTypes.ITEM_WRAPPER,
 		drop: async (draggedItemProps, monitor, component) => {
-            // console.log(props, props.item, draggedItemProps.item);
+            console.log(props, props.item, draggedItemProps.item);
             await addItems({
                 worksheetUUID,
                 ids: draggedItemProps.item.ids,
@@ -207,8 +211,9 @@ const ItemWrapperDraggable = (props) => {
         hover(draggedItemProps, monitor, component) {
             // TODO: Move items out of the way.
         },
-        canDrop: (props, monitor) => {
-            return true;
+        canDrop: (draggedItemProps, monitor) => {
+            // Only allow dropping to/from items with defined sort keys.
+            return (draggedItemProps.item && draggedItemProps.item.sort_keys && draggedItemProps.item.sort_keys[0]);
         }
     });
     drag(drop(ref))
