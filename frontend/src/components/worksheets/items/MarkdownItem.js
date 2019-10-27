@@ -128,14 +128,14 @@ class MarkdownItem extends React.Component {
                     dangerouslySetInnerHTML={{ __html: contents }}
                 />
                 <div className={classes.buttonsPanel}>
-                    <div ref={dragHandleRef}>
+                    {after_sort_key && <div ref={dragHandleRef}>
                         <IconButton
                             classes={{ root: classes.iconButtonRoot }}
                             
                         >
                             <DragHandleIcon />
                         </IconButton>
-                    </div>
+                    </div>}
                     &nbsp;&nbsp;
                     <IconButton
                         onClick={this.toggleEdit}
