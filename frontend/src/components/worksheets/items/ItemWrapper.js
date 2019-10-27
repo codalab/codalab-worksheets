@@ -204,8 +204,8 @@ const ItemWrapperDraggable = (props) => {
                 const middle = top + height / 2;
                 const mouseY = offset.y;
                 return {
-                    borderTop: mouseY <= middle,
-                    borderBottom: mouseY > middle
+                    borderTop: mouseY <= middle && false, // TODO: allow dragging things to the top
+                    borderBottom: true // mouseY > middle
                 }
             }
             return {
