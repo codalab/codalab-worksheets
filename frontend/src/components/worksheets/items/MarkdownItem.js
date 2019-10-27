@@ -131,7 +131,6 @@ class MarkdownItem extends React.Component {
                     {after_sort_key && <div ref={dragHandleRef}>
                         <IconButton
                             classes={{ root: classes.iconButtonRoot }}
-                            
                         >
                             <DragHandleIcon />
                         </IconButton>

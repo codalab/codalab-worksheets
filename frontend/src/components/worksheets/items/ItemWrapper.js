@@ -222,10 +222,12 @@ const ItemWrapperDraggable = (props) => {
                 if (!after_sort_key) {
                     throw "No sort key to insert found";
                 }
+                let items = draggedItemProps.item.text.split(/[\n]/);
+                items = borderBottom ? ['', ...items]: [...items, ''];
                 await addItems({
                     worksheetUUID,
                     ids: draggedItemProps.item.ids,
-                    items: [...draggedItemProps.item.text.split(/[\n]/), ''],
+                    items,
                     after_sort_key
                 });
             }
