@@ -206,14 +206,14 @@ const ItemWrapperDraggable = (props) => {
             console.log(props, props.item, draggedItemProps.item);
             try {
                 const {minKey, maxKey} = getMinMaxKeys(props.item);
-                const after_sort_key = borderTop ? minKey - 1 : maxKey;
+                const after_sort_key = maxKey + 1; // borderTop ? minKey - 1 : maxKey + 1;
                 if (!after_sort_key) {
                     throw "No sort key to insert found";
                 }
                 await addItems({
                     worksheetUUID,
                     ids: draggedItemProps.item.ids,
-                    items: draggedItemProps.item.text.split(/[\n]/),
+                    items: [...draggedItemProps.item.text.split(/[\n]/), ''],
                     after_sort_key
                 });
             }
