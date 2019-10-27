@@ -8,7 +8,7 @@ import { withStyles } from '@material-ui/core/styles';
 import IconButton from '@material-ui/core/IconButton';
 import EditIcon from '@material-ui/icons/Edit';
 import DeleteIcon from '@material-ui/icons/Delete';
-
+import DragHandleIcon from '@material-ui/icons/DragHandle';
 import TextEditorItem from './TextEditorItem';
 import { createAlertText } from '../../../util/worksheet_utils';
 
@@ -82,7 +82,7 @@ class MarkdownItem extends React.Component {
     };
 
     render() {
-        const { classes, item } = this.props;
+        const { classes, item, dragHandleRef } = this.props;
         const { showEdit } = this.state;
         var contents = item.text;
         // Order is important!
@@ -128,6 +128,15 @@ class MarkdownItem extends React.Component {
                     dangerouslySetInnerHTML={{ __html: contents }}
                 />
                 <div className={classes.buttonsPanel}>
+                    <div ref={dragHandleRef}>
+                        <IconButton
+                            classes={{ root: classes.iconButtonRoot }}
+                            
+                        >
+                            <DragHandleIcon />
+                        </IconButton>
+                    </div>
+                    &nbsp;&nbsp;
                     <IconButton
                         onClick={this.toggleEdit}
                         classes={{ root: classes.iconButtonRoot }}

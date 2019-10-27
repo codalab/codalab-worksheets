@@ -42,7 +42,8 @@ class ItemWrapper extends React.Component {
             item,
             worksheetUUID,
             reloadWorksheet,
-            blockProps
+            blockProps,
+            dragHandleRef
         } = this.props;
         const { showNewUpload, showNewRun, showNewText } = this.props;
 
@@ -82,7 +83,7 @@ class ItemWrapper extends React.Component {
             >
                 {!isDummyItem && 
                     <div className={classes.main}>
-                        <BlockElement {...blockProps} />
+                        <BlockElement {...blockProps} dragHandleRef={dragHandleRef} />
                     </div>
                 }
                 {showNewUpload && (
@@ -183,7 +184,7 @@ const ItemWrapperDraggable = (props) => {
     const {worksheetUUID, reloadWorksheet, closeEditor} = props;
     // Sortable example: https://codesandbox.io/s/github/react-dnd/react-dnd/tree/gh-pages/examples_hooks_js/04-sortable/simple?from-embed
     const ref = useRef(null);
-    const [{ opacity }, drag] = useDrag({
+    const [{ opacity }, drag, preview] = useDrag({
       item: { type: ItemTypes.ITEM_WRAPPER, item: props.item },
       collect: monitor => ({
         opacity: monitor.isDragging() ? 0.5 : 1,
@@ -243,7 +244,7 @@ const ItemWrapperDraggable = (props) => {
             return borderBottom && maxKey !== null;
         }
     });
-    drag(drop(ref));
+    preview(drop(ref));
     const styles = {
         opacity,
         paddingBottom: 20,
@@ -257,7 +258,7 @@ const ItemWrapperDraggable = (props) => {
     }
     return (
       <div ref={ref} style={ styles }>
-        <ItemWrapperWithStyles {...props} />
+        <ItemWrapperWithStyles {...props} dragHandleRef={drag} />
       </div>
     )
   }
