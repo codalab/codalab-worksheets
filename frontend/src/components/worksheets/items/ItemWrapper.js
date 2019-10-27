@@ -185,7 +185,7 @@ const ItemWrapperDraggable = (props) => {
     // Sortable example: https://codesandbox.io/s/github/react-dnd/react-dnd/tree/gh-pages/examples_hooks_js/04-sortable/simple?from-embed
     const ref = useRef(null);
     const [{ opacity }, drag, preview] = useDrag({
-      item: { type: ItemTypes.ITEM_WRAPPER, item: props.item },
+      item: { type: ItemTypes.ITEM_WRAPPER, item: props.item, afterItem: props.afterItem },
       collect: monitor => ({
         opacity: monitor.isDragging() ? 0.5 : 1,
       }),
@@ -241,9 +241,14 @@ const ItemWrapperDraggable = (props) => {
             // TODO: Move items out of the way.
         },
         canDrop: (draggedItemProps, monitor) => {
-            // Only allow dropping to/from items with defined sort keys.
-            const {maxKey} = getMinMaxKeys(draggedItemProps.item);
-            return borderBottom && maxKey !== null;
+            const { maxKey: draggedItem } = getMinMaxKeys(draggedItemProps.item);
+            const { maxKey: droppedItem } = getMinMaxKeys(props.item);
+            const { maxKey: droppedAfterItem } = getMinMaxKeys(props.afterItem);
+            return borderBottom &&
+                draggedItem !== null && // Don't allow dropping onto an item without a defined sort key.
+                draggedItem !== droppedItem && // Don't allow dropping onto the same item
+                droppedAfterItem !== draggedItem // Don't allow dropping onto the previous item (as this would end up in the same location)
+                ;
         }
     });
     preview(drop(ref));
