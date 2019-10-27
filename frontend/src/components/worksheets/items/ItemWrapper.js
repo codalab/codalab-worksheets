@@ -175,7 +175,8 @@ const ItemWrapperDraggable = (props) => {
       }),
       canDrag: () => {
         // Only allow dropping to/from items with defined sort keys.
-        return (props.item && props.item.sort_keys && props.item.sort_keys[0]);
+        const {maxKey} = getMinMaxKeys(props.item);
+        return maxKey !== null;
       }
     });
     const [{ borderTop, borderBottom }, drop] = useDrop({
@@ -199,21 +200,32 @@ const ItemWrapperDraggable = (props) => {
 		accept: ItemTypes.ITEM_WRAPPER,
 		drop: async (draggedItemProps, monitor, component) => {
             console.log(props, props.item, draggedItemProps.item);
-            await addItems({
-                worksheetUUID,
-                ids: draggedItemProps.item.ids,
-                items: draggedItemProps.item.text.split(/[\n]/),
-                after_sort_key: borderTop ? props.item.sort_keys[0] : props.item.sort_keys[props.item.sort_keys.length]
-            });
-            // reloadWorksheet();
-            // alert(createAlertText(this.url, jqHXR.responseText));
+            try {
+                const {minKey, maxKey} = getMinMaxKeys(props.item);
+                const after_sort_key = borderTop ? minKey - 1 : maxKey;
+                if (!after_sort_key) {
+                    throw "No sort key to insert found";
+                }
+                await addItems({
+                    worksheetUUID,
+                    ids: draggedItemProps.item.ids,
+                    items: draggedItemProps.item.text.split(/[\n]/),
+                    after_sort_key
+                });
+            }
+            catch(e) {
+                console.error(e);
+                // TODO: Add error handling here.
+            }
+            reloadWorksheet();
         },
         hover(draggedItemProps, monitor, component) {
             // TODO: Move items out of the way.
         },
         canDrop: (draggedItemProps, monitor) => {
             // Only allow dropping to/from items with defined sort keys.
-            return (draggedItemProps.item && draggedItemProps.item.sort_keys && draggedItemProps.item.sort_keys[0]);
+            const {maxKey} = getMinMaxKeys(draggedItemProps.item);
+            return maxKey !== null;
         }
     });
     drag(drop(ref))
