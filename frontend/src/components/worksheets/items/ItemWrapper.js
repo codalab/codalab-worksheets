@@ -242,6 +242,7 @@ const ItemWrapperDraggable = (props) => {
             catch(e) {
                 console.error(e);
                 // TODO: Add error handling here.
+                return;
             }
             reloadWorksheet();
         },
