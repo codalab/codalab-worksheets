@@ -13,11 +13,12 @@ from codalab.worker.fsm import BaseDependencyManager, DependencyStage, StateTran
 import codalab.worker.pyjson
 from codalab.worker.worker_thread import ThreadDict
 from codalab.worker.state_committer import JsonStateCommitter
+from codalab.worker.bundle_state import DependencyKey
 
 logger = logging.getLogger(__name__)
 
 DependencyState = namedtuple(
-    'DependencyState', 'stage dependency path size_bytes dependents last_used message killed'
+    'DependencyState', 'stage dependency_key path size_bytes dependents last_used message killed'
 )
 
 
@@ -37,7 +38,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     to the local filesystem. It caches all downloaded dependencies but cleans up the
     old ones if the disk use hits the given threshold
 
-    For this class dependencies are uniquely identified by (parent_uuid, parent_path)
+    For this class dependencies are uniquely identified by DependencyKey
     """
 
     DEPENDENCIES_DIR_NAME = 'dependencies'
@@ -66,15 +67,15 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             os.makedirs(self.dependencies_dir, 0o770)
 
         # Locks for concurrency
-        self._dependency_locks = dict()  # (parent_uuid, parent_path) -> threading.RLock
+        self._dependency_locks = dict()  # type: Dict[DependencyKey, threading.RLock]
         self._global_lock = threading.RLock()  # Used for add/remove actions
         self._paths_lock = threading.RLock()  # Used for path name computations
 
         # File paths that are currently being used to store dependencies. Used to prevent conflicts
         self._paths = set()
-        # (parent_uuid, parent_path) -> DependencyState
+        # DependencyKey -> DependencyState
         self._dependencies = dict()
-        # (parent_uuid, parent_path) -> WorkerThread(thread, success, failure_message)
+        # DependencyKey -> WorkerThread(thread, success, failure_message)
         self._downloading = ThreadDict(fields={'success': False, 'failure_message': None})
         self._load_state()
 
@@ -90,22 +91,22 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         dependencies = {}
         dependency_locks = {}
         paths = set()
-        for dep, dep_state in state['dependencies'].items():
+        for dep_key, dep_state in state['dependencies'].items():
             full_path = os.path.join(self.dependencies_dir, dep_state.path)
             if os.path.exists(full_path):
-                dependencies[dep] = dep_state
-                dependency_locks[dep] = threading.RLock()
+                dependencies[dep_key] = dep_state
+                dependency_locks[dep_key] = threading.RLock()
             else:
                 logger.info(
                     "Dependency {} in loaded state but its path {} doesn't exist in the filesystem".format(
-                        dep, full_path
+                        dep_key, full_path
                     )
                 )
             if dep_state.path not in state['paths']:
                 state['paths'].add(dep_state.path)
                 logger.info(
                     "Dependency {} in loaded state but its path {} is not in the loaded paths {}".format(
-                        dep, dep_state.path, state['paths']
+                        dep_key, dep_state.path, state['paths']
                     )
                 )
         for path in state['paths']:
@@ -150,9 +151,9 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         logger.info('Stopped local dependency manager')
 
     def _process_dependencies(self):
-        for entry, state in self._dependencies.items():
-            with self._dependency_locks[entry]:
-                self._dependencies[entry] = self.transition(state)
+        for dep_key, dep_state in self._dependencies.items():
+            with self._dependency_locks[dep_key]:
+                self._dependencies[dep_key] = self.transition(dep_state)
 
     def _prune_failed_dependencies(self):
         """
@@ -163,14 +164,14 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         with self._global_lock:
             self._acquire_all_locks()
             failed_deps = {
-                dep: state
-                for dep, state in self._dependencies.items()
-                if state.stage == DependencyStage.FAILED
-                and time.time() - state.last_used
+                dep_key: dep_state
+                for dep_key, dep_state in self._dependencies.items()
+                if dep_state.stage == DependencyStage.FAILED
+                and time.time() - dep_state.last_used
                 > LocalFileSystemDependencyManager.DEPENDENCY_FAILURE_COOLDOWN
             }
-            for dependency, dependency_state in failed_deps.items():
-                self._delete_dependency(dependency)
+            for dep_key, dep_state in failed_deps.items():
+                self._delete_dependency(dep_key)
             self._release_all_locks()
 
     def _cleanup(self):
@@ -185,7 +186,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         while True:
             with self._global_lock:
                 self._acquire_all_locks()
-                bytes_used = sum(dep.size_bytes for dep in self._dependencies.values())
+                bytes_used = sum(dep_state.size_bytes for dep_state in self._dependencies.values())
                 serialized_length = len(codalab.worker.pyjson.dumps(self._dependencies))
                 if (
                     bytes_used > self._max_cache_size_bytes
@@ -200,72 +201,72 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                         LocalFileSystemDependencyManager.MAX_SERIALIZED_LEN,
                     )
                     ready_deps = {
-                        dep: state
-                        for dep, state in self._dependencies.items()
-                        if state.stage == DependencyStage.READY and not state.dependents
+                        dep_key: dep_state
+                        for dep_key, dep_state in self._dependencies.items()
+                        if dep_state.stage == DependencyStage.READY and not dep_state.dependents
                     }
                     failed_deps = {
-                        dep: state
-                        for dep, state in self._dependencies.items()
-                        if state.stage == DependencyStage.FAILED
+                        dep_key: dep_state
+                        for dep_key, dep_state in self._dependencies.items()
+                        if dep_state.stage == DependencyStage.FAILED
                     }
                     if failed_deps:
-                        dep_to_remove = min(
-                            failed_deps.items(), key=lambda dep_state: dep_state[1].last_used
+                        dep_key_to_remove = min(
+                            failed_deps.items(), key=lambda dep: dep[1].last_used
                         )[0]
                     elif ready_deps:
-                        dep_to_remove = min(
-                            ready_deps.items(), key=lambda dep_state: dep_state[1].last_used
+                        dep_key_to_remove = min(
+                            ready_deps.items(), key=lambda dep: dep[1].last_used
                         )[0]
                     else:
                         logger.info(
                             'Dependency quota full but there are only downloading dependencies, not cleaning up until downloads are over'
                         )
                         break
-                    if dep_to_remove:
-                        self._delete_dependency(dep_to_remove)
+                    if dep_key_to_remove:
+                        self._delete_dependency(dep_key_to_remove)
                     self._release_all_locks()
                 else:
                     self._release_all_locks()
                     break
 
-    def _delete_dependency(self, dependency):
+    def _delete_dependency(self, dependency_key):
         """
         Remove the given dependency from the manager's state
         Also delete any known files on the filesystem if any exist
         """
-        if self._acquire_if_exists(dependency):
+        if self._acquire_if_exists(dependency_key):
             try:
-                path_to_remove = self._dependencies[dependency].path
+                path_to_remove = self._dependencies[dependency_key].path
                 self._paths.remove(path_to_remove)
                 remove_path(path_to_remove)
             except Exception:
                 pass
             finally:
-                del self._dependencies[dependency]
-                self._dependency_locks[dependency].release()
+                del self._dependencies[dependency_key]
+                self._dependency_locks[dependency_key].release()
 
-    def has(self, dependency):
+    def has(self, dependency_key):
         """
-        Takes a dependency = (parent_uuid, parent_path)
+        Takes a DependencyKey
         Returns true if the manager has processed this dependency
         """
         with self._global_lock:
-            return dependency in self._dependencies
+            return dependency_key in self._dependencies
 
-    def get(self, uuid, dependency):
+    def get(self, uuid, dependency_key):
         """
         Request the dependency for the run with uuid, registering uuid as a dependent of this dependency
         """
         now = time.time()
-        if not self._acquire_if_exists(dependency):  # add dependency state if it does not exist
+        if not self._acquire_if_exists(dependency_key):  # add dependency state if it does not exist
             with self._global_lock:
-                self._dependency_locks[dependency] = threading.RLock()
-                self._dependency_locks[dependency].acquire()
-                self._dependencies[dependency] = DependencyState(
+                self._dependency_locks[dependency_key] = threading.RLock()
+                self._dependency_locks[dependency_key].acquire()
+                self._dependencies[dependency_key] = DependencyState(
                     stage=DependencyStage.DOWNLOADING,
-                    dependency=dependency,
-                    path=self._assign_path(dependency),
+                    dependency_key=dependency_key,
+                    path=self._assign_path(dependency_key),
                     size_bytes=0,
                     dependents=set([uuid]),
                     last_used=now,
@@ -274,35 +275,37 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 )
 
         # update last_used as long as it isn't in FAILED
-        if self._dependencies[dependency].stage != DependencyStage.FAILED:
-            self._dependencies[dependency].dependents.add(uuid)
-            self._dependencies[dependency] = self._dependencies[dependency]._replace(last_used=now)
-        self._dependency_locks[dependency].release()
-        return self._dependencies[dependency]
+        if self._dependencies[dependency_key].stage != DependencyStage.FAILED:
+            self._dependencies[dependency_key].dependents.add(uuid)
+            self._dependencies[dependency_key] = self._dependencies[dependency_key]._replace(
+                last_used=now
+            )
+        self._dependency_locks[dependency_key].release()
+        return self._dependencies[dependency_key]
 
-    def release(self, uuid, dependency):
+    def release(self, uuid, dependency_key):
         """
         Register that the run with uuid is no longer dependent on this dependency
         If no more runs are dependent on this dependency, kill it
         """
-        if self._acquire_if_exists(dependency):
-            dep_state = self._dependencies[dependency]
+        if self._acquire_if_exists(dependency_key):
+            dep_state = self._dependencies[dependency_key]
             if uuid in dep_state.dependents:
                 dep_state.dependents.remove(uuid)
             if not dep_state.dependents:
                 dep_state = dep_state._replace(killed=True)
-                self._dependencies[dependency] = dep_state
-            self._dependency_locks[dependency].release()
+                self._dependencies[dependency_key] = dep_state
+            self._dependency_locks[dependency_key].release()
 
-    def _acquire_if_exists(self, dependency):
+    def _acquire_if_exists(self, dependency_key):
         """
         Safely acquires a lock for the given dependency if it exists
         Returns True if depedendency exists, False otherwise
         Callers should remember to release the lock
         """
         with self._global_lock:
-            if dependency in self._dependencies:
-                self._dependency_locks[dependency].acquire()
+            if dependency_key in self._dependencies:
+                self._dependency_locks[dependency_key].acquire()
                 return True
             else:
                 return False
@@ -323,15 +326,14 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             for dependency, lock in self._dependency_locks.items():
                 lock.release()
 
-    def _assign_path(self, dependency):
+    def _assign_path(self, dependency_key):
         """
         Normalize the path for the dependency by replacing / with _, avoiding conflicts
         """
-        parent_uuid, parent_path = dependency
-        if parent_path:
-            path = os.path.join(parent_uuid, parent_path)
+        if dependency_key.parent_path:
+            path = os.path.join(dependency_key.parent_uuid, dependency_key.parent_path)
         else:
-            path = parent_uuid
+            path = dependency_key.parent_uuid
         path = path.replace(os.path.sep, '_')
 
         # You could have a conflict between, for example a/b_c and
@@ -378,22 +380,23 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 Callback method for bundle service client updates dependency state and
                 raises DownloadAbortedException if download is killed by dep. manager
                 """
-                with self._dependency_locks[dependency]:
-                    state = self._dependencies[dependency]
+                with self._dependency_locks[dependency_state.dependency_key]:
+                    state = self._dependencies[dependency_state.dependency_key]
                     if state.killed:
                         raise DownloadAbortedException("Aborted by user")
-                    self._dependencies[dependency] = state._replace(
+                    self._dependencies[dependency_state.dependency_key] = state._replace(
                         size_bytes=bytes_downloaded,
                         message="Downloading dependency: %s downloaded"
                         % size_str(bytes_downloaded),
                     )
 
             dependency_path = os.path.join(self.dependencies_dir, dependency_state.path)
-            logger.debug('Downloading dependency %s/%s', parent_uuid, parent_path)
+            logger.debug('Downloading dependency %s', dependency_state.dependency_key)
             try:
                 # Start async download to the fileobj
                 fileobj, target_type = self._bundle_service.get_bundle_contents(
-                    parent_uuid, parent_path
+                    dependency_state.dependency_key.parent_uuid,
+                    dependency_state.dependency_key.parent_path,
                 )
                 with closing(fileobj):
                     # "Bug" the fileobj's read function so that we can keep
@@ -413,33 +416,32 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     self._store_dependency(dependency_path, fileobj, target_type)
 
                 logger.debug(
-                    'Finished downloading %s dependency %s/%s to %s',
+                    'Finished downloading %s dependency %s to %s',
                     target_type,
-                    parent_uuid,
-                    parent_path,
+                    dependency_state.dependency_key,
                     dependency_path,
                 )
-                with self._dependency_locks[dependency]:
-                    self._downloading[dependency]['success'] = True
+                with self._dependency_locks[dependency_state.dependency_key]:
+                    self._downloading[dependency_state.dependency_key]['success'] = True
 
             except Exception as e:
-                with self._dependency_locks[dependency]:
-                    self._downloading[dependency]['success'] = False
-                    self._downloading[dependency][
+                with self._dependency_locks[dependency_state.dependency_key]:
+                    self._downloading[dependency_state.dependency_key]['success'] = False
+                    self._downloading[dependency_state.dependency_key][
                         'failure_message'
                     ] = "Dependency download failed: %s " % str(e)
 
-        dependency = dependency_state.dependency
-        parent_uuid, parent_path = dependency
-        self._downloading.add_if_new(dependency, threading.Thread(target=download, args=[]))
+        self._downloading.add_if_new(
+            dependency_state.dependency_key, threading.Thread(target=download, args=[])
+        )
 
-        if self._downloading[dependency].is_alive():
+        if self._downloading[dependency_state.dependency_key].is_alive():
             return dependency_state
 
-        success = self._downloading[dependency]['success']
-        failure_message = self._downloading[dependency]['failure_message']
+        success = self._downloading[dependency_state.dependency_key]['success']
+        failure_message = self._downloading[dependency_state.dependency_key]['failure_message']
 
-        self._downloading.remove(dependency)
+        self._downloading.remove(dependency_state.dependency_key)
         if success:
             return dependency_state._replace(
                 stage=DependencyStage.READY, message="Download complete"

@@ -12,6 +12,15 @@ import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import { NAVBAR_HEIGHT } from '../../constants';
 import WorksheetActionBar from './WorksheetActionBar';
+import Button from '@material-ui/core/Button';
+import EditIcon from '@material-ui/icons/EditOutlined';
+import SaveIcon from '@material-ui/icons/SaveOutlined';
+import DeleteIcon from '@material-ui/icons/DeleteOutline';
+import UndoIcon from '@material-ui/icons/UndoOutlined';
+import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
+import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
+import ErrorMessage from './ErrorMessage';
+import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
 
 /*
 Information about the current worksheet and its items.
@@ -109,7 +118,7 @@ class Worksheet extends React.Component {
             activeComponent: 'list', // Where the focus is (action, list, or side_panel)
             editMode: false, // Whether we're editing the worksheet
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind editMode)
-            showActionBar: true, // Whether the action bar is shown
+            showActionBar: false, // Whether the action bar is shown
             focusIndex: -1, // Which worksheet items to be on (-1 is none)
             subFocusIndex: 0, // For tables, which row in the table
             numOfBundles: -1, // Number of bundles in this worksheet (-1 is just the initial value)
@@ -121,6 +130,7 @@ class Worksheet extends React.Component {
             showNewUpload: false,
             showNewRun: false,
             showNewText: false,
+            isValid: true,
         };
     }
 
@@ -148,8 +158,7 @@ class Worksheet extends React.Component {
         }
     };
 
-    setFocus = (index, subIndex, shouldScroll) => {
-        if (shouldScroll === undefined) shouldScroll = true;
+    setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
@@ -198,7 +207,9 @@ class Worksheet extends React.Component {
             showNewRun: false,
             showNewText: false,
         });
-        if (shouldScroll) this.scrollToItem(index, subIndex);
+        if (shouldScroll) {
+            this.scrollToItem(index, subIndex);
+        }
     };
 
     scrollToItem = (index, subIndex) => {
@@ -207,7 +218,7 @@ class Worksheet extends React.Component {
             // Compute the current position of the focused item.
             var pos;
             if (index === -1) {
-                pos = -1000000; // Scroll all the way to the top
+                return; // If nothing is selected, don't scroll.
             } else {
                 var item = this.refs.list.refs['item' + index];
                 if (this._numTableRows(item.props.item)) {
@@ -241,8 +252,10 @@ class Worksheet extends React.Component {
                 $('#worksheet-message')
                     .html(xhr.responseText)
                     .addClass('alert-danger alert');
-                $('#worksheet_container').hide();
-            },
+                this.setState({
+                    isValid: false,
+                });
+            }.bind(this),
         });
     }
 
@@ -333,6 +346,7 @@ class Worksheet extends React.Component {
             if ($('#glossaryModal').hasClass('in')) {
                 $('#glossaryModal').modal('hide');
             }
+            ContextMenuMixin.closeContextMenu();
         });
 
         Mousetrap.bind(
@@ -371,6 +385,7 @@ class Worksheet extends React.Component {
         Mousetrap.bind(
             ['up', 'k'],
             function(e) {
+                e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                 var focusIndex = this.state.focusIndex;
                 var subFocusIndex = this.state.subFocusIndex;
                 var wsItems = this.state.ws.info.items;
@@ -386,7 +401,7 @@ class Worksheet extends React.Component {
                     } else {
                         this.setFocus(focusIndex, subFocusIndex - 1);
                     }
-                } else {
+                } else if (focusIndex > 0) {
                     // worksheet_items.jsx
                     this.setFocus(focusIndex - 1, 'end');
                 }
@@ -397,6 +412,7 @@ class Worksheet extends React.Component {
         Mousetrap.bind(
             ['down', 'j'],
             function(e) {
+                e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                 var focusIndex = this.state.focusIndex;
                 var subFocusIndex = this.state.subFocusIndex;
                 var wsItems = this.state.ws.info.items;
@@ -600,7 +616,7 @@ class Worksheet extends React.Component {
     }
 
     toggleActionBar() {	
-        this.setState({ showActionBar: !this.state.showActionBar });	
+        this.setState({ showActionBar: !this.state.showActionBar });
     }	
 
     focusActionBar() {	
@@ -705,8 +721,12 @@ class Worksheet extends React.Component {
                         // If the number of bundles decreases, then focus should be on the same bundle as before
                         // unless that bundle doesn't exist anymore, in which case we select the closest bundle that does exist,
                         // where closest means 'next' by default or 'last' if there is no next bundle.
-                        var focus = this.getFocusAfterBundleRemoved();
+                        var focus = this.getFocusAfterBundleRemoved(items);
                         this.setFocus(focus[0], focus[1]);
+                    } else {
+                        // if the change has no impact on bundles, but on adding an item
+                        // then we want the focus to be the one below the current focus
+                        this.setFocus(this.state.focusIndex + 1, 0);
                     }
                     this.setState({
                         updating: false,
@@ -806,40 +826,66 @@ class Worksheet extends React.Component {
 
         var searchClassName = this.state.showActionBar ? '': 'search-hidden';
         var editableClassName = canEdit ? 'editable' : '';
-        var viewClass = !canEdit && !this.state.editMode ? 'active' : '';
-        var rawClass = this.state.editMode ? 'active' : '';
         var disableWorksheetEditing = this.canEdit() ? '' : 'disabled';
         var sourceStr = editPermission ? 'Edit Source' : 'View Source';
         var editFeatures = (
-            <div className='edit-features'>
-                <div className='btn-group'>
-                    <button className={viewClass} onClick={this.viewMode}>
-                        View
-                    </button>
-                    <button className={rawClass} onClick={this.editMode}>
-                        {sourceStr}
-                    </button>
-                    <button className={rawClass} onClick={e => this.delete()}>
-                        {"Delete"}
-                    </button>
-                </div>
-            </div>
+            <div style={{display:'inline-block'}}>
+            <Button
+                onClick={this.editMode}
+                size='small'
+                color='inherit'
+                aria-label='Edit Source'
+                >
+                    <EditIcon className={classes.buttonIcon} />
+                    {sourceStr}
+                </Button>
+            <Button
+                onClick={e => this.delete()}
+                size='small'
+                color='inherit'
+                aria-label='Delete Worksheet'
+                >
+                    <DeleteIcon className={classes.buttonIcon} />
+                    Delete
+                </Button>
+            <Button
+                onClick={e => this.toggleActionBar()}
+                size='small'
+                color='inherit'
+                aria-label='Expand CLI'
+                id="terminal-button"
+                >
+                    {this.state.showActionBar ? <ContractIcon className={classes.buttonIcon} />
+                : <ExpandIcon className={classes.buttonIcon} />}
+                    {this.state.showActionBar ? 'HIDE TERMINAL'
+                : 'SHOW TERMINAL'}
+                </Button>
+        </div>
         );
 
         var editModeFeatures = (
-            <div className='edit-features'>
-                <div className='btn-group'>
-                    <button
-                        className={viewClass}
-                        onClick={this.viewMode}
-                        disabled={disableWorksheetEditing}
+            <div onMouseMove={(ev) => {
+                ev.stopPropagation();
+            }} style={{display:'inline-block'}}>
+                <Button
+                    onClick={this.viewMode}
+                    disabled={disableWorksheetEditing}
+                    size='small'
+                    color='inherit'
+                    aria-label='Save Edit'
                     >
+                        <SaveIcon className={classes.buttonIcon} />
                         Save
-                    </button>
-                    <button className={viewClass} onClick={this.discardChanges}>
-                        Discard Changes
-                    </button>
-                </div>
+                    </Button>
+                <Button
+                    onClick={this.discardChanges}
+                    size='small'
+                    color='inherit'
+                    aria-label='Discard Edit'
+                    >
+                        <UndoIcon className={classes.buttonIcon} />
+                        Discard
+                    </Button>
             </div>
         );
 
@@ -902,14 +948,23 @@ class Worksheet extends React.Component {
             />
         );
 
+        const context_menu_display = (
+            <ContextMenu userInfo={this.state.userInfo} ws={this.state.ws} />
+        );
+
         var worksheet_display = this.state.editMode ? raw_display : items_display;
         var editButtons = this.state.editMode ? editModeFeatures : editFeatures;
+        if (!this.state.isValid){
+            return <ErrorMessage 
+                        message={'Not found: \'/worksheets/' 
+                                + this.state.ws.uuid +"\'" } 
+                    />;
+        }
 
         return (
             <React.Fragment>
-                {action_bar_display}
+                {context_menu_display}
                 <WorksheetHeader
-                    key={"codalab-worksheet-header-" + this.state.showActionBar}
                     showActionBar={this.state.showActionBar}
                     canEdit={this.canEdit()}
                     info={info}
@@ -923,6 +978,7 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({showNewRun: true})}
                     onShowNewText={() => this.setState({showNewText: true})}
                     />
+                    {action_bar_display}
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
                         <div className={classes.worksheetDesktop} onClick={this.handleClickForDeselect}>
@@ -981,6 +1037,9 @@ const styles = (theme) => ({
     },
     noTransform: {
         transform: 'none !important',
+    },
+    buttonIcon: {
+        marginRight: theme.spacing.large,
     },
 });
 

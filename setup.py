@@ -2,13 +2,24 @@ from setuptools import setup, find_packages
 import setuptools
 
 # should match codalab/common.py#CODALAB_VERSION
-CODALAB_VERSION = "0.4.1"
+CODALAB_VERSION = "0.4.6"
 
 if int(setuptools.__version__.split('.')[0]) < 25:
     print(
         "WARNING: Please upgrade setuptools to a newer version, otherwise installation may break. "
         "Recommended command: `pip3 install -U setuptools`"
     )
+
+
+def get_requirements(*requirements_file_paths):
+    requirements = []
+    for requirements_file_path in requirements_file_paths:
+        with open(requirements_file_path) as requirements_file:
+            for line in requirements_file:
+                if line[0:2] != '-r' and line.find('git') == -1:
+                    requirements.append(line.strip())
+    return requirements
+
 
 setup(
     name='codalab',
@@ -31,11 +42,16 @@ setup(
     ],
     python_requires='~=3.6',
     include_package_data=True,
+    install_requires=get_requirements('requirements.txt'),
     entry_points={
         'console_scripts': [
             'cl=codalab.bin.cl:main',
+            'cl-server=codalab.bin.server:main',
+            'cl-bundle-manager=codalab.bin.bundle_manager:main',
             'codalab-service=codalab_service:main',
             'cl-worker=codalab.worker.main:main',
+            'cl-worker-manager=codalab.worker_manager.main:main',
+            'cl-competitiond=scripts.competitiond:main',
         ]
     },
     zip_safe=False,

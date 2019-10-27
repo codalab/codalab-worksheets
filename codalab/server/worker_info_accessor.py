@@ -45,6 +45,3 @@ class WorkerInfoAccessor(object):
             worker = self._uuid_to_worker[uuid]
             worker['run_uuids'].remove(uuid)
             del self._uuid_to_worker[uuid]
-
-    def get_bundle_worker(self, uuid):
-        return self._uuid_to_worker.get(uuid, None)

@@ -6264,6 +6264,7 @@ fieldset[disabled] .btn-secondary.active {
 #ws_search {
   margin: 10px 0 20px;
   height: auto;
+  box-shadow: 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.4);
 }
 #ws_search:focus {
   background: white;
@@ -6272,8 +6273,12 @@ fieldset[disabled] .btn-secondary.active {
   top: -7px;
   z-index: 0;
 }
+#worksheet {
+  height: calc(100vh - 70px - 70px - 83px);
+}
 #worksheet.search-hidden {
   margin-top: -61px;
+  height: calc(100vh - 70px - 83px);
 }
 .worksheet-icon-sm {
   background: url('../img/icon_worksheet_sm.png') no-repeat 0 10px;
@@ -6719,9 +6724,11 @@ a.bundle-state:focus {
   background-color: #c9302c;
 }
 html,
-body,
-#worksheet_container {
+body {
   height: 100%;
+}
+#worksheet_container {
+  overflow: auto;
 }
 #worksheet-message {
   position: absolute;
@@ -6741,12 +6748,10 @@ body,
   -o-transition: margin-top 0.35s ease;
   transition: margin-top 0.35s ease;
   position: relative;
-  height: calc(100% - 20px - 25px);
 }
-#worksheet .editable-field:hover {
+.editable-field:hover {
   cursor: text;
-  border-radius: 4px;
-  box-shadow: 1px 1px 1px 1px gray;
+  outline: 2px solid #eeeeee;
 }
 #ws_search {
   position: fixed;
@@ -6754,7 +6759,7 @@ body,
   margin: 0;
   padding: 10px 0;
   text-align: center;
-  background-color: #F8F9FA;
+  background: rgba(245, 245, 245, 0.9);
   margin-top: 0px;
   z-index: 1060;
 }
@@ -6898,7 +6903,7 @@ body,
 .worksheet_content .glossary-link,
 .worksheet_content .controls label {
   font-weight: normal;
-  font-size: 13px;
+  font-size: 10px;
 }
 .worksheet_content .glossary-link:hover,
 .worksheet_content .controls label:hover {
@@ -6916,12 +6921,10 @@ body,
 }
 .worksheet_content .worksheet-title {
   text-indent: 0;
-  margin: 0;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 500;
   line-height: 1.1em;
-  padding-top: 40px;
-  min-height: 60px;
+  padding-top: 0px;
 }
 .worksheet_content .worksheet-name {
   font-size: 14px;
@@ -7105,7 +7108,7 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
   background-color: #e2f0f5;
   border-left: #1d91c0 solid 3px;
   box-shadow: 5px 0 5px 5px #e2f0f5;
-  padding-left: 4px;
+  margin-left: -3px;
   width: 100%;
 }
 .worksheet_content.editable .ws-item {
@@ -7138,6 +7141,7 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
 }
 .worksheet_content .type-markup > * {
   margin-bottom: 20px;
+  margin-left: 4px;
 }
 .worksheet_content .type-markup > *:last-child {
   margin-bottom: 0;
@@ -7738,8 +7742,15 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
   }
   #ws_search,
   #worksheet .ws-panel,
-  #worksheet .dragbar {
+  #terminal-button {
+    /* since dragbar is hidden, we might hide action button
+    as well*/
     display: none;
+  }
+  #worksheet .dragbar {
+    /* this solves the weird problem where after expanding
+    width=0px and only 'cr' is shown on the terminal */
+    visibility:hidden;
   }
   #worksheet .ws-container {
     right: 0;
@@ -7833,7 +7844,6 @@ fieldset[disabled] .worksheet_content .header-row .controls .edit-features .btn-
 }
 #command_line {
   text-align: left;
-  margin-left: auto;
   margin-right: auto;
   max-width: 1700px;
   background-color: inherit;

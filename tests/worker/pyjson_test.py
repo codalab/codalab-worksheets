@@ -24,6 +24,8 @@ class PyJSONTest(unittest.TestCase):
             ('unicode', 'key'): 'unicode_val',
             'unicode': 'val',
             '(\'key\', \'tuple\')': 'malicious_key',
+            t1('w1', 'w2', 'w3'): t2('r1', 't2', 'y3'),
+            t1('', '', ''): t2('', '', ''),
         }
 
         reloaded = pyjson.loads(pyjson.dumps(cases))

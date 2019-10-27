@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.4.1_
+_version 0.4.6_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -750,10 +750,6 @@ The contents of the second message go in the body of the HTTP request.
 Checks whether the bundle is still assigned to run on the worker with the
 given worker_id. If so, reports that it's starting to run and returns True.
 Otherwise, returns False, meaning the worker shouldn't run the bundle.
-
-### `PUT /workers/<worker_id>/update_bundle_metadata/<uuid:re:0x[0-9a-f]{32}>`
-
-Updates metadata related to a running bundle.
 
 ### `GET /workers/info`
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import queryString from 'query-string';
+import ErrorMessage from './ErrorMessage';
 
 export default class extends React.Component {
     constructor(props) {
@@ -28,7 +29,7 @@ export default class extends React.Component {
         }
         return <div>
             {this.state.loading && <div style={styles}><img src={`${process.env.PUBLIC_URL}/img/Preloader_Small.gif`} /></div>}
-            {this.state.error && <div>Error.</div>}
+            {this.state.error && <ErrorMessage message={"Error. Please provide a worksheet uuid"}/>}
         </div>
     }
 }

@@ -4,6 +4,7 @@ from codalab.bundles import get_bundle_subclass
 from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship
 from codalab.common import UsageError
 from codalab.lib import worksheet_util
+from codalab.worker.bundle_state import BundleInfo
 
 
 def bundle_to_bundle_info(model, bundle):
@@ -11,26 +12,29 @@ def bundle_to_bundle_info(model, bundle):
     Helper: Convert bundle to bundle_info.
     """
     # See tables.py
-    result = {
-        'uuid': bundle.uuid,
-        'bundle_type': bundle.bundle_type,
-        'owner_id': bundle.owner_id,
-        'command': bundle.command,
-        'data_hash': bundle.data_hash,
-        'state': bundle.state,
-        'is_anonymous': bundle.is_anonymous,
-        'metadata': bundle.metadata.to_dict(),
-        'dependencies': [dep.to_dict() for dep in bundle.dependencies],
-    }
-    if result['dependencies']:
-        dep_names = model.get_bundle_names([dep['parent_uuid'] for dep in result['dependencies']])
-        for dep in result['dependencies']:
+    dependencies = [dep.to_dict() for dep in bundle.dependencies]
+    if dependencies:
+        dep_names = model.get_bundle_names([dep['parent_uuid'] for dep in dependencies])
+        for dep in dependencies:
             dep['parent_name'] = dep_names.get(dep['parent_uuid'])
 
-    # Shim in args
-    result['args'] = worksheet_util.interpret_genpath(result, 'args')
+    info = BundleInfo(
+        bundle.uuid,
+        bundle.bundle_type,
+        bundle.owner_id,
+        bundle.command,
+        bundle.data_hash,
+        bundle.state,
+        bundle.is_anonymous,
+        bundle.metadata.to_dict(),
+        dependencies,
+        '',
+    ).to_dict()
 
-    return result
+    # For some reason computing the args requires the rest of the dict
+    # This is ugly but we have to deal with it for the time being
+    info['args'] = worksheet_util.interpret_genpath(info, 'args')
+    return info
 
 
 def mimic_bundles(

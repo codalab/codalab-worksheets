@@ -133,18 +133,18 @@ export function renderPermissions(state) {
 
     return (
         <div>
-            you({wrapPermissionInColorSpan(state.permission_spec)})
+            &nbsp;&#91;you({wrapPermissionInColorSpan(state.permission_spec)})
             {_.map(state.group_permissions || [], function(perm) {
                 return (
                     <span key={perm.group_name}>
-                        {' '}
+                        &nbsp;
                         {perm.group_name}
                         {'('}
                         {wrapPermissionInColorSpan(perm.permission_spec)}
                         {')'}
                     </span>
                 );
-            })}
+            })}&#93;
         </div>
     );
 }
@@ -155,7 +155,8 @@ export function shorten_uuid(uuid) {
 
 export function keepPosInView(pos) {
     var navbarHeight = parseInt($('body').css('padding-top'));
-    var viewportHeight = Math.max($('.ws-container').innerHeight() || 0);
+    const worksheetContainerEl = $('#worksheet_container');
+    var viewportHeight = Math.max(worksheetContainerEl.innerHeight() || 0);
 
     // How far is the pos from top of viewport?
     var distanceFromTopViewPort = pos - navbarHeight;
@@ -165,8 +166,8 @@ export function keepPosInView(pos) {
         // then scroll so that it is at 25% down the screen.
         // Where is the top of the element on the page and does it fit in the
         // the upper fourth of the page?
-        var scrollTo = $('.ws-container').scrollTop() + pos - navbarHeight - viewportHeight * 0.25;
-        $('.ws-container')
+        var scrollTo = worksheetContainerEl.scrollTop() + pos - navbarHeight - viewportHeight * 0.25;
+        worksheetContainerEl
             .stop(true)
             .animate({ scrollTop: scrollTo }, 50);
     }

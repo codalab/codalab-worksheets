@@ -1,7 +1,6 @@
 // @flow
 import * as React from 'react';
 import * as $ from 'jquery';
-import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 import { renderFormat, serializeFormat } from '../util/worksheet_utils';
 
@@ -85,8 +84,14 @@ class EditableFieldBase extends React.Component<{
         }
     };
 
-    handleChange = (event) => {
+    handleAsciiChange = (event) => {
+        // only ascii
         this.setState({ value: event.target.value, isValid: isAscii(event.target.value) });
+    };
+
+    handleFreeChange = (event) => {
+        // allows non-ascii
+        this.setState({ value: event.target.value });
     };
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -99,53 +104,32 @@ class EditableFieldBase extends React.Component<{
     }
 
     render() {
-        const { canEdit, classes } = this.props;
-        const { editing } = this.state;
-        if (!canEdit) {
-            return (
-                <div className={classes.editableLinkContainer}>
-                    <Typography variant='body1'>{this.state.value || '<none>'}</Typography>
-                </div>
-            );
-        }
-        return editing ? (
-            <form onSubmit={this.onBlur}>
-                <input
-                    autoFocus
-                    value={this.state.value}
-                    onBlur={this.onBlur}
-                    onChange={this.handleChange}
-                    onKeyDown={this.handleKeyPress}
-                />
-                {!this.state.isValid && (
-                    <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>
-                )}
-            </form>
-        ) : (
-            <div className={classes.editableLinkContainer}>
-                <a className={classes.editableLink} onClick={this.onClick}>
-                    {this.state.value || '<none>'}
-                </a>
-            </div>
-        );
-    }
-
-    render() {
         if (!this.state.editing) {
             return (
-                <a className='editable editable-click' onClick={this.onClick}>
+                <span className='editable-field'
+                onClick={this.onClick}
+                style={{ color: '#225ea8'}}>
                     {this.state.value === '' ? '<none>' : this.state.value}
-                </a>
+                </span>
             );
         } else {
             return (
                 <form onSubmit={this.onBlur}>
                     <input
+                        type="text"
                         autoFocus
                         value={this.state.value}
                         onBlur={this.onBlur}
-                        onChange={this.handleChange}
+                        onChange={this.props.allowASCII ? this.handleFreeChange : this.handleAsciiChange}
                         onKeyDown={this.handleKeyPress}
+                        maxLength="259"
+                        style={{
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'pre',
+                        maxWidth: '100%',
+                        minWidth: '65px',
+                        padding: '0 4px 0 3px',
+                        color: '#225ea8'}}
                     />
                     {!this.state.isValid && (
                         <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>
@@ -201,6 +185,10 @@ export class WorksheetEditableField extends React.Component<{
             />
         );
     }
+}
+
+WorksheetEditableField.defaultProps = {
+    allowASCII: false,
 }
 
 export class BundleEditableField extends React.Component<{
