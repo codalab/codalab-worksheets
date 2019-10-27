@@ -1,0 +1,32 @@
+.codalab-item-wrapper-drag-container {
+    padding-bottom: 20px;
+    position: relative;
+}
+.codalab-item-wrapper-drag-container::before {
+    height: 2px;
+    position: absolute;
+    display: block;
+    width: 100%;
+    background: #1d91c0;
+    content: '';
+    opacity: 0;
+    top: -9px;
+    transition: opacity .2s;
+}
+.codalab-item-wrapper-drag-container::after {
+    height: 2px;
+    position: absolute;
+    display: block;
+    width: 100%;
+    background: #1d91c0;
+    content: '';
+    opacity: 0;
+    margin-top: 9px;
+    transition: opacity .2s;
+}
+.codalab-item-wrapper-drag-container-border-top::before {
+    opacity: 1;
+}
+.codalab-item-wrapper-drag-container-border-bottom::after {
+    opacity: 1;
+}

@@ -1,5 +1,6 @@
 // @flow
 import React, { useRef } from 'react';
+import classNames from 'classnames';
 import $ from "jquery";
 import { withStyles } from '@material-ui/core/styles';
 import { useDrag, useDrop } from 'react-dnd';
@@ -14,6 +15,7 @@ import RecordItem from './RecordItem';
 import TableItem from './TableItem';
 import WorksheetItem from './WorksheetItem';
 import { getMinMaxKeys } from '../../../util/worksheet_utils';
+import './ItemWrapper.css';
 
 function getIds(item) {
    if (item.mode === 'markup_block') {
@@ -255,17 +257,13 @@ const ItemWrapperDraggable = (props) => {
     preview(drop(ref));
     const styles = {
         opacity,
-        paddingBottom: 20,
-        boxSizing: "border-box",
-        ...(borderTop && {
-            boxShadow: "0 -2px 0 #1d91c0",
-        }),
-        ...(borderBottom && {
-            boxShadow: "0 2px 0 #1d91c0",
-        })
     }
     return (
-      <div ref={ref} style={ styles }>
+      <div ref={ref} class={classNames({
+          'codalab-item-wrapper-drag-container': true,
+          'codalab-item-wrapper-drag-container-border-top': borderTop,
+          'codalab-item-wrapper-drag-container-border-bottom': borderBottom
+        })} style={ styles }>
         <ItemWrapperWithStyles {...props} dragHandleRef={drag} />
       </div>
     )
