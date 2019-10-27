@@ -171,6 +171,8 @@ const ItemTypes = {
     ITEM_WRAPPER: "ItemWrapper"
 };
 
+const ITEM_SPACING = 20;
+
 const addItems = async ({worksheetUUID, after_sort_key, ids, items}) => {
     const url = `/rest/worksheets/${worksheetUUID}/add-items`;
     const data = {after_sort_key, ids, items};
@@ -205,7 +207,7 @@ const ItemWrapperDraggable = (props) => {
                 if (!props.prevItem) {
                     // Allow dragging to the top of an item, only for the first item.
                     const {top, height} = ref.current.getBoundingClientRect();
-                    const middle = top + height / 2;
+                    const middle = top + (height - ITEM_SPACING) / 2;
                     const mouseY = offset.y;
                     return {
                         borderTop: mouseY <= middle,
@@ -268,6 +270,7 @@ const ItemWrapperDraggable = (props) => {
     return (
       <div ref={ref} class={classNames({
           'codalab-item-wrapper-drag-container': true,
+          'codalab-item-wrapper-drag-container-first': !props.prevItem,
           'codalab-item-wrapper-drag-container-border-top': borderTop,
           'codalab-item-wrapper-drag-container-border-bottom': borderBottom
         })} style={ styles }>

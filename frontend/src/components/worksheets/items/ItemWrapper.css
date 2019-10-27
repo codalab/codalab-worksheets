@@ -2,7 +2,11 @@
     padding-bottom: 20px;
     position: relative;
 }
-.codalab-item-wrapper-drag-container::before {
+.codalab-item-wrapper-drag-container-first {
+    padding-top: 20px;
+    margin-top: -20px;
+}
+.codalab-item-wrapper-drag-container-first::before {
     height: 2px;
     position: absolute;
     display: block;
@@ -10,7 +14,7 @@
     background: #1d91c0;
     content: '';
     opacity: 0;
-    top: -9px;
+    top: 10px;
     transition: opacity .2s;
 }
 .codalab-item-wrapper-drag-container::after {
