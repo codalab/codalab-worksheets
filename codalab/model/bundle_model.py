@@ -2234,19 +2234,30 @@ class BundleModel(object):
     def get_user_parallel_run_quota_left(self, user_id):
         user_info = self.get_user_info(user_id)
         parallel_run_quota = user_info['parallel_run_quota']
+
+        # The following sqlalchemy query is equivalent to
+        # SELECT worker_run.run_uuid
+        # From worker_run JOIN worker
+        # ON worker.user_id=worker_run.user_id
+        # WHERE worker.tag IS NULL and worker.user_id = <user_id> and worker_run.user_id = <user_id>;
+        # Note: <user_id> is an input parameter
+        join = cl_worker_run.join(cl_worker, cl_worker_run.c.user_id == cl_worker.c.user_id)
+
         with self.engine.begin() as connection:
             # Get all the runs belonging to this user whose workers are not personal workers
             # of the user themselves
             active_runs = connection.execute(
-                select([cl_worker_run.c.run_uuid]).where(
+                select([cl_worker_run.c.run_uuid])
+                .select_from(join)
+                .where(
                     and_(
-                        cl_worker_run.c.run_uuid.in_(
-                            select([cl_bundle.c.uuid]).where(cl_bundle.c.owner_id == user_id)
-                        ),
-                        cl_worker_run.c.user_id != user_id,
+                        cl_worker_run.c.user_id == user_id,
+                        cl_worker.c.user_id == user_id,
+                        cl_worker.c.tag == None,
                     )
                 )
             ).fetchall()
+
         return parallel_run_quota - len(active_runs)
 
     def update_user_last_login(self, user_id):
