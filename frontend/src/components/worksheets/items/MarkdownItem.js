@@ -8,7 +8,7 @@ import { withStyles } from '@material-ui/core/styles';
 import IconButton from '@material-ui/core/IconButton';
 import EditIcon from '@material-ui/icons/Edit';
 import DeleteIcon from '@material-ui/icons/Delete';
-
+import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import TextEditorItem from './TextEditorItem';
 import { createAlertText } from '../../../util/worksheet_utils';
 
@@ -60,6 +60,28 @@ class MarkdownItem extends React.Component {
         });
     };
 
+    capture_keys() {
+        // Edit the markdown
+        Mousetrap.bind(
+            ['enter'],
+            function(e) {
+                if (this.props.focusIndex >= 0) {
+                    this.toggleEdit(e);
+                }
+            }.bind(this),
+        );
+
+        // Delete the line
+        Mousetrap.bind(
+            ['backspace'],
+            function() {
+                if (this.props.focusIndex >= 0) {
+                    this.deleteItem();
+                }
+            }.bind(this),
+        );
+    }
+
     deleteItem = () => {
         const { reloadWorksheet, item, worksheetUUID, setFocus, focused, focusIndex } = this.props;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
@@ -82,6 +104,7 @@ class MarkdownItem extends React.Component {
     };
 
     render() {
+        this.capture_keys(); // each item capture keys are handled dynamically after this call
         const { classes, item } = this.props;
         const { showEdit } = this.state;
         var contents = item.text;

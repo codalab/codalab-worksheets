@@ -158,9 +158,9 @@ class BundleRow extends Component {
         });
 
          // Keyboard opening/closing
-         if (this.props.focused) {
+        if (this.props.focused) {
              // Use e.preventDefault to avoid openning selected link
-             Mousetrap.bind(
+            Mousetrap.bind(
                 ['enter'], 
                 (e) => {
                     e.preventDefault();
@@ -168,8 +168,15 @@ class BundleRow extends Component {
                     }, 
                 'keydown'
             );
-             Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
-         }
+            Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
+
+            // Delete a bundle
+            Mousetrap.bind(['backspace'],
+            () => {
+                this.toggleDeletePopup();
+            },
+            );
+        }
 
 
         return (

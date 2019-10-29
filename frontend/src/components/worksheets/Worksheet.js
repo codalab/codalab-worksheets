@@ -327,17 +327,6 @@ class Worksheet extends React.Component {
             return;
         }
 
-        // No keyboard shortcuts are active in edit mode
-        if (this.state.editMode) {
-            Mousetrap.bind(
-                ['ctrl+enter', 'meta+enter'],
-                function(e) {
-                    this.toggleEditMode();
-                }.bind(this),
-            );
-            return;
-        }
-
         Mousetrap.bind(['?'], function(e) {
             $('#glossaryModal').modal('show');
         });
@@ -349,11 +338,13 @@ class Worksheet extends React.Component {
             ContextMenuMixin.closeContextMenu();
         });
 
+        // 
         Mousetrap.bind(
             ['shift+r'],
             function(e) {
-                this.reloadWorksheet();
-                return false;
+                // refresh the worksheet and update the
+                // focus to the first item
+                this.reloadWorksheet(undefined, 'end');
             }.bind(this),
         );
 
@@ -431,6 +422,44 @@ class Worksheet extends React.Component {
                 }
             }.bind(this),
             'keydown',
+        );
+
+        // insert text after current cell
+        Mousetrap.bind(
+            ['i'],
+            function(e) {
+                // if no active focus, scroll to the bottom position
+                if (this.state.focusIndex < 0) {
+                    $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                }
+                this.setState({showNewText: true});
+            }.bind(this),
+            'keyup',
+        );
+
+        // upload after current cell
+        Mousetrap.bind(
+            ['u'],
+            function(e) {
+                // if no active focus, scroll to the bottom position
+                if (this.state.focusIndex < 0) {
+                    $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                }
+                this.setState({showNewUpload: true});
+            }.bind(this),
+            'keyup',
+        );
+        // run after current cell
+        Mousetrap.bind(
+            ['r'],
+            function(e) {
+                // if no active focus, scroll to the bottom position
+                if (this.state.focusIndex < 0) {
+                    $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                }
+                this.setState({showNewRun: true});
+            }.bind(this),
+            'keyup',
         );
     }
 
@@ -566,11 +595,18 @@ class Worksheet extends React.Component {
             } else {
                 editor.commands.addCommand({
                     name: 'save',
-                    bindKey: { win: 'Ctrl-Enter', mac: 'Command-Enter' },
-                    exec: function(editor) {
+                    bindKey: { win: 'Ctrl-Enter', mac: 'Ctrl-Enter' },
+                    exec: function() {
                         this.toggleEditMode();
                     }.bind(this),
                     readOnly: true,
+                });
+                editor.commands.addCommand({
+                    name: 'exit',
+                    bindKey: { win: 'Esc', mac: 'Esc' },
+                    exec: function() {
+                        this.discardChanges();
+                    }.bind(this),
                 });
                 editor.focus();
 
