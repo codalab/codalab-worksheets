@@ -178,6 +178,16 @@ class Worksheet extends React.Component {
 
     handleSelectedBundleCommand = (cmd)=>{
         // Run the correct command
+        if (cmd === 'null'){
+            //TODO: remove this
+            Object.keys(this.state.checkedBundles).map((uuid)=>{
+                    this.state.checkedBundles[uuid]();
+                }
+            );
+            this.setState({checkedBundles: {}});
+            this.reloadWorksheet();
+            return;
+        }
         executeCommand(buildTerminalCommand([cmd, ...Object.keys(this.state.checkedBundles)])).done(() => {
             Object.keys(this.state.checkedBundles).map((uuid)=>{
                     this.state.checkedBundles[uuid]();
