@@ -134,7 +134,7 @@ class Worksheet extends React.Component {
             showNewRun: false,
             showNewText: false,
             isValid: true,
-            checkedBundles: new Set(),
+            checkedBundles: {},
         };
     }
 
@@ -163,22 +163,27 @@ class Worksheet extends React.Component {
     };
 
     //===============bulk operation handle functions=================
-    handleCheckBundle = (uuid, check)=>{
+    handleCheckBundle = (uuid, check, removeCheckAfterOperation)=>{
         // This is a callback function that will be passed all the way down to bundle row
         // This is to allow bulk operations on bundles
         // The function should not use setState since it will cause an update
         if (check){
             // A bundle is checked
-            this.state.checkedBundles.add(uuid);
+            this.state.checkedBundles[uuid] = removeCheckAfterOperation;
         } else{
             // A bundle is unchecked
-            this.state.checkedBundles.delete(uuid);
+            delete this.state.checkedBundles[uuid];
         }
     }
 
     handleSelectedBundleCommand = (cmd)=>{
         // Run the correct command
-        executeCommand(buildTerminalCommand([cmd, ...this.state.checkedBundles])).done(() => {
+        executeCommand(buildTerminalCommand([cmd, ...Object.keys(this.state.checkedBundles)])).done(() => {
+            Object.keys(this.state.checkedBundles).map((uuid)=>{
+                    this.state.checkedBundles[uuid]();
+                }
+            );
+            this.setState({checkedBundles: {}});
             this.reloadWorksheet();
         });
     }

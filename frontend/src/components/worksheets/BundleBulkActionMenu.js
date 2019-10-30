@@ -35,8 +35,7 @@ class BundleBulkActionMenu extends React.Component {
 
     executeDetachCommand = (ev) => {
         // this.props.handleSelectedBundleCommand('detach');
-        // this.toggleDeletePopup();
-        // Not fully implemented yet
+        // this.toggleDetachPopup();
         this.props.closeMenu();
     };
 
@@ -91,25 +90,25 @@ class BundleBulkActionMenu extends React.Component {
                         <ListItemIcon>
                             <DeleteForeverIcon fontSize="small" />
                         </ListItemIcon>
-                        <Typography variant="inherit">Delete selected</Typography>
+                        <Typography variant="inherit">Delete</Typography>
                     </MenuItem>
                     <MenuItem onClick={this.toggleDetachPopup}>
                         <ListItemIcon>
                             <ExitToAppIcon fontSize="small" />
                         </ListItemIcon>
-                        <Typography variant="inherit">Detach selected</Typography>
+                        <Typography variant="inherit">Detach</Typography>
                     </MenuItem>
                     <MenuItem onClick={this.toggleAttachPopup}>
                         <ListItemIcon>
                             <LibraryAddIcon fontSize="small" />
                         </ListItemIcon>
-                        <Typography variant="inherit">Attach selected</Typography>
+                        <Typography variant="inherit">Attach</Typography>
                     </MenuItem>
                     <MenuItem onClick={this.toggleKillPopup}>
                         <ListItemIcon>
                             <HighlightOffIcon fontSize="small" />
                         </ListItemIcon>
-                        <Typography variant="inherit">Kill selected</Typography>
+                        <Typography variant="inherit">Kill</Typography>
                     </MenuItem>
                 </MenuList>
                 <Dialog
