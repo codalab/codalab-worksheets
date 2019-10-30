@@ -23,6 +23,10 @@ import ErrorMessage from './ErrorMessage';
 import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
 import { buildTerminalCommand } from '../../util/worksheet_utils';
 import { executeCommand } from '../../util/cli_utils';
+import Dialog from '@material-ui/core/Dialog';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
+import DialogTitle from '@material-ui/core/DialogTitle';
 
 /*
 Information about the current worksheet and its items.
@@ -135,6 +139,7 @@ class Worksheet extends React.Component {
             showNewText: false,
             isValid: true,
             checkedBundles: {},
+            BulkBundleErrorDialog: null,
         };
     }
 
@@ -201,10 +206,27 @@ class Worksheet extends React.Component {
                 this.state.checkedBundles[uuid]();
                 }
             );
-            console.log(e.responseText);
-            this.setState({checkedBundles: {}});
+            console.log("here")
+            let bundle_error_dialog = <Dialog
+                                        open={true}
+                                        onClose={this.toggleBundleErrorPopup}
+                                        aria-labelledby="bundle-error-confirmation-title"
+                                        aria-describedby="bundle-error-confirmation-description"
+                                        >
+                                        <DialogTitle id="bundle-error-confirmation-title">{"Failed to perform this action"}</DialogTitle>
+                                        <DialogContent>
+                                            <DialogContentText id="alert-dialog-description">
+                                                {e.responseText}
+                                            </DialogContentText>
+                                        </DialogContent>
+                                    </Dialog>
+            this.setState({checkedBundles: {}, BulkBundleErrorDialog: bundle_error_dialog});
             this.reloadWorksheet();
         });
+    }
+
+    toggleBundleErrorPopup = () => {
+        this.setState({BulkBundleErrorDialog: null});
     }
     //===============bulk operation handle functions=================
 
@@ -1040,6 +1062,8 @@ class Worksheet extends React.Component {
                                 <div className={classes.worksheetInner} onClick={this.handleClickForDeselect}>
                                     <div id='worksheet_content' className={editableClassName + ' worksheet_content'}>
                                         {worksheet_display}
+                                        {/* Show error dialog if bulk bundle execution failed*/}
+                                        {this.state.BulkBundleErrorDialog}
                                     </div>
                                 </div>
                             </div>

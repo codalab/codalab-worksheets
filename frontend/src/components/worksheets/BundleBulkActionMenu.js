@@ -192,7 +192,7 @@ class BundleBulkActionMenu extends React.Component {
                     <DialogTitle id="kill-confirmation-title">{"Kill all selected bundles if running?"}</DialogTitle>
                     <DialogContent>
                         <DialogContentText id="alert-dialog-description">
-                            Only running bundles can be killed
+                        It may take a few seconds to finish killing. <br/> Only running bundles can be killed. 
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
