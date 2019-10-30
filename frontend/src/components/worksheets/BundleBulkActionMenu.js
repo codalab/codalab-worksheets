@@ -34,15 +34,16 @@ class BundleBulkActionMenu extends React.Component {
     };
 
     executeDetachCommand = (ev) => {
-        // this.props.handleSelectedBundleCommand('detach');
+        // Not fully implemented
+        this.props.handleSelectedBundleCommand('null');
         // this.toggleDetachPopup();
         this.props.closeMenu();
     };
 
     executeAttachCommand = (ev) => {
-        // this.props.handleSelectedBundleCommand('rm');
+        // Not fully implemented
+        this.props.handleSelectedBundleCommand('null');
         // this.toggleAttachPopup();
-        // Not fully implemented yet
         this.props.closeMenu();
     };
 
@@ -191,7 +192,7 @@ class BundleBulkActionMenu extends React.Component {
 
 const styles = (theme) => ({
     root: {
-        width: 200,
+        width: 120,
     },
 });
 
