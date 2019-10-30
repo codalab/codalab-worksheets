@@ -49,7 +49,7 @@ class TableItem extends React.Component<{
         var bundleInfos = item.bundles_spec.bundle_infos;
         var headerItems = item.header;
         var headerHtml = headerItems.map(function(item, index) {
-            let styleDict = index === 0 ?  { paddingLeft: 28 } : { paddingLeft: 0 };
+            let styleDict = index === 0 ?  { paddingLeft: 64 } : { paddingLeft: 0 };
             return (
                 <TableCell component='th' key={index} style={ styleDict }>
                     {item}
@@ -89,6 +89,7 @@ class TableItem extends React.Component<{
                     reloadWorksheet={this.props.reloadWorksheet}
                     ws={this.props.ws}
                     isLast={rowIndex === rowItems.length - 1}
+                    handleCheckBundle = {this.props.handleCheckBundle}
                 />
             );
         });

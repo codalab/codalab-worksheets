@@ -18,7 +18,7 @@ const styles = {
     // overflow: 'hidden',
 };
 
-export default ({ showActionBar, onShowNewUpload, onShowNewRun, onShowNewText, canEdit, info, classes, renderPermissions, reloadWorksheet, editButtons, anchorEl, setAnchorEl }) =>
+export default ({ showActionBar, onShowNewUpload, onShowNewRun, onShowNewText, canEdit, info, classes, renderPermissions, reloadWorksheet, editButtons, anchorEl, setAnchorEl, anchorElBundle, setShowBundleOperation, handleSelectedBundleCommand}) =>
     <Sticky top={NAVBAR_HEIGHT + 6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
             <div className='header-row'>
@@ -92,6 +92,9 @@ export default ({ showActionBar, onShowNewUpload, onShowNewRun, onShowNewText, c
                                 onShowNewUpload={onShowNewUpload}
                                 onShowNewRun={onShowNewRun}
                                 onShowNewText={onShowNewText}
+                                setShowBundleOperation={setShowBundleOperation}
+                                anchorElBundle={anchorElBundle}
+                                handleSelectedBundleCommand={handleSelectedBundleCommand}
                             />
                         </Grid>
                         <Grid item>

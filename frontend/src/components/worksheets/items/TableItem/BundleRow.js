@@ -14,6 +14,7 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import DeleteIcon from '@material-ui/icons/Delete';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
+import Checkbox from '@material-ui/core/Checkbox';
 
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleDetail from '../../BundleDetail';
@@ -33,6 +34,14 @@ class BundleRow extends Component {
         showDetail: false,
         openDelete: false,
         runProp: {},
+        checked: false,
+    };
+
+    handleCheckboxChange = uuid => event => {
+        // This callback goes all the way up to Worksheet.js (same as setFocus)
+        // Goes from bundleRow->tableItem->WorksheetItemList->Worksheet
+        this.props.handleCheckBundle(uuid, event.target.checked);
+        this.setState({ checked: event.target.checked });
     };
 
     receiveBundleInfoUpdates = (update) => {
@@ -118,8 +127,17 @@ class BundleRow extends Component {
             // See if there's a link
             var url;
             var showDetailButton;
+            var checkBox;
             if (col === 0) {
                 url = baseUrl;
+                checkBox = <Checkbox
+                                checked={this.state.checked}
+                                onChange={this.handleCheckboxChange(uuid)}
+                                value="checkedA"
+                                inputProps={{
+                                'aria-label': 'primary checkbox',
+                                }}
+                            />
                 showDetailButton = 
                         <IconButton onClick={this.handleDetailClick} style={{ padding: 2 }}>
                             {this.state.showDetail?
@@ -150,7 +168,8 @@ class BundleRow extends Component {
                     classes={{
                         root: classes.rootNoPad,
                     }}
-                >
+                >   
+                    {checkBox}
                     {showDetailButton}
                     {rowContent}
                 </TableCell>
