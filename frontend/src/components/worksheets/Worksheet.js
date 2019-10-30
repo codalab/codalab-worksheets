@@ -139,7 +139,7 @@ class Worksheet extends React.Component {
             showNewText: false,
             isValid: true,
             checkedBundles: {},
-            BulkBundleErrorDialog: null,
+            BulkBundleDialog: null,
         };
     }
 
@@ -182,17 +182,25 @@ class Worksheet extends React.Component {
     }
 
     handleSelectedBundleCommand = (cmd, force=false)=>{
-        // Run the correct command
-        if (cmd === 'null'){
-            //TODO: remove this
-            Object.keys(this.state.checkedBundles).map((uuid)=>{
-                    this.state.checkedBundles[uuid]();
-                }
-            );
-            this.setState({checkedBundles: {}});
-            this.reloadWorksheet();
+        // If no bundle is selected, return and open dialog saying this
+        if (Object.keys(this.state.checkedBundles).length === 0){
+            var bundleDialog = <Dialog
+                                    open={true}
+                                    onClose={this.toggleBundleBulkMessageDialog}
+                                    aria-labelledby="bundle-error-confirmation-title"
+                                    aria-describedby="bundle-error-confirmation-description"
+                                    >
+                                    <DialogTitle id="bundle-error-confirmation-title">{"Failed to perform this action"}</DialogTitle>
+                                    <DialogContent>
+                                        <DialogContentText id="alert-dialog-description">
+                                            No bundle row is selected
+                                        </DialogContentText>
+                                    </DialogContent>
+                                </Dialog>;
+            this.setState({BulkBundleDialog: bundleDialog});
             return;
         }
+        // Run the correct command
         let force_delete = force ? '--force' : null;
         executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.checkedBundles)])).done(() => {
             Object.keys(this.state.checkedBundles).map((uuid)=>{
@@ -209,7 +217,7 @@ class Worksheet extends React.Component {
             console.log("here")
             let bundle_error_dialog = <Dialog
                                         open={true}
-                                        onClose={this.toggleBundleErrorPopup}
+                                        onClose={this.toggleBundleBulkMessageDialog}
                                         aria-labelledby="bundle-error-confirmation-title"
                                         aria-describedby="bundle-error-confirmation-description"
                                         >
@@ -220,13 +228,13 @@ class Worksheet extends React.Component {
                                             </DialogContentText>
                                         </DialogContent>
                                     </Dialog>
-            this.setState({checkedBundles: {}, BulkBundleErrorDialog: bundle_error_dialog});
+            this.setState({checkedBundles: {}, BulkBundleDialog: bundle_error_dialog});
             this.reloadWorksheet();
         });
     }
 
-    toggleBundleErrorPopup = () => {
-        this.setState({BulkBundleErrorDialog: null});
+    toggleBundleBulkMessageDialog = () => {
+        this.setState({BulkBundleDialog: null});
     }
     //===============bulk operation handle functions=================
 
@@ -1063,7 +1071,7 @@ class Worksheet extends React.Component {
                                     <div id='worksheet_content' className={editableClassName + ' worksheet_content'}>
                                         {worksheet_display}
                                         {/* Show error dialog if bulk bundle execution failed*/}
-                                        {this.state.BulkBundleErrorDialog}
+                                        {this.state.BulkBundleDialog}
                                     </div>
                                 </div>
                             </div>

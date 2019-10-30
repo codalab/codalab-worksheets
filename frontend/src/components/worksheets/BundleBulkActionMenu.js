@@ -42,14 +42,14 @@ class BundleBulkActionMenu extends React.Component {
 
     executeDetachCommand = (ev) => {
         // Not fully implemented
-        this.props.handleSelectedBundleCommand('null');
+        this.props.handleSelectedBundleCommand('detach');
         // this.toggleDetachPopup();
         this.props.closeMenu();
     };
 
     executeAttachCommand = (ev) => {
         // Not fully implemented
-        this.props.handleSelectedBundleCommand('null');
+        this.props.handleSelectedBundleCommand('add');
         // this.toggleAttachPopup();
         this.props.closeMenu();
     };
