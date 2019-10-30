@@ -12,13 +12,6 @@ def main():
     parser.add_argument(
         '--server', help='CodaLab instance to connect to', default='https://worksheets.codalab.org'
     )
-    parser.add_argument(
-        '-t',
-        '--worker-manager-type',
-        help='Type of worker manager',
-        choices=['aws-batch'],
-        required=True,
-    )
     parser.add_argument('--min-workers', help='Minimum number of workers', type=int, default=1)
     parser.add_argument('--max-workers', help='Maximum number of workers', type=int, default=10)
     parser.add_argument(
@@ -44,11 +37,19 @@ def main():
         help='Minimum time to wait between launching workers',
         default=1 * 60,
     )
-    parser.add_argument(
-        '--config-file',
-        help='Path to a JSON config file that sets config values specific '
-        'to your Worker Manager type. (e.g., AWS Batch)',
+    subparsers = parser.add_subparsers(
+        title='Worker Manager to run',
+        description='Which worker manager to run (AWS Batch etc.)',
+        dest='worker_manager_name',
     )
+
+    # Each worker manager class defines its NAME, which is the subcommand the users user
+    # to invoke that type of Worker Manager. We map those to their respective classes
+    # so we can automatically initialize the correct worker manager class from the argument
+    worker_manager_types = {AWSBatchWorkerManager.NAME: AWSBatchWorkerManager}
+    for worker_manager_name, worker_manager_type in worker_manager_types.items():
+        # This lets each worker manager class to define its own arguments
+        worker_manager_type.get_args(subparsers)
     args = parser.parse_args()
 
     # Set up logging.
@@ -62,13 +63,7 @@ def main():
             % (args.min_workers, args.max_workers)
         )
 
-    # Choose the worker manager type.
-    if args.worker_manager_type == 'aws-batch':
-        manager = AWSBatchWorkerManager(args)
-    else:
-        raise ValueError('Invalid worker manager type: {}'.format(args.worker_manager_type))
-
-    # Go!
+    manager = worker_manager_types[args.worker_manager_name](args)
     manager.run_loop()
 
 
