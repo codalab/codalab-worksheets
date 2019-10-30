@@ -40,9 +40,14 @@ class BundleRow extends Component {
     handleCheckboxChange = uuid => event => {
         // This callback goes all the way up to Worksheet.js (same as setFocus)
         // Goes from bundleRow->tableItem->WorksheetItemList->Worksheet
-        this.props.handleCheckBundle(uuid, event.target.checked);
+        this.props.handleCheckBundle(uuid, event.target.checked, this.removeCheckAfterOperation);
         this.setState({ checked: event.target.checked });
     };
+
+    removeCheckAfterOperation = ()=>{
+        // Callback function to remove the check after any bulk operation
+        this.setState({ checked: false });
+    }
 
     receiveBundleInfoUpdates = (update) => {
         let { bundleInfoUpdates } = this.state;
