@@ -15,6 +15,7 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import Checkbox from '@material-ui/core/Checkbox';
 
 class BundleBulkActionMenu extends React.Component {
     constructor(props) {
@@ -24,11 +25,17 @@ class BundleBulkActionMenu extends React.Component {
             openAttach: false,
             openDetach: false,
             openKill: false,
+            forceDelete: false,
         };
     }
 
+    handleCheckboxChange = event => {
+        this.setState({ forceDelete: event.target.checked });
+    };
+
+
     executeDeleteCommand = (ev) => {
-        this.props.handleSelectedBundleCommand('rm');
+        this.props.handleSelectedBundleCommand('rm', this.state.forceDelete);
         this.toggleDeletePopup();
         this.props.closeMenu();
     };
@@ -122,6 +129,17 @@ class BundleBulkActionMenu extends React.Component {
                     <DialogContent>
                         <DialogContentText id="alert-dialog-description">
                             Deletion cannot be undone.
+                        </DialogContentText>
+                        <DialogContentText id="alert-dialog-description">
+                            Force delete?
+                            <Checkbox
+                            checked={this.state.forceDelete}
+                            onChange={this.handleCheckboxChange}
+                            value="checkedA"
+                            inputProps={{
+                            'aria-label': 'primary checkbox',
+                            }}
+                            />
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>

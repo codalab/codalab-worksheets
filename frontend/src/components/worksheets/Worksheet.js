@@ -176,7 +176,7 @@ class Worksheet extends React.Component {
         }
     }
 
-    handleSelectedBundleCommand = (cmd)=>{
+    handleSelectedBundleCommand = (cmd, force=false)=>{
         // Run the correct command
         if (cmd === 'null'){
             //TODO: remove this
@@ -188,11 +188,20 @@ class Worksheet extends React.Component {
             this.reloadWorksheet();
             return;
         }
-        executeCommand(buildTerminalCommand([cmd, ...Object.keys(this.state.checkedBundles)])).done(() => {
+        let force_delete = force ? '--force' : null;
+        executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.checkedBundles)])).done(() => {
             Object.keys(this.state.checkedBundles).map((uuid)=>{
                     this.state.checkedBundles[uuid]();
                 }
             );
+            this.setState({checkedBundles: {}});
+            this.reloadWorksheet();
+        }).fail((e)=>{
+            Object.keys(this.state.checkedBundles).map((uuid)=>{
+                this.state.checkedBundles[uuid]();
+                }
+            );
+            console.log(e.responseText);
             this.setState({checkedBundles: {}});
             this.reloadWorksheet();
         });
