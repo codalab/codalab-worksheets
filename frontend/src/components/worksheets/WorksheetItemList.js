@@ -253,6 +253,7 @@ class WorksheetItemList extends React.Component {
                         onHideNewUpload: this.props.onHideNewUpload,
                         onHideNewRun: this.props.onHideNewRun,
                         onHideNewText: this.props.onHideNewText,
+                        handleCheckBundle: this.props.handleCheckBundle,
                     };
                     addWorksheetItems(
                         props,

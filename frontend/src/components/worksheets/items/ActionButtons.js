@@ -5,6 +5,9 @@ import { withStyles } from '@material-ui/core/styles';
 import RunIcon from '@material-ui/icons/PlayCircleOutline';
 import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
 import AddIcon from '@material-ui/icons/AddBoxOutlined';
+import Popover from '@material-ui/core/Popover';
+import MenuIcon from '@material-ui/icons/Menu';
+import BundleBulkActionMenu from '../BundleBulkActionMenu';
 
 class ActionButtons extends React.Component<{
     classes: {},
@@ -13,7 +16,7 @@ class ActionButtons extends React.Component<{
     onShowNewText: () => void,
 }> {
     render() {
-        const { classes, onShowNewUpload, onShowNewRun, onShowNewText } = this.props;
+        const { classes, onShowNewUpload, onShowNewRun, onShowNewText, anchorElBundle, setShowBundleOperation, handleSelectedBundleCommand } = this.props;
         return (
             <div
                 onMouseMove={(ev) => {
@@ -47,6 +50,33 @@ class ActionButtons extends React.Component<{
                     <RunIcon className={classes.buttonIcon} />
                     Run
                 </Button>
+                <Button
+                    size='small'
+                    color='inherit'
+                    aria-label='Bundle bulk operation'
+                    onClick={(ev) => {
+                        setShowBundleOperation(ev.currentTarget);
+                    }}
+                >
+                    <MenuIcon className={classes.buttonIcon} />
+                    Bundles
+                </Button>
+                <Popover
+                    open={Boolean(anchorElBundle)}
+                    anchorEl={anchorElBundle}
+                    onClose={() => { setShowBundleOperation(null) }}
+                    anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'center',
+                    }}
+                    transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                    }}
+                    classes={{ paper: classes.noTransform }}
+                >
+                    <BundleBulkActionMenu handleSelectedBundleCommand={handleSelectedBundleCommand} closeMenu={() => { setShowBundleOperation(null)}}/>
+                </Popover>
             </div>
         );
     }

@@ -21,6 +21,8 @@ import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import ErrorMessage from './ErrorMessage';
 import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
+import { buildTerminalCommand } from '../../util/worksheet_utils';
+import { executeCommand } from '../../util/cli_utils';
 
 /*
 Information about the current worksheet and its items.
@@ -127,10 +129,12 @@ class Worksheet extends React.Component {
             updatingBundleUuids: {},
             isUpdatingBundles: false,
             anchorEl: null,
+            anchorElBundle: null,
             showNewUpload: false,
             showNewRun: false,
             showNewText: false,
             isValid: true,
+            checkedBundles: new Set(),
         };
     }
 
@@ -157,6 +161,28 @@ class Worksheet extends React.Component {
             this.setFocus(-1, 0);
         }
     };
+
+    //===============bulk operation handle functions=================
+    handleCheckBundle = (uuid, check)=>{
+        // This is a callback function that will be passed all the way down to bundle row
+        // This is to allow bulk operations on bundles
+        // The function should not use setState since it will cause an update
+        if (check){
+            // A bundle is checked
+            this.state.checkedBundles.add(uuid);
+        } else{
+            // A bundle is unchecked
+            this.state.checkedBundles.delete(uuid);
+        }
+    }
+
+    handleSelectedBundleCommand = (cmd)=>{
+        // Run the correct command
+        executeCommand(buildTerminalCommand([cmd, ...this.state.checkedBundles])).done(() => {
+            this.reloadWorksheet();
+        });
+    }
+    //===============bulk operation handle functions=================
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
@@ -816,7 +842,7 @@ class Worksheet extends React.Component {
 
     render() {
         const { classes } = this.props;
-        const { anchorEl } = this.state;
+        const { anchorEl, anchorElBundle } = this.state;
 
         this.setupEventHandlers();
         var info = this.state.ws.info;
@@ -945,6 +971,7 @@ class Worksheet extends React.Component {
                 onHideNewUpload={() => this.setState({showNewUpload: false})}
                 onHideNewRun={() => this.setState({showNewRun: false})}
                 onHideNewText={() => this.setState({showNewText: false})}
+                handleCheckBundle = {this.handleCheckBundle}
             />
         );
 
@@ -973,10 +1000,13 @@ class Worksheet extends React.Component {
                     reloadWorksheet={this.reloadWorksheet}
                     editButtons={editButtons}
                     anchorEl={anchorEl}
+                    anchorElBundle={anchorElBundle}
                     setAnchorEl={e => this.setState({ anchorEl: e })}
+                    setShowBundleOperation={(e) => this.setState({anchorElBundle: e})}
                     onShowNewUpload={() => this.setState({showNewUpload: true})}
                     onShowNewRun={() => this.setState({showNewRun: true})}
                     onShowNewText={() => this.setState({showNewText: true})}
+                    handleSelectedBundleCommand={this.handleSelectedBundleCommand}
                     />
                     {action_bar_display}
                 <div id='worksheet_container'>
