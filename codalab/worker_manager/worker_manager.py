@@ -50,7 +50,7 @@ class WorkerManager(object):
     NAME = 'worker-manager'
 
     @staticmethod
-    def get_args(subparsers):
+    def add_parser(subparsers):
         """
         Add any arguments specific to this worker manager to the given subparser
         """

@@ -13,7 +13,7 @@ class AWSBatchWorkerManager(WorkerManager):
     NAME = 'aws-batch'
 
     @staticmethod
-    def get_args(worker_manager_subparsers):
+    def add_parser(worker_manager_subparsers):
         parser = worker_manager_subparsers.add_parser(
             AWSBatchWorkerManager.NAME, help='Worker manager for submittion jobs to AWS Batch'
         )

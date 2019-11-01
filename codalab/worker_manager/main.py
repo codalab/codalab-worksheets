@@ -43,13 +43,13 @@ def main():
         dest='worker_manager_name',
     )
 
-    # Each worker manager class defines its NAME, which is the subcommand the users user
+    # Each worker manager class defines its NAME, which is the subcommand the users use
     # to invoke that type of Worker Manager. We map those to their respective classes
     # so we can automatically initialize the correct worker manager class from the argument
     worker_manager_types = {AWSBatchWorkerManager.NAME: AWSBatchWorkerManager}
     for worker_manager_name, worker_manager_type in worker_manager_types.items():
         # This lets each worker manager class to define its own arguments
-        worker_manager_type.get_args(subparsers)
+        worker_manager_type.add_parser(subparsers)
     args = parser.parse_args()
 
     # Set up logging.
