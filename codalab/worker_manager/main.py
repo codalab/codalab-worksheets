@@ -12,16 +12,8 @@ def main():
     parser.add_argument(
         '--server', help='CodaLab instance to connect to', default='https://worksheets.codalab.org'
     )
-    parser.add_argument(
-        '-t',
-        '--worker-manager-type',
-        help='Type of worker manager',
-        choices=['aws-batch'],
-        required=True,
-    )
     parser.add_argument('--min-workers', help='Minimum number of workers', type=int, default=1)
     parser.add_argument('--max-workers', help='Maximum number of workers', type=int, default=10)
-    parser.add_argument('--queue', help='Monitor and run workers on this queue (e.g., AWS Batch)')
     parser.add_argument(
         '--search', nargs='*', help='Monitor only runs that satisfy these criteria', default=[]
     )
@@ -45,6 +37,22 @@ def main():
         help='Minimum time to wait between launching workers',
         default=1 * 60,
     )
+    subparsers = parser.add_subparsers(
+        title='Worker Manager to run',
+        description='Which worker manager to run (AWS Batch etc.)',
+        dest='worker_manager_name',
+    )
+
+    # Each worker manager class defines its NAME, which is the subcommand the users use
+    # to invoke that type of Worker Manager. We map those to their respective classes
+    # so we can automatically initialize the correct worker manager class from the argument
+    worker_manager_types = {AWSBatchWorkerManager.NAME: AWSBatchWorkerManager}
+    for worker_manager_name, worker_manager_type in worker_manager_types.items():
+        # This lets each worker manager class to define its own arguments
+        worker_manager_subparser = subparsers.add_parser(
+            worker_manager_name, description=worker_manager_type.DESCRIPTION
+        )
+        worker_manager_type.add_arguments_to_subparser(worker_manager_subparser)
     args = parser.parse_args()
 
     # Set up logging.
@@ -58,13 +66,7 @@ def main():
             % (args.min_workers, args.max_workers)
         )
 
-    # Choose the worker manager type.
-    if args.worker_manager_type == 'aws-batch':
-        manager = AWSBatchWorkerManager(args)
-    else:
-        raise ValueError('Invalid worker manager type: {}'.format(args.worker_manager_type))
-
-    # Go!
+    manager = worker_manager_types[args.worker_manager_name](args)
     manager.run_loop()
 
 
