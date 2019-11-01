@@ -48,9 +48,10 @@ class WorkerManager(object):
 
     # Subcommand name to use for this worker manager type
     NAME = 'worker-manager'
+    DESCRIPTION = 'Base class for Worker Managers, please implement for your deployment'
 
     @staticmethod
-    def add_parser(subparsers):
+    def add_arguments_to_subparser(subparser):
         """
         Add any arguments specific to this worker manager to the given subparser
         """

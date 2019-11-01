@@ -49,7 +49,10 @@ def main():
     worker_manager_types = {AWSBatchWorkerManager.NAME: AWSBatchWorkerManager}
     for worker_manager_name, worker_manager_type in worker_manager_types.items():
         # This lets each worker manager class to define its own arguments
-        worker_manager_type.add_parser(subparsers)
+        worker_manager_subparser = subparsers.add_parser(
+            worker_manager_name, description=worker_manager_type.DESCRIPTION
+        )
+        worker_manager_type.add_arguments_to_subparser(worker_manager_subparser)
     args = parser.parse_args()
 
     # Set up logging.
