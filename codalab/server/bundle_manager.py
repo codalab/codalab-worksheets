@@ -9,7 +9,7 @@ import time
 import traceback
 
 from codalab.objects.permission import check_bundles_have_read_permission
-from codalab.common import PermissionError
+from codalab.common import PermissionError, NotFoundError
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
@@ -327,7 +327,14 @@ class BundleManager(object):
         """
         for worker in workers_list:
             for uuid in worker['run_uuids']:
-                bundle = self._model.get_bundle(uuid)
+                try:
+                    bundle = self._model.get_bundle(uuid)
+                except NotFoundError:
+                    logger.info(
+                        'Bundle %s in WorkerInfoAccessor but no longer found. Skipping for resource deduction.',
+                        uuid,
+                    )
+                    continue
                 bundle_resources = self._compute_bundle_resources(bundle)
                 worker['cpus'] -= bundle_resources.cpus
                 worker['gpus'] -= bundle_resources.gpus
