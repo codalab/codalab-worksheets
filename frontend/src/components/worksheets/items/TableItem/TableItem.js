@@ -5,10 +5,11 @@ import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
 import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import { worksheetItemPropsChanged, getMinMaxKeys } from '../../../../util/worksheet_utils';
+import { getMinMaxKeys } from '../../../../util/worksheet_utils';
 import BundleRow from './BundleRow';
 import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
+import SvgIcon from '@material-ui/core/SvgIcon';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
 
 class TableItem extends React.Component<{
@@ -50,13 +51,9 @@ class TableItem extends React.Component<{
             if (this.state.numSelectedChild === 0){
                 this.setState({indeterminateCheckState:false, checked: false});
             }else{
-                this.setState({indeterminateCheckState:true});
+                this.setState({indeterminateCheckState:true, checked: true});
             }
         }
-    }
-
-    shouldComponentUpdate(nextProps, nextState) {
-        return worksheetItemPropsChanged(this.props, nextProps) || this.state.checked !== nextState.checked;
     }
 
     handleSelectAll = event => {
@@ -99,6 +96,9 @@ class TableItem extends React.Component<{
                                 icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
                                 checkedIcon={<CheckBoxIcon fontSize="small" />}
                                 indeterminate={this.state.indeterminateCheckState}
+                                indeterminateIcon={<SvgIcon fontSize="small">
+                                                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z"/>
+                                                    </SvgIcon>}
                                 inputProps={{
                                 'aria-label': 'select all checkbox',
                                 }}
