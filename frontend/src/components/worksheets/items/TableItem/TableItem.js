@@ -48,7 +48,7 @@ class TableItem extends React.Component<{
             if (this.state.numSelectedChild === Object.keys(this.state.selectChildren).length){
                 this.setState({indeterminateCheckState:false, checked: true});
             }else{
-                this.setState({indeterminateCheckState:true});
+                this.setState({indeterminateCheckState:true, checked: true});
             }
         }else{
             this.state.numSelectedChild -= 1;
