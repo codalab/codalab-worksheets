@@ -73,7 +73,7 @@ class MarkdownItem extends React.Component {
 
         // Delete the line
         Mousetrap.bind(
-            ['backspace'],
+            ['backspace', 'del'],
             function() {
                 if (this.props.focusIndex >= 0) {
                     this.deleteItem();

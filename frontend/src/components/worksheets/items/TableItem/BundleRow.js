@@ -67,9 +67,6 @@ class BundleRow extends Component {
         this.toggleDeletePopup();
         const { uuid } = this.props.bundleInfo;
         executeCommand(buildTerminalCommand(['rm', uuid])).done(() => {
-            if (this.props.focused) {
-                setFocus(-1, 0);
-            }
             this.props.reloadWorksheet();
         });
     };
@@ -171,7 +168,7 @@ class BundleRow extends Component {
             Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
 
             // Delete a bundle
-            Mousetrap.bind(['backspace'],
+            Mousetrap.bind(['backspace', 'del'],
             () => {
                 this.toggleDeletePopup();
             },

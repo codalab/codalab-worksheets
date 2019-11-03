@@ -48,21 +48,33 @@ let ExtraWorksheetHTML = () => (
                                 </tr>
                                 <tr>
                                     <td>
-                                        <kbd>ctrl+enter</kbd>
+                                        <kbd>ctrl/command+enter</kbd>
                                     </td>
                                     <td>Save current edit</td>
                                 </tr>
                                 <tr>
                                     <td>
-                                        <kbd>backspace</kbd>
+                                        <kbd>backspace/del</kbd>
                                     </td>
                                     <td>Quit edit / Delete bundle or worksheet</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <kbd>esc</kbd>
+                                    </td>
+                                    <td>Exit editing</td>
                                 </tr>
                                 <tr>
                                     <td>
                                         <kbd>shift+c</kbd>
                                     </td>
                                     <td>Show/hide web terminal</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <kbd>c</kbd>
+                                    </td>
+                                    <td>Focus on the web terminal regardless of show/hide status</td>
                                 </tr>
                                 <tr>
                                     <td>
