@@ -8,6 +8,7 @@ import TableRow from '@material-ui/core/TableRow';
 import Immutable from 'seamless-immutable';
 import { worksheetItemPropsChanged, getMinMaxKeys } from '../../../../util/worksheet_utils';
 import BundleRow from './BundleRow';
+import Checkbox from '@material-ui/core/Checkbox';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -18,21 +19,69 @@ class TableItem extends React.Component<{
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = Immutable({
+        this.state = {
             yposition: -1,
             rowcenter: -1,
             rowIdx: -1,
             insertBefore: -1,
-        });
+            checked: false,
+            selectChildren:{},
+            deselectChildren:{},
+            numSelectedChild: 0,
+            indeterminateCheckState: false,
+        };
     }
+
+    addSelectCallBack = (index, selectFunc)=>{
+        console.log(index);
+        this.state.selectChildren[index] = selectFunc;
+    }
+
+    removeSelectCallBack = (index, deselectFunc)=>{
+        console.log(index);
+        this.state.deselectChildren[index] = deselectFunc;
+    }
+
+    changeSelfCheckCallBack = (childCheck)=>{
+        if (childCheck){
+            this.state.numSelectedChild += 1;
+            if (this.state.numSelectedChild === Object.keys(this.state.selectChildren).length){
+                this.setState({indeterminateCheckState:false, checked: true});
+            }else{
+                this.setState({indeterminateCheckState:true});
+            }
+        }else{
+            this.state.numSelectedChild -= 1;
+            if (this.state.numSelectedChild === 0){
+                this.setState({indeterminateCheckState:false, checked: false});
+            }else{
+                this.setState({indeterminateCheckState:true});
+            }
+        }
+    }
+
+    handleSelectAll = event => {
+        if (event.target !== event.currentTarget){
+            return;
+        }
+        let numSelectedChild = 0;
+        if (event.target.checked){
+            Object.keys(this.state.selectChildren).map((rowIndex)=>{
+                this.state.selectChildren[rowIndex]();
+            })
+            numSelectedChild = Object.keys(this.state.selectChildren).length;
+        }else{
+            Object.keys(this.state.deselectChildren).map((rowIndex)=>{
+                this.state.deselectChildren[rowIndex]();
+            })
+            numSelectedChild = 0
+        }
+        this.setState({ checked: event.target.checked, numSelectedChild: numSelectedChild, indeterminateCheckState: false });
+    };
 
     updateRowIndex = (rowIndex) => {
         this.props.setFocus(this.props.focusIndex, rowIndex);
     };
-
-    shouldComponentUpdate(nextProps, nextState) {
-        return worksheetItemPropsChanged(this.props, nextProps);
-    }
 
     render() {
         const { worksheetUUID, setFocus, prevItem } = this.props;
@@ -48,10 +97,23 @@ class TableItem extends React.Component<{
         var canEdit = this.props.canEdit;
         var bundleInfos = item.bundles_spec.bundle_infos;
         var headerItems = item.header;
-        var headerHtml = headerItems.map(function(item, index) {
+        var headerHtml = headerItems.map((item, index) => {
             let styleDict = index === 0 ?  { paddingLeft: 64 } : { paddingLeft: 0 };
+            let checkbox;
+            if (index === 0){
+                checkbox = <Checkbox
+                                checked={this.state.checked}
+                                onChange={this.handleSelectAll}
+                                value="checked"
+                                indeterminate={this.state.indeterminateCheckState}
+                                inputProps={{
+                                'aria-label': 'select all checkbox',
+                                }}
+                            />;
+            }
             return (
                 <TableCell component='th' key={index} style={ styleDict }>
+                    {checkbox}
                     {item}
                 </TableCell>
             );
@@ -89,7 +151,10 @@ class TableItem extends React.Component<{
                     reloadWorksheet={this.props.reloadWorksheet}
                     ws={this.props.ws}
                     isLast={rowIndex === rowItems.length - 1}
-                    handleCheckBundle = {this.props.handleCheckBundle}
+                    handleCheckBundle={this.props.handleCheckBundle}
+                    addSelectCallBack={this.addSelectCallBack}
+                    removeSelectCallBack={this.removeSelectCallBack}
+                    changeSelfCheckCallBack={this.changeSelfCheckCallBack}
                 />
             );
         });

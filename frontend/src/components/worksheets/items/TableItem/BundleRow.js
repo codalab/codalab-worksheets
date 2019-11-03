@@ -37,10 +37,21 @@ class BundleRow extends Component {
         checked: false,
     };
 
+    letParentSelect = ()=>{
+        this.props.handleCheckBundle(this.props.bundleInfo.uuid, true, this.removeCheckAfterOperation);
+        this.setState({checked: true})
+    }
+    
+    letParentDeselect = ()=>{
+        this.props.handleCheckBundle(this.props.bundleInfo.uuid, false, this.removeCheckAfterOperation);
+        this.setState({checked: false})
+    }
+
     handleCheckboxChange = uuid => event => {
         // This callback goes all the way up to Worksheet.js (same as setFocus)
         // Goes from bundleRow->tableItem->WorksheetItemList->Worksheet
         this.props.handleCheckBundle(uuid, event.target.checked, this.removeCheckAfterOperation);
+        this.props.changeSelfCheckCallBack(event.target.checked);
         this.setState({ checked: event.target.checked });
     };
 
@@ -138,7 +149,7 @@ class BundleRow extends Component {
                 checkBox = <Checkbox
                                 checked={this.state.checked}
                                 onChange={this.handleCheckboxChange(uuid)}
-                                value="checkedA"
+                                value="checked"
                                 inputProps={{
                                 'aria-label': 'primary checkbox',
                                 }}
@@ -195,6 +206,8 @@ class BundleRow extends Component {
              Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
          }
 
+        this.props.addSelectCallBack(this.props.rowIndex, this.letParentSelect);
+        this.props.removeSelectCallBack(this.props.rowIndex, this.letParentDeselect);
 
         return (
             <TableBody
