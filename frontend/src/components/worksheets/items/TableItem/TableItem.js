@@ -5,7 +5,7 @@ import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
 import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import { getMinMaxKeys } from '../../../../util/worksheet_utils';
+import { worksheetItemPropsChanged, getMinMaxKeys } from '../../../../util/worksheet_utils';
 import BundleRow from './BundleRow';
 import Checkbox from '@material-ui/core/Checkbox';
 
@@ -51,6 +51,10 @@ class TableItem extends React.Component<{
                 this.setState({indeterminateCheckState:true});
             }
         }
+    }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return worksheetItemPropsChanged(this.props, nextProps) || this.state.checked !== nextState.checked;
     }
 
     handleSelectAll = event => {
