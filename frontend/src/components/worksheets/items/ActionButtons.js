@@ -50,33 +50,9 @@ class ActionButtons extends React.Component<{
                     <RunIcon className={classes.buttonIcon} />
                     Run
                 </Button>
-                <Button
-                    size='small'
-                    color='inherit'
-                    aria-label='Bundle bulk operation'
-                    onClick={(ev) => {
-                        setShowBundleOperation(ev.currentTarget);
-                    }}
-                >
-                    <MenuIcon className={classes.buttonIcon} />
-                    Bundles
-                </Button>
-                <Popover
-                    open={Boolean(anchorElBundle)}
-                    anchorEl={anchorElBundle}
-                    onClose={() => { setShowBundleOperation(null) }}
-                    anchorOrigin={{
-                        vertical: 'bottom',
-                        horizontal: 'center',
-                    }}
-                    transformOrigin={{
-                        vertical: 'top',
-                        horizontal: 'center',
-                    }}
-                    classes={{ paper: classes.noTransform }}
-                >
-                    <BundleBulkActionMenu handleSelectedBundleCommand={handleSelectedBundleCommand} closeMenu={() => { setShowBundleOperation(null)}}/>
-                </Popover>
+                <BundleBulkActionMenu 
+                    handleSelectedBundleCommand={handleSelectedBundleCommand} 
+                    closeMenu={() => { setShowBundleOperation(null)}}/>
             </div>
         );
     }
