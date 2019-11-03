@@ -37,14 +37,9 @@ class BundleRow extends Component {
         checked: false,
     };
 
-    letParentSelect = ()=>{
-        this.props.handleCheckBundle(this.props.bundleInfo.uuid, true, this.removeCheckAfterOperation);
-        this.setState({checked: true})
-    }
-    
-    letParentDeselect = ()=>{
-        this.props.handleCheckBundle(this.props.bundleInfo.uuid, false, this.removeCheckAfterOperation);
-        this.setState({checked: false})
+    letParentControlSelect = (check)=>{
+        this.props.handleCheckBundle(this.props.bundleInfo.uuid, check, this.removeCheckAfterOperation);
+        this.setState({checked: check})
     }
 
     handleCheckboxChange = uuid => event => {
@@ -58,6 +53,7 @@ class BundleRow extends Component {
     removeCheckAfterOperation = ()=>{
         // Callback function to remove the check after any bulk operation
         this.setState({ checked: false });
+        this.props.changeSelfCheckCallBack(false);
     }
 
     receiveBundleInfoUpdates = (update) => {
@@ -205,9 +201,7 @@ class BundleRow extends Component {
             );
              Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
          }
-
-        this.props.addSelectCallBack(this.props.rowIndex, this.letParentSelect);
-        this.props.removeSelectCallBack(this.props.rowIndex, this.letParentDeselect);
+        this.props.addControlSelectCallBack(this.props.rowIndex, this.letParentControlSelect);
 
         return (
             <TableBody

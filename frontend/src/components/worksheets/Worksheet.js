@@ -175,7 +175,7 @@ class Worksheet extends React.Component {
         if (check){
             // A bundle is checked
             if (Object.keys(this.state.checkedBundles).length === 0){
-                let bundles = {};
+                let bundles = this.state.checkedBundles;
                 bundles[uuid] = removeCheckAfterOperation;
                 this.setState({checkedBundles: bundles, showBundleOperationButtons: true});
                 return;

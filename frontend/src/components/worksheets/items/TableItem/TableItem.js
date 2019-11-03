@@ -32,14 +32,8 @@ class TableItem extends React.Component<{
         };
     }
 
-    addSelectCallBack = (index, selectFunc)=>{
-        console.log(index);
-        this.state.selectChildren[index] = selectFunc;
-    }
-
-    removeSelectCallBack = (index, deselectFunc)=>{
-        console.log(index);
-        this.state.deselectChildren[index] = deselectFunc;
+    addControlSelectCallBack = (index, controlChildSelectFunc)=>{
+        this.state.selectChildren[index] = controlChildSelectFunc;
     }
 
     changeSelfCheckCallBack = (childCheck)=>{
@@ -65,17 +59,10 @@ class TableItem extends React.Component<{
             return;
         }
         let numSelectedChild = 0;
-        if (event.target.checked){
             Object.keys(this.state.selectChildren).map((rowIndex)=>{
-                this.state.selectChildren[rowIndex]();
+                this.state.selectChildren[rowIndex](event.target.checked);
             })
-            numSelectedChild = Object.keys(this.state.selectChildren).length;
-        }else{
-            Object.keys(this.state.deselectChildren).map((rowIndex)=>{
-                this.state.deselectChildren[rowIndex]();
-            })
-            numSelectedChild = 0
-        }
+        numSelectedChild = event.target.checked? Object.keys(this.state.selectChildren).length : 0;
         this.setState({ checked: event.target.checked, numSelectedChild: numSelectedChild, indeterminateCheckState: false });
     };
 
@@ -152,8 +139,7 @@ class TableItem extends React.Component<{
                     ws={this.props.ws}
                     isLast={rowIndex === rowItems.length - 1}
                     handleCheckBundle={this.props.handleCheckBundle}
-                    addSelectCallBack={this.addSelectCallBack}
-                    removeSelectCallBack={this.removeSelectCallBack}
+                    addControlSelectCallBack={this.addControlSelectCallBack}
                     changeSelfCheckCallBack={this.changeSelfCheckCallBack}
                 />
             );
