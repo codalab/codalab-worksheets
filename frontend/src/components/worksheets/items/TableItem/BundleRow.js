@@ -39,23 +39,26 @@ class BundleRow extends Component {
             openDelete: false,
             runProp: {},
             checked: this.props.alreadyChecked,
+            uniqueIdentifier: Math.random()*10000,
         };
         if (this.props.alreadyChecked){
-            this.props.handleCheckBundle(this.props.bundleInfo.uuid, true, this.removeCheckAfterOperation);
+            this.props.handleCheckBundle(this.props.bundleInfo.uuid, this.state.uniqueIdentifier, true, this.removeCheckAfterOperation);
             this.props.changeSelfCheckCallBack(true);
         }
     }
-    
 
     letParentControlSelect = (check)=>{
-        this.props.handleCheckBundle(this.props.bundleInfo.uuid, check, this.removeCheckAfterOperation);
+        if (check === this.state.checked){
+            return;
+        }
+        this.props.handleCheckBundle(this.props.bundleInfo.uuid, this.state.uniqueIdentifier, check, this.removeCheckAfterOperation);
         this.setState({checked: check})
     }
 
     handleCheckboxChange = uuid => event => {
         // This callback goes all the way up to Worksheet.js (same as setFocus)
         // Goes from bundleRow->tableItem->WorksheetItemList->Worksheet
-        this.props.handleCheckBundle(uuid, event.target.checked, this.removeCheckAfterOperation);
+        this.props.handleCheckBundle(uuid, this.state.uniqueIdentifier, event.target.checked, this.removeCheckAfterOperation);
         this.props.changeSelfCheckCallBack(event.target.checked);
         this.setState({ checked: event.target.checked });
     };
