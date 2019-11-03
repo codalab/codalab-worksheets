@@ -124,6 +124,7 @@ BUNDLE_COMMANDS = (
     'macro',
     'kill',
     'write',
+    'ancestors',
     'mount',
     'netcat',
 )
@@ -2644,6 +2645,28 @@ class BundleCLI(object):
             {'type': 'write', 'uuid': bundle_uuid, 'subpath': subpath, 'string': args.string},
         )
         print(bundle_uuid, file=self.stdout)
+
+    @Commands.command(
+        'ancestors',
+        help='Prints out all the ancestors of the specified bundle as a nested list to stdout.',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+    def do_ancestors_command(self, args):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        bundle_uuid = BundleCLI.resolve_bundle_uuid(client, worksheet_uuid, args.bundle_spec[0])
+        ancestors_info = bundle_util.get_ancestors_string_representation(client, bundle_uuid)
+        print(ancestors_info, file=self.stdout)
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!

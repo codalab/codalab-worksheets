@@ -36,6 +36,40 @@ def bundle_to_bundle_info(model, bundle):
     info['args'] = worksheet_util.interpret_genpath(info, 'args')
     return info
 
+def get_ancestors_string_representation(client, bundle_uuid):
+    """
+    Traverses up the dependency graph and compiles a nested list of the bundle's ancestors
+    :param client: Instance of JsonApiClient
+    :param bundle_uuid: UUID of bundle
+    :return: String representation of nested list
+    :rtype: String
+    """
+    bundle_cache = {}
+    seen = {bundle_uuid}
+    result = []
+
+    def get_bundle(uuid):
+        # check the cache before querying for a bundle
+        if uuid not in bundle_cache:
+            bundle_cache[uuid] = client.fetch('bundles', uuid)
+        return bundle_cache[uuid]
+
+    def bundle_as_string(bundle, num_of_spaces):
+        # sample output:  - mnist(0x1ba223)
+        return ' ' * num_of_spaces + '- {}({})'.format(bundle['metadata']['name'], bundle['uuid'][:8])
+
+    def recurse(uuid, h):
+        bundle = get_bundle(uuid)
+        # two spaces for each level up the dependency graph
+        result.append(bundle_as_string(bundle, h * 2))
+        for dependency in bundle['dependencies']:
+            parent_uuid = dependency['parent_uuid']
+            if parent_uuid not in seen:
+                seen.add(parent_uuid)
+                recurse(parent_uuid, h + 1)
+
+    recurse(bundle_uuid, 0)
+    return '\n'.join(result)
 
 def mimic_bundles(
     client,
