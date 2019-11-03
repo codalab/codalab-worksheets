@@ -92,33 +92,46 @@ class BundleBulkActionMenu extends React.Component {
     render() {
         const {classes} = this.props;
         const {openDelete, openDetach, openAttach, openKill} = this.state;
-        return <Paper className={classes.root}>
-                <MenuList>
-                    <MenuItem onClick={this.toggleDeletePopup}>
-                        <ListItemIcon>
-                            <DeleteForeverIcon fontSize="small" />
-                        </ListItemIcon>
-                        <Typography variant="inherit">Delete</Typography>
-                    </MenuItem>
-                    <MenuItem onClick={this.toggleDetachPopup}>
-                        <ListItemIcon>
-                            <ExitToAppIcon fontSize="small" />
-                        </ListItemIcon>
-                        <Typography variant="inherit">Detach</Typography>
-                    </MenuItem>
-                    <MenuItem onClick={this.toggleAttachPopup}>
-                        <ListItemIcon>
-                            <LibraryAddIcon fontSize="small" />
-                        </ListItemIcon>
-                        <Typography variant="inherit">Attach</Typography>
-                    </MenuItem>
-                    <MenuItem onClick={this.toggleKillPopup}>
-                        <ListItemIcon>
-                            <HighlightOffIcon fontSize="small" />
-                        </ListItemIcon>
-                        <Typography variant="inherit">Kill</Typography>
-                    </MenuItem>
-                </MenuList>
+        return <div className={classes.root}>
+                {/* <MenuList> */}
+                    {/* <MenuItem onClick={this.toggleDeletePopup}>
+                        <ListItemIcon> */}
+                <Button
+                    size='small'
+                    color='inherit'
+                    aria-label='Delete'
+                    onClick={this.toggleDeletePopup}
+                >
+                    <DeleteForeverIcon fontSize="small" />
+                    <Typography variant="inherit">Delete</Typography>
+                </Button>
+                <Button
+                    size='small'
+                    color='inherit'
+                    aria-label='Detach'
+                    onClick={this.toggleDetachPopup}
+                >
+                    <ExitToAppIcon fontSize="small" />
+                    <Typography variant="inherit">Detach</Typography>
+                </Button>
+                <Button
+                    size='small'
+                    color='inherit'
+                    aria-label='Attach'
+                    onClick={this.toggleAttachPopup}
+                >
+                    <LibraryAddIcon fontSize="small" />
+                    <Typography variant="inherit">Attach</Typography>
+                </Button>
+                <Button
+                    size='small'
+                    color='inherit'
+                    aria-label='Kill'
+                    onClick={this.toggleKillPopup}
+                >
+                    <HighlightOffIcon fontSize="small" />
+                    <Typography variant="inherit">Kill</Typography>
+                </Button>
                 <Dialog
                     open={openDelete}
                     onClose={this.toggleDeletePopup}
@@ -204,13 +217,14 @@ class BundleBulkActionMenu extends React.Component {
                         </Button>
                     </DialogActions>
                 </Dialog>
-            </Paper>
+            </div>
     }
 }
 
 const styles = (theme) => ({
     root: {
         width: 120,
+        display: 'inline',
     },
 });
 
