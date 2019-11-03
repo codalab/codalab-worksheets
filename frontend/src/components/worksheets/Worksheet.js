@@ -133,13 +133,13 @@ class Worksheet extends React.Component {
             updatingBundleUuids: {},
             isUpdatingBundles: false,
             anchorEl: null,
-            anchorElBundle: null,
             showNewUpload: false,
             showNewRun: false,
             showNewText: false,
             isValid: true,
             checkedBundles: {},
             BulkBundleDialog: null,
+            showBundleOperationButtons: false,
         };
     }
 
@@ -174,10 +174,20 @@ class Worksheet extends React.Component {
         // The function should not use setState since it will cause an update
         if (check){
             // A bundle is checked
+            if (Object.keys(this.state.checkedBundles).length === 0){
+                let bundles = {};
+                bundles[uuid] = removeCheckAfterOperation;
+                this.setState({checkedBundles: bundles, showBundleOperationButtons: true});
+                return;
+            }
             this.state.checkedBundles[uuid] = removeCheckAfterOperation;
         } else{
             // A bundle is unchecked
             delete this.state.checkedBundles[uuid];
+            if (Object.keys(this.state.checkedBundles).length === 0){
+                this.setState({checkedBundles: {}, showBundleOperationButtons: false});
+                return;
+            }
         }
     }
 
@@ -214,7 +224,6 @@ class Worksheet extends React.Component {
                 this.state.checkedBundles[uuid]();
                 }
             );
-            console.log("here")
             let bundle_error_dialog = <Dialog
                                         open={true}
                                         onClose={this.toggleBundleBulkMessageDialog}
@@ -896,7 +905,7 @@ class Worksheet extends React.Component {
 
     render() {
         const { classes } = this.props;
-        const { anchorEl, anchorElBundle } = this.state;
+        const { anchorEl } = this.state;
 
         this.setupEventHandlers();
         var info = this.state.ws.info;
@@ -1054,13 +1063,12 @@ class Worksheet extends React.Component {
                     reloadWorksheet={this.reloadWorksheet}
                     editButtons={editButtons}
                     anchorEl={anchorEl}
-                    anchorElBundle={anchorElBundle}
                     setAnchorEl={e => this.setState({ anchorEl: e })}
-                    setShowBundleOperation={(e) => this.setState({anchorElBundle: e})}
                     onShowNewUpload={() => this.setState({showNewUpload: true})}
                     onShowNewRun={() => this.setState({showNewRun: true})}
                     onShowNewText={() => this.setState({showNewText: true})}
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
+                    showBundleOperationButtons={this.state.showBundleOperationButtons}
                     />
                     {action_bar_display}
                 <div id='worksheet_container'>

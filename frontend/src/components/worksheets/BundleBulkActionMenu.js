@@ -1,9 +1,5 @@
 import React from 'react';
-import MenuList from '@material-ui/core/MenuList';
-import MenuItem from '@material-ui/core/MenuItem';
-import Paper from '@material-ui/core/Paper';
 import { withStyles } from '@material-ui/core';
-import ListItemIcon from '@material-ui/core/ListItemIcon';
 import Typography from '@material-ui/core/Typography';
 import ExitToAppIcon from '@material-ui/icons/ExitToApp';
 import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
@@ -37,28 +33,24 @@ class BundleBulkActionMenu extends React.Component {
     executeDeleteCommand = (ev) => {
         this.props.handleSelectedBundleCommand('rm', this.state.forceDelete);
         this.toggleDeletePopup();
-        this.props.closeMenu();
     };
 
     executeDetachCommand = (ev) => {
         // Not fully implemented
         this.props.handleSelectedBundleCommand('detach');
         // this.toggleDetachPopup();
-        this.props.closeMenu();
     };
 
     executeAttachCommand = (ev) => {
         // Not fully implemented
         this.props.handleSelectedBundleCommand('add');
         // this.toggleAttachPopup();
-        this.props.closeMenu();
     };
 
     executeKillCommand = (ev) => {
         //buggy
         this.props.handleSelectedBundleCommand('kill');
         this.toggleKillPopup();
-        this.props.closeMenu();
     };
 
     toggleDeletePopup = () => {
@@ -93,9 +85,7 @@ class BundleBulkActionMenu extends React.Component {
         const {classes} = this.props;
         const {openDelete, openDetach, openAttach, openKill} = this.state;
         return <div className={classes.root}>
-                {/* <MenuList> */}
-                    {/* <MenuItem onClick={this.toggleDeletePopup}>
-                        <ListItemIcon> */}
+                Apply to selected bundles:
                 <Button
                     size='small'
                     color='inherit'
