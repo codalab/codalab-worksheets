@@ -169,22 +169,24 @@ class Worksheet extends React.Component {
     };
 
     //===============bulk operation handle functions=================
-    handleCheckBundle = (uuid, check, removeCheckAfterOperation)=>{
+    handleCheckBundle = (uuid, identifier, check, removeCheckAfterOperation)=>{
         // This is a callback function that will be passed all the way down to bundle row
         // This is to allow bulk operations on bundles
+        //console.log(this.state.checkedBundles);
         if (check){
             //A bundle is checked
-            let checkedBundles = this.state.checkedBundles;
-            if (!(uuid in checkedBundles)){
-                checkedBundles[uuid] = []
-            }
-            checkedBundles[uuid].push(removeCheckAfterOperation);
             let bundlesCount = this.state.uuidBundlesCheckedCount;
             if (!(uuid in bundlesCount)){
                 bundlesCount[uuid] = 0;
             }
             bundlesCount[uuid] += 1;
+            let checkedBundles = this.state.checkedBundles;
+            if (!(uuid in checkedBundles)){
+                checkedBundles[uuid] = {}
+            }
+            checkedBundles[uuid][identifier] = removeCheckAfterOperation;
             this.setState({checkedBundles: checkedBundles, uuidBundlesCheckedCount: bundlesCount, showBundleOperationButtons: true});
+            // return localIndex
         } else{
             // A bundle is unchecked
             if (this.state.uuidBundlesCheckedCount[uuid] === 1){
@@ -192,10 +194,10 @@ class Worksheet extends React.Component {
                 delete this.state.checkedBundles[uuid];
             }else{
                 this.state.uuidBundlesCheckedCount[uuid] -= 1;
+                delete this.state.checkedBundles[uuid][identifier];
             }
             if (Object.keys(this.state.uuidBundlesCheckedCount).length === 0){
-                this.setState({uuidBundlesCheckedCount: {}, showBundleOperationButtons: false});
-                return;
+                this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}, showBundleOperationButtons: false});
             }
         }
     }
@@ -203,21 +205,16 @@ class Worksheet extends React.Component {
     handleSelectedBundleCommand = (cmd, force=false)=>{
         // Run the correct command
         let force_delete = force ? '--force' : null;
+        Object.keys(this.state.checkedBundles).map((uuid)=>{
+            Object.keys(this.state.checkedBundles[uuid]).map((identifier)=>{
+                this.state.checkedBundles[uuid][identifier]();
+                });
+            }
+        );
         executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)])).done(() => {
-            Object.keys(this.state.checkedBundles).map((uuid)=>{
-                    this.state.checkedBundles[uuid].map((func)=>{
-                        func();
-                    });
-                }
-            );
-            this.setState({uuidBundlesCheckedCount: {}});
+            this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}});
             this.reloadWorksheet();
         }).fail((e)=>{
-            Object.keys(this.state.checkedBundles).map((uuid)=>{
-                this.state.checkedBundles[uuid].map((func)=>{
-                    func();
-                });
-            });
             let bundle_error_dialog = <Dialog
                                         open={true}
                                         onClose={this.toggleBundleBulkMessageDialog}
@@ -231,7 +228,7 @@ class Worksheet extends React.Component {
                                             </DialogContentText>
                                         </DialogContent>
                                     </Dialog>
-            this.setState({checkedBundles: {}, BulkBundleDialog: bundle_error_dialog});
+            this.setState({checkedBundles: {}, uuidBundlesCheckedCount: {}, BulkBundleDialog: bundle_error_dialog});
             this.reloadWorksheet();
         });
     }

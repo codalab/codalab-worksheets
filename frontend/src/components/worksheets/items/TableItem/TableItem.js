@@ -39,6 +39,7 @@ class TableItem extends React.Component<{
     }
 
     changeSelfCheckCallBack = (childCheck)=>{
+        console.log(this.state.numSelectedChild);
         if (childCheck){
             this.state.numSelectedChild += 1;
             if (this.state.numSelectedChild === Object.keys(this.state.selectChildren).length){
@@ -48,8 +49,8 @@ class TableItem extends React.Component<{
             }
         }else{
             this.state.numSelectedChild -= 1;
-            if (this.state.numSelectedChild === 0){
-                this.setState({indeterminateCheckState:false, checked: false});
+            if (this.state.numSelectedChild <= 0){
+                this.setState({numSelectedChild:0,indeterminateCheckState:false, checked: false});
             }else{
                 this.setState({indeterminateCheckState:true, checked: true});
             }
@@ -61,9 +62,9 @@ class TableItem extends React.Component<{
             return;
         }
         let numSelectedChild = 0;
-            Object.keys(this.state.selectChildren).map((rowIndex)=>{
-                this.state.selectChildren[rowIndex](event.target.checked);
-            })
+        Object.keys(this.state.selectChildren).map((rowIndex)=>{
+            this.state.selectChildren[rowIndex](event.target.checked);
+        })
         numSelectedChild = event.target.checked? Object.keys(this.state.selectChildren).length : 0;
         this.setState({ checked: event.target.checked, numSelectedChild: numSelectedChild, indeterminateCheckState: false });
     };
