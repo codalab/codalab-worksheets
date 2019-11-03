@@ -140,6 +140,7 @@ class Worksheet extends React.Component {
             checkedBundles: {},
             BulkBundleDialog: null,
             showBundleOperationButtons: false,
+            uuidBundlesChecked: {},
         };
     }
 
@@ -171,19 +172,26 @@ class Worksheet extends React.Component {
     handleCheckBundle = (uuid, check, removeCheckAfterOperation)=>{
         // This is a callback function that will be passed all the way down to bundle row
         // This is to allow bulk operations on bundles
-        // The function should not use setState since it will cause an update
         if (check){
             // A bundle is checked
-            if (Object.keys(this.state.checkedBundles).length === 0){
-                let bundles = this.state.checkedBundles;
-                bundles[uuid] = removeCheckAfterOperation;
-                this.setState({checkedBundles: bundles, showBundleOperationButtons: true});
-                return;
+            if (!uuid in this.state.uuidBundlesChecked){
+                this.state.uuidBundlesChecked[uuid] = 0;
             }
-            this.state.checkedBundles[uuid] = removeCheckAfterOperation;
+            this.state.uuidBundlesChecked[uuid] += 1
+            let bundles = this.state.checkedBundles;
+            if (!(uuid in bundles)){
+                bundles[uuid] = []
+            }
+            bundles[uuid].push(removeCheckAfterOperation);
+            this.setState({checkedBundles: bundles, showBundleOperationButtons: true});
         } else{
             // A bundle is unchecked
-            delete this.state.checkedBundles[uuid];
+            if (this.state.uuidBundlesChecked[uuid] === 1){
+                delete this.state.checkedBundles[uuid];
+                delete this.state.uuidBundlesChecked[uuid];
+            }else{
+                this.state.uuidBundlesChecked[uuid] -= 1;
+            }
             if (Object.keys(this.state.checkedBundles).length === 0){
                 this.setState({checkedBundles: {}, showBundleOperationButtons: false});
                 return;
@@ -192,36 +200,22 @@ class Worksheet extends React.Component {
     }
 
     handleSelectedBundleCommand = (cmd, force=false)=>{
-        // If no bundle is selected, return and open dialog saying this
-        if (Object.keys(this.state.checkedBundles).length === 0){
-            var bundleDialog = <Dialog
-                                    open={true}
-                                    onClose={this.toggleBundleBulkMessageDialog}
-                                    aria-labelledby="bundle-error-confirmation-title"
-                                    aria-describedby="bundle-error-confirmation-description"
-                                    >
-                                    <DialogTitle id="bundle-error-confirmation-title">{"Failed to perform this action"}</DialogTitle>
-                                    <DialogContent>
-                                        <DialogContentText id="alert-dialog-description">
-                                            No bundle row is selected
-                                        </DialogContentText>
-                                    </DialogContent>
-                                </Dialog>;
-            this.setState({BulkBundleDialog: bundleDialog});
-            return;
-        }
         // Run the correct command
         let force_delete = force ? '--force' : null;
         executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.checkedBundles)])).done(() => {
             Object.keys(this.state.checkedBundles).map((uuid)=>{
-                    this.state.checkedBundles[uuid]();
+                    this.state.checkedBundles[uuid].map((func)=>{
+                        func();
+                    });
                 }
             );
             this.setState({checkedBundles: {}});
             this.reloadWorksheet();
         }).fail((e)=>{
             Object.keys(this.state.checkedBundles).map((uuid)=>{
-                this.state.checkedBundles[uuid]();
+                this.state.checkedBundles[uuid].map((func)=>{
+                    func();
+                });
                 }
             );
             let bundle_error_dialog = <Dialog
@@ -237,7 +231,7 @@ class Worksheet extends React.Component {
                                             </DialogContentText>
                                         </DialogContent>
                                     </Dialog>
-            this.setState({checkedBundles: {}, BulkBundleDialog: bundle_error_dialog});
+            this.setState({checkedBundles: {}, BulkBundleDialog: bundle_error_dialog, showBundleOperationButtons: false});
             this.reloadWorksheet();
         });
     }
