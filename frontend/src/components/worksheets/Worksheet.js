@@ -140,7 +140,7 @@ class Worksheet extends React.Component {
             checkedBundles: {},
             BulkBundleDialog: null,
             showBundleOperationButtons: false,
-            uuidBundlesChecked: {},
+            uuidBundlesCheckedCount: {},
         };
     }
 
@@ -173,27 +173,28 @@ class Worksheet extends React.Component {
         // This is a callback function that will be passed all the way down to bundle row
         // This is to allow bulk operations on bundles
         if (check){
-            // A bundle is checked
-            if (!uuid in this.state.uuidBundlesChecked){
-                this.state.uuidBundlesChecked[uuid] = 0;
+            //A bundle is checked
+            let checkedBundles = this.state.checkedBundles;
+            if (!(uuid in checkedBundles)){
+                checkedBundles[uuid] = []
             }
-            this.state.uuidBundlesChecked[uuid] += 1
-            let bundles = this.state.checkedBundles;
-            if (!(uuid in bundles)){
-                bundles[uuid] = []
+            checkedBundles[uuid].push(removeCheckAfterOperation);
+            let bundlesCount = this.state.uuidBundlesCheckedCount;
+            if (!(uuid in bundlesCount)){
+                bundlesCount[uuid] = 0;
             }
-            bundles[uuid].push(removeCheckAfterOperation);
-            this.setState({checkedBundles: bundles, showBundleOperationButtons: true});
+            bundlesCount[uuid] += 1;
+            this.setState({checkedBundles: checkedBundles, uuidBundlesCheckedCount: bundlesCount, showBundleOperationButtons: true});
         } else{
             // A bundle is unchecked
-            if (this.state.uuidBundlesChecked[uuid] === 1){
+            if (this.state.uuidBundlesCheckedCount[uuid] === 1){
+                delete this.state.uuidBundlesCheckedCount[uuid];
                 delete this.state.checkedBundles[uuid];
-                delete this.state.uuidBundlesChecked[uuid];
             }else{
-                this.state.uuidBundlesChecked[uuid] -= 1;
+                this.state.uuidBundlesCheckedCount[uuid] -= 1;
             }
-            if (Object.keys(this.state.checkedBundles).length === 0){
-                this.setState({checkedBundles: {}, showBundleOperationButtons: false});
+            if (Object.keys(this.state.uuidBundlesCheckedCount).length === 0){
+                this.setState({uuidBundlesCheckedCount: {}, showBundleOperationButtons: false});
                 return;
             }
         }
@@ -202,22 +203,21 @@ class Worksheet extends React.Component {
     handleSelectedBundleCommand = (cmd, force=false)=>{
         // Run the correct command
         let force_delete = force ? '--force' : null;
-        executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.checkedBundles)])).done(() => {
+        executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)])).done(() => {
             Object.keys(this.state.checkedBundles).map((uuid)=>{
                     this.state.checkedBundles[uuid].map((func)=>{
                         func();
                     });
                 }
             );
-            this.setState({checkedBundles: {}});
+            this.setState({uuidBundlesCheckedCount: {}});
             this.reloadWorksheet();
         }).fail((e)=>{
             Object.keys(this.state.checkedBundles).map((uuid)=>{
                 this.state.checkedBundles[uuid].map((func)=>{
                     func();
                 });
-                }
-            );
+            });
             let bundle_error_dialog = <Dialog
                                         open={true}
                                         onClose={this.toggleBundleBulkMessageDialog}
@@ -226,12 +226,12 @@ class Worksheet extends React.Component {
                                         >
                                         <DialogTitle id="bundle-error-confirmation-title">{"Failed to perform this action"}</DialogTitle>
                                         <DialogContent>
-                                            <DialogContentText id="alert-dialog-description">
+                                            <DialogContentText id="alert-dialog-description" style={{ color:'red' }}>
                                                 {e.responseText}
                                             </DialogContentText>
                                         </DialogContent>
                                     </Dialog>
-            this.setState({checkedBundles: {}, BulkBundleDialog: bundle_error_dialog, showBundleOperationButtons: false});
+            this.setState({checkedBundles: {}, BulkBundleDialog: bundle_error_dialog});
             this.reloadWorksheet();
         });
     }
