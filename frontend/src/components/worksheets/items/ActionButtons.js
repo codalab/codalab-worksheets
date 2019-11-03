@@ -5,8 +5,6 @@ import { withStyles } from '@material-ui/core/styles';
 import RunIcon from '@material-ui/icons/PlayCircleOutline';
 import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
 import AddIcon from '@material-ui/icons/AddBoxOutlined';
-import Popover from '@material-ui/core/Popover';
-import MenuIcon from '@material-ui/icons/Menu';
 import BundleBulkActionMenu from '../BundleBulkActionMenu';
 
 class ActionButtons extends React.Component<{
@@ -16,7 +14,7 @@ class ActionButtons extends React.Component<{
     onShowNewText: () => void,
 }> {
     render() {
-        const { classes, onShowNewUpload, onShowNewRun, onShowNewText, anchorElBundle, setShowBundleOperation, handleSelectedBundleCommand } = this.props;
+        const { classes, onShowNewUpload, onShowNewRun, onShowNewText, handleSelectedBundleCommand, showBundleOperationButtons } = this.props;
         return (
             <div
                 onMouseMove={(ev) => {
@@ -50,9 +48,11 @@ class ActionButtons extends React.Component<{
                     <RunIcon className={classes.buttonIcon} />
                     Run
                 </Button>
-                <BundleBulkActionMenu 
-                    handleSelectedBundleCommand={handleSelectedBundleCommand} 
-                    closeMenu={() => { setShowBundleOperation(null)}}/>
+                {showBundleOperationButtons
+                    ?   <BundleBulkActionMenu 
+                            handleSelectedBundleCommand={handleSelectedBundleCommand} />
+                    :   null
+                }
             </div>
         );
     }
