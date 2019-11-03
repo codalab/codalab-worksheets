@@ -205,14 +205,16 @@ class Worksheet extends React.Component {
     handleSelectedBundleCommand = (cmd, force=false)=>{
         // Run the correct command
         let force_delete = force ? '--force' : null;
-        Object.keys(this.state.checkedBundles).map((uuid)=>{
-            Object.keys(this.state.checkedBundles[uuid]).map((identifier)=>{
-                this.state.checkedBundles[uuid][identifier]();
-                });
-            }
-        );
         executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)])).done(() => {
-            this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}});
+            if (cmd === 'rm'){
+                Object.keys(this.state.checkedBundles).map((uuid)=>{
+                    Object.keys(this.state.checkedBundles[uuid]).map((identifier)=>{
+                        this.state.checkedBundles[uuid][identifier]();
+                        });
+                    }
+                );
+                this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}});
+            }
             this.reloadWorksheet();
         }).fail((e)=>{
             let bundle_error_dialog = <Dialog
@@ -228,7 +230,7 @@ class Worksheet extends React.Component {
                                             </DialogContentText>
                                         </DialogContent>
                                     </Dialog>
-            this.setState({checkedBundles: {}, uuidBundlesCheckedCount: {}, BulkBundleDialog: bundle_error_dialog});
+            this.setState({ BulkBundleDialog: bundle_error_dialog });
             this.reloadWorksheet();
         });
     }
