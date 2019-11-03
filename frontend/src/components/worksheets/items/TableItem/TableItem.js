@@ -8,6 +8,8 @@ import TableRow from '@material-ui/core/TableRow';
 import { worksheetItemPropsChanged, getMinMaxKeys } from '../../../../util/worksheet_utils';
 import BundleRow from './BundleRow';
 import Checkbox from '@material-ui/core/Checkbox';
+import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@material-ui/icons/CheckBox';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -88,21 +90,23 @@ class TableItem extends React.Component<{
         var bundleInfos = item.bundles_spec.bundle_infos;
         var headerItems = item.header;
         var headerHtml = headerItems.map((item, index) => {
-            let styleDict = index === 0 ?  { paddingLeft: 64 } : { paddingLeft: 0 };
             let checkbox;
             if (index === 0){
                 checkbox = <Checkbox
                                 checked={this.state.checked}
                                 onChange={this.handleSelectAll}
                                 value="checked"
+                                icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
+                                checkedIcon={<CheckBoxIcon fontSize="small" />}
                                 indeterminate={this.state.indeterminateCheckState}
                                 inputProps={{
                                 'aria-label': 'select all checkbox',
                                 }}
+                                style={{marginRight: 30}}
                             />;
             }
             return (
-                <TableCell component='th' key={index} style={ styleDict }>
+                <TableCell component='th' key={index} style={{ paddingLeft: 0 }}>
                     {checkbox}
                     {item}
                 </TableCell>
