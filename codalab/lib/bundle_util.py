@@ -36,6 +36,7 @@ def bundle_to_bundle_info(model, bundle):
     info['args'] = worksheet_util.interpret_genpath(info, 'args')
     return info
 
+
 def get_ancestors_string_representation(client, bundle_uuid):
     """
     Traverses up the dependency graph and compiles a nested list of the bundle's ancestors
@@ -56,7 +57,9 @@ def get_ancestors_string_representation(client, bundle_uuid):
 
     def bundle_as_string(bundle, num_of_spaces):
         # sample output:  - mnist(0x1ba223)
-        return ' ' * num_of_spaces + '- {}({})'.format(bundle['metadata']['name'], bundle['uuid'][:8])
+        return ' ' * num_of_spaces + '- {}({})'.format(
+            bundle['metadata']['name'], bundle['uuid'][:8]
+        )
 
     def recurse(uuid, h):
         bundle = get_bundle(uuid)
@@ -70,6 +73,7 @@ def get_ancestors_string_representation(client, bundle_uuid):
 
     recurse(bundle_uuid, 0)
     return '\n'.join(result)
+
 
 def mimic_bundles(
     client,
