@@ -42,6 +42,7 @@ class BundleRow extends Component {
         };
         if (this.props.alreadyChecked){
             this.props.handleCheckBundle(this.props.bundleInfo.uuid, true, this.removeCheckAfterOperation);
+            this.props.changeSelfCheckCallBack(true);
         }
     }
     
