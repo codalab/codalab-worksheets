@@ -26,16 +26,23 @@ import { executeCommand } from '../../../../util/cli_utils';
 // option. Instead, we must make use of zero-height rows.
 
 class BundleRow extends Component {
-    state = {
-        showDetail: false,
-        showNewUpload: 0,
-        showNewRun: 0,
-        bundleInfoUpdates: {},
-        showDetail: false,
-        openDelete: false,
-        runProp: {},
-        checked: false,
-    };
+    constructor(props) {
+        super(props);
+        this.state = {
+            showDetail: false,
+            showNewUpload: 0,
+            showNewRun: 0,
+            bundleInfoUpdates: {},
+            showDetail: false,
+            openDelete: false,
+            runProp: {},
+            checked: this.props.alreadyChecked,
+        };
+        if (this.props.alreadyChecked){
+            this.props.handleCheckBundle(this.props.bundleInfo.uuid, true, this.removeCheckAfterOperation);
+        }
+    }
+    
 
     letParentControlSelect = (check)=>{
         this.props.handleCheckBundle(this.props.bundleInfo.uuid, check, this.removeCheckAfterOperation);

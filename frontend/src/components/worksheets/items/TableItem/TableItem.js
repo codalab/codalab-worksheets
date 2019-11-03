@@ -5,8 +5,7 @@ import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
 import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import Immutable from 'seamless-immutable';
-import { worksheetItemPropsChanged, getMinMaxKeys } from '../../../../util/worksheet_utils';
+import { getMinMaxKeys } from '../../../../util/worksheet_utils';
 import BundleRow from './BundleRow';
 import Checkbox from '@material-ui/core/Checkbox';
 
@@ -141,6 +140,7 @@ class TableItem extends React.Component<{
                     handleCheckBundle={this.props.handleCheckBundle}
                     addControlSelectCallBack={this.addControlSelectCallBack}
                     changeSelfCheckCallBack={this.changeSelfCheckCallBack}
+                    alreadyChecked={this.state.checked}
                 />
             );
         });
