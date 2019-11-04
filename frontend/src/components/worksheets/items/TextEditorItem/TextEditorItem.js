@@ -110,7 +110,9 @@ class TextEditorItem extends React.Component<{
             contentType: 'application/json',
             type: 'POST',
             success: (data, status, jqXHR) => {
-                reloadWorksheet();
+                const moveIndex = true;
+                const param = { moveIndex };
+                reloadWorksheet(undefined, undefined, param);
                 closeEditor();
             },
             error: (jqHXR, status, error) => {

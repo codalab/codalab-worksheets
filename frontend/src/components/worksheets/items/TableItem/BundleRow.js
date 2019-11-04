@@ -101,9 +101,6 @@ class BundleRow extends Component {
         this.toggleDeletePopup();
         const { uuid } = this.props.bundleInfo;
         executeCommand(buildTerminalCommand(['rm', uuid])).done(() => {
-            if (this.props.focused) {
-                setFocus(-1, 0);
-            }
             this.props.reloadWorksheet();
         });
     };
@@ -204,9 +201,9 @@ class BundleRow extends Component {
         });
 
          // Keyboard opening/closing
-         if (this.props.focused) {
+        if (this.props.focused) {
              // Use e.preventDefault to avoid openning selected link
-             Mousetrap.bind(
+            Mousetrap.bind(
                 ['enter'], 
                 (e) => {
                     e.preventDefault();
@@ -214,9 +211,22 @@ class BundleRow extends Component {
                     }, 
                 'keydown'
             );
+<<<<<<< HEAD
              Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
          }
         this.props.addControlSelectCallBack(this.props.rowIndex, this.letParentControlSelect);
+=======
+            Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
+
+            // Delete a bundle
+            Mousetrap.bind(['backspace', 'del'],
+            () => {
+                this.toggleDeletePopup();
+            },
+            );
+        }
+
+>>>>>>> Add keyboard shortcuts for major actions (#1578)
 
         return (
             <TableBody
