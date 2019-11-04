@@ -30,21 +30,67 @@ let ExtraWorksheetHTML = () => (
                             <tbody>
                                 <tr>
                                     <td>
-                                        <kbd>shift+c</kbd>
-                                    </td>
-                                    <td>Show/hide web terminal</td>
-                                </tr>
-                                <tr>
-                                    <td>
                                         <kbd>e</kbd>
                                     </td>
-                                    <td>Edit worksheet</td>
+                                    <td>Edit entire worksheet in Markdown</td>
                                 </tr>
                                 <tr>
                                     <td>
                                         <kbd>shift+r</kbd>
                                     </td>
                                     <td>Refresh worksheet</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <kbd>enter</kbd>
+                                    </td>
+                                    <td>Open current bundle or worksheet (shift+enter: new window)</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <kbd>ctrl/command+enter</kbd>
+                                    </td>
+                                    <td>Save current edit</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <kbd>backspace/del</kbd>
+                                    </td>
+                                    <td>Quit edit / Delete bundle or worksheet</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <kbd>esc</kbd>
+                                    </td>
+                                    <td>Exit editing</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <kbd>shift+c</kbd>
+                                    </td>
+                                    <td>Show/hide web terminal</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <kbd>c</kbd>
+                                    </td>
+                                    <td>Focus on the web terminal regardless of show/hide status</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <kbd>u</kbd>
+                                    </td>
+                                    <td>
+                                        Paste UUID of current bundle or worksheet into web terminal
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <kbd>a</kbd>
+                                    </td>
+                                    <td>
+                                        Paste arguments to recreate current bundle into web terminal
+                                    </td>
                                 </tr>
                                 <tr>
                                     <td>
@@ -72,25 +118,21 @@ let ExtraWorksheetHTML = () => (
                                 </tr>
                                 <tr>
                                     <td>
-                                        <kbd>enter</kbd>
+                                        <kbd>i</kbd>
                                     </td>
-                                    <td>Open current bundle or worksheet (shift: new window)</td>
+                                    <td>Add a cell right below the current focus</td>
                                 </tr>
                                 <tr>
                                     <td>
                                         <kbd>u</kbd>
                                     </td>
-                                    <td>
-                                        Paste UUID of current bundle or worksheet into web terminal
-                                    </td>
+                                    <td>Upload a file right below the current focus</td>
                                 </tr>
                                 <tr>
                                     <td>
-                                        <kbd>a</kbd>
+                                        <kbd>r</kbd>
                                     </td>
-                                    <td>
-                                        Paste arguments to recreate current bundle into web terminal
-                                    </td>
+                                    <td>Add a new run</td>
                                 </tr>
                                 <tr>
                                     <td>
