@@ -265,7 +265,9 @@ class NewRun extends React.Component<{
         const cmd = this.getCommand();
         if (cmd) {
             const response = executeCommand(cmd, this.props.ws.info.uuid).done(() => {
-                this.props.reloadWorksheet();
+                const moveIndex = true;
+                const param = { moveIndex };
+                this.props.reloadWorksheet(undefined, undefined, param);
             });
         }
     }

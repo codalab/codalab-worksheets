@@ -141,7 +141,9 @@ class NewUpload extends React.Component<{
                         },
                         success: (data, status, jqXHR) => {
                             this.clearProgress();
-                            this.props.reloadWorksheet();
+                            const moveIndex = true;
+                            const param = { moveIndex };
+                            this.props.reloadWorksheet(undefined, undefined, param);
                             this.props.onClose();
                         },
                         error: (jqHXR, status, error) => {
