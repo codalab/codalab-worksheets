@@ -202,12 +202,11 @@ class Worksheet extends React.Component {
         }
     }
 
-    handleSelectedBundleCommand = (cmd, force=false)=>{
+    handleSelectedBundleCommand = (cmd, force=false, worksheet_uuid=this.state.ws.uuid)=>{
         // Run the correct command
         let force_delete = force ? '--force' : null;
-        console.log(this.state.uuidBundlesCheckedCount);
-        console.log(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)]));
-        executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)])).done(() => {
+        executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)]), worksheet_uuid)
+        .done(() => {
             if (cmd === 'rm'){
                 Object.keys(this.state.checkedBundles).map((uuid)=>{
                     Object.keys(this.state.checkedBundles[uuid]).map((identifier)=>{
