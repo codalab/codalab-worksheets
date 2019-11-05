@@ -731,7 +731,8 @@ class Worksheet extends React.Component {
                     ) {
                         // If the number of bundles increases then the focus should be on the new bundle.
                         // if the current focus is not on a table
-                        if (items[this.state.focusIndex].mode !== 'table_block') {
+                        if (items[this.state.focusIndex].mode &&
+                            items[this.state.focusIndex].mode !== 'table_block') {
                             this.setFocus(this.state.focusIndex + 1, 0);
                         } else {
                             this.setFocus(this.state.focusIndex, 'end');
