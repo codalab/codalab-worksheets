@@ -86,7 +86,9 @@ class BundleBulkActionMenu extends React.Component {
         Mousetrap.bind(
             ['enter'],
             function(e) {
-                if(this.state.openKill){
+                //TODO: don't sue stopPropagation
+                e.stopPropagation();
+                if(this.state.openDelete){
                     this.executeDeleteCommand();
                 }
                 else if(this.state.openAttach){
