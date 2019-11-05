@@ -210,7 +210,7 @@ class Worksheet extends React.Component {
             if (cmd === 'rm'){
                 Object.keys(this.state.checkedBundles).map((uuid)=>{
                     Object.keys(this.state.checkedBundles[uuid]).map((identifier)=>{
-                        this.state.checkedBundles[uuid][identifier]();
+                        this.state.checkedBundles[uuid][identifier](true);
                         });
                     }
                 );

@@ -63,10 +63,10 @@ class BundleRow extends Component {
         this.setState({ checked: event.target.checked });
     };
 
-    removeCheckAfterOperation = ()=>{
+    removeCheckAfterOperation = (removeKeyFromParent=false)=>{
         // Callback function to remove the check after any bulk operation
         this.setState({ checked: false });
-        this.props.changeSelfCheckCallBack(false);
+        this.props.changeSelfCheckCallBack(false, removeKeyFromParent, this.state.uniqueIdentifier);
     }
 
     receiveBundleInfoUpdates = (update) => {
@@ -211,22 +211,9 @@ class BundleRow extends Component {
                     }, 
                 'keydown'
             );
-<<<<<<< HEAD
              Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
          }
-        this.props.addControlSelectCallBack(this.props.rowIndex, this.letParentControlSelect);
-=======
-            Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
-
-            // Delete a bundle
-            Mousetrap.bind(['backspace', 'del'],
-            () => {
-                this.toggleDeletePopup();
-            },
-            );
-        }
-
->>>>>>> Add keyboard shortcuts for major actions (#1578)
+        this.props.addControlSelectCallBack(this.state.uniqueIdentifier, this.letParentControlSelect);
 
         return (
             <TableBody
