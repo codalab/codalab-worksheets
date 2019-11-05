@@ -2265,9 +2265,7 @@ class BundleModel(object):
 
     def get_user_disk_quota_left(self, user_id):
         user_info = self.get_user_info(user_id)
-        disk_quota = user_info['disk_quota']
-        disk_used = self._get_disk_used(user_id)
-        return disk_quota - disk_used
+        return user_info['disk_quota'] - user_info['disk_used']
 
     def update_user_disk_used(self, user_id):
         user_info = self.get_user_info(user_id)
