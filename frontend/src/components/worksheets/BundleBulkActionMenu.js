@@ -108,6 +108,7 @@ class BundleBulkActionMenu extends React.Component {
                     color='inherit'
                     aria-label='Attach'
                     onClick={this.toggleAttachPopup}
+                    disabled
                 >
                     <LibraryAddIcon fontSize="small" />
                     <Typography variant="inherit">Attach</Typography>
