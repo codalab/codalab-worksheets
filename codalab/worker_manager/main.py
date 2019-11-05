@@ -21,7 +21,9 @@ def main():
     parser.add_argument(
         '--verbose', action='store_true', help='Whether to print out extra information'
     )
-    parser.add_argument('--sleep-time', help='Number of seconds to wait between checks', default=5)
+    parser.add_argument(
+        '--sleep-time', help='Number of seconds to wait between checks', default=5, type=int
+    )
     parser.add_argument(
         '--once',
         help='Just run once and exit instead of looping (for debugging)',
@@ -31,11 +33,13 @@ def main():
         '--worker-idle-seconds',
         help='Workers wait this long for extra runs before quitting',
         default=10 * 60,
+        type=int,
     )
     parser.add_argument(
         '--min-seconds-between-workers',
         help='Minimum time to wait between launching workers',
         default=1 * 60,
+        type=int,
     )
     subparsers = parser.add_subparsers(
         title='Worker Manager to run',
