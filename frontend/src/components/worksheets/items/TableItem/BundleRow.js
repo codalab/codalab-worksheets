@@ -211,9 +211,16 @@ class BundleRow extends Component {
                     }, 
                 'keydown'
             );
-             Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
-         }
-        this.props.addControlSelectCallBack(this.state.uniqueIdentifier, this.letParentControlSelect);
+            Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
+
+            // Delete a bundle
+            Mousetrap.bind(['backspace', 'del'],
+            () => {
+                this.toggleDeletePopup();
+            },
+            );
+        }
+        this.props.addControlSelectCallBack(this.props.rowIndex, this.letParentControlSelect);
 
         return (
             <TableBody
