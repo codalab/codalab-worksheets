@@ -206,6 +206,7 @@ class Worksheet extends React.Component {
         // Run the correct command
         let force_delete = force ? '--force' : null;
         console.log(this.state.uuidBundlesCheckedCount);
+        console.log(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)]));
         executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)])).done(() => {
             if (cmd === 'rm'){
                 Object.keys(this.state.checkedBundles).map((uuid)=>{

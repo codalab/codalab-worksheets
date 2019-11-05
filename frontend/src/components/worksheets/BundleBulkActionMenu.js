@@ -38,13 +38,13 @@ class BundleBulkActionMenu extends React.Component {
     executeDetachCommand = (ev) => {
         // Not fully implemented
         this.props.handleSelectedBundleCommand('detach');
-        // this.toggleDetachPopup();
+        this.toggleDetachPopup();
     };
 
     executeAttachCommand = (ev) => {
         // Not fully implemented
         this.props.handleSelectedBundleCommand('add');
-        // this.toggleAttachPopup();
+        this.toggleAttachPopup();
     };
 
     executeKillCommand = (ev) => {
@@ -85,7 +85,6 @@ class BundleBulkActionMenu extends React.Component {
         const {classes} = this.props;
         const {openDelete, openDetach, openAttach, openKill} = this.state;
         return <div className={classes.root}>
-                Apply to selected bundles:
                 <Button
                     size='small'
                     color='inherit'
@@ -215,6 +214,8 @@ const styles = (theme) => ({
     root: {
         width: 120,
         display: 'inline',
+        border: '1px solid',
+        padding: 2,
     },
 });
 
