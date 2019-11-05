@@ -293,7 +293,7 @@ class BundleModel(object):
 
     def search_bundles(self, user_id, keywords):
         """
-        Returns a  bundle search result dict where:
+        Returns a bundle search result dict where:
             result: list of bundle uuids matching search criteria in order
                           specified for bundle searches
                     single number value for aggregate searches(.count, .sum)
