@@ -12,6 +12,7 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import Checkbox from '@material-ui/core/Checkbox';
+import * as Mousetrap from '../../util/ws_mousetrap_fork';
 
 class BundleBulkActionMenu extends React.Component {
     constructor(props) {
@@ -30,24 +31,24 @@ class BundleBulkActionMenu extends React.Component {
     };
 
 
-    executeDeleteCommand = (ev) => {
+    executeDeleteCommand = () => {
         this.props.handleSelectedBundleCommand('rm', this.state.forceDelete);
         this.toggleDeletePopup();
     };
 
-    executeDetachCommand = (ev) => {
+    executeDetachCommand = () => {
         // Not fully implemented
         this.props.handleSelectedBundleCommand('detach');
         this.toggleDetachPopup();
     };
 
-    executeAttachCommand = (ev) => {
+    executeAttachCommand = () => {
         // Not fully implemented
         this.props.handleSelectedBundleCommand('add');
         this.toggleAttachPopup();
     };
 
-    executeKillCommand = (ev) => {
+    executeKillCommand = () => {
         //buggy
         this.props.handleSelectedBundleCommand('kill');
         this.toggleKillPopup();
@@ -82,6 +83,23 @@ class BundleBulkActionMenu extends React.Component {
     }
 
     render() {
+        Mousetrap.bind(
+            ['enter'],
+            function(e) {
+                if(this.state.openKill){
+                    this.executeDeleteCommand();
+                }
+                else if(this.state.openAttach){
+                    this.executeAttachCommand();
+                }
+                else if(this.state.openDetach){
+                    this.executeDetachCommand();
+                }
+                else if(this.state.openKill){
+                    this.executeKillCommand();
+                }
+            }.bind(this),
+        );
         const {classes} = this.props;
         const {openDelete, openDetach, openAttach, openKill} = this.state;
         return <div className={classes.root}>
