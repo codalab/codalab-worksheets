@@ -151,11 +151,11 @@ class BundleBulkActionMenu extends React.Component {
                     aria-labelledby="deletion-confirmation-title"
                     aria-describedby="deletion-confirmation-description"
                     >
-                    <DialogTitle id="deletion-confirmation-title">{"Deletion cannot be undone"}</DialogTitle>
+                    <DialogTitle id="deletion-confirmation-title">{"Delect selected bundles permanently?"}</DialogTitle>
                     <DialogContent className={classes.dialog}>
-                        {/* <DialogContentText id="alert-dialog-description" style={{ color:'red' }}>
+                        <DialogContentText id="alert-dialog-description">
                             Deletion cannot be undone.
-                        </DialogContentText> */}
+                        </DialogContentText>
                         <DialogContentText id="alert-dialog-description">
                             Force delete?
                             <Checkbox
@@ -254,7 +254,7 @@ const styles = (theme) => ({
     },
     dialog:{
         width: 400,
-        height: 100,
+        height: 120,
     }
 });
 
