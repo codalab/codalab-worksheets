@@ -6727,43 +6727,6 @@ body {
   z-index: 1060;
 }
 
-.select2-drop,
-.select2-container {
-  font-family: 'Roboto Mono', monospace;
-  font-size: 13px;
-}
-.select2-container {
-  width: 100%;
-}
-.select2-container-multi .select2-choices {
-  background-image: none;
-  border-color: #ccc;
-  box-shadow: none;
-  z-index: 2;
-}
-.select2-container-multi .select2-choices .select2-search-choice {
-  -webkit-box-shadow: none;
-  box-shadow: none;
-  background-color: rgba(115, 156, 185, 0.25);
-  background-image: none;
-  border: none;
-  border-radius: 0;
-}
-.select2-container-multi .select2-choices .select2-search-field input {
-  font-family: 'Roboto Mono', monospace;
-  font-size: 13px;
-}
-.select2-drop,
-.select2-drop-active {
-  -webkit-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  background-color: rgba(255, 255, 255, 0.9);
-  border-radius: 0;
-  border-color: #ccc;
-}
-.select2-results .select2-highlighted {
-  background-color: rgba(115, 156, 185, 0.5);
-}
 .progress-message {
   display: none;
   position: fixed;
