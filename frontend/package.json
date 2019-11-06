@@ -38,6 +38,7 @@
     "react-stickynode": "^2.1.1",
     "react-x-editable": "0.0.10-beta",
     "reselect": "^4.0.0",
+    "sass": "^1.23.3",
     "seamless-immutable": "^7.1.4",
     "select2": "^4.0.6-rc.1",
     "underscore": "^1.9.1",
