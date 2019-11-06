@@ -6642,50 +6642,6 @@ a.button-disabled {
   overflow-x: hidden;
   text-overflow: ellipsis;
 }
-.bundle-state {
-  display: inline;
-  padding: .2em .6em .3em;
-  font-size: 75%;
-  font-weight: 500;
-  line-height: 1;
-  color: #fff;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: baseline;
-  border-radius: .25em;
-  background-color: #fa963f;
-}
-a.bundle-state:hover,
-a.bundle-state:focus {
-  color: #fff;
-  text-decoration: none;
-  cursor: pointer;
-}
-.bundle-state:empty {
-  display: none;
-}
-.btn .bundle-state {
-  position: relative;
-  top: -1px;
-}
-.bundle-state[href]:hover,
-.bundle-state[href]:focus {
-  background-color: #f97b0d;
-}
-.bundle-state.state-ready {
-  background-color: #92D053;
-}
-.bundle-state.state-ready[href]:hover,
-.bundle-state.state-ready[href]:focus {
-  background-color: #79bc34;
-}
-.bundle-state.state-failed {
-  background-color: #d9534f;
-}
-.bundle-state.state-failed[href]:hover,
-.bundle-state.state-failed[href]:focus {
-  background-color: #c9302c;
-}
 html,
 body {
   height: 100%;
