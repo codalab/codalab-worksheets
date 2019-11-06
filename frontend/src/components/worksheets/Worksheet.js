@@ -27,6 +27,8 @@ import Dialog from '@material-ui/core/Dialog';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import CloseIcon from '@material-ui/icons/Close';
+import Grid from '@material-ui/core/Grid';
 
 /*
 Information about the current worksheet and its items.
@@ -224,7 +226,18 @@ class Worksheet extends React.Component {
                                         aria-labelledby="bundle-error-confirmation-title"
                                         aria-describedby="bundle-error-confirmation-description"
                                         >
-                                        <DialogTitle id="bundle-error-confirmation-title">{"Failed to perform this action"}</DialogTitle>
+                                        <DialogTitle id="bundle-error-confirmation-title"> 
+                                        <Grid container direction='row'>
+                                            <Grid item xs={10}>
+                                            {"Failed to perform this action"}
+                                            </Grid>
+                                            <Grid item xs={2}>
+                                                <Button variant="outlined" size="small" onClick={e => {this.setState({BulkBundleDialog: null})}}>
+                                                    <CloseIcon size="small"/>
+                                                </Button>
+                                            </Grid>
+                                        </Grid>
+                                        </DialogTitle>
                                         <DialogContent>
                                             <DialogContentText id="alert-dialog-description" style={{ color:'red' }}>
                                                 {e.responseText}
@@ -815,7 +828,7 @@ class Worksheet extends React.Component {
                         // If the number of bundles increases then the focus should be on the new bundle.
                         // if the current focus is not on a table
                         if (items[this.state.focusIndex] &&
-                            items[this.state.focusIndex].mode
+                            items[this.state.focusIndex].mode &&
                             items[this.state.focusIndex].mode !== 'table_block') {
                             this.setFocus(this.state.focusIndex + 1, 0);
                         } else {
