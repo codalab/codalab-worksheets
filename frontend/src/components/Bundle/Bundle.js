@@ -1,12 +1,13 @@
 // @flow
 import * as React from 'react';
-import SubHeader from './SubHeader';
-import ContentWrapper from './ContentWrapper';
+import SubHeader from '../SubHeader';
+import ContentWrapper from '../ContentWrapper';
 import $ from 'jquery';
 import { JsonApiDataStore } from 'jsonapi-datastore';
-import { renderFormat, renderPermissions, shorten_uuid } from '../util/worksheet_utils';
-import { BundleEditableField } from './EditableField';
-import { FileBrowser } from './FileBrowser';
+import { renderFormat, renderPermissions, shorten_uuid } from '../../util/worksheet_utils';
+import { BundleEditableField } from '../EditableField';
+import { FileBrowser } from '../FileBrowser';
+import "./Bundle.scss";
 
 class Bundle extends React.Component<
     {
