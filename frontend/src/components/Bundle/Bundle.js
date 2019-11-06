@@ -6,7 +6,7 @@ import $ from 'jquery';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 import { renderFormat, renderPermissions, shorten_uuid } from '../../util/worksheet_utils';
 import { BundleEditableField } from '../EditableField';
-import { FileBrowser } from '../FileBrowser';
+import { FileBrowser } from '../FileBrowser/FileBrowser';
 import "./Bundle.scss";
 
 class Bundle extends React.Component<
