@@ -5,13 +5,6 @@ import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import IconButton from '@material-ui/core/IconButton';
-import Button from '@material-ui/core/Button';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogContentText from '@material-ui/core/DialogContentText';
-import DialogTitle from '@material-ui/core/DialogTitle';
-import DeleteIcon from '@material-ui/icons/Delete';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import Checkbox from '@material-ui/core/Checkbox';
@@ -20,8 +13,6 @@ import CheckBoxIcon from '@material-ui/icons/CheckBox';
 
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleDetail from '../../BundleDetail';
-import { buildTerminalCommand } from '../../../../util/worksheet_utils';
-import { executeCommand } from '../../../../util/cli_utils';
 
 // The approach taken in this design is to hack the HTML `Table` element by using one `TableBody` for each `BundleRow`.
 // We need the various columns to be aligned for all `BundleRow` within a `Table`, therefore using `div` is not an
@@ -94,23 +85,6 @@ class BundleRow extends Component {
     showNewRun = (val) => () => {
         this.setState({ showNewRun: val });
     };
-
-    deleteItem = (ev) => {
-        const { setFocus } = this.props;
-        ev.stopPropagation();
-        this.toggleDeletePopup();
-        const { uuid } = this.props.bundleInfo;
-        executeCommand(buildTerminalCommand(['rm', uuid])).done(() => {
-            this.props.reloadWorksheet();
-        });
-    };
-
-    toggleDeletePopup = () => {
-        const { openDelete } = this.state;
-        this.setState({
-            openDelete: !openDelete,
-        });
-    }
 
     rerunItem = (runProp) => {
         this.setState({
@@ -246,43 +220,6 @@ class BundleRow extends Component {
                     })}
                 >
                     {rowCells}
-                </TableRow>
-                {/** ---------------------------------------------------------------------------------------------------
-                  *  Deletion Dialog (floating)
-                  */}
-                <TableRow classes={{ root: classes.panelContainer }}>
-                    <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
-                        <div className={classes.rightButtonStripe}>
-                            <IconButton
-                                onClick={this.toggleDeletePopup}
-                                classes={{ root: classes.iconButtonRoot }}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
-                            <Dialog
-                                open={openDelete}
-                                onClose={this.toggleDeletePopup}
-                                aria-labelledby="deletion-confirmation-title"
-                                aria-describedby="deletion-confirmation-description"
-                            >
-                                <DialogTitle id="deletion-confirmation-title">{"Delete this bundle?"}</DialogTitle>
-                                <DialogContent>
-                                    <DialogContentText id="alert-dialog-description">
-                                        Deletion cannot be undone.
-                                    </DialogContentText>
-                                </DialogContent>
-                                <DialogActions>
-                                    <Button color='primary' onClick={this.toggleDeletePopup}>
-                                        CANCEL
-                                    </Button>
-                                    <Button color='primary' onClick={this.deleteItem} autoFocus>
-                                        DELETE
-                                    </Button>
-                                </DialogActions>
-                            </Dialog>
-                            
-                            </div>
-                    </TableCell>
                 </TableRow>
                 {/** ---------------------------------------------------------------------------------------------------
                   *  Bundle Detail (below)
