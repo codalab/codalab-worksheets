@@ -13,6 +13,9 @@ import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import Checkbox from '@material-ui/core/Checkbox';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
+import Tooltip from '@material-ui/core/Tooltip';
+import IconButton from '@material-ui/core/IconButton';
+import InfoIcon from '@material-ui/icons/InfoOutlined';
 
 class BundleBulkActionMenu extends React.Component {
     constructor(props) {
@@ -148,11 +151,11 @@ class BundleBulkActionMenu extends React.Component {
                     aria-labelledby="deletion-confirmation-title"
                     aria-describedby="deletion-confirmation-description"
                     >
-                    <DialogTitle id="deletion-confirmation-title">{"Delete all selected bundle?"}</DialogTitle>
-                    <DialogContent>
-                        <DialogContentText id="alert-dialog-description">
+                    <DialogTitle id="deletion-confirmation-title">{"Deletion cannot be undone"}</DialogTitle>
+                    <DialogContent className={classes.dialog}>
+                        {/* <DialogContentText id="alert-dialog-description" style={{ color:'red' }}>
                             Deletion cannot be undone.
-                        </DialogContentText>
+                        </DialogContentText> */}
                         <DialogContentText id="alert-dialog-description">
                             Force delete?
                             <Checkbox
@@ -163,7 +166,18 @@ class BundleBulkActionMenu extends React.Component {
                             'aria-label': 'primary checkbox',
                             }}
                             />
+                            <Tooltip disableFocusListener disableTouchListener
+                            title="Force deletion will ignore all bundle dependencies">
+                                <IconButton
+                                    color='inherit'
+                                    >
+                                    <InfoIcon fontSize='small' />
+                                </IconButton>
+                            </Tooltip>
                         </DialogContentText>
+                        {this.state.forceDelete? <DialogContentText id="alert-dialog-description" style={{ color:'red' }}>
+                            The deletion will ignore all bundle dependencies
+                        </DialogContentText>:null}
                     </DialogContent>
                     <DialogActions>
                         <Button color='primary' onClick={this.toggleDeletePopup}>
@@ -238,6 +252,10 @@ const styles = (theme) => ({
         border: '1px solid',
         padding: 2,
     },
+    dialog:{
+        width: 400,
+        height: 100,
+    }
 });
 
 export default withStyles(styles)(BundleBulkActionMenu);
