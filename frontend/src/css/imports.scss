@@ -809,4 +809,7 @@ textarea {
 .account-profile-error {
   color: red;
 }
+b, strong {
+  font-weight: 500;
+}
 @import "./overrides.scss";
