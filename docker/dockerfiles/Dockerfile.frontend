@@ -14,7 +14,4 @@ RUN npm install
 # Overridden in dev mode
 COPY frontend .
 
-# Build static files
-RUN npm run build --production
-
 EXPOSE 2700
