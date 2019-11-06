@@ -2,6 +2,7 @@
 User objects representing rows from the user table
 """
 import base64
+import time
 
 from codalab.common import UsageError
 from codalab.lib import formatting
@@ -31,6 +32,7 @@ class User(ORMObject):
         'disk_used',
         'affiliation',
         'url',
+        'last_bundle_finished_time',
     )
 
     PASSWORD_MIN_LENGTH = 8
@@ -146,5 +148,6 @@ PUBLIC_USER = User(
         "disk_used": 0,
         "affiliation": None,
         "url": None,
+        "last_bundle_finished_time": time.time(),
     }
 )

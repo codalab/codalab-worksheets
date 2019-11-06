@@ -204,6 +204,9 @@ user = Table(
     # Additional information
     Column('affiliation', String(255, convert_unicode=True), nullable=True),
     Column('url', String(255, convert_unicode=True), nullable=True),
+    Column(
+        'last_bundle_finished_time', DateTime, nullable=False
+    ),  # Time when this user's last bundle was finished
     # Quotas
     Column('time_quota', Float, nullable=False),  # Number of seconds allowed
     Column('parallel_run_quota', Integer, nullable=False),  # Number of parallel jobs allowed

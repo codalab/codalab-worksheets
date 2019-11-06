@@ -25,6 +25,7 @@ user = User(
         "disk_used": 0,
         "affiliation": None,
         "url": None,
+        "last_bundle_finished_time": "2019-11-06 03:40:38"
     }
 )
 

@@ -847,7 +847,7 @@ class BundleModel(object):
         self.update_bundle(bundle, bundle_update, connection)
 
         if user_id == self.root_user_id:
-            self.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
+            self.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'started', 0))
 
         return True
 
@@ -2009,6 +2009,7 @@ class BundleModel(object):
                         "disk_used": 0,
                         "affiliation": affiliation,
                         "url": None,
+                        "last_bundle_finished_time": now,
                     }
                 )
             )
@@ -2217,12 +2218,32 @@ class BundleModel(object):
                 cl_user.update().where(cl_user.c.user_id == user_info['user_id']).values(user_info)
             )
 
-    def increment_user_time_used(self, user_id, amount):
+    def increment_user_time_used(self, user_id, bundle_started_time):
         """
-        User used some time.
+        Calculates the amount of time used in this bundle by not double-counting the overlapping time windows
+        that were generated from other bundles of the current user.
+        :param user_id: user_id of current user
+        :param bundle_started_time: time when the current bundle started
+        :return:
         """
+        # Get the current timestamp
+        now = time.time()
+        # Retrieve user information from user table
         user_info = self.get_user_info(user_id)
-        user_info['time_used'] += amount
+        # DateTime object is formatted as 2016-03-22 02:40:38
+        last_finished_time = datetime.datetime.strptime(
+            user_info["last_bundle_finished_time"], "%Y-%b-%d %H:%M:%S"
+        )
+
+        # Calculate the left boundary of current time window
+        left_boundary = (
+            last_finished_time if bundle_started_time < last_finished_time else bundle_started_time
+        )
+
+        # Increment the time interval between now and left_boundary
+        user_info['time_used'] += now - left_boundary
+        # Update the value of column "time_last_bundle_finished" in user table to be now
+        user_info["time_last_bundle_finished"] = now
         self.update_user_info(user_info)
 
     def get_user_time_quota_left(self, user_id):
