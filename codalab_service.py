@@ -101,9 +101,13 @@ def get_default_version():
     return (
         subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8')
         .strip()
+        # This is required so that branches with special names do not fail CI.
         .replace(
             "/", "_"
-        )  # This is required so that branches with "/" in their name do not fail CI.
+        )
+        .replace(
+            "-", "_"
+        )
     )
 
 
