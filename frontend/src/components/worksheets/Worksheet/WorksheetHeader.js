@@ -1,14 +1,15 @@
 import React from 'react';
 import Grid from '@material-ui/core/Grid';
 import Popover from '@material-ui/core/Popover';
-import { WorksheetEditableField } from '../EditableField';
-import PermissionDialog from './PermissionDialog';
+import { WorksheetEditableField } from '../../EditableField';
+import PermissionDialog from '../PermissionDialog';
 import Sticky from 'react-stickynode';
-import { NAVBAR_HEIGHT } from '../../constants';
-import ActionButtons from './items/ActionButtons';
+import { NAVBAR_HEIGHT } from '../../../constants';
+import ActionButtons from '../items/ActionButtons';
 import Tooltip from '@material-ui/core/Tooltip';
 import IconButton from '@material-ui/core/IconButton';
 import InfoIcon from '@material-ui/icons/InfoOutlined';
+import "./Worksheet.scss";
 
 const styles = {
     backgroundColor: "white",
