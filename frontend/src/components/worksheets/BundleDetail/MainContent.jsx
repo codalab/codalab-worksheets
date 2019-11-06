@@ -4,7 +4,7 @@ import classNames from 'classnames';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
 import {renderDuration} from '../../../util/worksheet_utils';
-import { FileBrowserLite } from '../../FileBrowser';
+import { FileBrowserLite } from '../../FileBrowser/FileBrowser';
 import Button from '@material-ui/core/Button';
 import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
