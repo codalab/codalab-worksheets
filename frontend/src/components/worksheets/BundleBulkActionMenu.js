@@ -22,7 +22,6 @@ class BundleBulkActionMenu extends React.Component {
         super(props);
         this.state = {
             openDelete: false,
-            openAttach: false,
             openDetach: false,
             openKill: false,
             forceDelete: false,
@@ -44,28 +43,10 @@ class BundleBulkActionMenu extends React.Component {
         this.toggleDetachPopup();
     };
 
-    executeAttachCommand = () => {
-        // This button is disabled for now
-        this.props.handleSelectedBundleCommand('add');
-        this.toggleAttachPopup();
-    };
-
-    executeKillCommand = () => {
-        this.props.handleSelectedBundleCommand('kill');
-        this.toggleKillPopup();
-    };
-
     toggleDeletePopup = () => {
         const { openDelete } = this.state;
         this.setState({
             openDelete: !openDelete,
-        });
-    }
-
-    toggleAttachPopup = () => {
-        const { openAttach } = this.state;
-        this.setState({
-            openAttach: !openAttach,
         });
     }
 
@@ -91,9 +72,6 @@ class BundleBulkActionMenu extends React.Component {
                 e.stopPropagation();
                 if(this.state.openDelete){
                     this.executeDeleteCommand();
-                }
-                else if(this.state.openAttach){
-                    this.executeAttachCommand();
                 }
                 else if(this.state.openDetach){
                     this.executeDetachCommand();
@@ -123,16 +101,6 @@ class BundleBulkActionMenu extends React.Component {
                 >
                     <ExitToAppIcon fontSize="small" />
                     <Typography variant="inherit">Detach</Typography>
-                </Button>
-                <Button
-                    size='small'
-                    color='inherit'
-                    aria-label='Attach'
-                    onClick={this.toggleAttachPopup}
-                    disabled
-                >
-                    <LibraryAddIcon fontSize="small" />
-                    <Typography variant="inherit">Attach</Typography>
                 </Button>
                 <Button
                     size='small'
@@ -199,22 +167,6 @@ class BundleBulkActionMenu extends React.Component {
                         </Button>
                         <Button color='primary' onClick={this.executeDetachCommand} autoFocus>
                             DETACH
-                        </Button>
-                    </DialogActions>
-                </Dialog>
-                <Dialog
-                    open={openAttach}
-                    onClose={this.toggleAttachPopup}
-                    aria-labelledby="attach-confirmation-title"
-                    aria-describedby="attach-confirmation-description"
-                    >
-                    <DialogTitle id="attach-confirmation-title">{"Attach all selected bundle to home worksheet?"}</DialogTitle>
-                    <DialogActions>
-                        <Button color='primary' onClick={this.toggleAttachPopup}>
-                            CANCEL
-                        </Button>
-                        <Button color='primary' onClick={this.executeAttachCommand} autoFocus>
-                            ATTACH
                         </Button>
                     </DialogActions>
                 </Dialog>
