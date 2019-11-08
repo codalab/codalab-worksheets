@@ -46,7 +46,7 @@ def get_ancestors_string_representation(client, bundle_uuid):
     :rtype: String
     """
     bundle_cache = {}
-    seen = {bundle_uuid}
+    seen = set()
     result = []
 
     def get_bundle(uuid):
@@ -55,21 +55,30 @@ def get_ancestors_string_representation(client, bundle_uuid):
             bundle_cache[uuid] = client.fetch('bundles', uuid)
         return bundle_cache[uuid]
 
-    def bundle_as_string(bundle, num_of_spaces):
+    def bundle_as_string(bundle, height):
+        # two spaces for each level up the dependency graph
+        num_of_spaces = height * 2
         # sample output:  - mnist(0x1ba223)
         return ' ' * num_of_spaces + '- {}({})'.format(
             bundle['metadata']['name'], bundle['uuid'][:8]
         )
 
+    def get_truncation_indicator(height):
+        num_of_spaces = height * 2
+        return ' ' * num_of_spaces + '...'
+
     def recurse(uuid, h):
         bundle = get_bundle(uuid)
-        # two spaces for each level up the dependency graph
-        result.append(bundle_as_string(bundle, h * 2))
+        if uuid in seen:
+            # branch has been added before. add repeated bundle and '...' on the next line to indicate truncation
+            result.append(bundle_as_string(bundle, h))
+            result.append(get_truncation_indicator(h + 1))
+            return
+
+        seen.add(uuid)
+        result.append(bundle_as_string(bundle, h))
         for dependency in bundle['dependencies']:
-            parent_uuid = dependency['parent_uuid']
-            if parent_uuid not in seen:
-                seen.add(parent_uuid)
-                recurse(parent_uuid, h + 1)
+            recurse(dependency['parent_uuid'], h + 1)
 
     recurse(bundle_uuid, 0)
     return '\n'.join(result)
