@@ -10,10 +10,15 @@ import bz2
 
 BINARY_PLACEHOLDER = '<binary>'
 NONE_PLACEHOLDER = '<none>'
+GIT_PATTERN = '.git'
 
 
 def tar_gzip_directory(
-    directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[]
+    directory_path,
+    follow_symlinks=False,
+    exclude_patterns=[],
+    exclude_names=[],
+    ignore_file_name='.gitignore',
 ):
     """
     Returns a file-like object containing a tarred and gzipped archive of the
@@ -25,18 +30,24 @@ def tar_gzip_directory(
     exclude_patterns: Any directory entries with the given names at any depth in
                       the directory structure are excluded.
     """
-    args = ['tar', 'czf', '-', '-C', directory_path]
+    # always ignore entries specified by the ignore file (e.g. .gitignore)
+    args = ['tar', 'czf', '-', '-C', directory_path, '--exclude-ignore=' + ignore_file_name]
     if follow_symlinks:
         args.append('-h')
-    if exclude_patterns:
-        for pattern in exclude_patterns:
-            args.append('--exclude=' + pattern)
-    names = [name for name in os.listdir(directory_path) if name not in exclude_names]
-    if names:
-        args.append('--')  # Ensure no filename gets misinterpreted as an option
-        args.extend(names)
-    else:
-        args.extend(['--files-from', '/dev/null'])
+    if not exclude_patterns:
+        exclude_patterns = []
+
+    # always exclude .git
+    exclude_patterns.append(GIT_PATTERN)
+    for pattern in exclude_patterns:
+        args.append('--exclude=' + pattern)
+    if exclude_names:
+        for name in exclude_names:
+            # exclude top-level entries provided by exclude_names
+            args.append('--exclude=./' + name)
+    # add everything in the current directory
+    args.append('.')
+
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
         return proc.stdout
