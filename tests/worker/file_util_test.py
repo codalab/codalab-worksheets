@@ -80,4 +80,3 @@ class FileUtilTest(unittest.TestCase):
         self.assertNotIn('dir5', output_dir_entries)
         self.assertTrue(os.path.exists(os.path.join(output_dir, 'dir4', 'hi.txt')))
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir4', 'bye.txt')))
-
