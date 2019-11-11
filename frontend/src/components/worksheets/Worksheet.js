@@ -175,13 +175,26 @@ class Worksheet extends React.Component {
         }
     };
 
-    //===============bulk operation handle functions=================
+    // BULK OPERATION RELATED CODE BELOW======================================
     handleCheckBundle = (uuid, identifier, check, removeCheckAfterOperation)=>{
         // This is a callback function that will be passed all the way down to bundle row
         // This is to allow bulk operations on bundles
-        //console.log(this.state.checkedBundles);
+        // It passes through Worksheet->WorksheetItemList->TableItem->BundleRow
+        // When a bundle row is selected, it calls this function to notify Worksheet component
+        // The uuid & a unique identifier is recorded so we can uncheck the tables after operation
+        // The essential part of the below code is to record uuid when a bundle is clicked
+        // and remove a uuid a bundle is unclicked
+        // Because there a bundle may appear in multiple tables and get checked multiple times
+        // Only remove a uuid if all checked rows are removed
+
+        // TODO: This function should be cleaner, after my logic refactoring, the identifier
+        //      shouldn't be necessary. However, if we want more control on what happens after
+        //      bulk operation, this might be useful
         if (check){
             //A bundle is checked
+            if (uuid in this.state.checkedBundles && identifier in this.state.checkedBundles[uuid]){
+                return;
+            }
             let bundlesCount = this.state.uuidBundlesCheckedCount;
             if (!(uuid in bundlesCount)){
                 bundlesCount[uuid] = 0;
@@ -196,6 +209,9 @@ class Worksheet extends React.Component {
             // return localIndex
         } else{
             // A bundle is unchecked
+            if (!(uuid in this.state.uuidBundlesCheckedCount && identifier in this.state.checkedBundles[uuid])){
+                return;
+            }
             if (this.state.uuidBundlesCheckedCount[uuid] === 1){
                 delete this.state.uuidBundlesCheckedCount[uuid];
                 delete this.state.checkedBundles[uuid];
@@ -210,19 +226,15 @@ class Worksheet extends React.Component {
     }
 
     handleSelectedBundleCommand = (cmd, worksheet_uuid=this.state.ws.uuid)=>{
-        // Run the correct command
+        // This function runs the command for bulk bundle operations
+        // The uuid are recorded by handleCheckBundle
+        // Refreshes the checkbox after commands
+        // If the action failed, the check will persist
         let force_delete = cmd=='rm' && this.state.forceDelete ? '--force' : null;
         executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)]), worksheet_uuid)
         .done(() => {
-            // Clear selected bundles
-            Object.keys(this.state.checkedBundles).map((uuid)=>{
-                Object.keys(this.state.checkedBundles[uuid]).map((identifier)=>{
-                    this.state.checkedBundles[uuid][identifier](true);
-                    });
-                }
-            );
-            this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}, showBundleOperationButtons: false});
-            this.reloadWorksheet();
+                this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}, showBundleOperationButtons: false});
+                this.reloadWorksheet();
         }).fail((e)=>{
             let bundle_error_dialog = <Dialog
                                         open={true}
@@ -243,13 +255,12 @@ class Worksheet extends React.Component {
                                         </Grid>
                                         </DialogTitle>
                                         <DialogContent>
-                                            <DialogContentText id="alert-dialog-description" style={{ color:'red' }}>
+                                            <DialogContentText id="alert-dialog-description" style={{ color:'grey' }}>
                                                 {e.responseText}
                                             </DialogContentText>
                                         </DialogContent>
                                     </Dialog>
             this.setState({ BulkBundleDialog: bundle_error_dialog });
-            this.reloadWorksheet();
         });
     }
 
@@ -323,7 +334,7 @@ class Worksheet extends React.Component {
         }
         return true;
     }
-    //===============bulk operation handle functions=================
+// BULK OPERATION RELATED CODE ABOVE======================================
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
@@ -487,18 +498,14 @@ class Worksheet extends React.Component {
             this.reloadWorksheet();
         }.bind(this);
 
+        if (this.state.activeComponent === 'action') {
+            // no need for other keys, we have the action bar focused
+            return;
+        }
+
         Mousetrap.reset();
         if (!(this.state.openDelete || this.state.openDetach || this.state.openKill || this.state.BulkBundleDialog)){
             // Only enable these shortcuts when no dialog is opened
-
-            if (this.state.activeComponent === 'action') {
-                // no need for other keys, we have the action bar focused
-                return;
-            }
-
-            Mousetrap.bind(['?'], function(e) {
-                $('#glossaryModal').modal('show');
-            });
 
             // 
             Mousetrap.bind(
@@ -588,7 +595,7 @@ class Worksheet extends React.Component {
 
             // insert text after current cell
             Mousetrap.bind(
-                ['i'],
+                ['t'],
                 function(e) {
                     // if no active focus, scroll to the bottom position
                     if (this.state.focusIndex < 0) {
@@ -624,7 +631,11 @@ class Worksheet extends React.Component {
                 'keyup',
             );
         }
-        //====================Allowed shortcut when a dialog is opened===================
+        // Below are allowed shortcut even when a dialog is opened===================
+        Mousetrap.bind(['?'], function(e) {
+            $('#glossaryModal').modal('show');
+        });
+
         Mousetrap.bind(['esc'], function(e) {
             if ($('#glossaryModal').hasClass('in')) {
                 $('#glossaryModal').modal('hide');
@@ -632,6 +643,7 @@ class Worksheet extends React.Component {
             ContextMenuMixin.closeContextMenu();
         });
 
+        // The following three are bulk bundle operation shortcuts
         Mousetrap.bind(['backspace', 'del'],
             () => {
                 if (this.state.openDetach || this.state.openKill){
@@ -656,7 +668,8 @@ class Worksheet extends React.Component {
                 this.togglePopupNoEvent('kill');
             },
         );
-
+        
+        // Confirm operation
         Mousetrap.bind(['enter'], function(e) {
             if (this.state.openDelete){
                 this.executeBundleCommandNoEvent('rm');
@@ -667,6 +680,7 @@ class Worksheet extends React.Component {
             }
         }.bind(this));
 
+        // Select/Deselect to force delete during deletion dialog
         Mousetrap.bind(['f'], function() {
             //force deletion through f
             if (this.state.openDelete){

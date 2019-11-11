@@ -28,7 +28,7 @@ class ActionButtons extends React.Component<{
                         onClick={onShowNewText}
                     >
                         <AddIcon className={classes.buttonIcon} />
-                        Cell
+                        Text
                     </Button>
                 :null}
                 {(!showBundleOperationButtons)

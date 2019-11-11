@@ -29,37 +29,29 @@ class BundleRow extends Component {
             showDetail: false,
             openDelete: false,
             runProp: {},
-            checked: this.props.alreadyChecked,
             uniqueIdentifier: Math.random()*10000,
         };
-        if (this.props.alreadyChecked){
-            this.props.handleCheckBundle(this.props.bundleInfo.uuid, this.state.uniqueIdentifier, true, this.removeCheckAfterOperation);
-            this.props.changeSelfCheckCallBack(true);
-        }
     }
 
-    letParentControlSelect = (check)=>{
-        if (check === this.state.checked){
-            return;
-        }
-        this.props.handleCheckBundle(this.props.bundleInfo.uuid, this.state.uniqueIdentifier, check, this.removeCheckAfterOperation);
-        this.setState({checked: check})
-    }
-
-    handleCheckboxChange = uuid => event => {
-        // This callback goes all the way up to Worksheet.js (same as setFocus)
-        // Goes from bundleRow->tableItem->WorksheetItemList->Worksheet
-        this.props.handleCheckBundle(uuid, this.state.uniqueIdentifier, event.target.checked, this.removeCheckAfterOperation);
-        this.props.changeSelfCheckCallBack(event.target.checked);
-        this.setState({ checked: event.target.checked });
+    // BULK OPERATION RELATED CODE
+    handleCheckboxChange = event => {
+        this.props.handleCheckBundle(this.props.uuid, this.state.uniqueIdentifier, event.target.checked, this.props.refreshCheckBox);
+        this.props.childrenCheck(this.props.rowIndex, event.target.checked);
     };
 
-    removeCheckAfterOperation = (removeKeyFromParent=false)=>{
-        // Callback function to remove the check after any bulk operation
-        console.log(removeKeyFromParent);
-        this.setState({ checked: false });
-        this.props.changeSelfCheckCallBack(false, removeKeyFromParent, this.state.uniqueIdentifier);
+    componentDidMount(){
+        if (this.props.checkStatus){
+            this.props.handleCheckBundle(this.props.uuid, this.state.uniqueIdentifier, true, this.props.refreshCheckBox);
+        }
     }
+
+    componentDidUpdate(prevProp){
+        if (this.props.checkStatus !== prevProp.checkStatus){
+            this.props.handleCheckBundle(this.props.uuid, this.state.uniqueIdentifier, this.props.checkStatus,  this.props.refreshCheckBox);
+        }
+    }
+    // BULK OPERATION RELATED CODE
+
 
     receiveBundleInfoUpdates = (update) => {
         let { bundleInfoUpdates } = this.state;
@@ -113,6 +105,7 @@ class BundleRow extends Component {
             worksheetUUID,
             reloadWorksheet,
             isLast,
+            checkStatus,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
@@ -128,14 +121,10 @@ class BundleRow extends Component {
             if (col === 0) {
                 url = baseUrl;
                 checkBox = <Checkbox
-                                checked={this.state.checked}
                                 icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
                                 checkedIcon={<CheckBoxIcon fontSize="small" />}
-                                onChange={this.handleCheckboxChange(uuid)}
-                                value="checked"
-                                inputProps={{
-                                'aria-label': 'primary checkbox',
-                                }}
+                                onChange={this.handleCheckboxChange}
+                                checked={checkStatus||false}
                             />
                 showDetailButton = 
                         <IconButton onClick={this.handleDetailClick} style={{ padding: 2 }}>
@@ -192,9 +181,8 @@ class BundleRow extends Component {
             Mousetrap.bind(['x'],
                 (e) => {
                     if (!this.props.confirmBundleRowAction(e.code)){
-                        this.props.handleCheckBundle(uuid, this.state.uniqueIdentifier, !this.state.checked, this.removeCheckAfterOperation);
-                        this.props.changeSelfCheckCallBack(!this.state.checked);
-                        this.setState({ checked: !this.state.checked });
+                        this.props.handleCheckBundle(uuid, this.state.uniqueIdentifier, !this.props.checkStatus, this.props.refreshCheckBox);
+                        this.props.childrenCheck(this.props.rowIndex, !this.props.checkStatus);
                     }
                 }, 'keydown'
             );
@@ -207,7 +195,6 @@ class BundleRow extends Component {
                 }, 'keydown'
             );
         }
-        this.props.addControlSelectCallBack(this.state.uniqueIdentifier, this.letParentControlSelect);
 
         return (
             <TableBody
