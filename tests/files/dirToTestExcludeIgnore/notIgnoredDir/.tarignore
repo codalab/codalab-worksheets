@@ -1,3 +1,2 @@
 # for testing tar --exclude-ignore in file_util.py
-**/dir5
-dir3.txt
+subIgnored.txt

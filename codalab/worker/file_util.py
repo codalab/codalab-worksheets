@@ -29,23 +29,24 @@ def tar_gzip_directory(
                    are not included.
     exclude_patterns: Any directory entries with the given names at any depth in
                       the directory structure are excluded.
+    ignore_file_name: Name of the file where exclusion patterns are read from.
     """
-    # always ignore entries specified by the ignore file (e.g. .gitignore)
+    # Always ignore entries specified by the ignore file (e.g. .gitignore)
     args = ['tar', 'czf', '-', '-C', directory_path, '--exclude-ignore=' + ignore_file_name]
     if follow_symlinks:
         args.append('-h')
     if not exclude_patterns:
         exclude_patterns = []
 
-    # always exclude .git
+    # Always exclude .git
     exclude_patterns.append(GIT_PATTERN)
     for pattern in exclude_patterns:
         args.append('--exclude=' + pattern)
     if exclude_names:
         for name in exclude_names:
-            # exclude top-level entries provided by exclude_names
+            # Exclude top-level entries provided by exclude_names
             args.append('--exclude=./' + name)
-    # add everything in the current directory
+    # Add everything in the current directory
     args.append('.')
 
     try:

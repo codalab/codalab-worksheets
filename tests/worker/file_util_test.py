@@ -67,16 +67,22 @@ class FileUtilTest(unittest.TestCase):
         self.assertEqual(un_gzip_bytestring(gzip_bytestring(b'contents')), b'contents')
 
     def test_tar_exclude_ignore(self):
-        dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'files/dir3')
+        dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), 'files/dirToTestExcludeIgnore'
+        )
         temp_dir = tempfile.mkdtemp()
         self.addCleanup(lambda: remove_path(temp_dir))
         output_dir = os.path.join(temp_dir, 'output')
 
         un_tar_directory(tar_gzip_directory(dir, ignore_file_name='.tarignore'), output_dir, 'gz')
         output_dir_entries = os.listdir(output_dir)
-        self.assertIn('dir4', output_dir_entries)
-        self.assertIn('dir3_2.txt', output_dir_entries)
-        self.assertNotIn('dir3.txt', output_dir_entries)
-        self.assertNotIn('dir5', output_dir_entries)
-        self.assertTrue(os.path.exists(os.path.join(output_dir, 'dir4', 'hi.txt')))
-        self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir4', 'bye.txt')))
+        self.assertIn('notIgnored.txt', output_dir_entries)
+        self.assertIn('notIgnoredDir', output_dir_entries)
+        self.assertNotIn('ignored.txt', output_dir_entries)
+        self.assertNotIn('ignoredDir', output_dir_entries)
+        self.assertTrue(
+            os.path.exists(os.path.join(output_dir, 'notIgnoredDir', 'subNotIgnored.txt'))
+        )
+        self.assertFalse(
+            os.path.exists(os.path.join(output_dir, 'notIgnoredDir', 'subIgnored.txt'))
+        )
