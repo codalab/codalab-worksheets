@@ -155,8 +155,6 @@ class TableItem extends React.Component<{
                     checkStatus={this.state.childrenCheckState[rowIndex]}
                     isLast={rowIndex === rowItems.length - 1}
                     handleCheckBundle={this.props.handleCheckBundle}
-                    addControlSelectCallBack={this.addControlSelectCallBack}
-                    changeSelfCheckCallBack={this.changeSelfCheckCallBack}
                     handleSelectAllSpaceHit={this.handleSelectAllSpaceHit}
                     confirmBundleRowAction={this.props.confirmBundleRowAction}
                     childrenCheck={this.childrenCheck}
