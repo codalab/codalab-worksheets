@@ -32,7 +32,9 @@ def tar_gzip_directory(
     ignore_file_name: Name of the file where exclusion patterns are read from.
     """
     # Always ignore entries specified by the ignore file (e.g. .gitignore)
-    args = ['tar', 'czf', '-', '-C', directory_path, '--exclude-ignore=' + ignore_file_name]
+    args = ['tar', 'czf', '-', '-C', directory_path]
+    if ignore_file_name:
+        args.append('--exclude-ignore=' + ignore_file_name)
     if follow_symlinks:
         args.append('-h')
     if not exclude_patterns:

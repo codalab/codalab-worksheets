@@ -1120,6 +1120,13 @@ class BundleCLI(object):
                 help='Upload to this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
+            Commands.Argument(
+                '-i',
+                '--ignore-gitignore',
+                help='Ignores exclusion patterns specified by.gitignore when archiving.',
+                action='store_true',
+                default=False,
+            ),
         )
         + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
@@ -1191,12 +1198,16 @@ class BundleCLI(object):
             sources = [path_util.normalize(path) for path in args.path]
 
             print("Preparing upload archive...", file=self.stderr)
+            if not args.ignore_gitignore:
+                print("Excluding files and directories specified by .gitignore.", file=self.stderr)
+
             packed = zip_util.pack_files_for_upload(
                 sources,
                 should_unpack=(not args.pack),
                 follow_symlinks=args.follow_symlinks,
                 exclude_patterns=args.exclude_patterns,
                 force_compression=args.force_compression,
+                use_gitignore=(not args.ignore_gitignore),
             )
 
             # Create bundle.
@@ -2762,9 +2773,12 @@ class BundleCLI(object):
 
         elif args.item_type == 'bundle':
             for bundle_spec in args.item_spec:
-                source_client, source_worksheet_uuid, source_bundle_uuid, subpath = self.resolve_target(
-                    curr_client, curr_worksheet_uuid, bundle_spec
-                )
+                (
+                    source_client,
+                    source_worksheet_uuid,
+                    source_bundle_uuid,
+                    subpath,
+                ) = self.resolve_target(curr_client, curr_worksheet_uuid, bundle_spec)
                 # copy (or add only if bundle already exists on destination)
                 self.copy_bundle(
                     source_client,
