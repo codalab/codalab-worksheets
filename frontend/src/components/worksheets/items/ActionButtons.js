@@ -5,6 +5,7 @@ import { withStyles } from '@material-ui/core/styles';
 import RunIcon from '@material-ui/icons/PlayCircleOutline';
 import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
 import AddIcon from '@material-ui/icons/AddBoxOutlined';
+import BundleBulkActionMenu from '../BundleBulkActionMenu';
 
 class ActionButtons extends React.Component<{
     classes: {},
@@ -13,40 +14,51 @@ class ActionButtons extends React.Component<{
     onShowNewText: () => void,
 }> {
     render() {
-        const { classes, onShowNewUpload, onShowNewRun, onShowNewText } = this.props;
+        const { classes, onShowNewUpload, onShowNewRun, onShowNewText, handleSelectedBundleCommand, showBundleOperationButtons, togglePopup} = this.props;
         return (
             <div
                 onMouseMove={(ev) => {
                     ev.stopPropagation();
                 }}
-            >
-                <Button
-                    size='small'
-                    color='inherit'
-                    aria-label='Add Text'
-                    onClick={onShowNewText}
-                >
-                    <AddIcon className={classes.buttonIcon} />
-                    Cell
-                </Button>
-                <Button
-                    size='small'
-                    color='inherit'
-                    aria-label='Add New Upload'
-                    onClick={onShowNewUpload}
-                >
-                    <UploadIcon className={classes.buttonIcon} />
-                    Upload
-                </Button>
-                <Button
-                    size='small'
-                    color='inherit'
-                    aria-label='Add New Run'
-                    onClick={onShowNewRun}
-                >
-                    <RunIcon className={classes.buttonIcon} />
-                    Run
-                </Button>
+            >   {(!showBundleOperationButtons)
+                ?   <Button
+                        size='small'
+                        color='inherit'
+                        aria-label='Add Text'
+                        onClick={onShowNewText}
+                    >
+                        <AddIcon className={classes.buttonIcon} />
+                        Text
+                    </Button>
+                :null}
+                {(!showBundleOperationButtons)
+                    ?   <Button
+                            size='small'
+                            color='inherit'
+                            aria-label='Add New Upload'
+                            onClick={onShowNewUpload}
+                        >
+                            <UploadIcon className={classes.buttonIcon} />
+                            Upload
+                        </Button>
+                :null}
+                {(!showBundleOperationButtons)
+                    ?   <Button
+                            size='small'
+                            color='inherit'
+                            aria-label='Add New Run'
+                            onClick={onShowNewRun}
+                        >
+                            <RunIcon className={classes.buttonIcon} />
+                            Run
+                        </Button>
+                    :null}
+                {showBundleOperationButtons
+                    ?   <BundleBulkActionMenu 
+                            handleSelectedBundleCommand={handleSelectedBundleCommand}
+                            togglePopup={togglePopup}/>
+                    :   null
+                }
             </div>
         );
     }
