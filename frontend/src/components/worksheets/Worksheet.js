@@ -21,6 +21,15 @@ import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import ErrorMessage from './ErrorMessage';
 import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
+import { buildTerminalCommand } from '../../util/worksheet_utils';
+import { executeCommand } from '../../util/cli_utils';
+import Dialog from '@material-ui/core/Dialog';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
+import DialogTitle from '@material-ui/core/DialogTitle';
+import CloseIcon from '@material-ui/icons/Close';
+import Grid from '@material-ui/core/Grid';
+import WorksheetDialogs from './WorksheetDialogs';
 
 /*
 Information about the current worksheet and its items.
@@ -131,6 +140,14 @@ class Worksheet extends React.Component {
             showNewRun: false,
             showNewText: false,
             isValid: true,
+            checkedBundles: {},
+            BulkBundleDialog: null,
+            showBundleOperationButtons: false,
+            uuidBundlesCheckedCount: {},
+            openDelete: false,
+            openDetach: false,
+            openKill: false,
+            forceDelete: false,
         };
     }
 
@@ -157,6 +174,167 @@ class Worksheet extends React.Component {
             this.setFocus(-1, 0);
         }
     };
+
+    // BULK OPERATION RELATED CODE BELOW======================================
+    handleCheckBundle = (uuid, identifier, check, removeCheckAfterOperation)=>{
+        // This is a callback function that will be passed all the way down to bundle row
+        // This is to allow bulk operations on bundles
+        // It passes through Worksheet->WorksheetItemList->TableItem->BundleRow
+        // When a bundle row is selected, it calls this function to notify Worksheet component
+        // The uuid & a unique identifier is recorded so we can uncheck the tables after operation
+        // The essential part of the below code is to record uuid when a bundle is clicked
+        // and remove a uuid a bundle is unclicked
+        // Because there a bundle may appear in multiple tables and get checked multiple times
+        // Only remove a uuid if all checked rows are removed
+
+        // TODO: This function should be cleaner, after my logic refactoring, the identifier
+        //      shouldn't be necessary. However, if we want more control on what happens after
+        //      bulk operation, this might be useful
+        if (check){
+            //A bundle is checked
+            if (uuid in this.state.checkedBundles && identifier in this.state.checkedBundles[uuid]){
+                return;
+            }
+            let bundlesCount = this.state.uuidBundlesCheckedCount;
+            if (!(uuid in bundlesCount)){
+                bundlesCount[uuid] = 0;
+            }
+            bundlesCount[uuid] += 1;
+            let checkedBundles = this.state.checkedBundles;
+            if (!(uuid in checkedBundles)){
+                checkedBundles[uuid] = {}
+            }
+            checkedBundles[uuid][identifier] = removeCheckAfterOperation;
+            this.setState({checkedBundles: checkedBundles, uuidBundlesCheckedCount: bundlesCount, showBundleOperationButtons: true});
+            // return localIndex
+        } else{
+            // A bundle is unchecked
+            if (!(uuid in this.state.uuidBundlesCheckedCount && identifier in this.state.checkedBundles[uuid])){
+                return;
+            }
+            if (this.state.uuidBundlesCheckedCount[uuid] === 1){
+                delete this.state.uuidBundlesCheckedCount[uuid];
+                delete this.state.checkedBundles[uuid];
+            }else{
+                this.state.uuidBundlesCheckedCount[uuid] -= 1;
+                delete this.state.checkedBundles[uuid][identifier];
+            }
+            if (Object.keys(this.state.uuidBundlesCheckedCount).length === 0){
+                this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}, showBundleOperationButtons: false});
+            }
+        }
+    }
+
+    handleSelectedBundleCommand = (cmd, worksheet_uuid=this.state.ws.uuid)=>{
+        // This function runs the command for bulk bundle operations
+        // The uuid are recorded by handleCheckBundle
+        // Refreshes the checkbox after commands
+        // If the action failed, the check will persist
+        let force_delete = cmd=='rm' && this.state.forceDelete ? '--force' : null;
+        executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)]), worksheet_uuid)
+        .done(() => {
+                this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}, showBundleOperationButtons: false});
+                this.reloadWorksheet();
+        }).fail((e)=>{
+            let bundle_error_dialog = <Dialog
+                                        open={true}
+                                        onClose={this.toggleBundleBulkMessageDialog}
+                                        aria-labelledby="bundle-error-confirmation-title"
+                                        aria-describedby="bundle-error-confirmation-description"
+                                        >
+                                        <DialogTitle id="bundle-error-confirmation-title"> 
+                                        <Grid container direction='row'>
+                                            <Grid item xs={10}>
+                                            {"Failed to perform this action"}
+                                            </Grid>
+                                            <Grid item xs={2}>
+                                                <Button variant="outlined" size="small" onClick={e => {this.setState({BulkBundleDialog: null})}}>
+                                                    <CloseIcon size="small"/>
+                                                </Button>
+                                            </Grid>
+                                        </Grid>
+                                        </DialogTitle>
+                                        <DialogContent>
+                                            <DialogContentText id="alert-dialog-description" style={{ color:'grey' }}>
+                                                {e.responseText}
+                                            </DialogContentText>
+                                        </DialogContent>
+                                    </Dialog>
+            this.setState({ BulkBundleDialog: bundle_error_dialog });
+        });
+    }
+
+    handleForceDelete = (e)=>{
+        this.setState({forceDelete: e.target.checked});
+    } 
+
+    toggleBundleBulkMessageDialog = () => {
+        this.setState({BulkBundleDialog: null});
+    }
+
+    executeBundleCommand = (cmd_type) => () => {
+        this.handleSelectedBundleCommand(cmd_type);
+        this.togglePopupNoEvent(cmd_type);
+    }
+
+    executeBundleCommandNoEvent = (cmd_type) =>{
+        this.handleSelectedBundleCommand(cmd_type);
+        this.togglePopupNoEvent(cmd_type);
+    }
+
+    togglePopup= (cmd_type) => () => {
+        if (!this.state.showBundleOperationButtons){
+            return;
+        }
+        const { openKill, openDelete, openDetach } = this.state;
+        if (cmd_type === 'rm'){
+            this.setState( { openDelete:!openDelete } );
+        }
+        else if (cmd_type === 'detach'){
+            this.setState( { openDetach:!openDetach } );
+        }
+        else if (cmd_type === 'kill'){
+            this.setState( { openKill:!openKill } );
+        }
+    }
+
+    togglePopupNoEvent= (cmd_type) => {
+        if (!this.state.showBundleOperationButtons){
+            return;
+        }
+        const { openKill, openDelete, openDetach } = this.state;
+        if (cmd_type === 'rm'){
+            this.setState( { openDelete:!openDelete } );
+        }
+        else if (cmd_type === 'detach'){
+            this.setState( { openDetach:!openDetach } );
+        }
+        else if (cmd_type === 'kill'){
+            this.setState( { openKill:!openKill } );
+        }
+    }
+
+    confirmBundleRowAction = (code) =>{
+        if (!(this.state.openDelete 
+            || this.state.openDetach 
+            || this.state.openKill 
+            || this.state.BulkBundleDialog)){
+            // no dialog is opened, open bundle row detail
+            return false;
+        } 
+        else if(code == 'KeyX' || code == 'Space'){
+            return true;
+        }
+        else if (this.state.openDelete){
+            this.executeBundleCommandNoEvent('rm');
+        }else if (this.state.openDetach){
+            this.executeBundleCommandNoEvent('detach');
+        }else if (this.state.openKill){
+            this.executeBundleCommandNoEvent('kill');
+        }
+        return true;
+    }
+// BULK OPERATION RELATED CODE ABOVE======================================
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
@@ -320,13 +498,140 @@ class Worksheet extends React.Component {
             this.reloadWorksheet();
         }.bind(this);
 
-        Mousetrap.reset();
-
         if (this.state.activeComponent === 'action') {
             // no need for other keys, we have the action bar focused
             return;
         }
 
+        Mousetrap.reset();
+        if (!(this.state.openDelete || this.state.openDetach || this.state.openKill || this.state.BulkBundleDialog)){
+            // Only enable these shortcuts when no dialog is opened
+
+            // 
+            Mousetrap.bind(
+                ['shift+r'],
+                function(e) {
+                    // refresh the worksheet and update the
+                    // focus to the first item
+                    this.reloadWorksheet(undefined, 'end');
+                }.bind(this),
+            );
+
+            // Show/hide web terminal (action bar)	
+            Mousetrap.bind(	
+                ['shift+c'],	
+                function(e) {	
+                    this.toggleActionBar();	
+                }.bind(this),	
+            );	
+
+            // Focus on web terminal (action bar)	
+            Mousetrap.bind(	
+                ['c'],	
+                function(e) {	
+                    this.focusActionBar();	
+                }.bind(this),	
+            );
+
+            // Toggle edit mode
+            Mousetrap.bind(
+                ['e'],
+                function(e) {
+                    this.toggleEditMode();
+                    return false;
+                }.bind(this),
+            );
+
+            Mousetrap.bind(
+                ['up', 'k'],
+                function(e) {
+                    e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
+                    var focusIndex = this.state.focusIndex;
+                    var subFocusIndex = this.state.subFocusIndex;
+                    var wsItems = this.state.ws.info.items;
+
+                    if (
+                        focusIndex >= 0 &&
+                        (wsItems[focusIndex].mode === 'table_block' ||
+                            wsItems[focusIndex].mode === 'subworksheets_block')
+                    ) {
+                        // worksheet_item_interface and table_item_interface do the exact same thing anyway right now
+                        if (subFocusIndex - 1 < 0) {
+                            this.setFocus(focusIndex - 1, 'end'); // Move out of this table to the item above the current table
+                        } else {
+                            this.setFocus(focusIndex, subFocusIndex - 1);
+                        }
+                    } else if (focusIndex > 0) {
+                        // worksheet_items.jsx
+                        this.setFocus(focusIndex - 1, 'end');
+                    }
+                }.bind(this),
+                'keydown',
+            );
+
+            Mousetrap.bind(
+                ['down', 'j'],
+                function(e) {
+                    e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
+                    var focusIndex = this.state.focusIndex;
+                    var subFocusIndex = this.state.subFocusIndex;
+                    var wsItems = this.state.ws.info.items;
+                    if (
+                        focusIndex >= 0 &&
+                        (wsItems[focusIndex].mode === 'table_block' ||
+                            wsItems[focusIndex].mode === 'subworksheets_block')
+                    ) {
+                        if (subFocusIndex + 1 >= this._numTableRows(wsItems[focusIndex])) {
+                            this.setFocus(focusIndex + 1, 0);
+                        } else {
+                            this.setFocus(focusIndex, subFocusIndex + 1);
+                        }
+                    } else {
+                        this.setFocus(focusIndex + 1, 0);
+                    }
+                }.bind(this),
+                'keydown',
+            );
+
+            // insert text after current cell
+            Mousetrap.bind(
+                ['t'],
+                function(e) {
+                    // if no active focus, scroll to the bottom position
+                    if (this.state.focusIndex < 0) {
+                        $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                    }
+                    this.setState({showNewText: true});
+                }.bind(this),
+                'keyup',
+            );
+
+            // upload after current cell
+            Mousetrap.bind(
+                ['u'],
+                function(e) {
+                    // if no active focus, scroll to the bottom position
+                    if (this.state.focusIndex < 0) {
+                        $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                    }
+                    this.setState({showNewUpload: true});
+                }.bind(this),
+                'keyup',
+            );
+            // run after current cell
+            Mousetrap.bind(
+                ['r'],
+                function(e) {
+                    // if no active focus, scroll to the bottom position
+                    if (this.state.focusIndex < 0) {
+                        $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                    }
+                    this.setState({showNewRun: true});
+                }.bind(this),
+                'keyup',
+            );
+        }
+        // Below are allowed shortcut even when a dialog is opened===================
         Mousetrap.bind(['?'], function(e) {
             $('#glossaryModal').modal('show');
         });
@@ -338,129 +643,51 @@ class Worksheet extends React.Component {
             ContextMenuMixin.closeContextMenu();
         });
 
-        // 
-        Mousetrap.bind(
-            ['shift+r'],
-            function(e) {
-                // refresh the worksheet and update the
-                // focus to the first item
-                this.reloadWorksheet(undefined, 'end');
-            }.bind(this),
-        );
-
-        // Show/hide web terminal (action bar)	
-        Mousetrap.bind(	
-            ['shift+c'],	
-            function(e) {	
-                this.toggleActionBar();	
-            }.bind(this),	
-        );	
-
-        // Focus on web terminal (action bar)	
-        Mousetrap.bind(	
-            ['c'],	
-            function(e) {	
-                this.focusActionBar();	
-            }.bind(this),	
-        );
-
-        // Toggle edit mode
-        Mousetrap.bind(
-            ['e'],
-            function(e) {
-                this.toggleEditMode();
-                return false;
-            }.bind(this),
-        );
-
-        Mousetrap.bind(
-            ['up', 'k'],
-            function(e) {
-                e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
-                var focusIndex = this.state.focusIndex;
-                var subFocusIndex = this.state.subFocusIndex;
-                var wsItems = this.state.ws.info.items;
-
-                if (
-                    focusIndex >= 0 &&
-                    (wsItems[focusIndex].mode === 'table_block' ||
-                        wsItems[focusIndex].mode === 'subworksheets_block')
-                ) {
-                    // worksheet_item_interface and table_item_interface do the exact same thing anyway right now
-                    if (subFocusIndex - 1 < 0) {
-                        this.setFocus(focusIndex - 1, 'end'); // Move out of this table to the item above the current table
-                    } else {
-                        this.setFocus(focusIndex, subFocusIndex - 1);
-                    }
-                } else if (focusIndex > 0) {
-                    // worksheet_items.jsx
-                    this.setFocus(focusIndex - 1, 'end');
+        // The following three are bulk bundle operation shortcuts
+        Mousetrap.bind(['backspace', 'del'],
+            () => {
+                if (this.state.openDetach || this.state.openKill){
+                    return;
                 }
-            }.bind(this),
-            'keydown',
+                this.togglePopupNoEvent('rm');
+            },
         );
+        Mousetrap.bind(['d'],
+            () => {
+                if (this.state.openDelete || this.state.openKill){
+                    return;
+                }
+                this.togglePopupNoEvent('detach');
+            },
+        );
+        Mousetrap.bind(['v'],
+            () => {
+                if (this.state.openDetach || this.state.openDelete){
+                    return;
+                }
+                this.togglePopupNoEvent('kill');
+            },
+        );
+        
+        // Confirm operation
+        Mousetrap.bind(['enter'], function(e) {
+            if (this.state.openDelete){
+                this.executeBundleCommandNoEvent('rm');
+            }else if (this.state.openKill){
+                this.executeBundleCommandNoEvent('kill');
+            }else if (this.state.openDetach){
+                this.executeBundleCommandNoEvent('detach');
+            }
+        }.bind(this));
 
-        Mousetrap.bind(
-            ['down', 'j'],
-            function(e) {
-                e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
-                var focusIndex = this.state.focusIndex;
-                var subFocusIndex = this.state.subFocusIndex;
-                var wsItems = this.state.ws.info.items;
-                if (
-                    focusIndex >= 0 &&
-                    (wsItems[focusIndex].mode === 'table_block' ||
-                        wsItems[focusIndex].mode === 'subworksheets_block')
-                ) {
-                    if (subFocusIndex + 1 >= this._numTableRows(wsItems[focusIndex])) {
-                        this.setFocus(focusIndex + 1, 0);
-                    } else {
-                        this.setFocus(focusIndex, subFocusIndex + 1);
-                    }
-                } else {
-                    this.setFocus(focusIndex + 1, 0);
-                }
-            }.bind(this),
-            'keydown',
-        );
-
-        // insert text after current cell
-        Mousetrap.bind(
-            ['i'],
-            function(e) {
-                // if no active focus, scroll to the bottom position
-                if (this.state.focusIndex < 0) {
-                    $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
-                }
-                this.setState({showNewText: true});
-            }.bind(this),
-            'keyup',
-        );
-
-        // upload after current cell
-        Mousetrap.bind(
-            ['u'],
-            function(e) {
-                // if no active focus, scroll to the bottom position
-                if (this.state.focusIndex < 0) {
-                    $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
-                }
-                this.setState({showNewUpload: true});
-            }.bind(this),
-            'keyup',
-        );
-        // run after current cell
-        Mousetrap.bind(
-            ['r'],
-            function(e) {
-                // if no active focus, scroll to the bottom position
-                if (this.state.focusIndex < 0) {
-                    $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
-                }
-                this.setState({showNewRun: true});
-            }.bind(this),
-            'keyup',
-        );
+        // Select/Deselect to force delete during deletion dialog
+        Mousetrap.bind(['f'], function() {
+            //force deletion through f
+            if (this.state.openDelete){
+                this.setState({forceDelete: !this.state.forceDelete});
+            }
+        }.bind(this));
+        //====================Bulk bundle operations===================
     }
 
     toggleEditMode(editMode, saveChanges) {
@@ -980,6 +1207,8 @@ class Worksheet extends React.Component {
                 onHideNewUpload={() => this.setState({showNewUpload: false})}
                 onHideNewRun={() => this.setState({showNewRun: false})}
                 onHideNewText={() => this.setState({showNewText: false})}
+                handleCheckBundle = {this.handleCheckBundle}
+                confirmBundleRowAction={this.confirmBundleRowAction}
             />
         );
 
@@ -995,6 +1224,16 @@ class Worksheet extends React.Component {
                                 + this.state.ws.uuid +"\'" } 
                     />;
         }
+
+        var worksheet_dialogs = <WorksheetDialogs 
+            openKill={this.state.openKill}
+            openDelete={this.state.openDelete}
+            openDetach={this.state.openDetach}
+            togglePopup={this.togglePopup}
+            executeBundleCommand={this.executeBundleCommand}
+            forceDelete={this.state.forceDelete}
+            handleForceDelete={this.handleForceDelete}
+        />
 
         return (
             <React.Fragment>
@@ -1012,6 +1251,9 @@ class Worksheet extends React.Component {
                     onShowNewUpload={() => this.setState({showNewUpload: true})}
                     onShowNewRun={() => this.setState({showNewRun: true})}
                     onShowNewText={() => this.setState({showNewText: true})}
+                    handleSelectedBundleCommand={this.handleSelectedBundleCommand}
+                    showBundleOperationButtons={this.state.showBundleOperationButtons}
+                    togglePopup={this.togglePopup}
                     />
                     {action_bar_display}
                 <div id='worksheet_container'>
@@ -1021,12 +1263,15 @@ class Worksheet extends React.Component {
                                 <div className={classes.worksheetInner} onClick={this.handleClickForDeselect}>
                                     <div id='worksheet_content' className={editableClassName + ' worksheet_content'}>
                                         {worksheet_display}
+                                        {/* Show error dialog if bulk bundle execution failed*/}
+                                        {this.state.BulkBundleDialog}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+                {worksheet_dialogs}
                 <ExtraWorksheetHTML />
             </React.Fragment>
         );
@@ -1077,5 +1322,19 @@ const styles = (theme) => ({
         marginRight: theme.spacing.large,
     },
 });
+
+Mousetrap.stopCallback = function (e, element, combo) {
+    //if the element is a checkbox, don't stop
+    if (element.type === 'checkbox'){
+        return false;
+    }
+    // if the element has the class "mousetrap" then no need to stop
+    if ((' ' + element.className + ' ').indexOf(' mousetrap ') > -1) {
+        return false;
+    }
+
+    // stop for input, select, and textarea
+    return element.tagName == 'INPUT' || element.tagName == 'SELECT' || element.tagName == 'TEXTAREA' || (element.contentEditable && element.contentEditable == 'true');
+}
 
 export default withStyles(styles)(Worksheet);
