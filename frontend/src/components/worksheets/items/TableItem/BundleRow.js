@@ -56,6 +56,7 @@ class BundleRow extends Component {
 
     removeCheckAfterOperation = (removeKeyFromParent=false)=>{
         // Callback function to remove the check after any bulk operation
+        console.log(removeKeyFromParent);
         this.setState({ checked: false });
         this.props.changeSelfCheckCallBack(false, removeKeyFromParent, this.state.uniqueIdentifier);
     }
@@ -206,8 +207,8 @@ class BundleRow extends Component {
                 }, 'keydown'
             );
         }
-        this.props.addControlSelectCallBack(this.props.rowIndex, this.letParentControlSelect);
-        
+        this.props.addControlSelectCallBack(this.state.uniqueIdentifier, this.letParentControlSelect);
+
         return (
             <TableBody
                 classes={{ root: classes.tableBody }}
