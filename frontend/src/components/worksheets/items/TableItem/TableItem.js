@@ -58,7 +58,7 @@ class TableItem extends React.Component<{
         }
     }
 
-    handleSelectAll = event => {
+    handleSelectAllClick = event => {
         if (event.target !== event.currentTarget){
             return;
         }
@@ -68,6 +68,15 @@ class TableItem extends React.Component<{
         })
         numSelectedChild = event.target.checked? Object.keys(this.state.selectChildren).length : 0;
         this.setState({ checked: event.target.checked, numSelectedChild: numSelectedChild, indeterminateCheckState: false });
+    };
+
+    handleSelectAllSpaceHit = () => {
+        let numSelectedChild = 0;
+        Object.keys(this.state.selectChildren).map((identiftier)=>{
+            this.state.selectChildren[identiftier](!this.state.checked);
+        })
+        numSelectedChild = !this.state.checked? Object.keys(this.state.selectChildren).length : 0;
+        this.setState({ checked: !this.state.checked, numSelectedChild: numSelectedChild, indeterminateCheckState: false });
     };
 
     updateRowIndex = (rowIndex) => {
@@ -93,7 +102,7 @@ class TableItem extends React.Component<{
             if (index === 0){
                 checkbox = <Checkbox
                                 checked={this.state.checked}
-                                onChange={this.handleSelectAll}
+                                onChange={this.handleSelectAllClick}
                                 value="checked"
                                 icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
                                 checkedIcon={<CheckBoxIcon fontSize="small" />}
@@ -101,9 +110,6 @@ class TableItem extends React.Component<{
                                 indeterminateIcon={<SvgIcon fontSize="small">
                                                         <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z"/>
                                                     </SvgIcon>}
-                                inputProps={{
-                                'aria-label': 'select all checkbox',
-                                }}
                                 style={{marginRight: 30}}
                             />;
             }
@@ -150,7 +156,9 @@ class TableItem extends React.Component<{
                     handleCheckBundle={this.props.handleCheckBundle}
                     addControlSelectCallBack={this.addControlSelectCallBack}
                     changeSelfCheckCallBack={this.changeSelfCheckCallBack}
+                    handleSelectAllSpaceHit={this.handleSelectAllSpaceHit}
                     alreadyChecked={this.state.checked}
+                    confirmBundleRowAction={this.props.confirmBundleRowAction}
                 />
             );
         });

@@ -181,21 +181,33 @@ class BundleRow extends Component {
                 ['enter'], 
                 (e) => {
                     e.preventDefault();
-                    this.setState((state) => ({ showDetail: !state.showDetail }))
-                    }, 
+                    if (!this.props.confirmBundleRowAction(e.code)){
+                        this.setState((state) => ({ showDetail: !state.showDetail }))
+                    }
+                }, 
                 'keydown'
             );
-            Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
-
-            // Delete a bundle
-            Mousetrap.bind(['backspace', 'del'],
-            () => {
-                this.toggleDeletePopup();
-            },
+            Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
+            Mousetrap.bind(['x'],
+                (e) => {
+                    if (!this.props.confirmBundleRowAction(e.code)){
+                        this.props.handleCheckBundle(uuid, this.state.uniqueIdentifier, !this.state.checked, this.removeCheckAfterOperation);
+                        this.props.changeSelfCheckCallBack(!this.state.checked);
+                        this.setState({ checked: !this.state.checked });
+                    }
+                }, 'keydown'
+            );
+            Mousetrap.bind(['space'],
+                (e) => {
+                    if (!this.props.confirmBundleRowAction(e.code)){
+                        e.preventDefault();
+                        this.props.handleSelectAllSpaceHit();
+                    }
+                }, 'keydown'
             );
         }
         this.props.addControlSelectCallBack(this.props.rowIndex, this.letParentControlSelect);
-
+        
         return (
             <TableBody
                 classes={{ root: classes.tableBody }}
