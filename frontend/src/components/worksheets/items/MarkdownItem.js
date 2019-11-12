@@ -53,20 +53,17 @@ class MarkdownItem extends React.Component {
     };
 
     toggleEdit = (ev) => {
-        ev.stopPropagation();
-        const { showEdit } = this.state;
-        this.setState({
-            showEdit: !showEdit,
-        });
+        ev.preventDefault();
+        this.setState({ showEdit: true });
     };
 
     capture_keys() {
         // Edit the markdown
         Mousetrap.bind(
             ['enter'],
-            function(e) {
+            function(ev) {
                 if (this.props.focusIndex >= 0) {
-                    this.toggleEdit(e);
+                    this.toggleEdit(ev);
                 }
             }.bind(this),
         );
