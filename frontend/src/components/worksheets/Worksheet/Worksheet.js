@@ -593,44 +593,45 @@ class Worksheet extends React.Component {
                 }.bind(this),
                 'keydown',
             );
+            if (!this.state.showBundleOperationButtons){
+                // insert text after current cell
+                Mousetrap.bind(
+                    ['t'],
+                    function(e) {
+                        // if no active focus, scroll to the bottom position
+                        if (this.state.focusIndex < 0) {
+                            $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                        }
+                        this.setState({showNewText: true});
+                    }.bind(this),
+                    'keyup',
+                );
 
-            // insert text after current cell
-            Mousetrap.bind(
-                ['t'],
-                function(e) {
-                    // if no active focus, scroll to the bottom position
-                    if (this.state.focusIndex < 0) {
-                        $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
-                    }
-                    this.setState({showNewText: true});
-                }.bind(this),
-                'keyup',
-            );
-
-            // upload after current cell
-            Mousetrap.bind(
-                ['u'],
-                function(e) {
-                    // if no active focus, scroll to the bottom position
-                    if (this.state.focusIndex < 0) {
-                        $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
-                    }
-                    this.setState({showNewUpload: true});
-                }.bind(this),
-                'keyup',
-            );
-            // run after current cell
-            Mousetrap.bind(
-                ['r'],
-                function(e) {
-                    // if no active focus, scroll to the bottom position
-                    if (this.state.focusIndex < 0) {
-                        $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
-                    }
-                    this.setState({showNewRun: true});
-                }.bind(this),
-                'keyup',
-            );
+                // upload after current cell
+                Mousetrap.bind(
+                    ['u'],
+                    function(e) {
+                        // if no active focus, scroll to the bottom position
+                        if (this.state.focusIndex < 0) {
+                            $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                        }
+                        this.setState({showNewUpload: true});
+                    }.bind(this),
+                    'keyup',
+                );
+                // run after current cell
+                Mousetrap.bind(
+                    ['r'],
+                    function(e) {
+                        // if no active focus, scroll to the bottom position
+                        if (this.state.focusIndex < 0) {
+                            $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                        }
+                        this.setState({showNewRun: true});
+                    }.bind(this),
+                    'keyup',
+                );
+            }
         }
         // Below are allowed shortcut even when a dialog is opened===================
         Mousetrap.bind(['?'], function(e) {
