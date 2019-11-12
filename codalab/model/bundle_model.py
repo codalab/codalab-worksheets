@@ -7,6 +7,8 @@ import datetime
 import os
 import re
 import time
+import logging
+
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, not_, select, union, desc, func
@@ -48,6 +50,8 @@ from codalab.objects.user import User
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
 
+
+logger = logging.getLogger(__name__)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -221,7 +225,11 @@ class BundleModel(object):
             row = conn.execute(
                 cl_worker_run.select().where(cl_worker_run.c.run_uuid == uuid)
             ).fetchone()
-            precondition(row, 'Trying to find worker for bundle that is not running.')
+
+            if not row:
+                logger.info('Trying to find worker for bundle {} that is not running.'.format(uuid))
+                return None
+
             worker_row = conn.execute(
                 cl_worker.select().where(
                     and_(cl_worker.c.user_id == row.user_id, cl_worker.c.worker_id == row.worker_id)
@@ -1319,9 +1327,9 @@ class BundleModel(object):
         for row in rows:
             row = str_key_dict(row)
             row['group_permissions'] = uuid_group_permissions[row['uuid']]
-            row_dicts.append(row)
             if row['title']:
                 row['title'] = self.decode_str(row['title'])
+            row_dicts.append(row)
         return row_dicts
 
     def new_worksheet(self, worksheet):

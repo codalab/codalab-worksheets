@@ -116,7 +116,12 @@ def start_bundle_container(
     # When using the REST api, it is allowed to set Memory to 0 but that means the container has unbounded
     # access to the host machine's memory, which we have decided to not allow
     if memory_bytes < parse_size('4m'):
-        raise DockerException('Minimum memory must be 4m ({} bytes)'.format(parse_size('4m')))
+        raise DockerException(
+            'Bundle {}: minimum memory to start {} must be 4m ({} bytes), '
+            'current available memory is {} bytes'.format(
+                uuid, docker_image, parse_size('4m'), memory_bytes
+            )
+        )
     if not command.endswith(';'):
         command = '{};'.format(command)
     docker_command = ['bash', '-c', '( %s ) >stdout 2>stderr' % command]
