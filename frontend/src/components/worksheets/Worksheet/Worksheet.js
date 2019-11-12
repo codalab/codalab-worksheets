@@ -634,6 +634,15 @@ class Worksheet extends React.Component {
             }
         }
         // Below are allowed shortcut even when a dialog is opened===================
+        Mousetrap.bind(
+            ['ctrl+r'],
+            function() {
+                // refresh the worksheet and update the
+                // focus to the first item
+                window.location.reload();
+            },
+        );
+        
         Mousetrap.bind(['?'], function(e) {
             $('#glossaryModal').modal('show');
         });
