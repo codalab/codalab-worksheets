@@ -1123,7 +1123,7 @@ class BundleCLI(object):
             Commands.Argument(
                 '-i',
                 '--ignore',
-                help='Name of the file to read exclusion patterns from when archiving.',
+                help='Name of file containing patterns matching files and directories to exclude from upload.',
                 default='.gitignore',
             ),
         )

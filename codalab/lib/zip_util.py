@@ -102,7 +102,7 @@ def pack_files_for_upload(
     follow_symlinks,
     exclude_patterns=None,
     force_compression=False,
-    ignore_file='.gitignore',
+    ignore_file=None,
 ):
     """
     Create a single flat tarfile containing all the sources.
