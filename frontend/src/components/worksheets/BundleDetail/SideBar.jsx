@@ -220,7 +220,7 @@ class SideBar extends React.Component<
                                     permission_spec={bundleInfo.permission_spec}
                                     group_permissions={bundleInfo.group_permissions}
                                     onChange={this.props.onMetaDataChange}
-                                    wperm
+                                    perm
                                 />
                             </div>
                         :   null
