@@ -18,7 +18,7 @@ def tar_gzip_directory(
     follow_symlinks=False,
     exclude_patterns=[],
     exclude_names=[],
-    ignore_file_name='.gitignore',
+    ignore_file='.gitignore',
 ):
     """
     Returns a file-like object containing a tarred and gzipped archive of the
@@ -29,12 +29,12 @@ def tar_gzip_directory(
                    are not included.
     exclude_patterns: Any directory entries with the given names at any depth in
                       the directory structure are excluded.
-    ignore_file_name: Name of the file where exclusion patterns are read from.
+    ignore_file: Name of the file where exclusion patterns are read from.
     """
     # Always ignore entries specified by the ignore file (e.g. .gitignore)
     args = ['tar', 'czf', '-', '-C', directory_path]
-    if ignore_file_name:
-        args.append('--exclude-ignore=' + ignore_file_name)
+    if ignore_file:
+        args.append('--exclude-ignore=' + ignore_file)
     if follow_symlinks:
         args.append('-h')
     if not exclude_patterns:

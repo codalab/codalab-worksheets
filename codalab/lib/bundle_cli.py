@@ -1122,10 +1122,9 @@ class BundleCLI(object):
             ),
             Commands.Argument(
                 '-i',
-                '--ignore-gitignore',
-                help='Ignores exclusion patterns specified by.gitignore when archiving.',
-                action='store_true',
-                default=False,
+                '--ignore',
+                help='Name of the file to read exclusion patterns from when archiving.',
+                default='.gitignore',
             ),
         )
         + Commands.metadata_arguments([UploadedBundle])
@@ -1198,8 +1197,11 @@ class BundleCLI(object):
             sources = [path_util.normalize(path) for path in args.path]
 
             print("Preparing upload archive...", file=self.stderr)
-            if not args.ignore_gitignore:
-                print("Excluding files and directories specified by .gitignore.", file=self.stderr)
+            if args.ignore:
+                print(
+                    "Excluding files and directories specified by %s." % args.ignore,
+                    file=self.stderr,
+                )
 
             packed = zip_util.pack_files_for_upload(
                 sources,
@@ -1207,7 +1209,7 @@ class BundleCLI(object):
                 follow_symlinks=args.follow_symlinks,
                 exclude_patterns=args.exclude_patterns,
                 force_compression=args.force_compression,
-                use_gitignore=(not args.ignore_gitignore),
+                ignore_file=args.ignore,
             )
 
             # Create bundle.
