@@ -36,6 +36,7 @@
     "react-scripts": "^3.0.1",
     "react-select": "^2.4.3",
     "react-stickynode": "^2.1.1",
+    "react-toastify": "^5.4.1",
     "react-x-editable": "0.0.10-beta",
     "reselect": "^4.0.0",
     "seamless-immutable": "^7.1.4",

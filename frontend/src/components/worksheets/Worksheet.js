@@ -7,7 +7,6 @@ import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import WorksheetItemList from './WorksheetItemList';
 import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from './ExtraWorksheetHTML';
-import 'bootstrap';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import { NAVBAR_HEIGHT } from '../../constants';
@@ -30,6 +29,8 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import CloseIcon from '@material-ui/icons/Close';
 import Grid from '@material-ui/core/Grid';
 import WorksheetDialogs from './WorksheetDialogs';
+import { ToastContainer, toast, Zoom } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 /*
 Information about the current worksheet and its items.
@@ -37,6 +38,7 @@ Information about the current worksheet and its items.
 
 // TODO: dummy objects
 let ace = window.ace;
+toast.configure()
 
 var WorksheetContent = (function() {
     function WorksheetContent(uuid) {
@@ -230,7 +232,7 @@ class Worksheet extends React.Component {
         // The uuid are recorded by handleCheckBundle
         // Refreshes the checkbox after commands
         // If the action failed, the check will persist
-        let force_delete = cmd=='rm' && this.state.forceDelete ? '--force' : null;
+        let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
         executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)]), worksheet_uuid)
         .done(() => {
                 this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}, showBundleOperationButtons: false});
@@ -322,7 +324,7 @@ class Worksheet extends React.Component {
             // no dialog is opened, open bundle row detail
             return false;
         } 
-        else if(code == 'KeyX' || code == 'Space'){
+        else if(code === 'KeyX' || code === 'Space'){
             return true;
         }
         else if (this.state.openDelete){
@@ -511,9 +513,17 @@ class Worksheet extends React.Component {
             Mousetrap.bind(
                 ['shift+r'],
                 function(e) {
-                    // refresh the worksheet and update the
-                    // focus to the first item
-                    this.reloadWorksheet(undefined, 'end');
+                    var focusIndex = this.state.focusIndex;
+                    var subFocusIndex = this.state.subFocusIndex;
+                    this.reloadWorksheet(focusIndex, subFocusIndex);
+                    toast.success('🦄 Worksheet refreshed!', {
+                        position: "top-right",
+                        autoClose: 1500,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: false,
+                        draggable: true,
+                        });
                 }.bind(this),
             );
 
@@ -970,16 +980,16 @@ class Worksheet extends React.Component {
                         // unless that bundle doesn't exist anymore, in which case we select the one above it.
 
                         // the deleted bundle is the only item of the table
-                        if (this.state.subFocusIndex == 0) {
+                        if (this.state.subFocusIndex === 0) {
                             // the deleted item is the last item of the worksheet
-                            if (items.length == this.state.focusIndex + 1) {
+                            if (items.length === this.state.focusIndex + 1) {
                                 this.setFocus(this.state.focusIndex - 1, 0);
                             } else {
                                 this.setFocus(this.state.focusIndex, 0);
                             }
                         // the deleted bundle is the last item of the table
                         // note that for some reason subFocusIndex begins with 1, not 0
-                        } else if (this._numTableRows(items[this.state.focusIndex]) == this.state.subFocusIndex) {
+                        } else if (this._numTableRows(items[this.state.focusIndex]) === this.state.subFocusIndex) {
                             this.setFocus(this.state.focusIndex, this.state.subFocusIndex - 1);
                         } else {
                             this.setFocus(this.state.focusIndex, this.state.subFocusIndex);
@@ -1256,6 +1266,12 @@ class Worksheet extends React.Component {
                     togglePopup={this.togglePopup}
                     />
                     {action_bar_display}
+                    <ToastContainer
+                    newestOnTop={false}
+                    transition={Zoom}
+                    rtl={false}
+                    pauseOnVisibilityChange
+                    />
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
                         <div className={classes.worksheetDesktop} onClick={this.handleClickForDeselect}>
@@ -1334,7 +1350,7 @@ Mousetrap.stopCallback = function (e, element, combo) {
     }
 
     // stop for input, select, and textarea
-    return element.tagName == 'INPUT' || element.tagName == 'SELECT' || element.tagName == 'TEXTAREA' || (element.contentEditable && element.contentEditable == 'true');
+    return element.tagName === 'INPUT' || element.tagName === 'SELECT' || element.tagName === 'TEXTAREA' || (element.contentEditable && element.contentEditable === 'true');
 }
 
 export default withStyles(styles)(Worksheet);
