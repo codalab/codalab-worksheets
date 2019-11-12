@@ -27,6 +27,7 @@ class TableItem extends React.Component<{
             rowIdx: -1,
             insertBefore: -1,
             checked: false,
+            hovered: false,
             childrenCheckState: new Array(this.props.item.rows.length).fill(false),
             numSelectedChild: 0,
             indeterminateCheckState: false,
@@ -104,7 +105,7 @@ class TableItem extends React.Component<{
                                 checked={this.state.checked}
                                 onChange={this.handleSelectAllClick}
                                 value="checked"
-                                icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
+                                icon={<CheckBoxOutlineBlankIcon color={this.state.hovered? 'action':'disabled'} fontSize="small" />}
                                 checkedIcon={<CheckBoxIcon fontSize="small" />}
                                 indeterminate={this.state.indeterminateCheckState}
                                 indeterminateIcon={<SvgIcon fontSize="small">
@@ -114,7 +115,10 @@ class TableItem extends React.Component<{
                             />;
             }
             return (
-                <TableCell component='th' key={index} style={{ paddingLeft: 0 }}>
+                <TableCell 
+                    onMouseEnter = {e=>this.setState({hovered: true})}
+                    onMouseLeave = {e=>this.setState({hovered: false})}
+                    component='th' key={index} style={{ paddingLeft: 0 }}>
                     {checkbox}
                     {item}
                 </TableCell>
