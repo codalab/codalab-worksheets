@@ -341,6 +341,7 @@ const styles = (theme) => ({
     },
     lowlight: {
         backgroundColor: `${theme.color.grey.light} !important`,
+        borderLeft: '3px solid transparent',
     },
 });
 
