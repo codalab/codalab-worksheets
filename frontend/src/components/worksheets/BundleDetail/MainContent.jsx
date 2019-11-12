@@ -63,7 +63,7 @@ class MainContent extends React.Component<
                                 {this.state.showStdOut &&
                                     <Grid item xs={12}>
                                         <div className={ classNames({[classes.snippet]:true, [classes.greyBackground]:true })}>
-                                            {stdout}
+                                            { stdout }
                                         </div>
                                     </Grid>}
                             </Grid>
