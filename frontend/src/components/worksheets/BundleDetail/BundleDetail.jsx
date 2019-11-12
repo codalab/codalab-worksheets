@@ -178,7 +178,7 @@ class BundleDetail extends React.Component<
             stdout,
             stderr,
             fileContents } = this.state;
-        
+            
         if (!bundleInfo) {
             return null;
         }
