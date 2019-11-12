@@ -105,7 +105,7 @@ class TableItem extends React.Component<{
                                 checked={this.state.checked}
                                 onChange={this.handleSelectAllClick}
                                 value="checked"
-                                icon={<CheckBoxOutlineBlankIcon color={this.state.hovered? 'action':'disabled'} fontSize="small" />}
+                                icon={<CheckBoxOutlineBlankIcon color={this.state.hovered ? 'action' : 'disabled'} fontSize="small" />}
                                 checkedIcon={<CheckBoxIcon fontSize="small" />}
                                 indeterminate={this.state.indeterminateCheckState}
                                 indeterminateIcon={<SvgIcon fontSize="small">

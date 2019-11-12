@@ -122,7 +122,7 @@ class BundleRow extends Component {
             if (col === 0) {
                 url = baseUrl;
                 checkBox = <Checkbox
-                                icon={<CheckBoxOutlineBlankIcon color={this.props.focused || this.state.hovered? 'action': 'disabled'} fontSize="small" />}
+                                icon={<CheckBoxOutlineBlankIcon color={this.props.focused || this.state.hovered ? 'action' : 'disabled'} fontSize="small" />}
                                 checkedIcon={<CheckBoxIcon fontSize="small" />}
                                 onChange={this.handleCheckboxChange}
                                 checked={checkStatus||false}
