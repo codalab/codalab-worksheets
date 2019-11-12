@@ -326,6 +326,7 @@ const styles = (theme) => ({
     },
     highlight: {
         backgroundColor: `${theme.color.primary.lightest} !important`,
+        borderLeft: '3px solid #1d91c0',
     },
     lowlight: {
         backgroundColor: `${theme.color.grey.light} !important`,
