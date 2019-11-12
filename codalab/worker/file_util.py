@@ -14,7 +14,7 @@ GIT_PATTERN = '.git'
 
 
 def tar_gzip_directory(
-    directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[], ignore_file=None,
+    directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[], ignore_file=None
 ):
     """
     Returns a file-like object containing a tarred and gzipped archive of the
