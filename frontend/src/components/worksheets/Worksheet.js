@@ -7,6 +7,7 @@ import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import WorksheetItemList from './WorksheetItemList';
 import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from './ExtraWorksheetHTML';
+import 'bootstrap';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import { NAVBAR_HEIGHT } from '../../constants';
