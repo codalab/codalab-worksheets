@@ -1327,9 +1327,9 @@ class BundleModel(object):
         for row in rows:
             row = str_key_dict(row)
             row['group_permissions'] = uuid_group_permissions[row['uuid']]
-            row_dicts.append(row)
             if row['title']:
                 row['title'] = self.decode_str(row['title'])
+            row_dicts.append(row)
         return row_dicts
 
     def new_worksheet(self, worksheet):
