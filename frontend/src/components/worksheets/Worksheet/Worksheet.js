@@ -670,18 +670,6 @@ class Worksheet extends React.Component {
             },
         );
         
-<<<<<<< HEAD
-        // Confirm operation
-        Mousetrap.bind(['enter'], function(e) {
-            if (this.state.openDelete){
-                this.executeBundleCommandNoEvent('rm');
-            }else if (this.state.openKill){
-                this.executeBundleCommandNoEvent('kill');
-            }else if (this.state.openDetach){
-                this.executeBundleCommandNoEvent('detach');
-            }
-        }.bind(this));
-=======
         if (this.state.showBundleOperationButtons && (this.state.openDelete||this.state.openKill||this.state.openDetach)){
             // Confirm operation
             Mousetrap.bind(['enter'], function(e) {
@@ -694,7 +682,6 @@ class Worksheet extends React.Component {
                 }
             }.bind(this));
         }
->>>>>>> e81e329b... fix typo delete->detach
 
         // Select/Deselect to force delete during deletion dialog
         Mousetrap.bind(['f'], function() {
