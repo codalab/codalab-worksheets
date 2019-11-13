@@ -20,17 +20,17 @@ import UndoIcon from '@material-ui/icons/UndoOutlined';
 import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import "./Worksheet.scss";
-import ErrorMessage from './ErrorMessage';
-import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
-import { buildTerminalCommand } from '../../util/worksheet_utils';
-import { executeCommand } from '../../util/cli_utils';
+import ErrorMessage from '../ErrorMessage';
+import { ContextMenuMixin, default as ContextMenu } from '../ContextMenu';
+import { buildTerminalCommand } from '../../../util/worksheet_utils';
+import { executeCommand } from '../../../util/cli_utils';
 import Dialog from '@material-ui/core/Dialog';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import CloseIcon from '@material-ui/icons/Close';
 import Grid from '@material-ui/core/Grid';
-import WorksheetDialogs from './WorksheetDialogs';
+import WorksheetDialogs from '../WorksheetDialogs';
 
 /*
 Information about the current worksheet and its items.
