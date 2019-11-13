@@ -1,6 +1,6 @@
 import * as React from 'react';	
 import Immutable from 'seamless-immutable';	
-import $, { jQuery } from 'jquery';	
+import $ from 'jquery';	
 import _ from 'underscore';	
 import 'jquery.terminal';	
 
@@ -197,7 +197,7 @@ class WorksheetActionBar extends React.Component {
             });	
     }	
     completeCommand(command) {	
-        var deferred = jQuery.Deferred();	
+        var deferred = $.Deferred();	
         $.ajax({	
             type: 'POST',	
             cache: false,	
