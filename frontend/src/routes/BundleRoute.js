@@ -1,5 +1,5 @@
 import * as React from 'react';
-import Bundle from '../components/Bundle';
+import Bundle from '../components/Bundle/Bundle';
 
 /**
  * This route page displays a bundle's metadata and contents.

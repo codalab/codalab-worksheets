@@ -76,7 +76,6 @@ class SideBar extends React.Component<
 					? bundleInfo.metadata.run_status
 					: bundleInfo.state;
         const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
-        const bundleStateClass = 'bundle-state state-' + (bundleInfo.state || 'ready');
         const isRunBundle = bundleInfo.bundle_type === 'run';
         const stateSpecClass = bundleInfo.state === 'failed'
             ? 'failedState'

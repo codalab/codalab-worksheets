@@ -2,16 +2,16 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
-import { keepPosInView, renderPermissions, getMinMaxKeys } from '../../util/worksheet_utils';
-import * as Mousetrap from '../../util/ws_mousetrap_fork';
-import WorksheetItemList from './WorksheetItemList';
+import { keepPosInView, renderPermissions, getMinMaxKeys } from '../../../util/worksheet_utils';
+import * as Mousetrap from '../../../util/ws_mousetrap_fork';
+import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
-import ExtraWorksheetHTML from './ExtraWorksheetHTML';
+import ExtraWorksheetHTML from '../ExtraWorksheetHTML/ExtraWorksheetHTML';
 import 'bootstrap';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
-import { NAVBAR_HEIGHT } from '../../constants';
-import WorksheetActionBar from './WorksheetActionBar';
+import { NAVBAR_HEIGHT } from '../../../constants';
+import WorksheetActionBar from '../WorksheetActionBar';
 import Button from '@material-ui/core/Button';
 import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
@@ -19,6 +19,7 @@ import DeleteIcon from '@material-ui/icons/DeleteOutline';
 import UndoIcon from '@material-ui/icons/UndoOutlined';
 import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
+import "./Worksheet.scss";
 import ErrorMessage from './ErrorMessage';
 import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
 import { buildTerminalCommand } from '../../util/worksheet_utils';
@@ -230,7 +231,7 @@ class Worksheet extends React.Component {
         // The uuid are recorded by handleCheckBundle
         // Refreshes the checkbox after commands
         // If the action failed, the check will persist
-        let force_delete = cmd=='rm' && this.state.forceDelete ? '--force' : null;
+        let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
         executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)]), worksheet_uuid)
         .done(() => {
                 this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}, showBundleOperationButtons: false});
@@ -322,7 +323,7 @@ class Worksheet extends React.Component {
             // no dialog is opened, open bundle row detail
             return false;
         } 
-        else if(code == 'KeyX' || code == 'Space'){
+        else if(code === 'KeyX' || code === 'Space'){
             return true;
         }
         else if (this.state.openDelete){
@@ -970,16 +971,16 @@ class Worksheet extends React.Component {
                         // unless that bundle doesn't exist anymore, in which case we select the one above it.
 
                         // the deleted bundle is the only item of the table
-                        if (this.state.subFocusIndex == 0) {
+                        if (this.state.subFocusIndex === 0) {
                             // the deleted item is the last item of the worksheet
-                            if (items.length == this.state.focusIndex + 1) {
+                            if (items.length === this.state.focusIndex + 1) {
                                 this.setFocus(this.state.focusIndex - 1, 0);
                             } else {
                                 this.setFocus(this.state.focusIndex, 0);
                             }
                         // the deleted bundle is the last item of the table
                         // note that for some reason subFocusIndex begins with 1, not 0
-                        } else if (this._numTableRows(items[this.state.focusIndex]) == this.state.subFocusIndex) {
+                        } else if (this._numTableRows(items[this.state.focusIndex]) === this.state.subFocusIndex) {
                             this.setFocus(this.state.focusIndex, this.state.subFocusIndex - 1);
                         } else {
                             this.setFocus(this.state.focusIndex, this.state.subFocusIndex);
@@ -1334,7 +1335,7 @@ Mousetrap.stopCallback = function (e, element, combo) {
     }
 
     // stop for input, select, and textarea
-    return element.tagName == 'INPUT' || element.tagName == 'SELECT' || element.tagName == 'TEXTAREA' || (element.contentEditable && element.contentEditable == 'true');
+    return element.tagName === 'INPUT' || element.tagName === 'SELECT' || element.tagName === 'TEXTAREA' || (element.contentEditable && element.contentEditable === 'true');
 }
 
 export default withStyles(styles)(Worksheet);
