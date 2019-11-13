@@ -281,7 +281,7 @@ class NavBar extends React.Component<{
                         })}
                         message={
                             <span className={classes.snackbarMessage}>
-                                <SnackbarIcon className={classes.snackbarIcon}/>
+                                {SnackbarIcon && <SnackbarIcon className={classes.snackbarIcon}/>}
                                 {this.state.snackbarMessage}
                             </span>
                         }
