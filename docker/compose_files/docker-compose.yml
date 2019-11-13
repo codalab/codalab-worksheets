@@ -88,7 +88,7 @@ services:
 
   frontend:
     image: codalab/frontend:${CODALAB_VERSION}
-    command: npm run build --production && serve -s build -l ${CODALAB_FRONTEND_PORT}
+    command: serve -s build -l ${CODALAB_FRONTEND_PORT}
     <<: *codalab-base
     <<: *codalab-root
     depends_on:
