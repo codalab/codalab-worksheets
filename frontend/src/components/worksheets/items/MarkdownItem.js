@@ -54,28 +54,32 @@ class MarkdownItem extends React.Component {
 
     toggleEdit = (ev) => {
         ev.preventDefault();
-        this.setState({ showEdit: true });
+        this.setState({ showEdit: !this.state.showEdit });
     };
 
     capture_keys() {
         // Edit the markdown
-        Mousetrap.bind(
+        var form = document.querySelector('type-markup focused');
+
+        Mousetrap(form).bind(
             ['enter'],
-            function(ev) {
-                if (this.props.focusIndex >= 0) {
+            function (ev) {
+                if (this.props.focused) {
                     this.toggleEdit(ev);
                 }
             }.bind(this),
+            'keydown',
         );
 
         // Delete the line
-        Mousetrap.bind(
+        Mousetrap(form).bind(
             ['backspace', 'del'],
-            function() {
-                if (this.props.focusIndex >= 0) {
+            function () {
+                if (this.props.focused) {
                     this.deleteItem();
                 }
             }.bind(this),
+            'keydown',
         );
     }
 
@@ -93,6 +97,7 @@ class MarkdownItem extends React.Component {
                 if (focused) {
                     setFocus(focusIndex < 1 ? -1 : this.props.focusIndex - 1, 0);
                 }
+                // setFocus(focusIndex >= 1 ? focusIndex - 1 : focusIndex, 0);
             },
             error: (jqHXR, status, error) => {
                 alert(createAlertText(this.url, jqHXR.responseText));
@@ -101,7 +106,7 @@ class MarkdownItem extends React.Component {
     };
 
     render() {
-        this.capture_keys(); // each item capture keys are handled dynamically after this call
+        if (this.props.focused && this.props.active) this.capture_keys(); // each item capture keys are handled dynamically after this call
         const { classes, item } = this.props;
         const { showEdit } = this.state;
         var contents = item.text;
@@ -112,7 +117,7 @@ class MarkdownItem extends React.Component {
         // more info about dangerouslySetInnerHTML
         // http://facebook.github.io/react/docs/special-non-dom-attributes.html
         // http://facebook.github.io/react/docs/tags-and-attributes.html#html-attributes
-        var className = 'type-markup ' + (this.props.focused ? ' focused' : '');
+        var className = 'type-markup ' + (this.props.focused ? 'focused' : '');
 
         let after_sort_key = null;
         if (item.sort_keys && item.sort_keys.length > 0) {
@@ -142,28 +147,29 @@ class MarkdownItem extends React.Component {
                 }}
             />
         ) : (
-            <div className={'ws-item ' + classes.textContainer} onClick={this.handleClick}>
-                <div
-                    className={`${ className } ${ classes.textRender }`}
-                    dangerouslySetInnerHTML={{ __html: contents }}
-                />
-                <div className={classes.buttonsPanel}>
+                <div className={'ws-item ' + classes.textContainer}
+                    onClick={this.handleClick}>
+                    <div
+                        className={`${className} ${classes.textRender}`}
+                        dangerouslySetInnerHTML={{ __html: contents }}
+                    />
+                    <div className={classes.buttonsPanel}>
+                        <IconButton
+                            onClick={this.toggleEdit}
+                            classes={{ root: classes.iconButtonRoot }}
+                        >
+                            <EditIcon />
+                        </IconButton>
+                        &nbsp;&nbsp;
                     <IconButton
-                        onClick={this.toggleEdit}
-                        classes={{ root: classes.iconButtonRoot }}
-                    >
-                        <EditIcon />
-                    </IconButton>
-                    &nbsp;&nbsp;
-                    <IconButton
-                        onClick={this.deleteItem}
-                        classes={{ root: classes.iconButtonRoot }}
-                    >
-                        <DeleteIcon />
-                    </IconButton>
+                            onClick={this.deleteItem}
+                            classes={{ root: classes.iconButtonRoot }}
+                        >
+                            <DeleteIcon />
+                        </IconButton>
+                    </div>
                 </div>
-            </div>
-        );
+            );
     }
 
     /// helper functions for making markdown and mathjax work together
