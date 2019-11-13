@@ -1323,8 +1323,6 @@ class BundleModel(object):
             if row['title']:
                 row['title'] = self.decode_str(row['title'])
             row_dicts.append(row)
-            if row['title']:
-                row['title'] = self.decode_str(row['title'])
         return row_dicts
 
     def new_worksheet(self, worksheet):

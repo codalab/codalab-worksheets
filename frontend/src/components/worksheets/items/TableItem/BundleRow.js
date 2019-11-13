@@ -5,35 +5,54 @@ import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import IconButton from '@material-ui/core/IconButton';
-import Button from '@material-ui/core/Button';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogContentText from '@material-ui/core/DialogContentText';
-import DialogTitle from '@material-ui/core/DialogTitle';
-import DeleteIcon from '@material-ui/icons/Delete';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
+import Checkbox from '@material-ui/core/Checkbox';
+import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@material-ui/icons/CheckBox';
 
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleDetail from '../../BundleDetail';
-import { buildTerminalCommand } from '../../../../util/worksheet_utils';
-import { executeCommand } from '../../../../util/cli_utils';
 
 // The approach taken in this design is to hack the HTML `Table` element by using one `TableBody` for each `BundleRow`.
 // We need the various columns to be aligned for all `BundleRow` within a `Table`, therefore using `div` is not an
 // option. Instead, we must make use of zero-height rows.
 
 class BundleRow extends Component {
-    state = {
-        showDetail: false,
-        showNewUpload: 0,
-        showNewRun: 0,
-        bundleInfoUpdates: {},
-        showDetail: false,
-        openDelete: false,
-        runProp: {},
+    constructor(props) {
+        super(props);
+        this.state = {
+            showDetail: false,
+            showNewUpload: 0,
+            showNewRun: 0,
+            bundleInfoUpdates: {},
+            showDetail: false,
+            openDelete: false,
+            runProp: {},
+            hovered: false,
+            uniqueIdentifier: Math.random()*10000,
+        };
+    }
+
+    // BULK OPERATION RELATED CODE
+    handleCheckboxChange = event => {
+        this.props.handleCheckBundle(this.props.uuid, this.state.uniqueIdentifier, event.target.checked, this.props.refreshCheckBox);
+        this.props.childrenCheck(this.props.rowIndex, event.target.checked);
     };
+
+    componentDidMount(){
+        if (this.props.checkStatus){
+            this.props.handleCheckBundle(this.props.uuid, this.state.uniqueIdentifier, true, this.props.refreshCheckBox);
+        }
+    }
+
+    componentDidUpdate(prevProp){
+        if (this.props.checkStatus !== prevProp.checkStatus){
+            this.props.handleCheckBundle(this.props.uuid, this.state.uniqueIdentifier, this.props.checkStatus,  this.props.refreshCheckBox);
+        }
+    }
+    // BULK OPERATION RELATED CODE
+
 
     receiveBundleInfoUpdates = (update) => {
         let { bundleInfoUpdates } = this.state;
@@ -61,23 +80,6 @@ class BundleRow extends Component {
         this.setState({ showNewRun: val });
     };
 
-    deleteItem = (ev) => {
-        const { setFocus } = this.props;
-        ev.stopPropagation();
-        this.toggleDeletePopup();
-        const { uuid } = this.props.bundleInfo;
-        executeCommand(buildTerminalCommand(['rm', uuid])).done(() => {
-            this.props.reloadWorksheet();
-        });
-    };
-
-    toggleDeletePopup = () => {
-        const { openDelete } = this.state;
-        this.setState({
-            openDelete: !openDelete,
-        });
-    }
-
     rerunItem = (runProp) => {
         this.setState({
             showDetail: false,
@@ -104,6 +106,7 @@ class BundleRow extends Component {
             worksheetUUID,
             reloadWorksheet,
             isLast,
+            checkStatus,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
@@ -115,8 +118,15 @@ class BundleRow extends Component {
             // See if there's a link
             var url;
             var showDetailButton;
+            var checkBox;
             if (col === 0) {
                 url = baseUrl;
+                checkBox = <Checkbox
+                                icon={<CheckBoxOutlineBlankIcon color={this.props.focused || this.state.hovered ? 'action' : 'disabled'} fontSize="small" />}
+                                checkedIcon={<CheckBoxIcon fontSize="small" />}
+                                onChange={this.handleCheckboxChange}
+                                checked={checkStatus||false}
+                            />
                 showDetailButton = 
                         <IconButton onClick={this.handleDetailClick} style={{ padding: 2 }}>
                             {this.state.showDetail?
@@ -147,7 +157,10 @@ class BundleRow extends Component {
                     classes={{
                         root: classes.rootNoPad,
                     }}
-                >
+                    onMouseEnter = {e=>this.setState({hovered: true})}
+                    onMouseLeave = {e=>this.setState({hovered: false})}
+                >   
+                    {checkBox}
                     {showDetailButton}
                     {rowContent}
                 </TableCell>
@@ -161,20 +174,30 @@ class BundleRow extends Component {
                 ['enter'], 
                 (e) => {
                     e.preventDefault();
-                    this.setState((state) => ({ showDetail: !state.showDetail }))
-                    }, 
+                    if (!this.props.confirmBundleRowAction(e.code)){
+                        this.setState((state) => ({ showDetail: !state.showDetail }))
+                    }
+                }, 
                 'keydown'
             );
-            Mousetrap.bind(['escape'], (e) => this.setState({ showDetail: false }), 'keydown');
-
-            // Delete a bundle
-            Mousetrap.bind(['backspace', 'del'],
-            () => {
-                this.toggleDeletePopup();
-            },
+            Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
+            Mousetrap.bind(['x'],
+                (e) => {
+                    if (!this.props.confirmBundleRowAction(e.code)){
+                        this.props.handleCheckBundle(uuid, this.state.uniqueIdentifier, !this.props.checkStatus, this.props.refreshCheckBox);
+                        this.props.childrenCheck(this.props.rowIndex, !this.props.checkStatus);
+                    }
+                }, 'keydown'
+            );
+            Mousetrap.bind(['space'],
+                (e) => {
+                    if (!this.props.confirmBundleRowAction(e.code)){
+                        e.preventDefault();
+                        this.props.handleSelectAllSpaceHit();
+                    }
+                }, 'keydown'
             );
         }
-
 
         return (
             <TableBody
@@ -184,7 +207,6 @@ class BundleRow extends Component {
                   *  Main Content
                   */}
                 <TableRow
-                    hover
                     onClick={this.handleSelectRowClick}
                     onContextMenu={this.props.handleContextMenu.bind(
                         null,
@@ -200,43 +222,6 @@ class BundleRow extends Component {
                     })}
                 >
                     {rowCells}
-                </TableRow>
-                {/** ---------------------------------------------------------------------------------------------------
-                  *  Deletion Dialog (floating)
-                  */}
-                <TableRow classes={{ root: classes.panelContainer }}>
-                    <TableCell colSpan='100%' classes={{ root: classes.panelCellContainer }}>
-                        <div className={classes.rightButtonStripe}>
-                            <IconButton
-                                onClick={this.toggleDeletePopup}
-                                classes={{ root: classes.iconButtonRoot }}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
-                            <Dialog
-                                open={openDelete}
-                                onClose={this.toggleDeletePopup}
-                                aria-labelledby="deletion-confirmation-title"
-                                aria-describedby="deletion-confirmation-description"
-                            >
-                                <DialogTitle id="deletion-confirmation-title">{"Delete this bundle?"}</DialogTitle>
-                                <DialogContent>
-                                    <DialogContentText id="alert-dialog-description">
-                                        Deletion cannot be undone.
-                                    </DialogContentText>
-                                </DialogContent>
-                                <DialogActions>
-                                    <Button color='primary' onClick={this.toggleDeletePopup}>
-                                        CANCEL
-                                    </Button>
-                                    <Button color='primary' onClick={this.deleteItem} autoFocus>
-                                        DELETE
-                                    </Button>
-                                </DialogActions>
-                            </Dialog>
-                            
-                            </div>
-                    </TableCell>
                 </TableRow>
                 {/** ---------------------------------------------------------------------------------------------------
                   *  Bundle Detail (below)
@@ -339,10 +324,21 @@ const styles = (theme) => ({
     contentRow: {
         height: 26,
         borderBottom: '2px solid #ddd',
+        borderLeft: '3px solid transparent',
         padding: 0,
+        '&:hover': {
+            boxShadow:'inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15)',
+            zIndex: 1,
+        },
+    },
+    checkBox:{
+        '&:hover': {
+            backgroundColor: '#ddd',
+        }
     },
     highlight: {
         backgroundColor: `${theme.color.primary.lightest} !important`,
+        borderLeft: '3px solid #1d91c0',
     },
     lowlight: {
         backgroundColor: `${theme.color.grey.light} !important`,
