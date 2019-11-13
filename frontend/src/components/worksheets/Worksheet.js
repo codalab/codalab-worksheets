@@ -514,9 +514,7 @@ class Worksheet extends React.Component {
             Mousetrap.bind(
                 ['shift+r'],
                 function(e) {
-                    var focusIndex = this.state.focusIndex;
-                    var subFocusIndex = this.state.subFocusIndex;
-                    this.reloadWorksheet(focusIndex, subFocusIndex);
+                    this.reloadWorksheet(undefined, undefined);
                     toast.success('🦄 Worksheet refreshed!', {
                         position: "top-right",
                         autoClose: 1500,
