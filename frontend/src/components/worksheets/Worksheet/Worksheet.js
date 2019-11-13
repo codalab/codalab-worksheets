@@ -338,9 +338,9 @@ class Worksheet extends React.Component {
 // BULK OPERATION RELATED CODE ABOVE======================================
 
     setFocus = (index, subIndex, shouldScroll = true) => {
-        if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex){
-            return;
-        }
+        // if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex){
+        //     return;
+        // }
         var info = this.state.ws.info;
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
