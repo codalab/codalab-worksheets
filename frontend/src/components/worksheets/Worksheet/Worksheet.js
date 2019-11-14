@@ -633,7 +633,6 @@ class Worksheet extends React.Component {
                 );
             }
         }
-        // Below are allowed shortcut even when a dialog is opened===================
         Mousetrap.bind(['?'], function(e) {
             $('#glossaryModal').modal('show');
         });
@@ -645,50 +644,55 @@ class Worksheet extends React.Component {
             ContextMenuMixin.closeContextMenu();
         });
 
-        // The following three are bulk bundle operation shortcuts
-        Mousetrap.bind(['backspace', 'del'],
-            () => {
-                if (this.state.openDetach || this.state.openKill){
-                    return;
-                }
-                this.togglePopupNoEvent('rm');
-            },
-        );
-        Mousetrap.bind(['d'],
-            () => {
-                if (this.state.openDelete || this.state.openKill){
-                    return;
-                }
-                this.togglePopupNoEvent('detach');
-            },
-        );
-        Mousetrap.bind(['v'],
-            () => {
-                if (this.state.openDetach || this.state.openDelete){
-                    return;
-                }
-                this.togglePopupNoEvent('kill');
-            },
-        );
+        if (this.state.showBundleOperationButtons){
+            // Below are allowed shortcut even when a dialog is opened===================
+            // The following three are bulk bundle operation shortcuts
+            Mousetrap.bind(['backspace', 'del'],
+                () => {
+                    if (this.state.openDetach || this.state.openKill){
+                        return;
+                    }
+                    this.togglePopupNoEvent('rm');
+                },
+            );
+            Mousetrap.bind(['d'],
+                () => {
+                    if (this.state.openDelete || this.state.openKill){
+                        return;
+                    }
+                    this.togglePopupNoEvent('detach');
+                },
+            );
+            Mousetrap.bind(['v'],
+                () => {
+                    if (this.state.openDetach || this.state.openDelete){
+                        return;
+                    }
+                    this.togglePopupNoEvent('kill');
+                },
+            );
         
-        // Confirm operation
-        Mousetrap.bind(['enter'], function(e) {
-            if (this.state.openDelete){
-                this.executeBundleCommandNoEvent('rm');
-            }else if (this.state.openKill){
-                this.executeBundleCommandNoEvent('kill');
-            }else if (this.state.openDetach){
-                this.executeBundleCommandNoEvent('detach');
-            }
-        }.bind(this));
+            // Confirm bulk bundle operation
+            if (this.state.openDelete||this.state.openKill||this.state.openDetach){
+                Mousetrap.bind(['enter'], function(e) {
+                    if (this.state.openDelete){
+                        this.executeBundleCommandNoEvent('rm');
+                    }else if (this.state.openKill){
+                        this.executeBundleCommandNoEvent('kill');
+                    }else if (this.state.openDetach){
+                        this.executeBundleCommandNoEvent('detach');
+                    }
+                }.bind(this));
 
-        // Select/Deselect to force delete during deletion dialog
-        Mousetrap.bind(['f'], function() {
-            //force deletion through f
-            if (this.state.openDelete){
-                this.setState({forceDelete: !this.state.forceDelete});
+                // Select/Deselect to force delete during deletion dialog
+                Mousetrap.bind(['f'], function() {
+                    //force deletion through f
+                    if (this.state.openDelete){
+                        this.setState({forceDelete: !this.state.forceDelete});
+                    }
+                }.bind(this));
             }
-        }.bind(this));
+        }
         //====================Bulk bundle operations===================
     }
 
