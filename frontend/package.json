@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "flow-bin": "^0.91.0",
-    "prettier": "^1.15.3",
+    "prettier": "^1.19.1",
     "react-scripts": "^3.2.0"
   },
   "browserslist": [
@@ -60,7 +60,8 @@
     "flow": "flow",
     "format": "prettier --config ./.prettierrc --write 'src/**/*.js'",
     "eject": "react-scripts eject",
-    "lint": "eslint --fix src"
+    "lint": "eslint --fix src",
+    "check-ci": "eslint src && prettier --config ./.prettierrc --check 'src/**/*.js'"
   },
   "husky": {
     "hooks": {
