@@ -148,7 +148,8 @@ class Worksheet extends React.Component {
             openDetach: false,
             openKill: false,
             forceDelete: false,
-            showGlossaryModal: false
+            showGlossaryModal: false,
+            errorMessage: ""
         };
     }
 
@@ -418,20 +419,18 @@ class Worksheet extends React.Component {
     componentWillMount() {
         this.state.ws.fetch({
             success: function(data) {
-                $('#worksheet-message').hide();
                 $('#worksheet_content').show();
                 this.setState({
                     updating: false,
                     version: this.state.version + 1,
                     numOfBundles: this.getNumOfBundles(),
+                    errorMessage: ""
                 });
                 // Fix out of bounds.
             }.bind(this),
             error: function(xhr, status, err) {
-                $('#worksheet-message')
-                    .html(xhr.responseText)
-                    .addClass('alert-danger alert');
                 this.setState({
+                    errorMessage: xhr.responseText,
                     isValid: false,
                 });
             }.bind(this),
@@ -764,9 +763,7 @@ class Worksheet extends React.Component {
                 }
             }.bind(this),
             error: function(xhr, status, err) {
-                $('#worksheet-message')
-                    .html(xhr.responseText)
-                    .addClass('alert-danger alert');
+                this.setState({errorMessage: xhr.responseText});
                 $('#worksheet_container').hide();
             },
         });
@@ -934,7 +931,8 @@ class Worksheet extends React.Component {
                         });
                         return false;
                     }
-                    $('#update_progress, #worksheet-message').hide();
+                    this.setState({errorMessage: ""});
+                    $('#update_progress').hide();
                     $('#worksheet_content').show();
                     var items = this.state.ws.info.items;
                     var numOfBundles = this.getNumOfBundles();
@@ -1001,10 +999,10 @@ class Worksheet extends React.Component {
                     this.checkRunBundle(this.state.ws.info);
                 }.bind(this),
                 error: function(xhr, status, err) {
-                    this.setState({ updating: false });
-                    $('#worksheet-message')
-                        .html(xhr.responseText)
-                        .addClass('alert-danger alert');
+                    this.setState({
+                        updating: false,
+                        errorMessage: xhr.responseText
+                    });
                     $('#update_progress').hide();
                     $('#worksheet_container').hide();
                 }.bind(this),
@@ -1034,8 +1032,7 @@ class Worksheet extends React.Component {
     };
 
     saveAndUpdateWorksheet(fromRaw, rawIndex) {
-        $('#worksheet-message').hide();
-        this.setState({ updating: true });
+        this.setState({ updating: true, errorMessage: "" });
         this.state.ws.saveWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
@@ -1045,10 +1042,7 @@ class Worksheet extends React.Component {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
-                $('#worksheet-message')
-                    .html(xhr.responseText)
-                    .addClass('alert-danger alert')
-                    .show();
+                this.setState({errorMessage: xhr.responseText});
                 if (fromRaw) {
                     this.toggleEditMode(true);
                 }
@@ -1060,8 +1054,7 @@ class Worksheet extends React.Component {
         if (!window.confirm("Are you sure you want to delete this worksheet? (Note that this does not delete the bundles, but just detaches them from the worksheet.)")) {
             return;
         }
-        $('#worksheet-message').hide();
-        this.setState({ updating: true });
+        this.setState({ updating: true, errorMessage: "" });
         this.state.ws.deleteWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
@@ -1071,10 +1064,7 @@ class Worksheet extends React.Component {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
-                $('#worksheet-message')
-                    .html(xhr.responseText)
-                    .addClass('alert-danger alert')
-                    .show();
+                this.setState({errorMessage: xhr.responseText});
             }.bind(this),
         });
     }
@@ -1269,6 +1259,12 @@ class Worksheet extends React.Component {
                                         {worksheet_display}
                                         {/* Show error dialog if bulk bundle execution failed*/}
                                         {this.state.BulkBundleDialog}
+                                        <ExtraWorksheetHTML
+                                            showGlossaryModal={this.state.showGlossaryModal}
+                                            toggleGlossaryModal={this.toggleGlossaryModal}
+                                            errorMessage={this.state.errorMessage}
+                                            clearErrorMessage={() => this.setState({errorMessage: ""})}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -1276,10 +1272,6 @@ class Worksheet extends React.Component {
                     </div>
                 </div>
                 {worksheet_dialogs}
-                <ExtraWorksheetHTML
-                    showGlossaryModal={this.state.showGlossaryModal}
-                    toggleGlossaryModal={this.toggleGlossaryModal}
-                />
             </React.Fragment>
         );
     }
