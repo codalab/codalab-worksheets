@@ -62,6 +62,7 @@ class BundleManager(object):
         logger.info('Bundle manager running!')
         while not self._is_exiting():
             try:
+                self._run_stage_bundles_in_background(sleep_time)
                 self._run_iteration()
             except Exception:
                 traceback.print_exc()
@@ -80,10 +81,31 @@ class BundleManager(object):
             return self._exiting
 
     def _run_iteration(self):
-        self._stage_bundles()
         self._make_bundles()
         self._schedule_run_bundles()
         self._fail_unresponsive_bundles()
+
+    def _run_stage_bundles_in_background(self, sleep_time):
+        """
+        This function will run stage_bundles in background, so that it won't be blocked by _schedule_run_bundles().
+        All the newly submitted bundles will get into staged state once it's submitted
+        :param sleep_time: number of seconds to sleep
+        :return:
+        """
+
+        def run():
+            while True:
+                self._stage_bundles()
+                time.sleep(sleep_time)
+
+        running_threads = [thread.getName() for thread in threading.enumerate()]
+        # Check if stage_bundles_thread is running in background. If not, start it.
+        if 'stage_bundles_thread' not in running_threads:
+            stage_bundles_thread = threading.Thread(
+                name='stage_bundles_thread', target=run, args=()
+            )
+            stage_bundles_thread.daemon = True
+            stage_bundles_thread.start()
 
     def _stage_bundles(self):
         """
