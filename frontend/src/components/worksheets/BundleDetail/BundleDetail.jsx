@@ -187,7 +187,7 @@ class BundleDetail extends React.Component<
         if (!bundleInfo) {
             return null;
         }
-        console.log(bundleInfo);
+
         return (
             <ConfigurationPanel
                 buttons={ <BundleActions bundleInfo={ bundleInfo } rerunItem={ rerunItem } onComplete={ bundleMetadataChanged } /> }
