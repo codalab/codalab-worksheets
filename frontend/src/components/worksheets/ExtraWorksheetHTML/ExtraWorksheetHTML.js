@@ -1,5 +1,5 @@
 import * as React from 'react';
-import "./ExtraWorksheetHTML.scss";
+import './ExtraWorksheetHTML.scss';
 
 let ExtraWorksheetHTML = () => (
     <React.Fragment>
@@ -45,7 +45,9 @@ let ExtraWorksheetHTML = () => (
                                     <td>
                                         <kbd>enter</kbd>
                                     </td>
-                                    <td>Open current bundle or worksheet (shift+enter: new window)</td>
+                                    <td>
+                                        Open current bundle or worksheet (shift+enter: new window)
+                                    </td>
                                 </tr>
                                 <tr>
                                     <td>
@@ -75,7 +77,9 @@ let ExtraWorksheetHTML = () => (
                                     <td>
                                         <kbd>c</kbd>
                                     </td>
-                                    <td>Focus on the web terminal regardless of show/hide status</td>
+                                    <td>
+                                        Focus on the web terminal regardless of show/hide status
+                                    </td>
                                 </tr>
                                 <tr>
                                     <td>

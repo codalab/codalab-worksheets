@@ -10,7 +10,7 @@ import FolderIcon from '@material-ui/icons/Folder';
 import FileIcon from '@material-ui/icons/InsertDriveFile';
 import LinkIcon from '@material-ui/icons/Link';
 import { renderSize, shorten_uuid } from '../../util/worksheet_utils';
-import "./FileBrowser.scss";
+import './FileBrowser.scss';
 
 export class FileBrowser extends React.Component<
     {
@@ -412,9 +412,7 @@ class FileBrowserItemLite extends React.Component<{
                     <TableCell>
                         <div style={rowCenter}>
                             <FolderIcon style={iconStyle} />
-                            <a target='_blank'>
-                                {this.props.index}
-                            </a>
+                            <a target='_blank'>{this.props.index}</a>
                         </div>
                     </TableCell>
                     <TableCell align='right'>{size}</TableCell>
