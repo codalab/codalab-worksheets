@@ -7,7 +7,6 @@ import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from '../ExtraWorksheetHTML/ExtraWorksheetHTML';
-import 'bootstrap';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import { NAVBAR_HEIGHT } from '../../../constants';
@@ -149,6 +148,7 @@ class Worksheet extends React.Component {
             openDetach: false,
             openKill: false,
             forceDelete: false,
+            showGlossaryModal: false
         };
     }
 
@@ -490,6 +490,9 @@ class Worksheet extends React.Component {
         $('#command_line').data('resizing', null);	
         $('#ws_search').removeAttr('style');	
     };
+    toggleGlossaryModal = () => {
+        this.setState({showGlossaryModal: !this.state.showGlossaryModal});
+    }
     setupEventHandlers() {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
@@ -633,14 +636,13 @@ class Worksheet extends React.Component {
             );
         }
         // Below are allowed shortcut even when a dialog is opened===================
-        Mousetrap.bind(['?'], function(e) {
-            $('#glossaryModal').modal('show');
+        Mousetrap.bind(['?'], (e) => {
+            this.setState({
+                showGlossaryModal: true
+            });
         });
 
-        Mousetrap.bind(['esc'], function(e) {
-            if ($('#glossaryModal').hasClass('in')) {
-                $('#glossaryModal').modal('hide');
-            }
+        Mousetrap.bind(['esc'], (e) => {
             ContextMenuMixin.closeContextMenu();
         });
 
@@ -1255,6 +1257,7 @@ class Worksheet extends React.Component {
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
                     togglePopup={this.togglePopup}
+                    toggleGlossaryModal={this.toggleGlossaryModal}
                     />
                     {action_bar_display}
                 <div id='worksheet_container'>
@@ -1273,7 +1276,10 @@ class Worksheet extends React.Component {
                     </div>
                 </div>
                 {worksheet_dialogs}
-                <ExtraWorksheetHTML />
+                <ExtraWorksheetHTML
+                    showGlossaryModal={this.state.showGlossaryModal}
+                    toggleGlossaryModal={this.toggleGlossaryModal}
+                />
             </React.Fragment>
         );
     }
