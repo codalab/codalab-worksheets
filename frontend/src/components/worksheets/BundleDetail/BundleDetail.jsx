@@ -57,6 +57,11 @@ class BundleDetail extends React.Component<
         this.fetchBundleContents();
     }
 
+    componentDidUpdate() {
+        this.fetchBundleMetaData();
+        this.fetchBundleContents();
+    }
+
     /**
      * Return a Promise to fetch the summary of the given file.
      * @param uuid  uuid of bundle
@@ -182,7 +187,7 @@ class BundleDetail extends React.Component<
         if (!bundleInfo) {
             return null;
         }
-
+        console.log(bundleInfo);
         return (
             <ConfigurationPanel
                 buttons={ <BundleActions bundleInfo={ bundleInfo } rerunItem={ rerunItem } onComplete={ bundleMetadataChanged } /> }
