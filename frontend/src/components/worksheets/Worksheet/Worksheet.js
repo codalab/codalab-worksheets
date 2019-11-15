@@ -40,7 +40,7 @@ Information about the current worksheet and its items.
 
 // TODO: dummy objects
 let ace = window.ace;
-toast.configure()
+toast.configure();
 
 var WorksheetContent = (function() {
     function WorksheetContent(uuid) {
@@ -561,13 +561,13 @@ class Worksheet extends React.Component {
                 function(e) {
                     this.reloadWorksheet(undefined, undefined);
                     toast.success('🦄 Worksheet refreshed!', {
-                        position: "top-right",
+                        position: 'top-right',
                         autoClose: 1500,
                         hideProgressBar: false,
                         closeOnClick: true,
                         pauseOnHover: false,
                         draggable: true,
-                        });
+                    });
                 }.bind(this),
             );
 
@@ -646,7 +646,7 @@ class Worksheet extends React.Component {
                 }.bind(this),
                 'keydown',
             );
-            if (!this.state.showBundleOperationButtons){
+            if (!this.state.showBundleOperationButtons) {
                 // insert text after current cell
                 Mousetrap.bind(
                     ['t'],
@@ -655,7 +655,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        this.setState({showNewText: true});
+                        this.setState({ showNewText: true });
                     }.bind(this),
                     'keyup',
                 );
@@ -668,7 +668,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        this.setState({showNewUpload: true});
+                        this.setState({ showNewUpload: true });
                     }.bind(this),
                     'keyup',
                 );
@@ -680,7 +680,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        this.setState({showNewRun: true});
+                        this.setState({ showNewRun: true });
                     }.bind(this),
                     'keyup',
                 );
@@ -697,53 +697,53 @@ class Worksheet extends React.Component {
             ContextMenuMixin.closeContextMenu();
         });
 
-        if (this.state.showBundleOperationButtons){
+        if (this.state.showBundleOperationButtons) {
             // Below are allowed shortcut even when a dialog is opened===================
             // The following three are bulk bundle operation shortcuts
-            Mousetrap.bind(['backspace', 'del'],
-                () => {
-                    if (this.state.openDetach || this.state.openKill){
-                        return;
-                    }
-                    this.togglePopupNoEvent('rm');
-                },
-            );
-            Mousetrap.bind(['d'],
-                () => {
-                    if (this.state.openDelete || this.state.openKill){
-                        return;
-                    }
-                    this.togglePopupNoEvent('detach');
-                },
-            );
-            Mousetrap.bind(['v'],
-                () => {
-                    if (this.state.openDetach || this.state.openDelete){
-                        return;
-                    }
-                    this.togglePopupNoEvent('kill');
-                },
-            );
-        
+            Mousetrap.bind(['backspace', 'del'], () => {
+                if (this.state.openDetach || this.state.openKill) {
+                    return;
+                }
+                this.togglePopupNoEvent('rm');
+            });
+            Mousetrap.bind(['d'], () => {
+                if (this.state.openDelete || this.state.openKill) {
+                    return;
+                }
+                this.togglePopupNoEvent('detach');
+            });
+            Mousetrap.bind(['v'], () => {
+                if (this.state.openDetach || this.state.openDelete) {
+                    return;
+                }
+                this.togglePopupNoEvent('kill');
+            });
+
             // Confirm bulk bundle operation
-            if (this.state.openDelete||this.state.openKill||this.state.openDetach){
-                Mousetrap.bind(['enter'], function(e) {
-                    if (this.state.openDelete){
-                        this.executeBundleCommandNoEvent('rm');
-                    }else if (this.state.openKill){
-                        this.executeBundleCommandNoEvent('kill');
-                    }else if (this.state.openDetach){
-                        this.executeBundleCommandNoEvent('detach');
-                    }
-                }.bind(this));
+            if (this.state.openDelete || this.state.openKill || this.state.openDetach) {
+                Mousetrap.bind(
+                    ['enter'],
+                    function(e) {
+                        if (this.state.openDelete) {
+                            this.executeBundleCommandNoEvent('rm');
+                        } else if (this.state.openKill) {
+                            this.executeBundleCommandNoEvent('kill');
+                        } else if (this.state.openDetach) {
+                            this.executeBundleCommandNoEvent('detach');
+                        }
+                    }.bind(this),
+                );
 
                 // Select/Deselect to force delete during deletion dialog
-                Mousetrap.bind(['f'], function() {
-                    //force deletion through f
-                    if (this.state.openDelete){
-                        this.setState({forceDelete: !this.state.forceDelete});
-                    }
-                }.bind(this));
+                Mousetrap.bind(
+                    ['f'],
+                    function() {
+                        //force deletion through f
+                        if (this.state.openDelete) {
+                            this.setState({ forceDelete: !this.state.forceDelete });
+                        }
+                    }.bind(this),
+                );
             }
         }
         //====================Bulk bundle operations===================
@@ -1324,14 +1324,14 @@ class Worksheet extends React.Component {
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
                     togglePopup={this.togglePopup}
-                    />
-                    {action_bar_display}
-                    <ToastContainer
+                />
+                {action_bar_display}
+                <ToastContainer
                     newestOnTop={false}
                     transition={Zoom}
                     rtl={false}
                     pauseOnVisibilityChange
-                    />
+                />
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
                         <div

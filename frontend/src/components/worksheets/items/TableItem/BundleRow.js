@@ -290,8 +290,8 @@ class BundleRow extends Component {
                     </TableRow>
                 )}
                 {/** ---------------------------------------------------------------------------------------------------
-                  *  Rerun
-                  */}
+                 *  Rerun
+                 */}
                 {showNewRun === 1 && (
                     <TableRow>
                         <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
@@ -301,7 +301,7 @@ class BundleRow extends Component {
                                     onSubmit={() => this.setState({ showNewRun: 0 })}
                                     after_sort_key={bundleInfo.sort_key}
                                     reloadWorksheet={reloadWorksheet}
-                                    defaultRun={ runProp }
+                                    defaultRun={runProp}
                                 />
                             </div>
                         </TableCell>
