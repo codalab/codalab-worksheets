@@ -70,7 +70,8 @@
   "lint-staged": {
     "src/**/*.js": [
       "eslint --max-warnings=0",
-      "prettier --config ./.prettierrc --write"
+      "prettier --config ./.prettierrc --write",
+      "git add"
     ]
   }
 }
