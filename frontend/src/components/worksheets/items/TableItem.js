@@ -89,9 +89,18 @@ class TableItem extends React.Component {
             if (rowItems[0][x] && rowItems[0][x]['path']) columnWithHyperlinks.push(x);
         });
         var bodyRowsHtml = rowItems.map(function(rowItem, rowIndex) {
-            var rowRef = 'row' + rowIndex;
-            var rowFocused = self.props.focused && rowIndex == self.props.subFocusIndex;
-            var url = '/bundles/' + bundleInfos[rowIndex].uuid;
+            let bundleInfo = bundleInfos[rowIndex];
+            let worksheets = bundleInfo.host_worksheets;
+            let rowRef = 'row' + rowIndex;
+            let rowFocused = self.props.focused && rowIndex == self.props.subFocusIndex;
+            let url = '/bundles/' + bundleInfo.uuid;
+            let worksheet_name, worksheet_url;
+            if (worksheets !== undefined && worksheets.length) {
+                // Just use the first worksheet for now
+                worksheet_name = worksheets[0].name;
+                worksheet_url = '/worksheets/' + worksheets[0].uuid;
+            }
+
             return (
                 <TableRow
                     key={rowIndex}
@@ -101,14 +110,16 @@ class TableItem extends React.Component {
                     focused={rowFocused}
                     focusIndex={self.props.focusIndex}
                     url={url}
-                    bundleInfo={bundleInfos[rowIndex]}
-                    uuid={bundleInfos[rowIndex].uuid}
+                    bundleInfo={bundleInfo}
+                    uuid={bundleInfo.uuid}
                     headerItems={headerItems}
                     columnClasses={columnClasses}
                     canEdit={canEdit}
                     updateRowIndex={self.updateRowIndex}
                     columnWithHyperlinks={columnWithHyperlinks}
                     handleContextMenu={self.props.handleContextMenu}
+                    worksheet_name={worksheet_name}
+                    worksheet_url={worksheet_url}
                 />
             );
         });
@@ -141,14 +152,21 @@ class TableRow extends React.Component {
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
+        var worksheet_name = this.props.worksheet_name;
+        var worksheet_url = this.props.worksheet_url;
         var rowCells = this.props.headerItems.map(function(headerKey, col) {
             var rowContent = rowItems[headerKey];
 
             // See if there's a link
             var url;
-            if (col == 0) {
+            if (headerKey === 'host_worksheets' || headerKey === 'host_worksheet') {
+                url = worksheet_url;
+                rowContent = worksheet_name;
+            }
+            else if (col === 0) {
                 url = baseUrl;
-            } else if (columnWithHyperlinks.indexOf(headerKey) != -1) {
+            }
+            else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
                 url = '/rest/bundles/' + uuid + '/contents/blob' + rowContent['path'];
                 if ('text' in rowContent) {
                     rowContent = rowContent['text'];
