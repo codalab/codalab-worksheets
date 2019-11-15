@@ -258,11 +258,28 @@ class BundleModel(object):
             result[row.parent_uuid].append(row.child_uuid)
         return result
 
+    def get_single_host_worksheet_uuid(self, bundle_uuids):
+        """
+        Get a single host_worksheet uuid per bundle uuid.
+        bundle_uuids: list of bundle uuid's (e.g. ['0x12345', '0x23456'])
+        Return dict of bundle uuid's to a single host worksheet uuid (e.g. {'0x12345': host_worksheet_uuid, ...})
+        """
+        result = dict((uuid, None) for uuid in bundle_uuids)
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_worksheet_item.c.worksheet_uuid, cl_worksheet_item.c.bundle_uuid])
+                .where(cl_worksheet_item.c.bundle_uuid.in_(bundle_uuids))
+                .group_by(cl_worksheet_item.c.bundle_uuid)
+            ).fetchall()
+        for row in rows:
+            result[row.bundle_uuid] = row.worksheet_uuid
+        return result
+
     def get_host_worksheet_uuids(self, bundle_uuids):
         """
         Return list of worksheet uuids that contain the given bundle_uuids.
-        bundle_uuids = ['0x12435']
-        Return {'0x12435': [host_worksheet_uuid, ...], ...}
+        bundle_uuids: list of bundle uuid's (e.g. ['0x12345', '0x23456']
+        Return dict of bundle uuid's to a list of host worksheet uuid's {'0x12345': [host_worksheet_uuid, ...], ...}
         """
         with self.engine.begin() as connection:
             rows = connection.execute(

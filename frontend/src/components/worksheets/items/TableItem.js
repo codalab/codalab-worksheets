@@ -90,15 +90,14 @@ class TableItem extends React.Component {
         });
         var bodyRowsHtml = rowItems.map(function(rowItem, rowIndex) {
             let bundleInfo = bundleInfos[rowIndex];
-            let worksheets = bundleInfo.host_worksheets;
             let rowRef = 'row' + rowIndex;
             let rowFocused = self.props.focused && rowIndex == self.props.subFocusIndex;
             let url = '/bundles/' + bundleInfo.uuid;
-            let worksheet_name, worksheet_url;
-            if (worksheets !== undefined && worksheets.length) {
-                // Just use the first worksheet for now
-                worksheet_name = worksheets[0].name;
-                worksheet_url = '/worksheets/' + worksheets[0].uuid;
+            let worksheet = bundleInfo.host_worksheet;
+            let worksheetName, worksheetUrl;
+            if (worksheet !== undefined) {
+                worksheetName = worksheet.name;
+                worksheetUrl = '/worksheets/' + worksheet.uuid;
             }
 
             return (
@@ -118,8 +117,8 @@ class TableItem extends React.Component {
                     updateRowIndex={self.updateRowIndex}
                     columnWithHyperlinks={columnWithHyperlinks}
                     handleContextMenu={self.props.handleContextMenu}
-                    worksheet_name={worksheet_name}
-                    worksheet_url={worksheet_url}
+                    worksheetName={worksheetName}
+                    worksheetUrl={worksheetUrl}
                 />
             );
         });
@@ -152,16 +151,16 @@ class TableRow extends React.Component {
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
-        var worksheet_name = this.props.worksheet_name;
-        var worksheet_url = this.props.worksheet_url;
+        var worksheetName = this.props.worksheetName;
+        var worksheetUrl = this.props.worksheetUrl;
         var rowCells = this.props.headerItems.map(function(headerKey, col) {
             var rowContent = rowItems[headerKey];
 
             // See if there's a link
             var url;
-            if (headerKey === 'host_worksheets' || headerKey === 'host_worksheet') {
-                url = worksheet_url;
-                rowContent = worksheet_name;
+            if (headerKey === 'host_worksheet' && worksheetUrl !== undefined) {
+                url = worksheetUrl;
+                rowContent = worksheetName;
             }
             else if (col === 0) {
                 url = baseUrl;

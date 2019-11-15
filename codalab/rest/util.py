@@ -46,6 +46,7 @@ def resolve_owner_in_keywords(keywords):
 def get_bundle_infos(
     uuids,
     get_children=False,
+    get_single_host_worksheet=False,
     get_host_worksheets=False,
     get_permissions=False,
     ignore_not_found=True,
@@ -55,6 +56,7 @@ def get_bundle_infos(
 
     :param Collection[str] uuids: uuids of bundles to fetch
     :param bool get_children: include children
+    :param bool get_single_host_worksheet: include one host_worksheet per bundle uuid
     :param bool get_host_worksheets: include host worksheets
     :param bool get_permissions: include group permissions
     :param bool ignore_not_found: abort with 404 NOT FOUND when False and bundle doesn't exist
@@ -114,34 +116,31 @@ def get_bundle_infos(
                 if child_perms[child_uuid] >= GROUP_OBJECT_PERMISSION_READ
             ]
 
+    if get_single_host_worksheet:
+        # bundle uuids -> worksheet_uuid
+        host_worksheets = local.model.get_single_host_worksheet_uuid(readable)
+        worksheet_names = _get_readable_worksheet_names(host_worksheets.values())
+
+        for bundle_uuid, host_uuid in host_worksheets.items():
+            if host_uuid in worksheet_names:
+                bundle_infos[bundle_uuid]['host_worksheet'] = {
+                    'uuid': host_uuid,
+                    'name': worksheet_names[host_uuid],
+                }
+
     if get_host_worksheets:
         # bundle_uuids -> list of worksheet_uuids
         host_worksheets = local.model.get_host_worksheet_uuids(readable)
         # Gather all worksheet uuids
         worksheet_uuids = [uuid for l in host_worksheets.values() for uuid in l]
-        wpermissions = local.model.get_user_worksheet_permissions(
-            request.user.user_id,
-            worksheet_uuids,
-            local.model.get_worksheet_owner_ids(worksheet_uuids),
-        )
-        readable_worksheet_uuids = set(
-            uuid
-            for uuid, permission in wpermissions.items()
-            if permission >= GROUP_OBJECT_PERMISSION_READ
-        )
-        # Lookup names
-        worksheets = dict(
-            (worksheet.uuid, worksheet)
-            for worksheet in local.model.batch_get_worksheets(
-                fetch_items=False, uuid=readable_worksheet_uuids
-            )
-        )
+        worksheet_names = _get_readable_worksheet_names(worksheet_uuids)
+
         # Fill the info
         for bundle_uuid, host_uuids in host_worksheets.items():
             bundle_infos[bundle_uuid]['host_worksheets'] = [
-                {'uuid': host_uuid, 'name': worksheets[host_uuid].name}
+                {'uuid': host_uuid, 'name': worksheet_names[host_uuid]}
                 for host_uuid in host_uuids
-                if host_uuid in readable_worksheet_uuids
+                if host_uuid in worksheet_names
             ]
 
     if get_permissions:
@@ -163,6 +162,37 @@ def get_bundle_infos(
 def _get_user_bundle_permissions(uuids):
     return local.model.get_user_bundle_permissions(
         request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids)
+    )
+
+
+def _get_readable_worksheet_names(worksheet_uuids):
+    """
+    Returns a dictionary of readable worksheet uuid's as keys and corresponding names as values
+    :param worksheet_uuids: List of worksheet uuid's to filter by read permission and get names for
+    :return: A dict of worksheet uuid's to its name
+    """
+    readable_worksheet_uuids = _filter_readable_worksheet_uuids(worksheet_uuids)
+    return dict(
+        (worksheet.uuid, worksheet.name)
+        for worksheet in local.model.batch_get_worksheets(
+            fetch_items=False, uuid=readable_worksheet_uuids
+        )
+    )
+
+
+def _filter_readable_worksheet_uuids(worksheet_uuids):
+    """
+    Returns a set of worksheet uuid's the user has read permission for
+    :param worksheet_uuids: List of worksheet uuid's to filter
+    :return: A set of readable worksheet uuid's
+    """
+    worksheet_permissions = local.model.get_user_worksheet_permissions(
+        request.user.user_id, worksheet_uuids, local.model.get_worksheet_owner_ids(worksheet_uuids),
+    )
+    return set(
+        uuid
+        for uuid, permission in worksheet_permissions.items()
+        if permission >= GROUP_OBJECT_PERMISSION_READ
     )
 
 
