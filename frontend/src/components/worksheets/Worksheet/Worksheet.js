@@ -31,6 +31,8 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import CloseIcon from '@material-ui/icons/Close';
 import Grid from '@material-ui/core/Grid';
 import WorksheetDialogs from '../WorksheetDialogs';
+import { ToastContainer, toast, Zoom } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 /*
 Information about the current worksheet and its items.
@@ -38,6 +40,7 @@ Information about the current worksheet and its items.
 
 // TODO: dummy objects
 let ace = window.ace;
+toast.configure()
 
 var WorksheetContent = (function() {
     function WorksheetContent(uuid) {
@@ -512,9 +515,15 @@ class Worksheet extends React.Component {
             Mousetrap.bind(
                 ['shift+r'],
                 function(e) {
-                    // refresh the worksheet and update the
-                    // focus to the first item
-                    this.reloadWorksheet(undefined, 'end');
+                    this.reloadWorksheet(undefined, undefined);
+                    toast.success('🦄 Worksheet refreshed!', {
+                        position: "top-right",
+                        autoClose: 1500,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: false,
+                        draggable: true,
+                        });
                 }.bind(this),
             );
 
@@ -1262,6 +1271,12 @@ class Worksheet extends React.Component {
                     togglePopup={this.togglePopup}
                     />
                     {action_bar_display}
+                    <ToastContainer
+                    newestOnTop={false}
+                    transition={Zoom}
+                    rtl={false}
+                    pauseOnVisibilityChange
+                    />
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
                         <div className={classes.worksheetDesktop} onClick={this.handleClickForDeselect}>
