@@ -9,7 +9,6 @@ jobs:
       language: javascript
       install: cd frontend && npm install
       script:
-        - cd frontend
         - npm run check-ci
     - stage: functionality
       language: python
