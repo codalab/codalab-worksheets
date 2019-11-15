@@ -149,7 +149,7 @@ const styles = (theme) => ({
         width: '100%',
         display: 'flex',
         flexDirection: 'row',
-        margin: '32px 0px',
+        margin: '0px',
         minHeight: 100,
         border: `2px solid ${theme.color.primary.base}`,
     },

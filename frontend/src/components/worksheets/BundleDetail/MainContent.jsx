@@ -39,12 +39,6 @@ class MainContent extends React.Component<
 	render() {
 		const {
             classes, bundleInfo, stdout, stderr, fileContents } = this.props;
-        const isRunBundle = bundleInfo.bundle_type === 'run';
-
-        //Get the correct run time display
-        const bundleRunTime = bundleInfo.metadata.time
-            ? renderDuration(bundleInfo.metadata.time)
-            : "-- --";
 
 		return (
             <div className={ classes.outter }>
@@ -148,6 +142,7 @@ const styles = (theme) => ({
         flexWrap: 'wrap', 
         flexShrink: 1,
         overflow:'auto',
+        whiteSpace: 'pre-line',
     },
     greyBackground: {
         backgroundColor: theme.color.grey.lightest,

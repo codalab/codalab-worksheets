@@ -10,6 +10,7 @@ import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
+import NewRun from '../../NewRun';
 
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleDetail from '../../BundleDetail';
@@ -285,6 +286,24 @@ class BundleRow extends Component {
                                 }}
                                 rerunItem={this.rerunItem}
                             />
+                        </TableCell>
+                    </TableRow>
+                )}
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  Rerun
+                  */}
+                {showNewRun === 1 && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                            <div className={classes.insertBox}>
+                                <NewRun
+                                    ws={this.props.ws}
+                                    onSubmit={() => this.setState({ showNewRun: 0 })}
+                                    after_sort_key={bundleInfo.sort_key}
+                                    reloadWorksheet={reloadWorksheet}
+                                    defaultRun={ runProp }
+                                />
+                            </div>
                         </TableCell>
                     </TableRow>
                 )}
