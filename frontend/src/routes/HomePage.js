@@ -106,7 +106,7 @@ class HomePage extends React.Component<{
                     <Grid item xs={12} className={classes.inner} container>
                         {/** Summary. */}
                         <Grid item xs={12} className={classNames(classes.textBox, classes.spacer)}>
-                            <Typography variant='h5' color='textSecondary' align='center'>
+                            <Typography variant='h5' color='textSecondary'>
                                 Run your machine learning experiments in the cloud. Manage them in a
                                 digital lab notebook. Publish them so other researchers can
                                 reproduce your results.
@@ -203,7 +203,7 @@ class HomePage extends React.Component<{
                             className={classNames(classes.textBox, classes.spacer)}
                         >
                             <Grid item xs={12} className={classes.textBox}>
-                                <Typography variant='h5' align='center'>
+                                <Typography variant='h5'>
                                     Getting Started
                                 </Typography>
                             </Grid>
@@ -292,7 +292,7 @@ class HomePage extends React.Component<{
                             container
                         >
                             <Grid item xs={12} className={classes.textBox}>
-                                <Typography variant='h5' align='center' gutterBottom>
+                                <Typography variant='h5' gutterBottom>
                                     Featured Users
                                 </Typography>
                             </Grid>
