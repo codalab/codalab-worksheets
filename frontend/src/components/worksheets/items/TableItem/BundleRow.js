@@ -10,6 +10,7 @@ import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
+import NewRun from '../../NewRun';
 
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleDetail from '../../BundleDetail';
@@ -29,6 +30,7 @@ class BundleRow extends Component {
             showDetail: false,
             openDelete: false,
             runProp: {},
+            hovered: false,
             uniqueIdentifier: Math.random()*10000,
         };
     }
@@ -121,7 +123,7 @@ class BundleRow extends Component {
             if (col === 0) {
                 url = baseUrl;
                 checkBox = <Checkbox
-                                icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
+                                icon={<CheckBoxOutlineBlankIcon color={this.props.focused || this.state.hovered ? 'action' : 'disabled'} fontSize="small" />}
                                 checkedIcon={<CheckBoxIcon fontSize="small" />}
                                 onChange={this.handleCheckboxChange}
                                 checked={checkStatus||false}
@@ -156,6 +158,8 @@ class BundleRow extends Component {
                     classes={{
                         root: classes.rootNoPad,
                     }}
+                    onMouseEnter = {e=>this.setState({hovered: true})}
+                    onMouseLeave = {e=>this.setState({hovered: false})}
                 >   
                     {checkBox}
                     {showDetailButton}
@@ -204,7 +208,6 @@ class BundleRow extends Component {
                   *  Main Content
                   */}
                 <TableRow
-                    hover
                     onClick={this.handleSelectRowClick}
                     onContextMenu={this.props.handleContextMenu.bind(
                         null,
@@ -244,6 +247,24 @@ class BundleRow extends Component {
                                 }}
                                 rerunItem={ this.rerunItem }
                             />
+                        </TableCell>
+                    </TableRow>
+                )}
+                {/** ---------------------------------------------------------------------------------------------------
+                  *  Rerun
+                  */}
+                {showNewRun === 1 && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                            <div className={classes.insertBox}>
+                                <NewRun
+                                    ws={this.props.ws}
+                                    onSubmit={() => this.setState({ showNewRun: 0 })}
+                                    after_sort_key={bundleInfo.sort_key}
+                                    reloadWorksheet={reloadWorksheet}
+                                    defaultRun={ runProp }
+                                />
+                            </div>
                         </TableCell>
                     </TableRow>
                 )}
@@ -322,10 +343,21 @@ const styles = (theme) => ({
     contentRow: {
         height: 26,
         borderBottom: '2px solid #ddd',
+        borderLeft: '3px solid transparent',
         padding: 0,
+        '&:hover': {
+            boxShadow:'inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15)',
+            zIndex: 1,
+        },
+    },
+    checkBox:{
+        '&:hover': {
+            backgroundColor: '#ddd',
+        }
     },
     highlight: {
         backgroundColor: `${theme.color.primary.lightest} !important`,
+        borderLeft: '3px solid #1d91c0',
     },
     lowlight: {
         backgroundColor: `${theme.color.grey.light} !important`,

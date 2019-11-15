@@ -14,7 +14,7 @@ import { SignUp, SignUpSuccess } from './components/SignUp';
 import { ChangeEmail, ChangeEmailSuccess } from './components/ChangeEmail';
 import VerifySuccess from './components/VerifySuccess';
 import VerifyError from './components/VerifyError';
-import Worksheet from './components/worksheets/Worksheet';
+import Worksheet from './components/worksheets/Worksheet/Worksheet';
 import WorksheetNameSearch from './components/worksheets/WorksheetNameSearch';
 import {
     PasswordReset,
