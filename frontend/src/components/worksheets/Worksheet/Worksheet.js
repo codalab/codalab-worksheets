@@ -645,7 +645,6 @@ class Worksheet extends React.Component {
                 );
             }
         }
-        // Below are allowed shortcut even when a dialog is opened===================
         Mousetrap.bind(['?'], (e) => {
             this.setState({
                 showGlossaryModal: true
