@@ -9,7 +9,8 @@ import TableRow from '@material-ui/core/TableRow';
 import FolderIcon from '@material-ui/icons/Folder';
 import FileIcon from '@material-ui/icons/InsertDriveFile';
 import LinkIcon from '@material-ui/icons/Link';
-import { renderSize, shorten_uuid } from '../util/worksheet_utils';
+import { renderSize, shorten_uuid } from '../../util/worksheet_utils';
+import "./FileBrowser.scss";
 
 export class FileBrowser extends React.Component<
     {

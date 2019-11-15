@@ -12,10 +12,6 @@ import InfoIcon from '@material-ui/icons/InfoOutlined';
 import Button from '@material-ui/core/Button';
 
 class WorksheetDialogs extends React.Component {
-    constructor(props) {
-        super(props);
-    }  
-
     render() {
             const {classes} = this.props;
             return <div>

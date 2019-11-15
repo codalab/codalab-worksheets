@@ -4,7 +4,7 @@ import classNames from 'classnames';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
 import {renderDuration} from '../../../util/worksheet_utils';
-import { FileBrowserLite } from '../../FileBrowser';
+import { FileBrowserLite } from '../../FileBrowser/FileBrowser';
 import Button from '@material-ui/core/Button';
 import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
@@ -39,12 +39,6 @@ class MainContent extends React.Component<
 	render() {
 		const {
             classes, bundleInfo, stdout, stderr, fileContents } = this.props;
-        const isRunBundle = bundleInfo.bundle_type === 'run';
-
-        //Get the correct run time display
-        const bundleRunTime = bundleInfo.metadata.time
-            ? renderDuration(bundleInfo.metadata.time)
-            : "-- --";
 
 		return (
             <div className={ classes.outter }>
@@ -148,6 +142,7 @@ const styles = (theme) => ({
         flexWrap: 'wrap', 
         flexShrink: 1,
         overflow:'auto',
+        whiteSpace: 'pre-line',
     },
     greyBackground: {
         backgroundColor: theme.color.grey.lightest,

@@ -2,16 +2,16 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
-import { keepPosInView, renderPermissions, getMinMaxKeys } from '../../util/worksheet_utils';
-import * as Mousetrap from '../../util/ws_mousetrap_fork';
-import WorksheetItemList from './WorksheetItemList';
+import { keepPosInView, renderPermissions, getMinMaxKeys } from '../../../util/worksheet_utils';
+import * as Mousetrap from '../../../util/ws_mousetrap_fork';
+import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
-import ExtraWorksheetHTML from './ExtraWorksheetHTML';
+import ExtraWorksheetHTML from '../ExtraWorksheetHTML/ExtraWorksheetHTML';
 import 'bootstrap';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
-import { NAVBAR_HEIGHT } from '../../constants';
-import WorksheetActionBar from './WorksheetActionBar';
+import { NAVBAR_HEIGHT } from '../../../constants';
+import WorksheetActionBar from '../WorksheetActionBar';
 import Button from '@material-ui/core/Button';
 import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
@@ -19,17 +19,18 @@ import DeleteIcon from '@material-ui/icons/DeleteOutline';
 import UndoIcon from '@material-ui/icons/UndoOutlined';
 import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
-import ErrorMessage from './ErrorMessage';
-import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
-import { buildTerminalCommand } from '../../util/worksheet_utils';
-import { executeCommand } from '../../util/cli_utils';
+import "./Worksheet.scss";
+import ErrorMessage from '../ErrorMessage';
+import { ContextMenuMixin, default as ContextMenu } from '../ContextMenu';
+import { buildTerminalCommand } from '../../../util/worksheet_utils';
+import { executeCommand } from '../../../util/cli_utils';
 import Dialog from '@material-ui/core/Dialog';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import CloseIcon from '@material-ui/icons/Close';
 import Grid from '@material-ui/core/Grid';
-import WorksheetDialogs from './WorksheetDialogs';
+import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -601,46 +602,46 @@ class Worksheet extends React.Component {
                 }.bind(this),
                 'keydown',
             );
+            if (!this.state.showBundleOperationButtons){
+                // insert text after current cell
+                Mousetrap.bind(
+                    ['t'],
+                    function(e) {
+                        // if no active focus, scroll to the bottom position
+                        if (this.state.focusIndex < 0) {
+                            $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                        }
+                        this.setState({showNewText: true});
+                    }.bind(this),
+                    'keyup',
+                );
 
-            // insert text after current cell
-            Mousetrap.bind(
-                ['t'],
-                function(e) {
-                    // if no active focus, scroll to the bottom position
-                    if (this.state.focusIndex < 0) {
-                        $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
-                    }
-                    this.setState({showNewText: true});
-                }.bind(this),
-                'keyup',
-            );
-
-            // upload after current cell
-            Mousetrap.bind(
-                ['u'],
-                function(e) {
-                    // if no active focus, scroll to the bottom position
-                    if (this.state.focusIndex < 0) {
-                        $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
-                    }
-                    this.setState({showNewUpload: true});
-                }.bind(this),
-                'keyup',
-            );
-            // run after current cell
-            Mousetrap.bind(
-                ['r'],
-                function(e) {
-                    // if no active focus, scroll to the bottom position
-                    if (this.state.focusIndex < 0) {
-                        $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
-                    }
-                    this.setState({showNewRun: true});
-                }.bind(this),
-                'keyup',
-            );
+                // upload after current cell
+                Mousetrap.bind(
+                    ['u'],
+                    function(e) {
+                        // if no active focus, scroll to the bottom position
+                        if (this.state.focusIndex < 0) {
+                            $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                        }
+                        this.setState({showNewUpload: true});
+                    }.bind(this),
+                    'keyup',
+                );
+                // run after current cell
+                Mousetrap.bind(
+                    ['r'],
+                    function(e) {
+                        // if no active focus, scroll to the bottom position
+                        if (this.state.focusIndex < 0) {
+                            $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                        }
+                        this.setState({showNewRun: true});
+                    }.bind(this),
+                    'keyup',
+                );
+            }
         }
-        // Below are allowed shortcut even when a dialog is opened===================
         Mousetrap.bind(['?'], function(e) {
             $('#glossaryModal').modal('show');
         });
@@ -652,50 +653,55 @@ class Worksheet extends React.Component {
             ContextMenuMixin.closeContextMenu();
         });
 
-        // The following three are bulk bundle operation shortcuts
-        Mousetrap.bind(['backspace', 'del'],
-            () => {
-                if (this.state.openDetach || this.state.openKill){
-                    return;
-                }
-                this.togglePopupNoEvent('rm');
-            },
-        );
-        Mousetrap.bind(['d'],
-            () => {
-                if (this.state.openDelete || this.state.openKill){
-                    return;
-                }
-                this.togglePopupNoEvent('detach');
-            },
-        );
-        Mousetrap.bind(['v'],
-            () => {
-                if (this.state.openDetach || this.state.openDelete){
-                    return;
-                }
-                this.togglePopupNoEvent('kill');
-            },
-        );
+        if (this.state.showBundleOperationButtons){
+            // Below are allowed shortcut even when a dialog is opened===================
+            // The following three are bulk bundle operation shortcuts
+            Mousetrap.bind(['backspace', 'del'],
+                () => {
+                    if (this.state.openDetach || this.state.openKill){
+                        return;
+                    }
+                    this.togglePopupNoEvent('rm');
+                },
+            );
+            Mousetrap.bind(['d'],
+                () => {
+                    if (this.state.openDelete || this.state.openKill){
+                        return;
+                    }
+                    this.togglePopupNoEvent('detach');
+                },
+            );
+            Mousetrap.bind(['v'],
+                () => {
+                    if (this.state.openDetach || this.state.openDelete){
+                        return;
+                    }
+                    this.togglePopupNoEvent('kill');
+                },
+            );
         
-        // Confirm operation
-        Mousetrap.bind(['enter'], function(e) {
-            if (this.state.openDelete){
-                this.executeBundleCommandNoEvent('rm');
-            }else if (this.state.openKill){
-                this.executeBundleCommandNoEvent('kill');
-            }else if (this.state.openDetach){
-                this.executeBundleCommandNoEvent('detach');
-            }
-        }.bind(this));
+            // Confirm bulk bundle operation
+            if (this.state.openDelete||this.state.openKill||this.state.openDetach){
+                Mousetrap.bind(['enter'], function(e) {
+                    if (this.state.openDelete){
+                        this.executeBundleCommandNoEvent('rm');
+                    }else if (this.state.openKill){
+                        this.executeBundleCommandNoEvent('kill');
+                    }else if (this.state.openDetach){
+                        this.executeBundleCommandNoEvent('detach');
+                    }
+                }.bind(this));
 
-        // Select/Deselect to force delete during deletion dialog
-        Mousetrap.bind(['f'], function() {
-            //force deletion through f
-            if (this.state.openDelete){
-                this.setState({forceDelete: !this.state.forceDelete});
+                // Select/Deselect to force delete during deletion dialog
+                Mousetrap.bind(['f'], function() {
+                    //force deletion through f
+                    if (this.state.openDelete){
+                        this.setState({forceDelete: !this.state.forceDelete});
+                    }
+                }.bind(this));
             }
-        }.bind(this));
+        }
         //====================Bulk bundle operations===================
     }
 

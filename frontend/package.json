@@ -12,7 +12,7 @@
     "@material-ui/icons": "^3.0.2",
     "ace-builds": "^1.4.2",
     "autosuggest-highlight": "^3.1.1",
-    "bootstrap": "^4.3.1",
+    "bootstrap": "^3.3.6",
     "c3": "^0.6.12",
     "classnames": "^2.2.6",
     "husky": "^2.7.0",
@@ -33,20 +33,20 @@
     "react-dom": "^16.8.6",
     "react-responsive-embed": "^2.1.0",
     "react-router-dom": "^4.3.1",
-    "react-scripts": "^3.0.1",
     "react-select": "^2.4.3",
     "react-stickynode": "^2.1.1",
     "react-toastify": "^5.4.1",
     "react-x-editable": "0.0.10-beta",
     "reselect": "^4.0.0",
+    "sass": "^1.23.3",
     "seamless-immutable": "^7.1.4",
-    "select2": "^4.0.6-rc.1",
     "underscore": "^1.9.1",
     "wolfy87-eventemitter": "^5.2.5"
   },
   "devDependencies": {
     "flow-bin": "^0.91.0",
-    "prettier": "^1.15.3"
+    "prettier": "^1.15.3",
+    "react-scripts": "^3.2.0"
   },
   "browserslist": [
     ">0.2%",
