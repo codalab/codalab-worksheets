@@ -50,6 +50,7 @@ def get_bundle_infos(
     get_host_worksheets=False,
     get_permissions=False,
     ignore_not_found=True,
+    model=None,
 ):
     """
     Return a map from bundle uuid to info.
@@ -60,17 +61,20 @@ def get_bundle_infos(
     :param bool get_host_worksheets: include host worksheets
     :param bool get_permissions: include group permissions
     :param bool ignore_not_found: abort with 404 NOT FOUND when False and bundle doesn't exist
+    :param BundleModel model: model used to make database queries
     :rtype: dict[str, dict]
     """
+    if model is None:
+        model = local.model
     if len(uuids) == 0:
         return {}
-    bundles = local.model.batch_get_bundles(uuid=uuids)
+    bundles = model.batch_get_bundles(uuid=uuids)
     bundle_infos = {
-        bundle.uuid: bundle_util.bundle_to_bundle_info(local.model, bundle) for bundle in bundles
+        bundle.uuid: bundle_util.bundle_to_bundle_info(model, bundle) for bundle in bundles
     }
 
     # Implement permissions policies
-    perms = _get_user_bundle_permissions(uuids)
+    perms = _get_user_bundle_permissions(model, uuids)
     readable = {u for u, perm in perms.items() if perm >= GROUP_OBJECT_PERMISSION_READ}
     anonymous = {
         u
@@ -89,9 +93,9 @@ def get_bundle_infos(
         # Replace bundles that the user does not have read access to
         elif uuid not in readable:
             bundle_infos[uuid] = bundle_util.bundle_to_bundle_info(
-                local.model, PrivateBundle.construct(uuid)
+                model, PrivateBundle.construct(uuid)
             )
-        # Mask owners of anonymous bundles that user does not have all acccess to
+        # Mask owners of anonymous bundles that user does not have all access to
         elif uuid in anonymous:
             bundle['owner_id'] = None
 
@@ -99,14 +103,14 @@ def get_bundle_infos(
         bundle['permission'] = perms[uuid]
 
     if get_children:
-        parent2children = local.model.get_children_uuids(readable)
+        parent2children = model.get_children_uuids(readable)
 
         # Gather all children bundle uuids and fetch permissions
         child_uuids = [uuid for l in parent2children.values() for uuid in l]
-        child_perms = _get_user_bundle_permissions(child_uuids)
+        child_perms = _get_user_bundle_permissions(model, child_uuids)
 
         # Lookup bundle names
-        child_names = local.model.get_bundle_names(child_uuids)
+        child_names = model.get_bundle_names(child_uuids)
 
         # Set children infos
         for parent_uuid, children in parent2children.items():
@@ -118,8 +122,8 @@ def get_bundle_infos(
 
     if get_single_host_worksheet:
         # bundle uuids -> worksheet_uuid
-        host_worksheets = local.model.get_single_host_worksheet_uuid(readable)
-        worksheet_names = _get_readable_worksheet_names(host_worksheets.values())
+        host_worksheets = model.get_single_host_worksheet_uuid(readable)
+        worksheet_names = _get_readable_worksheet_names(model, host_worksheets.values())
 
         for bundle_uuid, host_uuid in host_worksheets.items():
             if host_uuid in worksheet_names:
@@ -130,10 +134,10 @@ def get_bundle_infos(
 
     if get_host_worksheets:
         # bundle_uuids -> list of worksheet_uuids
-        host_worksheets = local.model.get_host_worksheet_uuids(readable)
+        host_worksheets = model.get_host_worksheet_uuids(readable)
         # Gather all worksheet uuids
         worksheet_uuids = [uuid for l in host_worksheets.values() for uuid in l]
-        worksheet_names = _get_readable_worksheet_names(worksheet_uuids)
+        worksheet_names = _get_readable_worksheet_names(model, worksheet_uuids)
 
         # Fill the info
         for bundle_uuid, host_uuids in host_worksheets.items():
@@ -145,7 +149,7 @@ def get_bundle_infos(
 
     if get_permissions:
         # Fill the permissions info
-        bundle2group_perms = local.model.batch_get_group_bundle_permissions(
+        bundle2group_perms = model.batch_get_group_bundle_permissions(
             request.user.user_id, readable
         )
         for uuid, group_perms in bundle2group_perms.items():
@@ -159,35 +163,27 @@ def get_bundle_infos(
     return bundle_infos
 
 
-def _get_user_bundle_permissions(uuids):
-    return local.model.get_user_bundle_permissions(
-        request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids)
+def _get_user_bundle_permissions(model, uuids):
+    return model.get_user_bundle_permissions(
+        request.user.user_id, uuids, model.get_bundle_owner_ids(uuids)
     )
 
 
-def _get_readable_worksheet_names(worksheet_uuids):
-    """
-    Returns a dictionary of readable worksheet uuid's as keys and corresponding names as values
-    :param worksheet_uuids: List of worksheet uuid's to filter by read permission and get names for
-    :return: A dict of worksheet uuid's to its name
-    """
-    readable_worksheet_uuids = _filter_readable_worksheet_uuids(worksheet_uuids)
+def _get_readable_worksheet_names(model, worksheet_uuids):
+    # Returns a dictionary of readable worksheet uuid's as keys and corresponding names as values
+    readable_worksheet_uuids = _filter_readable_worksheet_uuids(model, worksheet_uuids)
     return dict(
         (worksheet.uuid, worksheet.name)
-        for worksheet in local.model.batch_get_worksheets(
+        for worksheet in model.batch_get_worksheets(
             fetch_items=False, uuid=readable_worksheet_uuids
         )
     )
 
 
-def _filter_readable_worksheet_uuids(worksheet_uuids):
-    """
-    Returns a set of worksheet uuid's the user has read permission for
-    :param worksheet_uuids: List of worksheet uuid's to filter
-    :return: A set of readable worksheet uuid's
-    """
-    worksheet_permissions = local.model.get_user_worksheet_permissions(
-        request.user.user_id, worksheet_uuids, local.model.get_worksheet_owner_ids(worksheet_uuids),
+def _filter_readable_worksheet_uuids(model, worksheet_uuids):
+    # Returns a set of worksheet uuid's the user has read permission for
+    worksheet_permissions = model.get_user_worksheet_permissions(
+        request.user.user_id, worksheet_uuids, model.get_worksheet_owner_ids(worksheet_uuids),
     )
     return set(
         uuid
