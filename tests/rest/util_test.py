@@ -68,10 +68,7 @@ class UtilTest(unittest.TestCase):
         model.get_user_worksheet_permissions.side_effect = self._mock_model_call(
             worksheet_uuids, worksheet_permissions, 1
         )
-        worksheets = [
-            Mock(uuid='0x111'),
-            Mock(uuid='0x222'),
-        ]
+        worksheets = [Mock(uuid='0x111'), Mock(uuid='0x222')]
         worksheets[0].configure_mock(name='ws1')
         worksheets[1].configure_mock(name='ws2')
         model.batch_get_worksheets.side_effect = self._mock_model_call(
