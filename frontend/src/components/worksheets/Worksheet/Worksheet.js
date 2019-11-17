@@ -234,8 +234,7 @@ class Worksheet extends React.Component {
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
         executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)]), worksheet_uuid)
         .done(() => {
-                this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}, showBundleOperationButtons: false});
-                this.reloadWorksheet();
+                //this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}, showBundleOperationButtons: false});
         }).fail((e)=>{
             let bundle_error_dialog = <Dialog
                                         open={true}
