@@ -16,6 +16,7 @@ const styles = {
     paddingLeft: 28,
     paddingRight: 28,
     position: 'relative',
+    borderBottom: "1px solid #ddd"
     // overflow: 'hidden',
 };
 
