@@ -5,6 +5,7 @@ body {
     font-family: 'Roboto', 'Helvetica Neue', sans-serif;
     font-weight: normal;
     line-height: 1.6;
+    font-size: 16px;
     color: #666;
     background-color: #f7f7f7;
 }
@@ -21,4 +22,9 @@ footer {
 /*TODO: remove this when we replace jquery-terminal*/
 iframe {
     border: 0;
+}
+
+.modal {
+    top: 64px;
+    z-index: 1070;
 }
