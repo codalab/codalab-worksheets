@@ -23,7 +23,7 @@ let ExtraWorksheetHTML = () => (
                         <h4>Keyboard Shortcuts</h4>
                     </div>
                     <div className='modal-body'>
-                        <a href='http://terminal.jcubic.pl/api_reference.php' target='_blank'>
+                        <a href='https://terminal.jcubic.pl/api_reference.php#shortcuts' target='_blank'>
                             {' '}
                             More shortcuts for web terminal (see Keyboard shortcuts section){' '}
                         </a>
@@ -79,18 +79,10 @@ let ExtraWorksheetHTML = () => (
                                 </tr>
                                 <tr>
                                     <td>
-                                        <kbd>u</kbd>
+                                        <kbd>i</kbd>
                                     </td>
                                     <td>
-                                        Paste UUID of current bundle or worksheet into web terminal
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <kbd>a</kbd>
-                                    </td>
-                                    <td>
-                                        Paste arguments to recreate current bundle into web terminal
+                                        Paste UUID of current worksheet into web terminal
                                     </td>
                                 </tr>
                                 <tr>
@@ -119,9 +111,9 @@ let ExtraWorksheetHTML = () => (
                                 </tr>
                                 <tr>
                                     <td>
-                                        <kbd>i</kbd>
+                                        <kbd>t</kbd>
                                     </td>
-                                    <td>Add a cell right below the current focus</td>
+                                    <td>Add a text box right below the current focus</td>
                                 </tr>
                                 <tr>
                                     <td>
@@ -131,7 +123,7 @@ let ExtraWorksheetHTML = () => (
                                 </tr>
                                 <tr>
                                     <td>
-                                        <kbd>r</kbd>
+                                        <kbd>r r</kbd>
                                     </td>
                                     <td>Add a new run</td>
                                 </tr>

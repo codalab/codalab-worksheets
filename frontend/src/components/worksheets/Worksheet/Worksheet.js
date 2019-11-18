@@ -582,7 +582,6 @@ class Worksheet extends React.Component {
                         this.setFocus(focusIndex - 1, 'end');
                     }
                 }.bind(this),
-                'keydown',
             );
 
             Mousetrap.bind(
@@ -606,7 +605,6 @@ class Worksheet extends React.Component {
                         this.setFocus(focusIndex + 1, 0);
                     }
                 }.bind(this),
-                'keydown',
             );
             if (!this.state.showBundleOperationButtons){
                 // insert text after current cell
@@ -636,7 +634,7 @@ class Worksheet extends React.Component {
                 );
                 // run after current cell
                 Mousetrap.bind(
-                    ['r'],
+                    ['r r'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -939,6 +937,7 @@ class Worksheet extends React.Component {
     // If rawIndexAfterEditMode is defined, this reloadWorksheet is called right after toggling editMode. It should resolve rawIndex to (focusIndex, subFocusIndex) pair.
     reloadWorksheet = (partialUpdateItems, rawIndexAfterEditMode, {
         moveIndex = false,
+        textDeleted = false,
     } = {}) => {
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
@@ -1009,6 +1008,11 @@ class Worksheet extends React.Component {
                         if (moveIndex) {
                             // for adding a new cell, we want the focus to be the one below the current focus
                             this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
+                        }
+                        if (textDeleted) {
+                            // when deleting text, we want the focus to be the one above the deleted focus
+                            console.log(focus);
+                            this.setFocus(focus === -1 ? focus : focus - 1, 'end');
                         }
                     }
                     this.setState({

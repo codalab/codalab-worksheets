@@ -25,7 +25,7 @@ class WorksheetActionBar extends React.Component {
         });	
 
         // See JQuery Terminal API reference for more info about this plugin:	
-        // http://terminal.jcubic.pl/api_reference.php	
+        // https://terminal.jcubic.pl/api_reference.php#shortcuts
         this.terminal = $('#command_line').terminal(	
             function(command, terminal) {	
                 if (command.length === 0) {	

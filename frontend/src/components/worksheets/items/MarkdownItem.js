@@ -54,33 +54,40 @@ class MarkdownItem extends React.Component {
 
     toggleEdit = (ev) => {
         ev.preventDefault();
+        console.log("here");
         this.setState({ showEdit: !this.state.showEdit });
     };
 
     capture_keys() {
         // Edit the markdown
-        var form = document.querySelector('type-markup focused');
-
-        Mousetrap(form).bind(
-            ['enter'],
-            function (ev) {
-                if (this.props.focused) {
-                    this.toggleEdit(ev);
-                }
-            }.bind(this),
-            'keydown',
-        );
-
-        // Delete the line
-        Mousetrap(form).bind(
-            ['backspace', 'del'],
-            function () {
-                if (this.props.focused) {
-                    this.deleteItem();
-                }
-            }.bind(this),
-            'keydown',
-        );
+        // var form = document.querySelector('div.type-markup.focused.MarkdownItem-textRender-328');
+        var focusElem = document.querySelector('.type-markup.focused');
+        console.log(focusElem);
+        // buttons[0].click();
+        if (focusElem) {
+            focusElem.focus();
+            var buttons = focusElem.closest('.ws-item').childNodes[1];
+            Mousetrap.bind(
+                ['enter'],
+                function (ev) {
+                    ev.stopPropagation();
+                        console.log(this.props.focused, this.props.active);
+                        // this.toggleEdit(ev);
+                        buttons.childNodes[0].click();
+                }.bind(this),
+            );
+    
+            // Delete the line
+            Mousetrap.bind(
+                ['backspace', 'del'],
+                function (ev) {
+                    ev.stopPropagation();
+                        console.log(this.props.focused, this.props.active);
+                        // this.deleteItem();
+                        buttons.childNodes[2].click();
+                }.bind(this),
+            );
+        }
     }
 
     deleteItem = () => {
@@ -93,11 +100,9 @@ class MarkdownItem extends React.Component {
             contentType: 'application/json',
             type: 'POST',
             success: (data, status, jqXHR) => {
-                reloadWorksheet();
-                if (focused) {
-                    setFocus(focusIndex < 1 ? -1 : this.props.focusIndex - 1, 0);
-                }
-                // setFocus(focusIndex >= 1 ? focusIndex - 1 : focusIndex, 0);
+                const textDeleted = true;
+                const param = { textDeleted };
+                reloadWorksheet(undefined, undefined, param);
             },
             error: (jqHXR, status, error) => {
                 alert(createAlertText(this.url, jqHXR.responseText));
@@ -106,9 +111,9 @@ class MarkdownItem extends React.Component {
     };
 
     render() {
-        if (this.props.focused && this.props.active) this.capture_keys(); // each item capture keys are handled dynamically after this call
+        if (this.props.focused) this.capture_keys(); // each item capture keys are handled dynamically after this call
         const { classes, item } = this.props;
-        const { showEdit } = this.state;
+        var { showEdit } = this.state;
         var contents = item.text;
         // Order is important!
         contents = this.processMarkdown(contents);
