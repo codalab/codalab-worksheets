@@ -10,3 +10,4 @@ six==1.11.0
 SQLAlchemy==1.0.8
 watchdog==0.8.3
 fusepy==2.0.4
+python-dateutil
