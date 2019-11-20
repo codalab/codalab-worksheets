@@ -1150,6 +1150,7 @@ class Worksheet extends React.Component {
     };
 
     deleteThisWorksheet() {
+        // TODO: put all worksheet dialogs into WorksheetDialogs.js if possible
         let deleteWorksheetDialog = (
             <Dialog
                 open={true}
