@@ -49,26 +49,14 @@ class BundleDetail extends React.Component<
             stderr: null,
             prevUuid: props.uuid,
             open: true,
-            lastFetchTime: 0,
-            fetching: false,
         };
     }
 
     componentDidMount() {
-        this.fetchBundleMetaData();
-        this.fetchBundleContents();
-    }
-
-    componentDidUpdate() {
-        let newTime = new Date();
-        if (newTime.getTime() - this.state.lastFetchTime > 3000 && !this.state.fetching){
-            this.setState({fetching: true});
-            setTimeout(()=>{
-                this.setState({lastFetchTime: newTime.getTime(), fetching: false})
-                this.fetchBundleMetaData();
-                this.fetchBundleContents();
-            }, 3000);
-        }
+        setInterval(()=>{ 
+            this.fetchBundleMetaData();
+            this.fetchBundleContents();
+         }, 4000);
     }
 
     /**

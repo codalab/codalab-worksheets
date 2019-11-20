@@ -479,6 +479,12 @@ export class FileBrowserLite extends React.Component<
         }
     }
 
+    componentDidMount(){
+        setInterval(()=>{
+            this.updateFileBrowser('');
+        }, 4000);
+    }
+
     componentWillMount() {
         if (!this.props.startCollapsed) {
             this.setState({ isVisible: true });

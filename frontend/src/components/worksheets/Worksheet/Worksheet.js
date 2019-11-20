@@ -542,9 +542,6 @@ class Worksheet extends React.Component {
     toggleGlossaryModal = () => {
         this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
     };
-    toggleGlossaryModal = () => {
-        this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
-    };
     setupEventHandlers() {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
