@@ -1223,7 +1223,11 @@ class Worksheet extends React.Component {
                     color='inherit'
                     aria-label='Delete Worksheet'
                 >
-                    <Tooltip disableFocusListener disableTouchListener title='Delete this worksheet'>
+                    <Tooltip
+                        disableFocusListener
+                        disableTouchListener
+                        title='Delete this worksheet'
+                    >
                         <DeleteIcon />
                     </Tooltip>
                 </Button>
