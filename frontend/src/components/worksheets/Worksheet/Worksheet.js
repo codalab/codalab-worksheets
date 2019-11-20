@@ -32,6 +32,7 @@ import Grid from '@material-ui/core/Grid';
 import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { fetchInterpretedWorksheet } from '../../../util/actions';
 
 /*
 Information about the current worksheet and its items.
@@ -47,7 +48,7 @@ var WorksheetContent = (function() {
         this.info = null; // Worksheet info
     }
 
-    WorksheetContent.prototype.fetch = function(props) {
+    WorksheetContent.prototype.fetch = async function(props) {
         // Set defaults
         props = props || {};
         props.success = props.success || function(data) {};
@@ -55,23 +56,12 @@ var WorksheetContent = (function() {
         if (props.async === undefined) {
             props.async = true;
         }
-
-        $.ajax({
-            type: 'GET',
-            url: '/rest/interpret/worksheet/' + this.uuid,
-            // TODO: migrate to using main API
-            // url: '/rest/worksheets/' + ws.uuid,
-            async: props.async,
-            dataType: 'json',
-            cache: false,
-            success: function(info) {
-                this.info = info;
-                props.success(this.info);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error(xhr, status, err);
-            },
-        });
+        try {
+            this.info = await fetchInterpretedWorksheet(this.uuid);
+            props.success(this.info);
+        } catch (e) {
+            props.error(e);
+        }
     };
 
     WorksheetContent.prototype.saveWorksheet = function(props) {
@@ -788,7 +778,7 @@ class Worksheet extends React.Component {
     }
 
     // updateRunBundles fetch all the "unfinished" bundles in the worksheet, and recursively call itself until all the bundles in the worksheet are finished.
-    updateRunBundles(worksheetUuid, numTrials, updatingBundleUuids) {
+    async updateRunBundles(worksheetUuid, numTrials, updatingBundleUuids) {
         var bundleUuids = updatingBundleUuids
             ? updatingBundleUuids
             : this.state.updatingBundleUuids;
@@ -799,35 +789,30 @@ class Worksheet extends React.Component {
                 return 'uuid=' + bundle_uuid;
             })
             .join('&');
-        $.ajax({
-            type: 'GET',
-            url: '/rest/interpret/worksheet/' + worksheetUuid + '?' + queryParams,
-            dataType: 'json',
-            cache: false,
-            success: function(worksheet_content) {
-                if (this.state.isUpdatingBundles && worksheet_content.uuid === this.state.ws.uuid) {
-                    if (worksheet_content.items) {
-                        self.reloadWorksheet(worksheet_content.items);
-                    }
-                    var endTime = new Date().getTime();
-                    var guaranteedDelayTime = Math.min(3000, numTrials * 1000);
-                    // Since we don't want to flood the server with too many requests, we enforce a guaranteedDelayTime.
-                    // guaranteedDelayTime is usually 3 seconds, except that we make the first two delays 1 second and 2 seconds respectively in case of really quick jobs.
-                    // delayTime is also at least five times the amount of time it takes for the last request to complete
-                    var delayTime = Math.max(guaranteedDelayTime, (endTime - startTime) * 5);
-                    setTimeout(function() {
-                        self.updateRunBundles(worksheetUuid, numTrials + 1);
-                    }, delayTime);
-                    startTime = endTime;
+        try {
+            const worksheet_content = await fetchInterpretedWorksheet(worksheetUuid, bundleUuids);
+            if (this.state.isUpdatingBundles && worksheet_content.uuid === this.state.ws.uuid) {
+                if (worksheet_content.items) {
+                    self.reloadWorksheet(worksheet_content.items);
                 }
-            }.bind(this),
-            error: function(xhr, status, err) {
-                $('#worksheet-message')
-                    .html(xhr.responseText)
-                    .addClass('alert-danger alert');
-                $('#worksheet_container').hide();
-            },
-        });
+                var endTime = new Date().getTime();
+                var guaranteedDelayTime = Math.min(3000, numTrials * 1000);
+                // Since we don't want to flood the server with too many requests, we enforce a guaranteedDelayTime.
+                // guaranteedDelayTime is usually 3 seconds, except that we make the first two delays 1 second and 2 seconds respectively in case of really quick jobs.
+                // delayTime is also at least five times the amount of time it takes for the last request to complete
+                var delayTime = Math.max(guaranteedDelayTime, (endTime - startTime) * 5);
+                setTimeout(function() {
+                    self.updateRunBundles(worksheetUuid, numTrials + 1);
+                }, delayTime);
+                startTime = endTime;
+            }
+        } catch (e) {
+            $('#worksheet-message')
+                .html(e.responseText)
+                .addClass('alert-danger alert');
+            $('#worksheet_container').hide();
+            return;
+        }
     }
 
     // Everytime the worksheet is updated, checkRunBundle will loop through all the bundles and find the "unfinished" ones (not ready or failed).
