@@ -13,89 +13,104 @@ import Button from '@material-ui/core/Button';
 
 class WorksheetDialogs extends React.Component {
     render() {
-            const {classes} = this.props;
-            return <div>
-            <Dialog
-            open={this.props.openDelete}
-            onClose={this.props.togglePopup('rm')}//{this.props.toggleDeletePopup}
-            aria-labelledby="deletion-confirmation-title"
-            aria-describedby="deletion-confirmation-description"
-            >
-            <DialogTitle id="deletion-confirmation-title">{"Delect selected bundles permanently?"}</DialogTitle>
-            <DialogContent className={classes.dialog}>
-                <DialogContentText id="alert-dialog-description">
-                    Deletion cannot be undone.
-                </DialogContentText>
-                <DialogContentText id="alert-dialog-description">
-                    Force delete?
-                    <Checkbox
-                    checked={this.props.forceDelete}
-                    onChange={this.props.handleForceDelete}
-                    value="checkedA"
-                    inputProps={{
-                    'aria-label': 'primary checkbox',
-                    }}
-                    />
-                    <Tooltip disableFocusListener disableTouchListener
-                    title="Force deletion will ignore all bundle dependencies">
-                        <IconButton
-                            color='inherit'
+        const { classes } = this.props;
+        return (
+            <div>
+                <Dialog
+                    open={this.props.openDelete}
+                    onClose={this.props.togglePopup('rm')} //{this.props.toggleDeletePopup}
+                    aria-labelledby='deletion-confirmation-title'
+                    aria-describedby='deletion-confirmation-description'
+                >
+                    <DialogTitle id='deletion-confirmation-title'>
+                        {'Delect selected bundles permanently?'}
+                    </DialogTitle>
+                    <DialogContent className={classes.dialog}>
+                        <DialogContentText id='alert-dialog-description'>
+                            Deletion cannot be undone.
+                        </DialogContentText>
+                        <DialogContentText id='alert-dialog-description'>
+                            Force delete?
+                            <Checkbox
+                                checked={this.props.forceDelete}
+                                onChange={this.props.handleForceDelete}
+                                value='checkedA'
+                                inputProps={{
+                                    'aria-label': 'primary checkbox',
+                                }}
+                            />
+                            <Tooltip
+                                disableFocusListener
+                                disableTouchListener
+                                title='Force deletion will ignore all bundle dependencies'
                             >
-                            <InfoIcon fontSize='small' />
-                        </IconButton>
-                    </Tooltip>
-                </DialogContentText>
-                {this.props.forceDelete? <DialogContentText id="alert-dialog-description" style={{ color:'red' }}>
-                    The deletion will ignore all bundle dependencies
-                </DialogContentText>:null}
-            </DialogContent>
-            <DialogActions>
-                <Button color='primary' onClick={this.props.togglePopup('rm')}>
-                    CANCEL
-                </Button>
-                <Button color='primary' onClick={this.props.executeBundleCommand('rm')}>
-                    DELETE
-                </Button>
-            </DialogActions>
-            </Dialog>
-            <Dialog
-                open={this.props.openDetach}
-                onClose={this.props.togglePopup('detach')}
-                aria-labelledby="detach-confirmation-title"
-                aria-describedby="detach-confirmation-description"
+                                <IconButton color='inherit'>
+                                    <InfoIcon fontSize='small' />
+                                </IconButton>
+                            </Tooltip>
+                        </DialogContentText>
+                        {this.props.forceDelete ? (
+                            <DialogContentText
+                                id='alert-dialog-description'
+                                style={{ color: 'red' }}
+                            >
+                                The deletion will ignore all bundle dependencies
+                            </DialogContentText>
+                        ) : null}
+                    </DialogContent>
+                    <DialogActions>
+                        <Button color='primary' onClick={this.props.togglePopup('rm')}>
+                            CANCEL
+                        </Button>
+                        <Button color='primary' onClick={this.props.executeBundleCommand('rm')}>
+                            DELETE
+                        </Button>
+                    </DialogActions>
+                </Dialog>
+                <Dialog
+                    open={this.props.openDetach}
+                    onClose={this.props.togglePopup('detach')}
+                    aria-labelledby='detach-confirmation-title'
+                    aria-describedby='detach-confirmation-description'
                 >
-                <DialogTitle id="detach-confirmation-title">{"Detach all selected bundle from this worksheet?"}</DialogTitle>
-                <DialogActions>
-                    <Button color='primary' onClick={this.props.togglePopup('detach')}>
-                        CANCEL
-                    </Button>
-                    <Button color='primary' onClick={this.props.executeBundleCommand('detach')}>
-                        DETACH
-                    </Button>
-                </DialogActions>
-            </Dialog>
-            <Dialog
-                open={this.props.openKill}
-                onClose={this.props.togglePopup('kill')}
-                aria-labelledby="kill-confirmation-title"
-                aria-describedby="kill-confirmation-description"
+                    <DialogTitle id='detach-confirmation-title'>
+                        {'Detach all selected bundle from this worksheet?'}
+                    </DialogTitle>
+                    <DialogActions>
+                        <Button color='primary' onClick={this.props.togglePopup('detach')}>
+                            CANCEL
+                        </Button>
+                        <Button color='primary' onClick={this.props.executeBundleCommand('detach')}>
+                            DETACH
+                        </Button>
+                    </DialogActions>
+                </Dialog>
+                <Dialog
+                    open={this.props.openKill}
+                    onClose={this.props.togglePopup('kill')}
+                    aria-labelledby='kill-confirmation-title'
+                    aria-describedby='kill-confirmation-description'
                 >
-                <DialogTitle id="kill-confirmation-title">{"Kill all selected bundles if running?"}</DialogTitle>
-                <DialogContent>
-                    <DialogContentText id="alert-dialog-description">
-                    It may take a few seconds to finish killing. <br/> Only running bundles can be killed. 
-                    </DialogContentText>
-                </DialogContent>
-                <DialogActions>
-                    <Button color='primary' onClick={this.props.togglePopup('kill')}>
-                        CANCEL
-                    </Button>
-                    <Button color='primary' onClick={this.props.executeBundleCommand('kill')}>
-                        KILL
-                    </Button>
-                </DialogActions>
-            </Dialog>
+                    <DialogTitle id='kill-confirmation-title'>
+                        {'Kill all selected bundles if running?'}
+                    </DialogTitle>
+                    <DialogContent>
+                        <DialogContentText id='alert-dialog-description'>
+                            It may take a few seconds to finish killing. <br /> Only running bundles
+                            can be killed.
+                        </DialogContentText>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button color='primary' onClick={this.props.togglePopup('kill')}>
+                            CANCEL
+                        </Button>
+                        <Button color='primary' onClick={this.props.executeBundleCommand('kill')}>
+                            KILL
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </div>
+        );
     }
 }
 
@@ -105,10 +120,10 @@ const styles = () => ({
         display: 'inline',
         padding: 2,
     },
-    dialog:{
+    dialog: {
         width: 400,
         height: 120,
-    }
+    },
 });
 
 export default withStyles(styles)(WorksheetDialogs);

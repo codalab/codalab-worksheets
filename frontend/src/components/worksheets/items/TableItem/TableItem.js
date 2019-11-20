@@ -41,42 +41,74 @@ class TableItem extends React.Component<{
     // BundleRow can also update itself through childrenCheck callback that TableItems passes
     // handleSelectAllClick & handleSelectAllSpaceHit handles select all events through click & space keydown
 
-    refreshCheckBox= ()=>{
+    refreshCheckBox = () => {
         let childrenStatus = new Array(this.props.item.rows.length).fill(false);
-        this.setState({numSelectedChild: 0, childrenCheckState:childrenStatus, indeterminateCheckState: false, checked:false})
-    }
+        this.setState({
+            numSelectedChild: 0,
+            childrenCheckState: childrenStatus,
+            indeterminateCheckState: false,
+            checked: false,
+        });
+    };
 
     componentDidUpdate(prevProps) {
         if (this.props.item.rows !== prevProps.item.rows) {
-          let childrenStatus = new Array(this.props.item.rows.length).fill(false);
-          this.setState({numSelectedChild: 0, childrenCheckState:childrenStatus, indeterminateCheckState: false, checked:false})
+            let childrenStatus = new Array(this.props.item.rows.length).fill(false);
+            this.setState({
+                numSelectedChild: 0,
+                childrenCheckState: childrenStatus,
+                indeterminateCheckState: false,
+                checked: false,
+            });
         }
-      }
-
-    childrenCheck = (rowIndex, check)=>{
-        let childrenStatus = this.state.childrenCheckState;
-        childrenStatus[rowIndex] = check;
-        let selectedChildren = check? this.state.numSelectedChild + 1: this.state.numSelectedChild - 1;
-        let indeterminateCheckState = selectedChildren < this.state.childrenCheckState.length && selectedChildren > 0;
-        let selfChecked = selectedChildren > 0; 
-        this.setState({numSelectedChild: selectedChildren, childrenCheckState:childrenStatus, indeterminateCheckState: indeterminateCheckState, checked: selfChecked});
     }
 
-    handleSelectAllClick = event => {
-        if (event.target !== event.currentTarget){
+    childrenCheck = (rowIndex, check) => {
+        let childrenStatus = this.state.childrenCheckState;
+        childrenStatus[rowIndex] = check;
+        let selectedChildren = check
+            ? this.state.numSelectedChild + 1
+            : this.state.numSelectedChild - 1;
+        let indeterminateCheckState =
+            selectedChildren < this.state.childrenCheckState.length && selectedChildren > 0;
+        let selfChecked = selectedChildren > 0;
+        this.setState({
+            numSelectedChild: selectedChildren,
+            childrenCheckState: childrenStatus,
+            indeterminateCheckState: indeterminateCheckState,
+            checked: selfChecked,
+        });
+    };
+
+    handleSelectAllClick = (event) => {
+        if (event.target !== event.currentTarget) {
             return;
         }
         let numSelectedChild = 0;
-        let childrenStatus = new Array(this.state.childrenCheckState.length).fill(event.target.checked)
-        numSelectedChild = event.target.checked? childrenStatus.length : 0;
-        this.setState({ checked: event.target.checked, childrenCheckState: [...childrenStatus], numSelectedChild: numSelectedChild, indeterminateCheckState: false });
+        let childrenStatus = new Array(this.state.childrenCheckState.length).fill(
+            event.target.checked,
+        );
+        numSelectedChild = event.target.checked ? childrenStatus.length : 0;
+        this.setState({
+            checked: event.target.checked,
+            childrenCheckState: [...childrenStatus],
+            numSelectedChild: numSelectedChild,
+            indeterminateCheckState: false,
+        });
     };
 
     handleSelectAllSpaceHit = () => {
         let numSelectedChild = 0;
-        let childrenStatus = new Array(this.state.childrenCheckState.length).fill(!this.state.checked)
-        numSelectedChild = !this.state.checked? childrenStatus.length: 0;
-        this.setState({ checked: !this.state.checked, numSelectedChild: numSelectedChild, childrenCheckState: [...childrenStatus],indeterminateCheckState: false });
+        let childrenStatus = new Array(this.state.childrenCheckState.length).fill(
+            !this.state.checked,
+        );
+        numSelectedChild = !this.state.checked ? childrenStatus.length : 0;
+        this.setState({
+            checked: !this.state.checked,
+            numSelectedChild: numSelectedChild,
+            childrenCheckState: [...childrenStatus],
+            indeterminateCheckState: false,
+        });
     };
     // BULK OPERATION RELATED CODE ABOVE
 
@@ -100,25 +132,37 @@ class TableItem extends React.Component<{
         var headerItems = item.header;
         var headerHtml = headerItems.map((item, index) => {
             let checkbox;
-            if (index === 0){
-                checkbox = <Checkbox
-                                checked={this.state.checked}
-                                onChange={this.handleSelectAllClick}
-                                value="checked"
-                                icon={<CheckBoxOutlineBlankIcon color={this.state.hovered ? 'action' : 'disabled'} fontSize="small" />}
-                                checkedIcon={<CheckBoxIcon fontSize="small" />}
-                                indeterminate={this.state.indeterminateCheckState}
-                                indeterminateIcon={<SvgIcon fontSize="small">
-                                                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z"/>
-                                                    </SvgIcon>}
-                                style={{ marginRight: 30, borderLeft: '3px solid transparent' }}
-                            />;
+            if (index === 0) {
+                checkbox = (
+                    <Checkbox
+                        checked={this.state.checked}
+                        onChange={this.handleSelectAllClick}
+                        value='checked'
+                        icon={
+                            <CheckBoxOutlineBlankIcon
+                                color={this.state.hovered ? 'action' : 'disabled'}
+                                fontSize='small'
+                            />
+                        }
+                        checkedIcon={<CheckBoxIcon fontSize='small' />}
+                        indeterminate={this.state.indeterminateCheckState}
+                        indeterminateIcon={
+                            <SvgIcon fontSize='small'>
+                                <path d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z' />
+                            </SvgIcon>
+                        }
+                        style={{ marginRight: 30, borderLeft: '3px solid transparent' }}
+                    />
+                );
             }
             return (
-                <TableCell 
-                    onMouseEnter = {e=>this.setState({hovered: true})}
-                    onMouseLeave = {e=>this.setState({hovered: false})}
-                    component='th' key={index} style={{ paddingLeft: 0 }}>
+                <TableCell
+                    onMouseEnter={(e) => this.setState({ hovered: true })}
+                    onMouseLeave={(e) => this.setState({ hovered: false })}
+                    component='th'
+                    key={index}
+                    style={{ paddingLeft: 0 }}
+                >
                     {checkbox}
                     {item}
                 </TableCell>
@@ -145,9 +189,7 @@ class TableItem extends React.Component<{
                     setFocus={setFocus}
                     url={url}
                     bundleInfo={bundleInfos[rowIndex]}
-                    prevBundleInfo={rowIndex > 0
-                        ? bundleInfos[rowIndex - 1]
-                        : prevItemProcessed }
+                    prevBundleInfo={rowIndex > 0 ? bundleInfos[rowIndex - 1] : prevItemProcessed}
                     uuid={bundleInfos[rowIndex].uuid}
                     headerItems={headerItems}
                     canEdit={canEdit}
@@ -171,9 +213,15 @@ class TableItem extends React.Component<{
                 <TableContainer onMouseLeave={this.removeButtons}>
                     <Table className={tableClassName}>
                         <TableHead>
-                            <TableRow style={{ height: 36, borderTop: '2px solid #DEE2E6', backgroundColor:'#F8F9FA'}}>
+                            <TableRow
+                                style={{
+                                    height: 36,
+                                    borderTop: '2px solid #DEE2E6',
+                                    backgroundColor: '#F8F9FA',
+                                }}
+                            >
                                 {headerHtml}
-                            </TableRow>                        
+                            </TableRow>
                         </TableHead>
                         {bodyRowsHtml}
                     </Table>
