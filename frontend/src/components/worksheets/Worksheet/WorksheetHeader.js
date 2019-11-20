@@ -34,6 +34,7 @@ export default ({
     handleSelectedBundleCommand,
     showBundleOperationButtons,
     togglePopup,
+    toggleGlossaryModal,
 }) => (
     <Sticky top={NAVBAR_HEIGHT + 6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
@@ -137,12 +138,7 @@ export default ({
                                 title='Shortcuts'
                                 aria-label='keyboard shortcuts'
                             >
-                                <IconButton
-                                    color='inherit'
-                                    href='#'
-                                    data-toggle='modal'
-                                    data-target='#glossaryModal'
-                                >
+                                <IconButton color='inherit' href='#' onClick={toggleGlossaryModal}>
                                     <InfoIcon fontSize='small' />
                                 </IconButton>
                             </Tooltip>
