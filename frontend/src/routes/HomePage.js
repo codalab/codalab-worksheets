@@ -25,9 +25,9 @@ class HomePage extends React.Component<{
 }> {
     constructor(props) {
         super(props);
-        const {auth, redirectAuthToDashboard} = this.props;
+        const { auth, redirectAuthToDashboard } = this.props;
         if (auth.isAuthenticated && redirectAuthToDashboard) {
-            this.props.history.push("/worksheets?name=dashboard");
+            this.props.history.push('/worksheets?name=dashboard');
         }
     }
 
@@ -36,9 +36,9 @@ class HomePage extends React.Component<{
         return (
             <Link to={href}>
                 <Button
-                variant='contained'
-                color='primary'
-                classes={{ root: classes.buttonRoot, label: classes.buttonLabel }}
+                    variant='contained'
+                    color='primary'
+                    classes={{ root: classes.buttonRoot, label: classes.buttonLabel }}
                 >
                     {title}
                 </Button>
@@ -79,15 +79,17 @@ class HomePage extends React.Component<{
                                     A collaborative platform for reproducible research.
                                 </Typography>
                                 <div className={classes.buttons}>
-                                    {!auth.isAuthenticated &&
+                                    {!auth.isAuthenticated && (
                                         <React.Fragment>
                                             {this.renderButton('Sign Up', '/account/signup')}
                                             {this.renderButton('Login', '/account/login')}
                                         </React.Fragment>
-                                    }
+                                    )}
                                     {auth.isAuthenticated &&
-                                        this.renderButton('Dashboard', '/worksheets?name=dashboard')
-                                    }
+                                        this.renderButton(
+                                            'Dashboard',
+                                            '/worksheets?name=dashboard',
+                                        )}
                                 </div>
                             </Grid>
                             <Grid item xs={12} sm={6} container>
@@ -228,8 +230,8 @@ class HomePage extends React.Component<{
                             </Grid>
                             <Grid item xs={12} sm={8} className={classes.textBox}>
                                 <Typography>
-                                    For more <b>advanced users</b>, the CodaLab documentation has a wealth of
-                                    information about many aspects of using the platform:
+                                    For more <b>advanced users</b>, the CodaLab documentation has a
+                                    wealth of information about many aspects of using the platform:
                                 </Typography>
                                 <Typography>
                                     <Table padding='dense'>

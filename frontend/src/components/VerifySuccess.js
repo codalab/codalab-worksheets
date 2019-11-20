@@ -14,10 +14,7 @@ const VerifySuccess = (props) => {
                         {props.auth.isAuthenticated && (
                             <p className='user-authenticated'>
                                 Check out your{' '}
-                                <NavLink
-                                    to='/worksheets?name=dashboard'
-                                    tabIndex={2}
-                                >
+                                <NavLink to='/worksheets?name=dashboard' tabIndex={2}>
                                     dashboard
                                 </NavLink>{' '}
                                 to get started.

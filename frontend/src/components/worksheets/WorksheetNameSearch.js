@@ -7,13 +7,13 @@ export default class extends React.Component {
         super(props);
         this.state = {
             loading: true,
-            error: false
+            error: false,
         };
     }
     async componentDidMount() {
         const { name } = queryString.parse(this.props.location.search);
         try {
-            const response = await fetch(`/rest/worksheets?specs=${name}`).then(e => e.json());
+            const response = await fetch(`/rest/worksheets?specs=${name}`).then((e) => e.json());
             const uuid = response.data[0].id;
             this.props.history.push(`/worksheets/${uuid}/`);
         } catch (e) {
@@ -23,13 +23,21 @@ export default class extends React.Component {
     }
     render() {
         const styles = {
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-        }
-        return <div>
-            {this.state.loading && <div style={styles}><img src={`${process.env.PUBLIC_URL}/img/Preloader_Small.gif`} /></div>}
-            {this.state.error && <ErrorMessage message={"Error. Please provide a worksheet uuid"}/>}
-        </div>
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+        };
+        return (
+            <div>
+                {this.state.loading && (
+                    <div style={styles}>
+                        <img src={`${process.env.PUBLIC_URL}/img/Preloader_Small.gif`} />
+                    </div>
+                )}
+                {this.state.error && (
+                    <ErrorMessage message={'Error. Please provide a worksheet uuid'} />
+                )}
+            </div>
+        );
     }
 }
