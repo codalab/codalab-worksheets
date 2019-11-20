@@ -180,7 +180,7 @@ class NavBar extends React.Component<{
                             </Link>
                         </Tooltip>
                         <Tooltip title='How-To Guides'>
-                            <IconButton href='https://github.com/codalab/codalab-worksheets/wiki'>
+                            <IconButton href='https://codalab-worksheets.readthedocs.io/en/latest'>
                                 <HowToIcon />
                             </IconButton>
                         </Tooltip>
