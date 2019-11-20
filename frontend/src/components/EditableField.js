@@ -126,6 +126,7 @@ class EditableFieldBase extends React.Component<{
                             this.props.allowASCII ? this.handleFreeChange : this.handleAsciiChange
                         }
                         onKeyDown={this.handleKeyPress}
+                        placeholder={this.props.placeholder}
                         maxLength='259'
                         style={{
                             textOverflow: 'ellipsis',

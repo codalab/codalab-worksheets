@@ -11,7 +11,7 @@ import DeleteIcon from '@material-ui/icons/Delete';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import TextEditorItem from './TextEditorItem';
 import { createAlertText } from '../../../util/worksheet_utils';
-
+import Tooltip from '@material-ui/core/Tooltip';
 class MarkdownItem extends React.Component {
     /** Constructor. */
     constructor(props) {
@@ -152,19 +152,23 @@ class MarkdownItem extends React.Component {
                     dangerouslySetInnerHTML={{ __html: contents }}
                 />
                 <div className={classes.buttonsPanel}>
-                    <IconButton
-                        onClick={this.toggleEdit}
-                        classes={{ root: classes.iconButtonRoot }}
-                    >
-                        <EditIcon />
-                    </IconButton>
+                    <Tooltip title='Edit'>
+                        <IconButton
+                            onClick={this.toggleEdit}
+                            classes={{ root: classes.iconButtonRoot }}
+                        >
+                            <EditIcon />
+                        </IconButton>
+                    </Tooltip>
                     &nbsp;&nbsp;
-                    <IconButton
-                        onClick={this.deleteItem}
-                        classes={{ root: classes.iconButtonRoot }}
-                    >
-                        <DeleteIcon />
-                    </IconButton>
+                    <Tooltip title='Delete'>
+                        <IconButton
+                            onClick={this.deleteItem}
+                            classes={{ root: classes.iconButtonRoot }}
+                        >
+                            <DeleteIcon />
+                        </IconButton>
+                    </Tooltip>
                 </div>
             </div>
         );
