@@ -19,7 +19,7 @@ const styles = {
     // overflow: 'hidden',
 };
 
-export default ({ onShowNewUpload, onShowNewRun, onShowNewText, canEdit, info, classes, renderPermissions, reloadWorksheet, editButtons, anchorEl, setAnchorEl, handleSelectedBundleCommand, showBundleOperationButtons, togglePopup}) =>
+export default ({ onShowNewUpload, onShowNewRun, onShowNewText, canEdit, info, classes, renderPermissions, reloadWorksheet, editButtons, anchorEl, setAnchorEl, handleSelectedBundleCommand, showBundleOperationButtons, togglePopup, toggleGlossaryModal}) =>
     <Sticky top={NAVBAR_HEIGHT + 6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
             <div className='header-row'>
@@ -31,7 +31,8 @@ export default ({ onShowNewUpload, onShowNewRun, onShowNewText, canEdit, info, c
                                 key={'title' + canEdit}
                                 canEdit={canEdit}
                                 fieldName='title'
-                                value={(info && info.title) || "Untitled"}
+                                value={(info && info.title)}
+                                placeholder='Untitled'
                                 uuid={info && info.uuid}
                                 onChange={() => reloadWorksheet()}
                                 allowASCII={true}
@@ -106,8 +107,7 @@ export default ({ onShowNewUpload, onShowNewRun, onShowNewText, canEdit, info, c
                                 <IconButton
                                     color='inherit'
                                     href='#'
-                                    data-toggle='modal'
-                                    data-target='#glossaryModal'
+                                    onClick={toggleGlossaryModal}
                                     >
                                     <InfoIcon fontSize='small' />
                                 </IconButton>
