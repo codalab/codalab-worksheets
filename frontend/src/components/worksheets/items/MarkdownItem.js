@@ -60,18 +60,12 @@ class MarkdownItem extends React.Component {
 
     capture_keys() {
 
-        // var focusElem = document.querySelector('.type-markup.focused');
-        // if (focusElem) {
-            // focusElem.focus();
-            // var buttons = focusElem && focusElem.closest('.ws-item').childNodes[1];
-            
             // Edit the markdown
             Mousetrap.bind(
                 ['enter'],
                 function (ev) {
                         ev.preventDefault();
                         this.toggleEdit();
-                        // buttons.childNodes[0].click();
                 }.bind(this),
             );
 
@@ -81,11 +75,8 @@ class MarkdownItem extends React.Component {
                 function (ev) {
                         ev.preventDefault();
                         this.deleteItem();
-                        // buttons.childNodes[2].click();
                 }.bind(this),
             );
-
-        // }
     }
 
     deleteItem = () => {
@@ -109,7 +100,6 @@ class MarkdownItem extends React.Component {
     };
 
     render() {
-        // this.capture_keys();
         const { classes, item } = this.props;
         var { showEdit } = this.state;
         var contents = item.text;

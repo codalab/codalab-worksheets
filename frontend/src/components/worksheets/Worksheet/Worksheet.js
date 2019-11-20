@@ -343,7 +343,7 @@ class Worksheet extends React.Component {
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
 
-        // prevent multiple clicking from reseting the index
+        // prevent multiple clicking from resetting the index
         if (index === this.state.focusIndex &&
             subIndex === this.state.subFocusIndex) {
                 return;
