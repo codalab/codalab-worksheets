@@ -56,7 +56,7 @@ class BundleDetail extends React.Component<
         setInterval(()=>{ 
             this.fetchBundleMetaData();
             this.fetchBundleContents();
-         }, 4000);
+        }, 4000);
     }
 
     /**
