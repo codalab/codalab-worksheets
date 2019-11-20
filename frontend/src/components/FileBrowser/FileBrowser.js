@@ -479,8 +479,8 @@ export class FileBrowserLite extends React.Component<
         }
     }
 
-    componentDidMount(){
-        setInterval(()=>{
+    componentDidMount() {
+        setInterval(() => {
             this.updateFileBrowser('');
         }, 4000);
     }
