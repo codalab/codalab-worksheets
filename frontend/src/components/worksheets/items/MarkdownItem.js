@@ -64,7 +64,7 @@ class MarkdownItem extends React.Component {
         // if (focusElem) {
             // focusElem.focus();
             // var buttons = focusElem && focusElem.closest('.ws-item').childNodes[1];
-
+            
             // Edit the markdown
             Mousetrap.bind(
                 ['enter'],
@@ -72,7 +72,7 @@ class MarkdownItem extends React.Component {
                         ev.preventDefault();
                         this.toggleEdit();
                         // buttons.childNodes[0].click();
-                },
+                }.bind(this),
             );
 
             // Delete the line
@@ -82,7 +82,7 @@ class MarkdownItem extends React.Component {
                         ev.preventDefault();
                         this.deleteItem();
                         // buttons.childNodes[2].click();
-                },
+                }.bind(this),
             );
 
         // }
