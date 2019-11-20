@@ -17,21 +17,22 @@ class BundleBulkActionMenu extends React.Component {
         };
     }
 
-    handleCheckboxChange = event => {
+    handleCheckboxChange = (event) => {
         this.setState({ forceDelete: event.target.checked });
     };
 
     render() {
-        const {classes} = this.props;
-        return <div className={classes.root}>
+        const { classes } = this.props;
+        return (
+            <div className={classes.root}>
                 <Button
                     size='small'
                     color='inherit'
                     aria-label='Delete'
                     onClick={this.props.togglePopup('rm')}
                 >
-                    <DeleteForeverIcon fontSize="small" />
-                    <Typography variant="inherit">Delete</Typography>
+                    <DeleteForeverIcon fontSize='small' />
+                    <Typography variant='inherit'>Delete</Typography>
                 </Button>
                 <Button
                     size='small'
@@ -39,8 +40,8 @@ class BundleBulkActionMenu extends React.Component {
                     aria-label='Detach'
                     onClick={this.props.togglePopup('detach')}
                 >
-                    <ExitToAppIcon fontSize="small" />
-                    <Typography variant="inherit">Detach</Typography>
+                    <ExitToAppIcon fontSize='small' />
+                    <Typography variant='inherit'>Detach</Typography>
                 </Button>
                 <Button
                     size='small'
@@ -48,10 +49,11 @@ class BundleBulkActionMenu extends React.Component {
                     aria-label='Kill'
                     onClick={this.props.togglePopup('kill')}
                 >
-                    <HighlightOffIcon fontSize="small" />
-                    <Typography variant="inherit">Kill</Typography>
+                    <HighlightOffIcon fontSize='small' />
+                    <Typography variant='inherit'>Kill</Typography>
                 </Button>
             </div>
+        );
     }
 }
 
@@ -61,10 +63,10 @@ const styles = (theme) => ({
         display: 'inline',
         padding: 2,
     },
-    dialog:{
+    dialog: {
         width: 400,
         height: 120,
-    }
+    },
 });
 
 export default withStyles(styles)(BundleBulkActionMenu);

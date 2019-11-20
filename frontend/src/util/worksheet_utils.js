@@ -144,7 +144,8 @@ export function renderPermissions(state) {
                         {')'}
                     </span>
                 );
-            })}&#93;
+            })}
+            &#93;
         </div>
     );
 }
@@ -166,10 +167,9 @@ export function keepPosInView(pos) {
         // then scroll so that it is at 50% down the screen.
         // Where is the top of the element on the page and does it fit in the
         // the upper half of the page?
-        var scrollTo = worksheetContainerEl.scrollTop() + distanceFromTopViewPort - viewportHeight * 0.5;
-        worksheetContainerEl
-            .stop(true)
-            .animate({ scrollTop: scrollTo }, 50);
+        var scrollTo =
+            worksheetContainerEl.scrollTop() + distanceFromTopViewPort - viewportHeight * 0.5;
+        worksheetContainerEl.stop(true).animate({ scrollTop: scrollTo }, 50);
     }
 }
 
@@ -340,4 +340,3 @@ export function getMinMaxKeys(item) {
     }
     return { minKey, maxKey };
 }
-

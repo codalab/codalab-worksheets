@@ -21,7 +21,8 @@ class MarkdownItem extends React.Component {
     }
 
     processMathJax = () => {
-        window.MathJax && window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub, ReactDOM.findDOMNode(this)]);
+        window.MathJax &&
+            window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub, ReactDOM.findDOMNode(this)]);
     };
 
     componentDidMount() {
@@ -31,7 +32,6 @@ class MarkdownItem extends React.Component {
     componentDidUpdate() {
         this.processMathJax();
         if (this.props.focused) this.capture_keys();
-
     }
     shouldComponentUpdate(nextProps, nextState) {
         return (
@@ -59,24 +59,23 @@ class MarkdownItem extends React.Component {
     };
 
     capture_keys() {
+        // Edit the markdown
+        Mousetrap.bind(
+            ['enter'],
+            function(ev) {
+                ev.preventDefault();
+                this.toggleEdit();
+            }.bind(this),
+        );
 
-            // Edit the markdown
-            Mousetrap.bind(
-                ['enter'],
-                function (ev) {
-                        ev.preventDefault();
-                        this.toggleEdit();
-                }.bind(this),
-            );
-
-            // Delete the line
-            Mousetrap.bind(
-                ['backspace', 'del'],
-                function (ev) {
-                        ev.preventDefault();
-                        this.deleteItem();
-                }.bind(this),
-            );
+        // Delete the line
+        Mousetrap.bind(
+            ['backspace', 'del'],
+            function(ev) {
+                ev.preventDefault();
+                this.deleteItem();
+            }.bind(this),
+        );
     }
 
     deleteItem = () => {
@@ -142,7 +141,7 @@ class MarkdownItem extends React.Component {
         ) : (
             <div className={'ws-item ' + classes.textContainer} onClick={this.handleClick}>
                 <div
-                    className={`${ className } ${ classes.textRender }`}
+                    className={`${className} ${classes.textRender}`}
                     dangerouslySetInnerHTML={{ __html: contents }}
                 />
                 <div className={classes.buttonsPanel}>
@@ -165,7 +164,7 @@ class MarkdownItem extends React.Component {
                     </Tooltip>
                 </div>
             </div>
-            );
+        );
     }
 
     /// helper functions for making markdown and mathjax work together
@@ -237,8 +236,7 @@ const styles = (theme) => ({
     iconButtonRoot: {
         backgroundColor: theme.color.grey.lighter,
     },
-    textRender: {
-    },
+    textRender: {},
 });
 
 export default withStyles(styles)(MarkdownItem);
