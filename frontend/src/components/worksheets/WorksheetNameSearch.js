@@ -1,6 +1,7 @@
 import React from 'react';
 import queryString from 'query-string';
 import ErrorMessage from './ErrorMessage';
+import Loading from '../Loading';
 
 export default class extends React.Component {
     constructor(props) {
@@ -22,18 +23,9 @@ export default class extends React.Component {
         }
     }
     render() {
-        const styles = {
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-        };
         return (
             <div>
-                {this.state.loading && (
-                    <div style={styles}>
-                        <img src={`${process.env.PUBLIC_URL}/img/Preloader_Small.gif`} />
-                    </div>
-                )}
+                {this.state.loading && <Loading />}
                 {this.state.error && (
                     <ErrorMessage message={'Error. Please provide a worksheet uuid'} />
                 )}
