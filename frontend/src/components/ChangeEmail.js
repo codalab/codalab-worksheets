@@ -47,8 +47,8 @@ export class ChangeEmail extends React.Component {
                 <ContentWrapper>
                     {!this.props.auth.isAuthenticated && (
                         <p>
-                            Please <NavLink to='/account/login'>sign in</NavLink> first before updating your
-                            email address.
+                            Please <NavLink to='/account/login'>sign in</NavLink> first before
+                            updating your email address.
                         </p>
                     )}
                     {this.props.auth.isAuthenticated && (

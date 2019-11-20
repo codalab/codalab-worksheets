@@ -21,7 +21,8 @@ class MarkdownItem extends React.Component {
     }
 
     processMathJax = () => {
-        window.MathJax && window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub, ReactDOM.findDOMNode(this)]);
+        window.MathJax &&
+            window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub, ReactDOM.findDOMNode(this)]);
     };
 
     componentDidMount() {
@@ -147,7 +148,7 @@ class MarkdownItem extends React.Component {
         ) : (
             <div className={'ws-item ' + classes.textContainer} onClick={this.handleClick}>
                 <div
-                    className={`${ className } ${ classes.textRender }`}
+                    className={`${className} ${classes.textRender}`}
                     dangerouslySetInnerHTML={{ __html: contents }}
                 />
                 <div className={classes.buttonsPanel}>
@@ -242,8 +243,7 @@ const styles = (theme) => ({
     iconButtonRoot: {
         backgroundColor: theme.color.grey.lighter,
     },
-    textRender: {
-    },
+    textRender: {},
 });
 
 export default withStyles(styles)(MarkdownItem);
