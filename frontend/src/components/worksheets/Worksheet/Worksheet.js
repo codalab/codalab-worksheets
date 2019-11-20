@@ -18,7 +18,7 @@ import DeleteIcon from '@material-ui/icons/DeleteOutline';
 import UndoIcon from '@material-ui/icons/UndoOutlined';
 import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
-import "./Worksheet.scss";
+import './Worksheet.scss';
 import ErrorMessage from '../ErrorMessage';
 import { ContextMenuMixin, default as ContextMenu } from '../ContextMenu';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
@@ -30,6 +30,8 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import CloseIcon from '@material-ui/icons/Close';
 import Grid from '@material-ui/core/Grid';
 import WorksheetDialogs from '../WorksheetDialogs';
+import { ToastContainer, toast, Zoom } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 /*
 Information about the current worksheet and its items.
@@ -37,6 +39,7 @@ Information about the current worksheet and its items.
 
 // TODO: dummy objects
 let ace = window.ace;
+toast.configure();
 
 var WorksheetContent = (function() {
     function WorksheetContent(uuid) {
@@ -103,7 +106,7 @@ var WorksheetContent = (function() {
             cache: false,
             url: '/rest/worksheets?force=1',
             contentType: 'application/json',
-            data: JSON.stringify({"data": [{"id": this.info.uuid, "type": "worksheets"}]}),
+            data: JSON.stringify({ data: [{ id: this.info.uuid, type: 'worksheets' }] }),
             success: function(data) {
                 console.log('Deleted worksheet ' + this.info.uuid);
                 props.success && props.success(data);
@@ -148,7 +151,7 @@ class Worksheet extends React.Component {
             openDetach: false,
             openKill: false,
             forceDelete: false,
-            showGlossaryModal: false
+            showGlossaryModal: false,
         };
     }
 
@@ -171,13 +174,13 @@ class Worksheet extends React.Component {
 
     handleClickForDeselect = (event) => {
         //Deselecting when clicking outside worksheet_items component
-        if (event.target === event.currentTarget){
+        if (event.target === event.currentTarget) {
             this.setFocus(-1, 0);
         }
     };
 
     // BULK OPERATION RELATED CODE BELOW======================================
-    handleCheckBundle = (uuid, identifier, check, removeCheckAfterOperation)=>{
+    handleCheckBundle = (uuid, identifier, check, removeCheckAfterOperation) => {
         // This is a callback function that will be passed all the way down to bundle row
         // This is to allow bulk operations on bundles
         // It passes through Worksheet->WorksheetItemList->TableItem->BundleRow
@@ -191,160 +194,197 @@ class Worksheet extends React.Component {
         // TODO: This function should be cleaner, after my logic refactoring, the identifier
         //      shouldn't be necessary. However, if we want more control on what happens after
         //      bulk operation, this might be useful
-        if (check){
+        if (check) {
             //A bundle is checked
-            if (uuid in this.state.checkedBundles && identifier in this.state.checkedBundles[uuid]){
+            if (
+                uuid in this.state.checkedBundles &&
+                identifier in this.state.checkedBundles[uuid]
+            ) {
                 return;
             }
             let bundlesCount = this.state.uuidBundlesCheckedCount;
-            if (!(uuid in bundlesCount)){
+            if (!(uuid in bundlesCount)) {
                 bundlesCount[uuid] = 0;
             }
             bundlesCount[uuid] += 1;
             let checkedBundles = this.state.checkedBundles;
-            if (!(uuid in checkedBundles)){
-                checkedBundles[uuid] = {}
+            if (!(uuid in checkedBundles)) {
+                checkedBundles[uuid] = {};
             }
             checkedBundles[uuid][identifier] = removeCheckAfterOperation;
-            this.setState({checkedBundles: checkedBundles, uuidBundlesCheckedCount: bundlesCount, showBundleOperationButtons: true});
+            this.setState({
+                checkedBundles: checkedBundles,
+                uuidBundlesCheckedCount: bundlesCount,
+                showBundleOperationButtons: true,
+            });
             // return localIndex
-        } else{
+        } else {
             // A bundle is unchecked
-            if (!(uuid in this.state.uuidBundlesCheckedCount && identifier in this.state.checkedBundles[uuid])){
+            if (
+                !(
+                    uuid in this.state.uuidBundlesCheckedCount &&
+                    identifier in this.state.checkedBundles[uuid]
+                )
+            ) {
                 return;
             }
-            if (this.state.uuidBundlesCheckedCount[uuid] === 1){
+            if (this.state.uuidBundlesCheckedCount[uuid] === 1) {
                 delete this.state.uuidBundlesCheckedCount[uuid];
                 delete this.state.checkedBundles[uuid];
-            }else{
+            } else {
                 this.state.uuidBundlesCheckedCount[uuid] -= 1;
                 delete this.state.checkedBundles[uuid][identifier];
             }
-            if (Object.keys(this.state.uuidBundlesCheckedCount).length === 0){
-                this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}, showBundleOperationButtons: false});
+            if (Object.keys(this.state.uuidBundlesCheckedCount).length === 0) {
+                this.setState({
+                    uuidBundlesCheckedCount: {},
+                    checkedBundles: {},
+                    showBundleOperationButtons: false,
+                });
             }
         }
-    }
+    };
 
-    handleSelectedBundleCommand = (cmd, worksheet_uuid=this.state.ws.uuid)=>{
+    handleSelectedBundleCommand = (cmd, worksheet_uuid = this.state.ws.uuid) => {
         // This function runs the command for bulk bundle operations
         // The uuid are recorded by handleCheckBundle
         // Refreshes the checkbox after commands
         // If the action failed, the check will persist
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
-        executeCommand(buildTerminalCommand([cmd, force_delete, ...Object.keys(this.state.uuidBundlesCheckedCount)]), worksheet_uuid)
-        .done(() => {
-                Object.keys(this.state.checkedBundles).map((uuid)=>{
-                    if(this.state.checkedBundles[uuid] !== undefined){
-                        Object.keys(this.state.checkedBundles[uuid]).map((identifier)=>{
-                            if (this.state.checkedBundles[uuid][identifier] !== undefined){
+        executeCommand(
+            buildTerminalCommand([
+                cmd,
+                force_delete,
+                ...Object.keys(this.state.uuidBundlesCheckedCount),
+            ]),
+            worksheet_uuid,
+        )
+            .done(() => {
+                Object.keys(this.state.checkedBundles).forEach((uuid) => {
+                    if (this.state.checkedBundles[uuid] !== undefined) {
+                        Object.keys(this.state.checkedBundles[uuid]).forEach((identifier) => {
+                            if (this.state.checkedBundles[uuid][identifier] !== undefined) {
                                 this.state.checkedBundles[uuid][identifier]();
                             }
-                        })
+                        });
                     }
-                })
-                this.setState({uuidBundlesCheckedCount: {}, checkedBundles:{}, showBundleOperationButtons: false});
+                });
+                this.setState({
+                    uuidBundlesCheckedCount: {},
+                    checkedBundles: {},
+                    showBundleOperationButtons: false,
+                });
                 this.reloadWorksheet();
-        }).fail((e)=>{
-            let bundle_error_dialog = <Dialog
-                                        open={true}
-                                        onClose={this.toggleBundleBulkMessageDialog}
-                                        aria-labelledby="bundle-error-confirmation-title"
-                                        aria-describedby="bundle-error-confirmation-description"
-                                        >
-                                        <DialogTitle id="bundle-error-confirmation-title"> 
-                                        <Grid container direction='row'>
-                                            <Grid item xs={10}>
-                                            {"Failed to perform this action"}
-                                            </Grid>
-                                            <Grid item xs={2}>
-                                                <Button variant="outlined" size="small" onClick={e => {this.setState({BulkBundleDialog: null})}}>
-                                                    <CloseIcon size="small"/>
-                                                </Button>
-                                            </Grid>
-                                        </Grid>
-                                        </DialogTitle>
-                                        <DialogContent>
-                                            <DialogContentText id="alert-dialog-description" style={{ color:'grey' }}>
-                                                {e.responseText}
-                                            </DialogContentText>
-                                        </DialogContent>
-                                    </Dialog>
-            this.setState({ BulkBundleDialog: bundle_error_dialog });
-        });
-    }
+            })
+            .fail((e) => {
+                let bundle_error_dialog = (
+                    <Dialog
+                        open={true}
+                        onClose={this.toggleBundleBulkMessageDialog}
+                        aria-labelledby='bundle-error-confirmation-title'
+                        aria-describedby='bundle-error-confirmation-description'
+                    >
+                        <DialogTitle id='bundle-error-confirmation-title'>
+                            <Grid container direction='row'>
+                                <Grid item xs={10}>
+                                    {'Failed to perform this action'}
+                                </Grid>
+                                <Grid item xs={2}>
+                                    <Button
+                                        variant='outlined'
+                                        size='small'
+                                        onClick={(e) => {
+                                            this.setState({ BulkBundleDialog: null });
+                                        }}
+                                    >
+                                        <CloseIcon size='small' />
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </DialogTitle>
+                        <DialogContent>
+                            <DialogContentText
+                                id='alert-dialog-description'
+                                style={{ color: 'grey' }}
+                            >
+                                {e.responseText}
+                            </DialogContentText>
+                        </DialogContent>
+                    </Dialog>
+                );
+                this.setState({ BulkBundleDialog: bundle_error_dialog });
+            });
+    };
 
-    handleForceDelete = (e)=>{
-        this.setState({forceDelete: e.target.checked});
-    } 
+    handleForceDelete = (e) => {
+        this.setState({ forceDelete: e.target.checked });
+    };
 
     toggleBundleBulkMessageDialog = () => {
-        this.setState({BulkBundleDialog: null});
-    }
+        this.setState({ BulkBundleDialog: null });
+    };
 
     executeBundleCommand = (cmd_type) => () => {
         this.handleSelectedBundleCommand(cmd_type);
         this.togglePopupNoEvent(cmd_type);
-    }
+    };
 
-    executeBundleCommandNoEvent = (cmd_type) =>{
+    executeBundleCommandNoEvent = (cmd_type) => {
         this.handleSelectedBundleCommand(cmd_type);
         this.togglePopupNoEvent(cmd_type);
-    }
+    };
 
-    togglePopup= (cmd_type) => () => {
-        if (!this.state.showBundleOperationButtons){
+    togglePopup = (cmd_type) => () => {
+        if (!this.state.showBundleOperationButtons) {
             return;
         }
         const { openKill, openDelete, openDetach } = this.state;
-        if (cmd_type === 'rm'){
-            this.setState( { openDelete:!openDelete } );
+        if (cmd_type === 'rm') {
+            this.setState({ openDelete: !openDelete });
+        } else if (cmd_type === 'detach') {
+            this.setState({ openDetach: !openDetach });
+        } else if (cmd_type === 'kill') {
+            this.setState({ openKill: !openKill });
         }
-        else if (cmd_type === 'detach'){
-            this.setState( { openDetach:!openDetach } );
-        }
-        else if (cmd_type === 'kill'){
-            this.setState( { openKill:!openKill } );
-        }
-    }
+    };
 
-    togglePopupNoEvent= (cmd_type) => {
-        if (!this.state.showBundleOperationButtons){
+    togglePopupNoEvent = (cmd_type) => {
+        if (!this.state.showBundleOperationButtons) {
             return;
         }
         const { openKill, openDelete, openDetach } = this.state;
-        if (cmd_type === 'rm'){
-            this.setState( { openDelete:!openDelete } );
+        if (cmd_type === 'rm') {
+            this.setState({ openDelete: !openDelete });
+        } else if (cmd_type === 'detach') {
+            this.setState({ openDetach: !openDetach });
+        } else if (cmd_type === 'kill') {
+            this.setState({ openKill: !openKill });
         }
-        else if (cmd_type === 'detach'){
-            this.setState( { openDetach:!openDetach } );
-        }
-        else if (cmd_type === 'kill'){
-            this.setState( { openKill:!openKill } );
-        }
-    }
+    };
 
-    confirmBundleRowAction = (code) =>{
-        if (!(this.state.openDelete 
-            || this.state.openDetach 
-            || this.state.openKill 
-            || this.state.BulkBundleDialog)){
+    confirmBundleRowAction = (code) => {
+        if (
+            !(
+                this.state.openDelete ||
+                this.state.openDetach ||
+                this.state.openKill ||
+                this.state.BulkBundleDialog
+            )
+        ) {
             // no dialog is opened, open bundle row detail
             return false;
-        } 
-        else if(code === 'KeyX' || code === 'Space'){
+        } else if (code === 'KeyX' || code === 'Space') {
             return true;
-        }
-        else if (this.state.openDelete){
+        } else if (this.state.openDelete) {
             this.executeBundleCommandNoEvent('rm');
-        }else if (this.state.openDetach){
+        } else if (this.state.openDetach) {
             this.executeBundleCommandNoEvent('detach');
-        }else if (this.state.openKill){
+        } else if (this.state.openKill) {
             this.executeBundleCommandNoEvent('kill');
         }
         return true;
-    }
-// BULK OPERATION RELATED CODE ABOVE======================================
+    };
+    // BULK OPERATION RELATED CODE ABOVE======================================
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
@@ -483,25 +523,28 @@ class Worksheet extends React.Component {
     editMode = () => {
         this.toggleEditMode(true);
     };
-    handleActionBarFocus = (event) => {	
-        this.setState({ activeComponent: 'action' });	
-        // just scroll to the top of the page.	
-        // Add the stop() to keep animation events from building up in the queue		
-        $('#command_line').data('resizing', null);	
-        $('body')	
-            .stop(true)	
-            .animate({ scrollTop: 0 }, 250);	
-    };	
-    handleActionBarBlur = (event) => {	
-        // explicitly close terminal because we're leaving the action bar	
-        // $('#command_line').terminal().focus(false);	
-        this.setState({ activeComponent: 'list' });	
-        $('#command_line').data('resizing', null);	
-        $('#ws_search').removeAttr('style');	
+    handleActionBarFocus = (event) => {
+        this.setState({ activeComponent: 'action' });
+        // just scroll to the top of the page.
+        // Add the stop() to keep animation events from building up in the queue
+        $('#command_line').data('resizing', null);
+        $('body')
+            .stop(true)
+            .animate({ scrollTop: 0 }, 250);
+    };
+    handleActionBarBlur = (event) => {
+        // explicitly close terminal because we're leaving the action bar
+        // $('#command_line').terminal().focus(false);
+        this.setState({ activeComponent: 'list' });
+        $('#command_line').data('resizing', null);
+        $('#ws_search').removeAttr('style');
     };
     toggleGlossaryModal = () => {
-        this.setState({showGlossaryModal: !this.state.showGlossaryModal});
-    }
+        this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
+    };
+    toggleGlossaryModal = () => {
+        this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
+    };
     setupEventHandlers() {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
@@ -517,33 +560,46 @@ class Worksheet extends React.Component {
         }
 
         Mousetrap.reset();
-        if (!(this.state.openDelete || this.state.openDetach || this.state.openKill || this.state.BulkBundleDialog)){
+        if (
+            !(
+                this.state.openDelete ||
+                this.state.openDetach ||
+                this.state.openKill ||
+                this.state.BulkBundleDialog
+            )
+        ) {
             // Only enable these shortcuts when no dialog is opened
 
-            // 
+            //
             Mousetrap.bind(
                 ['shift+r'],
                 function(e) {
-                    // refresh the worksheet and update the
-                    // focus to the first item
-                    this.reloadWorksheet(undefined, 'end');
+                    this.reloadWorksheet(undefined, undefined);
+                    toast.success('🦄 Worksheet refreshed!', {
+                        position: 'top-right',
+                        autoClose: 1500,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: false,
+                        draggable: true,
+                    });
                 }.bind(this),
             );
 
-            // Show/hide web terminal (action bar)	
-            Mousetrap.bind(	
-                ['shift+c'],	
-                function(e) {	
-                    this.toggleActionBar();	
-                }.bind(this),	
-            );	
+            // Show/hide web terminal (action bar)
+            Mousetrap.bind(
+                ['shift+c'],
+                function(e) {
+                    this.toggleActionBar();
+                }.bind(this),
+            );
 
-            // Focus on web terminal (action bar)	
-            Mousetrap.bind(	
-                ['c'],	
-                function(e) {	
-                    this.focusActionBar();	
-                }.bind(this),	
+            // Focus on web terminal (action bar)
+            Mousetrap.bind(
+                ['c'],
+                function(e) {
+                    this.focusActionBar();
+                }.bind(this),
             );
 
             // Toggle edit mode
@@ -605,7 +661,7 @@ class Worksheet extends React.Component {
                 }.bind(this),
                 'keydown',
             );
-            if (!this.state.showBundleOperationButtons){
+            if (!this.state.showBundleOperationButtons) {
                 // insert text after current cell
                 Mousetrap.bind(
                     ['t'],
@@ -614,7 +670,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        this.setState({showNewText: true});
+                        this.setState({ showNewText: true });
                     }.bind(this),
                     'keyup',
                 );
@@ -627,7 +683,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        this.setState({showNewUpload: true});
+                        this.setState({ showNewUpload: true });
                     }.bind(this),
                     'keyup',
                 );
@@ -639,7 +695,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        this.setState({showNewRun: true});
+                        this.setState({ showNewRun: true });
                     }.bind(this),
                     'keyup',
                 );
@@ -647,7 +703,7 @@ class Worksheet extends React.Component {
         }
         Mousetrap.bind(['?'], (e) => {
             this.setState({
-                showGlossaryModal: true
+                showGlossaryModal: true,
             });
         });
 
@@ -655,53 +711,53 @@ class Worksheet extends React.Component {
             ContextMenuMixin.closeContextMenu();
         });
 
-        if (this.state.showBundleOperationButtons){
+        if (this.state.showBundleOperationButtons) {
             // Below are allowed shortcut even when a dialog is opened===================
             // The following three are bulk bundle operation shortcuts
-            Mousetrap.bind(['backspace', 'del'],
-                () => {
-                    if (this.state.openDetach || this.state.openKill){
-                        return;
-                    }
-                    this.togglePopupNoEvent('rm');
-                },
-            );
-            Mousetrap.bind(['d'],
-                () => {
-                    if (this.state.openDelete || this.state.openKill){
-                        return;
-                    }
-                    this.togglePopupNoEvent('detach');
-                },
-            );
-            Mousetrap.bind(['v'],
-                () => {
-                    if (this.state.openDetach || this.state.openDelete){
-                        return;
-                    }
-                    this.togglePopupNoEvent('kill');
-                },
-            );
-        
+            Mousetrap.bind(['backspace', 'del'], () => {
+                if (this.state.openDetach || this.state.openKill) {
+                    return;
+                }
+                this.togglePopupNoEvent('rm');
+            });
+            Mousetrap.bind(['d'], () => {
+                if (this.state.openDelete || this.state.openKill) {
+                    return;
+                }
+                this.togglePopupNoEvent('detach');
+            });
+            Mousetrap.bind(['v'], () => {
+                if (this.state.openDetach || this.state.openDelete) {
+                    return;
+                }
+                this.togglePopupNoEvent('kill');
+            });
+
             // Confirm bulk bundle operation
-            if (this.state.openDelete||this.state.openKill||this.state.openDetach){
-                Mousetrap.bind(['enter'], function(e) {
-                    if (this.state.openDelete){
-                        this.executeBundleCommandNoEvent('rm');
-                    }else if (this.state.openKill){
-                        this.executeBundleCommandNoEvent('kill');
-                    }else if (this.state.openDetach){
-                        this.executeBundleCommandNoEvent('detach');
-                    }
-                }.bind(this));
+            if (this.state.openDelete || this.state.openKill || this.state.openDetach) {
+                Mousetrap.bind(
+                    ['enter'],
+                    function(e) {
+                        if (this.state.openDelete) {
+                            this.executeBundleCommandNoEvent('rm');
+                        } else if (this.state.openKill) {
+                            this.executeBundleCommandNoEvent('kill');
+                        } else if (this.state.openDetach) {
+                            this.executeBundleCommandNoEvent('detach');
+                        }
+                    }.bind(this),
+                );
 
                 // Select/Deselect to force delete during deletion dialog
-                Mousetrap.bind(['f'], function() {
-                    //force deletion through f
-                    if (this.state.openDelete){
-                        this.setState({forceDelete: !this.state.forceDelete});
-                    }
-                }.bind(this));
+                Mousetrap.bind(
+                    ['f'],
+                    function() {
+                        //force deletion through f
+                        if (this.state.openDelete) {
+                            this.setState({ forceDelete: !this.state.forceDelete });
+                        }
+                    }.bind(this),
+                );
             }
         }
         //====================Bulk bundle operations===================
@@ -895,16 +951,16 @@ class Worksheet extends React.Component {
         }
     }
 
-    toggleActionBar() {	
+    toggleActionBar() {
         this.setState({ showActionBar: !this.state.showActionBar });
-    }	
+    }
 
-    focusActionBar() {	
-        this.setState({ activeComponent: 'action' });	
+    focusActionBar() {
+        this.setState({ activeComponent: 'action' });
         this.setState({ showActionBar: true });
-        $('#command_line')	
-            .terminal()	
-            .focus();	
+        $('#command_line')
+            .terminal()
+            .focus();
     }
 
     ensureIsArray(bundle_info) {
@@ -933,9 +989,7 @@ class Worksheet extends React.Component {
     // Also, a non-null item could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
     // The bundle_infos for bundles that don't need updating are also null.
     // If rawIndexAfterEditMode is defined, this reloadWorksheet is called right after toggling editMode. It should resolve rawIndex to (focusIndex, subFocusIndex) pair.
-    reloadWorksheet = (partialUpdateItems, rawIndexAfterEditMode, {
-        moveIndex = false,
-    } = {}) => {
+    reloadWorksheet = (partialUpdateItems, rawIndexAfterEditMode, { moveIndex = false } = {}) => {
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
             this.setState({ updating: true });
@@ -975,9 +1029,11 @@ class Worksheet extends React.Component {
                     ) {
                         // If the number of bundles increases then the focus should be on the new bundle.
                         // if the current focus is not on a table
-                        if (items[this.state.focusIndex] &&
+                        if (
+                            items[this.state.focusIndex] &&
                             items[this.state.focusIndex].mode &&
-                            items[this.state.focusIndex].mode !== 'table_block') {
+                            items[this.state.focusIndex].mode !== 'table_block'
+                        ) {
                             this.setFocus(this.state.focusIndex + 1, 0);
                         } else {
                             this.setFocus(this.state.focusIndex, 'end');
@@ -994,9 +1050,12 @@ class Worksheet extends React.Component {
                             } else {
                                 this.setFocus(this.state.focusIndex, 0);
                             }
-                        // the deleted bundle is the last item of the table
-                        // note that for some reason subFocusIndex begins with 1, not 0
-                        } else if (this._numTableRows(items[this.state.focusIndex]) === this.state.subFocusIndex) {
+                            // the deleted bundle is the last item of the table
+                            // note that for some reason subFocusIndex begins with 1, not 0
+                        } else if (
+                            this._numTableRows(items[this.state.focusIndex]) ===
+                            this.state.subFocusIndex
+                        ) {
                             this.setFocus(this.state.focusIndex, this.state.subFocusIndex - 1);
                         } else {
                             this.setFocus(this.state.focusIndex, this.state.subFocusIndex);
@@ -1071,7 +1130,11 @@ class Worksheet extends React.Component {
     }
 
     delete() {
-        if (!window.confirm("Are you sure you want to delete this worksheet? (Note that this does not delete the bundles, but just detaches them from the worksheet.)")) {
+        if (
+            !window.confirm(
+                'Are you sure you want to delete this worksheet? (Note that this does not delete the bundles, but just detaches them from the worksheet.)',
+            )
+        ) {
             return;
         }
         $('#worksheet-message').hide();
@@ -1079,7 +1142,7 @@ class Worksheet extends React.Component {
         this.state.ws.deleteWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
-                window.location = "/rest/worksheets/?name=dashboard";
+                window.location = '/rest/worksheets/?name=dashboard';
             }.bind(this),
             error: function(xhr, status, err) {
                 this.setState({ updating: false });
@@ -1103,68 +1166,73 @@ class Worksheet extends React.Component {
         var editPermission = info && info.edit_permission;
         var canEdit = this.canEdit() && this.state.editMode;
 
-        var searchClassName = this.state.showActionBar ? '': 'search-hidden';
+        var searchClassName = this.state.showActionBar ? '' : 'search-hidden';
         var editableClassName = canEdit ? 'editable' : '';
         var disableWorksheetEditing = this.canEdit() ? '' : 'disabled';
         var sourceStr = editPermission ? 'Edit Source' : 'View Source';
         var editFeatures = (
-            <div style={{display:'inline-block'}}>
-            <Button
-                onClick={this.editMode}
-                size='small'
-                color='inherit'
-                aria-label='Edit Source'
+            <div style={{ display: 'inline-block' }}>
+                <Button
+                    onClick={this.editMode}
+                    size='small'
+                    color='inherit'
+                    aria-label='Edit Source'
                 >
                     <EditIcon className={classes.buttonIcon} />
                     {sourceStr}
                 </Button>
-            <Button
-                onClick={e => this.delete()}
-                size='small'
-                color='inherit'
-                aria-label='Delete Worksheet'
+                <Button
+                    onClick={(e) => this.delete()}
+                    size='small'
+                    color='inherit'
+                    aria-label='Delete Worksheet'
                 >
                     <DeleteIcon className={classes.buttonIcon} />
                     Delete
                 </Button>
-            <Button
-                onClick={e => this.toggleActionBar()}
-                size='small'
-                color='inherit'
-                aria-label='Expand CLI'
-                id="terminal-button"
+                <Button
+                    onClick={(e) => this.toggleActionBar()}
+                    size='small'
+                    color='inherit'
+                    aria-label='Expand CLI'
+                    id='terminal-button'
                 >
-                    {this.state.showActionBar ? <ContractIcon className={classes.buttonIcon} />
-                : <ExpandIcon className={classes.buttonIcon} />}
-                    {this.state.showActionBar ? 'HIDE TERMINAL'
-                : 'SHOW TERMINAL'}
+                    {this.state.showActionBar ? (
+                        <ContractIcon className={classes.buttonIcon} />
+                    ) : (
+                        <ExpandIcon className={classes.buttonIcon} />
+                    )}
+                    {this.state.showActionBar ? 'HIDE TERMINAL' : 'SHOW TERMINAL'}
                 </Button>
-        </div>
+            </div>
         );
 
         var editModeFeatures = (
-            <div onMouseMove={(ev) => {
-                ev.stopPropagation();
-            }} style={{display:'inline-block'}}>
+            <div
+                onMouseMove={(ev) => {
+                    ev.stopPropagation();
+                }}
+                style={{ display: 'inline-block' }}
+            >
                 <Button
                     onClick={this.viewMode}
                     disabled={disableWorksheetEditing}
                     size='small'
                     color='inherit'
                     aria-label='Save Edit'
-                    >
-                        <SaveIcon className={classes.buttonIcon} />
-                        Save
-                    </Button>
+                >
+                    <SaveIcon className={classes.buttonIcon} />
+                    Save
+                </Button>
                 <Button
                     onClick={this.discardChanges}
                     size='small'
                     color='inherit'
                     aria-label='Discard Edit'
-                    >
-                        <UndoIcon className={classes.buttonIcon} />
-                        Discard
-                    </Button>
+                >
+                    <UndoIcon className={classes.buttonIcon} />
+                    Discard
+                </Button>
             </div>
         );
 
@@ -1189,19 +1257,19 @@ class Worksheet extends React.Component {
             </div>
         );
 
-        var action_bar_display = (	
-            <WorksheetActionBar	
-                ref={'action'}	
-                ws={this.state.ws}	
-                handleFocus={this.handleActionBarFocus}	
-                handleBlur={this.handleActionBarBlur}	
-                active={this.state.activeComponent === 'action'}	
-                reloadWorksheet={this.reloadWorksheet}	
-                openWorksheet={this.openWorksheet}	
-                editMode={this.editMode}	
+        var action_bar_display = (
+            <WorksheetActionBar
+                ref={'action'}
+                ws={this.state.ws}
+                handleFocus={this.handleActionBarFocus}
+                handleBlur={this.handleActionBarBlur}
+                active={this.state.activeComponent === 'action'}
+                reloadWorksheet={this.reloadWorksheet}
+                openWorksheet={this.openWorksheet}
+                editMode={this.editMode}
                 setFocus={this.setFocus}
-                hidden={!this.state.showActionBar}	
-            />	
+                hidden={!this.state.showActionBar}
+            />
         );
 
         var items_display = (
@@ -1221,10 +1289,10 @@ class Worksheet extends React.Component {
                 showNewUpload={this.state.showNewUpload}
                 showNewRun={this.state.showNewRun}
                 showNewText={this.state.showNewText}
-                onHideNewUpload={() => this.setState({showNewUpload: false})}
-                onHideNewRun={() => this.setState({showNewRun: false})}
-                onHideNewText={() => this.setState({showNewText: false})}
-                handleCheckBundle = {this.handleCheckBundle}
+                onHideNewUpload={() => this.setState({ showNewUpload: false })}
+                onHideNewRun={() => this.setState({ showNewRun: false })}
+                onHideNewText={() => this.setState({ showNewText: false })}
+                handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
             />
         );
@@ -1235,22 +1303,21 @@ class Worksheet extends React.Component {
 
         var worksheet_display = this.state.editMode ? raw_display : items_display;
         var editButtons = this.state.editMode ? editModeFeatures : editFeatures;
-        if (!this.state.isValid){
-            return <ErrorMessage 
-                        message={'Not found: \'/worksheets/' 
-                                + this.state.ws.uuid +"\'" } 
-                    />;
+        if (!this.state.isValid) {
+            return <ErrorMessage message={"Not found: '/worksheets/" + this.state.ws.uuid + "'"} />;
         }
 
-        var worksheet_dialogs = <WorksheetDialogs 
-            openKill={this.state.openKill}
-            openDelete={this.state.openDelete}
-            openDetach={this.state.openDetach}
-            togglePopup={this.togglePopup}
-            executeBundleCommand={this.executeBundleCommand}
-            forceDelete={this.state.forceDelete}
-            handleForceDelete={this.handleForceDelete}
-        />
+        var worksheet_dialogs = (
+            <WorksheetDialogs
+                openKill={this.state.openKill}
+                openDelete={this.state.openDelete}
+                openDetach={this.state.openDetach}
+                togglePopup={this.togglePopup}
+                executeBundleCommand={this.executeBundleCommand}
+                forceDelete={this.state.forceDelete}
+                handleForceDelete={this.handleForceDelete}
+            />
+        );
 
         return (
             <React.Fragment>
@@ -1264,22 +1331,40 @@ class Worksheet extends React.Component {
                     reloadWorksheet={this.reloadWorksheet}
                     editButtons={editButtons}
                     anchorEl={anchorEl}
-                    setAnchorEl={e => this.setState({ anchorEl: e })}
-                    onShowNewUpload={() => this.setState({showNewUpload: true})}
-                    onShowNewRun={() => this.setState({showNewRun: true})}
-                    onShowNewText={() => this.setState({showNewText: true})}
+                    setAnchorEl={(e) => this.setState({ anchorEl: e })}
+                    onShowNewUpload={() => this.setState({ showNewUpload: true })}
+                    onShowNewRun={() => this.setState({ showNewRun: true })}
+                    onShowNewText={() => this.setState({ showNewText: true })}
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
                     togglePopup={this.togglePopup}
                     toggleGlossaryModal={this.toggleGlossaryModal}
-                    />
-                    {action_bar_display}
+                />
+                {action_bar_display}
+                <ToastContainer
+                    newestOnTop={false}
+                    transition={Zoom}
+                    rtl={false}
+                    pauseOnVisibilityChange
+                />
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
-                        <div className={classes.worksheetDesktop} onClick={this.handleClickForDeselect}>
-                            <div className={classes.worksheetOuter} onClick={this.handleClickForDeselect}>
-                                <div className={classes.worksheetInner} onClick={this.handleClickForDeselect}>
-                                    <div id='worksheet_content' className={editableClassName + ' worksheet_content'}>
+                        <div
+                            className={classes.worksheetDesktop}
+                            onClick={this.handleClickForDeselect}
+                        >
+                            <div
+                                className={classes.worksheetOuter}
+                                onClick={this.handleClickForDeselect}
+                            >
+                                <div
+                                    className={classes.worksheetInner}
+                                    onClick={this.handleClickForDeselect}
+                                >
+                                    <div
+                                        id='worksheet_content'
+                                        className={editableClassName + ' worksheet_content'}
+                                    >
                                         {worksheet_display}
                                         {/* Show error dialog if bulk bundle execution failed*/}
                                         {this.state.BulkBundleDialog}
@@ -1303,17 +1388,17 @@ const styles = (theme) => ({
     worksheetDesktop: {
         backgroundColor: theme.color.grey.lightest,
         marginTop: NAVBAR_HEIGHT,
-        paddingBottom: 25,  // Height of Footer
+        paddingBottom: 25, // Height of Footer
     },
     worksheetOuter: {
         maxWidth: 1200, // Worksheet width
-        minHeight: 600,  // Worksheet height
+        minHeight: 600, // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
         border: `2px solid ${theme.color.grey.light}`,
     },
     worksheetInner: {
-        padding: '0px 30px',  // Horizonal padding, no vertical
+        padding: '0px 30px', // Horizonal padding, no vertical
         height: '100%',
         position: 'relative',
     },
@@ -1344,9 +1429,9 @@ const styles = (theme) => ({
     },
 });
 
-Mousetrap.stopCallback = function (e, element, combo) {
+Mousetrap.stopCallback = function(e, element, combo) {
     //if the element is a checkbox, don't stop
-    if (element.type === 'checkbox'){
+    if (element.type === 'checkbox') {
         return false;
     }
     // if the element has the class "mousetrap" then no need to stop
@@ -1355,7 +1440,12 @@ Mousetrap.stopCallback = function (e, element, combo) {
     }
 
     // stop for input, select, and textarea
-    return element.tagName === 'INPUT' || element.tagName === 'SELECT' || element.tagName === 'TEXTAREA' || (element.contentEditable && element.contentEditable === 'true');
-}
+    return (
+        element.tagName === 'INPUT' ||
+        element.tagName === 'SELECT' ||
+        element.tagName === 'TEXTAREA' ||
+        (element.contentEditable && element.contentEditable === 'true')
+    );
+};
 
 export default withStyles(styles)(Worksheet);

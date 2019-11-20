@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { Modal } from "react-bootstrap";
-import "./ExtraWorksheetHTML.scss";
+import { Modal } from 'react-bootstrap';
+import './ExtraWorksheetHTML.scss';
 
 const GlossaryModal = ({ show, toggle }) => (
-    <Modal id="glossaryModal" tabIndex="-1" keyboard show={show} onHide={toggle}>
+    <Modal id='glossaryModal' tabIndex='-1' keyboard show={show} onHide={toggle}>
         <Modal.Header closeButton>
             <h4>Keyboard Shortcuts</h4>
         </Modal.Header>
@@ -66,17 +66,13 @@ const GlossaryModal = ({ show, toggle }) => (
                         <td>
                             <kbd>u</kbd>
                         </td>
-                        <td>
-                            Paste UUID of current bundle or worksheet into web terminal
-                        </td>
+                        <td>Paste UUID of current bundle or worksheet into web terminal</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>a</kbd>
                         </td>
-                        <td>
-                            Paste arguments to recreate current bundle into web terminal
-                        </td>
+                        <td>Paste arguments to recreate current bundle into web terminal</td>
                     </tr>
                     <tr>
                         <td>
@@ -129,7 +125,8 @@ const GlossaryModal = ({ show, toggle }) => (
                 </tbody>
             </table>
         </Modal.Body>
-    </Modal>);
+    </Modal>
+);
 
 let ExtraWorksheetHTML = ({ showGlossaryModal, toggleGlossaryModal }) => (
     <React.Fragment>
@@ -139,10 +136,7 @@ let ExtraWorksheetHTML = ({ showGlossaryModal, toggleGlossaryModal }) => (
         <div id='save_error' className='progress-message'>
             <i className='glyphicon glyphicon-remove-circle' /> Error saving...
         </div>
-        <GlossaryModal
-            show={showGlossaryModal}
-            toggle={toggleGlossaryModal}
-        />
+        <GlossaryModal show={showGlossaryModal} toggle={toggleGlossaryModal} />
     </React.Fragment>
 );
 

@@ -11,16 +11,15 @@ import NewUpload from '../NewUpload';
 import TextEditorItem from './TextEditorItem';
 import { getMinMaxKeys } from '../../../util/worksheet_utils';
 
-
 function getIds(item) {
-   if (item.mode === 'markup_block') {
-    return item.ids;
-   } else if (item.mode === 'table_block') {
+    if (item.mode === 'markup_block') {
+        return item.ids;
+    } else if (item.mode === 'table_block') {
         if (item.bundles_spec && item.bundles_spec.bundle_infos) {
             return item.bundles_spec.bundle_infos.map((info) => info.id);
         }
-   }
-   return [];
+    }
+    return [];
 }
 
 const SENSOR_HEIGHT = 12;
@@ -59,15 +58,11 @@ class ItemWrapper extends React.Component {
             isWorkSheetItem = false;
         }
 
-        const {isDummyItem} = item;
+        const { isDummyItem } = item;
 
         return (
-            <div
-                className={isDummyItem ? "": classes.container}
-            >
-                {!isDummyItem && 
-                    <div className={classes.main}>{children}</div>
-                }
+            <div className={isDummyItem ? '' : classes.container}>
+                {!isDummyItem && <div className={classes.main}>{children}</div>}
                 {showNewUpload && (
                     <NewUpload
                         after_sort_key={itemKeys.maxKey}
@@ -89,7 +84,7 @@ class ItemWrapper extends React.Component {
                 {showNewText && (
                     <TextEditorItem
                         ids={ids}
-                        mode="create"
+                        mode='create'
                         after_sort_key={itemKeys.maxKey}
                         worksheetUUID={worksheetUUID}
                         reloadWorksheet={reloadWorksheet}
@@ -115,7 +110,7 @@ const styles = (theme) => ({
         '&:hover': {
             backgroundColor: theme.color.grey.lightest,
             border: `2px solid ${theme.color.grey.base}`,
-        }
+        },
     },
     buttonsPanel: {
         display: 'flex',

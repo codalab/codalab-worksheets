@@ -35,6 +35,7 @@
     "react-router-dom": "^4.3.1",
     "react-select": "^2.4.3",
     "react-stickynode": "^2.1.1",
+    "react-toastify": "^5.4.1",
     "react-x-editable": "0.0.10-beta",
     "reselect": "^4.0.0",
     "sass": "^1.23.3",
@@ -44,7 +45,7 @@
   },
   "devDependencies": {
     "flow-bin": "^0.91.0",
-    "prettier": "^1.15.3",
+    "prettier": "^1.19.1",
     "react-scripts": "^3.2.0"
   },
   "browserslist": [
@@ -58,9 +59,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "flow": "flow",
-    "format": "prettier --config ./.prettierrc --write 'src/**/*.js'",
     "eject": "react-scripts eject",
-    "lint": "eslint --fix src"
+    "check-ci": "eslint src && prettier --config ./.prettierrc --check 'src/**/*.js'"
   },
   "husky": {
     "hooks": {
@@ -69,7 +69,9 @@
   },
   "lint-staged": {
     "src/**/*.js": [
-      "eslint --max-warnings=0"
+      "eslint --max-warnings=0",
+      "prettier --config ./.prettierrc --write",
+      "git add"
     ]
   }
 }

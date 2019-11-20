@@ -106,9 +106,11 @@ class EditableFieldBase extends React.Component<{
     render() {
         if (!this.state.editing) {
             return (
-                <span className='editable-field'
-                onClick={this.onClick}
-                style={{ color: '#225ea8'}}>
+                <span
+                    className='editable-field'
+                    onClick={this.onClick}
+                    style={{ color: '#225ea8' }}
+                >
                     {this.state.value === '' ? '<none>' : this.state.value}
                 </span>
             );
@@ -116,20 +118,24 @@ class EditableFieldBase extends React.Component<{
             return (
                 <form onSubmit={this.onBlur}>
                     <input
-                        type="text"
+                        type='text'
                         autoFocus
                         value={this.state.value}
                         onBlur={this.onBlur}
-                        onChange={this.props.allowASCII ? this.handleFreeChange : this.handleAsciiChange}
+                        onChange={
+                            this.props.allowASCII ? this.handleFreeChange : this.handleAsciiChange
+                        }
                         onKeyDown={this.handleKeyPress}
-                        maxLength="259"
+                        placeholder={this.props.placeholder}
+                        maxLength='259'
                         style={{
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'pre',
-                        maxWidth: '100%',
-                        minWidth: '65px',
-                        padding: '0 4px 0 3px',
-                        color: '#225ea8'}}
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'pre',
+                            maxWidth: '100%',
+                            minWidth: '65px',
+                            padding: '0 4px 0 3px',
+                            color: '#225ea8',
+                        }}
                     />
                     {!this.state.isValid && (
                         <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>
@@ -189,7 +195,7 @@ export class WorksheetEditableField extends React.Component<{
 
 WorksheetEditableField.defaultProps = {
     allowASCII: false,
-}
+};
 
 export class BundleEditableField extends React.Component<{
     value: any,
