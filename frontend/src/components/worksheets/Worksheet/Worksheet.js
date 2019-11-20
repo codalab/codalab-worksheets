@@ -379,6 +379,12 @@ class Worksheet extends React.Component {
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
+
+        // prevent multiple clicking from resetting the index
+        if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex) {
+            return;
+        }
+
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
             index = -1;
@@ -399,7 +405,7 @@ class Worksheet extends React.Component {
             subIndex < -1 ||
             subIndex >= (this._numTableRows(info.items[index]) || 1)
         ) {
-            console.log('out of bound');
+            console.log('Out of bounds');
             return; // Out of bounds (note index = -1 is okay)
         }
         let focusedBundleUuidList = [];
@@ -437,7 +443,7 @@ class Worksheet extends React.Component {
             // Compute the current position of the focused item.
             var pos;
             if (index === -1) {
-                return; // If nothing is selected, don't scroll.
+                pos = -1000000; // Scroll all the way to the top
             } else {
                 var item = this.refs.list.refs['item' + index];
                 if (this._numTableRows(item.props.item)) {
@@ -547,7 +553,6 @@ class Worksheet extends React.Component {
             return;
         }
 
-        Mousetrap.reset();
         if (
             !(
                 this.state.openDelete ||
@@ -614,7 +619,7 @@ class Worksheet extends React.Component {
                     ) {
                         // worksheet_item_interface and table_item_interface do the exact same thing anyway right now
                         if (subFocusIndex - 1 < 0) {
-                            this.setFocus(focusIndex - 1, 'end'); // Move out of this table to the item above the current table
+                            this.setFocus(focusIndex - 1 < 0 ? 0 : focusIndex - 1, 'end'); // Move out of this table to the item above the current table
                         } else {
                             this.setFocus(focusIndex, subFocusIndex - 1);
                         }
@@ -623,7 +628,6 @@ class Worksheet extends React.Component {
                         this.setFocus(focusIndex - 1, 'end');
                     }
                 }.bind(this),
-                'keydown',
             );
 
             Mousetrap.bind(
@@ -644,10 +648,9 @@ class Worksheet extends React.Component {
                             this.setFocus(focusIndex, subFocusIndex + 1);
                         }
                     } else {
-                        this.setFocus(focusIndex + 1, 0);
+                        if (focusIndex < wsItems.length - 1) this.setFocus(focusIndex + 1, 0);
                     }
                 }.bind(this),
-                'keydown',
             );
             if (!this.state.showBundleOperationButtons) {
                 // insert text after current cell
@@ -677,7 +680,7 @@ class Worksheet extends React.Component {
                 );
                 // run after current cell
                 Mousetrap.bind(
-                    ['r'],
+                    ['a r'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -977,7 +980,11 @@ class Worksheet extends React.Component {
     // Also, a non-null item could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
     // The bundle_infos for bundles that don't need updating are also null.
     // If rawIndexAfterEditMode is defined, this reloadWorksheet is called right after toggling editMode. It should resolve rawIndex to (focusIndex, subFocusIndex) pair.
-    reloadWorksheet = (partialUpdateItems, rawIndexAfterEditMode, { moveIndex = false } = {}) => {
+    reloadWorksheet = (
+        partialUpdateItems,
+        rawIndexAfterEditMode,
+        { moveIndex = false, textDeleted = false } = {},
+    ) => {
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
             this.setState({ updating: true });
@@ -994,6 +1001,7 @@ class Worksheet extends React.Component {
                     $('#worksheet_content').show();
                     var items = this.state.ws.info.items;
                     var numOfBundles = this.getNumOfBundles();
+                    var focus = this.state.focusIndex;
                     if (rawIndexAfterEditMode !== undefined) {
                         var focusIndexPair = this.state.ws.info.raw_to_block[rawIndexAfterEditMode];
                         if (focusIndexPair === undefined) {
@@ -1018,40 +1026,42 @@ class Worksheet extends React.Component {
                         // If the number of bundles increases then the focus should be on the new bundle.
                         // if the current focus is not on a table
                         if (
-                            items[this.state.focusIndex] &&
-                            items[this.state.focusIndex].mode &&
-                            items[this.state.focusIndex].mode !== 'table_block'
+                            items[focus] &&
+                            items[focus].mode &&
+                            items[focus].mode !== 'table_block'
                         ) {
-                            this.setFocus(this.state.focusIndex + 1, 0);
+                            this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
                         } else {
-                            this.setFocus(this.state.focusIndex, 'end');
+                            this.setFocus(focus >= 0 ? focus : 'end', 'end');
                         }
                     } else if (numOfBundles < this.state.numOfBundles) {
                         // If the number of bundles decreases, then focus should be on the same bundle as before
                         // unless that bundle doesn't exist anymore, in which case we select the one above it.
-
                         // the deleted bundle is the only item of the table
                         if (this.state.subFocusIndex === 0) {
                             // the deleted item is the last item of the worksheet
-                            if (items.length === this.state.focusIndex + 1) {
-                                this.setFocus(this.state.focusIndex - 1, 0);
+                            if (items.length === focus + 1) {
+                                this.setFocus(focus - 1, 0);
                             } else {
-                                this.setFocus(this.state.focusIndex, 0);
+                                this.setFocus(focus, 0);
                             }
                             // the deleted bundle is the last item of the table
                             // note that for some reason subFocusIndex begins with 1, not 0
-                        } else if (
-                            this._numTableRows(items[this.state.focusIndex]) ===
-                            this.state.subFocusIndex
-                        ) {
-                            this.setFocus(this.state.focusIndex, this.state.subFocusIndex - 1);
+                        } else if (this._numTableRows(items[focus]) === this.state.subFocusIndex) {
+                            this.setFocus(focus, this.state.subFocusIndex - 1);
                         } else {
-                            this.setFocus(this.state.focusIndex, this.state.subFocusIndex);
+                            this.setFocus(focus, this.state.subFocusIndex);
                         }
                     } else {
                         if (moveIndex) {
                             // for adding a new cell, we want the focus to be the one below the current focus
-                            this.setFocus(this.state.focusIndex + 1, 0);
+                            console.log(focus);
+                            this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
+                        }
+                        if (textDeleted) {
+                            // when deleting text, we want the focus to be the one above the deleted focus
+                            console.log(focus);
+                            this.setFocus(focus === -1 ? focus : focus - 1, 'end');
                         }
                     }
                     this.setState({

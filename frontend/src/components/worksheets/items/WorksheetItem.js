@@ -32,7 +32,7 @@ class WorksheetItem extends React.Component {
 
         // Paste uuid of focused worksheet into console
         Mousetrap.bind(
-            ['u'],
+            ['i'],
             function(e) {
                 var uuid = this.refs['row' + this.props.subFocusIndex].props.uuid;
                 $('#command_line')
