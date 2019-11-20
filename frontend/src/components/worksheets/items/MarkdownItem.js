@@ -30,6 +30,8 @@ class MarkdownItem extends React.Component {
 
     componentDidUpdate() {
         this.processMathJax();
+        if (this.props.focused) this.capture_keys();
+
     }
     shouldComponentUpdate(nextProps, nextState) {
         return (
@@ -52,42 +54,38 @@ class MarkdownItem extends React.Component {
         return text;
     };
 
-    toggleEdit = (ev) => {
-        ev.preventDefault();
-        console.log("here");
+    toggleEdit = () => {
         this.setState({ showEdit: !this.state.showEdit });
     };
 
     capture_keys() {
-        // Edit the markdown
-        // var form = document.querySelector('div.type-markup.focused.MarkdownItem-textRender-328');
-        var focusElem = document.querySelector('.type-markup.focused');
-        console.log(focusElem);
-        // buttons[0].click();
-        if (focusElem) {
-            focusElem.focus();
-            var buttons = focusElem.closest('.ws-item').childNodes[1];
+
+        // var focusElem = document.querySelector('.type-markup.focused');
+        // if (focusElem) {
+            // focusElem.focus();
+            // var buttons = focusElem && focusElem.closest('.ws-item').childNodes[1];
+
+            // Edit the markdown
             Mousetrap.bind(
                 ['enter'],
                 function (ev) {
-                    ev.stopPropagation();
-                        console.log(this.props.focused, this.props.active);
-                        // this.toggleEdit(ev);
-                        buttons.childNodes[0].click();
-                }.bind(this),
+                        ev.preventDefault();
+                        this.toggleEdit();
+                        // buttons.childNodes[0].click();
+                },
             );
-    
+
             // Delete the line
             Mousetrap.bind(
                 ['backspace', 'del'],
                 function (ev) {
-                    ev.stopPropagation();
-                        console.log(this.props.focused, this.props.active);
-                        // this.deleteItem();
-                        buttons.childNodes[2].click();
-                }.bind(this),
+                        ev.preventDefault();
+                        this.deleteItem();
+                        // buttons.childNodes[2].click();
+                },
             );
-        }
+
+        // }
     }
 
     deleteItem = () => {
@@ -111,7 +109,7 @@ class MarkdownItem extends React.Component {
     };
 
     render() {
-        if (this.props.focused) this.capture_keys(); // each item capture keys are handled dynamically after this call
+        // this.capture_keys();
         const { classes, item } = this.props;
         var { showEdit } = this.state;
         var contents = item.text;

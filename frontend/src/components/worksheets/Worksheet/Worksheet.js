@@ -369,6 +369,7 @@ class Worksheet extends React.Component {
             subIndex < -1 ||
             subIndex >= (this._numTableRows(info.items[index]) || 1)
             ) {
+            console.log("Out of bounds");
             return; // Out of bounds (note index = -1 is okay)
         }
         let focusedBundleUuidList = [];
@@ -406,7 +407,7 @@ class Worksheet extends React.Component {
             // Compute the current position of the focused item.
             var pos;
             if (index === -1) {
-                return; // If nothing is selected, don't scroll.
+                pos = -1000000; // Scroll all the way to the top
             } else {
                 var item = this.refs.list.refs['item' + index];
                 if (this._numTableRows(item.props.item)) {
@@ -513,7 +514,6 @@ class Worksheet extends React.Component {
             return;
         }
 
-        Mousetrap.reset();
         if (!(this.state.openDelete || this.state.openDetach || this.state.openKill || this.state.BulkBundleDialog)){
             // Only enable these shortcuts when no dialog is opened
 
@@ -573,7 +573,7 @@ class Worksheet extends React.Component {
                     ) {
                         // worksheet_item_interface and table_item_interface do the exact same thing anyway right now
                         if (subFocusIndex - 1 < 0) {
-                            this.setFocus(focusIndex - 1, 'end'); // Move out of this table to the item above the current table
+                            this.setFocus(focusIndex - 1 < 0 ? 0 : focusIndex - 1, 'end'); // Move out of this table to the item above the current table
                         } else {
                             this.setFocus(focusIndex, subFocusIndex - 1);
                         }
@@ -602,7 +602,7 @@ class Worksheet extends React.Component {
                             this.setFocus(focusIndex, subFocusIndex + 1);
                         }
                     } else {
-                        this.setFocus(focusIndex + 1, 0);
+                        if (focusIndex < wsItems.length - 1) this.setFocus(focusIndex + 1, 0);
                     }
                 }.bind(this),
             );
@@ -634,7 +634,7 @@ class Worksheet extends React.Component {
                 );
                 // run after current cell
                 Mousetrap.bind(
-                    ['r r'],
+                    ['a r'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -1007,6 +1007,7 @@ class Worksheet extends React.Component {
                     } else {
                         if (moveIndex) {
                             // for adding a new cell, we want the focus to be the one below the current focus
+                            console.log(focus);
                             this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
                         }
                         if (textDeleted) {

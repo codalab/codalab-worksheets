@@ -123,9 +123,15 @@ let ExtraWorksheetHTML = () => (
                                 </tr>
                                 <tr>
                                     <td>
-                                        <kbd>r r</kbd>
+                                        <kbd>a r</kbd>
                                     </td>
                                     <td>Add a new run</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <kbd>r r</kbd>
+                                    </td>
+                                    <td>Add a re-run</td>
                                 </tr>
                                 <tr>
                                     <td>
