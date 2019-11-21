@@ -1,11 +1,6 @@
 // @flow
 import * as React from 'react';
-import Button from '@material-ui/core/Button';
 import { withStyles } from '@material-ui/core/styles';
-import RunIcon from '@material-ui/icons/PlayCircleFilled';
-import UploadIcon from '@material-ui/icons/CloudUpload';
-import TextIcon from '@material-ui/icons/FontDownload';
-
 import NewRun from '../NewRun';
 import NewUpload from '../NewUpload';
 import TextEditorItem from './TextEditorItem';
@@ -21,8 +16,6 @@ function getIds(item) {
     }
     return [];
 }
-
-const SENSOR_HEIGHT = 12;
 
 class ItemWrapper extends React.Component {
     state = {
@@ -41,7 +34,6 @@ class ItemWrapper extends React.Component {
             worksheetUUID,
             reloadWorksheet,
         } = this.props;
-        const showInsertButtons = false;
         const { showNewUpload, showNewRun, showNewText } = this.props;
 
         if (!item) {
@@ -50,7 +42,6 @@ class ItemWrapper extends React.Component {
 
         const ids = getIds(item);
         const itemKeys = getMinMaxKeys(item);
-        const prevItemKeys = getMinMaxKeys(prevItem);
 
         let isWorkSheetItem = true;
         if (itemKeys.minKey === null && itemKeys.maxKey === null) {
@@ -111,29 +102,6 @@ const styles = (theme) => ({
             backgroundColor: theme.color.grey.lightest,
             border: `2px solid ${theme.color.grey.base}`,
         },
-    },
-    buttonsPanel: {
-        display: 'flex',
-        flexDirection: 'row',
-        overflow: 'visible',
-        justifyContent: 'center',
-        width: '100%',
-        height: 0,
-        transform: 'translateY(-16px)',
-        zIndex: 20,
-    },
-    buttonRoot: {
-        width: 120,
-        height: 32,
-        marginLeft: theme.spacing.unit,
-        marginRight: theme.spacing.unit,
-        backgroundColor: '#f7f7f7',
-        '&:hover': {
-            backgroundColor: '#f7f7f7',
-        },
-    },
-    buttonIcon: {
-        marginRight: theme.spacing.large,
     },
     insertBox: {
         border: `2px solid ${theme.color.primary.base}`,
