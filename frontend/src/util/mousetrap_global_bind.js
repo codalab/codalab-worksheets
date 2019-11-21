@@ -1,4 +1,3 @@
-
 /**
  * adds a bindGlobal method to Mousetrap that allows you to
  * bind specific keyboard shortcuts that will still work
@@ -41,4 +40,4 @@
     };
 
     Mousetrap.init();
-}) (Mousetrap);
+})(Mousetrap);
