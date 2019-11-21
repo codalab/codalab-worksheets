@@ -39,6 +39,10 @@ class MainContent extends React.Component<
 	render() {
 		const {
             classes, bundleInfo, stdout, stderr, fileContents } = this.props;
+        let isRunningBundle = bundleInfo.bundle_type==='run'
+        && (bundleInfo.state === 'running' 
+        || bundleInfo.state === 'preparing' || bundleInfo.state === 'starting'
+        || bundleInfo.state === 'staged');
 
 		return (
             <div className={ classes.outter }>
@@ -113,6 +117,7 @@ class MainContent extends React.Component<
                                         <div className={ classes.snippet }>
                                             <FileBrowserLite
                                             uuid={ bundleInfo.uuid }
+                                            isRunningBundle={ isRunningBundle }
                                         />
                                         </div>
                                 }

@@ -480,15 +480,28 @@ export class FileBrowserLite extends React.Component<
     }
 
     componentDidMount() {
-        setInterval(() => {
-            this.updateFileBrowser('');
-        }, 4000);
+        if (this.props.isRunningBundle) {
+            this.timer = setInterval(() => {
+                if (!this.props.isRunningBundle) {
+                    // clear timer when the bundle is no longer in running phase
+                    clearInterval(this.timer);
+                    return;
+                }
+                this.updateFileBrowser('');
+            }, 4000);
+        }
     }
 
     componentWillMount() {
         if (!this.props.startCollapsed) {
             this.setState({ isVisible: true });
             this.updateFileBrowser('');
+        }
+    }
+
+    componentWillUnmount() {
+        if (this.props.isRunningBundle) {
+            clearInterval(this.timer);
         }
     }
 
