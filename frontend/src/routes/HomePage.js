@@ -205,9 +205,7 @@ class HomePage extends React.Component<{
                             className={classNames(classes.textBox, classes.spacer)}
                         >
                             <Grid item xs={12} className={classes.textBox}>
-                                <Typography variant='h5'>
-                                    Getting Started
-                                </Typography>
+                                <Typography variant='h5'>Getting Started</Typography>
                             </Grid>
                             <Grid item xs={12} sm={4} className={classes.textBox}>
                                 <Typography>
