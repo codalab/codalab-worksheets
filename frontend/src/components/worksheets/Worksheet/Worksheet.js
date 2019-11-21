@@ -3,7 +3,7 @@ import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
 import { keepPosInView, renderPermissions, getMinMaxKeys } from '../../../util/worksheet_utils';
-import * as Mousetrap from '../../../util/ws_mousetrap_fork';
+import Mousetrap from 'mousetrap';
 import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from '../ExtraWorksheetHTML/ExtraWorksheetHTML';

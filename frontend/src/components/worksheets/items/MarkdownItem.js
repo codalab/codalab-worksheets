@@ -8,7 +8,7 @@ import { withStyles } from '@material-ui/core/styles';
 import IconButton from '@material-ui/core/IconButton';
 import EditIcon from '@material-ui/icons/Edit';
 import DeleteIcon from '@material-ui/icons/Delete';
-import * as Mousetrap from '../../../util/ws_mousetrap_fork';
+import Mousetrap from 'mousetrap';
 import TextEditorItem from './TextEditorItem';
 import { createAlertText } from '../../../util/worksheet_utils';
 import Tooltip from '@material-ui/core/Tooltip';

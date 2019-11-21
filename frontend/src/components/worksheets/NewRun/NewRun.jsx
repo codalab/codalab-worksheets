@@ -7,7 +7,7 @@ import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
 import DeleteIcon from '@material-ui/icons/Delete';
 import Select from 'react-select';
-import Mousetrap from '../../../util/ws_mousetrap_fork';
+import Mousetrap from 'mousetrap';
 import '../../../util/mousetrap_global_bind';
 
 import ConfigPanel, {

@@ -12,7 +12,7 @@ import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
 import NewRun from '../../NewRun';
 
-import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
+import Mousetrap from 'mousetrap';
 import BundleDetail from '../../BundleDetail';
 
 // The approach taken in this design is to hack the HTML `Table` element by using one `TableBody` for each `BundleRow`.

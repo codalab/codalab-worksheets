@@ -2,7 +2,7 @@ import * as React from 'react';
 import Immutable from 'seamless-immutable';
 import { worksheetItemPropsChanged } from '../../../util/worksheet_utils';
 import $ from 'jquery';
-import * as Mousetrap from '../../../util/ws_mousetrap_fork';
+import Mousetrap from 'mousetrap';
 
 class WorksheetItem extends React.Component {
     /** Constructor. */
