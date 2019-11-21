@@ -1159,11 +1159,11 @@ class Worksheet extends React.Component {
                 aria-describedby='delete-worksheet-confirmation-description'
             >
                 <DialogTitle id='delete-worksheet-confirmation-title'>
-                    {'WARNING: Deleted worksheets cannot be recovered!'}
+                    {'Warning: Deleted worksheets cannot be recovered'}
                 </DialogTitle>
                 <DialogContent>
                     <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
-                        {'Note: deleting worksheets does not delete the bundles inside it'}
+                        {'Note: deleting worksheets does not delete the bundles inside it.'}
                     </DialogContentText>
                     <DialogActions>
                         <Button color='primary' onClick={this.toggleBundleBulkMessageDialog}>
