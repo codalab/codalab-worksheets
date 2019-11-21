@@ -243,13 +243,6 @@ class BundleRow extends Component {
                  */}
                 <TableRow
                     onClick={this.handleSelectRowClick}
-                    onContextMenu={this.props.handleContextMenu.bind(
-                        null,
-                        bundleInfo.uuid,
-                        this.props.focusIndex,
-                        this.props.rowIndex,
-                        bundleInfo.bundle_type === 'run',
-                    )}
                     className={classNames({
                         [classes.contentRow]: true,
                         [classes.highlight]: this.props.focused,
