@@ -21,7 +21,6 @@
  * @url craig.is/killing/mice
  */
 (function(window, document, undefined) {
-
     // Check if mousetrap is used inside browser, if not, return
     if (!window) {
         return;
@@ -58,7 +57,7 @@
         46: 'del',
         91: 'meta',
         93: 'meta',
-        224: 'meta'
+        224: 'meta',
     };
 
     /**
@@ -74,7 +73,7 @@
         107: '+',
         109: '-',
         110: '.',
-        111 : '/',
+        111: '/',
         186: ';',
         187: '=',
         188: ',',
@@ -85,7 +84,7 @@
         219: '[',
         220: '\\',
         221: ']',
-        222: '\''
+        222: "'",
     };
 
     /**
@@ -103,21 +102,21 @@
         '!': '1',
         '@': '2',
         '#': '3',
-        '$': '4',
+        $: '4',
         '%': '5',
         '^': '6',
         '&': '7',
         '*': '8',
         '(': '9',
         ')': '0',
-        '_': '-',
+        _: '-',
         '+': '=',
         ':': ';',
-        '\"': '\'',
+        '"': "'",
         '<': ',',
         '>': '.',
         '?': '/',
-        '|': '\\'
+        '|': '\\',
     };
 
     /**
@@ -127,12 +126,12 @@
      * @type {Object}
      */
     var _SPECIAL_ALIASES = {
-        'option': 'alt',
-        'command': 'meta',
-        'return': 'enter',
-        'escape': 'esc',
-        'plus': '+',
-        'mod': /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? 'meta' : 'ctrl'
+        option: 'alt',
+        command: 'meta',
+        return: 'enter',
+        escape: 'esc',
+        plus: '+',
+        mod: /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? 'meta' : 'ctrl',
     };
 
     /**
@@ -156,7 +155,6 @@
      * loop through to map numbers on the numeric keypad
      */
     for (i = 0; i <= 9; ++i) {
-
         // This needs to use a string cause otherwise since 0 is falsey
         // mousetrap will never fire for numpad 0 pressed as part of a keydown
         // event.
@@ -189,7 +187,6 @@
      * @return {string}
      */
     function _characterFromEvent(e) {
-
         // for keypress events we should return the character as is
         if (e.type == 'keypress') {
             var character = String.fromCharCode(e.which);
@@ -316,7 +313,6 @@
         if (!_REVERSE_MAP) {
             _REVERSE_MAP = {};
             for (var key in _MAP) {
-
                 // pull out the numeric keypad from here cause keypress should
                 // be able to detect the keys from the character
                 if (key > 95 && key < 112) {
@@ -339,7 +335,6 @@
      * @param {string=} action passed in
      */
     function _pickBestAction(key, modifiers, action) {
-
         // if no action was picked in we should try to pick the one
         // that we think would work best for this key
         if (!action) {
@@ -416,7 +411,7 @@
         return {
             key: key,
             modifiers: modifiers,
-            action: action
+            action: action,
         };
     }
 
@@ -559,7 +554,11 @@
 
                 // if a sequence name is not specified, but this is a sequence at
                 // the wrong level then move onto the next match
-                if (!sequenceName && callback.seq && _sequenceLevels[callback.seq] != callback.level) {
+                if (
+                    !sequenceName &&
+                    callback.seq &&
+                    _sequenceLevels[callback.seq] != callback.level
+                ) {
                     continue;
                 }
 
@@ -576,15 +575,18 @@
                 // chrome will not fire a keypress if meta or control is down
                 // safari will fire a keypress if meta or meta+shift is down
                 // firefox will fire a keypress if meta or control is down
-                if ((action == 'keypress' && !e.metaKey && !e.ctrlKey) || _modifiersMatch(modifiers, callback.modifiers)) {
-
+                if (
+                    (action == 'keypress' && !e.metaKey && !e.ctrlKey) ||
+                    _modifiersMatch(modifiers, callback.modifiers)
+                ) {
                     // when you bind a combination or sequence a second time it
                     // should overwrite the first one.  if a sequenceName or
                     // combination is specified in this call it does just that
                     //
                     // @todo make deleting its own method?
                     var deleteCombo = !sequenceName && callback.combo == combination;
-                    var deleteSequence = sequenceName && callback.seq == sequenceName && callback.level == level;
+                    var deleteSequence =
+                        sequenceName && callback.seq == sequenceName && callback.level == level;
                     if (deleteCombo || deleteSequence) {
                         self._callbacks[character].splice(i, 1);
                     }
@@ -607,7 +609,6 @@
          * @returns void
          */
         function _fireCallback(callback, e, combo, sequence) {
-
             // if this event should not happen stop here
             if (self.stopCallback(e, e.target || e.srcElement, combo, sequence)) {
                 return;
@@ -643,14 +644,12 @@
 
             // loop through matching callbacks for this key event
             for (i = 0; i < callbacks.length; ++i) {
-
                 // fire for all sequence callbacks
                 // this is because if for example you have multiple sequences
                 // bound such as "g i" and "g t" they both need to fire the
                 // callback for matching g cause otherwise you can only ever
                 // match the first one
                 if (callbacks[i].seq) {
-
                     // only fire callbacks for the maxLevel to prevent
                     // subsequences from also firing
                     //
@@ -714,7 +713,6 @@
          * @returns void
          */
         function _handleKeyEvent(e) {
-
             // normalize e.which for key events
             // @see http://stackoverflow.com/questions/4285627/javascript-keycode-vs-charcode-utter-confusion
             if (typeof e.which !== 'number') {
@@ -760,7 +758,6 @@
          * @returns void
          */
         function _bindSequence(combo, keys, callback, action) {
-
             // start off by adding a sequence level record for this combination
             // and setting the level to 0
             _sequenceLevels[combo] = 0;
@@ -813,7 +810,9 @@
             // ones are better suited to the key provided
             for (var i = 0; i < keys.length; ++i) {
                 var isFinal = i + 1 === keys.length;
-                var wrappedCallback = isFinal ? _callbackAndReset : _increaseSequence(action || _getKeyInfo(keys[i + 1]).action);
+                var wrappedCallback = isFinal
+                    ? _callbackAndReset
+                    : _increaseSequence(action || _getKeyInfo(keys[i + 1]).action);
                 _bindSingle(keys[i], wrappedCallback, action, combo, i);
             }
         }
@@ -829,7 +828,6 @@
          * @returns void
          */
         function _bindSingle(combination, callback, action, sequenceName, level) {
-
             // store a direct mapped reference for use with Mousetrap.trigger
             self._directMap[combination + ':' + action] = callback;
 
@@ -853,7 +851,14 @@
             self._callbacks[info.key] = self._callbacks[info.key] || [];
 
             // remove an existing match if there is one
-            _getMatches(info.key, info.modifiers, {type: info.action}, sequenceName, combination, level);
+            _getMatches(
+                info.key,
+                info.modifiers,
+                { type: info.action },
+                sequenceName,
+                combination,
+                level,
+            );
 
             // add this call back to the array
             // if it is a sequence put it at the beginning
@@ -867,7 +872,7 @@
                 action: info.action,
                 seq: sequenceName,
                 level: level,
-                combo: combination
+                combo: combination,
             });
         }
 
@@ -997,7 +1002,12 @@
         }
 
         // stop for input, select, and textarea
-        return element.tagName == 'INPUT' || element.tagName == 'SELECT' || element.tagName == 'TEXTAREA' || element.isContentEditable;
+        return (
+            element.tagName == 'INPUT' ||
+            element.tagName == 'SELECT' ||
+            element.tagName == 'TEXTAREA' ||
+            element.isContentEditable
+        );
     };
 
     /**
@@ -1034,7 +1044,7 @@
                     return function() {
                         return documentMousetrap[method].apply(documentMousetrap, arguments);
                     };
-                } (method));
+                })(method);
             }
         }
     };
@@ -1055,4 +1065,4 @@
             return Mousetrap;
         });
     }
-}) (typeof window !== 'undefined' ? window : null, typeof  window !== 'undefined' ? document : null);
+})(typeof window !== 'undefined' ? window : null, typeof window !== 'undefined' ? document : null);
