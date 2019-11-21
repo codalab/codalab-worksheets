@@ -27,6 +27,8 @@ import Dialog from '@material-ui/core/Dialog';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import DialogActions from '@material-ui/core/DialogActions';
+import Tooltip from '@material-ui/core/Tooltip';
 import CloseIcon from '@material-ui/icons/Close';
 import Grid from '@material-ui/core/Grid';
 import WorksheetDialogs from '../WorksheetDialogs';
@@ -152,6 +154,7 @@ class Worksheet extends React.Component {
             openKill: false,
             forceDelete: false,
             showGlossaryModal: false,
+            deleteWorksheetConfirmation: false,
         };
     }
 
@@ -1127,15 +1130,7 @@ class Worksheet extends React.Component {
         });
     }
 
-    delete() {
-        if (
-            !window.confirm(
-                'Are you sure you want to delete this worksheet? (Note that this does not delete the bundles, but just detaches them from the worksheet.)',
-            )
-        ) {
-            return;
-        }
-        $('#worksheet-message').hide();
+    deteleWorksheetAction = () => {
         this.setState({ updating: true });
         this.state.ws.deleteWorksheet({
             success: function(data) {
@@ -1152,6 +1147,36 @@ class Worksheet extends React.Component {
                     .show();
             }.bind(this),
         });
+    };
+
+    deleteThisWorksheet() {
+        // TODO: put all worksheet dialogs into WorksheetDialogs.js if possible
+        let deleteWorksheetDialog = (
+            <Dialog
+                open={true}
+                onClose={this.toggleBundleBulkMessageDialog}
+                aria-labelledby='delete-worksheet-confirmation-title'
+                aria-describedby='delete-worksheet-confirmation-description'
+            >
+                <DialogTitle id='delete-worksheet-confirmation-title'>
+                    {'Warning: Deleted worksheets cannot be recovered'}
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
+                        {'Note: deleting worksheets does not delete the bundles inside it.'}
+                    </DialogContentText>
+                    <DialogActions>
+                        <Button color='primary' onClick={this.toggleBundleBulkMessageDialog}>
+                            CANCEL
+                        </Button>
+                        <Button color='primary' onClick={this.deteleWorksheetAction}>
+                            DELETE
+                        </Button>
+                    </DialogActions>
+                </DialogContent>
+            </Dialog>
+        );
+        this.setState({ BulkBundleDialog: deleteWorksheetDialog });
     }
 
     render() {
@@ -1180,15 +1205,6 @@ class Worksheet extends React.Component {
                     {sourceStr}
                 </Button>
                 <Button
-                    onClick={(e) => this.delete()}
-                    size='small'
-                    color='inherit'
-                    aria-label='Delete Worksheet'
-                >
-                    <DeleteIcon className={classes.buttonIcon} />
-                    Delete
-                </Button>
-                <Button
                     onClick={(e) => this.toggleActionBar()}
                     size='small'
                     color='inherit'
@@ -1201,6 +1217,20 @@ class Worksheet extends React.Component {
                         <ExpandIcon className={classes.buttonIcon} />
                     )}
                     {this.state.showActionBar ? 'HIDE TERMINAL' : 'SHOW TERMINAL'}
+                </Button>
+                <Button
+                    onClick={(e) => this.deleteThisWorksheet()}
+                    size='small'
+                    color='inherit'
+                    aria-label='Delete Worksheet'
+                >
+                    <Tooltip
+                        disableFocusListener
+                        disableTouchListener
+                        title='Delete this worksheet'
+                    >
+                        <DeleteIcon />
+                    </Tooltip>
                 </Button>
             </div>
         );
