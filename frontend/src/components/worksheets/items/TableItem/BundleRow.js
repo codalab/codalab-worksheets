@@ -318,24 +318,6 @@ const styles = (theme) => ({
             display: 'flex',
         },
     },
-    panelContainer: {
-        display: 'block',
-        height: '0px !important',
-        overflow: 'visible',
-    },
-    panelCellContainer: {
-        padding: '0 !important',
-        border: 'none !important',
-        overflow: 'visible',
-    },
-    buttonsPanel: {
-        display: 'flex',
-        flexDirection: 'row',
-        position: 'absolute',
-        justifyContent: 'center',
-        width: '100%',
-        transform: 'translateY(-18px)',
-    },
     rightButtonStripe: {
         display: 'none',
         flexDirection: 'row',
@@ -343,12 +325,6 @@ const styles = (theme) => ({
         justifyContent: 'center',
         left: '100%',
         transform: 'translateY(-100%) translateX(-100%)',
-    },
-    root: {
-        verticalAlign: 'middle !important',
-        border: 'none !important',
-        wordWrap: 'break-word',
-        maxWidth: 100,
     },
     rootNoPad: {
         verticalAlign: 'middle !important',
@@ -361,24 +337,6 @@ const styles = (theme) => ({
     bundleDetail: {
         paddingLeft: `${theme.spacing.largest}px !important`,
         paddingRight: `${theme.spacing.largest}px !important`,
-    },
-    iconButtonRoot: {
-        backgroundColor: theme.color.grey.lighter,
-        padding: '1px 2px',
-        marginBottom: 3,
-        marginRight: 1,
-    },
-    buttonRoot: {
-        width: 120,
-        marginLeft: theme.spacing.unit,
-        marginRight: theme.spacing.unit,
-        backgroundColor: '#f7f7f7',
-        '&:hover': {
-            backgroundColor: '#f7f7f7',
-        },
-    },
-    buttonIcon: {
-        marginRight: theme.spacing.large,
     },
     contentRow: {
         height: 26,

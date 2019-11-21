@@ -210,7 +210,7 @@ class TableItem extends React.Component<{
         });
         return (
             <div className='ws-item'>
-                <TableContainer onMouseLeave={this.removeButtons}>
+                <TableContainer>
                     <Table className={tableClassName}>
                         <TableHead>
                             <TableRow
