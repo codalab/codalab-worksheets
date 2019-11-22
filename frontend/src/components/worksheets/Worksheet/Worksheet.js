@@ -263,6 +263,15 @@ class Worksheet extends React.Component {
             worksheet_uuid,
         )
             .done(() => {
+                Object.keys(this.state.checkedBundles).forEach((uuid) => {
+                    if (this.state.checkedBundles[uuid] !== undefined) {
+                        Object.keys(this.state.checkedBundles[uuid]).forEach((identifier) => {
+                            if (this.state.checkedBundles[uuid][identifier] !== undefined) {
+                                this.state.checkedBundles[uuid][identifier]();
+                            }
+                        });
+                    }
+                });
                 this.setState({
                     uuidBundlesCheckedCount: {},
                     checkedBundles: {},
