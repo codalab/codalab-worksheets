@@ -12,11 +12,11 @@ export default class extends React.Component {
     }
     async componentDidMount() {
         let { name } = queryString.parse(this.props.location.search);
-        if (name === undefined && this.props.auth.isAuthenticated){
+        if (name === undefined && this.props.auth.isAuthenticated) {
             // Redirect to gallery if no params
-            name = 'dashboard'
-        }else if(name === undefined){
-            name = 'home'
+            name = 'dashboard';
+        } else if (name === undefined) {
+            name = 'home';
         }
         try {
             const response = await fetch(`/rest/worksheets?specs=${name}`).then((e) => e.json());
