@@ -22,13 +22,19 @@ const GlossaryModal = ({ show, toggle }) => (
                     </tr>
                     <tr>
                         <td>
+                            <kbd>j</kbd> or <kbd>↓</kbd>
+                        </td>
+                        <td>Move cursor down</td>
+                    </tr>
+                    <tr>
+                        <td>
                             <kbd>shift+g</kbd>
                         </td>
                         <td>Move to end of worksheet</td>
                     </tr>
                     <tr>
                         <td>
-                            <kbd>g g</kbd>
+                            <kbd>g g (double click)</kbd>
                         </td>
                         <td>Move to beginning of worksheet</td>
                     </tr>
@@ -54,7 +60,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         <td>
                             <kbd>e</kbd>
                         </td>
-                        <td>Edit entire worksheet in Markdown</td>
+                        <td>Edit worksheet in source mode</td>
                     </tr>
                     <tr>
                         <td>
@@ -97,12 +103,6 @@ const GlossaryModal = ({ show, toggle }) => (
                             <kbd>c</kbd>
                         </td>
                         <td>Focus on the web terminal regardless of show/hide status</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>j</kbd> or <kbd>↓</kbd>
-                        </td>
-                        <td>Move cursor down</td>
                     </tr>
                     <tr>
                         <td>
