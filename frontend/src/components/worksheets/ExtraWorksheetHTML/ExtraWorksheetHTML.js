@@ -72,7 +72,10 @@ const GlossaryModal = ({ show, toggle }) => (
                         <td>
                             <kbd>enter</kbd>
                         </td>
-                        <td>Open current bundle detail or worksheet (shift+enter: open in new window)</td>
+                        <td>
+                            Open current bundle detail or worksheet (shift+enter: open in new
+                            window)
+                        </td>
                     </tr>
                     <tr>
                         <td>
