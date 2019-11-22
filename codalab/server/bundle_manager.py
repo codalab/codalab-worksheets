@@ -630,46 +630,33 @@ class BundleManager(object):
         """
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
             bundle_resources = self._compute_bundle_resources(bundle)
-            failures = []
 
-            failures.append(
-                self._check_resource_failure(
+            failure_message = self._check_resource_failure(
                     bundle_resources.disk,
                     user_fail_string='Requested more disk (%s) than user disk quota left (%s)',
                     user_max=self._model.get_user_disk_quota_left(bundle.owner_id),
                     global_fail_string='Maximum job disk size (%s) exceeded (%s)',
                     global_max=self._max_request_disk,
                     pretty_print=formatting.size_str,
-                )
-            )
-
-            failures.append(
-                self._check_resource_failure(
+                ) or self._check_resource_failure(
                     bundle_resources.time,
                     user_fail_string='Requested more time (%s) than user time quota left (%s)',
                     user_max=self._model.get_user_time_quota_left(bundle.owner_id),
                     global_fail_string='Maximum job time (%s) exceeded (%s)',
                     global_max=self._max_request_time,
                     pretty_print=formatting.duration_str,
-                )
-            )
-
-            failures.append(
-                self._check_resource_failure(
+                ) or self._check_resource_failure(
                     bundle_resources.memory,
                     global_fail_string='Requested more memory (%s) than maximum limit (%s)',
                     global_max=self._max_request_memory,
                     pretty_print=formatting.size_str,
                 )
-            )
-
-            failures = [f for f in failures if f is not None]
-
-            if len(failures) > 0:
-                failure_message = '. '.join(failures)
+                
+            if failure_message:
                 logger.info('Failing %s: %s', bundle.uuid, failure_message)
 
                 self._model.update_bundle(
                     bundle,
                     {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
                 )
+                
