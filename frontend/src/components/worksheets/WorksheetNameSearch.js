@@ -16,7 +16,7 @@ export default class extends React.Component {
             // Redirect to dashboard if no params & logged in
             name = 'dashboard';
         } else if (name === undefined) {
-            // Redirect to dashboard if no params & not logged in
+            // Redirect to home if no params & not logged in
             name = 'home';
         }
         try {
