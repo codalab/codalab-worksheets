@@ -13,9 +13,10 @@ export default class extends React.Component {
     async componentDidMount() {
         let { name } = queryString.parse(this.props.location.search);
         if (name === undefined && this.props.auth.isAuthenticated) {
-            // Redirect to gallery if no params
+            // Redirect to dashboard if no params & logged in
             name = 'dashboard';
         } else if (name === undefined) {
+            // Redirect to dashboard if no params & not logged in
             name = 'home';
         }
         try {
