@@ -16,6 +16,42 @@ const GlossaryModal = ({ show, toggle }) => (
                 <tbody>
                     <tr>
                         <td>
+                            <kbd>k</kbd> or <kbd>↑</kbd>
+                        </td>
+                        <td>Move cursor up</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>shift+g</kbd>
+                        </td>
+                        <td>Move to end of worksheet</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>g g</kbd>
+                        </td>
+                        <td>Move to beginning of worksheet</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>t</kbd>
+                        </td>
+                        <td>Add a cell right below the current focus</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>u</kbd>
+                        </td>
+                        <td>Upload a file right below the current focus</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>a+r</kbd>
+                        </td>
+                        <td>Add a new run</td>
+                    </tr>
+                    <tr>
+                        <td>
                             <kbd>e</kbd>
                         </td>
                         <td>Edit entire worksheet in Markdown</td>
@@ -30,7 +66,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         <td>
                             <kbd>enter</kbd>
                         </td>
-                        <td>Open current bundle or worksheet (shift+enter: new window)</td>
+                        <td>Open current bundle detail or worksheet (shift+enter: open in new window)</td>
                     </tr>
                     <tr>
                         <td>
@@ -42,7 +78,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         <td>
                             <kbd>backspace/del</kbd>
                         </td>
-                        <td>Quit edit / Delete bundle or worksheet</td>
+                        <td>Quit edit in markdown / Delete selected bundles</td>
                     </tr>
                     <tr>
                         <td>
@@ -64,57 +100,9 @@ const GlossaryModal = ({ show, toggle }) => (
                     </tr>
                     <tr>
                         <td>
-                            <kbd>u</kbd>
-                        </td>
-                        <td>Paste UUID of current bundle or worksheet into web terminal</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>a</kbd>
-                        </td>
-                        <td>Paste arguments to recreate current bundle into web terminal</td>
-                    </tr>
-                    <tr>
-                        <td>
                             <kbd>j</kbd> or <kbd>↓</kbd>
                         </td>
                         <td>Move cursor down</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>k</kbd> or <kbd>↑</kbd>
-                        </td>
-                        <td>Move cursor up</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>shift+g</kbd>
-                        </td>
-                        <td>Move to end of worksheet</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>g g</kbd>
-                        </td>
-                        <td>Move to beginning of worksheet</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>i</kbd>
-                        </td>
-                        <td>Add a cell right below the current focus</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>u</kbd>
-                        </td>
-                        <td>Upload a file right below the current focus</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>r</kbd>
-                        </td>
-                        <td>Add a new run</td>
                     </tr>
                     <tr>
                         <td>
