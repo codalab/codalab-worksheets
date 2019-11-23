@@ -216,6 +216,7 @@ CODALAB_ARGUMENTS = [
     ),
     ### Email
     CodalabArg(name='admin_email', help='Email to send admin notifications to (e.g., monitoring)'),
+    CodalabArg(name='support_email', help='Help email to send user questions to'),
     CodalabArg(name='email_host', help='Send email by logging into this SMTP server'),
     CodalabArg(name='email_username', help='Username of email account for sending email'),
     CodalabArg(name='email_password', help='Password of email account for sending email'),
@@ -688,7 +689,7 @@ class CodalabServiceManager(object):
                     ('server/engine_url', mysql_url),
                     ('server/rest_host', '0.0.0.0'),
                     ('server/admin_email', self.args.admin_email),
-                    ('server/support_email', self.args.admin_email),  # Use same email
+                    ('server/support_email', self.args.support_email),  # Use support_email
                     ('server/default_user_info/disk_quota', self.args.user_disk_quota),
                     ('server/default_user_info/time_quota', self.args.user_time_quota),
                     (
