@@ -34,31 +34,31 @@ const GlossaryModal = ({ show, toggle }) => (
                     </tr>
                     <tr>
                         <td>
-                            <kbd>g g (double click)</kbd>
+                            <kbd>g g</kbd>
                         </td>
                         <td>Move to beginning of worksheet</td>
                     </tr>
                     <tr>
                         <td>
-                            <kbd>t</kbd>
+                            <kbd>a t</kbd>
                         </td>
                         <td>Add a cell right below the current focus</td>
                     </tr>
                     <tr>
                         <td>
-                            <kbd>u</kbd>
+                            <kbd>a u</kbd>
                         </td>
                         <td>Upload a file right below the current focus</td>
                     </tr>
                     <tr>
                         <td>
-                            <kbd>a+r</kbd>
+                            <kbd>a r</kbd>
                         </td>
                         <td>Add a new run</td>
                     </tr>
                     <tr>
                         <td>
-                            <kbd>e</kbd>
+                            <kbd>shift+e</kbd>
                         </td>
                         <td>Edit worksheet in source mode</td>
                     </tr>
@@ -79,7 +79,7 @@ const GlossaryModal = ({ show, toggle }) => (
                     </tr>
                     <tr>
                         <td>
-                            <kbd>ctrl/command+enter</kbd>
+                            <kbd>ctrl/cmd+enter</kbd>
                         </td>
                         <td>Save current edit</td>
                     </tr>
@@ -87,7 +87,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         <td>
                             <kbd>backspace/del</kbd>
                         </td>
-                        <td>Quit edit in markdown / Delete selected bundles</td>
+                        <td>Delete selected bundles</td>
                     </tr>
                     <tr>
                         <td>
