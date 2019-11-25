@@ -14,9 +14,7 @@ const GlossaryModal = ({ show, toggle }) => (
             </a>
             <table className='table table-striped'>
                 <tbody>
-                    <tr>
-                        Navigation
-                    </tr>
+                    <tr>Navigation</tr>
                     <tr>
                         <td>
                             <kbd>k</kbd> or <kbd>↑</kbd>
@@ -54,21 +52,15 @@ const GlossaryModal = ({ show, toggle }) => (
                         <td>
                             <kbd>x</kbd>
                         </td>
-                        <td>
-                            Select the bundle row
-                        </td>
+                        <td>Select the bundle row</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>space</kbd>
                         </td>
-                        <td>
-                            Select all bundle rows in the table
-                        </td>
+                        <td>Select all bundle rows in the table</td>
                     </tr>
-                    <tr>
-                        Editing
-                    </tr>
+                    <tr>Editing</tr>
                     <tr>
                         <td>
                             <kbd>shift+e</kbd>
@@ -105,9 +97,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Add a new run</td>
                     </tr>
-                    <tr>
-                        Bundles operation
-                    </tr>
+                    <tr>Bundles operation</tr>
                     <tr>
                         <td>
                             <kbd>a d</kbd>
@@ -126,9 +116,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Delete selected bundles</td>
                     </tr>
-                    <tr>
-                        Other
-                    </tr>
+                    <tr>Other</tr>
                     <tr>
                         <td>
                             <kbd>shift+c</kbd>
