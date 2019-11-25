@@ -12,13 +12,11 @@ export default class extends React.Component {
     }
     async componentDidMount() {
         let { name } = queryString.parse(this.props.location.search);
-        if (name === undefined && this.props.auth.isAuthenticated) {
-            // Redirect to dashboard if no params & logged in
-            name = 'dashboard';
-        } else if (name === undefined) {
-            // Redirect to home if no params & not logged in
-            name = 'home';
+        if (name === undefined) {
+            // Redirect to dashboard if logged in else home
+            name = this.props.auth.isAuthenticated ? 'dashboard' : 'home';
         }
+
         try {
             const response = await fetch(`/rest/worksheets?specs=${name}`).then((e) => e.json());
             const uuid = response.data[0].id;
