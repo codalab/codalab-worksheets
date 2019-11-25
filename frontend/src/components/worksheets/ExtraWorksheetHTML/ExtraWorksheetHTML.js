@@ -15,6 +15,9 @@ const GlossaryModal = ({ show, toggle }) => (
             <table className='table table-striped'>
                 <tbody>
                     <tr>
+                        Navigation
+                    </tr>
+                    <tr>
                         <td>
                             <kbd>k</kbd> or <kbd>↑</kbd>
                         </td>
@@ -40,6 +43,52 @@ const GlossaryModal = ({ show, toggle }) => (
                     </tr>
                     <tr>
                         <td>
+                            <kbd>enter</kbd>
+                        </td>
+                        <td>
+                            Open current bundle detail or worksheet (shift+enter: open in new
+                            window)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>x</kbd>
+                        </td>
+                        <td>
+                            Select the bundle row
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>space</kbd>
+                        </td>
+                        <td>
+                            Select all bundle rows in the table
+                        </td>
+                    </tr>
+                    <tr>
+                        Editing
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>shift+e</kbd>
+                        </td>
+                        <td>Edit worksheet in source mode</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>ctrl/cmd+enter</kbd>
+                        </td>
+                        <td>Save current edit changes in worksheet source/text block</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>esc</kbd>
+                        </td>
+                        <td>Exit editing worksheet source/text block</td>
+                    </tr>
+                    <tr>
+                        <td>
                             <kbd>a t</kbd>
                         </td>
                         <td>Add a cell right below the current focus</td>
@@ -57,31 +106,19 @@ const GlossaryModal = ({ show, toggle }) => (
                         <td>Add a new run</td>
                     </tr>
                     <tr>
-                        <td>
-                            <kbd>shift+e</kbd>
-                        </td>
-                        <td>Edit worksheet in source mode</td>
+                        Bundles operation
                     </tr>
                     <tr>
                         <td>
-                            <kbd>shift+r</kbd>
+                            <kbd>a d</kbd>
                         </td>
-                        <td>Refresh worksheet</td>
+                        <td>Detach all selected bundles from this bundle</td>
                     </tr>
                     <tr>
                         <td>
-                            <kbd>enter</kbd>
+                            <kbd>a k</kbd>
                         </td>
-                        <td>
-                            Open current bundle detail or worksheet (shift+enter: open in new
-                            window)
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>ctrl/cmd+enter</kbd>
-                        </td>
-                        <td>Save current edit</td>
+                        <td>Kill all selected bundles</td>
                     </tr>
                     <tr>
                         <td>
@@ -90,10 +127,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         <td>Delete selected bundles</td>
                     </tr>
                     <tr>
-                        <td>
-                            <kbd>esc</kbd>
-                        </td>
-                        <td>Exit editing</td>
+                        Other
                     </tr>
                     <tr>
                         <td>
@@ -105,7 +139,13 @@ const GlossaryModal = ({ show, toggle }) => (
                         <td>
                             <kbd>c</kbd>
                         </td>
-                        <td>Focus on the web terminal regardless of show/hide status</td>
+                        <td>Open full web terminal regardless of show/hide status</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>shift+r</kbd>
+                        </td>
+                        <td>Refresh worksheet</td>
                     </tr>
                     <tr>
                         <td>

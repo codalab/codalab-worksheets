@@ -667,7 +667,7 @@ class Worksheet extends React.Component {
             if (!this.state.showBundleOperationButtons) {
                 // insert text after current cell
                 Mousetrap.bind(
-                    ['a t'],
+                    ['a+t'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -680,7 +680,7 @@ class Worksheet extends React.Component {
 
                 // upload after current cell
                 Mousetrap.bind(
-                    ['a u'],
+                    ['a+u'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -692,7 +692,7 @@ class Worksheet extends React.Component {
                 );
                 // run after current cell
                 Mousetrap.bind(
-                    ['a r'],
+                    ['a+r'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -723,7 +723,7 @@ class Worksheet extends React.Component {
                 }
                 this.togglePopupNoEvent('rm');
             });
-            Mousetrap.bind(['d'], () => {
+            Mousetrap.bind(['a d'], () => {
                 if (this.state.openDelete || this.state.openKill) {
                     return;
                 }
