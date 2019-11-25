@@ -258,9 +258,40 @@ class BundleModel(object):
             result[row.parent_uuid].append(row.child_uuid)
         return result
 
+    def get_n_host_worksheet_uuids(self, bundle_uuids, n):
+        """
+        Get up to n host_worksheet uuids per bundle uuid. n of 0 or less will return an empty dictionary.
+        bundle_uuids: list of bundle uuid's (e.g. ['0x12345', '0x23456'])
+        n: max limit of host_worksheet uuid's to fetch per bundle
+        Return dict of bundle uuid's to a list of host worksheet uuid's {'0x12345': [host_worksheet_uuid, ...], ...}
+        """
+        if n <= 0:
+            return dict()
+        if n == 1:
+            result = self.get_single_host_worksheet_uuid(bundle_uuids)
+            return dict(
+                (uuid, [worksheet]) for uuid, worksheet in result.items() if worksheet is not None
+            )
+
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_worksheet_item.c.worksheet_uuid, cl_worksheet_item.c.bundle_uuid]).where(
+                    cl_worksheet_item.c.bundle_uuid.in_(bundle_uuids)
+                )
+            ).fetchall()
+        result = dict((uuid, set()) for uuid in bundle_uuids)
+        for row in rows:
+            worksheets = result[row.bundle_uuid]
+            if len(worksheets) < n:
+                result[row.bundle_uuid].add(row.worksheet_uuid)
+        # Convert set into a list
+        for uuid in result.keys():
+            result[uuid] = list(result[uuid])
+        return result
+
     def get_single_host_worksheet_uuid(self, bundle_uuids):
         """
-        Get a single host_worksheet uuid per bundle uuid.
+        Get any single host_worksheet uuid per bundle uuid. This is achieved by a simple group by.
         bundle_uuids: list of bundle uuid's (e.g. ['0x12345', '0x23456'])
         Return dict of bundle uuid's to a single host worksheet uuid (e.g. {'0x12345': host_worksheet_uuid, ...})
         """

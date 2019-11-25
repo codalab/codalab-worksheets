@@ -40,7 +40,7 @@ class UtilTest(unittest.TestCase):
 
     def test_get_bundle_infos_single_worksheet(self):
         bundle_uuids = {'0x123', '0x234', '0x345'}
-        worksheet_uuids = {'0x111', '0x222', '0x333'}
+        worksheet_uuids = {'0x111', '0x222', '0x333', '0x444'}
         model = Mock()
         model.batch_get_bundles.side_effect = self._mock_model_call(
             bundle_uuids, [self._mock_bundle(uuid) for uuid in bundle_uuids]
@@ -53,14 +53,19 @@ class UtilTest(unittest.TestCase):
         model.get_user_bundle_permissions.side_effect = self._mock_model_call(
             bundle_uuids, bundle_permissions, 1
         )
-        bundle_worksheet_uuids = {'0x123': '0x111', '0x234': '0x222', '0x345': '0x333'}
-        model.get_single_host_worksheet_uuid.side_effect = self._mock_model_call(
+        bundle_worksheet_uuids = {
+            '0x123': ['0x111', '0x444'],
+            '0x234': ['0x222'],
+            '0x345': ['0x333'],
+        }
+        model.get_n_host_worksheet_uuids.side_effect = self._mock_model_call(
             bundle_uuids, bundle_worksheet_uuids
         )
         worksheet_permissions = {
             '0x111': GROUP_OBJECT_PERMISSION_ALL,
             '0x222': GROUP_OBJECT_PERMISSION_ALL,
             '0x333': GROUP_OBJECT_PERMISSION_NONE,
+            '0x444': GROUP_OBJECT_PERMISSION_NONE,
         }
         model.get_user_worksheet_permissions.side_effect = self._mock_model_call(
             worksheet_uuids, worksheet_permissions, 1
@@ -80,7 +85,8 @@ class UtilTest(unittest.TestCase):
             ignore_not_found=True,
             model=model,
         )
-        # Bundles 0x123 and 0x234 had worksheets with correct permissions. 0x345 had a worksheet that can't be read.
+
+        # Bundles 0x123 and 0x234 had a worksheet with correct permissions. 0x345 had a worksheet that can't be read.
         self.assertDictEqual(infos['0x123']['host_worksheet'], {'uuid': '0x111', 'name': 'ws1'})
         self.assertDictEqual(infos['0x234']['host_worksheet'], {'uuid': '0x222', 'name': 'ws2'})
         self.assertTrue('host_worksheet' not in infos['0x345'])

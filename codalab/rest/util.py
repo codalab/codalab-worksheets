@@ -121,19 +121,23 @@ def get_bundle_infos(
             ]
 
     if get_single_host_worksheet:
-        # bundle uuids -> worksheet_uuid
-        host_worksheets = model.get_single_host_worksheet_uuid(readable)
-        worksheet_names = _get_readable_worksheet_names(model, host_worksheets.values())
+        # Get back a dict of bundle uuids -> list of worksheet uuids (max of 5)
+        host_worksheets = model.get_n_host_worksheet_uuids(readable, 5)
+        worksheet_uuids = [uuid for l in host_worksheets.values() for uuid in l]
+        worksheet_names = _get_readable_worksheet_names(model, worksheet_uuids)
 
-        for bundle_uuid, host_uuid in host_worksheets.items():
-            if host_uuid in worksheet_names:
-                bundle_infos[bundle_uuid]['host_worksheet'] = {
-                    'uuid': host_uuid,
-                    'name': worksheet_names[host_uuid],
-                }
+        for bundle_uuid, host_uuids in host_worksheets.items():
+            for host_uuid in host_uuids:
+                if host_uuid in worksheet_names:
+                    bundle_infos[bundle_uuid]['host_worksheet'] = {
+                        'uuid': host_uuid,
+                        'name': worksheet_names[host_uuid],
+                    }
+                    # Just set a single host worksheet per bundle uuid
+                    break
 
     if get_host_worksheets:
-        # bundle_uuids -> list of worksheet_uuids
+        # Get back a dict of bundle_uuids -> list of worksheet_uuids
         host_worksheets = model.get_host_worksheet_uuids(readable)
         # Gather all worksheet uuids
         worksheet_uuids = [uuid for l in host_worksheets.values() for uuid in l]
@@ -183,7 +187,7 @@ def _get_readable_worksheet_names(model, worksheet_uuids):
 def _filter_readable_worksheet_uuids(model, worksheet_uuids):
     # Returns a set of worksheet uuid's the user has read permission for
     worksheet_permissions = model.get_user_worksheet_permissions(
-        request.user.user_id, worksheet_uuids, model.get_worksheet_owner_ids(worksheet_uuids),
+        request.user.user_id, worksheet_uuids, model.get_worksheet_owner_ids(worksheet_uuids)
     )
     return set(
         uuid
