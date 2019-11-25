@@ -182,6 +182,7 @@ class NewUpload extends React.Component<{
                     style={ { visibility: 'hidden', position: 'absolute' } }
                     ref={ (ele) => { this.inputFile = ele; } }
                     onChange={ this.setFile }
+                    onClick={ this.props.onClose }
                 />
                 { uploading && <CircularProgress
                         className={ classes.progress }
