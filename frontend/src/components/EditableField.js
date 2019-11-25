@@ -111,7 +111,7 @@ class EditableFieldBase extends React.Component<{
                     onClick={this.onClick}
                     style={{ color: '#225ea8' }}
                 >
-                    {this.state.value === '' ? '<none>' : this.state.value}
+                    {!this.state.value ? '<none>' : this.state.value}
                 </span>
             );
         } else {
