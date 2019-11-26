@@ -111,7 +111,7 @@ class TextEditorItem extends React.Component<{
             contentType: 'application/json',
             type: 'POST',
             success: (data, status, jqXHR) => {
-                const moveIndex = true;
+                const moveIndex = true ? mode === 'create' : false;
                 const param = { moveIndex };
                 reloadWorksheet(undefined, undefined, param);
                 closeEditor();
