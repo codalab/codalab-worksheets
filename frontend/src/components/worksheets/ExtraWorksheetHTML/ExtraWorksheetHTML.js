@@ -54,12 +54,6 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Select the bundle row</td>
                     </tr>
-                    <tr>
-                        <td>
-                            <kbd>space</kbd>
-                        </td>
-                        <td>Select all bundle rows in the table</td>
-                    </tr>
                     <tr>Editing</tr>
                     <tr>
                         <td>
@@ -72,6 +66,12 @@ const GlossaryModal = ({ show, toggle }) => (
                             <kbd>ctrl/cmd+enter</kbd>
                         </td>
                         <td>Save current edit changes in worksheet source/text block</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>backspace/del</kbd>
+                        </td>
+                        <td>Delete focused items (bundle rows need to be selected)</td>
                     </tr>
                     <tr>
                         <td>
@@ -109,12 +109,6 @@ const GlossaryModal = ({ show, toggle }) => (
                             <kbd>a k</kbd>
                         </td>
                         <td>Kill all selected bundles</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>backspace/del</kbd>
-                        </td>
-                        <td>Delete selected bundles</td>
                     </tr>
                     <tr>Other</tr>
                     <tr>

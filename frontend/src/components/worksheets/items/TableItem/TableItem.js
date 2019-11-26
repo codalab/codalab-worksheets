@@ -97,19 +97,19 @@ class TableItem extends React.Component<{
         });
     };
 
-    handleSelectAllSpaceHit = () => {
-        let numSelectedChild = 0;
-        let childrenStatus = new Array(this.state.childrenCheckState.length).fill(
-            !this.state.checked,
-        );
-        numSelectedChild = !this.state.checked ? childrenStatus.length : 0;
-        this.setState({
-            checked: !this.state.checked,
-            numSelectedChild: numSelectedChild,
-            childrenCheckState: [...childrenStatus],
-            indeterminateCheckState: false,
-        });
-    };
+    // handleSelectAllSpaceHit = () => {
+    //     let numSelectedChild = 0;
+    //     let childrenStatus = new Array(this.state.childrenCheckState.length).fill(
+    //         !this.state.checked,
+    //     );
+    //     numSelectedChild = !this.state.checked ? childrenStatus.length : 0;
+    //     this.setState({
+    //         checked: !this.state.checked,
+    //         numSelectedChild: numSelectedChild,
+    //         childrenCheckState: [...childrenStatus],
+    //         indeterminateCheckState: false,
+    //     });
+    // };
     // BULK OPERATION RELATED CODE ABOVE
 
     updateRowIndex = (rowIndex) => {
@@ -201,7 +201,7 @@ class TableItem extends React.Component<{
                     checkStatus={this.state.childrenCheckState[rowIndex]}
                     isLast={rowIndex === rowItems.length - 1}
                     handleCheckBundle={this.props.handleCheckBundle}
-                    handleSelectAllSpaceHit={this.handleSelectAllSpaceHit}
+                    // handleSelectAllSpaceHit={this.handleSelectAllSpaceHit}
                     confirmBundleRowAction={this.props.confirmBundleRowAction}
                     childrenCheck={this.childrenCheck}
                     refreshCheckBox={this.refreshCheckBox}
