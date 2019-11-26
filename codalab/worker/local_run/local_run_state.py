@@ -339,7 +339,7 @@ class LocalRunStateMachine(StateTransitioner):
                 disk_utilization=self.disk_utilization[run_state.bundle.uuid]['disk_utilization']
             )
 
-            container_time_total = time.time() - run_state.container_start_time
+            container_time_total = docker_utils.get_container_running_time(run_state.container)
             run_state = run_state._replace(
                 container_time_total=container_time_total,
                 container_time_user=run_stats.get(
