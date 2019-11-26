@@ -52,7 +52,7 @@ class TableItem extends React.Component<{
     };
 
     componentDidUpdate(prevProps) {
-        if (this.props.item.rows !== prevProps.item.rows) {
+        if (this.props.item.rows.length !== prevProps.item.rows.length) {
             let childrenStatus = new Array(this.props.item.rows.length).fill(false);
             this.setState({
                 numSelectedChild: 0,
@@ -210,7 +210,7 @@ class TableItem extends React.Component<{
         });
         return (
             <div className='ws-item'>
-                <TableContainer onMouseLeave={this.removeButtons}>
+                <TableContainer>
                     <Table className={tableClassName}>
                         <TableHead>
                             <TableRow
