@@ -224,17 +224,6 @@ class BundleRow extends Component {
                 },
                 'keydown',
             );
-            // Space shortcut is currently disabled as the operation is not common, but space is easy to hit
-            // Mousetrap.bind(
-            //     ['space'],
-            //     (e) => {
-            //         if (!this.props.confirmBundleRowAction(e.code)) {
-            //             e.preventDefault();
-            //             this.props.handleSelectAllSpaceHit();
-            //         }
-            //     },
-            //     'keydown',
-            // );
         }
 
         return (
