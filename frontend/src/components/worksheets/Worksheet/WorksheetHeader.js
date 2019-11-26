@@ -55,7 +55,8 @@ export default ({
                                 key={'title' + canEdit}
                                 canEdit={canEdit}
                                 fieldName='title'
-                                value={(info && info.title) || 'Loading...'}
+                                value={info && info.title}
+                                placeholder='Untitled'
                                 uuid={info && info.uuid}
                                 onChange={() => reloadWorksheet()}
                                 allowASCII={true}
