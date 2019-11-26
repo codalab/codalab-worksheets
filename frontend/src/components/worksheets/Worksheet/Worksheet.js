@@ -1067,13 +1067,11 @@ class Worksheet extends React.Component {
                     } else {
                         if (moveIndex) {
                             // for adding a new cell, we want the focus to be the one below the current focus
-                            console.log(focus);
                             this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
                         }
                         if (textDeleted) {
-                            // when deleting text, we want the focus to be the one above the deleted focus
-                            console.log(focus);
-                            this.setFocus(focus === -1 ? focus : focus - 1, 'end');
+                            // when deleting text, we want the focus to stay the same
+                            this.setFocus(focus, 'end');
                         }
                     }
                     this.setState({
