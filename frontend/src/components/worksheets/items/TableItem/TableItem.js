@@ -15,7 +15,6 @@ import CheckBoxIcon from '@material-ui/icons/CheckBox';
 class TableItem extends React.Component<{
     worksheetUUID: string,
     item: {},
-    handleContextMenu: () => any,
     reloadWorksheet: () => any,
 }> {
     /** Constructor. */
@@ -195,7 +194,6 @@ class TableItem extends React.Component<{
                     canEdit={canEdit}
                     updateRowIndex={this.updateRowIndex}
                     columnWithHyperlinks={columnWithHyperlinks}
-                    handleContextMenu={this.props.handleContextMenu}
                     reloadWorksheet={this.props.reloadWorksheet}
                     ws={this.props.ws}
                     checkStatus={this.state.childrenCheckState[rowIndex]}
