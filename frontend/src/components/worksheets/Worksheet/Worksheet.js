@@ -1070,8 +1070,10 @@ class Worksheet extends React.Component {
                             this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
                         }
                         if (textDeleted) {
-                            // when deleting text, we want the focus to stay the same
-                            this.setFocus(focus, 'end');
+                            // When deleting text, we want the focus to stay at the same index,
+                            // unless it is the last item in the worksheet, at which point the
+                            // focus goes to the last item in the worksheet.
+                            this.setFocus(items.length === focus ? items.length - 1 : focus, 'end');
                         }
                     }
                     this.setState({
