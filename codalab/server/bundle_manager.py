@@ -312,6 +312,12 @@ class BundleManager(object):
             reverse=True,
         )
 
+        # Get bundles in RUNNING state from the bundle table
+        running_bundles = self._model.batch_get_bundles(state=State.RUNNING)
+        # Build a dictionary which maps from uuid to bundle
+        uuid_to_running_bundles = {bundle.uuid: bundle for bundle in running_bundles}
+
+        # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
             # Get user_owned workers.
             workers_list = workers.user_owned_workers(bundle.owner_id)
@@ -329,7 +335,7 @@ class BundleManager(object):
                 # Get all the CodaLab's public workers
                 workers_list = workers.user_owned_workers(self._model.root_user_id)
 
-            workers_list = self._deduct_worker_resources(workers_list)
+            workers_list = self._deduct_worker_resources(workers_list, uuid_to_running_bundles)
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
 
             # Try starting bundles on the workers that have enough computing resources
@@ -337,21 +343,21 @@ class BundleManager(object):
                 if self._try_start_bundle(workers, worker, bundle):
                     break
 
-    def _deduct_worker_resources(self, workers_list):
+    def _deduct_worker_resources(self, workers_list, uuid_to_running_bundles):
         """
         From each worker, subtract resources used by running bundles. Modifies the list.
         """
+
         for worker in workers_list:
             for uuid in worker['run_uuids']:
-                try:
-                    bundle = self._model.get_bundle(uuid)
-                except NotFoundError:
+                # Verify if the current bundle exists in both the worker table and the bundle table
+                if uuid not in uuid_to_running_bundles:
                     logger.info(
-                        'Bundle %s in WorkerInfoAccessor but no longer found. Skipping for resource deduction.',
-                        uuid,
+                        'Bundle {} exists on worker {} but no longer found in the bundle table. '
+                        'Skipping for resource deduction.'.format(uuid, worker['worker_id'])
                     )
                     continue
-                bundle_resources = self._compute_bundle_resources(bundle)
+                bundle_resources = self._compute_bundle_resources(uuid_to_running_bundles.get(uuid))
                 worker['cpus'] -= bundle_resources.cpus
                 worker['gpus'] -= bundle_resources.gpus
                 worker['memory_bytes'] -= bundle_resources.memory
