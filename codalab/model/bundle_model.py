@@ -7,12 +7,8 @@ import datetime
 import os
 import re
 import time
-<<<<<<< HEAD
-import sys
-=======
 import logging
 
->>>>>>> master
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, not_, select, union, desc, func
