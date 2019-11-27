@@ -9,7 +9,8 @@ created if not.
 import logging
 import os
 import docker
-
+from dateutil import parser, tz
+import datetime
 from codalab.lib.formatting import parse_size
 
 
@@ -30,7 +31,11 @@ def wrap_exception(message):
                 return f(*args, **kwargs)
             except DockerException as e:
                 raise DockerException(message + ': ' + str(e))
-            except (docker.errors.APIError, docker.errors.ImageNotFound) as e:
+            except (
+                docker.errors.APIError,
+                docker.errors.ImageNotFound,
+                docker.errors.NotFound,
+            ) as e:
                 raise DockerException(message + ': ' + str(e))
 
         return wrapper
@@ -252,3 +257,25 @@ def check_finished(container):
             failure_msg = 'Memory limit exceeded.'
         return (True, exitcode, failure_msg)
     return (False, None, None)
+
+
+@wrap_exception('Unable to check Docker container running time')
+def get_container_running_time(container):
+    # Get the current container
+    container = client.containers.get(container.id)
+    # Load this container from the server again and update attributes with the new data.
+    container.reload()
+    # Calculate the start_time of the current container
+    start_time = container.attrs['State']['StartedAt']
+    # Calculate the end_time of the current container. If 'Status' of the current container is not 'exited',
+    # then using the current time as end_time
+    end_time = (
+        container.attrs['State']['FinishedAt']
+        if container.attrs['State']['Status'] == 'exited'
+        else str(datetime.datetime.now().replace(tzinfo=tz.tzutc()))
+    )
+    # Docker reports both the start_time and the end_time in ISO format. We currently use dateutil.parser.isoparse to
+    # parse them. In Python3.7 or above, the built-in function datetime.fromisoformat() can be used to parse ISO
+    # formatted datetime string directly.
+    container_running_time = parser.isoparse(end_time) - parser.isoparse(start_time)
+    return container_running_time.total_seconds()
