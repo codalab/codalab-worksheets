@@ -58,7 +58,7 @@ class UtilTest(unittest.TestCase):
             '0x234': ['0x222'],
             '0x345': ['0x333'],
         }
-        model.get_n_host_worksheet_uuids.side_effect = self._mock_model_call(
+        model.get_host_worksheet_uuids.side_effect = self._mock_model_call(
             bundle_uuids, bundle_worksheet_uuids
         )
         worksheet_permissions = {

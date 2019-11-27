@@ -258,16 +258,16 @@ class BundleModel(object):
             result[row.parent_uuid].append(row.child_uuid)
         return result
 
-    def get_n_host_worksheet_uuids(self, bundle_uuids, n):
+    def get_host_worksheet_uuids(self, bundle_uuids, max_worksheets):
         """
         Get up to n host_worksheet uuids per bundle uuid. n of 0 will return an empty dictionary.
         bundle_uuids: list of bundle uuid's (e.g. ['0x12345', '0x23456'])
-        n: max limit of host_worksheet uuid's to fetch per bundle
+        max_worksheets: max limit of host_worksheet uuid's to fetch per bundle
         Return dict of bundle uuid's to a list of host worksheet uuid's {'0x12345': [host_worksheet_uuid, ...], ...}
         """
-        if n < 0:
-            raise ValueError('Invalid n: {}. n has to be 0 or greater.'.format(n))
-        if n == 0:
+        if max_worksheets < 0:
+            raise ValueError('Invalid n: {}. n has to be 0 or greater.'.format(max_worksheets))
+        if max_worksheets == 0:
             return dict()
 
         with self.engine.begin() as connection:
@@ -276,7 +276,9 @@ class BundleModel(object):
                     [
                         cl_worksheet_item.c.bundle_uuid,
                         func.substring_index(
-                            func.group_concat(cl_worksheet_item.c.worksheet_uuid), ',', n
+                            func.group_concat(cl_worksheet_item.c.worksheet_uuid),
+                            ',',
+                            max_worksheets,
                         ).label('worksheet_uuids'),
                     ]
                 )
@@ -285,9 +287,9 @@ class BundleModel(object):
             ).fetchall()
         return dict((row.bundle_uuid, row.worksheet_uuids.split(',')) for row in rows)
 
-    def get_host_worksheet_uuids(self, bundle_uuids):
+    def get_all_host_worksheet_uuids(self, bundle_uuids):
         """
-        Return list of worksheet uuids that contain the given bundle_uuids.
+        Return list of all worksheet uuids that contain the given bundle_uuids.
         bundle_uuids: list of bundle uuid's (e.g. ['0x12345', '0x23456']
         Return dict of bundle uuid's to a list of host worksheet uuid's {'0x12345': [host_worksheet_uuid, ...], ...}
         """

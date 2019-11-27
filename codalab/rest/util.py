@@ -58,7 +58,7 @@ def get_bundle_infos(
     :param Collection[str] uuids: uuids of bundles to fetch
     :param bool get_children: include children
     :param bool get_single_host_worksheet: include one host_worksheet per bundle uuid
-    :param bool get_host_worksheets: include host worksheets
+    :param bool get_host_worksheets: include all host worksheets
     :param bool get_permissions: include group permissions
     :param bool ignore_not_found: abort with 404 NOT FOUND when False and bundle doesn't exist
     :param BundleModel model: model used to make database queries
@@ -121,8 +121,10 @@ def get_bundle_infos(
             ]
 
     if get_single_host_worksheet:
-        # Get back a dict of bundle uuids -> list of worksheet uuids (max of 5)
-        host_worksheets = model.get_n_host_worksheet_uuids(readable, 5)
+        # Query for 5 worksheet uuids per bundle to check the read permissions for, since we
+        # just need a single host worksheet per bundle uuid. This is much faster than fetching all
+        # worksheet uuid's per bundle.
+        host_worksheets = model.get_host_worksheet_uuids(readable, 5)
         worksheet_uuids = [uuid for l in host_worksheets.values() for uuid in l]
         worksheet_names = _get_readable_worksheet_names(model, worksheet_uuids)
 
@@ -137,8 +139,7 @@ def get_bundle_infos(
                     break
 
     if get_host_worksheets:
-        # Get back a dict of bundle_uuids -> list of worksheet_uuids
-        host_worksheets = model.get_host_worksheet_uuids(readable)
+        host_worksheets = model.get_all_host_worksheet_uuids(readable)
         # Gather all worksheet uuids
         worksheet_uuids = [uuid for l in host_worksheets.values() for uuid in l]
         worksheet_names = _get_readable_worksheet_names(model, worksheet_uuids)
