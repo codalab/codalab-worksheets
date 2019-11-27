@@ -540,7 +540,7 @@ def resolve_items_into_infos(items):
     # optimized batch_get_bundles multiget method.
     bundle_uuids = set(i['bundle_uuid'] for i in items if i['bundle_uuid'] is not None)
 
-    bundle_dict = rest_util.get_bundle_infos(bundle_uuids)
+    bundle_dict = rest_util.get_bundle_infos(bundle_uuids, get_single_host_worksheet=True)
 
     # Go through the items and substitute the components
     new_items = []

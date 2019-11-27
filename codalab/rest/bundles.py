@@ -788,7 +788,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         )
 
     # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
-    result = local.model.get_host_worksheet_uuids(relevant_uuids)
+    result = local.model.get_all_host_worksheet_uuids(relevant_uuids)
     for uuid, host_worksheet_uuids in result.items():
         worksheets = local.model.batch_get_worksheets(fetch_items=False, uuid=host_worksheet_uuids)
         frozen_worksheets = [worksheet for worksheet in worksheets if worksheet.frozen]
