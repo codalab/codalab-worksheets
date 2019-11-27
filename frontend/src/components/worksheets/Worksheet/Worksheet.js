@@ -458,6 +458,10 @@ class Worksheet extends React.Component {
                 pos = -1000000; // Scroll all the way to the top
             } else {
                 var item = this.refs.list.refs['item' + index];
+                if (!item) {
+                    // Don't scroll to an item if it doesn't exist.
+                    return;
+                }
                 if (this._numTableRows(item.props.item)) {
                     item = item.refs['row' + subIndex]; // Specifically, the row
                 }
@@ -1067,13 +1071,13 @@ class Worksheet extends React.Component {
                     } else {
                         if (moveIndex) {
                             // for adding a new cell, we want the focus to be the one below the current focus
-                            console.log(focus);
                             this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
                         }
                         if (textDeleted) {
-                            // when deleting text, we want the focus to be the one above the deleted focus
-                            console.log(focus);
-                            this.setFocus(focus === -1 ? focus : focus - 1, 'end');
+                            // When deleting text, we want the focus to stay at the same index,
+                            // unless it is the last item in the worksheet, at which point the
+                            // focus goes to the last item in the worksheet.
+                            this.setFocus(items.length === focus ? items.length - 1 : focus, 'end');
                         }
                     }
                     this.setState({
