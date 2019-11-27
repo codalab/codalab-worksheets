@@ -255,7 +255,6 @@ class Worksheet extends React.Component {
         // Refreshes the checkbox after commands
         // If the action failed, the check will persist
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
-        this.setState({ updating: true });
         executeCommand(
             buildTerminalCommand([
                 cmd,
@@ -274,11 +273,18 @@ class Worksheet extends React.Component {
                         });
                     }
                 });
+                toast.info('Executing ' + cmd + ' command', {
+                    position: 'top-right',
+                    autoClose: 2500,
+                    hideProgressBar: true,
+                    closeOnClick: true,
+                    pauseOnHover: false,
+                    draggable: true,
+                });
                 this.setState({
                     uuidBundlesCheckedCount: {},
                     checkedBundles: {},
                     showBundleOperationButtons: false,
-                    updating: false,
                 });
                 this.reloadWorksheet();
             })
@@ -318,7 +324,7 @@ class Worksheet extends React.Component {
                         </DialogContent>
                     </Dialog>
                 );
-                this.setState({ BulkBundleDialog: bundle_error_dialog, updating: false });
+                this.setState({ BulkBundleDialog: bundle_error_dialog });
             });
     };
 
@@ -587,7 +593,7 @@ class Worksheet extends React.Component {
                 ['shift+r'],
                 function(e) {
                     this.reloadWorksheet(undefined, undefined);
-                    toast.success('🦄 Worksheet refreshed!', {
+                    toast.info('🦄 Worksheet refreshed!', {
                         position: 'top-right',
                         autoClose: 1500,
                         hideProgressBar: false,
