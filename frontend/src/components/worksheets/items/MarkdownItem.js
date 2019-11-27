@@ -16,7 +16,7 @@ class MarkdownItem extends React.Component {
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = Immutable({ showEdit: false });
+        this.state = Immutable({ showEdit: false, deleting: false });
         this.placeholderText = '@MATH@';
     }
 
@@ -73,7 +73,9 @@ class MarkdownItem extends React.Component {
             ['backspace', 'del'],
             function(ev) {
                 ev.preventDefault();
-                this.deleteItem();
+                if (!this.state.deleting) {
+                    this.setState({ deleting: true }, () => this.deleteItem());
+                }
             }.bind(this),
         );
     }
@@ -90,9 +92,11 @@ class MarkdownItem extends React.Component {
             success: (data, status, jqXHR) => {
                 const textDeleted = true;
                 const param = { textDeleted };
+                this.setState({ deleting: false });
                 reloadWorksheet(undefined, undefined, param);
             },
             error: (jqHXR, status, error) => {
+                this.setState({ deleting: false });
                 alert(createAlertText(this.url, jqHXR.responseText));
             },
         });

@@ -347,9 +347,9 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
     paths that require reading files is done by interpret_file_genpath.
     If genpath is referring to a file, then just returns instructions for fetching that file rather than actually doing it.
     :param bundle_info: dictionary which contains metadata of current bundle's information, e.g. uuid, bundle_type, owner_id, etc.
-    :param genpath: a generalized path, e.g. column names(summary, owner_name, etc.), args.
+    :param genpath: a generalized path, e.g. column names(summary, owner, etc.), args.
     :param db_model (optional): database model which is used to query database
-    :param owner_cache (optional): a dictionary stores mappings from owner_id to owner_name
+    :param owner_cache (optional): a dictionary stores mappings from owner_id to owner
     :return: the interpretation of genpath
     """
 
@@ -443,7 +443,7 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
             # FIXME(sckoo): we will be passing the old permissions format into this
             # which has been updated to accommodate the new formatting
             return group_permissions_str(bundle_info['group_permissions'])
-    elif genpath == 'owner_name':
+    elif genpath == 'owner':
         if 'owner_id' in bundle_info:
             if owner_cache is not None and bundle_info['owner_id'] in owner_cache:
                 return owner_cache[bundle_info['owner_id']]
@@ -776,7 +776,7 @@ def interpret_items(schemas, raw_items, db_model=None):
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             processed_bundle_infos = []
-            # Cache the mapping between owner_id to owner_name on current worksheet
+            # Cache the mapping between owner_id to owner on current worksheet
             owner_cache = {}
             for item_index, bundle_info in bundle_infos:
                 if 'metadata' in bundle_info:

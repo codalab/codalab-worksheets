@@ -79,8 +79,9 @@ class DockerImageManager:
     def _cleanup(self):
         """
         Prunes the image cache for runs.
-        1. Only care about images we (this DockerImageManager) downloaded and know about
-        2. We use sum of VirtualSize's, which is an upper bound on the disk use of our images:
+        1. Only care about images we (this DockerImageManager) downloaded and know about.
+        2. We also try to prune any dangling docker images on the system.
+        3. We use sum of VirtualSize's, which is an upper bound on the disk use of our images:
             in case no images share any intermediate layers, this will be the real disk use,
             however if images share layers, the virtual size will count that layer's size for each
             image that uses it, even though it's stored only once in the disk. The 'Size' field
@@ -91,8 +92,9 @@ class DockerImageManager:
             but because of (1) we don't want to use that.
         """
         while not self._stop:
+            # Sort the image cache in LRU order
             deletable_entries = set(self._image_cache.values())
-            disk_use = sum(cache_entry.virtual_size for cache_entry in deletable_entries)
+            disk_use = sum(entry.virtual_size for entry in deletable_entries)
             while disk_use > self._max_image_cache_size:
                 entry_to_remove = min(deletable_entries, key=lambda entry: entry.last_used)
                 logger.info(
@@ -102,13 +104,10 @@ class DockerImageManager:
                     entry_to_remove.digest,
                 )
                 try:
-                    image_to_delete = self._docker.images.get(entry_to_remove.id)
-                    tags_to_delete = image_to_delete.tags
-                    for tag in tags_to_delete:
-                        self._docker.images.remove(tag)
-                    # if we successfully removed the image also remove its cache entry
+                    # Delete images from image cache in LRU order
+                    self._docker.images.remove(entry_to_remove.id)
                     del self._image_cache[entry_to_remove.digest]
-                except docker.errors.NotFound:
+                except docker.errors.ImageNotFound:
                     # image doesn't exist anymore for some reason, stop tracking it
                     del self._image_cache[entry_to_remove.digest]
                 except docker.errors.APIError as err:

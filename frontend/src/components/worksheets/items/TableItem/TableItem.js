@@ -15,7 +15,6 @@ import CheckBoxIcon from '@material-ui/icons/CheckBox';
 class TableItem extends React.Component<{
     worksheetUUID: string,
     item: {},
-    handleContextMenu: () => any,
     reloadWorksheet: () => any,
 }> {
     /** Constructor. */
@@ -93,20 +92,6 @@ class TableItem extends React.Component<{
             checked: event.target.checked,
             childrenCheckState: [...childrenStatus],
             numSelectedChild: numSelectedChild,
-            indeterminateCheckState: false,
-        });
-    };
-
-    handleSelectAllSpaceHit = () => {
-        let numSelectedChild = 0;
-        let childrenStatus = new Array(this.state.childrenCheckState.length).fill(
-            !this.state.checked,
-        );
-        numSelectedChild = !this.state.checked ? childrenStatus.length : 0;
-        this.setState({
-            checked: !this.state.checked,
-            numSelectedChild: numSelectedChild,
-            childrenCheckState: [...childrenStatus],
             indeterminateCheckState: false,
         });
     };
@@ -195,13 +180,11 @@ class TableItem extends React.Component<{
                     canEdit={canEdit}
                     updateRowIndex={this.updateRowIndex}
                     columnWithHyperlinks={columnWithHyperlinks}
-                    handleContextMenu={this.props.handleContextMenu}
                     reloadWorksheet={this.props.reloadWorksheet}
                     ws={this.props.ws}
                     checkStatus={this.state.childrenCheckState[rowIndex]}
                     isLast={rowIndex === rowItems.length - 1}
                     handleCheckBundle={this.props.handleCheckBundle}
-                    handleSelectAllSpaceHit={this.handleSelectAllSpaceHit}
                     confirmBundleRowAction={this.props.confirmBundleRowAction}
                     childrenCheck={this.childrenCheck}
                     refreshCheckBox={this.refreshCheckBox}

@@ -224,16 +224,6 @@ class BundleRow extends Component {
                 },
                 'keydown',
             );
-            Mousetrap.bind(
-                ['space'],
-                (e) => {
-                    if (!this.props.confirmBundleRowAction(e.code)) {
-                        e.preventDefault();
-                        this.props.handleSelectAllSpaceHit();
-                    }
-                },
-                'keydown',
-            );
         }
 
         return (
@@ -243,13 +233,6 @@ class BundleRow extends Component {
                  */}
                 <TableRow
                     onClick={this.handleSelectRowClick}
-                    onContextMenu={this.props.handleContextMenu.bind(
-                        null,
-                        bundleInfo.uuid,
-                        this.props.focusIndex,
-                        this.props.rowIndex,
-                        bundleInfo.bundle_type === 'run',
-                    )}
                     className={classNames({
                         [classes.contentRow]: true,
                         [classes.highlight]: this.props.focused,

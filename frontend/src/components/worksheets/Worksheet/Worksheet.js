@@ -11,6 +11,7 @@ import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import { NAVBAR_HEIGHT } from '../../../constants';
 import WorksheetActionBar from '../WorksheetActionBar';
+import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
 import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
@@ -458,6 +459,10 @@ class Worksheet extends React.Component {
                 pos = -1000000; // Scroll all the way to the top
             } else {
                 var item = this.refs.list.refs['item' + index];
+                if (!item) {
+                    // Don't scroll to an item if it doesn't exist.
+                    return;
+                }
                 if (this._numTableRows(item.props.item)) {
                     item = item.refs['row' + subIndex]; // Specifically, the row
                 }
@@ -609,7 +614,7 @@ class Worksheet extends React.Component {
 
             // Toggle edit mode
             Mousetrap.bind(
-                ['e'],
+                ['shift+e'],
                 function(e) {
                     this.toggleEditMode();
                     return false;
@@ -667,7 +672,7 @@ class Worksheet extends React.Component {
             if (!this.state.showBundleOperationButtons) {
                 // insert text after current cell
                 Mousetrap.bind(
-                    ['t'],
+                    ['a t'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -680,7 +685,7 @@ class Worksheet extends React.Component {
 
                 // upload after current cell
                 Mousetrap.bind(
-                    ['u'],
+                    ['a u'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -723,13 +728,13 @@ class Worksheet extends React.Component {
                 }
                 this.togglePopupNoEvent('rm');
             });
-            Mousetrap.bind(['d'], () => {
+            Mousetrap.bind(['a d'], () => {
                 if (this.state.openDelete || this.state.openKill) {
                     return;
                 }
                 this.togglePopupNoEvent('detach');
             });
-            Mousetrap.bind(['v'], () => {
+            Mousetrap.bind(['a k'], () => {
                 if (this.state.openDetach || this.state.openDelete) {
                     return;
                 }
@@ -1067,13 +1072,13 @@ class Worksheet extends React.Component {
                     } else {
                         if (moveIndex) {
                             // for adding a new cell, we want the focus to be the one below the current focus
-                            console.log(focus);
                             this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
                         }
                         if (textDeleted) {
-                            // when deleting text, we want the focus to be the one above the deleted focus
-                            console.log(focus);
-                            this.setFocus(focus === -1 ? focus : focus - 1, 'end');
+                            // When deleting text, we want the focus to stay at the same index,
+                            // unless it is the last item in the worksheet, at which point the
+                            // focus goes to the last item in the worksheet.
+                            this.setFocus(items.length === focus ? items.length - 1 : focus, 'end');
                         }
                     }
                     this.setState({
@@ -1416,6 +1421,7 @@ class Worksheet extends React.Component {
                     showGlossaryModal={this.state.showGlossaryModal}
                     toggleGlossaryModal={this.toggleGlossaryModal}
                 />
+                {this.state.updating && <Loading />}
             </React.Fragment>
         );
     }
