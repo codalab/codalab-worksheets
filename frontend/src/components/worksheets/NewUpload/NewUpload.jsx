@@ -173,7 +173,7 @@ class NewUpload extends React.Component<{
     }
 
     // Handling cancel
-    // When the user clicks, it focuses back on the window and triggers onClose 
+    // When the user cancels, will focus back on the window and triggers onClose()
     handleFocusBack=()=>{
         this.props.onClose();
         window.removeEventListener('focus', this.handleFocusBack);
