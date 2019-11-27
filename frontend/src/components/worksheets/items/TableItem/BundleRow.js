@@ -315,7 +315,7 @@ const styles = (theme) => ({
         padding: '0px !important',
         wordWrap: 'break-word',
         maxWidth: 200,
-        width: 100,
+        minWidth: 100,
     },
     bundleDetail: {
         paddingLeft: `${theme.spacing.largest}px !important`,
