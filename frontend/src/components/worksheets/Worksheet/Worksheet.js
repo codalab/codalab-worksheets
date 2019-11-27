@@ -610,7 +610,7 @@ class Worksheet extends React.Component {
 
             // Toggle edit mode
             Mousetrap.bind(
-                ['e'],
+                ['shift+e'],
                 function(e) {
                     this.toggleEditMode();
                     return false;
@@ -668,7 +668,7 @@ class Worksheet extends React.Component {
             if (!this.state.showBundleOperationButtons) {
                 // insert text after current cell
                 Mousetrap.bind(
-                    ['t'],
+                    ['a+t'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -681,7 +681,7 @@ class Worksheet extends React.Component {
 
                 // upload after current cell
                 Mousetrap.bind(
-                    ['u'],
+                    ['a+u'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -693,7 +693,7 @@ class Worksheet extends React.Component {
                 );
                 // run after current cell
                 Mousetrap.bind(
-                    ['a r'],
+                    ['a+r'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -724,13 +724,13 @@ class Worksheet extends React.Component {
                 }
                 this.togglePopupNoEvent('rm');
             });
-            Mousetrap.bind(['d'], () => {
+            Mousetrap.bind(['a d'], () => {
                 if (this.state.openDelete || this.state.openKill) {
                     return;
                 }
                 this.togglePopupNoEvent('detach');
             });
-            Mousetrap.bind(['v'], () => {
+            Mousetrap.bind(['a k'], () => {
                 if (this.state.openDetach || this.state.openDelete) {
                     return;
                 }
