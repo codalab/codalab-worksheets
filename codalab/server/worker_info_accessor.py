@@ -1,4 +1,5 @@
 from collections import defaultdict
+import copy
 
 
 class WorkerInfoAccessor(object):
@@ -25,7 +26,11 @@ class WorkerInfoAccessor(object):
         return None
 
     def user_owned_workers(self, user_id):
-        return list(self._user_id_to_workers[user_id])
+        # A deep copy is necessary here due to the following facts:
+        # 1. assignment statements in Python do not copy objects, meaning it generates a shallow copy
+        # 2. deep copy is only necessary for compound objects which contains other objects, like lists or class instances
+        # 3. a deep copy will guarantee that one can change one copy without changing the other
+        return list(copy.deepcopy(worker) for worker in self._user_id_to_workers[user_id])
 
     def remove(self, worker):
         self._workers.remove(worker)

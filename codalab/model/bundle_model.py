@@ -7,7 +7,8 @@ import datetime
 import os
 import re
 import time
-import sys
+import logging
+
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, not_, select, union, desc, func
@@ -49,6 +50,8 @@ from codalab.objects.user import User
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
 
+
+logger = logging.getLogger(__name__)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -222,7 +225,11 @@ class BundleModel(object):
             row = conn.execute(
                 cl_worker_run.select().where(cl_worker_run.c.run_uuid == uuid)
             ).fetchone()
-            precondition(row, 'Trying to find worker for bundle that is not running.')
+
+            if not row:
+                logger.info('Trying to find worker for bundle {} that is not running.'.format(uuid))
+                return None
+
             worker_row = conn.execute(
                 cl_worker.select().where(
                     and_(cl_worker.c.user_id == row.user_id, cl_worker.c.worker_id == row.worker_id)
@@ -294,7 +301,7 @@ class BundleModel(object):
 
     def search_bundles(self, user_id, keywords):
         """
-        Returns a  bundle search result dict where:
+        Returns a bundle search result dict where:
             result: list of bundle uuids matching search criteria in order
                           specified for bundle searches
                     single number value for aggregate searches(.count, .sum)
@@ -1035,6 +1042,8 @@ class BundleModel(object):
             connection.execute(
                 cl_bundle_dependency.delete().where(cl_bundle_dependency.c.child_uuid.in_(uuids))
             )
+            # In case something goes wrong, delete bundles that are currently running on workers.
+            connection.execute(cl_worker_run.delete().where(cl_worker_run.c.run_uuid.in_(uuids)))
             connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
 
     def remove_data_hash_references(self, uuids):
@@ -2327,9 +2336,7 @@ class BundleModel(object):
 
     def get_user_disk_quota_left(self, user_id):
         user_info = self.get_user_info(user_id)
-        disk_quota = user_info['disk_quota']
-        disk_used = self._get_disk_used(user_id)
-        return disk_quota - disk_used
+        return user_info['disk_quota'] - user_info['disk_used']
 
     def update_user_disk_used(self, user_id):
         user_info = self.get_user_info(user_id)

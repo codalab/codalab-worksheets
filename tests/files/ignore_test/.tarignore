@@ -1,0 +1,3 @@
+# for testing tar --exclude-ignore in file_util.py
+**/ignored_dir
+ignored.txt

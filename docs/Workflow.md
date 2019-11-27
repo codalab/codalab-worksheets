@@ -90,31 +90,13 @@ If you want to delete the old code and all downstream dependencies recursively:
 
 ## Using scripts
 
-As your project solidifies and becomes more complex, you'll want to create a script that will help you alias common CodaLab commands.
-
-Here is an example script that one might use. 
-
-    #!/bin/bash
-
-    # $1 = data bundle
-    # $2 = script name
-
-    if [$1 == "small"] then
-        DATA_BUNDLE	= "small-dataset"
-    elif [$1 == "large"] then
-        DATA_BUNDLE = "large-dataset"
-    fi
-
-    cl run $DATA_BUNDLE code-upload "ls code-upload; python $2 --input $1" --request-gpus 1 --request-memory 3g
-
-Let's go through the script piece by piece:
-
-First, given that you have only a few datasets that should all be accepted as input into your scripts, we use small and large to quickly set a script variable.
-
-Next, we use the code-upload 
-For example, since your dataset dependency bundles won't be changing very often, perhaps you will want to write a script that will run your various experiment scripts while having
-
-
+As your project becomes more complex, you'll want to create a script that
+launches CodaLab runs by passing in the appropriate command-line arguments.
+You can see
+[./train.sh](https://github.com/codalab/worksheets-examples/blob/master/01-nli/train.sh)
+from the worksheet examples repo or a [fancier Ruby
+script](https://github.com/percyliang/seq2seq-utils/blob/master/run.rb) that
+allows you to build command-line arguments in a more modular and flexible way.
 
 ## Interfacing with programs
 
