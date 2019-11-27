@@ -54,7 +54,7 @@ export default ({
                                 key={'title' + canEdit}
                                 canEdit={canEdit}
                                 fieldName='title'
-                                value={info && info.title}
+                                value={info ? info.title : 'Loading...'}
                                 placeholder='Loading...'
                                 uuid={info && info.uuid}
                                 onChange={() => reloadWorksheet()}
