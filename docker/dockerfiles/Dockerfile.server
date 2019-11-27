@@ -12,6 +12,7 @@ RUN apt-get update; apt-get install -y \
     libfuse-dev \
     libjpeg-dev \
     libmysqlclient-dev \
+    libssl-dev \
     mysql-client \
     python3.6 \
     python3.6-dev \

@@ -46,6 +46,17 @@ class WorkerManager(object):
       burden of deciding on the user.
     """
 
+    # Subcommand name to use for this worker manager type
+    NAME = 'worker-manager'
+    DESCRIPTION = 'Base class for Worker Managers, please implement for your deployment'
+
+    @staticmethod
+    def add_arguments_to_subparser(subparser):
+        """
+        Add any arguments specific to this worker manager to the given subparser
+        """
+        raise NotImplementedError
+
     def __init__(self, args):
         self.args = args
         self.codalab_manager = CodaLabManager()
