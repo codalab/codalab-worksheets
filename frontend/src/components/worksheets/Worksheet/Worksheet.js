@@ -11,6 +11,7 @@ import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import { NAVBAR_HEIGHT } from '../../../constants';
 import WorksheetActionBar from '../WorksheetActionBar';
+import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
 import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
@@ -1420,6 +1421,7 @@ class Worksheet extends React.Component {
                     showGlossaryModal={this.state.showGlossaryModal}
                     toggleGlossaryModal={this.toggleGlossaryModal}
                 />
+                {this.state.updating && <Loading />}
             </React.Fragment>
         );
     }
