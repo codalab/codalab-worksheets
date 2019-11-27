@@ -56,7 +56,16 @@ from codalab.lib.cli_util import (
     parse_target_spec,
     desugar_command,
     INSTANCE_SEPARATOR,
-    WORKSHEET_SEPARATOR,
+    ADDRESS_SPEC_FORMAT,
+    WORKSHEET_SPEC_FORMAT,
+    BUNDLE_SPEC_FORMAT,
+    WORKSHEETS_URL_SEPARATOR,
+    TARGET_SPEC_FORMAT,
+    RUN_TARGET_SPEC_FORMAT,
+    MAKE_TARGET_SPEC_FORMAT,
+    GROUP_SPEC_FORMAT,
+    PERMISSION_SPEC_FORMAT,
+    UUID_POST_FUNC,
 )
 from codalab.objects.permission import group_permissions_str, parse_permission, permission_str
 from codalab.client.json_api_client import JsonApiRelationship
@@ -82,28 +91,6 @@ from codalab.worker.file_util import remove_path
 from codalab.worker.bundle_state import State
 from codalab.rest.worksheet_block_schemas import BlockModes
 
-# Formatting Constants
-ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
-BASIC_SPEC_FORMAT = '(<uuid>|<name>)'
-BASIC_BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
-
-GLOBAL_SPEC_FORMAT = "[%s%s]%s" % (ADDRESS_SPEC_FORMAT, INSTANCE_SEPARATOR, BASIC_SPEC_FORMAT)
-WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
-
-BUNDLE_SPEC_FORMAT = '[%s%s]%s' % (
-    WORKSHEET_SPEC_FORMAT,
-    WORKSHEET_SEPARATOR,
-    BASIC_BUNDLE_SPEC_FORMAT,
-)
-
-WORKSHEETS_URL_SEPARATOR = '/worksheets/'
-
-TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (BUNDLE_SPEC_FORMAT, os.sep)
-RUN_TARGET_SPEC_FORMAT = '[<key>]:' + TARGET_SPEC_FORMAT
-MAKE_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
-GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
-PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
-UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
 
 # Command groupings
 BUNDLE_COMMANDS = (
