@@ -172,8 +172,8 @@ class NewUpload extends React.Component<{
         this.setState({ percentComplete: 0, uploading: false });
     }
 
-    // Handling cancelling
-    // Based on: https://stackoverflow.com/questions/49627109/reactjs-how-to-detect-when-cancel-is-clicked-on-file-input
+    // Handling cancel
+    // When the user clicks, it focuses back on the window and triggers onClose 
     handleFocusBack=()=>{
         this.props.onClose();
         window.removeEventListener('focus', this.handleFocusBack);
