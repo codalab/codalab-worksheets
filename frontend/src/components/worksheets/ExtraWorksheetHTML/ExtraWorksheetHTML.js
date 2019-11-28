@@ -100,7 +100,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         <td>
                             <kbd>a d</kbd>
                         </td>
-                        <td>Detach all selected bundles from this bundle</td>
+                        <td>Detach all selected bundles from this worksheet</td>
                     </tr>
                     <tr>
                         <td>
