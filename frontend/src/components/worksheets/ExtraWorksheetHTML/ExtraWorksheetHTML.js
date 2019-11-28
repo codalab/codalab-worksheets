@@ -8,13 +8,9 @@ const GlossaryModal = ({ show, toggle }) => (
             <h4>Keyboard Shortcuts</h4>
         </Modal.Header>
         <Modal.Body>
-            <a href='http://terminal.jcubic.pl/api_reference.php' target='_blank'>
-                {' '}
-                More shortcuts for web terminal (see Keyboard shortcuts section){' '}
-            </a>
             <table className='table table-striped'>
                 <tbody>
-                    <tr>Navigation</tr>
+                    <th>Navigation</th>
                     <tr>
                         <td>
                             <kbd>k</kbd> or <kbd>↑</kbd>
@@ -54,7 +50,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Select the bundle row</td>
                     </tr>
-                    <tr>Editing</tr>
+                    <th>Editing</th>
                     <tr>
                         <td>
                             <kbd>shift+e</kbd>
@@ -97,12 +93,12 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Add a new run</td>
                     </tr>
-                    <tr>Bundles operation</tr>
+                    <th>Bundles operation</th>
                     <tr>
                         <td>
                             <kbd>a d</kbd>
                         </td>
-                        <td>Detach all selected bundles from this bundle</td>
+                        <td>Detach all selected bundles from this worksheet</td>
                     </tr>
                     <tr>
                         <td>
@@ -110,7 +106,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Kill all selected bundles</td>
                     </tr>
-                    <tr>Other</tr>
+                    <th>Other</th>
                     <tr>
                         <td>
                             <kbd>shift+c</kbd>
@@ -137,6 +133,13 @@ const GlossaryModal = ({ show, toggle }) => (
                     </tr>
                 </tbody>
             </table>
+            <div>
+                For terminal keyboard shortcuts, refer{' '}
+                <a href='http://terminal.jcubic.pl/api_reference.php' target='_blank'>
+                    here
+                </a>{' '}
+                at keyboard shortcuts section
+            </div>
         </Modal.Body>
     </Modal>
 );
