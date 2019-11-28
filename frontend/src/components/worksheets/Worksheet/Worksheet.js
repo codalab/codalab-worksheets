@@ -662,6 +662,10 @@ class Worksheet extends React.Component {
                             wsItems[focusIndex].mode === 'subworksheets_block')
                     ) {
                         // worksheet_item_interface and table_item_interface do the exact same thing anyway right now
+                        if (focusIndex === 0 && subFocusIndex === 0){
+                            // stay on the first row
+                            return;
+                        }
                         if (subFocusIndex - 1 < 0) {
                             this.setFocus(focusIndex - 1 < 0 ? 0 : focusIndex - 1, 'end'); // Move out of this table to the item above the current table
                         } else {
