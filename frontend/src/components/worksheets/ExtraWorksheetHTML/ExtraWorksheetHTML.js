@@ -136,7 +136,7 @@ const GlossaryModal = ({ show, toggle }) => (
                 </tbody>
             </table>
             <div>
-                For terminal keyboard shortcuts, refer {' '}
+                For terminal keyboard shortcuts, refer{' '}
                 <a href='http://terminal.jcubic.pl/api_reference.php' target='_blank'>
                     here
                 </a>{' '}
