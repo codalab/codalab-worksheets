@@ -139,8 +139,7 @@ class BundleRow extends Component {
             if (headerKey === 'host_worksheet' && worksheetUrl !== undefined) {
                 url = worksheetUrl;
                 rowContent = worksheetName;
-            }
-            else if (col === 0) {
+            } else if (col === 0) {
                 url = baseUrl;
                 checkBox = (
                     <Checkbox
@@ -162,8 +161,7 @@ class BundleRow extends Component {
                         {this.state.showDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                     </IconButton>
                 );
-            }
-            else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
+            } else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
                 url = '/rest/bundles/' + uuid + '/contents/blob' + rowContent['path'];
                 if ('text' in rowContent) {
                     rowContent = rowContent['text'];
