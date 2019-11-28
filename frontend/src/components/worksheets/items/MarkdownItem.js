@@ -73,12 +73,16 @@ class MarkdownItem extends React.Component {
             ['backspace', 'del'],
             function(ev) {
                 ev.preventDefault();
-                if (!this.state.deleting) {
-                    this.setState({ deleting: true }, () => this.deleteItem());
+                if (this.props.focused) {
+                    this.props.setDeleteItemCallback(this.deleteItem);
                 }
             }.bind(this),
         );
     }
+
+    handleDeleteClick = () => {
+        this.props.setDeleteItemCallback(this.deleteItem);
+    };
 
     deleteItem = () => {
         const { reloadWorksheet, item, worksheetUUID, setFocus, focused, focusIndex } = this.props;
@@ -160,7 +164,7 @@ class MarkdownItem extends React.Component {
                     &nbsp;&nbsp;
                     <Tooltip title='Delete'>
                         <IconButton
-                            onClick={this.deleteItem}
+                            onClick={this.handleDeleteClick}
                             classes={{ root: classes.iconButtonRoot }}
                         >
                             <DeleteIcon />

@@ -208,6 +208,14 @@ class BundleRow extends Component {
                 },
                 'keydown',
             );
+            Mousetrap.bind(
+                ['shift+enter'],
+                (e) => {
+                    e.preventDefault();
+                    window.open(this.props.url, '_blank');
+                },
+                'keydown',
+            );
             Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
             Mousetrap.bind(
                 ['x'],
