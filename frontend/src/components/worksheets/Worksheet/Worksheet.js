@@ -153,9 +153,11 @@ class Worksheet extends React.Component {
             openDelete: false,
             openDetach: false,
             openKill: false,
+            openDeleteItem: false,
             forceDelete: false,
             showGlossaryModal: false,
             deleteWorksheetConfirmation: false,
+            deleteItemCallback: null,
         };
     }
 
@@ -355,6 +357,9 @@ class Worksheet extends React.Component {
     };
 
     togglePopup = (cmd_type) => () => {
+        if (cmd_type === 'deleteItem') {
+            this.setState({ openDeleteItem: !this.state.openDeleteItem });
+        }
         if (!this.state.showBundleOperationButtons) {
             return;
         }
@@ -369,6 +374,9 @@ class Worksheet extends React.Component {
     };
 
     togglePopupNoEvent = (cmd_type) => {
+        if (cmd_type === 'deleteItem') {
+            this.setState({ openDeleteItem: !this.state.openDeleteItem });
+        }
         if (!this.state.showBundleOperationButtons) {
             return;
         }
@@ -405,6 +413,9 @@ class Worksheet extends React.Component {
         return true;
     };
     // BULK OPERATION RELATED CODE ABOVE======================================
+    setDeleteItemCallBack = (callback) => {
+        this.setState({ deleteItemCallback: callback, openDeleteItem: true });
+    };
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
@@ -651,6 +662,10 @@ class Worksheet extends React.Component {
                             wsItems[focusIndex].mode === 'subworksheets_block')
                     ) {
                         // worksheet_item_interface and table_item_interface do the exact same thing anyway right now
+                        if (focusIndex === 0 && subFocusIndex === 0) {
+                            // stay on the first row
+                            return;
+                        }
                         if (subFocusIndex - 1 < 0) {
                             this.setFocus(focusIndex - 1 < 0 ? 0 : focusIndex - 1, 'end'); // Move out of this table to the item above the current table
                         } else {
@@ -734,6 +749,17 @@ class Worksheet extends React.Component {
         Mousetrap.bind(['esc'], (e) => {
             ContextMenuMixin.closeContextMenu();
         });
+
+        if (this.state.openDeleteItem) {
+            Mousetrap.bind(
+                ['enter'],
+                function(e) {
+                    e.preventDefault();
+                    this.state.deleteItemCallback();
+                    this.togglePopupNoEvent('deleteItem');
+                }.bind(this),
+            );
+        }
 
         if (this.state.showBundleOperationButtons) {
             // Below are allowed shortcut even when a dialog is opened===================
@@ -1352,6 +1378,7 @@ class Worksheet extends React.Component {
                 onHideNewText={() => this.setState({ showNewText: false })}
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
+                setDeleteItemCallBack={this.setDeleteItemCallBack}
             />
         );
 
@@ -1370,10 +1397,13 @@ class Worksheet extends React.Component {
                 openKill={this.state.openKill}
                 openDelete={this.state.openDelete}
                 openDetach={this.state.openDetach}
+                openDeleteItem={this.state.openDeleteItem}
                 togglePopup={this.togglePopup}
+                togglePopupNoEvent={this.togglePopupNoEvent}
                 executeBundleCommand={this.executeBundleCommand}
                 forceDelete={this.state.forceDelete}
                 handleForceDelete={this.handleForceDelete}
+                deleteItemCallback={this.state.deleteItemCallback}
             />
         );
 
