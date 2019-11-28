@@ -78,9 +78,9 @@ class MarkdownItem extends React.Component {
         );
     }
 
-    handleDeleteClick = ()=>{
+    handleDeleteClick = () => {
         this.props.setDeleteItemCallBack(this.deleteItem);
-    }
+    };
 
     deleteItem = () => {
         const { reloadWorksheet, item, worksheetUUID, setFocus, focused, focusIndex } = this.props;

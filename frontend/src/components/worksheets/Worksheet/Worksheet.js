@@ -357,8 +357,8 @@ class Worksheet extends React.Component {
     };
 
     togglePopup = (cmd_type) => () => {
-        if (cmd_type==='deleteItem'){
-            this.setState({openDeleteItem: !this.state.openDeleteItem});
+        if (cmd_type === 'deleteItem') {
+            this.setState({ openDeleteItem: !this.state.openDeleteItem });
         }
         if (!this.state.showBundleOperationButtons) {
             return;
@@ -374,8 +374,8 @@ class Worksheet extends React.Component {
     };
 
     togglePopupNoEvent = (cmd_type) => {
-        if (cmd_type==='deleteItem'){
-            this.setState({openDeleteItem: !this.state.openDeleteItem});
+        if (cmd_type === 'deleteItem') {
+            this.setState({ openDeleteItem: !this.state.openDeleteItem });
         }
         if (!this.state.showBundleOperationButtons) {
             return;
@@ -413,9 +413,9 @@ class Worksheet extends React.Component {
         return true;
     };
     // BULK OPERATION RELATED CODE ABOVE======================================
-    setDeleteItemCallBack = (callback)=>{
-        this.setState({deleteItemCallBack: callback, openDeleteItem: true})
-    }
+    setDeleteItemCallBack = (callback) => {
+        this.setState({ deleteItemCallBack: callback, openDeleteItem: true });
+    };
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
@@ -746,7 +746,7 @@ class Worksheet extends React.Component {
             ContextMenuMixin.closeContextMenu();
         });
 
-        if (this.state.openDeleteItem){
+        if (this.state.openDeleteItem) {
             Mousetrap.bind(
                 ['enter'],
                 function(e) {

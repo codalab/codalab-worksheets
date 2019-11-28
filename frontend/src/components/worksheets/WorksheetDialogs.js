@@ -119,7 +119,7 @@ class WorksheetDialogs extends React.Component {
                         {'Delect selected markdown blcck?'}
                     </DialogTitle>
                     <DialogContent className={classes.dialog}>
-                        <DialogContentText id='alert-dialog-description' style={{color:'red'}}>
+                        <DialogContentText id='alert-dialog-description' style={{ color: 'red' }}>
                             Deletion cannot be undone.
                         </DialogContentText>
                         <DialogContentText id='alert-dialog-description'>
@@ -130,7 +130,13 @@ class WorksheetDialogs extends React.Component {
                         <Button color='primary' onClick={this.props.togglePopup('deleteItem')}>
                             CANCEL
                         </Button>
-                        <Button color='primary' onClick={()=>{this.props.deleteItemCallBack();this.props.togglePopupNoEvent('deleteItem')}}>
+                        <Button
+                            color='primary'
+                            onClick={() => {
+                                this.props.deleteItemCallBack();
+                                this.props.togglePopupNoEvent('deleteItem');
+                            }}
+                        >
                             DELETE
                         </Button>
                     </DialogActions>
