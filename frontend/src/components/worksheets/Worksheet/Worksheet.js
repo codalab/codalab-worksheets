@@ -157,7 +157,7 @@ class Worksheet extends React.Component {
             forceDelete: false,
             showGlossaryModal: false,
             deleteWorksheetConfirmation: false,
-            deleteItemCallBack: null,
+            deleteItemCallback: null,
         };
     }
 
@@ -414,7 +414,7 @@ class Worksheet extends React.Component {
     };
     // BULK OPERATION RELATED CODE ABOVE======================================
     setDeleteItemCallBack = (callback) => {
-        this.setState({ deleteItemCallBack: callback, openDeleteItem: true });
+        this.setState({ deleteItemCallback: callback, openDeleteItem: true });
     };
 
     setFocus = (index, subIndex, shouldScroll = true) => {
@@ -755,7 +755,7 @@ class Worksheet extends React.Component {
                 ['enter'],
                 function(e) {
                     e.preventDefault();
-                    this.state.deleteItemCallBack();
+                    this.state.deleteItemCallback();
                     this.togglePopupNoEvent('deleteItem');
                 }.bind(this),
             );
@@ -1403,7 +1403,7 @@ class Worksheet extends React.Component {
                 executeBundleCommand={this.executeBundleCommand}
                 forceDelete={this.state.forceDelete}
                 handleForceDelete={this.handleForceDelete}
-                deleteItemCallBack={this.state.deleteItemCallBack}
+                deleteItemCallback={this.state.deleteItemCallback}
             />
         );
 

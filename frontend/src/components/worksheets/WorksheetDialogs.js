@@ -133,7 +133,7 @@ class WorksheetDialogs extends React.Component {
                         <Button
                             color='primary'
                             onClick={() => {
-                                this.props.deleteItemCallBack();
+                                this.props.deleteItemCallback();
                                 this.props.togglePopupNoEvent('deleteItem');
                             }}
                         >
