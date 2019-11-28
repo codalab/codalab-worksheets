@@ -159,9 +159,16 @@ class TableItem extends React.Component<{
             if (rowItems[0][x] && rowItems[0][x]['path']) columnWithHyperlinks.push(x);
         });
         var bodyRowsHtml = rowItems.map((rowItem, rowIndex) => {
-            var rowRef = 'row' + rowIndex;
-            var rowFocused = this.props.focused && rowIndex === this.props.subFocusIndex;
-            var url = '/bundles/' + bundleInfos[rowIndex].uuid;
+            let bundleInfo = bundleInfos[rowIndex];
+            let rowRef = 'row' + rowIndex;
+            let rowFocused = this.props.focused && rowIndex === this.props.subFocusIndex;
+            let url = '/bundles/' + bundleInfo.uuid;
+            let worksheet = bundleInfo.host_worksheet;
+            let worksheetName, worksheetUrl;
+            if (worksheet !== undefined) {
+                worksheetName = worksheet.name;
+                worksheetUrl = '/worksheets/' + worksheet.uuid;
+            }
             return (
                 <BundleRow
                     key={rowIndex}
@@ -173,9 +180,9 @@ class TableItem extends React.Component<{
                     focusIndex={this.props.focusIndex}
                     setFocus={setFocus}
                     url={url}
-                    bundleInfo={bundleInfos[rowIndex]}
+                    bundleInfo={bundleInfo}
+                    uuid={bundleInfo.uuid}
                     prevBundleInfo={rowIndex > 0 ? bundleInfos[rowIndex - 1] : prevItemProcessed}
-                    uuid={bundleInfos[rowIndex].uuid}
                     headerItems={headerItems}
                     canEdit={canEdit}
                     updateRowIndex={this.updateRowIndex}
@@ -188,6 +195,8 @@ class TableItem extends React.Component<{
                     confirmBundleRowAction={this.props.confirmBundleRowAction}
                     childrenCheck={this.childrenCheck}
                     refreshCheckBox={this.refreshCheckBox}
+                    worksheetName={worksheetName}
+                    worksheetUrl={worksheetUrl}
                 />
             );
         });
