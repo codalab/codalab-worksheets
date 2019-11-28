@@ -10,7 +10,7 @@ const GlossaryModal = ({ show, toggle }) => (
         <Modal.Body>
             <table className='table table-striped'>
                 <tbody>
-                    <th style={{ backgroundColor: 'white', fontWeight: 'bold' }}>Navigation</th>
+                    <th>Navigation</th>
                     <tr>
                         <td>
                             <kbd>k</kbd> or <kbd>↑</kbd>
@@ -50,7 +50,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Select the bundle row</td>
                     </tr>
-                    <th style={{ backgroundColor: 'white', fontWeight: 'bold' }}>Editing</th>
+                    <th>Editing</th>
                     <tr>
                         <td>
                             <kbd>shift+e</kbd>
@@ -93,7 +93,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Add a new run</td>
                     </tr>
-                    <th style={{ backgroundColor: 'white', fontWeight: 'bold' }}>
+                    <th>
                         Bundles operation
                     </th>
                     <tr>
@@ -108,7 +108,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Kill all selected bundles</td>
                     </tr>
-                    <th style={{ backgroundColor: 'white', fontWeight: 'bold' }}>Other</th>
+                    <th>Other</th>
                     <tr>
                         <td>
                             <kbd>shift+c</kbd>
