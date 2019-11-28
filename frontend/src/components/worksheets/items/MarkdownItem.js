@@ -73,7 +73,9 @@ class MarkdownItem extends React.Component {
             ['backspace', 'del'],
             function(ev) {
                 ev.preventDefault();
-                this.props.setDeleteItemCallBack(this.deleteItem);
+                if (this.props.focused) {
+                    this.props.setDeleteItemCallBack(this.deleteItem);
+                }
             }.bind(this),
         );
     }
