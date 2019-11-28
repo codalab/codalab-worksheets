@@ -127,6 +127,8 @@ class BundleRow extends Component {
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
+        var worksheetName = this.props.worksheetName;
+        var worksheetUrl = this.props.worksheetUrl;
         var rowCells = this.props.headerItems.map((headerKey, col) => {
             var rowContent = rowItems[headerKey];
 
@@ -134,7 +136,10 @@ class BundleRow extends Component {
             var url;
             var showDetailButton;
             var checkBox;
-            if (col === 0) {
+            if (headerKey === 'host_worksheet' && worksheetUrl !== undefined) {
+                url = worksheetUrl;
+                rowContent = worksheetName;
+            } else if (col === 0) {
                 url = baseUrl;
                 checkBox = (
                     <Checkbox
