@@ -93,9 +93,7 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Add a new run</td>
                     </tr>
-                    <th>
-                        Bundles operation
-                    </th>
+                    <th>Bundles operation</th>
                     <tr>
                         <td>
                             <kbd>a d</kbd>
