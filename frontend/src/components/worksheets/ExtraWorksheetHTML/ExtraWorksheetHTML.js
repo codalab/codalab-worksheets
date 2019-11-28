@@ -40,8 +40,8 @@ const GlossaryModal = ({ show, toggle }) => (
                             <kbd>enter</kbd>
                         </td>
                         <td>
-                            Open current bundle detail or worksheet (shift+enter: open worksheet in
-                            new window)
+                            Open current bundle detail or worksheet (shift+enter: open in new
+                            window)
                         </td>
                     </tr>
                     <tr>
