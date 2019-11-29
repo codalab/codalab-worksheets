@@ -413,7 +413,7 @@ class Worksheet extends React.Component {
         return true;
     };
     // BULK OPERATION RELATED CODE ABOVE======================================
-    setDeleteItemCallBack = (callback) => {
+    setDeleteItemCallback = (callback) => {
         this.setState({ deleteItemCallback: callback, openDeleteItem: true });
     };
 
@@ -1378,7 +1378,7 @@ class Worksheet extends React.Component {
                 onHideNewText={() => this.setState({ showNewText: false })}
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
-                setDeleteItemCallBack={this.setDeleteItemCallBack}
+                setDeleteItemCallback={this.setDeleteItemCallback}
             />
         );
 
