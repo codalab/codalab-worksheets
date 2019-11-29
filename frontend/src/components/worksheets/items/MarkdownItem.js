@@ -74,6 +74,7 @@ class MarkdownItem extends React.Component {
             function(ev) {
                 ev.preventDefault();
                 if (this.props.focused) {
+                    console.log("focuseeeeeeeeeeeeeeeeed on markdown item");
                     this.props.setDeleteItemCallback(this.deleteItem);
                 }
             }.bind(this),
@@ -87,7 +88,6 @@ class MarkdownItem extends React.Component {
     deleteItem = () => {
         const { reloadWorksheet, item, worksheetUUID, setFocus, focused, focusIndex } = this.props;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
-
         $.ajax({
             url,
             data: JSON.stringify({ ids: item.ids }),
@@ -98,6 +98,7 @@ class MarkdownItem extends React.Component {
                 const param = { textDeleted };
                 this.setState({ deleting: false });
                 reloadWorksheet(undefined, undefined, param);
+                Mousetrap.unbind(['backspace', 'del']);
             },
             error: (jqHXR, status, error) => {
                 this.setState({ deleting: false });
