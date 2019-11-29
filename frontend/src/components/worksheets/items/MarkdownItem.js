@@ -74,7 +74,7 @@ class MarkdownItem extends React.Component {
             function(ev) {
                 ev.preventDefault();
                 if (this.props.focused) {
-                    console.log("focuseeeeeeeeeeeeeeeeed on markdown item");
+                    console.log('focuseeeeeeeeeeeeeeeeed on markdown item');
                     this.props.setDeleteItemCallback(this.deleteItem);
                 }
             }.bind(this),
