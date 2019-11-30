@@ -51,6 +51,13 @@ class BundleActions extends React.Component<
 	            >
 	            	Kill
 	            </Button>
+				<Button
+					variant='contained'
+					color='primary'
+					onClick={ () => { window.location.href = bundleDownloadUrl; } }
+				>
+					Download
+				</Button>
 	            <Button variant='contained' color='primary'
 	            	onClick={ this.rerun }
 	            >
