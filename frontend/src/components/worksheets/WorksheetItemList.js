@@ -237,6 +237,7 @@ class WorksheetItemList extends React.Component {
                         showNewUpload: this.props.showNewUpload,
                         showNewRun: this.props.showNewRun,
                         showNewText: this.props.showNewText,
+                        showNewRerun: this.props.showNewRerun,
                         onHideNewUpload: this.props.onHideNewUpload,
                         onHideNewRun: this.props.onHideNewRun,
                         onHideNewText: this.props.onHideNewText,

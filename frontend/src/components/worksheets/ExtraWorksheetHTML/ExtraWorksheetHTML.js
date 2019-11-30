@@ -93,6 +93,12 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Add a new run</td>
                     </tr>
+                    <tr>
+                        <td>
+                            <kbd>a a</kbd>
+                        </td>
+                        <td>Edit and add a rerun in bundle details</td>
+                    </tr>
                     <th>Bundles operation</th>
                     <tr>
                         <td>
@@ -134,11 +140,10 @@ const GlossaryModal = ({ show, toggle }) => (
                 </tbody>
             </table>
             <div>
-                For terminal keyboard shortcuts, refer{' '}
-                <a href='http://terminal.jcubic.pl/api_reference.php' target='_blank'>
+                For terminal keyboard shortcuts, see{' '}
+                <a href='http://terminal.jcubic.pl/api_reference.php#shortcuts' target='_blank'>
                     here
                 </a>{' '}
-                at keyboard shortcuts section
             </div>
         </Modal.Body>
     </Modal>

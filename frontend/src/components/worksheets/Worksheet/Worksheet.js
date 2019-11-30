@@ -145,6 +145,7 @@ class Worksheet extends React.Component {
             showNewUpload: false,
             showNewRun: false,
             showNewText: false,
+            showRerun: false,
             isValid: true,
             checkedBundles: {},
             BulkBundleDialog: null,
@@ -471,6 +472,7 @@ class Worksheet extends React.Component {
             showNewUpload: false,
             showNewRun: false,
             showNewText: false,
+            showNewRerun: false,
         });
         if (shouldScroll) {
             this.scrollToItem(index, subIndex);
@@ -735,6 +737,16 @@ class Worksheet extends React.Component {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
                         this.setState({ showNewRun: true });
+                    }.bind(this),
+                    'keyup',
+                );
+
+                // edit and rerun current bundle
+                Mousetrap.bind(
+                    ['a a'],
+                    function(e) {
+                        if (this.state.focusIndex < 0) return;
+                        this.setState({ showNewRerun: true });
                     }.bind(this),
                     'keyup',
                 );
@@ -1373,8 +1385,9 @@ class Worksheet extends React.Component {
                 showNewUpload={this.state.showNewUpload}
                 showNewRun={this.state.showNewRun}
                 showNewText={this.state.showNewText}
+                showNewRerun={this.state.showNewRerun}
                 onHideNewUpload={() => this.setState({ showNewUpload: false })}
-                onHideNewRun={() => this.setState({ showNewRun: false })}
+                onHideNewRun={() => this.setState({ showNewRun: false, showNewRerun: false })}
                 onHideNewText={() => this.setState({ showNewText: false })}
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}

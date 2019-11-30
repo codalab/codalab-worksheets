@@ -196,7 +196,10 @@ class BundleDetail extends React.Component<
     }
   
     render(): React.Node {
-        const { uuid, bundleMetadataChanged, onUpdate, onClose, rerunItem } = this.props;
+        const { uuid, bundleMetadataChanged,
+            onUpdate, onClose,
+            rerunItem, showNewRerun,
+            showDetail, handleDetailClick} = this.props;
         const {
             bundleInfo,
             stdout,
@@ -209,7 +212,13 @@ class BundleDetail extends React.Component<
 
         return (
             <ConfigurationPanel
-                buttons={ <BundleActions bundleInfo={ bundleInfo } rerunItem={ rerunItem } onComplete={ bundleMetadataChanged } /> }
+                buttons={ <BundleActions
+                    showNewRerun={showNewRerun}
+                    showDetail={showDetail}
+                    handleDetailClick={handleDetailClick}
+                    bundleInfo={ bundleInfo }
+                    rerunItem={ rerunItem }
+                    onComplete={ bundleMetadataChanged } /> }
                 sidebar={ <SideBar bundleInfo={ bundleInfo } onUpdate={ onUpdate } onMetaDataChange={ this.fetchBundleMetaData } /> }
             >
                 <MainContent

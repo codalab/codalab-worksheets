@@ -27,7 +27,6 @@ class BundleRow extends Component {
             showNewUpload: 0,
             showNewRun: 0,
             bundleInfoUpdates: {},
-            showDetail: false,
             openDelete: false,
             runProp: {},
             hovered: false,
@@ -122,6 +121,7 @@ class BundleRow extends Component {
             reloadWorksheet,
             isLast,
             checkStatus,
+            showNewRerun,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
@@ -158,7 +158,7 @@ class BundleRow extends Component {
                 );
                 showDetailButton = (
                     <IconButton onClick={this.handleDetailClick} style={{ padding: 2 }}>
-                        {this.state.showDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        {showDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                     </IconButton>
                 );
             } else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
@@ -249,7 +249,7 @@ class BundleRow extends Component {
                     className={classNames({
                         [classes.contentRow]: true,
                         [classes.highlight]: this.props.focused,
-                        [classes.lowlight]: !this.props.focused && this.state.showDetail,
+                        [classes.lowlight]: !this.props.focused && showDetail,
                     })}
                 >
                     {rowCells}
@@ -281,6 +281,11 @@ class BundleRow extends Component {
                                     });
                                 }}
                                 rerunItem={this.rerunItem}
+                                isFocused={this.props.focused}
+                                focusIndex={this.props.focusIndex}
+                                showNewRerun={showNewRerun}
+                                showDetail={showDetail}
+                                handleDetailClick={this.handleDetailClick}
                             />
                         </TableCell>
                     </TableRow>

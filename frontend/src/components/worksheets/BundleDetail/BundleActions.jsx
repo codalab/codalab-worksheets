@@ -1,7 +1,6 @@
 // @flow
 import * as React from 'react';
 import Button from '@material-ui/core/Button';
-
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
 import { executeCommand } from '../../../util/cli_utils';
 
@@ -38,6 +37,13 @@ class BundleActions extends React.Component<
 		});
 	}
 
+	componentDidUpdate = () => {
+		const { showNewRerun } = this.props;
+		if (showNewRerun) {
+			this.rerun();
+		}
+	}
+
 	render() {
 		const { bundleInfo } = this.props;
 		const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
@@ -54,7 +60,7 @@ class BundleActions extends React.Component<
 	            <Button variant='contained' color='primary'
 	            	onClick={ this.rerun }
 	            >
-	            	Rerun
+	            	Edit and Rerun
 	            </Button>
 	        </div>
 	        : <Button
