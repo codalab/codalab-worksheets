@@ -148,6 +148,8 @@ def get_bundle_infos(
 
         # Fill the info
         for bundle_uuid, host_uuids in host_worksheets.items():
+            if bundle_uuid not in bundle_infos:
+                continue
             bundle_infos[bundle_uuid]['host_worksheets'] = [
                 {'uuid': host_uuid, 'name': worksheet_names[host_uuid]}
                 for host_uuid in host_uuids
