@@ -4,7 +4,7 @@ import $ from 'jquery';
 
 import { Link } from 'react-router-dom';
 import { withStyles } from '@material-ui/core/styles';
-import { MuiThemeProvider } from '@material-ui/core/styles';
+import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Button from '@material-ui/core/Button';
@@ -124,17 +124,7 @@ class NavBar extends React.Component<{
         }[this.state.snackbarVariant];
 
         return (
-            <MuiThemeProvider
-                theme={{
-                    overrides: {
-                        MuiIconButton: {
-                            root: {
-                                padding: 12,
-                            },
-                        },
-                    },
-                }}
-            >
+            <MuiThemeProvider theme={overrideMedia}>
                 <AppBar id='codalab-app-bar' color='default'>
                     <Toolbar>
                         <div className={classes.logoContainer}>
@@ -310,12 +300,34 @@ class NavBar extends React.Component<{
     }
 }
 
+const overrideMedia = createMuiTheme({
+    overrides: {
+        MuiToolbar: {
+            regular: {
+                '@media(min-width: 0px) and (orientation: landscape)': {
+                    minHeight: '36px',
+                },
+                '@media(min-width:600px)': {
+                    minHeight: '42px',
+                },
+                height: '32px',
+                minHeight: '32px',
+            },
+        },
+        MuiIconButton: {
+            root: {
+                padding: 12,
+            },
+        },
+    },
+});
+
 const styles = (theme) => ({
     logoContainer: {
         flexGrow: 1,
     },
     logo: {
-        maxHeight: 64,
+        maxHeight: 40,
     },
     snackbarMessage: {
         display: 'flex',
