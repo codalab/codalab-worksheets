@@ -116,14 +116,14 @@ class WorksheetDialogs extends React.Component {
                     aria-describedby='deletion-confirmation-description'
                 >
                     <DialogTitle id='deletion-confirmation-title'>
-                        {'Delect selected markdown blcck?'}
+                        {'Delect selected markdown block?'}
                     </DialogTitle>
                     <DialogContent className={classes.dialog}>
                         <DialogContentText id='alert-dialog-description' style={{ color: 'red' }}>
                             Deletion cannot be undone.
                         </DialogContentText>
                         <DialogContentText id='alert-dialog-description'>
-                            You can modify the source to delete multiple blocks at once
+                            You can modify the source to delete multiple blocks at once.
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
