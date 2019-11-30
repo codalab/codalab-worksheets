@@ -129,6 +129,8 @@ def get_bundle_infos(
         worksheet_names = _get_readable_worksheet_names(model, worksheet_uuids)
 
         for bundle_uuid, host_uuids in host_worksheets.items():
+            if bundle_uuid not in bundle_infos:
+                continue
             for host_uuid in host_uuids:
                 if host_uuid in worksheet_names:
                     bundle_infos[bundle_uuid]['host_worksheet'] = {
