@@ -161,7 +161,10 @@ class WorkerModel(object):
         with self._engine.begin() as conn:
             worker_rows = conn.execute(
                 select([cl_worker, cl_worker_dependency.c.dependencies]).select_from(
-                    cl_worker.outerjoin(cl_worker_dependency)
+                    cl_worker.outerjoin(
+                        cl_worker_dependency,
+                        cl_worker.c.worker_id == cl_worker_dependency.c.worker_id,
+                    )
                 )
             ).fetchall()
             worker_run_rows = conn.execute(cl_worker_run.select()).fetchall()

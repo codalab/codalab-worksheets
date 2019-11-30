@@ -109,6 +109,38 @@ class WorksheetDialogs extends React.Component {
                         </Button>
                     </DialogActions>
                 </Dialog>
+                <Dialog
+                    open={this.props.openDeleteItem}
+                    onClose={this.props.togglePopup('deleteItem')} //{this.props.toggleDeletePopup}
+                    aria-labelledby='deletion-confirmation-title'
+                    aria-describedby='deletion-confirmation-description'
+                >
+                    <DialogTitle id='deletion-confirmation-title'>
+                        {'Delect selected markdown block?'}
+                    </DialogTitle>
+                    <DialogContent className={classes.dialog}>
+                        <DialogContentText id='alert-dialog-description' style={{ color: 'red' }}>
+                            Deletion cannot be undone.
+                        </DialogContentText>
+                        <DialogContentText id='alert-dialog-description'>
+                            You can modify the source to delete multiple blocks at once.
+                        </DialogContentText>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button color='primary' onClick={this.props.togglePopup('deleteItem')}>
+                            CANCEL
+                        </Button>
+                        <Button
+                            color='primary'
+                            onClick={() => {
+                                this.props.deleteItemCallback();
+                                this.props.togglePopupNoEvent('deleteItem');
+                            }}
+                        >
+                            DELETE
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </div>
         );
     }

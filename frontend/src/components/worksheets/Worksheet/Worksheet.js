@@ -11,6 +11,7 @@ import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import { NAVBAR_HEIGHT } from '../../../constants';
 import WorksheetActionBar from '../WorksheetActionBar';
+import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
 import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
@@ -27,6 +28,8 @@ import Dialog from '@material-ui/core/Dialog';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import DialogActions from '@material-ui/core/DialogActions';
+import Tooltip from '@material-ui/core/Tooltip';
 import CloseIcon from '@material-ui/icons/Close';
 import Grid from '@material-ui/core/Grid';
 import WorksheetDialogs from '../WorksheetDialogs';
@@ -150,8 +153,11 @@ class Worksheet extends React.Component {
             openDelete: false,
             openDetach: false,
             openKill: false,
+            openDeleteItem: false,
             forceDelete: false,
             showGlossaryModal: false,
+            deleteWorksheetConfirmation: false,
+            deleteItemCallback: null,
         };
     }
 
@@ -251,6 +257,7 @@ class Worksheet extends React.Component {
         // Refreshes the checkbox after commands
         // If the action failed, the check will persist
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
+        this.setState({ updating: true });
         executeCommand(
             buildTerminalCommand([
                 cmd,
@@ -260,11 +267,35 @@ class Worksheet extends React.Component {
             worksheet_uuid,
         )
             .done(() => {
-                this.setState({
-                    uuidBundlesCheckedCount: {},
-                    checkedBundles: {},
-                    showBundleOperationButtons: false,
+                Object.keys(this.state.checkedBundles).forEach((uuid) => {
+                    if (this.state.checkedBundles[uuid] !== undefined) {
+                        Object.keys(this.state.checkedBundles[uuid]).forEach((identifier) => {
+                            if (this.state.checkedBundles[uuid][identifier] !== undefined) {
+                                this.state.checkedBundles[uuid][identifier]();
+                            }
+                        });
+                    }
                 });
+
+                this.setState(
+                    {
+                        uuidBundlesCheckedCount: {},
+                        checkedBundles: {},
+                        showBundleOperationButtons: false,
+                        updating: false,
+                    },
+                    () => {
+                        toast.info('Executing ' + cmd + ' command', {
+                            position: 'top-right',
+                            autoClose: 2000,
+                            hideProgressBar: true,
+                            closeOnClick: true,
+                            pauseOnHover: false,
+                            draggable: true,
+                        });
+                    },
+                );
+
                 this.reloadWorksheet();
             })
             .fail((e) => {
@@ -303,7 +334,7 @@ class Worksheet extends React.Component {
                         </DialogContent>
                     </Dialog>
                 );
-                this.setState({ BulkBundleDialog: bundle_error_dialog });
+                this.setState({ BulkBundleDialog: bundle_error_dialog, updating: false });
             });
     };
 
@@ -326,6 +357,9 @@ class Worksheet extends React.Component {
     };
 
     togglePopup = (cmd_type) => () => {
+        if (cmd_type === 'deleteItem') {
+            this.setState({ openDeleteItem: !this.state.openDeleteItem });
+        }
         if (!this.state.showBundleOperationButtons) {
             return;
         }
@@ -340,6 +374,9 @@ class Worksheet extends React.Component {
     };
 
     togglePopupNoEvent = (cmd_type) => {
+        if (cmd_type === 'deleteItem') {
+            this.setState({ openDeleteItem: !this.state.openDeleteItem });
+        }
         if (!this.state.showBundleOperationButtons) {
             return;
         }
@@ -376,6 +413,9 @@ class Worksheet extends React.Component {
         return true;
     };
     // BULK OPERATION RELATED CODE ABOVE======================================
+    setDeleteItemCallback = (callback) => {
+        this.setState({ deleteItemCallback: callback, openDeleteItem: true });
+    };
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
@@ -446,6 +486,10 @@ class Worksheet extends React.Component {
                 pos = -1000000; // Scroll all the way to the top
             } else {
                 var item = this.refs.list.refs['item' + index];
+                if (!item) {
+                    // Don't scroll to an item if it doesn't exist.
+                    return;
+                }
                 if (this._numTableRows(item.props.item)) {
                     item = item.refs['row' + subIndex]; // Specifically, the row
                 }
@@ -568,7 +612,7 @@ class Worksheet extends React.Component {
                 ['shift+r'],
                 function(e) {
                     this.reloadWorksheet(undefined, undefined);
-                    toast.success('🦄 Worksheet refreshed!', {
+                    toast.info('🦄 Worksheet refreshed!', {
                         position: 'top-right',
                         autoClose: 1500,
                         hideProgressBar: false,
@@ -597,7 +641,7 @@ class Worksheet extends React.Component {
 
             // Toggle edit mode
             Mousetrap.bind(
-                ['e'],
+                ['shift+e'],
                 function(e) {
                     this.toggleEditMode();
                     return false;
@@ -618,6 +662,10 @@ class Worksheet extends React.Component {
                             wsItems[focusIndex].mode === 'subworksheets_block')
                     ) {
                         // worksheet_item_interface and table_item_interface do the exact same thing anyway right now
+                        if (focusIndex === 0 && subFocusIndex === 0) {
+                            // stay on the first row
+                            return;
+                        }
                         if (subFocusIndex - 1 < 0) {
                             this.setFocus(focusIndex - 1 < 0 ? 0 : focusIndex - 1, 'end'); // Move out of this table to the item above the current table
                         } else {
@@ -655,7 +703,7 @@ class Worksheet extends React.Component {
             if (!this.state.showBundleOperationButtons) {
                 // insert text after current cell
                 Mousetrap.bind(
-                    ['t'],
+                    ['a t'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -668,7 +716,7 @@ class Worksheet extends React.Component {
 
                 // upload after current cell
                 Mousetrap.bind(
-                    ['u'],
+                    ['a u'],
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
@@ -702,6 +750,17 @@ class Worksheet extends React.Component {
             ContextMenuMixin.closeContextMenu();
         });
 
+        if (this.state.openDeleteItem) {
+            Mousetrap.bind(
+                ['enter'],
+                function(e) {
+                    e.preventDefault();
+                    this.state.deleteItemCallback();
+                    this.togglePopupNoEvent('deleteItem');
+                }.bind(this),
+            );
+        }
+
         if (this.state.showBundleOperationButtons) {
             // Below are allowed shortcut even when a dialog is opened===================
             // The following three are bulk bundle operation shortcuts
@@ -711,13 +770,13 @@ class Worksheet extends React.Component {
                 }
                 this.togglePopupNoEvent('rm');
             });
-            Mousetrap.bind(['d'], () => {
+            Mousetrap.bind(['a d'], () => {
                 if (this.state.openDelete || this.state.openKill) {
                     return;
                 }
                 this.togglePopupNoEvent('detach');
             });
-            Mousetrap.bind(['v'], () => {
+            Mousetrap.bind(['a k'], () => {
                 if (this.state.openDetach || this.state.openDelete) {
                     return;
                 }
@@ -1055,13 +1114,13 @@ class Worksheet extends React.Component {
                     } else {
                         if (moveIndex) {
                             // for adding a new cell, we want the focus to be the one below the current focus
-                            console.log(focus);
                             this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
                         }
                         if (textDeleted) {
-                            // when deleting text, we want the focus to be the one above the deleted focus
-                            console.log(focus);
-                            this.setFocus(focus === -1 ? focus : focus - 1, 'end');
+                            // When deleting text, we want the focus to stay at the same index,
+                            // unless it is the last item in the worksheet, at which point the
+                            // focus goes to the last item in the worksheet.
+                            this.setFocus(items.length === focus ? items.length - 1 : focus, 'end');
                         }
                     }
                     this.setState({
@@ -1127,15 +1186,7 @@ class Worksheet extends React.Component {
         });
     }
 
-    delete() {
-        if (
-            !window.confirm(
-                'Are you sure you want to delete this worksheet? (Note that this does not delete the bundles, but just detaches them from the worksheet.)',
-            )
-        ) {
-            return;
-        }
-        $('#worksheet-message').hide();
+    deteleWorksheetAction = () => {
         this.setState({ updating: true });
         this.state.ws.deleteWorksheet({
             success: function(data) {
@@ -1152,6 +1203,36 @@ class Worksheet extends React.Component {
                     .show();
             }.bind(this),
         });
+    };
+
+    deleteThisWorksheet() {
+        // TODO: put all worksheet dialogs into WorksheetDialogs.js if possible
+        let deleteWorksheetDialog = (
+            <Dialog
+                open={true}
+                onClose={this.toggleBundleBulkMessageDialog}
+                aria-labelledby='delete-worksheet-confirmation-title'
+                aria-describedby='delete-worksheet-confirmation-description'
+            >
+                <DialogTitle id='delete-worksheet-confirmation-title'>
+                    {'Warning: Deleted worksheets cannot be recovered'}
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
+                        {'Note: deleting worksheets does not delete the bundles inside it.'}
+                    </DialogContentText>
+                    <DialogActions>
+                        <Button color='primary' onClick={this.toggleBundleBulkMessageDialog}>
+                            CANCEL
+                        </Button>
+                        <Button color='primary' onClick={this.deteleWorksheetAction}>
+                            DELETE
+                        </Button>
+                    </DialogActions>
+                </DialogContent>
+            </Dialog>
+        );
+        this.setState({ BulkBundleDialog: deleteWorksheetDialog });
     }
 
     render() {
@@ -1180,15 +1261,6 @@ class Worksheet extends React.Component {
                     {sourceStr}
                 </Button>
                 <Button
-                    onClick={(e) => this.delete()}
-                    size='small'
-                    color='inherit'
-                    aria-label='Delete Worksheet'
-                >
-                    <DeleteIcon className={classes.buttonIcon} />
-                    Delete
-                </Button>
-                <Button
                     onClick={(e) => this.toggleActionBar()}
                     size='small'
                     color='inherit'
@@ -1201,6 +1273,20 @@ class Worksheet extends React.Component {
                         <ExpandIcon className={classes.buttonIcon} />
                     )}
                     {this.state.showActionBar ? 'HIDE TERMINAL' : 'SHOW TERMINAL'}
+                </Button>
+                <Button
+                    onClick={(e) => this.deleteThisWorksheet()}
+                    size='small'
+                    color='inherit'
+                    aria-label='Delete Worksheet'
+                >
+                    <Tooltip
+                        disableFocusListener
+                        disableTouchListener
+                        title='Delete this worksheet'
+                    >
+                        <DeleteIcon />
+                    </Tooltip>
                 </Button>
             </div>
         );
@@ -1292,6 +1378,7 @@ class Worksheet extends React.Component {
                 onHideNewText={() => this.setState({ showNewText: false })}
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
+                setDeleteItemCallback={this.setDeleteItemCallback}
             />
         );
 
@@ -1310,10 +1397,13 @@ class Worksheet extends React.Component {
                 openKill={this.state.openKill}
                 openDelete={this.state.openDelete}
                 openDetach={this.state.openDetach}
+                openDeleteItem={this.state.openDeleteItem}
                 togglePopup={this.togglePopup}
+                togglePopupNoEvent={this.togglePopupNoEvent}
                 executeBundleCommand={this.executeBundleCommand}
                 forceDelete={this.state.forceDelete}
                 handleForceDelete={this.handleForceDelete}
+                deleteItemCallback={this.state.deleteItemCallback}
             />
         );
 
@@ -1377,6 +1467,8 @@ class Worksheet extends React.Component {
                     showGlossaryModal={this.state.showGlossaryModal}
                     toggleGlossaryModal={this.toggleGlossaryModal}
                 />
+                {this.state.updating && <Loading />}
+                {!info && <Loading />}
             </React.Fragment>
         );
     }
@@ -1386,7 +1478,6 @@ const styles = (theme) => ({
     worksheetDesktop: {
         backgroundColor: theme.color.grey.lightest,
         marginTop: NAVBAR_HEIGHT,
-        paddingBottom: 25, // Height of Footer
     },
     worksheetOuter: {
         maxWidth: 1200, // Worksheet width

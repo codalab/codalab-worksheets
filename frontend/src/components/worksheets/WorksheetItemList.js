@@ -242,6 +242,7 @@ class WorksheetItemList extends React.Component {
                         onHideNewText: this.props.onHideNewText,
                         handleCheckBundle: this.props.handleCheckBundle,
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
+                        setDeleteItemCallback: this.props.setDeleteItemCallback,
                     };
                     addWorksheetItems(
                         props,

@@ -16,7 +16,7 @@ class MarkdownItem extends React.Component {
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = Immutable({ showEdit: false });
+        this.state = Immutable({ showEdit: false, deleting: false });
         this.placeholderText = '@MATH@';
     }
 
@@ -73,15 +73,21 @@ class MarkdownItem extends React.Component {
             ['backspace', 'del'],
             function(ev) {
                 ev.preventDefault();
-                this.deleteItem();
+                if (this.props.focused) {
+                    console.log('focuseeeeeeeeeeeeeeeeed on markdown item');
+                    this.props.setDeleteItemCallback(this.deleteItem);
+                }
             }.bind(this),
         );
     }
 
+    handleDeleteClick = () => {
+        this.props.setDeleteItemCallback(this.deleteItem);
+    };
+
     deleteItem = () => {
         const { reloadWorksheet, item, worksheetUUID, setFocus, focused, focusIndex } = this.props;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
-
         $.ajax({
             url,
             data: JSON.stringify({ ids: item.ids }),
@@ -90,9 +96,12 @@ class MarkdownItem extends React.Component {
             success: (data, status, jqXHR) => {
                 const textDeleted = true;
                 const param = { textDeleted };
+                this.setState({ deleting: false });
                 reloadWorksheet(undefined, undefined, param);
+                Mousetrap.unbind(['backspace', 'del']);
             },
             error: (jqHXR, status, error) => {
+                this.setState({ deleting: false });
                 alert(createAlertText(this.url, jqHXR.responseText));
             },
         });
@@ -156,7 +165,7 @@ class MarkdownItem extends React.Component {
                     &nbsp;&nbsp;
                     <Tooltip title='Delete'>
                         <IconButton
-                            onClick={this.deleteItem}
+                            onClick={this.handleDeleteClick}
                             classes={{ root: classes.iconButtonRoot }}
                         >
                             <DeleteIcon />

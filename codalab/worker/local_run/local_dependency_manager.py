@@ -78,6 +78,8 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         # DependencyKey -> WorkerThread(thread, success, failure_message)
         self._downloading = ThreadDict(fields={'success': False, 'failure_message': None})
         self._load_state()
+        # Sync states between dependency-state.json and dependency directories on the local file system.
+        self._sync_state()
 
         self._stop = False
         self._main_thread = None
@@ -87,44 +89,76 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             self._state_committer.commit({'dependencies': self._dependencies, 'paths': self._paths})
 
     def _load_state(self):
+        """
+        Load states from dependencies-state.json, which contains information about bundles (e.g., state, dependencies,
+        last used, etc.) and populates values for self._dependencies, self._dependency_locks, and self._paths
+        """
         state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
+
         dependencies = {}
         dependency_locks = {}
-        paths = set()
-        for dep_key, dep_state in state['dependencies'].items():
-            full_path = os.path.join(self.dependencies_dir, dep_state.path)
-            if os.path.exists(full_path):
-                dependencies[dep_key] = dep_state
-                dependency_locks[dep_key] = threading.RLock()
-            else:
-                logger.info(
-                    "Dependency {} in loaded state but its path {} doesn't exist in the filesystem".format(
-                        dep_key, full_path
-                    )
-                )
-            if dep_state.path not in state['paths']:
-                state['paths'].add(dep_state.path)
-                logger.info(
-                    "Dependency {} in loaded state but its path {} is not in the loaded paths {}".format(
-                        dep_key, dep_state.path, state['paths']
-                    )
-                )
-        for path in state['paths']:
-            full_path = os.path.join(self.dependencies_dir, path)
-            if os.path.exists(full_path):
-                paths.add(path)
-            else:
-                logger.info(
-                    "Path {} in loaded state but doesn't exist in the filesystem".format(full_path)
-                )
+
+        for dep, dep_state in state['dependencies'].items():
+            dependencies[dep] = dep_state
+            dependency_locks[dep] = threading.RLock()
 
         with self._global_lock, self._paths_lock:
             self._dependencies = dependencies
             self._dependency_locks = dependency_locks
-            self._paths = paths
+            self._paths = state['paths']
+
         logger.info(
-            '{} dependencies, {} paths in cache.'.format(len(self._dependencies), len(self._paths))
+            'Loaded {} dependencies, {} paths from cache.'.format(
+                len(self._dependencies), len(self._paths)
+            )
         )
+
+    def _sync_state(self):
+        """
+        Synchronize dependency states between dependencies-state.json and the local file system as follows:
+        1. self._dependencies, self._dependency_locks, and self._paths: populated from dependencies-state.json in function _load_state()
+        2. directories on the local file system: the bundle contents
+        This function forces the 1 and 2 to be in sync by taking the intersection (e.g., deleting bundles from the
+        local file system that don't appear in the dependencies-state.json and vice-versa)
+        """
+        # Get all the dependency directories on the local file system under self.dependencies_dir
+        local_directories = set(os.listdir(self.dependencies_dir))
+
+        # Remove the orphaned dependencies from self._dependencies and
+        # self._dependency_locks if they don't exist on the local file system
+        dependencies_to_remove = [
+            dep
+            for dep, dep_state in self._dependencies.items()
+            if dep_state.path not in local_directories
+        ]
+        for dep in dependencies_to_remove:
+            logger.info(
+                "Dependency {} in dependency state but its path {} doesn't exist on the local file system. "
+                "Removing it from dependency state.".format(
+                    dep, os.path.join(self.dependencies_dir, self._dependencies[dep].path)
+                )
+            )
+            del self._dependencies[dep]
+            del self._dependency_locks[dep]
+
+        # Get the paths that exist in dependency state, loaded path and the local file system
+        paths_in_loaded_state = [dep_state.path for dep_state in self._dependencies.values()]
+        self._paths = self._paths.intersection(paths_in_loaded_state).intersection(
+            local_directories
+        )
+
+        # Remove the orphaned directories from the local file system
+        directories_to_remove = local_directories - self._paths
+        for dir in directories_to_remove:
+            full_path = os.path.join(self.dependencies_dir, dir)
+            logger.info(
+                "Remove orphaned directory {} from the local file system.".format(full_path)
+            )
+            remove_path(full_path)
+
+        # Save the current state back to the state file: dependency-state.json as
+        # the current state might have been changed during the state syncing phase
+        self._save_state()
 
     def start(self):
         logger.info('Starting local dependency manager')
@@ -346,7 +380,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
     def _store_dependency(self, dependency_path, fileobj, target_type):
         """
-        Copy the dependency fileobj to its path in the local filesystem
+        Copy the dependency fileobj to its path on the local filesystem
         Overwrite existing files by the same name if found
         (may happen if filesystem modified outside the dependency manager,
          for example during an update if the state gets reset but filesystem

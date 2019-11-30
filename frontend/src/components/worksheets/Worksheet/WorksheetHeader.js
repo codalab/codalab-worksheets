@@ -4,7 +4,6 @@ import Popover from '@material-ui/core/Popover';
 import { WorksheetEditableField } from '../../EditableField';
 import PermissionDialog from '../PermissionDialog';
 import Sticky from 'react-stickynode';
-import { NAVBAR_HEIGHT } from '../../../constants';
 import ActionButtons from '../items/ActionButtons';
 import Tooltip from '@material-ui/core/Tooltip';
 import IconButton from '@material-ui/core/IconButton';
@@ -16,6 +15,7 @@ const styles = {
     paddingLeft: 28,
     paddingRight: 28,
     position: 'relative',
+    borderBottom: '1px solid #ddd',
     // overflow: 'hidden',
 };
 
@@ -36,7 +36,7 @@ export default ({
     togglePopup,
     toggleGlossaryModal,
 }) => (
-    <Sticky top={NAVBAR_HEIGHT + 6} innerZ={1059}>
+    <Sticky top={6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
             <div className='header-row'>
                 <Grid container direction='column'>
@@ -54,8 +54,7 @@ export default ({
                                 key={'title' + canEdit}
                                 canEdit={canEdit}
                                 fieldName='title'
-                                value={info && info.title}
-                                placeholder='Untitled'
+                                value={info ? info.title : 'Loading...'}
                                 uuid={info && info.uuid}
                                 onChange={() => reloadWorksheet()}
                                 allowASCII={true}

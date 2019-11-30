@@ -102,7 +102,12 @@ function CodalabApp() {
                             />
                             <PrivateRoute path='/account/profile' component={UserInfo} />
                             <Route path='/worksheets/:uuid' component={Worksheet} />
-                            <Route path='/worksheets' component={WorksheetNameSearch} />
+                            <Route
+                                path='/worksheets'
+                                render={(props) => (
+                                    <WorksheetNameSearch {...props} auth={fakeAuth} />
+                                )}
+                            />
                             <Route path='/bundles/:uuid' component={BundleRoute} />
                             <Route component={PageNotFound} />
                         </Switch>
