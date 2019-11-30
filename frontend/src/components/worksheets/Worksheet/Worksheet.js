@@ -1478,7 +1478,6 @@ const styles = (theme) => ({
     worksheetDesktop: {
         backgroundColor: theme.color.grey.lightest,
         marginTop: NAVBAR_HEIGHT,
-        paddingBottom: 25, // Height of Footer
     },
     worksheetOuter: {
         maxWidth: 1200, // Worksheet width
