@@ -105,14 +105,13 @@ fieldset[disabled] .btn-secondary.active {
   background: white;
 }
 #ws_search.search-hidden {
-  top: -7px;
   z-index: 0;
 }
 #worksheet {
   height: calc(100vh - 70px - 70px - 83px);
 }
 #worksheet.search-hidden {
-  margin-top: -61px;
+  margin-top: -54px;
   height: calc(100vh - 70px - 83px);
 }
 .worksheet-icon-sm {
@@ -257,7 +256,7 @@ footer .navbar-nav.navbar-right:last-child {
   margin-right: 0;
 }
 body {
-  padding-top: 64px;
+  padding-top: 48px;
   padding-bottom: 25px;
 }
 body > .container {
