@@ -216,7 +216,9 @@ class StressTestRunner(ABC):
         return uuid
 
     def _generate_random_id(self):
-        return ''.join(random.choice(string.ascii_lowercase + string.ascii_uppercase) for _ in range(24))
+        return ''.join(
+            random.choice(string.ascii_lowercase + string.ascii_uppercase) for _ in range(24)
+        )
 
     @abstractmethod
     def get_large_file_size_gb(self):
