@@ -122,6 +122,7 @@ class BundleRow extends Component {
             reloadWorksheet,
             isLast,
             checkStatus,
+            editPermission,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
@@ -193,7 +194,7 @@ class BundleRow extends Component {
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                 >
-                    {checkBox}
+                    {editPermission && checkBox}
                     {showDetailButton}
                     {rowContent}
                 </TableCell>
@@ -225,6 +226,9 @@ class BundleRow extends Component {
             Mousetrap.bind(
                 ['x'],
                 (e) => {
+                    if (!editPermission) {
+                        return;
+                    }
                     if (!this.props.confirmBundleRowAction(e.code)) {
                         this.props.handleCheckBundle(
                             uuid,
