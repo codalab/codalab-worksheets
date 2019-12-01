@@ -147,7 +147,7 @@ const styles = (theme) => ({
         flexWrap: 'wrap', 
         flexShrink: 1,
         overflow:'auto',
-        whiteSpace: 'pre-line',
+        whiteSpace: 'pre-wrap',
     },
     greyBackground: {
         backgroundColor: theme.color.grey.lightest,
