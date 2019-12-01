@@ -211,11 +211,13 @@ def replace_items(worksheet_uuid):
     Replace worksheet items with 'ids' with new 'items'.
     The new items will be inserted after the after_sort_key
     """
+    worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
+    check_worksheet_has_all_permission(local.model, request.user, worksheet)
+
     ids = request.json.get('ids', [])
     after_sort_key = request.json.get('after_sort_key')
     # Default to process only markup items.
     items = [worksheet_util.markup_item(item) for item in request.json.get('items', [])]
-
     local.model.add_worksheet_items(worksheet_uuid, items, after_sort_key, ids)
 
 
