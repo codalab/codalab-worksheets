@@ -22,6 +22,7 @@ class ActionButtons extends React.Component<{
             handleSelectedBundleCommand,
             showBundleOperationButtons,
             togglePopup,
+            info,
         } = this.props;
         return (
             <div
@@ -36,6 +37,7 @@ class ActionButtons extends React.Component<{
                         color='inherit'
                         aria-label='Add Text'
                         onClick={onShowNewText}
+                        disabled={!info}
                     >
                         <AddIcon className={classes.buttonIcon} />
                         Text
@@ -47,6 +49,7 @@ class ActionButtons extends React.Component<{
                         color='inherit'
                         aria-label='Add New Upload'
                         onClick={onShowNewUpload}
+                        disabled={!info}
                     >
                         <UploadIcon className={classes.buttonIcon} />
                         Upload
@@ -58,6 +61,7 @@ class ActionButtons extends React.Component<{
                         color='inherit'
                         aria-label='Add New Run'
                         onClick={onShowNewRun}
+                        disabled={!info}
                     >
                         <RunIcon className={classes.buttonIcon} />
                         Run
