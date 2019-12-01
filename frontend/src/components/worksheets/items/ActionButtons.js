@@ -24,6 +24,8 @@ class ActionButtons extends React.Component<{
             togglePopup,
             info,
         } = this.props;
+        let editPermission = info && info.edit_permission;
+
         return (
             <div
                 onMouseMove={(ev) => {
@@ -37,7 +39,7 @@ class ActionButtons extends React.Component<{
                         color='inherit'
                         aria-label='Add Text'
                         onClick={onShowNewText}
-                        disabled={!info}
+                        disabled={!editPermission}
                     >
                         <AddIcon className={classes.buttonIcon} />
                         Text
@@ -49,7 +51,7 @@ class ActionButtons extends React.Component<{
                         color='inherit'
                         aria-label='Add New Upload'
                         onClick={onShowNewUpload}
-                        disabled={!info}
+                        disabled={!editPermission}
                     >
                         <UploadIcon className={classes.buttonIcon} />
                         Upload
@@ -61,7 +63,7 @@ class ActionButtons extends React.Component<{
                         color='inherit'
                         aria-label='Add New Run'
                         onClick={onShowNewRun}
-                        disabled={!info}
+                        disabled={!editPermission}
                     >
                         <RunIcon className={classes.buttonIcon} />
                         Run
