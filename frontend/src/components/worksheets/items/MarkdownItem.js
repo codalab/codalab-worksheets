@@ -64,7 +64,9 @@ class MarkdownItem extends React.Component {
             ['enter'],
             function(ev) {
                 ev.preventDefault();
-                this.toggleEdit();
+                if(editPermission){
+                    this.toggleEdit();
+                }
             }.bind(this),
         );
 
@@ -74,8 +76,9 @@ class MarkdownItem extends React.Component {
             function(ev) {
                 ev.preventDefault();
                 if (this.props.focused) {
-                    console.log('focuseeeeeeeeeeeeeeeeed on markdown item');
-                    this.props.setDeleteItemCallback(this.deleteItem);
+                    if(editPermission){
+                        this.props.setDeleteItemCallback(this.deleteItem);
+                    }
                 }
             }.bind(this),
         );
@@ -108,7 +111,7 @@ class MarkdownItem extends React.Component {
     };
 
     render() {
-        const { classes, item } = this.props;
+        const { classes, item, editPermission } = this.props;
         var { showEdit } = this.state;
         var contents = item.text;
         // Order is important!
@@ -153,25 +156,27 @@ class MarkdownItem extends React.Component {
                     className={`${className} ${classes.textRender}`}
                     dangerouslySetInnerHTML={{ __html: contents }}
                 />
-                <div className={classes.buttonsPanel}>
-                    <Tooltip title='Edit'>
-                        <IconButton
-                            onClick={this.toggleEdit}
-                            classes={{ root: classes.iconButtonRoot }}
-                        >
-                            <EditIcon />
-                        </IconButton>
-                    </Tooltip>
-                    &nbsp;&nbsp;
-                    <Tooltip title='Delete'>
-                        <IconButton
-                            onClick={this.handleDeleteClick}
-                            classes={{ root: classes.iconButtonRoot }}
-                        >
-                            <DeleteIcon />
-                        </IconButton>
-                    </Tooltip>
-                </div>
+                {editPermission && (
+                    <div className={classes.buttonsPanel}>
+                        <Tooltip title='Edit'>
+                            <IconButton
+                                onClick={this.toggleEdit}
+                                classes={{ root: classes.iconButtonRoot }}
+                            >
+                                <EditIcon />
+                            </IconButton>
+                        </Tooltip>
+                        &nbsp;&nbsp;
+                        <Tooltip title='Delete'>
+                            <IconButton
+                                onClick={this.handleDeleteClick}
+                                classes={{ root: classes.iconButtonRoot }}
+                            >
+                                <DeleteIcon />
+                            </IconButton>
+                        </Tooltip>
+                    </div>
+                )}
             </div>
         );
     }
