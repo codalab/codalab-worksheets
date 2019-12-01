@@ -58,13 +58,14 @@ class MarkdownItem extends React.Component {
         this.setState({ showEdit: !this.state.showEdit });
     };
 
-    capture_keys() {
+    capture_keys = () => {
         // Edit the markdown
+        const { editPermission } = this.props;
         Mousetrap.bind(
             ['enter'],
             function(ev) {
                 ev.preventDefault();
-                if(editPermission){
+                if (editPermission) {
                     this.toggleEdit();
                 }
             }.bind(this),
@@ -76,13 +77,13 @@ class MarkdownItem extends React.Component {
             function(ev) {
                 ev.preventDefault();
                 if (this.props.focused) {
-                    if(editPermission){
+                    if (editPermission) {
                         this.props.setDeleteItemCallback(this.deleteItem);
                     }
                 }
             }.bind(this),
         );
-    }
+    };
 
     handleDeleteClick = () => {
         this.props.setDeleteItemCallback(this.deleteItem);
