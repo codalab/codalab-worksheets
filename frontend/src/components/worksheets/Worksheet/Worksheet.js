@@ -586,7 +586,7 @@ class Worksheet extends React.Component {
     setupEventHandlers() {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
-        let editPermission = info && info.edit_permission;
+        let editPermission = this.state.ws.info && this.state.ws.info.edit_permission;
 
         window.onpopstate = function(event) {
             if (event.state === null) return;
