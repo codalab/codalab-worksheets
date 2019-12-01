@@ -34,6 +34,9 @@ jobs:
         - docker stop codalab_worker_1
         - python3 codalab_service.py start --services worker --version ${TRAVIS_BRANCH} --shared-file-system
         - python3 codalab_service.py test --version ${TRAVIS_BRANCH} --shared-file-system basic run read write kill resources netcat netcurl workers
+    - stage: performance
+      script:
+        - docker exec -it codalab_rest-server_1 /bin/bash -c "python3 stress_test.py"
     - stage: deploy
       script: echo "Deploying"
       language: python
