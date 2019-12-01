@@ -597,7 +597,7 @@ class Worksheet extends React.Component {
             return;
         }
 
-        if (!this.state.ws.info){
+        if (!this.state.ws.info) {
             // disable all keyboard shortcuts when loading worksheet
             return;
         }
