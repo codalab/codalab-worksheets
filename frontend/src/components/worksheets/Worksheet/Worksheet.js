@@ -1256,6 +1256,7 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Edit Source'
+                    disabled={!info}
                 >
                     <EditIcon className={classes.buttonIcon} />
                     {sourceStr}
@@ -1266,6 +1267,7 @@ class Worksheet extends React.Component {
                     color='inherit'
                     aria-label='Expand CLI'
                     id='terminal-button'
+                    disabled={!info}
                 >
                     {this.state.showActionBar ? (
                         <ContractIcon className={classes.buttonIcon} />
@@ -1279,6 +1281,7 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Delete Worksheet'
+                    disabled={!info}
                 >
                     <Tooltip
                         disableFocusListener
