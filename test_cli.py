@@ -18,7 +18,7 @@ Things not tested:
 
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
-
+import concurrent.futures
 import argparse
 import json
 import os
@@ -29,7 +29,6 @@ import subprocess
 import sys
 import time
 import traceback
-
 
 global cl
 # Directory where this script lives.
@@ -493,16 +492,16 @@ class TestModule(object):
         # Run modules, continuing onto the next test module regardless of
         # failure
         failed = []
-        for module in modules_to_run:
+        def run_test_module(module, instance, failed):
             print(Colorizer.yellow("[*][*] BEGIN MODULE: %s" % module.name))
             if module.description is not None:
                 print(Colorizer.yellow("[*][*] DESCRIPTION: %s" % module.description))
-
             with ModuleContext(instance) as ctx:
                 module.func(ctx)
-
             if ctx.error:
                 failed.append(module.name)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            results = [executor.submit(run_test_module, module, instance, failed) for module in modules_to_run]
 
         # Provide a (currently very rudimentary) summary
         print(Colorizer.yellow("[*][*][*] SUMMARY"))
