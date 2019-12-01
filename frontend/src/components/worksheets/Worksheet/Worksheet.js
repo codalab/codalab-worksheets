@@ -1288,7 +1288,7 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Delete Worksheet'
-                    disabled={!info}
+                    disabled={!editPermission}
                 >
                     <Tooltip
                         disableFocusListener
