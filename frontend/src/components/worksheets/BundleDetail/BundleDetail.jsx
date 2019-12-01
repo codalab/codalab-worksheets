@@ -203,8 +203,8 @@ class BundleDetail extends React.Component<
             stderr,
             fileContents } = this.state;
 
-        if (!bundleInfo) {
-            return null;
+        if (!bundleInfo || bundleInfo.bundle_type === 'private') {
+            return <div>Detail not available for this bundle</div>
         }
 
         return (
