@@ -17,7 +17,7 @@ Things not tested:
 """
 
 from collections import namedtuple, OrderedDict
-from contextlib import contextmanager, redirect_stdout
+from contextlib import contextmanager
 
 import argparse
 import io
@@ -31,7 +31,8 @@ import sys
 import time
 import traceback
 from unittest.mock import patch
-from codalab.bin.cl import run_cli_command
+from codalab.lib.bundle_cli import BundleCLI
+from codalab.lib.codalab_manager import CodaLabManager
 
 
 global cl
@@ -115,6 +116,20 @@ def sanitize(string, max_chars=256):
     return string
 
 
+class FakeStdout(io.StringIO):
+    """Fake class to mimic stdout. We can't just use io.StringIO because we need
+    to fake the ability to write binary files to sys.stdout.buffer (thus this
+    class has a "buffer" attribute that behaves the same way).
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.buffer = io.BytesIO()
+
+    def getvalue(self):
+        return super().getvalue() + self.buffer.getvalue().decode()
+
+
 def run_command(
     args, expected_exit_code=0, max_output_chars=1024, env=None, include_stderr=False, binary=False
 ):
@@ -129,20 +144,19 @@ def run_command(
             kwargs = dict(kwargs, encoding="utf-8")
         if include_stderr:
             kwargs = dict(kwargs, stderr=subprocess.STDOUT)
-        if type(args) is list and args[0] == "cl":
-            f = io.StringIO()
-            with redirect_stdout(f):
-                try:
-                    run_cli_command(args[1:])
-                    exitcode = 0
-                except SystemExit as e:
-                    exitcode = e
-                except:
-                    exitcode = 1
+        if isinstance(args, list) and args[0] == "cl":
+            stderr = io.StringIO()  # Not used; we just don't want to redirect stderr to f.
+            f = FakeStdout()
+            try:
+                cli = BundleCLI(CodaLabManager(), stdout=f, stderr=stderr)
+                cli.do_command(args[1:])
+                exitcode = 0
+            except SystemExit as e:
+                exitcode = e.code
             output = f.getvalue()
         else:
             output = subprocess.check_output(
-                [a.encode() if type(a) is str else a for a in args], **kwargs
+                [a.encode() if isinstance(a, str) else a for a in args], **kwargs
             )
             exitcode = 0
     except subprocess.CalledProcessError as e:
