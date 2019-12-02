@@ -145,6 +145,8 @@ def run_command(
         if include_stderr:
             kwargs = dict(kwargs, stderr=subprocess.STDOUT)
         if isinstance(args, list) and args[0] == "cl":
+            # In this case, run the codalab CLI directly, which is much faster
+            # than opening a new subprocess to do so.
             stderr = io.StringIO()  # Not used; we just don't want to redirect stderr to f.
             f = FakeStdout()
             try:
