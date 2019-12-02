@@ -125,7 +125,15 @@ class FakeStdout(io.StringIO):
         self.buffer = io.BytesIO()
 
     def getvalue(self):
-        return super().getvalue() + self.buffer.getvalue().decode()
+        """If self.buffer has a non-unicode value, return that value.
+        Otherwise, decode the self.buffer value and append it
+        to self.getvalue().
+        """
+        try:
+            buffer_value = self.buffer.getvalue().decode()
+        except UnicodeDecodeError:
+            return self.buffer.getvalue()
+        return super().getvalue() + buffer_value
 
 
 def run_command(
