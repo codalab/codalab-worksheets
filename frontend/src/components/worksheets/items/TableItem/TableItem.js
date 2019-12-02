@@ -146,7 +146,7 @@ class TableItem extends React.Component<{
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
-                    style={{ paddingLeft: 0 }}
+                    style={editPermission || index != 0? { paddingLeft: 0 } : { paddingLeft: 30 }}
                 >
                     {checkbox}
                     {item}
