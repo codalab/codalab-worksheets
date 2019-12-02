@@ -149,8 +149,8 @@ def run_command(
             # than opening a new subprocess to do so.
             stderr = io.StringIO()  # Not used; we just don't want to redirect stderr to f.
             f = FakeStdout()
+            cli = BundleCLI(CodaLabManager(), stdout=f, stderr=stderr)
             try:
-                cli = BundleCLI(CodaLabManager(), stdout=f, stderr=stderr)
                 cli.do_command(args[1:])
                 exitcode = 0
             except SystemExit as e:
