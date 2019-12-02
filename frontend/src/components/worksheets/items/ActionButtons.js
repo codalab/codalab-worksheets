@@ -22,7 +22,10 @@ class ActionButtons extends React.Component<{
             handleSelectedBundleCommand,
             showBundleOperationButtons,
             togglePopup,
+            info,
         } = this.props;
+        let editPermission = info && info.edit_permission;
+
         return (
             <div
                 onMouseMove={(ev) => {
@@ -36,6 +39,7 @@ class ActionButtons extends React.Component<{
                         color='inherit'
                         aria-label='Add Text'
                         onClick={onShowNewText}
+                        disabled={!editPermission}
                     >
                         <AddIcon className={classes.buttonIcon} />
                         Text
@@ -47,6 +51,7 @@ class ActionButtons extends React.Component<{
                         color='inherit'
                         aria-label='Add New Upload'
                         onClick={onShowNewUpload}
+                        disabled={!editPermission}
                     >
                         <UploadIcon className={classes.buttonIcon} />
                         Upload
@@ -58,6 +63,7 @@ class ActionButtons extends React.Component<{
                         color='inherit'
                         aria-label='Add New Run'
                         onClick={onShowNewRun}
+                        disabled={!editPermission}
                     >
                         <RunIcon className={classes.buttonIcon} />
                         Run

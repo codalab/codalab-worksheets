@@ -122,6 +122,7 @@ export default ({
                     >
                         <Grid item>
                             <ActionButtons
+                                info={info}
                                 onShowNewUpload={onShowNewUpload}
                                 onShowNewRun={onShowNewRun}
                                 onShowNewText={onShowNewText}

@@ -245,6 +245,7 @@ class WorksheetItemList extends React.Component {
                         handleCheckBundle: this.props.handleCheckBundle,
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
                         setDeleteItemCallback: this.props.setDeleteItemCallback,
+                        editPermission: info && info.edit_permission,
                     };
                     addWorksheetItems(
                         props,

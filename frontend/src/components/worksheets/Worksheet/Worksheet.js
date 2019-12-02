@@ -588,6 +588,8 @@ class Worksheet extends React.Component {
     setupEventHandlers() {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
+        let editPermission = this.state.ws.info && this.state.ws.info.edit_permission;
+
         window.onpopstate = function(event) {
             if (event.state === null) return;
             this.setState({ ws: new WorksheetContent(event.state.uuid) });
@@ -596,6 +598,11 @@ class Worksheet extends React.Component {
 
         if (this.state.activeComponent === 'action') {
             // no need for other keys, we have the action bar focused
+            return;
+        }
+
+        if (!this.state.ws.info) {
+            // disable all keyboard shortcuts when loading worksheet
             return;
         }
 
@@ -702,7 +709,7 @@ class Worksheet extends React.Component {
                     }
                 }.bind(this),
             );
-            if (!this.state.showBundleOperationButtons) {
+            if (!this.state.showBundleOperationButtons && editPermission) {
                 // insert text after current cell
                 Mousetrap.bind(
                     ['a t'],
@@ -1268,6 +1275,7 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Edit Source'
+                    disabled={!info}
                 >
                     <EditIcon className={classes.buttonIcon} />
                     {sourceStr}
@@ -1278,6 +1286,7 @@ class Worksheet extends React.Component {
                     color='inherit'
                     aria-label='Expand CLI'
                     id='terminal-button'
+                    disabled={!info}
                 >
                     {this.state.showActionBar ? (
                         <ContractIcon className={classes.buttonIcon} />
@@ -1291,6 +1300,7 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Delete Worksheet'
+                    disabled={!editPermission}
                 >
                     <Tooltip
                         disableFocusListener
