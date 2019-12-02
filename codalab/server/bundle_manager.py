@@ -110,7 +110,6 @@ class BundleManager(object):
             self._stage_bundles()
             time.sleep(sleep_time)
 
-
     def _stage_bundles(self):
         """
         Stages bundles by:
