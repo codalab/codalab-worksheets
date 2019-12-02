@@ -31,8 +31,6 @@ import sys
 import time
 import traceback
 from unittest.mock import patch
-from codalab.lib.bundle_cli import BundleCLI
-from codalab.lib.codalab_manager import CodaLabManager
 
 
 global cl
@@ -133,6 +131,12 @@ class FakeStdout(io.StringIO):
 def run_command(
     args, expected_exit_code=0, max_output_chars=1024, env=None, include_stderr=False, binary=False
 ):
+    # We import the following imports here because codalab_service.py imports TestModule from
+    # this file. If we kept the imports at the top, then anyone who ran codalab_service.py
+    # would also have to install all the dependencies that BundleCLI and CodaLabManager use.
+    from codalab.lib.bundle_cli import BundleCLI
+    from codalab.lib.codalab_manager import CodaLabManager
+
     """If we don't care about the exit code, set `expected_exit_code` to None.
     """
     print(">>", *map(str, args), sep=" ")
