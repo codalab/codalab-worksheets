@@ -159,9 +159,9 @@ def run_command(
         if isinstance(args, list) and args[0] == cl:
             # In this case, run the codalab CLI directly, which is much faster
             # than opening a new subprocess to do so.
-            stderr = io.StringIO()  # Not used; we just don't want to redirect stderr to f.
+            _ = io.StringIO()  # Not used; we just don't want to redirect cli.stderr to f.
             f = FakeStdout()
-            cli = BundleCLI(CodaLabManager(), stdout=f, stderr=stderr)
+            cli = BundleCLI(CodaLabManager(), stdout=f, stderr=_)
             try:
                 cli.do_command(args[1:])
                 exitcode = 0
