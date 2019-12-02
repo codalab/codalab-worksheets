@@ -95,7 +95,7 @@ const GlossaryModal = ({ show, toggle }) => (
                     </tr>
                     <tr>
                         <td>
-                            <kbd>a a</kbd>
+                            <kbd>a n</kbd>
                         </td>
                         <td>Edit and add a rerun in bundle details</td>
                     </tr>

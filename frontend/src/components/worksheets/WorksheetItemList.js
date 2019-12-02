@@ -241,6 +241,7 @@ class WorksheetItemList extends React.Component {
                         onHideNewUpload: this.props.onHideNewUpload,
                         onHideNewRun: this.props.onHideNewRun,
                         onHideNewText: this.props.onHideNewText,
+                        onHideNewRerun: this.props.onHideNewRerun,
                         handleCheckBundle: this.props.handleCheckBundle,
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
                         setDeleteItemCallback: this.props.setDeleteItemCallback,

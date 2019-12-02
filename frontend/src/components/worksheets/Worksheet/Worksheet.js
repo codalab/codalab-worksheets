@@ -743,7 +743,7 @@ class Worksheet extends React.Component {
 
                 // edit and rerun current bundle
                 Mousetrap.bind(
-                    ['a a'],
+                    ['a n'],
                     function(e) {
                         if (this.state.focusIndex < 0) return;
                         this.setState({ showNewRerun: true });
@@ -1387,8 +1387,9 @@ class Worksheet extends React.Component {
                 showNewText={this.state.showNewText}
                 showNewRerun={this.state.showNewRerun}
                 onHideNewUpload={() => this.setState({ showNewUpload: false })}
-                onHideNewRun={() => this.setState({ showNewRun: false, showNewRerun: false })}
+                onHideNewRun={() => this.setState({ showNewRun: false })}
                 onHideNewText={() => this.setState({ showNewText: false })}
+                onHideNewRerun={() => this.setState({ showNewRerun: false })}
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
                 setDeleteItemCallback={this.setDeleteItemCallback}

@@ -180,6 +180,7 @@ class TableItem extends React.Component<{
                     focusIndex={this.props.focusIndex}
                     setFocus={setFocus}
                     showNewRerun={this.props.showNewRerun}
+                    onHideNewRerun={this.props.onHideNewRerun}
                     url={url}
                     bundleInfo={bundleInfo}
                     uuid={bundleInfo.uuid}

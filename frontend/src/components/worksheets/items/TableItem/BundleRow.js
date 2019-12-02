@@ -122,6 +122,7 @@ class BundleRow extends Component {
             isLast,
             checkStatus,
             showNewRerun,
+            onHideNewRerun,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
@@ -284,6 +285,7 @@ class BundleRow extends Component {
                                 isFocused={this.props.focused}
                                 focusIndex={this.props.focusIndex}
                                 showNewRerun={showNewRerun}
+                                onHideNewRerun={onHideNewRerun}
                                 showDetail={showDetail}
                                 handleDetailClick={this.handleDetailClick}
                             />
@@ -299,7 +301,11 @@ class BundleRow extends Component {
                             <div className={classes.insertBox}>
                                 <NewRun
                                     ws={this.props.ws}
-                                    onSubmit={() => this.setState({ showNewRun: 0 })}
+                                    onSubmit={() => {
+                                        this.setState({ showNewRun: 0 });
+                                        this.handleDetailClick();
+                                        onHideNewRerun();
+                                    }}
                                     after_sort_key={bundleInfo.sort_key}
                                     reloadWorksheet={reloadWorksheet}
                                     defaultRun={runProp}
