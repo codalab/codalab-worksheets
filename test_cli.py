@@ -17,9 +17,10 @@ Things not tested:
 """
 
 from collections import namedtuple, OrderedDict
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
 import concurrent.futures
 import argparse
+import io
 import json
 import os
 import random
@@ -494,19 +495,24 @@ class TestModule(object):
         failed = []
 
         def run_test_module(module, instance, failed):
-            print(Colorizer.yellow("[*][*] BEGIN MODULE: %s" % module.name))
-            if module.description is not None:
-                print(Colorizer.yellow("[*][*] DESCRIPTION: %s" % module.description))
-            with ModuleContext(instance) as ctx:
-                module.func(ctx)
-            if ctx.error:
-                failed.append(module.name)
+            f = io.StringIO()
+            with redirect_stdout(f):
+                print(Colorizer.yellow("[*][*] BEGIN MODULE: %s" % module.name))
+                if module.description is not None:
+                    print(Colorizer.yellow("[*][*] DESCRIPTION: %s" % module.description))
+                with ModuleContext(instance) as ctx:
+                    module.func(ctx)
+                if ctx.error:
+                    failed.append(module.name)
+            return f.getvalue()
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            results = [
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [
                 executor.submit(run_test_module, module, instance, failed)
                 for module in modules_to_run
             ]
+        for future in futures:
+            print(future.result())
 
         # Provide a (currently very rudimentary) summary
         print(Colorizer.yellow("[*][*][*] SUMMARY"))
