@@ -60,16 +60,20 @@ class BundleManager(object):
 
     def run(self, sleep_time):
         logger.info('Bundle manager running!')
+        # Let staged_bundles() function run in a single thread so that moving bundles
+        # from created -> staged won't be blocked by the rest of the other steps
+        # TODO: move _make_bundles() and _fail_unresponsive_bundles()
+        #  in this thread after we see the result of this modification
+        self._spawn_daemon_thread(self._run_stage_bundles_in_background, sleep_time)
         while not self._is_exiting():
             try:
                 self._run_iteration()
             except Exception:
                 traceback.print_exc()
-
             time.sleep(sleep_time)
 
-        while self._is_making_bundles():
-            time.sleep(sleep_time)
+            while self._is_making_bundles():
+                time.sleep(sleep_time)
 
     def signal(self):
         with self._exiting_lock:
@@ -80,10 +84,32 @@ class BundleManager(object):
             return self._exiting
 
     def _run_iteration(self):
-        self._stage_bundles()
         self._make_bundles()
-        self._schedule_run_bundles()
         self._fail_unresponsive_bundles()
+        self._schedule_run_bundles()
+
+    def _spawn_daemon_thread(self, func, sleep_time):
+        """
+        Spawn a daemon thread running in background.
+        :param func: the function to be called when spawning a thread
+        :param sleep_time: number of seconds to sleep
+        :return: None
+        """
+        stage_bundles_thread = threading.Thread(target=func, args=(sleep_time,))
+        stage_bundles_thread.daemon = True
+        stage_bundles_thread.start()
+
+    def _run_stage_bundles_in_background(self, sleep_time):
+        """
+        This function will run stage_bundles in background, so that it won't be blocked by _schedule_run_bundles().
+        All the newly submitted bundles will get into staged state once it's submitted
+        :param sleep_time: number of seconds to sleep
+        :return: None
+        """
+        while True:
+            self._stage_bundles()
+            time.sleep(sleep_time)
+
 
     def _stage_bundles(self):
         """
