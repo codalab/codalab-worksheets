@@ -17,9 +17,10 @@ Things not tested:
 """
 
 from collections import namedtuple, OrderedDict
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
 
 import argparse
+import io
 import json
 import os
 import random
@@ -29,6 +30,8 @@ import subprocess
 import sys
 import time
 import traceback
+from unittest.mock import patch
+from codalab.bin.cl import run_cli_command
 
 
 global cl
@@ -126,10 +129,22 @@ def run_command(
             kwargs = dict(kwargs, encoding="utf-8")
         if include_stderr:
             kwargs = dict(kwargs, stderr=subprocess.STDOUT)
-        output = subprocess.check_output(
-            [a.encode() if type(a) is str else a for a in args], **kwargs
-        )
-        exitcode = 0
+        if type(args) is list and args[0] == "cl":
+            f = io.StringIO()
+            with redirect_stdout(f):
+                try:
+                    run_cli_command(args[1:])
+                    exitcode = 0
+                except SystemExit as e:
+                    exitcode = e
+                except:
+                    exitcode = 1
+            output = f.getvalue()
+        else:
+            output = subprocess.check_output(
+                [a.encode() if type(a) is str else a for a in args], **kwargs
+            )
+            exitcode = 0
     except subprocess.CalledProcessError as e:
         output = e.output
         exitcode = e.returncode
