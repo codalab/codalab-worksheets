@@ -586,6 +586,8 @@ class Worksheet extends React.Component {
     setupEventHandlers() {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
+        let editPermission = this.state.ws.info && this.state.ws.info.edit_permission;
+
         window.onpopstate = function(event) {
             if (event.state === null) return;
             this.setState({ ws: new WorksheetContent(event.state.uuid) });
@@ -705,7 +707,7 @@ class Worksheet extends React.Component {
                     }
                 }.bind(this),
             );
-            if (!this.state.showBundleOperationButtons) {
+            if (!this.state.showBundleOperationButtons && editPermission) {
                 // insert text after current cell
                 Mousetrap.bind(
                     ['a t'],
@@ -1286,7 +1288,7 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Delete Worksheet'
-                    disabled={!info}
+                    disabled={!editPermission}
                 >
                     <Tooltip
                         disableFocusListener

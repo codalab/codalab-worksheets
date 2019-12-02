@@ -102,7 +102,7 @@ class TableItem extends React.Component<{
     };
 
     render() {
-        const { worksheetUUID, setFocus, prevItem } = this.props;
+        const { worksheetUUID, setFocus, prevItem, editPermission } = this.props;
 
         let prevItemProcessed = null;
         if (prevItem) {
@@ -146,9 +146,9 @@ class TableItem extends React.Component<{
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
-                    style={editPermission || index != 0? { paddingLeft: 0 } : { paddingLeft: 30 }}
+                    style={editPermission || index !== 0? { paddingLeft: 0 } : { paddingLeft: 30 }}
                 >
-                    {checkbox}
+                    {editPermission && checkbox}
                     {item}
                 </TableCell>
             );
@@ -197,6 +197,7 @@ class TableItem extends React.Component<{
                     refreshCheckBox={this.refreshCheckBox}
                     worksheetName={worksheetName}
                     worksheetUrl={worksheetUrl}
+                    editPermission={editPermission}
                 />
             );
         });
