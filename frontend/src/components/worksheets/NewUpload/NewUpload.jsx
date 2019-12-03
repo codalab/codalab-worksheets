@@ -79,7 +79,8 @@ class NewUpload extends React.Component<{
         this.inputFile.click();
     }
 
-    setFile = (_) => {
+    setFile = () => {
+        window.removeEventListener('focus', this.handleFocusBack);
         const files = this.inputFile.files;
         if (!files.length) {
             this.props.onClose();
@@ -171,6 +172,18 @@ class NewUpload extends React.Component<{
         this.setState({ percentComplete: 0, uploading: false });
     }
 
+    // Handling cancel
+    // When the user cancels, will focus back on the window and triggers onClose()
+    handleFocusBack=()=>{
+        this.props.onClose();
+        window.removeEventListener('focus', this.handleFocusBack);
+    }
+
+    clickedFileInput=()=>{
+        window.addEventListener('focus', this.handleFocusBack);
+    }
+    
+
     render() {
         const { classes } = this.props;
         const { percentComplete, uploading } = this.state;
@@ -182,6 +195,7 @@ class NewUpload extends React.Component<{
                     style={ { visibility: 'hidden', position: 'absolute' } }
                     ref={ (ele) => { this.inputFile = ele; } }
                     onChange={ this.setFile }
+                    onClick={ this.clickedFileInput }
                 />
                 { uploading && <CircularProgress
                         className={ classes.progress }

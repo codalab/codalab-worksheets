@@ -1,17 +1,14 @@
 // @flow
 import * as React from 'react';
-import $ from 'jquery';
-
 import { withStyles } from '@material-ui/core/styles';
 import Button from '@material-ui/core/Button';
 import IconButton from '@material-ui/core/IconButton';
 import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
-
-import AddIcon from '@material-ui/icons/PlayCircleFilled';
 import DeleteIcon from '@material-ui/icons/Delete';
-
-import Select, { components } from 'react-select';
+import Select from 'react-select';
+import Mousetrap from '../../../util/ws_mousetrap_fork';
+import '../../../util/mousetrap_global_bind';
 
 import ConfigPanel, {
     ConfigLabel,
@@ -22,10 +19,8 @@ import ConfigPanel, {
 } from '../ConfigPanel';
 
 import {
-    depEqual,
     shorten_uuid,
     buildTerminalCommand,
-    createHandleRedirectFn,
 } from '../../../util/worksheet_utils';
 
 import { executeCommand } from '../../../util/cli_utils';
@@ -272,12 +267,16 @@ class NewRun extends React.Component<{
         }
     }
 
+    shortcuts() {
+        Mousetrap.bindGlobal(['escape'], () => this.props.onSubmit());
+    }
+
     /**
      * Render.
      */
     render() {
         const { classes, ws } = this.props;
-
+        this.shortcuts();
         let candidates: Bundle[] = [];
         if(ws && ws.info && ws.info.items) {
             ws.info.items.forEach((item) => {
@@ -493,12 +492,12 @@ class NewRun extends React.Component<{
                     placeholder="python train.py --data mydataset.txt"
                     maxRows={4}
                     onKeyDown={(e) => {
-                         if(e.keyCode === 13 && (e.ctrlKey || e.shiftKey || e.metaKey)) {
+                        if (e.keyCode === 13 && (e.ctrlKey || e.shiftKey || e.metaKey)) {
                             // Press control enter
                             e.preventDefault();
                             this.runCommand();
                             this.props.onSubmit();
-                         }
+                        }
                     }}
                 />
             </ConfigPanel>

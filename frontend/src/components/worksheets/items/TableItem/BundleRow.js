@@ -122,11 +122,14 @@ class BundleRow extends Component {
             reloadWorksheet,
             isLast,
             checkStatus,
+            editPermission,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
+        var worksheetName = this.props.worksheetName;
+        var worksheetUrl = this.props.worksheetUrl;
         var rowCells = this.props.headerItems.map((headerKey, col) => {
             var rowContent = rowItems[headerKey];
 
@@ -134,7 +137,10 @@ class BundleRow extends Component {
             var url;
             var showDetailButton;
             var checkBox;
-            if (col === 0) {
+            if (headerKey === 'host_worksheet' && worksheetUrl !== undefined) {
+                url = worksheetUrl;
+                rowContent = worksheetName;
+            } else if (col === 0) {
                 url = baseUrl;
                 checkBox = (
                     <Checkbox
@@ -188,7 +194,7 @@ class BundleRow extends Component {
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                 >
-                    {checkBox}
+                    {editPermission && checkBox}
                     {showDetailButton}
                     {rowContent}
                 </TableCell>
@@ -208,10 +214,21 @@ class BundleRow extends Component {
                 },
                 'keydown',
             );
+            Mousetrap.bind(
+                ['shift+enter'],
+                (e) => {
+                    e.preventDefault();
+                    window.open(this.props.url, '_blank');
+                },
+                'keydown',
+            );
             Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
             Mousetrap.bind(
                 ['x'],
                 (e) => {
+                    if (!editPermission) {
+                        return;
+                    }
                     if (!this.props.confirmBundleRowAction(e.code)) {
                         this.props.handleCheckBundle(
                             uuid,
@@ -220,16 +237,6 @@ class BundleRow extends Component {
                             this.props.refreshCheckBox,
                         );
                         this.props.childrenCheck(this.props.rowIndex, !this.props.checkStatus);
-                    }
-                },
-                'keydown',
-            );
-            Mousetrap.bind(
-                ['space'],
-                (e) => {
-                    if (!this.props.confirmBundleRowAction(e.code)) {
-                        e.preventDefault();
-                        this.props.handleSelectAllSpaceHit();
                     }
                 },
                 'keydown',
@@ -243,13 +250,6 @@ class BundleRow extends Component {
                  */}
                 <TableRow
                     onClick={this.handleSelectRowClick}
-                    onContextMenu={this.props.handleContextMenu.bind(
-                        null,
-                        bundleInfo.uuid,
-                        this.props.focusIndex,
-                        this.props.rowIndex,
-                        bundleInfo.bundle_type === 'run',
-                    )}
                     className={classNames({
                         [classes.contentRow]: true,
                         [classes.highlight]: this.props.focused,
@@ -318,24 +318,6 @@ const styles = (theme) => ({
             display: 'flex',
         },
     },
-    panelContainer: {
-        display: 'block',
-        height: '0px !important',
-        overflow: 'visible',
-    },
-    panelCellContainer: {
-        padding: '0 !important',
-        border: 'none !important',
-        overflow: 'visible',
-    },
-    buttonsPanel: {
-        display: 'flex',
-        flexDirection: 'row',
-        position: 'absolute',
-        justifyContent: 'center',
-        width: '100%',
-        transform: 'translateY(-18px)',
-    },
     rightButtonStripe: {
         display: 'none',
         flexDirection: 'row',
@@ -344,40 +326,17 @@ const styles = (theme) => ({
         left: '100%',
         transform: 'translateY(-100%) translateX(-100%)',
     },
-    root: {
-        verticalAlign: 'middle !important',
-        border: 'none !important',
-        wordWrap: 'break-word',
-        maxWidth: 100,
-    },
     rootNoPad: {
         verticalAlign: 'middle !important',
         border: 'none !important',
         padding: '0px !important',
         wordWrap: 'break-word',
-        maxWidth: 100,
+        maxWidth: 200,
+        minWidth: 100,
     },
     bundleDetail: {
         paddingLeft: `${theme.spacing.largest}px !important`,
         paddingRight: `${theme.spacing.largest}px !important`,
-    },
-    iconButtonRoot: {
-        backgroundColor: theme.color.grey.lighter,
-        padding: '1px 2px',
-        marginBottom: 3,
-        marginRight: 1,
-    },
-    buttonRoot: {
-        width: 120,
-        marginLeft: theme.spacing.unit,
-        marginRight: theme.spacing.unit,
-        backgroundColor: '#f7f7f7',
-        '&:hover': {
-            backgroundColor: '#f7f7f7',
-        },
-    },
-    buttonIcon: {
-        marginRight: theme.spacing.large,
     },
     contentRow: {
         height: 26,

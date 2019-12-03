@@ -16,7 +16,7 @@ class MarkdownItem extends React.Component {
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = Immutable({ showEdit: false });
+        this.state = Immutable({ showEdit: false, deleting: false });
         this.placeholderText = '@MATH@';
     }
 
@@ -31,6 +31,7 @@ class MarkdownItem extends React.Component {
 
     componentDidUpdate() {
         this.processMathJax();
+        if (this.props.focused) this.capture_keys();
     }
     shouldComponentUpdate(nextProps, nextState) {
         return (
@@ -53,21 +54,19 @@ class MarkdownItem extends React.Component {
         return text;
     };
 
-    toggleEdit = (ev) => {
-        ev.stopPropagation();
-        const { showEdit } = this.state;
-        this.setState({
-            showEdit: !showEdit,
-        });
+    toggleEdit = () => {
+        this.setState({ showEdit: !this.state.showEdit });
     };
 
-    capture_keys() {
+    capture_keys = () => {
         // Edit the markdown
+        const { editPermission } = this.props;
         Mousetrap.bind(
             ['enter'],
-            function(e) {
-                if (this.props.focusIndex >= 0) {
-                    this.toggleEdit(e);
+            function(ev) {
+                ev.preventDefault();
+                if (editPermission) {
+                    this.toggleEdit();
                 }
             }.bind(this),
         );
@@ -75,39 +74,46 @@ class MarkdownItem extends React.Component {
         // Delete the line
         Mousetrap.bind(
             ['backspace', 'del'],
-            function() {
-                if (this.props.focusIndex >= 0) {
-                    this.deleteItem();
+            function(ev) {
+                ev.preventDefault();
+                if (this.props.focused) {
+                    if (editPermission) {
+                        this.props.setDeleteItemCallback(this.deleteItem);
+                    }
                 }
             }.bind(this),
         );
-    }
+    };
+
+    handleDeleteClick = () => {
+        this.props.setDeleteItemCallback(this.deleteItem);
+    };
 
     deleteItem = () => {
         const { reloadWorksheet, item, worksheetUUID, setFocus, focused, focusIndex } = this.props;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
-
         $.ajax({
             url,
             data: JSON.stringify({ ids: item.ids }),
             contentType: 'application/json',
             type: 'POST',
             success: (data, status, jqXHR) => {
-                reloadWorksheet();
-                if (focused) {
-                    setFocus(focusIndex < 1 ? -1 : this.props.focusIndex - 1, 0);
-                }
+                const textDeleted = true;
+                const param = { textDeleted };
+                this.setState({ deleting: false });
+                reloadWorksheet(undefined, undefined, param);
+                Mousetrap.unbind(['backspace', 'del']);
             },
             error: (jqHXR, status, error) => {
+                this.setState({ deleting: false });
                 alert(createAlertText(this.url, jqHXR.responseText));
             },
         });
     };
 
     render() {
-        this.capture_keys(); // each item capture keys are handled dynamically after this call
-        const { classes, item } = this.props;
-        const { showEdit } = this.state;
+        const { classes, item, editPermission } = this.props;
+        var { showEdit } = this.state;
         var contents = item.text;
         // Order is important!
         contents = this.processMarkdown(contents);
@@ -116,7 +122,7 @@ class MarkdownItem extends React.Component {
         // more info about dangerouslySetInnerHTML
         // http://facebook.github.io/react/docs/special-non-dom-attributes.html
         // http://facebook.github.io/react/docs/tags-and-attributes.html#html-attributes
-        var className = 'type-markup ' + (this.props.focused ? ' focused' : '');
+        var className = 'type-markup ' + (this.props.focused ? 'focused' : '');
 
         let after_sort_key = null;
         if (item.sort_keys && item.sort_keys.length > 0) {
@@ -151,25 +157,27 @@ class MarkdownItem extends React.Component {
                     className={`${className} ${classes.textRender}`}
                     dangerouslySetInnerHTML={{ __html: contents }}
                 />
-                <div className={classes.buttonsPanel}>
-                    <Tooltip title='Edit'>
-                        <IconButton
-                            onClick={this.toggleEdit}
-                            classes={{ root: classes.iconButtonRoot }}
-                        >
-                            <EditIcon />
-                        </IconButton>
-                    </Tooltip>
-                    &nbsp;&nbsp;
-                    <Tooltip title='Delete'>
-                        <IconButton
-                            onClick={this.deleteItem}
-                            classes={{ root: classes.iconButtonRoot }}
-                        >
-                            <DeleteIcon />
-                        </IconButton>
-                    </Tooltip>
-                </div>
+                {editPermission && (
+                    <div className={classes.buttonsPanel}>
+                        <Tooltip title='Edit'>
+                            <IconButton
+                                onClick={this.toggleEdit}
+                                classes={{ root: classes.iconButtonRoot }}
+                            >
+                                <EditIcon />
+                            </IconButton>
+                        </Tooltip>
+                        &nbsp;&nbsp;
+                        <Tooltip title='Delete'>
+                            <IconButton
+                                onClick={this.handleDeleteClick}
+                                classes={{ root: classes.iconButtonRoot }}
+                            >
+                                <DeleteIcon />
+                            </IconButton>
+                        </Tooltip>
+                    </div>
+                )}
             </div>
         );
     }

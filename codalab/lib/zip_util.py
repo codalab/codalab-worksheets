@@ -97,7 +97,12 @@ def unpack(ext, source, dest_path):
 
 
 def pack_files_for_upload(
-    sources, should_unpack, follow_symlinks, exclude_patterns=None, force_compression=False
+    sources,
+    should_unpack,
+    follow_symlinks,
+    exclude_patterns=None,
+    force_compression=False,
+    ignore_file=None,
 ):
     """
     Create a single flat tarfile containing all the sources.
@@ -113,6 +118,8 @@ def pack_files_for_upload(
     :param exclude_patterns: list of glob patterns for files to ignore, or
                              None to include all files
     :param force_compression: True to always use compression
+    :param ignore_file: Name of the file where exclusion patterns are read from
+                        when archiving
     :return: dict with {
         'fileobj': <file object of archive>,
         'filename': <name of archive file>,
@@ -142,7 +149,10 @@ def pack_files_for_upload(
         filename = os.path.basename(source)
         if os.path.isdir(sources[0]):
             archived = tar_gzip_directory(
-                source, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns
+                source,
+                follow_symlinks=follow_symlinks,
+                exclude_patterns=exclude_patterns,
+                ignore_file=ignore_file,
             )
             return {
                 'fileobj': archived,

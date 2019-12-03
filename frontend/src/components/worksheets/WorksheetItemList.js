@@ -96,21 +96,6 @@ class WorksheetItemList extends React.Component {
     }
 
     capture_keys() {
-        if (!this.props.active)
-            // If we're not the active component, don't bind keys
-            return;
-
-        // Open a new window (really should be handled at the item level)
-        Mousetrap.bind(
-            ['enter'],
-            function() {
-                if (this.props.focusIndex < 0) return;
-                var url = this.refs['item' + this.props.focusIndex].props.url;
-                if (url) window.open(url, '_blank');
-            }.bind(this),
-            'keydown',
-        );
-
         // Move focus to the top
         Mousetrap.bind(
             ['g g'],
@@ -203,7 +188,7 @@ class WorksheetItemList extends React.Component {
     };
 
     render() {
-        this.capture_keys(); // each item capture keys are handled dynamically after this call
+        if (this.props.active) this.capture_keys(); // each item capture keys are handled dynamically after this call
 
         // Create items
         var items_display;
@@ -257,6 +242,8 @@ class WorksheetItemList extends React.Component {
                         onHideNewText: this.props.onHideNewText,
                         handleCheckBundle: this.props.handleCheckBundle,
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
+                        setDeleteItemCallback: this.props.setDeleteItemCallback,
+                        editPermission: info && info.edit_permission,
                     };
                     addWorksheetItems(
                         props,

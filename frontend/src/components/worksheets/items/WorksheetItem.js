@@ -24,7 +24,8 @@ class WorksheetItem extends React.Component {
         // Open worksheet in new window/tab
         Mousetrap.bind(
             ['shift+enter'],
-            function(e) {
+            function() {
+                // TODO: Doesn't work for bundle rows right now, should address later
                 window.open(this.refs['row' + this.props.subFocusIndex].props.url, '_blank');
             }.bind(this),
             'keydown',
@@ -32,7 +33,7 @@ class WorksheetItem extends React.Component {
 
         // Paste uuid of focused worksheet into console
         Mousetrap.bind(
-            ['u'],
+            ['i'],
             function(e) {
                 var uuid = this.refs['row' + this.props.subFocusIndex].props.uuid;
                 $('#command_line')

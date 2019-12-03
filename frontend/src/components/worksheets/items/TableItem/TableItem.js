@@ -15,7 +15,6 @@ import CheckBoxIcon from '@material-ui/icons/CheckBox';
 class TableItem extends React.Component<{
     worksheetUUID: string,
     item: {},
-    handleContextMenu: () => any,
     reloadWorksheet: () => any,
 }> {
     /** Constructor. */
@@ -52,7 +51,7 @@ class TableItem extends React.Component<{
     };
 
     componentDidUpdate(prevProps) {
-        if (this.props.item.rows !== prevProps.item.rows) {
+        if (this.props.item.rows.length !== prevProps.item.rows.length) {
             let childrenStatus = new Array(this.props.item.rows.length).fill(false);
             this.setState({
                 numSelectedChild: 0,
@@ -96,20 +95,6 @@ class TableItem extends React.Component<{
             indeterminateCheckState: false,
         });
     };
-
-    handleSelectAllSpaceHit = () => {
-        let numSelectedChild = 0;
-        let childrenStatus = new Array(this.state.childrenCheckState.length).fill(
-            !this.state.checked,
-        );
-        numSelectedChild = !this.state.checked ? childrenStatus.length : 0;
-        this.setState({
-            checked: !this.state.checked,
-            numSelectedChild: numSelectedChild,
-            childrenCheckState: [...childrenStatus],
-            indeterminateCheckState: false,
-        });
-    };
     // BULK OPERATION RELATED CODE ABOVE
 
     updateRowIndex = (rowIndex) => {
@@ -117,7 +102,7 @@ class TableItem extends React.Component<{
     };
 
     render() {
-        const { worksheetUUID, setFocus, prevItem } = this.props;
+        const { worksheetUUID, setFocus, prevItem, editPermission } = this.props;
 
         let prevItemProcessed = null;
         if (prevItem) {
@@ -161,9 +146,9 @@ class TableItem extends React.Component<{
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
-                    style={{ paddingLeft: 0 }}
+                    style={editPermission ? { paddingLeft: 0 } : { paddingLeft: 30 }}
                 >
-                    {checkbox}
+                    {editPermission && checkbox}
                     {item}
                 </TableCell>
             );
@@ -174,9 +159,16 @@ class TableItem extends React.Component<{
             if (rowItems[0][x] && rowItems[0][x]['path']) columnWithHyperlinks.push(x);
         });
         var bodyRowsHtml = rowItems.map((rowItem, rowIndex) => {
-            var rowRef = 'row' + rowIndex;
-            var rowFocused = this.props.focused && rowIndex === this.props.subFocusIndex;
-            var url = '/bundles/' + bundleInfos[rowIndex].uuid;
+            let bundleInfo = bundleInfos[rowIndex];
+            let rowRef = 'row' + rowIndex;
+            let rowFocused = this.props.focused && rowIndex === this.props.subFocusIndex;
+            let url = '/bundles/' + bundleInfo.uuid;
+            let worksheet = bundleInfo.host_worksheet;
+            let worksheetName, worksheetUrl;
+            if (worksheet !== undefined) {
+                worksheetName = worksheet.name;
+                worksheetUrl = '/worksheets/' + worksheet.uuid;
+            }
             return (
                 <BundleRow
                     key={rowIndex}
@@ -188,29 +180,30 @@ class TableItem extends React.Component<{
                     focusIndex={this.props.focusIndex}
                     setFocus={setFocus}
                     url={url}
-                    bundleInfo={bundleInfos[rowIndex]}
+                    bundleInfo={bundleInfo}
+                    uuid={bundleInfo.uuid}
                     prevBundleInfo={rowIndex > 0 ? bundleInfos[rowIndex - 1] : prevItemProcessed}
-                    uuid={bundleInfos[rowIndex].uuid}
                     headerItems={headerItems}
                     canEdit={canEdit}
                     updateRowIndex={this.updateRowIndex}
                     columnWithHyperlinks={columnWithHyperlinks}
-                    handleContextMenu={this.props.handleContextMenu}
                     reloadWorksheet={this.props.reloadWorksheet}
                     ws={this.props.ws}
                     checkStatus={this.state.childrenCheckState[rowIndex]}
                     isLast={rowIndex === rowItems.length - 1}
                     handleCheckBundle={this.props.handleCheckBundle}
-                    handleSelectAllSpaceHit={this.handleSelectAllSpaceHit}
                     confirmBundleRowAction={this.props.confirmBundleRowAction}
                     childrenCheck={this.childrenCheck}
                     refreshCheckBox={this.refreshCheckBox}
+                    worksheetName={worksheetName}
+                    worksheetUrl={worksheetUrl}
+                    editPermission={editPermission}
                 />
             );
         });
         return (
             <div className='ws-item'>
-                <TableContainer onMouseLeave={this.removeButtons}>
+                <TableContainer>
                     <Table className={tableClassName}>
                         <TableHead>
                             <TableRow

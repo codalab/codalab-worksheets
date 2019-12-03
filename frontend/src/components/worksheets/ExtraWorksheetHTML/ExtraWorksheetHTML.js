@@ -8,83 +8,20 @@ const GlossaryModal = ({ show, toggle }) => (
             <h4>Keyboard Shortcuts</h4>
         </Modal.Header>
         <Modal.Body>
-            <a href='http://terminal.jcubic.pl/api_reference.php' target='_blank'>
-                {' '}
-                More shortcuts for web terminal (see Keyboard shortcuts section){' '}
-            </a>
             <table className='table table-striped'>
                 <tbody>
+                    <th>Navigation</th>
                     <tr>
                         <td>
-                            <kbd>e</kbd>
+                            <kbd>k</kbd> or <kbd>↑</kbd>
                         </td>
-                        <td>Edit entire worksheet in Markdown</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>shift+r</kbd>
-                        </td>
-                        <td>Refresh worksheet</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>enter</kbd>
-                        </td>
-                        <td>Open current bundle or worksheet (shift+enter: new window)</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>ctrl/command+enter</kbd>
-                        </td>
-                        <td>Save current edit</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>backspace/del</kbd>
-                        </td>
-                        <td>Quit edit / Delete bundle or worksheet</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>esc</kbd>
-                        </td>
-                        <td>Exit editing</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>shift+c</kbd>
-                        </td>
-                        <td>Show/hide web terminal</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>c</kbd>
-                        </td>
-                        <td>Focus on the web terminal regardless of show/hide status</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>u</kbd>
-                        </td>
-                        <td>Paste UUID of current bundle or worksheet into web terminal</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>a</kbd>
-                        </td>
-                        <td>Paste arguments to recreate current bundle into web terminal</td>
+                        <td>Move cursor up</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>j</kbd> or <kbd>↓</kbd>
                         </td>
                         <td>Move cursor down</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>k</kbd> or <kbd>↑</kbd>
-                        </td>
-                        <td>Move cursor up</td>
                     </tr>
                     <tr>
                         <td>
@@ -100,21 +37,93 @@ const GlossaryModal = ({ show, toggle }) => (
                     </tr>
                     <tr>
                         <td>
-                            <kbd>i</kbd>
+                            <kbd>enter</kbd>
+                        </td>
+                        <td>
+                            Open current bundle detail or worksheet (shift+enter: open in new
+                            window)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>x</kbd>
+                        </td>
+                        <td>Select the bundle row</td>
+                    </tr>
+                    <th>Editing</th>
+                    <tr>
+                        <td>
+                            <kbd>shift+e</kbd>
+                        </td>
+                        <td>Edit worksheet in source mode</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>ctrl/cmd+enter</kbd>
+                        </td>
+                        <td>Save current edit changes in worksheet source/text block</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>backspace/del</kbd>
+                        </td>
+                        <td>Delete focused items (bundle rows need to be selected)</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>esc</kbd>
+                        </td>
+                        <td>Exit editing worksheet source/text block</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>a t</kbd>
                         </td>
                         <td>Add a cell right below the current focus</td>
                     </tr>
                     <tr>
                         <td>
-                            <kbd>u</kbd>
+                            <kbd>a u</kbd>
                         </td>
                         <td>Upload a file right below the current focus</td>
                     </tr>
                     <tr>
                         <td>
-                            <kbd>r</kbd>
+                            <kbd>a r</kbd>
                         </td>
                         <td>Add a new run</td>
+                    </tr>
+                    <th>Bundles operation</th>
+                    <tr>
+                        <td>
+                            <kbd>a d</kbd>
+                        </td>
+                        <td>Detach all selected bundles from this worksheet</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>a k</kbd>
+                        </td>
+                        <td>Kill all selected bundles</td>
+                    </tr>
+                    <th>Other</th>
+                    <tr>
+                        <td>
+                            <kbd>shift+c</kbd>
+                        </td>
+                        <td>Show/hide web terminal</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>c</kbd>
+                        </td>
+                        <td>Open full web terminal regardless of show/hide status</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>shift+r</kbd>
+                        </td>
+                        <td>Refresh worksheet</td>
                     </tr>
                     <tr>
                         <td>
@@ -124,6 +133,13 @@ const GlossaryModal = ({ show, toggle }) => (
                     </tr>
                 </tbody>
             </table>
+            <div>
+                For terminal keyboard shortcuts, refer{' '}
+                <a href='http://terminal.jcubic.pl/api_reference.php' target='_blank'>
+                    here
+                </a>{' '}
+                at keyboard shortcuts section
+            </div>
         </Modal.Body>
     </Modal>
 );
