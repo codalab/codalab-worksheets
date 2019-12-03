@@ -137,7 +137,13 @@ class FakeStdout(io.StringIO):
 
 
 def run_command(
-    args, expected_exit_code=0, max_output_chars=1024, env=None, include_stderr=False, binary=False, force_subprocess=False
+    args,
+    expected_exit_code=0,
+    max_output_chars=1024,
+    env=None,
+    include_stderr=False,
+    binary=False,
+    force_subprocess=False,
 ):
     # We import the following imports here because codalab_service.py imports TestModule from
     # this file. If we kept the imports at the top, then anyone who ran codalab_service.py
@@ -969,7 +975,9 @@ def test(ctx):
     # Modify to non-ascii tags
     # TODO: enable with Unicode support.
     non_ascii_tags = ['你好世界😊', 'fáncy ünicode']
-    run_command([cl, 'wedit', wname, '--tags'] + non_ascii_tags, 1, force_subprocess=True) # TODO: find a way to make this work without force_subprocess
+    run_command(
+        [cl, 'wedit', wname, '--tags'] + non_ascii_tags, 1, force_subprocess=True
+    )  # TODO: find a way to make this work without force_subprocess
     # check_contains(non_ascii_tags, run_command([cl, 'ls', '-w', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
