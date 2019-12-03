@@ -11,24 +11,34 @@ from threading import Thread
 
 from test_cli import run_command
 
-'''
-TODO:
-[] ssh into dev environment and run python stress_test.py
-[X] Upload a huge bundle (20 GB?)
-[X] Upload many (10000) small bundles
-[X] Many (1000) runs which are trivial commands (e.g., date) in parallel
-[X] Run that writes infinitely to the disk
-[X] Test many worksheet copies.
-[X] Many runs that all use up plenty of disk (1GB each) - test that the local dependency cleanup of workers is working
-[X] Run that writes to use infinite memory
-[X] Run that tries to use up all the GPUs (+ memory)
-[X] Many runs that use all sorts of docker images (choose 100 big docker images)
-[X] Call CodaLab repeatedly to get information / load worksheets to make sure it's still responsive
-'''
 
-# TODO: need to find more large docker images to populate this list
-# List of large docker images
-_LARGE_DOCKER_IMAGES = ['iwane/numpy-matplotlib', 'adreeve/python-numpy', 'openjdk:11.0.5-jre']
+"""
+Script to stress test CodaLab's backend. The following is a list of what's being tested:
+- Large bundle upload
+- Many small bundle uploads
+- Many worksheet creations and copies
+- Many small runs (trivial commands) in parallel
+- Run that writes infinitely to disk
+- Many runs that all use up plenty of disk (1GB each)
+- Run that uses infinite memory
+- Run that tries to use up all the GPUs (+ memory)
+- Many runs that use all sorts of large Docker images
+- Call CodaLab repeatedly to get information to check if the system is still responsive
+"""
+
+# List of random, large docker images
+_LARGE_DOCKER_IMAGES = [
+    'adreeve/python-numpy',
+    'larger/rdp:dev',
+    'openjdk:11.0.5-jre',
+    'tensorflow/tensorflow:devel-gpu',
+    'iwane/numpy-matplotlib',
+    'kelvinxu/baselines',
+    'aaronyalai/openaibaselines:gym3',
+    'couchbase:latest',
+    'large64/docker-test:ruby',
+    'pytorch/pytorch:1.3-cuda10.1-cudnn7-devel',
+]
 
 
 class TestFile:
@@ -216,7 +226,9 @@ class StressTestRunner(ABC):
         return uuid
 
     def _generate_random_id(self):
-        return ''.join(random.choice(string.ascii_lowercase + string.ascii_uppercase) for _ in range(24))
+        return ''.join(
+            random.choice(string.ascii_lowercase + string.ascii_uppercase) for _ in range(24)
+        )
 
     @abstractmethod
     def get_large_file_size_gb(self):
@@ -340,26 +352,59 @@ class HeavyStressTestRunner(StressTestRunner):
         return 1000
 
 
-class StressTestRunnerFactory:
-    @staticmethod
-    def create(args, cl):
-        """
-        Creates an instance of StressTestRunner based on command line arguments passed in.
-        :param args: Dictionary of command line arguments and their values
-        :param cl: cl instance used to run CodaLab commands
-        :return: An instance of StressTestRunner.
-        """
-        if args.light:
-            print('Created a LightStressTestRunner...')
-            return LightStressTestRunner(cl)
-        else:
-            print('Created a HeavyStressTestRunner...')
-            return HeavyStressTestRunner(cl)
+class CustomStressTestRunner(StressTestRunner):
+    def __init__(self, cl, args):
+        self._cl = cl
+        self._args = args
+        super().__init__(cl)
+
+    def get_large_file_size_gb(self):
+        return args.large_file_size_gb
+
+    def get_bundle_uploads_count(self):
+        return args.bundle_upload_count
+
+    def get_create_worksheets_count(self):
+        return args.create_worksheet_count
+
+    def get_parallel_runs_count(self):
+        return args.parallel_runs_count
+
+    def get_num_of_docker_rounds(self):
+        return args.large_docker_runs_count
+
+    def should_test_infinite_memory(self):
+        return args.test_infinite_memory
+
+    def should_test_infinite_disk(self):
+        return args.test_infinite_disk
+
+    def should_test_infinite_gpu(self):
+        return args.test_infinite_gpu
+
+    def get_infinite_gpu_run_count(self):
+        return args.infinite_gpu_runs_count
+
+    def get_disk_write_count(self):
+        return args.large_disk_write_count
 
 
 def main():
-    runner = StressTestRunnerFactory.create(args, cl)
+    if args.light:
+        print('Created a LightStressTestRunner...')
+        runner = LightStressTestRunner(cl)
+    elif args.custom:
+        print('Created a CustomStressTestRunner...')
+        runner = CustomStressTestRunner(cl, args)
+    else:
+        print('Created a HeavyStressTestRunner...')
+        runner = HeavyStressTestRunner(cl)
+
+    # Run stress tests and time how long it takes to complete
+    start_time = time.time()
     runner.run()
+    duration_seconds = time.time() - start_time
+    print("--- Completion Time: {} minutes---".format(duration_seconds / 60))
 
 
 if __name__ == '__main__':
@@ -372,8 +417,77 @@ if __name__ == '__main__':
         help='Path to codalab CLI executable, defaults to "cl"',
         default='cl',
     )
-    parser.add_argument('--light', action='store_true')
+    parser.add_argument(
+        '--light',
+        action='store_true',
+        help='Runs a light version of the stress tests despite the values of other arguments',
+    )
 
+    # Custom stress test runner arguments
+    parser.add_argument(
+        '--custom',
+        action='store_true',
+        help='Runs a custom version of the stress tests based on argument values passed in',
+    )
+    parser.add_argument(
+        '--large-file-size-gb',
+        type=int,
+        help='Size of large file in GB for single upload (defaults to 20)',
+        default=20,
+    )
+    parser.add_argument(
+        '--bundle-upload-count',
+        type=int,
+        help='Number of small bundles to upload (defaults to 10000)',
+        default=10000,
+    )
+    parser.add_argument(
+        '--create-worksheet-count',
+        type=int,
+        help='Number of worksheets to create (defaults to 10000)',
+        default=10000,
+    )
+    parser.add_argument(
+        '--parallel-runs-count',
+        type=int,
+        help='Number of small, parallel runs (defaults to 1000)',
+        default=1000,
+    )
+    parser.add_argument(
+        '--large-docker-runs-count',
+        type=int,
+        help='Number of runs with large docker images (defaults to 1000)',
+        default=1000,
+    )
+    parser.add_argument(
+        '--test-infinite-memory',
+        action='store_false',
+        help='Whether infinite memory stress test is run (defaults to true)',
+    )
+    parser.add_argument(
+        '--test-infinite-disk',
+        action='store_false',
+        help='Whether infinite disk write test is run (defaults to true)',
+    )
+    parser.add_argument(
+        '--test-infinite-gpu',
+        action='store_false',
+        help='Whether infinite gpu usage test is run (defaults to true)',
+    )
+    parser.add_argument(
+        '--infinite-gpu-runs-count',
+        type=int,
+        help='Number of infinite gpu runs (defaults to 1000)',
+        default=1000,
+    )
+    parser.add_argument(
+        '--large-disk-write-count',
+        type=int,
+        help='Number of runs with 1 GB disk writes (defaults to 1000)',
+        default=1000,
+    )
+
+    # Parse args and run this script
     args = parser.parse_args()
     cl = args.cl_executable
     main()
