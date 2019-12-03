@@ -109,8 +109,8 @@ def sanitize(string, max_chars=256):
     """
     if isinstance(string, bytes):
         string = '<binary>'
-    if len(string) > max_chars:
-        string = string[:max_chars] + ' (...more...)'
+    # if len(string) > max_chars:
+    #     string = string[:max_chars] + ' (...more...)'
     return string
 
 
@@ -137,7 +137,7 @@ class FakeStdout(io.StringIO):
 
 
 def run_command(
-    args, expected_exit_code=0, max_output_chars=1024, env=None, include_stderr=False, binary=False
+    args, expected_exit_code=0, max_output_chars=1024, env=None, include_stderr=False, binary=False, force_subprocess=False
 ):
     # We import the following imports here because codalab_service.py imports TestModule from
     # this file. If we kept the imports at the top, then anyone who ran codalab_service.py
@@ -156,9 +156,11 @@ def run_command(
             kwargs = dict(kwargs, encoding="utf-8")
         if include_stderr:
             kwargs = dict(kwargs, stderr=subprocess.STDOUT)
-        if isinstance(args, list) and args[0] == cl:
+        if not force_subprocess and isinstance(args, list) and args[0] == cl:
             # In this case, run the codalab CLI directly, which is much faster
             # than opening a new subprocess to do so.
+            # We skip doing this if force_subprocess is set to true (which forces
+            # us to use subprocess even for cl commands.)
             _ = io.StringIO()  # Not used; we just don't want to redirect cli.stderr to f.
             f = FakeStdout()
             cli = BundleCLI(CodaLabManager(), stdout=f, stderr=_)
@@ -967,7 +969,7 @@ def test(ctx):
     # Modify to non-ascii tags
     # TODO: enable with Unicode support.
     non_ascii_tags = ['你好世界😊', 'fáncy ünicode']
-    run_command([cl, 'wedit', wname, '--tags'] + non_ascii_tags, 1)
+    run_command([cl, 'wedit', wname, '--tags'] + non_ascii_tags, 1, force_subprocess=True) # TODO: find a way to make this work without force_subprocess
     # check_contains(non_ascii_tags, run_command([cl, 'ls', '-w', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
