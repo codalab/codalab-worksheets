@@ -1111,7 +1111,7 @@ class BundleCLI(object):
                 '-i',
                 '--ignore',
                 help='Name of file containing patterns matching files and directories to exclude from upload. '
-                'This option is currently only supported with GNU tar library.',
+                'This option is currently only supported with the GNU tar library.',
             ),
         )
         + Commands.metadata_arguments([UploadedBundle])
