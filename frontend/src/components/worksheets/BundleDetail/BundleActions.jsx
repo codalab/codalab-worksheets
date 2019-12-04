@@ -47,16 +47,31 @@ class BundleActions extends React.Component<
 	render() {
 		const { bundleInfo } = this.props;
 		const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
-		const isRunBundle = bundleInfo.bundle_type === 'run';
-
+		const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
+		const isKillableBundle = (bundleInfo.state === 'running' 
+								|| bundleInfo.state === 'preparing');
+		const isDownloadableRunBundle = bundleInfo.state !== 'preparing' 
+						&&  bundleInfo.state !== 'starting' 
+						&& 	bundleInfo.state !== 'created' 
+						&& bundleInfo.state !== 'staged';
 		return (
 			isRunBundle
 			? <div style={ { display: 'flex', flexDirection: 'row', alignItems: 'center' } }>
-	            <Button variant='text' color='primary'
+	            {isKillableBundle && 
+				<Button variant='text' color='primary'
 	            	onClick={ this.kill }
 	            >
 	            	Kill
-	            </Button>
+				</Button>}
+				{isDownloadableRunBundle &&
+				<Button
+					variant='contained'
+					color='primary'
+					onClick={ () => { window.location.href = bundleDownloadUrl; } }
+				>
+					Download
+				</Button>
+				}
 	            <Button variant='contained' color='primary'
 	            	onClick={ this.rerun }
 	            >
