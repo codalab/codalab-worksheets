@@ -69,9 +69,10 @@ def write_pretty_json(data, path):
 
 
 def read_json_or_die(path):
+    with open(path, 'r') as f:
+        string = f.read()
     try:
-        with open(path, 'r') as f:
-            return json.loads(f.read())
+        return json.loads(string)
     except ValueError as e:
         print("Invalid JSON in %s:\n%s" % (path, string))
         print(e)
