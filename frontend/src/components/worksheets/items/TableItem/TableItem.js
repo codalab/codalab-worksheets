@@ -179,6 +179,8 @@ class TableItem extends React.Component<{
                     focused={rowFocused}
                     focusIndex={this.props.focusIndex}
                     setFocus={setFocus}
+                    showNewRerun={this.props.showNewRerun}
+                    onHideNewRerun={this.props.onHideNewRerun}
                     url={url}
                     bundleInfo={bundleInfo}
                     uuid={bundleInfo.uuid}
