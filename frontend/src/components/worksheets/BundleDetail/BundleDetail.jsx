@@ -199,7 +199,8 @@ class BundleDetail extends React.Component<
         const { uuid, bundleMetadataChanged,
             onUpdate, onClose,
             rerunItem, showNewRerun,
-            showDetail, handleDetailClick} = this.props;
+            showDetail, handleDetailClick,
+            editPermission } = this.props;
         const {
             bundleInfo,
             stdout,
@@ -218,7 +219,8 @@ class BundleDetail extends React.Component<
                     handleDetailClick={handleDetailClick}
                     bundleInfo={ bundleInfo }
                     rerunItem={ rerunItem }
-                    onComplete={ bundleMetadataChanged } /> }
+                    onComplete={ bundleMetadataChanged }
+                    editPermission={editPermission} /> }
                 sidebar={ <SideBar bundleInfo={ bundleInfo } onUpdate={ onUpdate } onMetaDataChange={ this.fetchBundleMetaData } /> }
             >
                 <MainContent

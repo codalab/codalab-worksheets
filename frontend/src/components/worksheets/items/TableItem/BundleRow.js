@@ -1,5 +1,5 @@
-import React, { Component } from 'react';
 import classNames from 'classnames';
+import React, { Component } from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -292,6 +292,7 @@ class BundleRow extends Component {
                                 onHideNewRerun={onHideNewRerun}
                                 showDetail={showDetail}
                                 handleDetailClick={this.handleDetailClick}
+                                editPermission={editPermission}
                             />
                         </TableCell>
                     </TableRow>
@@ -307,8 +308,8 @@ class BundleRow extends Component {
                                     ws={this.props.ws}
                                     onSubmit={() => {
                                         this.setState({ showNewRun: 0 });
-                                        this.handleDetailClick();
                                         onHideNewRerun();
+                                        this.handleDetailClick();
                                     }}
                                     after_sort_key={bundleInfo.sort_key}
                                     reloadWorksheet={reloadWorksheet}
