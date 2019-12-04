@@ -60,7 +60,7 @@ class BundleActions extends React.Component<
 	            {isKillableBundle && 
 				<Button variant='text' color='primary'
 	            	onClick={ this.kill }
-                disable={!editPermission}
+                disabled={!editPermission}
 	            >
 	            	Kill
 				</Button>}
@@ -75,7 +75,7 @@ class BundleActions extends React.Component<
 				}
 	            <Button variant='contained' color='primary'
 					onClick={ this.rerun }
-					disable={!editPermission}
+					disabled={!editPermission}
 	            >
 	            	Edit and Rerun
 	            </Button>
