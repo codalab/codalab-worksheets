@@ -4,7 +4,6 @@ on: [push]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -34,6 +33,9 @@ jobs:
         curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
         chmod +x docker-compose
         sudo mv docker-compose /usr/local/bin
-        sudo service mysql stop 
+        sudo service mysql stop
+        python3 codalab_service.py build services --version master --pull $([ -z "${CODALAB_DOCKER_USERNAME}" ] || [ "$TRAVIS_PULL_REQUEST_BRANCH" != "" ] || echo "--push")
+        python3 codalab_service.py start --services default monitor --version master
+         
         
         
