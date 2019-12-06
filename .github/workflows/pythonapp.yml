@@ -25,5 +25,15 @@ jobs:
       run: |
         cd frontend && npm install
         npm run check-ci
+    - name: Functionality
+      env:
+        CODALAB_USERNAME: codalab CODALAB_PASSWORD=codalab CI=true 
+      run: |
+        cd frontend && npm install
+        sudo rm /usr/local/bin/docker-compose
+        curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
+        chmod +x docker-compose
+        sudo mv docker-compose /usr/local/bin
+        sudo service mysql stop 
         
         
