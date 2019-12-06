@@ -21,4 +21,9 @@ jobs:
       run: |
         pip install --upgrade black==18.9b0
         black . --check --diff
+    - name: Frontend
+      run: |
+        cd frontend && npm install
+        npm run check-ci
+        
         
