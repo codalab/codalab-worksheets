@@ -325,10 +325,10 @@ class HeavyStressTestRunner(StressTestRunner):
         return 20
 
     def get_bundle_uploads_count(self):
-        return 10000
+        return 2000
 
     def get_create_worksheets_count(self):
-        return 10000
+        return 2000
 
     def get_parallel_runs_count(self):
         return 1000
