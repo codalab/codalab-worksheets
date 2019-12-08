@@ -33,7 +33,7 @@ class Footer extends React.Component {
                         </li>
                         <li>
                             <a
-                                href='https://github.com/codalab/codalab-worksheets/releases'
+                                href='https://codalab-worksheets.readthedocs.io/en/latest/Latest-Features'
                                 target='_blank'
                             >
                                 v{CODALAB_VERSION}
