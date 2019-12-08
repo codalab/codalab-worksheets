@@ -162,23 +162,23 @@ def run_command(
             kwargs = dict(kwargs, encoding="utf-8")
         if include_stderr:
             kwargs = dict(kwargs, stderr=subprocess.STDOUT)
-        if not force_subprocess and isinstance(args, list) and args[0] == cl:
+        if not force_subprocess and args[0] == cl:
             # In this case, run the codalab CLI directly, which is much faster
             # than opening a new subprocess to do so.
             # We skip doing this if force_subprocess is set to true (which forces
             # us to use subprocess even for cl commands.)
-            _ = io.StringIO()  # Not used; we just don't want to redirect cli.stderr to f.
-            f = FakeStdout()
-            cli = BundleCLI(CodaLabManager(), stdout=f, stderr=_)
+            stderr = io.StringIO()  # Not used; we just don't want to redirect cli.stderr to stdout.
+            stdout = FakeStdout()
+            cli = BundleCLI(CodaLabManager(), stdout=stdout, stderr=stderr)
             try:
                 cli.do_command(args[1:])
                 exitcode = 0
             except SystemExit as e:
                 exitcode = e.code
-            output = f.getvalue()
+            output = stdout.getvalue()
         else:
             output = subprocess.check_output(
-                [a.encode() if isinstance(a, str) else a for a in args], **kwargs
+                [a.encode() for a in args], **kwargs
             )
             exitcode = 0
     except subprocess.CalledProcessError as e:
