@@ -6,7 +6,7 @@ import sys
 import time
 
 from abc import ABC, abstractmethod
-from multiprocessing import Process
+from multiprocessing import cpu_count, Process, Pool
 from threading import Thread
 
 from test_cli import run_command
@@ -158,13 +158,10 @@ class StressTestRunner(ABC):
 
     def _test_parallel_runs(self):
         self._set_worksheet('test_parallel_runs')
-        processes = []
+        pool = Pool(cpu_count())
         for _ in range(self.get_parallel_runs_count()):
-            p = Process(target=StressTestRunner._simple_run, args=(self._cl,))
-            p.start()
-            processes.append(p)
-        for p in processes:
-            p.join()
+            pool.apply(StressTestRunner._simple_run, (self._cl,))
+        pool.close()
 
     def _test_many_docker_runs(self):
         self._set_worksheet('test_many_docker_runs')
@@ -438,14 +435,14 @@ if __name__ == '__main__':
     parser.add_argument(
         '--bundle-upload-count',
         type=int,
-        help='Number of small bundles to upload (defaults to 10000)',
-        default=10000,
+        help='Number of small bundles to upload (defaults to 2000)',
+        default=2000,
     )
     parser.add_argument(
         '--create-worksheet-count',
         type=int,
-        help='Number of worksheets to create (defaults to 10000)',
-        default=10000,
+        help='Number of worksheets to create (defaults to 2000)',
+        default=2000,
     )
     parser.add_argument(
         '--parallel-runs-count',
