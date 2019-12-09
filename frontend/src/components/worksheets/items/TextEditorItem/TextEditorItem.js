@@ -121,7 +121,10 @@ class TextEditorItem extends React.Component<{
 
     render() {
         const { classes, defaultValue, showDefault } = this.props;
-        Mousetrap.bindGlobal(['ctrl+enter', 'ctrl+s'], () => {this.saveText();Mousetrap.unbindGlobal(['ctrl+enter','ctrl+s']);});
+        Mousetrap.bindGlobal(['ctrl+enter', 'ctrl+s'], () => {
+            this.saveText();
+            Mousetrap.unbindGlobal(['ctrl+enter', 'ctrl+s']);
+        });
 
         return (
             <div className={classes.container}>

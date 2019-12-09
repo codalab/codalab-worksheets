@@ -40,18 +40,18 @@
     };
 
     Mousetrap.prototype.unbindGlobal = function(keys, action) {
-		var self = this;
-		self.unbind(keys, action);
+        var self = this;
+        self.unbind(keys, action);
 
-		if (keys instanceof Array) {
-			for (var i = 0; i < keys.length; i++) {
-				_globalCallbacks[keys[i]] = false;
-			}
-			return;
-		}
+        if (keys instanceof Array) {
+            for (var i = 0; i < keys.length; i++) {
+                _globalCallbacks[keys[i]] = false;
+            }
+            return;
+        }
 
-		_globalCallbacks[keys] = false;
-	};
+        _globalCallbacks[keys] = false;
+    };
 
     Mousetrap.init();
 })(Mousetrap);
