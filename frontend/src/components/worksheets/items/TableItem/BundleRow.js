@@ -292,10 +292,7 @@ class BundleRow extends Component {
                                 onHideNewRerun={onHideNewRerun}
                                 showDetail={showDetail}
                                 handleDetailClick={this.handleDetailClick}
-<<<<<<< HEAD
-=======
                                 editPermission={editPermission}
->>>>>>> 3835b10bbc3fc914cef7cf9f1ce47ca5923f3467
                             />
                         </TableCell>
                     </TableRow>
