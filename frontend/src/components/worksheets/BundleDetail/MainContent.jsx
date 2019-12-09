@@ -102,7 +102,7 @@ class MainContent extends React.Component<
                         color='inherit'
                         aria-label='Expand file viewer'
                         >
-                        {'Files'}
+                        {fileContents? 'Contents' : 'Files'}
                         {this.state.showFileBrowser 
                             ? <KeyboardArrowDownIcon />
                             : <ChevronRightIcon />}

@@ -14,6 +14,12 @@ class ConfigCodeInput extends React.Component<{
     onValueChange?: (string) => void,
     autoFocus?: boolean,
 }> {
+    moveFocusToEnd(e) {
+        var temp = e.target.value;
+        e.target.value = '';
+        e.target.value = temp;
+    }
+
     render() {
         const { classes, placeholder, multiline, maxRows, value, onValueChange, onKeyDown, autoFocus } = this.props;
         return (
@@ -23,6 +29,7 @@ class ConfigCodeInput extends React.Component<{
                 placeholder={placeholder}
                 multiline={multiline}
                 autoFocus={autoFocus}
+                onFocus={this.moveFocusToEnd}
                 onKeyDown={onKeyDown}
                 margin="dense"
                 variant="filled"
