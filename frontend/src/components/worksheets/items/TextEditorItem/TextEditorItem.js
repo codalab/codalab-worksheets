@@ -5,6 +5,7 @@ import Button from '@material-ui/core/Button';
 import InputBase from '@material-ui/core/InputBase';
 import { withStyles } from '@material-ui/core/styles';
 import { createAlertText } from '../../../../util/worksheet_utils';
+import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 
 /*
 This component has 2 modes:
@@ -54,10 +55,6 @@ class TextEditorItem extends React.Component<{
                 pressed.push(key);
             }
         });
-        if (pressed.includes('17') && (pressed.includes('13') || pressed.includes('83'))) {
-            /* Pressed ctrl+enter or ctrl+s */
-            this.saveText();
-        }
         if (pressed.includes('27')) {
             // Close editor upon pressing Escape
             this.props.closeEditor();
@@ -124,6 +121,7 @@ class TextEditorItem extends React.Component<{
 
     render() {
         const { classes, defaultValue, showDefault } = this.props;
+        Mousetrap.bindGlobal(['ctrl+enter', 'ctrl+s'], () => {this.saveText();Mousetrap.unbindGlobal(['ctrl+enter','ctrl+s']);});
 
         return (
             <div className={classes.container}>
