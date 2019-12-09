@@ -177,9 +177,7 @@ def run_command(
                 exitcode = e.code
             output = stdout.getvalue()
         else:
-            output = subprocess.check_output(
-                [a.encode() for a in args], **kwargs
-            )
+            output = subprocess.check_output([a.encode() for a in args], **kwargs)
             exitcode = 0
     except subprocess.CalledProcessError as e:
         output = e.output
