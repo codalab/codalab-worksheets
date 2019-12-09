@@ -149,7 +149,7 @@ class TableItem extends React.Component<{
                     style={editPermission ? { paddingLeft: 0 } : { paddingLeft: 30 }}
                 >
                     {editPermission && checkbox}
-                    {item}
+                    {item}                    
                 </TableCell>
             );
         });

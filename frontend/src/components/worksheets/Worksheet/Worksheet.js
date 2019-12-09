@@ -496,7 +496,9 @@ class Worksheet extends React.Component {
                     item = item.refs['row' + subIndex]; // Specifically, the row
                 }
                 var node = ReactDOM.findDOMNode(item);
-                pos = node.getBoundingClientRect().top;
+                if (node){
+                    pos = node.getBoundingClientRect().top;
+                }
             }
             keepPosInView(pos);
         };

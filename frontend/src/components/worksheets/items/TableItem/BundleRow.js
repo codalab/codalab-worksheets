@@ -185,7 +185,10 @@ class BundleRow extends Component {
                     </a>
                 );
             // else rowContent = rowContent + '';
-
+            //console.log('row',typeof rowContent, rowContent);
+            if (typeof rowContent === 'object'){
+                rowContent = '';
+            }
             return (
                 <TableCell
                     key={col}
