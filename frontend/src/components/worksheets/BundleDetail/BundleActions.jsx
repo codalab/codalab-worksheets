@@ -45,7 +45,7 @@ class BundleActions extends React.Component<
 	}
 
 	render() {
-		const { bundleInfo } = this.props;
+		const { bundleInfo, editPermission } = this.props;
 		const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
 		const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
 		const isKillableBundle = (bundleInfo.state === 'running' 
@@ -60,6 +60,7 @@ class BundleActions extends React.Component<
 	            {isKillableBundle && 
 				<Button variant='text' color='primary'
 	            	onClick={ this.kill }
+                disabled={!editPermission}
 	            >
 	            	Kill
 				</Button>}
@@ -73,7 +74,8 @@ class BundleActions extends React.Component<
 				</Button>
 				}
 	            <Button variant='contained' color='primary'
-	            	onClick={ this.rerun }
+					onClick={ this.rerun }
+					disabled={!editPermission}
 	            >
 	            	Edit and Rerun
 	            </Button>

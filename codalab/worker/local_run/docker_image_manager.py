@@ -135,6 +135,32 @@ class DockerImageManager:
         :param image_spec: Repo image_spec of docker image being requested
         :returns: A DockerAvailabilityState object with the state of the docker image
         """
+
+        def image_availability_state(image_spec, success_message, failure_message):
+            """
+            Try to get the image specified by image_spec from host machine.
+            Return ImageAvailabilityState.
+            """
+            try:
+                image = self._docker.images.get(image_spec)
+                digests = image.attrs.get('RepoDigests', [image_spec])
+                digest = digests[0] if len(digests) > 0 else None
+                with self._lock:
+                    self._image_cache[digest] = ImageCacheEntry(
+                        id=image.id,
+                        digest=digest,
+                        last_used=time.time(),
+                        virtual_size=image.attrs['VirtualSize'],
+                        marginal_size=image.attrs['Size'],
+                    )
+                return ImageAvailabilityState(
+                    digest=digest, stage=DependencyStage.READY, message=success_message
+                )
+            except Exception:
+                return ImageAvailabilityState(
+                    digest=None, stage=DependencyStage.FAILED, message=failure_message
+                )
+
         if ':' not in image_spec:
             # Both digests and repo:tag kind of specs include the : character. The only case without it is when
             # a repo is specified without a tag (like 'latest')
@@ -159,24 +185,20 @@ class DockerImageManager:
                         )
                     else:
                         if self._downloading[image_spec]['success']:
-                            image = self._docker.images.get(image_spec)
-                            digest = image.attrs.get('RepoDigests', [image_spec])[0]
-                            with self._lock:
-                                self._image_cache[digest] = ImageCacheEntry(
-                                    id=image.id,
-                                    digest=digest,
-                                    last_used=time.time(),
-                                    virtual_size=image.attrs['VirtualSize'],
-                                    marginal_size=image.attrs['Size'],
-                                )
-                            status = ImageAvailabilityState(
-                                digest=digest, stage=DependencyStage.READY, message='Image ready'
+                            status = image_availability_state(
+                                image_spec,
+                                success_message='Image ready',
+                                failure_message='Image {} was downloaded successfully, '
+                                'but it can not be found locally due to unknown reasons'.format(
+                                    image_spec
+                                ),
                             )
                         else:
-                            status = ImageAvailabilityState(
-                                digest=None,
-                                stage=DependencyStage.FAILED,
-                                message=self._downloading[image_spec]['message'],
+                            status = image_availability_state(
+                                image_spec,
+                                success_message='Image {} can not be downloaded from DockerHub '
+                                'but it is found locally'.format(image_spec),
+                                failure_message=self._downloading[image_spec]['message'],
                             )
                         self._downloading.remove(image_spec)
                         return status
