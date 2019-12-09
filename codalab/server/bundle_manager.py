@@ -76,9 +76,6 @@ class BundleManager(object):
 
             time.sleep(sleep_time)
 
-        while self._is_making_bundles():
-            time.sleep(sleep_time)
-
     def signal(self):
         with self._exiting_lock:
             self._exiting = True
