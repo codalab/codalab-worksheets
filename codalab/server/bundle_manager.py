@@ -145,7 +145,7 @@ class BundleManager(object):
                 if killed_uuids:
                     failure_message += ' Parent bundles were killed: %s' % ', '.join(killed_uuids)
                 if failure_message:
-                    failure_message += ' (Please use the --allow-failed-dependencies flag to depend on results fo failed or killed bundles)'
+                    failure_message += ' (Please use the --allow-failed-dependencies flag to depend on results of failed or killed bundles)'
                     bundles_to_fail.append((bundle, failure_message))
                     continue
 
