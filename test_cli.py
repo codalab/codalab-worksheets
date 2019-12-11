@@ -125,9 +125,21 @@ class FakeStdout(io.StringIO):
         self.buffer = io.BytesIO()
 
     def getvalue(self):
-        """If self.buffer has a non-unicode value, return that value.
+        """
+        If self.buffer has a non-unicode value, return that value.
         Otherwise, decode the self.buffer value and append it
         to self.getvalue().
+
+        This is because this function is mimicking the behavior of `sys.stdout`.
+        `sys.stdout` can be read as either a string or bytes.
+
+        When a string is written to `sys.stdout`, it returns a string when doing `getvalue()`.
+
+        When bytes are written to `sys.stdout` (by writing to `sys.stdout.buffer`),
+        it returns bytes when doing `getvalue()`. The reason we need to account for this
+        case is that there are tests in which a binary file is uploaded, then it is
+        printed out (by writing to `sys.stdout.buffer`), and then the test reads what's
+        printed out and makes sure it matches the original file.
         """
         try:
             buffer_value = self.buffer.getvalue().decode()
