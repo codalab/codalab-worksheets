@@ -56,7 +56,16 @@ from codalab.lib.cli_util import (
     parse_target_spec,
     desugar_command,
     INSTANCE_SEPARATOR,
-    WORKSHEET_SEPARATOR,
+    ADDRESS_SPEC_FORMAT,
+    WORKSHEET_SPEC_FORMAT,
+    BUNDLE_SPEC_FORMAT,
+    WORKSHEETS_URL_SEPARATOR,
+    TARGET_SPEC_FORMAT,
+    RUN_TARGET_SPEC_FORMAT,
+    MAKE_TARGET_SPEC_FORMAT,
+    GROUP_SPEC_FORMAT,
+    PERMISSION_SPEC_FORMAT,
+    UUID_POST_FUNC,
 )
 from codalab.objects.permission import group_permissions_str, parse_permission, permission_str
 from codalab.client.json_api_client import JsonApiRelationship
@@ -82,28 +91,6 @@ from codalab.worker.file_util import remove_path
 from codalab.worker.bundle_state import State
 from codalab.rest.worksheet_block_schemas import BlockModes
 
-# Formatting Constants
-ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
-BASIC_SPEC_FORMAT = '(<uuid>|<name>)'
-BASIC_BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
-
-GLOBAL_SPEC_FORMAT = "[%s%s]%s" % (ADDRESS_SPEC_FORMAT, INSTANCE_SEPARATOR, BASIC_SPEC_FORMAT)
-WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
-
-BUNDLE_SPEC_FORMAT = '[%s%s]%s' % (
-    WORKSHEET_SPEC_FORMAT,
-    WORKSHEET_SEPARATOR,
-    BASIC_BUNDLE_SPEC_FORMAT,
-)
-
-WORKSHEETS_URL_SEPARATOR = '/worksheets/'
-
-TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (BUNDLE_SPEC_FORMAT, os.sep)
-RUN_TARGET_SPEC_FORMAT = '[<key>]:' + TARGET_SPEC_FORMAT
-MAKE_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
-GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
-PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
-UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
 
 # Command groupings
 BUNDLE_COMMANDS = (
@@ -1120,6 +1107,12 @@ class BundleCLI(object):
                 help='Upload to this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
+            Commands.Argument(
+                '-i',
+                '--ignore',
+                help='Name of file containing patterns matching files and directories to exclude from upload. '
+                'This option is currently only supported with the GNU tar library.',
+            ),
         )
         + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
@@ -1191,12 +1184,19 @@ class BundleCLI(object):
             sources = [path_util.normalize(path) for path in args.path]
 
             print("Preparing upload archive...", file=self.stderr)
+            if args.ignore:
+                print(
+                    "Excluding files and directories specified by %s." % args.ignore,
+                    file=self.stderr,
+                )
+
             packed = zip_util.pack_files_for_upload(
                 sources,
                 should_unpack=(not args.pack),
                 follow_symlinks=args.follow_symlinks,
                 exclude_patterns=args.exclude_patterns,
                 force_compression=args.force_compression,
+                ignore_file=args.ignore,
             )
 
             # Create bundle.
@@ -2768,9 +2768,12 @@ class BundleCLI(object):
 
         elif args.item_type == 'bundle':
             for bundle_spec in args.item_spec:
-                source_client, source_worksheet_uuid, source_bundle_uuid, subpath = self.resolve_target(
-                    curr_client, curr_worksheet_uuid, bundle_spec
-                )
+                (
+                    source_client,
+                    source_worksheet_uuid,
+                    source_bundle_uuid,
+                    subpath,
+                ) = self.resolve_target(curr_client, curr_worksheet_uuid, bundle_spec)
                 # copy (or add only if bundle already exists on destination)
                 self.copy_bundle(
                     source_client,

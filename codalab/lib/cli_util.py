@@ -1,5 +1,5 @@
 import re
-import datetime
+import os
 
 from codalab.common import precondition, UsageError
 
@@ -8,6 +8,29 @@ WORKSHEET_SEPARATOR = "//"
 
 TARGET_KEY_REGEX = r"(?<=^)(?:([^:]*?)\:(?!:))?(.*(?=$))"
 TARGET_REGEX = r"(?<=^)(?:(.*?)\:\:)?(?:(.*?)\/\/)?(.+?)(?:\/(.*?))?(?=$)"
+
+# Formatting Constants
+ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
+BASIC_SPEC_FORMAT = '(<uuid>|<name>)'
+BASIC_BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
+
+GLOBAL_SPEC_FORMAT = "[%s%s]%s" % (ADDRESS_SPEC_FORMAT, INSTANCE_SEPARATOR, BASIC_SPEC_FORMAT)
+WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
+
+BUNDLE_SPEC_FORMAT = '[%s%s]%s' % (
+    WORKSHEET_SPEC_FORMAT,
+    WORKSHEET_SEPARATOR,
+    BASIC_BUNDLE_SPEC_FORMAT,
+)
+
+WORKSHEETS_URL_SEPARATOR = '/worksheets/'
+
+TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (BUNDLE_SPEC_FORMAT, os.sep)
+RUN_TARGET_SPEC_FORMAT = '[<key>]:' + TARGET_SPEC_FORMAT
+MAKE_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
+GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
+PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
+UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
 
 
 def nested_dict_get(obj, *args, **kwargs):
@@ -109,6 +132,13 @@ def desugar_command(orig_target_spec, command):
                     'key %s exists with multiple values: %s and %s' % (key, key2val[key], val)
                 )
         else:
+            if key is None:
+                raise UsageError(
+                    'target_spec is empty. Please provide a valid target_spec in the format of {}.'.format(
+                        RUN_TARGET_SPEC_FORMAT
+                    )
+                )
+
             key2val[key] = val
             target_spec.append(key + ':' + val)
         return key

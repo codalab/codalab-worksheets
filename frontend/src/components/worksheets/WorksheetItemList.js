@@ -96,29 +96,14 @@ class WorksheetItemList extends React.Component {
     }
 
     capture_keys() {
-        if (!this.props.active)
-            // If we're not the active component, don't bind keys
-            return;
-
-        // Open a new window (really should be handled at the item level)
-        Mousetrap.bind(
-            ['enter'],
-            function() {
-                if (this.props.focusIndex < 0) return;
-                var url = this.refs['item' + this.props.focusIndex].props.url;
-                if (url) window.open(url, '_blank');
-            }.bind(this),
-            'keydown',
-        );
-
         // Move focus to the top
         Mousetrap.bind(
             ['g g'],
             function() {
                 if (this.props.focusIndex >= 0) {
                     $('body')
-                    .stop(true)
-                    .animate({ scrollTop: 0 }, 'fast');
+                        .stop(true)
+                        .animate({ scrollTop: 0 }, 'fast');
                     this.props.setFocus(0, 0);
                 }
             }.bind(this),
@@ -197,31 +182,28 @@ class WorksheetItemList extends React.Component {
 
     handleClickForDeselect = (event) => {
         //Deselect if clicking between worksheet row items
-        if (event.target === event.currentTarget){
+        if (event.target === event.currentTarget) {
             this.props.setFocus(-1, 0);
         }
     };
 
     render() {
-        this.capture_keys(); // each item capture keys are handled dynamically after this call
+        if (this.props.active) this.capture_keys(); // each item capture keys are handled dynamically after this call
 
         // Create items
         var items_display;
         var info = this.props.ws.info;
-        if (info && info.items.length === 0) { // Create a "dummy" item at the beginning so that only empty text can be added.
+        if (info && info.items.length === 0) {
+            // Create a "dummy" item at the beginning so that only empty text can be added.
             info.items = [
                 {
-                    "isDummyItem": true,
-                    "text": "",
-                    "mode": "markup_block",
-                    "sort_keys": [
-                        -1
-                    ],
-                    "ids": [
-                        null
-                    ],
-                    "is_refined": true
-                }
+                    isDummyItem: true,
+                    text: '',
+                    mode: 'markup_block',
+                    sort_keys: [-1],
+                    ids: [null],
+                    is_refined: true,
+                },
             ];
         }
         if (info && info.items.length > 0) {
@@ -229,11 +211,12 @@ class WorksheetItemList extends React.Component {
             info.items.forEach(
                 function(item, index) {
                     const focused = index === this.props.focusIndex;
-                    
+
                     // focusedForButtons determines whether clicking on Cell/Upload/Run will
                     // apply to this cell. If nothing is focused (focusIndex = -1),
                     // append to the end by default.
-                    const focusedForButtons = focused ||
+                    const focusedForButtons =
+                        focused ||
                         (this.props.focusIndex === -1 && index === info.items.length - 1);
                     var props = {
                         worksheetUUID: info.uuid,
@@ -254,11 +237,15 @@ class WorksheetItemList extends React.Component {
                         showNewUpload: this.props.showNewUpload,
                         showNewRun: this.props.showNewRun,
                         showNewText: this.props.showNewText,
+                        showNewRerun: this.props.showNewRerun,
                         onHideNewUpload: this.props.onHideNewUpload,
                         onHideNewRun: this.props.onHideNewRun,
                         onHideNewText: this.props.onHideNewText,
+                        onHideNewRerun: this.props.onHideNewRerun,
                         handleCheckBundle: this.props.handleCheckBundle,
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
+                        setDeleteItemCallback: this.props.setDeleteItemCallback,
+                        editPermission: info && info.edit_permission,
                     };
                     addWorksheetItems(
                         props,
@@ -274,7 +261,11 @@ class WorksheetItemList extends React.Component {
         }
         if (info && info.error)
             items_display = <p className='alert-danger'>Error in worksheet: {info.error}</p>;
-        return (<div id='worksheet_items' onClick={this.handleClickForDeselect}>{items_display}</div>);
+        return (
+            <div id='worksheet_items' onClick={this.handleClickForDeselect}>
+                {items_display}
+            </div>
+        );
     }
 }
 

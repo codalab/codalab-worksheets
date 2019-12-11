@@ -1,5 +1,5 @@
-import React, { Component } from 'react';
 import classNames from 'classnames';
+import React, { Component } from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -27,33 +27,46 @@ class BundleRow extends Component {
             showNewUpload: 0,
             showNewRun: 0,
             bundleInfoUpdates: {},
-            showDetail: false,
             openDelete: false,
             runProp: {},
             hovered: false,
-            uniqueIdentifier: Math.random()*10000,
+            uniqueIdentifier: Math.random() * 10000,
         };
     }
 
     // BULK OPERATION RELATED CODE
-    handleCheckboxChange = event => {
-        this.props.handleCheckBundle(this.props.uuid, this.state.uniqueIdentifier, event.target.checked, this.props.refreshCheckBox);
+    handleCheckboxChange = (event) => {
+        this.props.handleCheckBundle(
+            this.props.uuid,
+            this.state.uniqueIdentifier,
+            event.target.checked,
+            this.props.refreshCheckBox,
+        );
         this.props.childrenCheck(this.props.rowIndex, event.target.checked);
     };
 
-    componentDidMount(){
-        if (this.props.checkStatus){
-            this.props.handleCheckBundle(this.props.uuid, this.state.uniqueIdentifier, true, this.props.refreshCheckBox);
+    componentDidMount() {
+        if (this.props.checkStatus) {
+            this.props.handleCheckBundle(
+                this.props.uuid,
+                this.state.uniqueIdentifier,
+                true,
+                this.props.refreshCheckBox,
+            );
         }
     }
 
-    componentDidUpdate(prevProp){
-        if (this.props.checkStatus !== prevProp.checkStatus){
-            this.props.handleCheckBundle(this.props.uuid, this.state.uniqueIdentifier, this.props.checkStatus,  this.props.refreshCheckBox);
+    componentDidUpdate(prevProp) {
+        if (this.props.checkStatus !== prevProp.checkStatus) {
+            this.props.handleCheckBundle(
+                this.props.uuid,
+                this.state.uniqueIdentifier,
+                this.props.checkStatus,
+                this.props.refreshCheckBox,
+            );
         }
     }
     // BULK OPERATION RELATED CODE
-
 
     receiveBundleInfoUpdates = (update) => {
         let { bundleInfoUpdates } = this.state;
@@ -71,7 +84,7 @@ class BundleRow extends Component {
 
     handleSelectRowClick = () => {
         this.props.updateRowIndex(this.props.rowIndex);
-    }
+    };
 
     showNewUpload = (val) => () => {
         this.setState({ showNewUpload: val });
@@ -87,7 +100,7 @@ class BundleRow extends Component {
             showNewRun: 1,
             runProp: runProp,
         });
-    }
+    };
 
     render() {
         const {
@@ -108,11 +121,16 @@ class BundleRow extends Component {
             reloadWorksheet,
             isLast,
             checkStatus,
+            showNewRerun,
+            onHideNewRerun,
+            editPermission,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
+        var worksheetName = this.props.worksheetName;
+        var worksheetUrl = this.props.worksheetUrl;
         var rowCells = this.props.headerItems.map((headerKey, col) => {
             var rowContent = rowItems[headerKey];
 
@@ -120,20 +138,31 @@ class BundleRow extends Component {
             var url;
             var showDetailButton;
             var checkBox;
-            if (col === 0) {
+            if (headerKey === 'host_worksheet' && worksheetUrl !== undefined) {
+                url = worksheetUrl;
+                rowContent = worksheetName;
+            } else if (col === 0) {
                 url = baseUrl;
-                checkBox = <Checkbox
-                                icon={<CheckBoxOutlineBlankIcon color={this.props.focused || this.state.hovered ? 'action' : 'disabled'} fontSize="small" />}
-                                checkedIcon={<CheckBoxIcon fontSize="small" />}
-                                onChange={this.handleCheckboxChange}
-                                checked={checkStatus||false}
+                checkBox = (
+                    <Checkbox
+                        icon={
+                            <CheckBoxOutlineBlankIcon
+                                color={
+                                    this.props.focused || this.state.hovered ? 'action' : 'disabled'
+                                }
+                                fontSize='small'
                             />
-                showDetailButton = 
-                        <IconButton onClick={this.handleDetailClick} style={{ padding: 2 }}>
-                            {this.state.showDetail?
-                            <ExpandLessIcon/>:
-                            <ExpandMoreIcon/>}
-                        </IconButton>;
+                        }
+                        checkedIcon={<CheckBoxIcon fontSize='small' />}
+                        onChange={this.handleCheckboxChange}
+                        checked={checkStatus || false}
+                    />
+                );
+                showDetailButton = (
+                    <IconButton onClick={this.handleDetailClick} style={{ padding: 2 }}>
+                        {showDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    </IconButton>
+                );
             } else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
                 url = '/rest/bundles/' + uuid + '/contents/blob' + rowContent['path'];
                 if ('text' in rowContent) {
@@ -146,11 +175,18 @@ class BundleRow extends Component {
             }
             if (url)
                 rowContent = (
-                    <a href={url} className='bundle-link' target='_blank' style={{ display: 'inline-block', width: 60 }}>
+                    <a
+                        href={url}
+                        className='bundle-link'
+                        target='_blank'
+                        style={{ display: 'inline-block', width: 60 }}
+                    >
                         {rowContent}
                     </a>
                 );
-            // else rowContent = rowContent + '';
+            if (typeof rowContent === 'object') {
+                rowContent = '';
+            }
 
             return (
                 <TableCell
@@ -158,83 +194,89 @@ class BundleRow extends Component {
                     classes={{
                         root: classes.rootNoPad,
                     }}
-                    onMouseEnter = {e=>this.setState({hovered: true})}
-                    onMouseLeave = {e=>this.setState({hovered: false})}
-                >   
-                    {checkBox}
+                    onMouseEnter={(e) => this.setState({ hovered: true })}
+                    onMouseLeave={(e) => this.setState({ hovered: false })}
+                >
+                    {editPermission && checkBox}
                     {showDetailButton}
                     {rowContent}
                 </TableCell>
             );
         });
 
-         // Keyboard opening/closing
+        // Keyboard opening/closing
         if (this.props.focused) {
-             // Use e.preventDefault to avoid openning selected link
+            // Use e.preventDefault to avoid openning selected link
             Mousetrap.bind(
-                ['enter'], 
+                ['enter'],
                 (e) => {
                     e.preventDefault();
-                    if (!this.props.confirmBundleRowAction(e.code)){
-                        this.setState((state) => ({ showDetail: !state.showDetail }))
+                    if (!this.props.confirmBundleRowAction(e.code)) {
+                        this.setState((state) => ({ showDetail: !state.showDetail }));
                     }
-                }, 
-                'keydown'
+                },
+                'keydown',
+            );
+            Mousetrap.bind(
+                ['shift+enter'],
+                (e) => {
+                    e.preventDefault();
+                    window.open(this.props.url, '_blank');
+                },
+                'keydown',
             );
             Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
-            Mousetrap.bind(['x'],
+            Mousetrap.bind(
+                ['x'],
                 (e) => {
-                    if (!this.props.confirmBundleRowAction(e.code)){
-                        this.props.handleCheckBundle(uuid, this.state.uniqueIdentifier, !this.props.checkStatus, this.props.refreshCheckBox);
+                    if (!editPermission) {
+                        return;
+                    }
+                    if (!this.props.confirmBundleRowAction(e.code)) {
+                        this.props.handleCheckBundle(
+                            uuid,
+                            this.state.uniqueIdentifier,
+                            !this.props.checkStatus,
+                            this.props.refreshCheckBox,
+                        );
                         this.props.childrenCheck(this.props.rowIndex, !this.props.checkStatus);
                     }
-                }, 'keydown'
-            );
-            Mousetrap.bind(['space'],
-                (e) => {
-                    if (!this.props.confirmBundleRowAction(e.code)){
-                        e.preventDefault();
-                        this.props.handleSelectAllSpaceHit();
-                    }
-                }, 'keydown'
+                },
+                'keydown',
             );
         }
 
         return (
-            <TableBody
-                classes={{ root: classes.tableBody }}
-            >
+            <TableBody classes={{ root: classes.tableBody }}>
                 {/** ---------------------------------------------------------------------------------------------------
-                  *  Main Content
-                  */}
+                 *  Main Content
+                 */}
                 <TableRow
                     onClick={this.handleSelectRowClick}
-                    onContextMenu={this.props.handleContextMenu.bind(
-                        null,
-                        bundleInfo.uuid,
-                        this.props.focusIndex,
-                        this.props.rowIndex,
-                        bundleInfo.bundle_type === 'run',
-                    )}
                     className={classNames({
                         [classes.contentRow]: true,
                         [classes.highlight]: this.props.focused,
-                        [classes.lowlight]: !this.props.focused && this.state.showDetail,
+                        [classes.lowlight]: !this.props.focused && showDetail,
                     })}
                 >
                     {rowCells}
                 </TableRow>
                 {/** ---------------------------------------------------------------------------------------------------
-                  *  Bundle Detail (below)
-                  */}
+                 *  Bundle Detail (below)
+                 */}
                 {showDetail && (
                     <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classNames({
-                            [classes.rootNoPad]: true,
-                            [classes.bundleDetail]: true,
-                            [classes.highlight]: this.props.focused,
-                            [classes.lowlight]: !this.props.focused,
-                        })}}>
+                        <TableCell
+                            colSpan='100%'
+                            classes={{
+                                root: classNames({
+                                    [classes.rootNoPad]: true,
+                                    [classes.bundleDetail]: true,
+                                    [classes.highlight]: this.props.focused,
+                                    [classes.lowlight]: !this.props.focused,
+                                }),
+                            }}
+                        >
                             <BundleDetail
                                 uuid={bundleInfo.uuid}
                                 bundleMetadataChanged={this.props.reloadWorksheet}
@@ -245,24 +287,35 @@ class BundleRow extends Component {
                                         showDetail: false,
                                     });
                                 }}
-                                rerunItem={ this.rerunItem }
+                                rerunItem={this.rerunItem}
+                                isFocused={this.props.focused}
+                                focusIndex={this.props.focusIndex}
+                                showNewRerun={showNewRerun}
+                                onHideNewRerun={onHideNewRerun}
+                                showDetail={showDetail}
+                                handleDetailClick={this.handleDetailClick}
+                                editPermission={editPermission}
                             />
                         </TableCell>
                     </TableRow>
                 )}
                 {/** ---------------------------------------------------------------------------------------------------
-                  *  Rerun
-                  */}
+                 *  Rerun
+                 */}
                 {showNewRun === 1 && (
                     <TableRow>
                         <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
                             <div className={classes.insertBox}>
                                 <NewRun
                                     ws={this.props.ws}
-                                    onSubmit={() => this.setState({ showNewRun: 0 })}
+                                    onSubmit={() => {
+                                        this.setState({ showNewRun: 0 });
+                                        onHideNewRerun();
+                                        this.handleDetailClick();
+                                    }}
                                     after_sort_key={bundleInfo.sort_key}
                                     reloadWorksheet={reloadWorksheet}
-                                    defaultRun={ runProp }
+                                    defaultRun={runProp}
                                 />
                             </div>
                         </TableCell>
@@ -279,24 +332,6 @@ const styles = (theme) => ({
             display: 'flex',
         },
     },
-    panelContainer: {
-        display: 'block',
-        height: '0px !important',
-        overflow: 'visible',
-    },
-    panelCellContainer: {
-        padding: '0 !important',
-        border: 'none !important',
-        overflow: 'visible',
-    },
-    buttonsPanel: {
-        display: 'flex',
-        flexDirection: 'row',
-        position: 'absolute',
-        justifyContent: 'center',
-        width: '100%',
-        transform: 'translateY(-18px)',
-    },
     rightButtonStripe: {
         display: 'none',
         flexDirection: 'row',
@@ -305,40 +340,17 @@ const styles = (theme) => ({
         left: '100%',
         transform: 'translateY(-100%) translateX(-100%)',
     },
-    root: {
-        verticalAlign: 'middle !important',
-        border: 'none !important',
-        wordWrap: 'break-word',
-        maxWidth: 100,
-    },
     rootNoPad: {
         verticalAlign: 'middle !important',
         border: 'none !important',
         padding: '0px !important',
         wordWrap: 'break-word',
-        maxWidth: 100,
+        maxWidth: 200,
+        minWidth: 100,
     },
     bundleDetail: {
         paddingLeft: `${theme.spacing.largest}px !important`,
         paddingRight: `${theme.spacing.largest}px !important`,
-    },
-    iconButtonRoot: {
-        backgroundColor: theme.color.grey.lighter,
-        padding: "1px 2px",
-        marginBottom: 3,
-        marginRight: 1,
-    },
-    buttonRoot: {
-        width: 120,
-        marginLeft: theme.spacing.unit,
-        marginRight: theme.spacing.unit,
-        backgroundColor: '#f7f7f7',
-        '&:hover': {
-            backgroundColor: '#f7f7f7',
-        },
-    },
-    buttonIcon: {
-        marginRight: theme.spacing.large,
     },
     contentRow: {
         height: 26,
@@ -346,14 +358,15 @@ const styles = (theme) => ({
         borderLeft: '3px solid transparent',
         padding: 0,
         '&:hover': {
-            boxShadow:'inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15)',
+            boxShadow:
+                'inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15)',
             zIndex: 1,
         },
     },
-    checkBox:{
+    checkBox: {
         '&:hover': {
             backgroundColor: '#ddd',
-        }
+        },
     },
     highlight: {
         backgroundColor: `${theme.color.primary.lightest} !important`,

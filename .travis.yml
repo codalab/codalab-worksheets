@@ -1,11 +1,16 @@
 jobs:
   include:
-    - stage: style
+    - stage: check
       language: python
       python: 3.6
       install: pip install --upgrade black==18.9b0
       script: black . --check --diff
-    - stage: functionality
+    - stage: check
+      language: javascript
+      install: cd frontend && npm install
+      script:
+        - npm run check-ci
+    - stage: check
       language: python
       sudo: required
       services:
@@ -20,7 +25,7 @@ jobs:
         - sudo mv docker-compose /usr/local/bin
         - sudo service mysql stop
       install:
-        - python3 codalab_service.py build services --version ${TRAVIS_BRANCH} --pull $([ -z "${CODALAB_DOCKER_USERNAME}" ] || echo "--push")
+        - python3 codalab_service.py build services --version ${TRAVIS_BRANCH} --pull $([ -z "${CODALAB_DOCKER_USERNAME}" ] || [ "$TRAVIS_PULL_REQUEST_BRANCH" != "" ] || echo "--push")
         - python3 codalab_service.py start --services default monitor --version ${TRAVIS_BRANCH}
       script:
         - python3 codalab_service.py test --version ${TRAVIS_BRANCH} default

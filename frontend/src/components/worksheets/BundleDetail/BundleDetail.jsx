@@ -49,12 +49,36 @@ class BundleDetail extends React.Component<
             stderr: null,
             prevUuid: props.uuid,
             open: true,
+            fetch: true,
         };
     }
 
     componentDidMount() {
         this.fetchBundleMetaData();
         this.fetchBundleContents();
+        this.timer = setInterval(()=>{ 
+            if (!this.state.bundleInfo){
+                // If info is not available yet, fetch
+                this.fetchBundleMetaData();
+                this.fetchBundleContents();
+                return;
+            }
+            if (this.state.bundleInfo.bundle_type === 'run' && (this.state.bundleInfo.state === 'running' 
+                || this.state.bundleInfo.state === 'preparing' || this.state.bundleInfo.state === 'starting'
+                || this.state.bundleInfo.state === 'staged')){
+                // If bundle is in a state that is possible to transition to a running or is in a running state, fetch data
+                this.fetchBundleMetaData();
+                this.fetchBundleContents();
+            } else{
+                // otherwise just clear the timer
+                clearInterval(this.timer);
+            }
+        }, 4000);
+    }
+
+    componentWillUnmount() {
+        // Clear the timer
+        clearInterval(this.timer);
     }
 
     /**
@@ -172,20 +196,31 @@ class BundleDetail extends React.Component<
     }
   
     render(): React.Node {
-        const { uuid, bundleMetadataChanged, onUpdate, onClose, rerunItem } = this.props;
+        const { uuid, bundleMetadataChanged,
+            onUpdate, onClose,
+            rerunItem, showNewRerun,
+            showDetail, handleDetailClick,
+            editPermission } = this.props;
         const {
             bundleInfo,
             stdout,
             stderr,
             fileContents } = this.state;
 
-        if (!bundleInfo) {
-            return null;
+        if (!bundleInfo || bundleInfo.bundle_type === 'private') {
+            return <div>Detail not available for this bundle</div>
         }
 
         return (
             <ConfigurationPanel
-                buttons={ <BundleActions bundleInfo={ bundleInfo } rerunItem={ rerunItem } onComplete={ bundleMetadataChanged } /> }
+                buttons={ <BundleActions
+                    showNewRerun={showNewRerun}
+                    showDetail={showDetail}
+                    handleDetailClick={handleDetailClick}
+                    bundleInfo={ bundleInfo }
+                    rerunItem={ rerunItem }
+                    onComplete={ bundleMetadataChanged }
+                    editPermission={editPermission} /> }
                 sidebar={ <SideBar bundleInfo={ bundleInfo } onUpdate={ onUpdate } onMetaDataChange={ this.fetchBundleMetaData } /> }
             >
                 <MainContent

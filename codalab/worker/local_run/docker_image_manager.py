@@ -79,8 +79,9 @@ class DockerImageManager:
     def _cleanup(self):
         """
         Prunes the image cache for runs.
-        1. Only care about images we (this DockerImageManager) downloaded and know about
-        2. We use sum of VirtualSize's, which is an upper bound on the disk use of our images:
+        1. Only care about images we (this DockerImageManager) downloaded and know about.
+        2. We also try to prune any dangling docker images on the system.
+        3. We use sum of VirtualSize's, which is an upper bound on the disk use of our images:
             in case no images share any intermediate layers, this will be the real disk use,
             however if images share layers, the virtual size will count that layer's size for each
             image that uses it, even though it's stored only once in the disk. The 'Size' field
@@ -91,8 +92,9 @@ class DockerImageManager:
             but because of (1) we don't want to use that.
         """
         while not self._stop:
+            # Sort the image cache in LRU order
             deletable_entries = set(self._image_cache.values())
-            disk_use = sum(cache_entry.virtual_size for cache_entry in deletable_entries)
+            disk_use = sum(entry.virtual_size for entry in deletable_entries)
             while disk_use > self._max_image_cache_size:
                 entry_to_remove = min(deletable_entries, key=lambda entry: entry.last_used)
                 logger.info(
@@ -102,13 +104,10 @@ class DockerImageManager:
                     entry_to_remove.digest,
                 )
                 try:
-                    image_to_delete = self._docker.images.get(entry_to_remove.id)
-                    tags_to_delete = image_to_delete.tags
-                    for tag in tags_to_delete:
-                        self._docker.images.remove(tag)
-                    # if we successfully removed the image also remove its cache entry
+                    # Delete images from image cache in LRU order
+                    self._docker.images.remove(entry_to_remove.id)
                     del self._image_cache[entry_to_remove.digest]
-                except docker.errors.NotFound:
+                except docker.errors.ImageNotFound:
                     # image doesn't exist anymore for some reason, stop tracking it
                     del self._image_cache[entry_to_remove.digest]
                 except docker.errors.APIError as err:
@@ -136,6 +135,32 @@ class DockerImageManager:
         :param image_spec: Repo image_spec of docker image being requested
         :returns: A DockerAvailabilityState object with the state of the docker image
         """
+
+        def image_availability_state(image_spec, success_message, failure_message):
+            """
+            Try to get the image specified by image_spec from host machine.
+            Return ImageAvailabilityState.
+            """
+            try:
+                image = self._docker.images.get(image_spec)
+                digests = image.attrs.get('RepoDigests', [image_spec])
+                digest = digests[0] if len(digests) > 0 else None
+                with self._lock:
+                    self._image_cache[digest] = ImageCacheEntry(
+                        id=image.id,
+                        digest=digest,
+                        last_used=time.time(),
+                        virtual_size=image.attrs['VirtualSize'],
+                        marginal_size=image.attrs['Size'],
+                    )
+                return ImageAvailabilityState(
+                    digest=digest, stage=DependencyStage.READY, message=success_message
+                )
+            except Exception:
+                return ImageAvailabilityState(
+                    digest=None, stage=DependencyStage.FAILED, message=failure_message
+                )
+
         if ':' not in image_spec:
             # Both digests and repo:tag kind of specs include the : character. The only case without it is when
             # a repo is specified without a tag (like 'latest')
@@ -160,24 +185,20 @@ class DockerImageManager:
                         )
                     else:
                         if self._downloading[image_spec]['success']:
-                            image = self._docker.images.get(image_spec)
-                            digest = image.attrs.get('RepoDigests', [image_spec])[0]
-                            with self._lock:
-                                self._image_cache[digest] = ImageCacheEntry(
-                                    id=image.id,
-                                    digest=digest,
-                                    last_used=time.time(),
-                                    virtual_size=image.attrs['VirtualSize'],
-                                    marginal_size=image.attrs['Size'],
-                                )
-                            status = ImageAvailabilityState(
-                                digest=digest, stage=DependencyStage.READY, message='Image ready'
+                            status = image_availability_state(
+                                image_spec,
+                                success_message='Image ready',
+                                failure_message='Image {} was downloaded successfully, '
+                                'but it can not be found locally due to unknown reasons'.format(
+                                    image_spec
+                                ),
                             )
                         else:
-                            status = ImageAvailabilityState(
-                                digest=None,
-                                stage=DependencyStage.FAILED,
-                                message=self._downloading[image_spec]['message'],
+                            status = image_availability_state(
+                                image_spec,
+                                success_message='Image {} can not be downloaded from DockerHub '
+                                'but it is found locally'.format(image_spec),
+                                failure_message=self._downloading[image_spec]['message'],
                             )
                         self._downloading.remove(image_spec)
                         return status

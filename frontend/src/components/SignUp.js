@@ -50,7 +50,8 @@ export class SignUp extends React.Component {
                 <SubHeader title='Sign Up' />
                 <ContentWrapper>
                     <p>
-                        Already have an account? Then please <NavLink to='/account/login'>sign in</NavLink>.
+                        Already have an account? Then please{' '}
+                        <NavLink to='/account/login'>sign in</NavLink>.
                     </p>
                     <form
                         className='signup'

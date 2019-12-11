@@ -41,8 +41,28 @@ function CodalabApp() {
 
                         {/*Main Content.*/}
                         <Switch>
-                            <Route path='/' exact render={(props) => <HomePage {...props} auth={fakeAuth} redirectAuthToDashboard={true} />} />
-                            <Route path='/home' exact render={(props) => <HomePage {...props} auth={fakeAuth} redirectAuthToDashboard={false} />} />
+                            <Route
+                                path='/'
+                                exact
+                                render={(props) => (
+                                    <HomePage
+                                        {...props}
+                                        auth={fakeAuth}
+                                        redirectAuthToDashboard={true}
+                                    />
+                                )}
+                            />
+                            <Route
+                                path='/home'
+                                exact
+                                render={(props) => (
+                                    <HomePage
+                                        {...props}
+                                        auth={fakeAuth}
+                                        redirectAuthToDashboard={false}
+                                    />
+                                )}
+                            />
                             <Route path='/account/signup/success' component={SignUpSuccess} />
                             <Route path='/account/verify/error' component={VerifyError} />
                             <Route
@@ -82,7 +102,12 @@ function CodalabApp() {
                             />
                             <PrivateRoute path='/account/profile' component={UserInfo} />
                             <Route path='/worksheets/:uuid' component={Worksheet} />
-                            <Route path='/worksheets' component={WorksheetNameSearch} />
+                            <Route
+                                path='/worksheets'
+                                render={(props) => (
+                                    <WorksheetNameSearch {...props} auth={fakeAuth} />
+                                )}
+                            />
                             <Route path='/bundles/:uuid' component={BundleRoute} />
                             <Route component={PageNotFound} />
                         </Switch>

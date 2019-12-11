@@ -65,3 +65,18 @@ class FileUtilTest(unittest.TestCase):
 
     def test_gzip_bytestring(self):
         self.assertEqual(un_gzip_bytestring(gzip_bytestring(b'contents')), b'contents')
+
+    def test_tar_exclude_ignore(self):
+        dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'files/ignore_test')
+        temp_dir = tempfile.mkdtemp()
+        self.addCleanup(lambda: remove_path(temp_dir))
+        output_dir = os.path.join(temp_dir, 'output')
+
+        un_tar_directory(tar_gzip_directory(dir, ignore_file='.tarignore'), output_dir, 'gz')
+        output_dir_entries = os.listdir(output_dir)
+        self.assertIn('not_ignored.txt', output_dir_entries)
+        self.assertIn('dir', output_dir_entries)
+        self.assertNotIn('ignored.txt', output_dir_entries)
+        self.assertNotIn('ignored_dir', output_dir_entries)
+        self.assertTrue(os.path.exists(os.path.join(output_dir, 'dir', 'not_ignored2.txt')))
+        self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', 'ignored2.txt')))

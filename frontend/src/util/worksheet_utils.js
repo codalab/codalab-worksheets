@@ -144,7 +144,8 @@ export function renderPermissions(state) {
                         {')'}
                     </span>
                 );
-            })}&#93;
+            })}
+            &#93;
         </div>
     );
 }
@@ -161,15 +162,14 @@ export function keepPosInView(pos) {
     // How far is the pos from top of viewport?
     var distanceFromTopViewPort = pos - navbarHeight;
 
-    if (distanceFromTopViewPort < 0 || distanceFromTopViewPort > viewportHeight * 0.8) {
+    if (distanceFromTopViewPort < 100 || distanceFromTopViewPort > viewportHeight * 0.8) {
         // If pos is off the top of the screen or it is more than 80% down the screen,
-        // then scroll so that it is at 25% down the screen.
+        // then scroll so that it is at 50% down the screen.
         // Where is the top of the element on the page and does it fit in the
-        // the upper fourth of the page?
-        var scrollTo = worksheetContainerEl.scrollTop() + pos - navbarHeight - viewportHeight * 0.25;
-        worksheetContainerEl
-            .stop(true)
-            .animate({ scrollTop: scrollTo }, 50);
+        // the upper half of the page?
+        var scrollTo =
+            worksheetContainerEl.scrollTop() + distanceFromTopViewPort - viewportHeight * 0.5;
+        worksheetContainerEl.stop(true).animate({ scrollTop: scrollTo }, 50);
     }
 }
 
@@ -183,6 +183,8 @@ export function worksheetItemPropsChanged(props, nextProps) {
     return (
         props.active !== nextProps.active ||
         props.focused !== nextProps.focused ||
+        props.focusIndex !== nextProps.focusIndex ||
+        props.ws.info.items.length !== nextProps.ws.info.items.length ||
         (nextProps.focused && props.subFocusIndex !== nextProps.subFocusIndex) ||
         props.version !== nextProps.version
     );
@@ -338,4 +340,3 @@ export function getMinMaxKeys(item) {
     }
     return { minKey, maxKey };
 }
-

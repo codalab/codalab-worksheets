@@ -58,7 +58,8 @@ class TextEditorItem extends React.Component<{
             /* Pressed ctrl+enter or ctrl+s */
             this.saveText();
         }
-        if (pressed.includes('27')) { // Close editor upon pressing Escape
+        if (pressed.includes('27')) {
+            // Close editor upon pressing Escape
             this.props.closeEditor();
         }
     };
@@ -110,7 +111,7 @@ class TextEditorItem extends React.Component<{
             contentType: 'application/json',
             type: 'POST',
             success: (data, status, jqXHR) => {
-                const moveIndex = true;
+                const moveIndex = true ? mode === 'create' : false;
                 const param = { moveIndex };
                 reloadWorksheet(undefined, undefined, param);
                 closeEditor();

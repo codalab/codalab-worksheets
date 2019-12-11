@@ -10,7 +10,7 @@ import FolderIcon from '@material-ui/icons/Folder';
 import FileIcon from '@material-ui/icons/InsertDriveFile';
 import LinkIcon from '@material-ui/icons/Link';
 import { renderSize, shorten_uuid } from '../../util/worksheet_utils';
-import "./FileBrowser.scss";
+import './FileBrowser.scss';
 
 export class FileBrowser extends React.Component<
     {
@@ -412,9 +412,7 @@ class FileBrowserItemLite extends React.Component<{
                     <TableCell>
                         <div style={rowCenter}>
                             <FolderIcon style={iconStyle} />
-                            <a target='_blank'>
-                                {this.props.index}
-                            </a>
+                            <a target='_blank'>{this.props.index}</a>
                         </div>
                     </TableCell>
                     <TableCell align='right'>{size}</TableCell>
@@ -481,10 +479,29 @@ export class FileBrowserLite extends React.Component<
         }
     }
 
+    componentDidMount() {
+        if (this.props.isRunningBundle) {
+            this.timer = setInterval(() => {
+                if (!this.props.isRunningBundle) {
+                    // clear timer when the bundle is no longer in running phase
+                    clearInterval(this.timer);
+                    return;
+                }
+                this.updateFileBrowser('');
+            }, 4000);
+        }
+    }
+
     componentWillMount() {
         if (!this.props.startCollapsed) {
             this.setState({ isVisible: true });
             this.updateFileBrowser('');
+        }
+    }
+
+    componentWillUnmount() {
+        if (this.props.isRunningBundle) {
+            clearInterval(this.timer);
         }
     }
 

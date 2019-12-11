@@ -9,7 +9,7 @@ import time
 import traceback
 
 from codalab.objects.permission import check_bundles_have_read_permission
-from codalab.common import PermissionError
+from codalab.common import PermissionError, NotFoundError
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
@@ -22,6 +22,11 @@ WORKER_TIMEOUT_SECONDS = 60
 SECONDS_PER_DAY = 60 * 60 * 24
 # Fail unresponsive bundles in uploading, staged and running state after this many days.
 BUNDLE_TIMEOUT_DAYS = 60
+# Impose a minimum container request memory 4mb (4 * 1024 * 1024 bytes), same as docker's minimum allowed value
+# https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory
+# When using the REST api, it is allowed to set Memory to 0 but that means the container has unbounded
+# access to the host machine's memory, which we have decided to not allow
+MINIMUM_REQUEST_MEMORY_BYTES = 4 * 1024 * 1024
 
 
 class BundleManager(object):
@@ -51,6 +56,9 @@ class BundleManager(object):
 
         self._max_request_time = parse(formatting.parse_duration, 'max_request_time') or 0
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory') or 0
+        self._min_request_memory = (
+            parse(formatting.parse_size, 'min_request_memory') or MINIMUM_REQUEST_MEMORY_BYTES
+        )
         self._max_request_disk = parse(formatting.parse_size, 'max_request_disk') or 0
 
         self._default_cpu_image = config.get('default_cpu_image')
@@ -137,7 +145,7 @@ class BundleManager(object):
                 if killed_uuids:
                     failure_message += ' Parent bundles were killed: %s' % ', '.join(killed_uuids)
                 if failure_message:
-                    failure_message += ' (Please use the --allow-failed-dependencies flag to depend on results fo failed or killed bundles)'
+                    failure_message += ' (Please use the --allow-failed-dependencies flag to depend on results of failed or killed bundles)'
                     bundles_to_fail.append((bundle, failure_message))
                     continue
 
@@ -271,7 +279,11 @@ class BundleManager(object):
             elif self._worker_model.send_json_message(
                 worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
             ):
-                logger.info('Acknowledged finalization of run bundle %s', bundle.uuid)
+                logger.info(
+                    'Acknowledged finalization of run bundle {} on worker {}'.format(
+                        bundle.uuid, worker['worker_id']
+                    )
+                )
                 bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
                 self._model.transition_bundle_finished(bundle, bundle_location)
 
@@ -295,40 +307,65 @@ class BundleManager(object):
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
                 self._model.transition_bundle_worker_offline(bundle)
 
-    def _schedule_run_bundles_on_workers(self, workers, user_owned):
+    def _schedule_run_bundles_on_workers(self, workers, staged_bundles_to_run):
         """
         Schedules STAGED bundles to run on the given workers. If user_owned is
         True, then schedules on workers run by the owner of each bundle.
         Otherwise, uses CodaLab-owned workers, which have user ID root_user_id.
         """
-        for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
-            if user_owned:
-                workers_list = workers.user_owned_workers(bundle.owner_id)
-            else:
+        # Reorder the stage_bundles so that bundles which were requested to run on a personal worker
+        # will be scheduled to run first
+        staged_bundles_to_run.sort(
+            key=lambda b: (b[0].metadata.request_queue is not None, b[0].metadata.request_queue),
+            reverse=True,
+        )
+
+        # Get bundles in RUNNING state from the bundle table
+        running_bundles = self._model.batch_get_bundles(state=State.RUNNING)
+        # Build a dictionary which maps from uuid to bundle
+        uuid_to_running_bundles = {bundle.uuid: bundle for bundle in running_bundles}
+
+        # Dispatch bundles
+        for bundle, bundle_resources in staged_bundles_to_run:
+            # Get user_owned workers.
+            workers_list = workers.user_owned_workers(bundle.owner_id)
+
+            # If there is no user_owned worker, try to schedule the current bundle to run on a CodaLab's public worker.
+            if not workers_list:
+                # Check if there is enough parallel run quota left for this user
                 if not self._model.get_user_parallel_run_quota_left(bundle.owner_id):
                     logger.info(
                         "User %s has no parallel run quota left, skipping job for now",
                         bundle.owner_id,
                     )
-                    continue  # Don't start this bundle yet
+                    # Don't start this bundle yet, as there is no parallel_run_quota left for this user.
+                    continue
+                # Get all the CodaLab's public workers
                 workers_list = workers.user_owned_workers(self._model.root_user_id)
 
-            workers_list = self._deduct_worker_resources(workers_list)
-            bundle_resources = self._compute_bundle_resources(bundle)
+            workers_list = self._deduct_worker_resources(workers_list, uuid_to_running_bundles)
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
 
+            # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
                 if self._try_start_bundle(workers, worker, bundle):
                     break
 
-    def _deduct_worker_resources(self, workers_list):
+    def _deduct_worker_resources(self, workers_list, uuid_to_running_bundles):
         """
         From each worker, subtract resources used by running bundles. Modifies the list.
         """
+
         for worker in workers_list:
             for uuid in worker['run_uuids']:
-                bundle = self._model.get_bundle(uuid)
-                bundle_resources = self._compute_bundle_resources(bundle)
+                # Verify if the current bundle exists in both the worker table and the bundle table
+                if uuid not in uuid_to_running_bundles:
+                    logger.info(
+                        'Bundle {} exists on worker {} but no longer found in the bundle table. '
+                        'Skipping for resource deduction.'.format(uuid, worker['worker_id'])
+                    )
+                    continue
+                bundle_resources = self._compute_bundle_resources(uuid_to_running_bundles.get(uuid))
                 worker['cpus'] -= bundle_resources.cpus
                 worker['gpus'] -= bundle_resources.gpus
                 worker['memory_bytes'] -= bundle_resources.memory
@@ -340,12 +377,21 @@ class BundleManager(object):
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
         """
-
         # keep track of which workers have GPUs
         has_gpu = {}
         for worker in workers_list:
             worker_id = worker['worker_id']
             has_gpu[worker_id] = worker['gpus'] > 0
+
+        # Filter by tag.
+        request_queue = bundle.metadata.request_queue
+        if request_queue:
+            tagm = re.match('tag=(.+)', request_queue)
+            if tagm:
+                workers_list = [worker for worker in workers_list if worker['tag'] == tagm.group(1)]
+            else:
+                # We don't know how to handle this type of request queue argument
+                return []
 
         # Filter by CPUs.
         workers_list = [
@@ -362,17 +408,6 @@ class BundleManager(object):
         workers_list = [
             worker for worker in workers_list if worker['memory_bytes'] >= bundle_resources.memory
         ]
-
-        # Filter by tag.
-        request_queue = bundle.metadata.request_queue
-        if request_queue:
-            tagm = re.match('tag=(.+)', request_queue)
-            if tagm:
-                workers_list = [worker for worker in workers_list if worker['tag'] == tagm.group(1)]
-            else:
-                # We don't know how to handle this type of request queue
-                # argument.
-                return []
 
         # Sort workers list according to these keys in the following succession:
         #  - whether the worker is a CPU-only worker, if the bundle doesn't request GPUs
@@ -421,7 +456,9 @@ class BundleManager(object):
             if self._worker_model.send_json_message(
                 worker['socket_id'], self._construct_run_message(worker, bundle), 0.2
             ):
-                logger.info('Starting run bundle %s', bundle.uuid)
+                logger.info(
+                    'Starting run bundle {} on worker {}'.format(bundle.uuid, worker['worker_id'])
+                )
                 return True
             else:
                 self._model.transition_bundle_staged(bundle)
@@ -579,12 +616,11 @@ class BundleManager(object):
         self._cleanup_dead_workers(workers)
         self._restage_stuck_starting_bundles(workers)
         self._bring_offline_stuck_running_bundles(workers)
-        self._fail_on_too_many_resources()
         self._acknowledge_recently_finished_bundles(workers)
+        staged_bundles_to_run = self._get_staged_bundles_to_run()
 
         # Schedule, preferring user-owned workers.
-        self._schedule_run_bundles_on_workers(workers, user_owned=True)
-        self._schedule_run_bundles_on_workers(workers, user_owned=False)
+        self._schedule_run_bundles_on_workers(workers, staged_bundles_to_run)
 
     @staticmethod
     def _check_resource_failure(
@@ -593,12 +629,14 @@ class BundleManager(object):
         global_fail_string=None,
         user_max=None,
         global_max=None,
+        global_min=None,
         pretty_print=lambda x: str(x),
     ):
         """
         Returns a failure message in case a certain resource limit is not respected.
         If value > user_max, user_fail_string is formatted with value and user_max in that order
-        If value > global_max, global_fail_strintg is formatted with value and global_max in that order
+        If value > global_max, global_fail_string is formatted with value and global_max in that order
+        If value < global_min, global_fail_string is formatted with value and global_min in that order
         Pretty print is applied to both the value and max values before they're passed on to the functions
         The strings should expect string inputs for formatting and pretty_print should convert values to strings
         """
@@ -607,14 +645,20 @@ class BundleManager(object):
                 return user_fail_string % (pretty_print(value), pretty_print(user_max))
             elif global_max and value > global_max:
                 return global_fail_string % (pretty_print(value), pretty_print(global_max))
+            elif global_min and value < global_min:
+                return global_fail_string % (pretty_print(value), pretty_print(global_min))
         return None
 
-    def _fail_on_too_many_resources(self):
+    def _get_staged_bundles_to_run(self):
         """
         Fails bundles that request more resources than available for the given user.
         Note: allow more resources than available on any worker because new
         workers might get spun up in response to the presence of this run.
+
+        :return: a list of tuple which contains valid staged bundles and their bundle_resources.
         """
+        # Keep track of staged bundles that have valid resources requested
+        staged_bundles_to_run = []
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
             bundle_resources = self._compute_bundle_resources(bundle)
             failures = []
@@ -649,6 +693,16 @@ class BundleManager(object):
                     pretty_print=formatting.size_str,
                 )
             )
+            # Filter out all the bundles that have requested memory less than 4m which is the
+            # minimum amount of memory to start a Docker container
+            failures.append(
+                self._check_resource_failure(
+                    bundle_resources.memory,
+                    global_fail_string='Requested less memory (%s) than minimum limit (%s)',
+                    global_min=self._min_request_memory,
+                    pretty_print=formatting.size_str,
+                )
+            )
 
             failures = [f for f in failures if f is not None]
 
@@ -660,3 +714,7 @@ class BundleManager(object):
                     bundle,
                     {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
                 )
+            else:
+                staged_bundles_to_run.append((bundle, bundle_resources))
+
+        return staged_bundles_to_run

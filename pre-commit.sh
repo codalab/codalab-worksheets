@@ -16,5 +16,6 @@ venv/bin/python scripts/gen-cli-docs.py || exit 1  # Outputs to `docs`
 venv/bin/mkdocs build || exit 1  # Outputs to `site`
 # Note: run `venv/bin/mkdocs serve` for a live preview
 
-# Fix style (mutates code!)
+# Fix Python and JavaScript style (mutates code!)
 venv/bin/black codalab scripts *.py || exit
+prettier --config ./frontend/.prettierrc --check 'frontend/src/**/*.js' --write

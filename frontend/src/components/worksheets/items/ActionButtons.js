@@ -14,51 +14,67 @@ class ActionButtons extends React.Component<{
     onShowNewText: () => void,
 }> {
     render() {
-        const { classes, onShowNewUpload, onShowNewRun, onShowNewText, handleSelectedBundleCommand, showBundleOperationButtons, togglePopup} = this.props;
+        const {
+            classes,
+            onShowNewUpload,
+            onShowNewRun,
+            onShowNewText,
+            handleSelectedBundleCommand,
+            showBundleOperationButtons,
+            togglePopup,
+            info,
+        } = this.props;
+        let editPermission = info && info.edit_permission;
+
         return (
             <div
                 onMouseMove={(ev) => {
                     ev.stopPropagation();
                 }}
-            >   {(!showBundleOperationButtons)
-                ?   <Button
+            >
+                {' '}
+                {!showBundleOperationButtons ? (
+                    <Button
                         size='small'
                         color='inherit'
                         aria-label='Add Text'
                         onClick={onShowNewText}
+                        disabled={!editPermission}
                     >
                         <AddIcon className={classes.buttonIcon} />
                         Text
                     </Button>
-                :null}
-                {(!showBundleOperationButtons)
-                    ?   <Button
-                            size='small'
-                            color='inherit'
-                            aria-label='Add New Upload'
-                            onClick={onShowNewUpload}
-                        >
-                            <UploadIcon className={classes.buttonIcon} />
-                            Upload
-                        </Button>
-                :null}
-                {(!showBundleOperationButtons)
-                    ?   <Button
-                            size='small'
-                            color='inherit'
-                            aria-label='Add New Run'
-                            onClick={onShowNewRun}
-                        >
-                            <RunIcon className={classes.buttonIcon} />
-                            Run
-                        </Button>
-                    :null}
-                {showBundleOperationButtons
-                    ?   <BundleBulkActionMenu 
-                            handleSelectedBundleCommand={handleSelectedBundleCommand}
-                            togglePopup={togglePopup}/>
-                    :   null
-                }
+                ) : null}
+                {!showBundleOperationButtons ? (
+                    <Button
+                        size='small'
+                        color='inherit'
+                        aria-label='Add New Upload'
+                        onClick={onShowNewUpload}
+                        disabled={!editPermission}
+                    >
+                        <UploadIcon className={classes.buttonIcon} />
+                        Upload
+                    </Button>
+                ) : null}
+                {!showBundleOperationButtons ? (
+                    <Button
+                        size='small'
+                        color='inherit'
+                        aria-label='Add New Run'
+                        onClick={onShowNewRun}
+                        disabled={!editPermission}
+                    >
+                        <RunIcon className={classes.buttonIcon} />
+                        Run
+                    </Button>
+                ) : null}
+                {showBundleOperationButtons ? (
+                    <BundleBulkActionMenu
+                        handleSelectedBundleCommand={handleSelectedBundleCommand}
+                        togglePopup={togglePopup}
+                    />
+                ) : null}
             </div>
         );
     }
@@ -76,7 +92,7 @@ const styles = (theme) => ({
         '&:hover': {
             backgroundColor: theme.color.grey.lightest,
             border: `2px solid ${theme.color.grey.base}`,
-        }
+        },
     },
     buttonIcon: {
         marginRight: theme.spacing.large,
