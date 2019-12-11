@@ -103,27 +103,18 @@ class BundleRow extends Component {
     };
 
     render() {
-        const {
-            showDetail,
-            showNewUpload,
-            showNewRun,
-            bundleInfoUpdates,
-            openDelete,
-            runProp,
-        } = this.state;
+        const { showDetail, showNewRun, bundleInfoUpdates, runProp } = this.state;
         const {
             classes,
-            onMouseMove,
             bundleInfo,
-            prevBundleInfo,
             item,
-            worksheetUUID,
             reloadWorksheet,
-            isLast,
             checkStatus,
             showNewRerun,
             onHideNewRerun,
             editPermission,
+            focusIndex,
+            ws,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
@@ -133,7 +124,6 @@ class BundleRow extends Component {
         var worksheetUrl = this.props.worksheetUrl;
         var rowCells = this.props.headerItems.map((headerKey, col) => {
             var rowContent = rowItems[headerKey];
-
             // See if there's a link
             var url;
             var showDetailButton;
@@ -201,8 +191,6 @@ class BundleRow extends Component {
                 </TableCell>
             );
         });
-
-        // Keyboard opening/closing
         if (this.props.focused) {
             // Use e.preventDefault to avoid openning selected link
             Mousetrap.bind(
@@ -224,26 +212,43 @@ class BundleRow extends Component {
                 'keydown',
             );
             Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
-            Mousetrap.bind(
-                ['x'],
-                (e) => {
-                    if (!editPermission) {
-                        return;
-                    }
-                    if (!this.props.confirmBundleRowAction(e.code)) {
-                        this.props.handleCheckBundle(
-                            uuid,
-                            this.state.uniqueIdentifier,
-                            !this.props.checkStatus,
-                            this.props.refreshCheckBox,
-                        );
-                        this.props.childrenCheck(this.props.rowIndex, !this.props.checkStatus);
-                    }
-                },
-                'keydown',
-            );
-        }
+            Mousetrap.bind(['x'], (e) => {
+                if (!editPermission) {
+                    return;
+                }
+                if (!this.props.confirmBundleRowAction(e.code)) {
+                    this.props.handleCheckBundle(
+                        uuid,
+                        this.state.uniqueIdentifier,
+                        !this.props.checkStatus,
+                        this.props.refreshCheckBox,
+                    );
+                    this.props.childrenCheck(this.props.rowIndex, !this.props.checkStatus);
+                }
+            });
 
+            if (
+                this.props.focusIndex >= 0 &&
+                ws.info.items[this.props.focusIndex].mode === 'table_block'
+            ) {
+                const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
+                const isDownloadableRunBundle =
+                    bundleInfo.state !== 'preparing' &&
+                    bundleInfo.state !== 'starting' &&
+                    bundleInfo.state !== 'created' &&
+                    bundleInfo.state !== 'staged';
+                Mousetrap.bind(['a s'], (e) => {
+                    if (!isRunBundle || isDownloadableRunBundle) {
+                        const bundleDownloadUrl =
+                            '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
+                        window.open(bundleDownloadUrl, '_blank');
+                    }
+                });
+            }
+
+            // unbind shortcuts that are active for markdown_block and worksheet_block
+            Mousetrap.unbind('i');
+        }
         return (
             <TableBody classes={{ root: classes.tableBody }}>
                 {/** ---------------------------------------------------------------------------------------------------
@@ -287,7 +292,7 @@ class BundleRow extends Component {
                                 }}
                                 rerunItem={this.rerunItem}
                                 isFocused={this.props.focused}
-                                focusIndex={this.props.focusIndex}
+                                focusIndex={focusIndex}
                                 showNewRerun={showNewRerun}
                                 onHideNewRerun={onHideNewRerun}
                                 showDetail={showDetail}
@@ -305,7 +310,7 @@ class BundleRow extends Component {
                         <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
                             <div className={classes.insertBox}>
                                 <NewRun
-                                    ws={this.props.ws}
+                                    ws={ws}
                                     onSubmit={() => {
                                         this.setState({ showNewRun: 0 });
                                         onHideNewRerun();

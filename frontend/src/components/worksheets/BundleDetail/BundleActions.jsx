@@ -68,7 +68,7 @@ class BundleActions extends React.Component<
 				<Button
 					variant='contained'
 					color='primary'
-					onClick={ () => { window.location.href = bundleDownloadUrl; } }
+					onClick={ () => { window.open(bundleDownloadUrl, '_blank'); } }
 				>
 					Download
 				</Button>
@@ -83,7 +83,7 @@ class BundleActions extends React.Component<
 	        : <Button
 	        	variant='contained'
 	        	color='primary'
-	        	onClick={ () => { window.location.href = bundleDownloadUrl; } }
+	        	onClick={ () => { window.open(bundleDownloadUrl, '_blank'); } }
 	        >
 	        	Download
 	        </Button>
