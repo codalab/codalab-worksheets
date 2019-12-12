@@ -75,7 +75,6 @@ LocalRunState = namedtuple(
         'bundle_dir_wait_num_tries',  # Optional[int]
         'resources',  # RunResources
         'bundle_start_time',  # int
-        'container_start_time',  # Optional[int]
         'container_time_total',  # int
         'container_time_user',  # int
         'container_time_system',  # int
@@ -300,7 +299,6 @@ class LocalRunStateMachine(StateTransitioner):
 
         return run_state._replace(
             stage=LocalRunStage.RUNNING,
-            container_start_time=time.time(),
             run_status='Running job in Docker container',
             container_id=container.id,
             container=container,

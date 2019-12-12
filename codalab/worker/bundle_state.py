@@ -163,7 +163,6 @@ class WorkerRun(object):
         uuid,  # type: str
         run_status,  # type: str
         bundle_start_time,  # type: int
-        container_start_time,  # type: int
         container_time_total,  # type: int
         container_time_user,  # type: int
         container_time_system,  # type: int
@@ -176,7 +175,6 @@ class WorkerRun(object):
         self.uuid = uuid
         self.run_status = run_status
         self.bundle_start_time = bundle_start_time
-        self.container_start_time = container_start_time
         self.container_time_total = container_time_total
         self.container_time_user = container_time_user
         self.container_time_system = container_time_system
@@ -192,7 +190,6 @@ class WorkerRun(object):
             uuid=dct['uuid'],
             run_status=dct['run_status'],
             bundle_start_time=dct['bundle_start_time'],
-            container_start_time=dct['container_start_time'],
             container_time_total=dct['container_time_total'],
             container_time_user=dct['container_time_user'],
             container_time_system=dct['container_time_system'],
