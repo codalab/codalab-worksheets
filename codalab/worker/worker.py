@@ -149,7 +149,7 @@ class Worker(object):
 
     def _read(self, socket_id, uuid, path, read_args):
         def reply(err, message={}, data=None):
-            self.bundle_service_reply(socket_id, err, message, data)
+            self._bundle_service_reply(socket_id, err, message, data)
 
         try:
             self._run_manager.read(uuid, path, read_args, reply)
@@ -162,7 +162,7 @@ class Worker(object):
 
     def _netcat(self, socket_id, uuid, port, message):
         def reply(err, message={}, data=None):
-            self.bundle_service_reply(socket_id, err, message, data)
+            self._bundle_service_reply(socket_id, err, message, data)
 
         try:
             self._run_manager.netcat(uuid, port, message, reply)
@@ -183,7 +183,7 @@ class Worker(object):
         self._run_manager.mark_finalized(uuid)
 
     def upload_bundle_contents(self, bundle_uuid, bundle_path, update_status):
-        self._executebundle_service_command_with_retry(
+        self._execute_bundle_service_command_with_retry(
             lambda: self.bundle_service.update_bundle_contents(
                 self.id, bundle_uuid, bundle_path, update_status
             )
@@ -196,7 +196,7 @@ class Worker(object):
         }
         self.bundle_service.reply(self.id, socket_id, message)
 
-    def bundle_service_reply(self, socket_id, err, message, data):
+    def _bundle_service_reply(self, socket_id, err, message, data):
         if err:
             err = {'error_code': err[0], 'error_message': err[1]}
             self.bundle_service.reply(self.id, socket_id, err)
@@ -206,7 +206,7 @@ class Worker(object):
             self.bundle_service.reply(self.id, socket_id, message)
 
     @staticmethod
-    def _executebundle_service_command_with_retry(cmd):
+    def _execute_bundle_service_command_with_retry(cmd):
         retries_left = COMMAND_RETRY_SECONDS
         while True:
             try:
