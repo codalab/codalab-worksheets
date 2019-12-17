@@ -1,40 +1,25 @@
-import http.client
 import logging
 import os
-import psutil
+import socket
 from subprocess import PIPE, Popen
 import threading
 import time
-import socket
 
+import psutil
 import docker
-import codalab.worker.docker_utils as docker_utils
 
 from codalab.worker.state_committer import JsonStateCommitter
-from codalab.worker.run_manager import BaseRunManager
+from codalab.worker.reader import Reader
 from codalab.worker.bundle_state import BundleInfo, RunResources, WorkerRun
-from .worker_run_state import RunStateMachine, RunStage, RunState
+from codalab.worker.worker_run_state import RunStateMachine, RunStage, RunState
 
-from contextlib import closing
-import http.client
-import os
-import threading
-
-import codalab.worker.download_util as download_util
-from codalab.worker.download_util import get_target_path, PathException
-from codalab.worker.file_util import (
-    gzip_file,
-    gzip_bytestring,
-    read_file_section,
-    summarize_file,
-    tar_gzip_directory,
-)
+import codalab.worker.docker_utils as docker_utils
 
 
 logger = logging.getLogger(__name__)
 
 
-class RunManager():
+class RunManager:
     """
     RunManager executes the runs
     """
@@ -184,9 +169,7 @@ class RunManager():
         # Wait until all runs finished or KILL_TIMEOUT seconds pas
         for attempt in range(RunManager.KILL_TIMEOUT):
             with self._lock:
-                self._runs = {
-                    k: v for k, v in self._runs.items() if v.stage != RunStage.FINISHED
-                }
+                self._runs = {k: v for k, v in self._runs.items() if v.stage != RunStage.FINISHED}
                 if len(self._runs) > 0:
                     logger.debug(
                         "Waiting for {} more bundles. {} seconds until force quit.".format(
@@ -443,248 +426,3 @@ class RunManager():
         except Exception as e:
             logger.error("{}: {}".format(error_msg, str(e)))
             return None
-
-
-class BaseRunManager(object, metaclass=ABCMeta):
-    @abstractmethod
-    def start(self):
-        """
-        starts the RunManager, initializes from committed state, starts other
-        dependent managers and initializes them as well.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def stop(self):
-        """
-        Starts any necessary cleanup and propagates to its other managers
-        Blocks until cleanup is complete and it is safe to quit
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def save_state(self):
-        """
-        makes the RunManager and all other managers commit their state to
-        disk (including state of all runs)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def process_runs(self):
-        """
-        Main event-loop call where the run manager should advance the state
-        machine of all its runs
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def create_run(self, bundle, resources):
-        """
-        Creates and starts processing a new run with the given bundle and
-        resources
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def has_run(self, uuid):
-        """
-        Returns True if the run with the given UUID is managed
-        by this RunManager, False otherwise
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def mark_finalized(self, uuid):
-        """
-        Marks the run with the given uuid as finalized server-side so the
-        run manager can discard it completely
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def write(self, bundle_uuid, path, string):
-        """
-        Write string to path in bundle with uuid
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def netcat(self, bundle_uuid, port, message):
-        """
-        Write message to port of bundle with uuid and read the response.
-        Returns a stream with the response contents
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def kill(self, bundle_uuid):
-        """
-        Kill bundle with uuid
-        """
-        raise NotImplementedError
-
-    @abstractproperty
-    def all_runs(self):
-        """
-        Returns a list of all the runs managed by this RunManager
-        """
-        raise NotImplementedError
-
-    @abstractproperty
-    def all_dependencies(self):
-        """
-        Returns a list of all dependencies available in this RunManager
-        """
-        raise NotImplementedError
-
-    @abstractproperty
-    def cpus(self):
-        """
-        Total number of CPUs this RunManager has
-        """
-        raise NotImplementedError
-
-    @abstractproperty
-    def gpus(self):
-        """
-        Total number of GPUs this RunManager has
-        """
-        raise NotImplementedError
-
-    @abstractproperty
-    def memory_bytes(self):
-        """
-        Total installed memory of this RunManager
-        """
-        raise NotImplementedError
-
-
-class Reader():
-
-    def __init__(self):
-        self.read_handlers = {
-            'get_target_info': self.get_target_info,
-            'stream_directory': self.stream_directory,
-            'stream_file': self.stream_file,
-            'read_file_section': self.read_file_section,
-            'summarize_file': self.summarize_file,
-        }
-        self.read_threads = []  # Threads
-
-    def read(self, run_state, path, read_args, reply):
-        read_type = read_args['type']
-        handler = self.read_handlers.get(read_type, None)
-        if handler:
-            handler(run_state, path, read_args, reply)
-        else:
-            err = (http.client.BAD_REQUEST, "Unsupported read_type for read: %s" % read_type)
-            reply(err)
-
-    def stop(self):
-        for thread in self.read_threads:
-            thread.join()
-
-    def _threaded_read(self, run_state, path, stream_fn, reply_fn):
-        """
-        Given a run state, a path, a stream function and a reply function,
-            - Computes the real filesystem path to the path in the bundle
-            - In case of error, invokes reply_fn with an http error
-            - Otherwise starts a thread calling stream_fn on the computed final path
-        """
-        try:
-            final_path = get_target_path(run_state.bundle_path, run_state.bundle.uuid, path)
-        except PathException as e:
-            reply_fn((http.client.NOT_FOUND, str(e)), None, None)
-        read_thread = threading.Thread(target=stream_fn, args=[final_path])
-        read_thread.start()
-        self.read_threads.append(read_thread) def get_target_info(self, run_state, path, args, reply_fn):
-        """
-        Return target_info of path in bundle as a message on the reply_fn
-        """
-        target_info = None
-        dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies.values()])
-
-        # if path is a dependency raise an error
-        if path and os.path.normpath(path) in dep_paths:
-            err = (
-                http.client.NOT_FOUND,
-                '{} not found in bundle {}'.format(path, run_state.bundle.uuid),
-            )
-            reply_fn(err, None, None)
-            return
-        else:
-            try:
-                target_info = download_util.get_target_info(
-                    run_state.bundle_path, run_state.bundle.uuid, path, args['depth']
-                )
-            except PathException as e:
-                err = (http.client.NOT_FOUND, str(e))
-                reply_fn(err, None, None)
-                return
-
-        if not path and args['depth'] > 0:
-            target_info['contents'] = [
-                child for child in target_info['contents'] if child['name'] not in dep_paths
-            ]
-
-        reply_fn(None, {'target_info': target_info}, None)
-
-    def stream_directory(self, run_state, path, args, reply_fn):
-        """
-        Stream the directory at path using a separate thread
-        """
-        dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies.values()])
-        exclude_names = [] if path else dep_paths
-
-        def stream_thread(final_path):
-            with closing(tar_gzip_directory(final_path, exclude_names=exclude_names)) as fileobj:
-                reply_fn(None, {}, fileobj)
-
-        self._threaded_read(run_state, path, stream_thread, reply_fn)
-
-    def stream_file(self, run_state, path, args, reply_fn):
-        """
-        Stream the file  at path using a separate thread
-        """
-
-        def stream_file(final_path):
-            with closing(gzip_file(final_path)) as fileobj:
-                reply_fn(None, {}, fileobj)
-
-        self._threaded_read(run_state, path, stream_file, reply_fn)
-
-    def read_file_section(self, run_state, path, args, reply_fn):
-        """
-        Read the section of file at path of length args['length'] starting at
-        args['offset'] (bytes) using a separate thread
-        """
-
-        def read_file_section_thread(final_path):
-            bytestring = gzip_bytestring(
-                read_file_section(final_path, args['offset'], args['length'])
-            )
-            reply_fn(None, {}, bytestring)
-
-        self._threaded_read(run_state, path, read_file_section_thread, reply_fn)
-
-    def summarize_file(self, run_state, path, args, reply_fn):
-        """
-        Summarize the file including args['num_head_lines'] and
-        args['num_tail_lines'] but limited with args['max_line_length'] using
-        args['truncation_text'] on a separate thread
-        """
-
-        def summarize_file_thread(final_path):
-            bytestring = gzip_bytestring(
-                summarize_file(
-                    final_path,
-                    args['num_head_lines'],
-                    args['num_tail_lines'],
-                    args['max_line_length'],
-                    args['truncation_text'],
-                ).encode()
-            )
-            reply_fn(None, {}, bytestring)
-
-        self._threaded_read(run_state, path, summarize_file_thread, reply_fn)

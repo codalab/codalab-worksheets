@@ -906,6 +906,11 @@ If |recursive|, add all bundles downstream too.
 If |data-only|, only remove from the bundle store, not the bundle metadata.
 If |dry-run|, just return list of bundles that would be deleted, but do not actually delete.
 
+### `POST /worksheets/<worksheet_uuid:re:0x[0-9a-f]{32}>/add-items`
+
+Replace worksheet items with 'ids' with new 'items'.
+The new items will be inserted after the after_sort_key
+
 ### `GET /worksheets/sample/`
 
 Get worksheets to display on the front page.
