@@ -93,10 +93,12 @@ AWSBatchRunState = namedtuple(
         'is_finished',  # bool
         'bundle',  # BundleInfo
         'resources',  # RunResources
+        'docker_image',  # str
         'run_status',  # Optional[str]
         'bundle_dir_wait_num_tries',  # int
         'batch_job_definition',  # Optional[str]
         'batch_job_id',  # Optional[str]
+        'container_time_total',  # int
         'disk_utilization',  # int
         'failure_message',  # Optional[str]
         'kill_message',  # Optional[str]

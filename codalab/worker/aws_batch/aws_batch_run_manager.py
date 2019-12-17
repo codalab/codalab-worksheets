@@ -128,10 +128,12 @@ class AWSBatchRunManager(BaseRunManager):
             is_finished=False,
             bundle=bundle,
             resources=resources,
+            docker_image=resources.docker_image,  # While this is redundant, we replace this with more specific digest later
             run_status="Initializing",
             bundle_dir_wait_num_tries=self.BUNDLE_DIR_WAIT_NUM_TRIES,
             batch_job_definition=None,
             batch_job_id=None,
+            container_time_total=0,
             disk_utilization=0,
             failure_message=None,
             kill_message=None,
@@ -194,8 +196,8 @@ class AWSBatchRunManager(BaseRunManager):
                     run_status=run_state.run_status,
                     bundle_start_time=run_state.bundle_start_time,
                     container_time_total=run_state.container_time_total,
-                    container_time_user=run_state.container_time_user,
-                    container_time_system=run_state.container_time_system,
+                    container_time_user=0,  # Batch doesn't give us user/system time
+                    container_time_system=0,  # Batch doesn't give us user/system time
                     docker_image=run_state.docker_image,
                     state=AWSBatchRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
                     remote=self._worker.id,

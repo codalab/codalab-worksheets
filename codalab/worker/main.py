@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# For information about the design of the worker, see design.pdf in the same
-# directory as this file. For information about running a worker, see the
-# tutorial on the CodaLab documentation.
 
 import argparse
 import getpass
@@ -13,18 +10,21 @@ import stat
 import sys
 
 
-from codalab.lib.formatting import parse_size
 from .bundle_service_client import BundleServiceClient, BundleAuthException
-from . import docker_utils
 from .worker import Worker
 
-from .local_run.local_dependency_manager import LocalFileSystemDependencyManager
-from .local_run.docker_image_manager import DockerImageManager
 from .local_run.local_run_manager import LocalRunManager
-
 from .aws_batch.aws_batch_run_manager import AWSBatchRunManager
 
 logger = logging.getLogger(__name__)
+
+
+# This mapping is used to get command line arguments from individual Run Manager types
+# and instantiation of the correct run manager
+RUN_MANAGER_TYPES = {
+    AWSBatchRunManager.NAME: AWSBatchRunManager,
+    LocalRunManager.NAME: LocalRunManager,
+}
 
 
 def main():
@@ -74,19 +74,14 @@ def main():
         action='store_true',
         help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
+
+    # RunManager instantiation
     subparsers = parser.add_subparsers(
         title='Run Manager to run',
         description='Which run manager to run (Local, AWS Batch etc.)',
         dest='run_manager_name',
     )
-    # Each run manager class defines its NAME, which is the subcommand the users use
-    # to invoke that type of Run Manager. We map those to their respective classes
-    # so we can automatically initialize the correct run manager class from the argument
-    run_manager_types = {
-        AWSBatchRunManager.NAME: AWSBatchRunManager,
-        LocalRunManager.NAME: LocalRunManager,
-    }
-    for run_manager_name, run_manager_type in run_manager_types.items():
+    for run_manager_name, run_manager_type in RUN_MANAGER_TYPES.items():
         # This lets each run manager class to define its own arguments
         run_manager_subparser = subparsers.add_parser(
             run_manager_name, description=run_manager_type.DESCRIPTION
@@ -95,7 +90,7 @@ def main():
     args = parser.parse_args()
 
     # Get the username and password.
-    logger.info('Connecting to %s' % args.server)
+    logger.info('Connecting to %s', args.server)
     if args.password_file:
         if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
             print(
@@ -107,7 +102,7 @@ chmod 600 %s"""
                 % args.password_file,
                 file=sys.stderr,
             )
-            exit(1)
+            sys.exit(1)
         with open(args.password_file) as f:
             username = f.readline().strip()
             password = f.readline().strip()
@@ -129,14 +124,14 @@ chmod 600 %s"""
         bundle_service = BundleServiceClient(args.server, username, password)
     except BundleAuthException as ex:
         logger.error('Cannot log into the bundle service. Please check your worker credentials.\n')
-        logger.debug('Auth error: {}'.format(ex))
+        logger.debug('Auth error: %s', ex)
         return
 
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
 
-    run_manager_factory = lambda worker: run_manager_types[
+    run_manager_factory = lambda worker: RUN_MANAGER_TYPES[
         args.run_manager_name
     ].create_run_manager(args, worker)
 
