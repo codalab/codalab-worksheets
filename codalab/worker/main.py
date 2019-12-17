@@ -11,16 +11,18 @@ import signal
 import socket
 import stat
 import sys
-import multiprocessing
 
 
 from codalab.lib.formatting import parse_size
 from .bundle_service_client import BundleServiceClient, BundleAuthException
 from . import docker_utils
 from .worker import Worker
+
 from .local_run.local_dependency_manager import LocalFileSystemDependencyManager
 from .local_run.docker_image_manager import DockerImageManager
 from .local_run.local_run_manager import LocalRunManager
+
+from .aws_batch.aws_batch_run_manager import AWSBatchRunManager
 
 logger = logging.getLogger(__name__)
 
@@ -40,44 +42,6 @@ def main():
         help='Directory where to store temporary bundle data, '
         'including dependencies and the data from run '
         'bundles.',
-    )
-    parser.add_argument(
-        '--network-prefix', default='codalab_worker_network', help='Docker network name prefix'
-    )
-    parser.add_argument(
-        '--cpuset',
-        type=str,
-        metavar='CPUSET_STR',
-        default='ALL',
-        help='Comma-separated list of CPUs in which to allow bundle execution, '
-        '(e.g., \"0,2,3\", \"1\").',
-    )
-    parser.add_argument(
-        '--gpuset',
-        type=str,
-        metavar='GPUSET_STR',
-        default='ALL',
-        help='Comma-separated list of GPUs in which to allow bundle execution. '
-        'Each GPU can be specified by its index or UUID'
-        '(e.g., \"0,1\", \"1\", \"GPU-62casdfasd-asfas...\"',
-    )
-    parser.add_argument(
-        '--max-work-dir-size',
-        type=str,
-        metavar='SIZE',
-        default='10g',
-        help='Maximum size of the temporary bundle data ' '(e.g., 3, 3k, 3m, 3g, 3t).',
-    )
-    parser.add_argument(
-        '--max-image-cache-size',
-        type=str,
-        metavar='SIZE',
-        help='Limit the disk space used to cache Docker images '
-        'for worker jobs to the specified amount (e.g. '
-        '3, 3k, 3m, 3g, 3t). If the limit is exceeded, '
-        'the least recently used images are removed first. '
-        'Worker will not remove any images if this option '
-        'is not specified.',
     )
     parser.add_argument(
         '--password-file',
@@ -110,6 +74,24 @@ def main():
         action='store_true',
         help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
+    subparsers = parser.add_subparsers(
+        title='Run Manager to run',
+        description='Which run manager to run (Local, AWS Batch etc.)',
+        dest='run_manager_name',
+    )
+    # Each run manager class defines its NAME, which is the subcommand the users use
+    # to invoke that type of Run Manager. We map those to their respective classes
+    # so we can automatically initialize the correct run manager class from the argument
+    run_manager_types = {
+        AWSBatchRunManager.NAME: AWSBatchRunManager,
+        LocalRunManager.NAME: LocalRunManager,
+    }
+    for run_manager_name, run_manager_type in run_manager_types.items():
+        # This lets each run manager class to define its own arguments
+        run_manager_subparser = subparsers.add_parser(
+            run_manager_name, description=run_manager_type.DESCRIPTION
+        )
+        run_manager_type.add_arguments_to_subparser(run_manager_subparser)
     args = parser.parse_args()
 
     # Get the username and password.
@@ -150,52 +132,16 @@ chmod 600 %s"""
         logger.debug('Auth error: {}'.format(ex))
         return
 
-    max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
-    if args.max_image_cache_size is None:
-        max_images_bytes = None
-    else:
-        max_images_bytes = parse_size(args.max_image_cache_size)
-
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
 
-    def create_local_run_manager(worker):
-        """
-        To avoid circular dependencies the Worker initializes takes a RunManager factory
-        to initilize its run manager. This method creates a LocalFilesystem-Docker RunManager
-        which is the default execution architecture Codalab uses
-        """
-        docker_runtime = docker_utils.get_available_runtime()
-        cpuset = parse_cpuset_args(args.cpuset)
-        gpuset = parse_gpuset_args(args.gpuset)
-
-        dependency_manager = LocalFileSystemDependencyManager(
-            os.path.join(args.work_dir, 'dependencies-state.json'),
-            bundle_service,
-            args.work_dir,
-            max_work_dir_size_bytes,
-        )
-
-        image_manager = DockerImageManager(
-            os.path.join(args.work_dir, 'images-state.json'), max_images_bytes
-        )
-
-        return LocalRunManager(
-            worker,
-            image_manager,
-            dependency_manager,
-            os.path.join(args.work_dir, 'run-state.json'),
-            cpuset,
-            gpuset,
-            args.work_dir,
-            args.shared_file_system,
-            docker_runtime=docker_runtime,
-            docker_network_prefix=args.network_prefix,
-        )
+    run_manager_factory = lambda worker: run_manager_types[
+        args.run_manager_name
+    ].create_run_manager(args, worker)
 
     worker = Worker(
-        create_local_run_manager,
+        run_manager_factory,
         os.path.join(args.work_dir, 'worker-state.json'),
         args.id,
         args.tag,
@@ -216,55 +162,6 @@ chmod 600 %s"""
     # END
 
     worker.start()
-
-
-def parse_cpuset_args(arg):
-    """
-    Parse given arg into a set of integers representing cpus
-
-    Arguments:
-        arg: comma seperated string of ints, or "ALL" representing all available cpus
-    """
-    cpu_count = multiprocessing.cpu_count()
-    if arg == 'ALL':
-        cpuset = list(range(cpu_count))
-    else:
-        try:
-            cpuset = [int(s) for s in arg.split(',')]
-        except ValueError:
-            raise ValueError(
-                "CPUSET_STR invalid format: must be a string of comma-separated integers"
-            )
-
-        if not len(cpuset) == len(set(cpuset)):
-            raise ValueError("CPUSET_STR invalid: CPUs not distinct values")
-        if not all(cpu in range(cpu_count) for cpu in cpuset):
-            raise ValueError("CPUSET_STR invalid: CPUs out of range")
-    return set(cpuset)
-
-
-def parse_gpuset_args(arg):
-    """
-    Parse given arg into a set of strings representing gpu UUIDs
-
-    Arguments:
-        arg: comma seperated string of ints, or "ALL" representing all gpus
-    """
-    if arg == '':
-        return set()
-
-    try:
-        all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
-    except docker_utils.DockerException:
-        all_gpus = {}
-
-    if arg == 'ALL':
-        return set(all_gpus.values())
-    else:
-        gpuset = arg.split(',')
-        if not all(gpu in all_gpus or gpu in all_gpus.values() for gpu in gpuset):
-            raise ValueError("GPUSET_STR invalid: GPUs out of range")
-        return set(all_gpus.get(gpu, gpu) for gpu in gpuset)
 
 
 if __name__ == '__main__':

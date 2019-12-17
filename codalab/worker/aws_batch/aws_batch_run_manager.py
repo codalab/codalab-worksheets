@@ -20,9 +20,40 @@ from .aws_batch_run_state import AWSBatchRunStateMachine, AWSBatchRunStage, AWSB
 logger = logging.getLogger(__name__)
 
 
-class AwsBatchRunManager(BaseRunManager):
+class AWSBatchRunManager(BaseRunManager):
 
     BUNDLE_DIR_WAIT_NUM_TRIES = 120
+
+    NAME = "aws-batch"
+    DESCRIPTION = (
+        "AWSBatchRunManager submits runs to the configured AWS Batch queue. "
+        "It expects the Batch Compute Environments to use AMIs that have the bundle store "
+        "mounted at the same absolute path as it is on the server machine."
+    )
+
+    def add_arguments_to_subparser(self, subparser):
+        subparser.add_argument(
+            '--batch-queue', type=str, required=True, help='Name of AWS Batch queue to use'
+        )
+        subparser.add_argument(
+            '--aws-region', type=str, default='us-east-1', help='AWS region to use'
+        )
+        return subparser
+
+    @classmethod
+    def create_aws_batch_run_manager(cls, args, worker):
+        """
+        To avoid circular dependencies the Worker initializes takes a RunManager factory
+        to initilize its run manager. This method creates an AWS Batch RunManager
+        which allows submitting jobs to AWS Batch queues
+        """
+        return cls(
+            worker,
+            args.work_dir,
+            os.path.join(args.work_dir, 'run-state.json'),
+            args.batch_queue,
+            args.aws_region,
+        )
 
     def __init__(
         self,
@@ -30,13 +61,14 @@ class AwsBatchRunManager(BaseRunManager):
         work_dir,  # type: str
         commit_file,  # type: str
         batch_queue,  # type: str
-        queue_name,  # type: str
+        aws_region,  # type: str
     ):
         self._worker = worker
         self._state_committer = JsonStateCommitter(commit_file)
         self._stop = False
         self._work_dir = work_dir
         self._batch_queue = batch_queue
+        self._aws_region = aws_region
         self._batch_client = boto3.client('batch')
         self._runs = {}  # type: Dict[str, AWSBatchRunState]
         self._lock = threading.RLock()

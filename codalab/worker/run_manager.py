@@ -3,6 +3,17 @@ import http.client
 
 
 class BaseRunManager(object, metaclass=ABCMeta):
+
+    NAME = "base"
+    DESCRIPTION = "Description to be used in worker CLI arguments, please overwrite."
+
+    def add_arguments_to_subparser(self, subparser):
+        """
+        Adds any command line arguments this worker manager needs to the
+        subparser given by the worker.
+        """
+        return subparser
+
     @abstractmethod
     def start(self):
         """
@@ -113,6 +124,13 @@ class BaseRunManager(object, metaclass=ABCMeta):
     def memory_bytes(self):
         """
         Total installed memory of this RunManager
+        """
+        raise NotImplementedError
+
+    @property
+    def free_disk_bytes(self):
+        """
+        Available disk space by bytes of this RunManager.
         """
         raise NotImplementedError
 
