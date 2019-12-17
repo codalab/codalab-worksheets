@@ -144,7 +144,6 @@ def start_bundle_container(
     container_name = 'codalab_run_%s' % uuid
 
     if container_exists(container_name):
-        client.containers.remove(container_name)
         return client.get(container_name)
 
     container = client.containers.run(
