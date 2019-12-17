@@ -7,7 +7,16 @@ class BaseRunManager(object, metaclass=ABCMeta):
     NAME = "base"
     DESCRIPTION = "Description to be used in worker CLI arguments, please overwrite."
 
-    def add_arguments_to_subparser(self, subparser):
+    @classmethod
+    def create_run_manager(cls, args, worker):
+        """
+        Given the worker and command line arguments, creates an appropriate
+        instance.
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def add_arguments_to_subparser(subparser):
         """
         Adds any command line arguments this worker manager needs to the
         subparser given by the worker.

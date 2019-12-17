@@ -1,4 +1,4 @@
-import httplib
+import http
 import logging
 import os
 import psutil
@@ -30,7 +30,8 @@ class AWSBatchRunManager(BaseRunManager):
         "mounted at the same absolute path as it is on the server machine."
     )
 
-    def add_arguments_to_subparser(self, subparser):
+    @staticmethod
+    def add_arguments_to_subparser(subparser):
         subparser.add_argument(
             '--batch-queue', type=str, required=True, help='Name of AWS Batch queue to use'
         )
@@ -164,7 +165,7 @@ class AWSBatchRunManager(BaseRunManager):
         Write message to port of bundle with uuid and read the response.
         Returns a stream with the response contents
         """
-        err = (httplib.BAD_REQUEST, "Netcat not supported for AWS Batch workers")
+        err = (http.client.BAD_REQUEST, "Netcat not supported for AWS Batch workers")
         reply(err)
 
     def kill(self, uuid):
