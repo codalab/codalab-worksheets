@@ -44,7 +44,7 @@ Docker Container | Docker Image Used            | Purpose
  bundle-manager  | `codalab/server:<version>`   | Schedules bundles to workers in the background
  nginx           | `nginx:1.12.0`               | Routes requests to frontend or rest-server
  mysql           | `mysql/mysql:5.53`           | Database for users/bundles/worksheets
- worker          | `codalab/worker:<version>`   | Runs bundle in a Docker container
+ local-worker    | `codalab/worker:<version>`   | Runs bundles in a Docker container locally
 
 If you run `docker ps`, you should see a list of Docker containers like this
 (by default, we have `--instance-name codalab`):
@@ -53,7 +53,7 @@ If you run `docker ps`, you should see a list of Docker containers like this
 * `codalab_bundle-manager_1`
 * `codalab_frontend_1`
 * `codalab_mysql_1`
-* `codalab_worker_1`
+* `codalab_local-worker_1`
 * `codalab_nginx_1`
 
 There are two use cases going forward: (i) development (you're trying to modify
@@ -88,7 +88,7 @@ like to modify the rest server, bundle manager, or worker, then you can edit
 the code and then start only that single Docker container.  For example, for
 the worker, the command would be:
 
-    ./codalab_service.py start -bd -s worker
+    ./codalab_service.py start -bd -s local-worker
 
 To stop all the Docker containers associated with the CodaLab service (but preserve all the data):
 
@@ -149,7 +149,7 @@ auto-generates documentation.
 
 You can check the logs using standard Docker commands.  For example, if you want to know what the worker is doing:
 
-    docker logs codalab_worker_1 --tail 100 -f
+    docker logs codalab_local-worker_1 --tail 100 -f
 
 Or to see the logs of all the Docker containers:
 
@@ -157,7 +157,7 @@ Or to see the logs of all the Docker containers:
 
 You can execute commands in the Docker images to see what's going on, for example:
 
-    docker exec codalab_worker_1 ls /home/codalab/bundles
+    docker exec codalab_local-worker_1 ls /home/codalab/bundles
 
 ## Database migrations
 
