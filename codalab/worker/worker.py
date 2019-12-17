@@ -36,10 +36,10 @@ class Worker(object):
         shared_file_system,  # type: bool
     ):
         self.id = worker_id
+        self.bundle_service = bundle_service
         self._state_committer = JsonStateCommitter(commit_file)
         self._tag = tag
         self._work_dir = work_dir
-        self._bundle_service = bundle_service
         self._exit_when_idle = exit_when_idle
         self._idle_seconds = idle_seconds
         self._stop = False
@@ -106,7 +106,7 @@ class Worker(object):
             'runs': [run.to_dict() for run in self._run_manager.all_runs],
             'shared_file_system': self._shared_file_system,
         }
-        response = self._bundle_service.checkin(self.id, request)
+        response = self.bundle_service.checkin(self.id, request)
         if response:
             action_type = response['type']
             logger.debug('Received %s message: %s', action_type, response)
@@ -137,7 +137,7 @@ class Worker(object):
         now = time.time()
         start_message = {'hostname': socket.gethostname(), 'start_time': int(now)}
 
-        if self._bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
+        if self.bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
             bundle = BundleInfo.from_dict(bundle)
             resources = RunResources.from_dict(resources)
             self._run_manager.create_run(bundle, resources)
@@ -149,7 +149,7 @@ class Worker(object):
 
     def _read(self, socket_id, uuid, path, read_args):
         def reply(err, message={}, data=None):
-            self._bundle_service_reply(socket_id, err, message, data)
+            self.bundle_service_reply(socket_id, err, message, data)
 
         try:
             self._run_manager.read(uuid, path, read_args, reply)
@@ -162,7 +162,7 @@ class Worker(object):
 
     def _netcat(self, socket_id, uuid, port, message):
         def reply(err, message={}, data=None):
-            self._bundle_service_reply(socket_id, err, message, data)
+            self.bundle_service_reply(socket_id, err, message, data)
 
         try:
             self._run_manager.netcat(uuid, port, message, reply)
@@ -183,8 +183,8 @@ class Worker(object):
         self._run_manager.mark_finalized(uuid)
 
     def upload_bundle_contents(self, bundle_uuid, bundle_path, update_status):
-        self._execute_bundle_service_command_with_retry(
-            lambda: self._bundle_service.update_bundle_contents(
+        self._executebundle_service_command_with_retry(
+            lambda: self.bundle_service.update_bundle_contents(
                 self.id, bundle_uuid, bundle_path, update_status
             )
         )
@@ -194,19 +194,19 @@ class Worker(object):
             'error_code': http.client.INTERNAL_SERVER_ERROR,
             'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
         }
-        self._bundle_service.reply(self.id, socket_id, message)
+        self.bundle_service.reply(self.id, socket_id, message)
 
-    def _bundle_service_reply(self, socket_id, err, message, data):
+    def bundle_service_reply(self, socket_id, err, message, data):
         if err:
             err = {'error_code': err[0], 'error_message': err[1]}
-            self._bundle_service.reply(self.id, socket_id, err)
+            self.bundle_service.reply(self.id, socket_id, err)
         elif data:
-            self._bundle_service.reply_data(self.id, socket_id, message, data)
+            self.bundle_service.reply_data(self.id, socket_id, message, data)
         else:
-            self._bundle_service.reply(self.id, socket_id, message)
+            self.bundle_service.reply(self.id, socket_id, message)
 
     @staticmethod
-    def _execute_bundle_service_command_with_retry(cmd):
+    def _executebundle_service_command_with_retry(cmd):
         retries_left = COMMAND_RETRY_SECONDS
         while True:
             try:
