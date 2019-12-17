@@ -282,7 +282,12 @@ class AWSBatchRunStateMachine(StateTransitioner):
                 run_state = run_state._replace(failure_message=job_status_reason, is_finished=True)
             elif job_status == AWSBatchStatus.SUCCEEDED:
                 run_state = run_state._replace(is_finished=True)
-            run_state = run_state._replace(run_status=run_status)
+            batch_reported_docker_image = batch_job.get('container', {}).get(
+                'image', run_state.docker_image
+            )
+            run_state = run_state._replace(
+                run_status=run_status, docker_image=batch_reported_docker_image
+            )
             return run_state
 
         def check_resource_utilization(run_state, batch_job):
