@@ -171,9 +171,8 @@ class AWSBatchRunManager(BaseRunManager):
         """
         Kill bundle with uuid
         """
-        run_state = self._runs[uuid]
-        run_state = run_state._replace(kill_message='Kill requested', is_killed=True)
-        self._runs[run_state.bundle.uuid] = run_state
+        run_state = self._runs[uuid]._replace(kill_message='Kill requested', is_killed=True)
+        self._runs[uuid] = run_state
 
     @property
     def all_runs(self):
