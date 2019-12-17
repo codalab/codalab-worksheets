@@ -15,12 +15,13 @@ import multiprocessing
 
 
 from codalab.lib.formatting import parse_size
-from .bundle_service_client import BundleServiceClient, BundleAuthException
-from . import docker_utils
-from worker import Worker
-from dependency_manager import DependencyManager
-from docker_image_manager import DockerImageManager
-from run_manager import RunManager
+
+from codalab.worker.bundle_service_client import BundleServiceClient, BundleAuthException
+from codalab.worker import docker_utils
+from codalab.worker.worker import Worker
+from codalab.worker.dependency_manager import DependencyManager
+from codalab.worker.docker_image_manager import DockerImageManager
+from codalab.worker.run_manager import RunManager
 
 logger = logging.getLogger(__name__)
 

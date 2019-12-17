@@ -5,10 +5,10 @@ import socket
 import http.client
 import sys
 
-from .bundle_service_client import BundleServiceException
-from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
-from .state_committer import JsonStateCommitter
-from .bundle_state import BundleInfo, RunResources
+from codalab.worker.bundle_service_client import BundleServiceException
+from codalab.worker.download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
+from codalab.worker.state_committer import JsonStateCommitter
+from codalab.worker.bundle_state import BundleInfo, RunResources
 
 COMMAND_RETRY_SECONDS = 60 * 12
 
@@ -22,7 +22,7 @@ but they expect the platform specific RunManagers they use to implement a common
 """
 
 
-class Worker(object):
+class Worker:
     def __init__(
         self,
         create_run_manager,  # type: Callable[[Worker], BaseRunManager]
