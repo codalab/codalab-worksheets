@@ -35,9 +35,6 @@ class AWSBatchRunManager(BaseRunManager):
         subparser.add_argument(
             '--batch-queue', type=str, required=True, help='Name of AWS Batch queue to use'
         )
-        subparser.add_argument(
-            '--aws-region', type=str, default='us-east-1', help='AWS region to use'
-        )
         return subparser
 
     @classmethod
@@ -48,11 +45,7 @@ class AWSBatchRunManager(BaseRunManager):
         which allows submitting jobs to AWS Batch queues
         """
         return cls(
-            worker,
-            args.work_dir,
-            os.path.join(args.work_dir, 'run-state.json'),
-            args.batch_queue,
-            args.aws_region,
+            worker, args.work_dir, os.path.join(args.work_dir, 'run-state.json'), args.batch_queue
         )
 
     def __init__(
@@ -61,14 +54,12 @@ class AWSBatchRunManager(BaseRunManager):
         work_dir,  # type: str
         commit_file,  # type: str
         batch_queue,  # type: str
-        aws_region,  # type: str
     ):
         self._worker = worker
         self._state_committer = JsonStateCommitter(commit_file)
         self._stop = False
         self._work_dir = work_dir
         self._batch_queue = batch_queue
-        self._aws_region = aws_region
         self._batch_client = boto3.client('batch')
         self._runs = {}  # type: Dict[str, AWSBatchRunState]
         self._run_state_manager = AWSBatchRunStateMachine(
