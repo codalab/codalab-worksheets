@@ -101,6 +101,12 @@ def get_container_ip(network_name, container):
         return None
 
 
+def get_bundle_docker_command(command):
+    if not command.endswith(';'):
+        command = '{};'.format(command)
+    return ['bash', '-c', '( %s ) >stdout 2>stderr' % command]
+
+
 @wrap_exception('Unable to start Docker container')
 def start_bundle_container(
     bundle_path,
@@ -116,9 +122,7 @@ def start_bundle_container(
     tty=False,
     runtime=DEFAULT_RUNTIME,
 ):
-    if not command.endswith(';'):
-        command = '{};'.format(command)
-    docker_command = ['bash', '-c', '( %s ) >stdout 2>stderr' % command]
+    docker_command = get_bundle_docker_command(command)
     docker_bundle_path = '/' + uuid
     volumes = get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependencies)
     environment = {'HOME': docker_bundle_path, 'CODALAB': 'true'}
