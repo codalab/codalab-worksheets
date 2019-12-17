@@ -21,12 +21,43 @@ from codalab.worker import docker_utils
 from codalab.worker.worker import Worker
 from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
-from codalab.worker.run_manager import RunManager
 
 logger = logging.getLogger(__name__)
 
 
-def main():
+def connect_to_codalab_server(server, password_file):
+    if password_file:
+        if os.stat(password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+            print(
+                """
+Permissions on password file are too lax.
+Only the user should be allowed to access the file.
+On Linux, run:
+chmod 600 %s"""
+                % password_file,
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        with open(password_file) as f:
+            username = f.readline().strip()
+            password = f.readline().strip()
+    else:
+        username = os.environ.get('CODALAB_USERNAME')
+        if username is None:
+            username = input('Username: ')
+        password = os.environ.get('CODALAB_PASSWORD')
+        if password is None:
+            password = getpass.getpass()
+    try:
+        bundle_service = BundleServiceClient(server, username, password)
+        return bundle_service
+    except BundleAuthException as ex:
+        logger.error('Cannot log into the bundle service. Please check your worker credentials.\n')
+        logger.debug('Auth error: %s', ex)
+        sys.exit(1)
+
+
+def parse_args():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
     parser.add_argument('--tag', help='Tag that allows for scheduling runs on specific workers.')
     parser.add_argument(
@@ -112,91 +143,38 @@ def main():
         help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
     args = parser.parse_args()
+    return args
 
-    # Get the username and password.
-    logger.info('Connecting to %s' % args.server)
-    if args.password_file:
-        if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-            print(
-                """
-Permissions on password file are too lax.
-Only the user should be allowed to access the file.
-On Linux, run:
-chmod 600 %s"""
-                % args.password_file,
-                file=sys.stderr,
-            )
-            exit(1)
-        with open(args.password_file) as f:
-            username = f.readline().strip()
-            password = f.readline().strip()
-    else:
-        username = os.environ.get('CODALAB_USERNAME')
-        if username is None:
-            username = input('Username: ')
-        password = os.environ.get('CODALAB_PASSWORD')
-        if password is None:
-            password = getpass.getpass()
 
-    # Set up logging.
-    if args.verbose:
-        logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
-    else:
-        logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
-
-    try:
-        bundle_service = BundleServiceClient(args.server, username, password)
-    except BundleAuthException as ex:
-        logger.error('Cannot log into the bundle service. Please check your worker credentials.\n')
-        logger.debug('Auth error: {}'.format(ex))
-        return
-
+def main():
+    args = parse_args()
+    logging.basicConfig(
+        format='%(asctime)s %(message)s', level=(logging.DEBUG if args.verbose else logging.INFO)
+    )
+    bundle_service = connect_to_codalab_server(args.server, args.password_file)
     max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
-    if args.max_image_cache_size is None:
-        max_images_bytes = None
-    else:
-        max_images_bytes = parse_size(args.max_image_cache_size)
-
+    max_image_cache_size_bytes = (
+        parse_size(args.max_image_cache_size) if args.max_image_cache_size else None
+    )
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
+    docker_runtime = docker_utils.get_available_runtime()
+    cpuset = parse_cpuset_args(args.cpuset)
+    gpuset = parse_gpuset_args(args.gpuset)
 
-    def create_run_manager(worker):
-        """
-        To avoid circular dependencies the Worker initializes takes a RunManager factory
-        to initilize its run manager. This method creates a RunManager
-        which is the default execution architecture Codalab uses
-        """
-        docker_runtime = docker_utils.get_available_runtime()
-        cpuset = parse_cpuset_args(args.cpuset)
-        gpuset = parse_gpuset_args(args.gpuset)
+    dependency_manager = DependencyManager(
+        os.path.join(args.work_dir, 'dependencies-state.json'),
+        bundle_service,
+        args.work_dir,
+        max_work_dir_size_bytes,
+    )
 
-        dependency_manager = DependencyManager(
-            os.path.join(args.work_dir, 'dependencies-state.json'),
-            bundle_service,
-            args.work_dir,
-            max_work_dir_size_bytes,
-        )
-
-        image_manager = DockerImageManager(
-            os.path.join(args.work_dir, 'images-state.json'), max_images_bytes
-        )
-
-        return RunManager(
-            worker,
-            image_manager,
-            dependency_manager,
-            os.path.join(args.work_dir, 'run-state.json'),
-            cpuset,
-            gpuset,
-            args.work_dir,
-            args.shared_file_system,
-            docker_runtime=docker_runtime,
-            docker_network_prefix=args.network_prefix,
-        )
+    image_manager = DockerImageManager(
+        os.path.join(args.work_dir, 'images-state.json'), max_image_cache_size_bytes
+    )
 
     worker = Worker(
-        create_run_manager,
         os.path.join(args.work_dir, 'worker-state.json'),
         args.id,
         args.tag,
@@ -205,6 +183,12 @@ chmod 600 %s"""
         args.idle_seconds,
         bundle_service,
         args.shared_file_system,
+        image_manager,
+        dependency_manager,
+        cpuset,
+        gpuset,
+        docker_runtime,
+        args.network_prefix,
     )
 
     # Register a signal handler to ensure safe shutdown.
