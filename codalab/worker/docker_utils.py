@@ -142,6 +142,11 @@ def start_bundle_container(
 
     # Name the container with the UUID for readability
     container_name = 'codalab_run_%s' % uuid
+
+    if container_exists(container_name):
+        client.containers.remove(container_name)
+        return client.get(container_name)
+
     container = client.containers.run(
         image=docker_image,
         command=docker_command,
