@@ -29,12 +29,10 @@ def connect_to_codalab_server(server, password_file):
     if password_file:
         if os.stat(password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
             print(
-                """
-Permissions on password file are too lax.
-Only the user should be allowed to access the file.
-On Linux, run:
-chmod 600 %s"""
-                % password_file,
+                "Permissions on password file are too lax.\n"
+                "Only the user should be allowed to access the file.\n"
+                "On Linux, run:\n"
+                "chmod 600 %s" % password_file,
                 file=sys.stderr,
             )
             sys.exit(1)
