@@ -3,7 +3,6 @@ import logging
 import os
 import psutil
 from subprocess import PIPE, Popen
-import threading
 import time
 import socket
 
@@ -71,7 +70,6 @@ class AWSBatchRunManager(BaseRunManager):
         self._aws_region = aws_region
         self._batch_client = boto3.client('batch')
         self._runs = {}  # type: Dict[str, AWSBatchRunState]
-        self._lock = threading.RLock()
         self._run_state_manager = AWSBatchRunStateMachine(
             batch_client=self._batch_client, batch_queue=self._batch_queue
         )
@@ -105,13 +103,10 @@ class AWSBatchRunManager(BaseRunManager):
         Main event-loop call where the run manager should advance the state
         machine of all its runs
         """
-        with self._lock:
-            for bundle_uuid in self._runs.keys():
-                run_state = self._runs[bundle_uuid]
-                self._runs[bundle_uuid] = self._run_state_manager.transition(run_state)
-            self._runs = {
-                k: v for k, v in self._runs.items() if v.stage != AWSBatchRunStage.FINISHED
-            }
+        for bundle_uuid in self._runs.keys():
+            run_state = self._runs[bundle_uuid]
+            self._runs[bundle_uuid] = self._run_state_manager.transition(run_state)
+        self._runs = {k: v for k, v in self._runs.items() if v.stage != AWSBatchRunStage.FINISHED}
 
     def create_run(self, bundle, resources):
         """
@@ -121,7 +116,7 @@ class AWSBatchRunManager(BaseRunManager):
         if self._stop:
             # Run Manager stopped, refuse more runs
             return
-        run_state = AWSBatchRunState(
+        self._runs[bundle.uuid] = AWSBatchRunState(
             stage=AWSBatchRunStage.INITIALIZING,
             is_killed=False,
             is_finalized=False,
@@ -138,8 +133,6 @@ class AWSBatchRunManager(BaseRunManager):
             failure_message=None,
             kill_message=None,
         )
-        with self._lock:
-            self._runs[bundle.uuid] = run_state
 
     def has_run(self, uuid):
         """
@@ -154,8 +147,7 @@ class AWSBatchRunManager(BaseRunManager):
         run manager can discard it completely
         """
         if uuid in self._runs:
-            with self._lock:
-                self._runs[uuid] = self._runs[uuid]._replace(finalized=True)
+            self._runs[uuid] = self._runs[uuid]._replace(finalized=True)
 
     def write(self, uuid, path, string):
         """
@@ -180,32 +172,30 @@ class AWSBatchRunManager(BaseRunManager):
         Kill bundle with uuid
         """
         run_state = self._runs[uuid]
-        with self._lock:
-            run_state = run_state._replace(kill_message='Kill requested', is_killed=True)
-            self._runs[run_state.bundle.uuid] = run_state
+        run_state = run_state._replace(kill_message='Kill requested', is_killed=True)
+        self._runs[run_state.bundle.uuid] = run_state
 
     @property
     def all_runs(self):
         """
         Returns a list of all the runs managed by this RunManager
         """
-        with self._lock:
-            return [
-                WorkerRun(
-                    uuid=run_state.bundle.uuid,
-                    run_status=run_state.run_status,
-                    bundle_start_time=run_state.bundle_start_time,
-                    container_time_total=run_state.container_time_total,
-                    container_time_user=0,  # Batch doesn't give us user/system time
-                    container_time_system=0,  # Batch doesn't give us user/system time
-                    docker_image=run_state.docker_image,
-                    state=AWSBatchRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
-                    remote=self._worker.id,
-                    exitcode=run_state.exitcode,
-                    failure_message=run_state.failure_message,
-                )
-                for run_state in self._runs.values()
-            ]
+        return [
+            WorkerRun(
+                uuid=run_state.bundle.uuid,
+                run_status=run_state.run_status,
+                bundle_start_time=run_state.bundle_start_time,
+                container_time_total=run_state.container_time_total,
+                container_time_user=0,  # Batch doesn't give us user/system time
+                container_time_system=0,  # Batch doesn't give us user/system time
+                docker_image=run_state.docker_image,
+                state=AWSBatchRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
+                remote=self._worker.id,
+                exitcode=run_state.exitcode,
+                failure_message=run_state.failure_message,
+            )
+            for run_state in self._runs.values()
+        ]
 
     @property
     def all_dependencies(self):
