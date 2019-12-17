@@ -66,7 +66,6 @@ class AwsBatchRunManager(BaseRunManager):
         self._state_committer.commit(self._runs)
 
     def load_state(self):
-        # TODO: Need to figure out whether to check initiation of existing runs here
         self._runs = self._state_committer.load()
 
     def process_runs(self):
