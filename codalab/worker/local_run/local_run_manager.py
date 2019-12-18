@@ -38,7 +38,7 @@ class LocalRunManager(BaseRunManager):
         self,
         worker,  # type: Worker
         image_manager,  # type: DockerImageManager
-        dependency_manager,  # type: LocalFileSystemDependencyManager
+        dependency_manager,  # type: DependencyManager
         commit_file,  # type: str
         cpuset,  # type: Set[str]
         gpuset,  # type: Set[str]

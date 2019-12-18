@@ -18,7 +18,7 @@ from codalab.lib.formatting import parse_size
 from .bundle_service_client import BundleServiceClient, BundleAuthException
 from . import docker_utils
 from .worker import Worker
-from .local_run.local_dependency_manager import LocalFileSystemDependencyManager
+from .local_run.local_dependency_manager import DependencyManager
 from .local_run.docker_image_manager import DockerImageManager
 from .local_run.local_run_manager import LocalRunManager
 
@@ -170,7 +170,7 @@ chmod 600 %s"""
         cpuset = parse_cpuset_args(args.cpuset)
         gpuset = parse_gpuset_args(args.gpuset)
 
-        dependency_manager = LocalFileSystemDependencyManager(
+        dependency_manager = DependencyManager(
             os.path.join(args.work_dir, 'dependencies-state.json'),
             bundle_service,
             args.work_dir,
