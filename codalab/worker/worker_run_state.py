@@ -10,7 +10,7 @@ import codalab.worker.docker_utils as docker_utils
 
 from codalab.lib.formatting import size_str, duration_str
 from codalab.worker.file_util import remove_path, get_path_size
-from codalab.worker.bundle_state import State, BundleCheckinState, generic_to_dict
+from codalab.worker.bundle_state import State, BundleCheckinState, generic_to_dict, BundleInfo, RunResources
 from codalab.worker.fsm import DependencyStage
 
 logger = logging.getLogger(__name__)
@@ -130,16 +130,16 @@ class RunState:
         subclass = getattr(sys.modules[__name__], dct['__class__'])
         return subclass(
             dct['run_status'],
-            dct['bundle'],
+            BundleInfo.from_dict(dct['bundle']),
             dct['local_bundle_path'],
             dct['remote'],
             dct['bundle_dir_wait_num_tries'],
-            dct['resources'],
+            RunResources.from_dict(dct['resources']),
             dct['bundle_start_time'],
             dct['container_time_total'],
             dct['container_time_user'],
             dct['container_time_system'],
-            dct['container'],
+            None,
             dct['container_id'],
             dct['docker_image'],
             dct['is_killed'],
@@ -344,15 +344,23 @@ class Running(RunState):
         """
 
         def check_and_report_finished():
+            if self.container_id is None and self.container is None:
+                self.finished = True
+                self.exitcode = 2
+                self.failure_msg = "Unknown error: container for bundle not found"
+                return
             try:
                 self.finished, self.exitcode, self.failure_msg = docker_utils.check_finished(
                     self.container
                 )
             except docker_utils.DockerException:
                 logger.error(traceback.format_exc())
-                self.finished, self.exitcode, self.failure_msg = False, None, None
+                self.finished = False
 
         def check_resource_utilization():
+            if self.container is None:
+                logger.warning("Trying to get utilization but no container given")
+                return
             try:
                 kill_messages = []
 
