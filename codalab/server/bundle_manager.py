@@ -331,9 +331,9 @@ class BundleManager(object):
             workers_list = workers.user_owned_workers(bundle.owner_id)
 
             # If there is no user_owned worker, try to schedule the current bundle to run on a CodaLab's public worker.
-            if not workers_list:
+            if len(workers_list) == 0:
                 # Check if there is enough parallel run quota left for this user
-                if not self._model.get_user_parallel_run_quota_left(bundle.owner_id):
+                if self._model.get_user_parallel_run_quota_left(bundle.owner_id) <= 0:
                     logger.info(
                         "User %s has no parallel run quota left, skipping job for now",
                         bundle.owner_id,
