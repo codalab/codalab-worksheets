@@ -123,6 +123,7 @@ class RunState:
         dct['container'] = None
         # Encode the subclass so correct subclass may be deserialized
         dct['__class__'] = self.__class__.__name__
+        return dct
 
     @staticmethod
     def from_dict(dct):
