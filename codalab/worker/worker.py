@@ -79,6 +79,7 @@ class Worker:
         self.last_time_ran = None  # When was the last time we ran something?
 
         self.docker = docker.from_env()
+        self.docker_runtime = docker_runtime
         self.init_docker_networks(docker_network_prefix)
 
         self.state_committer = JsonStateCommitter(commit_file)
