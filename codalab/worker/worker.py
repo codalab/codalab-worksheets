@@ -387,7 +387,7 @@ class Worker:
 
         # filter out finished runs
         finished_container_ids = [
-            run.container
+            run.container_id
             for run in self.runs.values()
             if run.is_active and run.container_id is not None
         ]
