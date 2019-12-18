@@ -83,17 +83,7 @@ class Worker:
         self.state_committer = JsonStateCommitter(commit_file)
         self.reader = Reader()
         self.docker = docker.from_env()
-        self.run_state_manager = RunStateMachine(
-            docker_image_manager=self.image_manager,
-            dependency_manager=self.dependency_manager,
-            worker_docker_network=self.worker_docker_network,
-            docker_network_internal=self.docker_network_internal,
-            docker_network_external=self.docker_network_external,
-            docker_runtime=docker_runtime,
-            upload_bundle_callback=self.upload_bundle_contents,
-            assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
-            shared_file_system=shared_file_system,
-        )
+        self.run_state_manager = RunStateMachine(self)
 
     def init_docker_networks(self, docker_network_prefix):
         """
@@ -264,15 +254,15 @@ class Worker:
             bundle = BundleInfo.from_dict(bundle)
             resources = RunResources.from_dict(resources)
             if self.shared_file_system:
-                bundle_path = bundle.location
+                local_bundle_path = bundle.location
             else:
-                bundle_path = os.path.join(self.local_bundles_dir, bundle.uuid)
+                local_bundle_path = os.path.join(self.local_bundles_dir, bundle.uuid)
             now = time.time()
             run_state = RunState(
                 stage=RunStage.PREPARING,
                 run_status='',
                 bundle=bundle,
-                bundle_path=os.path.realpath(bundle_path),
+                local_bundle_path=os.path.realpath(local_bundle_path),
                 bundle_dir_wait_num_tries=Worker.BUNDLE_DIR_WAIT_NUM_TRIES,
                 resources=resources,
                 bundle_start_time=now,
@@ -354,7 +344,7 @@ class Worker:
             return
 
         def bundle_write():
-            with open(os.path.join(run_state.bundle_path, path), 'w') as f:
+            with open(os.path.join(run_state.local_bundle_path, path), 'w') as f:
                 f.write(string)
 
         write_thread = threading.Thread(target=bundle_write)

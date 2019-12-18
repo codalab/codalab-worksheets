@@ -71,7 +71,7 @@ RunState = namedtuple(
         'stage',  # RunStage
         'run_status',  # str
         'bundle',  # BundleInfo
-        'bundle_path',  # str
+        'local_bundle_path',  # str
         'bundle_dir_wait_num_tries',  # Optional[int]
         'resources',  # RunResources
         'bundle_start_time',  # int
@@ -107,16 +107,7 @@ class RunStateMachine(StateTransitioner):
     """
 
     def __init__(
-        self,
-        docker_image_manager,  # Component to request docker images from
-        dependency_manager,  # Component to request dependency downloads from
-        worker_docker_network,  # Docker network to add all bundles to
-        docker_network_internal,  # Docker network to add non-net connected bundles to
-        docker_network_external,  # Docker network to add internet connected bundles to
-        docker_runtime,  # Docker runtime to use for containers (nvidia or runc)
-        upload_bundle_callback,  # Function to call to upload bundle results to the server
-        assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
-        shared_file_system,  # If True, bundle mount is shared with server
+        self, worker  # type: Worker
     ):
         super(RunStateMachine, self).__init__()
         self.add_transition(RunStage.PREPARING, self._transition_from_PREPARING)
@@ -126,21 +117,12 @@ class RunStateMachine(StateTransitioner):
         self.add_transition(RunStage.FINALIZING, self._transition_from_FINALIZING)
         self.add_terminal(RunStage.FINISHED)
 
-        self.dependency_manager = dependency_manager
-        self.docker_image_manager = docker_image_manager
-        self.worker_docker_network = worker_docker_network
-        self.docker_network_external = docker_network_external
-        self.docker_network_internal = docker_network_internal
-        self.docker_runtime = docker_runtime
         # bundle.uuid -> {'thread': Thread, 'run_status': str}
         self.uploading = ThreadDict(fields={'run_status': 'Upload started', 'success': False})
         # bundle.uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
         self.disk_utilization = ThreadDict(
             fields={'disk_utilization': 0, 'running': True, 'lock': None}
         )
-        self.upload_bundle_callback = upload_bundle_callback
-        self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
-        self.shared_file_system = shared_file_system
 
     def stop(self):
         for uuid in self.disk_utilization.keys():
@@ -167,10 +149,12 @@ class RunStateMachine(StateTransitioner):
         dependencies_ready = True
         status_messages = []
 
-        if not self.shared_file_system:
+        if not self.worker.shared_file_system:
             # No need to download dependencies if we're in the shared FS since they're already in our FS
             for dep_key, dep in run_state.bundle.dependencies.items():
-                dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
+                dependency_state = self.worker.dependency_manager.get(
+                    run_state.bundle.uuid, dep_key
+                )
                 if dependency_state.stage == DependencyStage.DOWNLOADING:
                     status_messages.append(
                         'Downloading dependency %s: %s done (archived size)'
@@ -187,7 +171,7 @@ class RunStateMachine(StateTransitioner):
 
         # get the docker image
         docker_image = run_state.resources.docker_image
-        image_state = self.docker_image_manager.get(docker_image)
+        image_state = self.worker.image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
                 'Pulling docker image: ' + (image_state.message or docker_image or "")
@@ -210,8 +194,8 @@ class RunStateMachine(StateTransitioner):
 
         # All dependencies ready! Set up directories, symlinks and container. Start container.
         # 1) Set up a directory to store the bundle.
-        if self.shared_file_system:
-            if not os.path.exists(run_state.bundle_path):
+        if self.worker.shared_file_system:
+            if not os.path.exists(run_state.local_bundle_path):
                 if run_state.bundle_dir_wait_num_tries == 0:
                     message = (
                         "Bundle directory cannot be found on the shared filesystem. "
@@ -225,31 +209,35 @@ class RunStateMachine(StateTransitioner):
                     bundle_dir_wait_num_tries=run_state.bundle_dir_wait_num_tries - 1,
                 )
         else:
-            remove_path(run_state.bundle_path)
-            os.mkdir(run_state.bundle_path)
+            remove_path(run_state.local_bundle_path)
+            os.mkdir(run_state.local_bundle_path)
 
         # 2) Set up symlinks
         docker_dependencies = []
         docker_dependencies_path = (
-            '/' + run_state.bundle.uuid + ('_dependencies' if not self.shared_file_system else '')
+            '/'
+            + run_state.bundle.uuid
+            + ('_dependencies' if not self.worker.shared_file_system else '')
         )
         for dep_key, dep in run_state.bundle.dependencies.items():
-            full_child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
-            if not full_child_path.startswith(run_state.bundle_path):
+            full_child_path = os.path.normpath(
+                os.path.join(run_state.local_bundle_path, dep.child_path)
+            )
+            if not full_child_path.startswith(run_state.local_bundle_path):
                 # Dependencies should end up in their bundles (ie prevent using relative paths like ..
                 # to get out of their parent bundles
                 message = 'Invalid key for dependency: %s' % (dep.child_path)
                 logger.error(message)
                 return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
             docker_dependency_path = os.path.join(docker_dependencies_path, dep.child_path)
-            if self.shared_file_system:
+            if self.worker.shared_file_system:
                 # On a shared FS, we know where the dep is stored and can get the contents directly
                 dependency_path = os.path.realpath(os.path.join(dep.location, dep.parent_path))
             else:
                 # On a dependency_manager setup ask the manager where the dependency is
                 dependency_path = os.path.join(
-                    self.dependency_manager.dependencies_dir,
-                    self.dependency_manager.get(run_state.bundle.uuid, dep_key).path,
+                    self.worker.dependency_manager.dependencies_dir,
+                    self.worker.dependency_manager.get(run_state.bundle.uuid, dep_key).path,
                 )
                 os.symlink(docker_dependency_path, full_child_path)
             # These are turned into docker volume bindings like:
@@ -258,12 +246,12 @@ class RunStateMachine(StateTransitioner):
 
         # 3) Set up container
         if run_state.resources.network:
-            docker_network = self.docker_network_external.name
+            docker_network = self.worker.docker_network_external.name
         else:
-            docker_network = self.docker_network_internal.name
+            docker_network = self.worker.docker_network_internal.name
 
         try:
-            cpuset, gpuset = self.assign_cpu_and_gpu_sets_fn(
+            cpuset, gpuset = self.worker.assign_cpu_and_gpu_sets(
                 run_state.resources.cpus, run_state.resources.gpus
             )
         except Exception as e:
@@ -275,7 +263,7 @@ class RunStateMachine(StateTransitioner):
         # 4) Start container
         try:
             container = docker_utils.start_bundle_container(
-                run_state.bundle_path,
+                run_state.local_bundle_path,
                 run_state.bundle.uuid,
                 docker_dependencies,
                 run_state.bundle.command,
@@ -284,9 +272,9 @@ class RunStateMachine(StateTransitioner):
                 cpuset=cpuset,
                 gpuset=gpuset,
                 memory_bytes=run_state.resources.memory,
-                runtime=self.docker_runtime,
+                runtime=self.worker.docker_runtime,
             )
-            self.worker_docker_network.connect(container)
+            self.worker.worker_docker_network.connect(container)
         except Exception as e:
             message = 'Cannot start Docker container: {}'.format(e)
             logger.error(message)
@@ -370,7 +358,7 @@ class RunStateMachine(StateTransitioner):
             while running:
                 start_time = time.time()
                 try:
-                    disk_utilization = get_path_size(run_state.bundle_path)
+                    disk_utilization = get_path_size(run_state.local_bundle_path)
                     self.disk_utilization[run_state.bundle.uuid][
                         'disk_utilization'
                     ] = disk_utilization
@@ -441,16 +429,16 @@ class RunStateMachine(StateTransitioner):
                     time.sleep(1)
 
         for dep_key, dep in run_state.bundle.dependencies.items():
-            if not self.shared_file_system:  # No dependencies if shared fs worker
-                self.dependency_manager.release(run_state.bundle.uuid, dep_key)
+            if not self.worker.shared_file_system:  # No dependencies if shared fs worker
+                self.worker.dependency_manager.release(run_state.bundle.uuid, dep_key)
 
-            child_path = os.path.join(run_state.bundle_path, dep.child_path)
+            child_path = os.path.join(run_state.local_bundle_path, dep.child_path)
             try:
                 remove_path(child_path)
             except Exception:
                 logger.error(traceback.format_exc())
 
-        if not self.shared_file_system and run_state.has_contents:
+        if not self.worker.shared_file_system and run_state.has_contents:
             # No need to upload results since results are directly written to bundle store
             return run_state._replace(
                 stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
@@ -461,7 +449,7 @@ class RunStateMachine(StateTransitioner):
     def _transition_from_UPLOADING_RESULTS(self, run_state):
         """
         If bundle not already uploading:
-            Use the RunManager API to upload contents at bundle_path to the server
+            Use the RunManager API to upload contents at local_bundle_path to the server
             Pass the callback to that API such that if the bundle is killed during the upload,
             the callback returns false, allowing killable uploads.
         If uploading and not finished:
@@ -482,8 +470,8 @@ class RunStateMachine(StateTransitioner):
                     self.uploading[run_state.bundle.uuid]['run_status'] = run_status
                     return True
 
-                self.upload_bundle_callback(
-                    run_state.bundle.uuid, run_state.bundle_path, progress_callback
+                self.worker.upload_bundle_contents(
+                    run_state.bundle.uuid, run_state.local_bundle_path, progress_callback
                 )
                 self.uploading[run_state.bundle.uuid]['success'] = True
             except Exception as e:
@@ -528,11 +516,11 @@ class RunStateMachine(StateTransitioner):
     def _transition_from_FINALIZING(self, run_state):
         """
         If a full worker cycle has passed since we got into FINALIZING we already reported to
-        server so can move on to FINISHED. Can also remove bundle_path now
+        server so can move on to FINISHED. Can also remove local_bundle_path now
         """
         if run_state.finalized:
-            if not self.shared_file_system:
-                remove_path(run_state.bundle_path)  # don't remove bundle if shared FS
+            if not self.worker.shared_file_system:
+                remove_path(run_state.local_bundle_path)  # don't remove bundle if shared FS
             return run_state._replace(stage=RunStage.FINISHED, run_status='Finished')
         else:
             return run_state
