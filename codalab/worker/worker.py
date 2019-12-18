@@ -252,6 +252,7 @@ class Worker:
                 run_status='',
                 bundle=bundle,
                 local_bundle_path=os.path.realpath(local_bundle_path),
+                remote=self.id,
                 bundle_dir_wait_num_tries=Worker.BUNDLE_DIR_WAIT_NUM_TRIES,
                 resources=resources,
                 bundle_start_time=now,
