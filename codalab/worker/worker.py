@@ -126,7 +126,7 @@ class Worker:
                     run_state.container = self.docker.containers.get(run_state.container_id)
                 except docker.errors.NotFound as ex:
                     logger.debug('Error getting the container for the run: %s', ex)
-                    run_state = run_state.container_id = None
+                    run_state.container_id = None
             self.runs[uuid] = run_state
 
     @property
