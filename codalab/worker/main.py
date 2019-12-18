@@ -157,6 +157,14 @@ def main():
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
+    local_bundles_dir = (
+        os.path.join(args.work_dir, Worker.BUNDLES_DIR_NAME)
+        if not args.shared_file_system
+        else None
+    )
+    if local_bundles_dir and not os.path.exists(local_bundles_dir):
+        logger.info('%s doesn\'t exist, creating.', local_bundles_dir)
+        os.makedirs(local_bundles_dir, 0o770)
     docker_runtime = docker_utils.get_available_runtime()
     cpuset = parse_cpuset_args(args.cpuset)
     gpuset = parse_gpuset_args(args.gpuset)
@@ -177,6 +185,7 @@ def main():
         args.id,
         args.tag,
         args.work_dir,
+        local_bundles_dir,
         args.exit_when_idle,
         args.idle_seconds,
         bundle_service,

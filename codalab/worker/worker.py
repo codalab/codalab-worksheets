@@ -48,6 +48,7 @@ class Worker:
         worker_id,  # type: str
         tag,  # type: str
         work_dir,  # type: str
+        local_bundles_dir,  # type: str
         exit_when_idle,  # type: str
         idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
@@ -60,32 +61,27 @@ class Worker:
         docker_network_prefix='codalab_worker_network',  # type: str
     ):
         self.id = worker_id
-        self.state_committer = JsonStateCommitter(commit_file)
         self.tag = tag
         self.work_dir = work_dir
         self.bundle_service = bundle_service
         self.exit_when_idle = exit_when_idle
         self.idle_seconds = idle_seconds
-        self.stop = False
-        self.last_checkin_successful = False
-        self.last_time_ran = None  # When was the last time we ran something?
         self.shared_file_system = shared_file_system
-        self.lock = threading.RLock()
-        self.reader = Reader()
-        self.docker = docker.from_env()
-        if not shared_file_system:
-            self.bundles_dir = os.path.join(work_dir, Worker.BUNDLES_DIR_NAME)
-            if not os.path.exists(self.bundles_dir):
-                logger.info('%s doesn\'t exist, creating.', self.bundles_dir)
-                os.makedirs(self.bundles_dir, 0o770)
-
+        self.local_bundles_dir = local_bundles_dir
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
         self.cpuset = cpuset
         self.gpuset = gpuset
+        self.stop = False
+        self.last_checkin_successful = False
+        self.last_time_ran = None  # When was the last time we ran something?
+
         self.runs = {}  # bundle_uuid -> RunState
-        self.lock = threading.RLock()
+
         self.init_docker_networks(docker_network_prefix)
+        self.state_committer = JsonStateCommitter(commit_file)
+        self.reader = Reader()
+        self.docker = docker.from_env()
         self.run_state_manager = RunStateMachine(
             docker_image_manager=self.image_manager,
             dependency_manager=self.dependency_manager,
@@ -269,7 +265,7 @@ class Worker:
             if self.shared_file_system:
                 bundle_path = bundle.location
             else:
-                bundle_path = os.path.join(self.bundles_dir, bundle.uuid)
+                bundle_path = os.path.join(self.local_bundles_dir, bundle.uuid)
             now = time.time()
             run_state = RunState(
                 stage=RunStage.PREPARING,
@@ -297,8 +293,7 @@ class Worker:
                 finished=False,
                 finalized=False,
             )
-            with self.lock:
-                self.runs[bundle.uuid] = run_state
+            self.runs[bundle.uuid] = run_state
         else:
             print(
                 'Bundle {} no longer assigned to this worker'.format(bundle['uuid']),
@@ -361,14 +356,12 @@ class Worker:
 
     def kill(self, uuid):
         run_state = self.runs[uuid]
-        with self.lock:
-            run_state = run_state._replace(kill_message='Kill requested', is_killed=True)
-            self.runs[run_state.bundle.uuid] = run_state
+        run_state = run_state._replace(kill_message='Kill requested', is_killed=True)
+        self.runs[run_state.bundle.uuid] = run_state
 
     def mark_finalized(self, uuid):
         if uuid in self.runs:
-            with self.lock:
-                self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
+            self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
 
     def upload_bundle_contents(self, bundle_uuid, bundle_path, update_status):
         self.execute_bundle_service_command_with_retry(
@@ -410,26 +403,25 @@ class Worker:
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
-        with self.lock:
-            # transition all runs
-            for bundle_uuid in self.runs.keys():
-                run_state = self.runs[bundle_uuid]
-                self.runs[bundle_uuid] = self.run_state_manager.transition(run_state)
+        # transition all runs
+        for bundle_uuid in self.runs.keys():
+            run_state = self.runs[bundle_uuid]
+            self.runs[bundle_uuid] = self.run_state_manager.transition(run_state)
 
-            # filter out finished runs
-            finished_container_ids = [
-                run.container
-                for run in self.runs.values()
-                if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
-                and run.container_id is not None
-            ]
-            for container_id in finished_container_ids:
-                try:
-                    container = self.docker.containers.get(container_id)
-                    container.remove(force=True)
-                except (docker.errors.NotFound, docker.errors.NullResource):
-                    pass
-            self.runs = {k: v for k, v in self.runs.items() if v.stage != RunStage.FINISHED}
+        # filter out finished runs
+        finished_container_ids = [
+            run.container
+            for run in self.runs.values()
+            if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
+            and run.container_id is not None
+        ]
+        for container_id in finished_container_ids:
+            try:
+                container = self.docker.containers.get(container_id)
+                container.remove(force=True)
+            except (docker.errors.NotFound, docker.errors.NullResource):
+                pass
+        self.runs = {k: v for k, v in self.runs.items() if v.stage != RunStage.FINISHED}
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
@@ -448,11 +440,10 @@ class Worker:
         """
         cpuset, gpuset = set(self.cpuset), set(self.gpuset)
 
-        with self.lock:
-            for run_state in self.runs.values():
-                if run_state.stage == RunStage.RUNNING:
-                    cpuset -= run_state.cpuset
-                    gpuset -= run_state.gpuset
+        for run_state in self.runs.values():
+            if run_state.stage == RunStage.RUNNING:
+                cpuset -= run_state.cpuset
+                gpuset -= run_state.gpuset
 
         if len(cpuset) < request_cpus:
             raise Exception(
