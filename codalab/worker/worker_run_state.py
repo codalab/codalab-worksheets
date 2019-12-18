@@ -128,7 +128,7 @@ class RunState:
     @staticmethod
     def from_dict(dct):
         subclass = getattr(sys.modules[__name__], dct['__class__'])
-        subclass(
+        return subclass(
             dct['run_status'],
             dct['bundle'],
             dct['local_bundle_path'],
@@ -353,39 +353,42 @@ class Running(RunState):
                 self.finished, self.exitcode, self.failure_msg = False, None, None
 
         def check_resource_utilization():
-            kill_messages = []
+            try:
+                kill_messages = []
 
-            run_stats = docker_utils.get_container_stats(self.container)
+                run_stats = docker_utils.get_container_stats(self.container)
 
-            self.max_memory = max(self.max_memory, run_stats.get('memory', 0))
-            self.disk_utilization = worker.disk_utilization_threads[self.bundle.uuid][
-                'disk_utilization'
-            ]
+                self.max_memory = max(self.max_memory, run_stats.get('memory', 0))
+                self.disk_utilization = worker.disk_utilization_threads[self.bundle.uuid][
+                    'disk_utilization'
+                ]
 
-            container_time_total = docker_utils.get_container_running_time(self.container)
-            self.container_time_total = container_time_total
-            self.container_time_user = run_stats.get(
-                'container_time_user', self.container_time_user
-            )
-            self.container_time_system = (
-                run_stats.get('container_time_system', self.container_time_system),
-            )
-
-            if self.resources.time and container_time_total > self.resources.time:
-                kill_messages.append(
-                    'Time limit exceeded. (Container uptime %s > time limit %s)'
-                    % (duration_str(container_time_total), duration_str(self.resources.time))
+                container_time_total = docker_utils.get_container_running_time(self.container)
+                self.container_time_total = container_time_total
+                self.container_time_user = run_stats.get(
+                    'container_time_user', self.container_time_user
+                )
+                self.container_time_system = (
+                    run_stats.get('container_time_system', self.container_time_system),
                 )
 
-            if self.max_memory > self.resources.memory or self.exitcode == '137':
-                kill_messages.append('Memory limit %s exceeded.' % size_str(self.resources.memory))
+                if self.resources.time and container_time_total > self.resources.time:
+                    kill_messages.append(
+                        'Time limit exceeded. (Container uptime %s > time limit %s)'
+                        % (duration_str(container_time_total), duration_str(self.resources.time))
+                    )
 
-            if self.resources.disk and self.disk_utilization > self.resources.disk:
-                kill_messages.append('Disk limit %sb exceeded.' % size_str(self.resources.disk))
+                if self.max_memory > self.resources.memory or self.exitcode == '137':
+                    kill_messages.append('Memory limit %s exceeded.' % size_str(self.resources.memory))
 
-            if kill_messages:
-                self.kill_message = ' '.join(kill_messages)
-                self.is_killed = True
+                if self.resources.disk and self.disk_utilization > self.resources.disk:
+                    kill_messages.append('Disk limit %sb exceeded.' % size_str(self.resources.disk))
+
+                if kill_messages:
+                    self.kill_message = ' '.join(kill_messages)
+                    self.is_killed = True
+            except docker_utils.DockerException:
+                logger.error(traceback.format_exc())
 
         def check_disk_utilization():
             running = True
