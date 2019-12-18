@@ -417,8 +417,10 @@ class Worker:
 
         for run_state in self.runs.values():
             if run_state.is_active:
-                cpuset -= run_state.cpuset
-                gpuset -= run_state.gpuset
+                if run_state.cpuset:
+                    cpuset -= run_state.cpuset
+                if run_state.gpuset:
+                    gpuset -= run_state.gpuset
 
         if len(cpuset) < request_cpus:
             raise Exception(
