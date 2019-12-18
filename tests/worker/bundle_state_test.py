@@ -47,4 +47,3 @@ class BundleStateTest(unittest.TestCase):
             location=bundle_info_fields['location'],
         )
         self.assertEqual(info.as_dict, BundleInfo.from_dict(info.as_dict).as_dict)
-
