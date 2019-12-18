@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import threading
 import time
 import traceback
@@ -9,7 +10,7 @@ import codalab.worker.docker_utils as docker_utils
 
 from codalab.lib.formatting import size_str, duration_str
 from codalab.worker.file_util import remove_path, get_path_size
-from codalab.worker.bundle_state import State
+from codalab.worker.bundle_state import State, BundleCheckinState, generic_to_dict
 from codalab.worker.fsm import DependencyStage
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ class RunState:
         run_status,  # type: str
         bundle,  # type: BundleInfo
         local_bundle_path,  # type: str
+        remote,  # type; str
         bundle_dir_wait_num_tries,  # type: Optional[int]
         resources,  # type: RunResources
         bundle_start_time,  # type: int
@@ -45,6 +47,7 @@ class RunState:
         self.run_status = run_status
         self.bundle = bundle
         self.local_bundle_path = local_bundle_path
+        self.remote = remote
         self.bundle_dir_wait_num_tries = bundle_dir_wait_num_tries
         self.resources = resources
         self.bundle_start_time = bundle_start_time
@@ -71,6 +74,7 @@ class RunState:
             self.run_status,
             self.bundle,
             self.local_bundle_path,
+            self.remote,
             self.bundle_dir_wait_num_tries,
             self.resources,
             self.bundle_start_time,
@@ -95,6 +99,60 @@ class RunState:
 
     def update(self, worker):
         return self
+
+    @property
+    def server_checkin_state(self):
+        return BundleCheckinState(
+            self.bundle.uuid,
+            self.run_status,
+            self.bundle_start_time,
+            self.container_time_total,
+            self.container_time_user,
+            self.container_time_system,
+            self.docker_image,
+            self.server_state,
+            self.remote,
+            self.exitcode,
+            self.failure_message,
+        ).as_dict
+
+    @property
+    def as_dict(self):
+        dct = generic_to_dict(self)
+        # Container objects are external and can't be deserialized
+        dct['container'] = None
+        # Encode the subclass so correct subclass may be deserialized
+        dct['__class__'] = self.__class__.__name__
+
+    @staticmethod
+    def from_dict(dct):
+        subclass = getattr(sys.modules[__name__], dct['__class__'])
+        subclass(
+            dct['run_status'],
+            dct['bundle'],
+            dct['local_bundle_path'],
+            dct['remote'],
+            dct['bundle_dir_wait_num_tries'],
+            dct['resources'],
+            dct['bundle_start_time'],
+            dct['container_time_total'],
+            dct['container_time_user'],
+            dct['container_time_system'],
+            dct['container'],
+            dct['container_id'],
+            dct['docker_image'],
+            dct['is_killed'],
+            dct['has_contents'],
+            dct['cpuset'],
+            dct['gpuset'],
+            dct['max_memory'],
+            dct['disk_utilization'],
+            dct['exitcode'],
+            dct['failure_message'],
+            dct['kill_message'],
+            dct['finished'],
+            dct['finalized'],
+        )
 
     @property
     def server_state(self):

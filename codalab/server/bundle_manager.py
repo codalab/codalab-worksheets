@@ -558,7 +558,7 @@ class BundleManager(object):
 
         # Figure out the resource requirements.
         bundle_resources = self._compute_bundle_resources(bundle)
-        message['resources'] = bundle_resources.to_dict()
+        message['resources'] = bundle_resources.as_dict
         return message
 
     def _compute_bundle_resources(self, bundle):

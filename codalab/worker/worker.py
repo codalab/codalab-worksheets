@@ -15,8 +15,8 @@ from codalab.worker.bundle_service_client import BundleServiceException
 from codalab.worker.download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.reader import Reader
-from codalab.worker.bundle_state import BundleInfo, RunResources, WorkerRun
-from codalab.worker.worker_run_state import Preparing, Finished
+from codalab.worker.bundle_state import BundleInfo, RunResources, BundleCheckinState
+from codalab.worker.worker_run_state import RunState, Preparing, Finished
 from codalab.worker.worker_thread import ThreadDict
 
 from codalab.worker import docker_utils
@@ -113,31 +113,20 @@ class Worker:
         self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", True)
 
     def save_state(self):
-        # Remove complex container objects from state before serializing, these can be retrieved
-        runs = {
-            uuid: state._replace(
-                container=None, bundle=state.bundle.to_dict(), resources=state.resources.to_dict()
-            )
-            for uuid, state in self.runs.items()
-        }
-        self.state_committer.commit(runs)
+        self.state_committer.commit({uuid: state.to_dict() for uuid, state in self.runs.items()})
 
     def load_state(self):
         runs = self.state_committer.load()
         # Retrieve the complex container objects from the Docker API
         for uuid, run_state in runs.items():
+            run_state = RunState.from_dict(run_state)
             if run_state.container_id:
                 try:
-                    run_state = run_state._replace(
-                        container=self.docker.containers.get(run_state.container_id)
-                    )
+                    run_state.container = self.docker.containers.get(run_state.container_id)
                 except docker.errors.NotFound as ex:
                     logger.debug('Error getting the container for the run: %s', ex)
-                    run_state = run_state._replace(container_id=None)
-            self.runs[uuid] = run_state._replace(
-                bundle=BundleInfo.from_dict(run_state.bundle),
-                resources=RunResources.from_dict(run_state.resources),
-            )
+                    run_state = run_state.container_id = None
+            self.runs[uuid] = run_state
 
     @property
     def should_stop_because_idle(self):
@@ -212,45 +201,35 @@ class Worker:
                 if self.dependency_manager
             ],
             'hostname': socket.gethostname(),
-            'runs': [
-                WorkerRun(
-                    uuid=run_state.bundle.uuid,
-                    run_status=run_state.run_status,
-                    bundle_start_time=run_state.bundle_start_time,
-                    container_time_total=run_state.container_time_total,
-                    container_time_user=run_state.container_time_user,
-                    container_time_system=run_state.container_time_system,
-                    docker_image=run_state.docker_image,
-                    state=run_state.server_state,
-                    remote=self.id,
-                    exitcode=run_state.exitcode,
-                    failure_message=run_state.failure_message,
-                ).to_dict()
-                for run_state in self.runs.values()
-            ],
+            'runs': [run_state.server_checkin_state for run_state in self.runs.values()],
             'shared_file_system': self.shared_file_system,
         }
         response = self.bundle_service.checkin(self.id, request)
         if response:
             action_type = response['type']
             logger.debug('Received %s message: %s', action_type, response)
-            if action_type in ['read', 'netcat']:
-                socket_id = response['socket_id']
-                if response['uuid'] not in self.runs:
-                    self.read_run_missing(socket_id)
-                    return
             if action_type == 'run':
                 self.run(response['bundle'], response['resources'])
-            elif action_type == 'read':
-                self.read(socket_id, response['uuid'], response['path'], response['read_args'])
-            elif action_type == 'netcat':
-                self.netcat(socket_id, response['uuid'], response['port'], response['message'])
-            elif action_type == 'write':
-                self.write(response['uuid'], response['subpath'], response['string'])
-            elif action_type == 'kill':
-                self.kill(response['uuid'])
-            elif action_type == 'mark_finalized':
-                self.mark_finalized(response['uuid'])
+            else:
+                uuid = response['uuid']
+                socket_id = response.get('socket_id', None)
+                if uuid not in self.runs:
+                    if action_type in ['read', 'netcat']:
+                        self.read_run_missing(socket_id)
+                    return
+                if action_type == 'kill':
+                    self.runs[uuid].kill_message = 'Kill requested'
+                    self.runs[uuid].is_killed = True
+                elif action_type == 'mark_finalized':
+                    self.runs[uuid].finalized = True
+                elif action_type == 'read':
+                    self.read(socket_id, uuid, response['path'], response['read_args'])
+                elif action_type == 'netcat':
+                    self.netcat(socket_id, uuid, response['port'], response['message'])
+                elif action_type == 'write':
+                    self.write(uuid, response['subpath'], response['string'])
+                else:
+                    logger.warning("Unrecognized action type from server: %s", action_type)
 
     def run(self, bundle, resources):
         """
@@ -359,15 +338,6 @@ class Worker:
 
         write_thread = threading.Thread(target=bundle_write)
         write_thread.start()
-
-    def kill(self, uuid):
-        run_state = self.runs[uuid]
-        run_state = run_state._replace(kill_message='Kill requested', is_killed=True)
-        self.runs[run_state.bundle.uuid] = run_state
-
-    def mark_finalized(self, uuid):
-        if uuid in self.runs:
-            self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
 
     def upload_bundle_contents(self, bundle_uuid, bundle_path, update_status):
         self.execute_bundle_service_command_with_retry(
