@@ -186,7 +186,7 @@ is generic logic.
 
 The worker creates a run manager, which manages the actual execution of the runs.
 By default, a
-([LocalRunManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/local_run/local_run_manager.py))
+([RunManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/local_run/local_run_manager.py))
 is used.
 
 The run manager has a
@@ -197,7 +197,7 @@ for maintaining bundle dependencies, both of which are download asynchronously
 and require a cache.
 
 Finally, the
-[LocalRunStateMachine](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/local_run/local_run_state.py)
+[RunStateMachine](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/local_run/local_run_state.py)
 does most of the heavy lifting and transitions jobs between different states.
 
 # Deployment
