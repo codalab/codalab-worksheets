@@ -2,6 +2,7 @@ import logging
 import os
 import socket
 from subprocess import PIPE, Popen
+import threading
 import time
 import traceback
 import http.client
@@ -319,40 +320,45 @@ class Worker:
         Write `message` (string) to port of bundle with uuid and read the response.
         Returns a stream with the response contents (bytes).
         """
-        # TODO: handle this in a thread since this could take a while
-        def reply(err, message={}, data=None):
-            self.bundle_service_reply(socket_id, err, message, data)
+        run_state = self.runs[uuid]
+        container_ip = docker_utils.get_container_ip(
+            self.worker_docker_network.name, run_state.container
+        )
 
-        try:
-            run_state = self.runs[uuid]
-            container_ip = docker_utils.get_container_ip(
-                self.worker_docker_network.name, run_state.container
-            )
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect((container_ip, port))
-            s.sendall(message.encode())
+        def bundle_netcat():
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.connect((container_ip, port))
+                s.sendall(message.encode())
+                total_data = []
+                while True:
+                    data = s.recv(Worker.NETCAT_BUFFER_SIZE)
+                    if not data:
+                        break
+                    total_data.append(data)
+                s.close()
+                self.bundle_service_reply(socket_id, None, {}, b''.join(total_data))
+            except BundleServiceException:
+                traceback.print_exc()
+            except Exception as e:
+                traceback.print_exc()
+                err = (http.client.INTERNAL_SERVER_ERROR, str(e))
+                self.bundle_service_reply(socket_id, err, {}, None)
 
-            total_data = []
-            while True:
-                data = s.recv(Worker.NETCAT_BUFFER_SIZE)
-                if not data:
-                    break
-                total_data.append(data)
-            s.close()
-            reply(None, {}, b''.join(total_data))
-        except BundleServiceException:
-            traceback.print_exc()
-        except Exception as e:
-            traceback.print_exc()
-            err = (http.client.INTERNAL_SERVER_ERROR, str(e))
-            reply(err)
+        netcat_thread = threading.Thread(target=bundle_netcat)
+        netcat_thread.start()
 
     def write(self, uuid, path, string):
         run_state = self.runs[uuid]
         if os.path.normpath(path) in set(dep.child_path for dep in run_state.bundle.dependencies):
             return
-        with open(os.path.join(run_state.bundle_path, path), 'w') as f:
-            f.write(string)
+
+        def bundle_write():
+            with open(os.path.join(run_state.bundle_path, path), 'w') as f:
+                f.write(string)
+
+        write_thread = threading.Thread(target=bundle_write)
+        write_thread.start()
 
     def kill(self, uuid):
         run_state = self.runs[uuid]
