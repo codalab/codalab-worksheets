@@ -103,7 +103,7 @@ class LocalRunManager(BaseRunManager):
         # Remove complex container objects from state before serializing, these can be retrieved
         runs = {
             uuid: state._replace(
-                container=None, bundle=state.bundle.to_dict(), resources=state.resources.to_dict()
+                container=None, bundle=state.bundle.as_dict, resources=state.resources.as_dict
             )
             for uuid, state in self._runs.items()
         }

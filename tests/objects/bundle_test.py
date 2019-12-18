@@ -78,12 +78,12 @@ class BundleTest(unittest.TestCase):
         bundle.validate()
         self.check_bundle(bundle)
 
-    def test_to_dict(self):
+    def test_as_dict(self):
         '''
     Test that serializing and deserializing a bundle recovers the original.
     '''
         bundle = self.construct_mock_bundle()
-        serialized_bundle = bundle.to_dict()
+        serialized_bundle = bundle.as_dict
         # Serialize through JSON to check that the serialized bundle can be
         # transferred over the wire or depressed into a database.
         json_bundle = json.loads(json.dumps(serialized_bundle))
