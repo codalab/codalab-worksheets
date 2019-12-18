@@ -2,7 +2,6 @@ import logging
 import os
 import socket
 from subprocess import PIPE, Popen
-import threading
 import time
 import traceback
 import http.client
@@ -21,6 +20,7 @@ from codalab.worker.worker_run_state import RunStateMachine, RunStage, RunState
 from codalab.worker import docker_utils
 
 logger = logging.getLogger(__name__)
+
 """
 Codalab Worker
 Workers handle communications with the Codalab server. Their main role in Codalab execution
@@ -482,5 +482,5 @@ class Worker:
                 return int(lines[1].split()[index]) * 1024
 
         except Exception as e:
-            logger.error("{}: {}".format(error_msg, str(e)))
+            logger.error("%s: %s", error_msg, str(e))
             return None
