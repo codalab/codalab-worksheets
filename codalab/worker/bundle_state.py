@@ -153,7 +153,7 @@ class RunResources(object):
         )
 
 
-class WorkerRun(object):
+class BundleCheckinState(object):
     """
     Defines all the field the worker needs to check in with the server for its runs
     """
