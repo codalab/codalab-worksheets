@@ -77,12 +77,13 @@ class Worker:
         self.last_checkin_successful = False
         self.last_time_ran = None  # When was the last time we ran something?
 
+        self.docker = docker.from_env()
+
         self.runs = {}  # bundle_uuid -> RunState
 
         self.init_docker_networks(docker_network_prefix)
         self.state_committer = JsonStateCommitter(commit_file)
         self.reader = Reader()
-        self.docker = docker.from_env()
         self.run_state_manager = RunStateMachine(self)
 
     def init_docker_networks(self, docker_network_prefix):
