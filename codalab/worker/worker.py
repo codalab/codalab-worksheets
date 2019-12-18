@@ -16,7 +16,8 @@ from codalab.worker.download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.reader import Reader
 from codalab.worker.bundle_state import BundleInfo, RunResources, WorkerRun
-from codalab.worker.worker_run_state import RunStateMachine, RunStage, RunState
+from codalab.worker.worker_run_state import Preparing, Finished
+from codalab.worker.worker_thread import ThreadDict
 
 from codalab.worker import docker_utils
 
@@ -78,13 +79,19 @@ class Worker:
         self.last_time_ran = None  # When was the last time we ran something?
 
         self.docker = docker.from_env()
-
-        self.runs = {}  # bundle_uuid -> RunState
-
         self.init_docker_networks(docker_network_prefix)
+
         self.state_committer = JsonStateCommitter(commit_file)
         self.reader = Reader()
-        self.run_state_manager = RunStateMachine(self)
+        # bundle.uuid -> {'thread': Thread, 'run_status': str}
+        self.uploading_threads = ThreadDict(
+            fields={'run_status': 'Upload started', 'success': False}
+        )
+        # bundle.uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
+        self.disk_utilization_threads = ThreadDict(
+            fields={'disk_utilization': 0, 'running': True, 'lock': None}
+        )
+        self.runs = {}  # bundle_uuid -> RunState
 
     def init_docker_networks(self, docker_network_prefix):
         """
@@ -171,7 +178,10 @@ class Worker:
         self.image_manager.stop()
         if not self.shared_file_system:
             self.dependency_manager.stop()
-        self.run_state_manager.stop()
+        for uuid in self.disk_utilization_threads.keys():
+            self.disk_utilization_threads[uuid]['running'] = False
+        self.disk_utilization_threads.stop()
+        self.uploading_threads.stop()
         self.save_state()
         try:
             self.worker_docker_network.remove()
@@ -211,7 +221,7 @@ class Worker:
                     container_time_user=run_state.container_time_user,
                     container_time_system=run_state.container_time_system,
                     docker_image=run_state.docker_image,
-                    state=RunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
+                    state=run_state.server_state,
                     remote=self.id,
                     exitcode=run_state.exitcode,
                     failure_message=run_state.failure_message,
@@ -259,8 +269,7 @@ class Worker:
             else:
                 local_bundle_path = os.path.join(self.local_bundles_dir, bundle.uuid)
             now = time.time()
-            run_state = RunState(
-                stage=RunStage.PREPARING,
+            run_state = Preparing(
                 run_status='',
                 bundle=bundle,
                 local_bundle_path=os.path.realpath(local_bundle_path),
@@ -402,15 +411,13 @@ class Worker:
         """ Transition each run then filter out finished runs """
         # transition all runs
         for bundle_uuid in self.runs.keys():
-            run_state = self.runs[bundle_uuid]
-            self.runs[bundle_uuid] = self.run_state_manager.transition(run_state)
+            self.runs[bundle_uuid] = self.runs[bundle_uuid].update(self)
 
         # filter out finished runs
         finished_container_ids = [
             run.container
             for run in self.runs.values()
-            if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
-            and run.container_id is not None
+            if run.is_active and run.container_id is not None
         ]
         for container_id in finished_container_ids:
             try:
@@ -418,7 +425,7 @@ class Worker:
                 container.remove(force=True)
             except (docker.errors.NotFound, docker.errors.NullResource):
                 pass
-        self.runs = {k: v for k, v in self.runs.items() if v.stage != RunStage.FINISHED}
+        self.runs = {k: v for k, v in self.runs.items() if not isinstance(v, Finished)}
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
@@ -438,7 +445,7 @@ class Worker:
         cpuset, gpuset = set(self.cpuset), set(self.gpuset)
 
         for run_state in self.runs.values():
-            if run_state.stage == RunStage.RUNNING:
+            if run_state.is_active:
                 cpuset -= run_state.cpuset
                 gpuset -= run_state.gpuset
 
