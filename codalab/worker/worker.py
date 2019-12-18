@@ -113,7 +113,7 @@ class Worker:
         self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", True)
 
     def save_state(self):
-        self.state_committer.commit({uuid: state.to_dict() for uuid, state in self.runs.items()})
+        self.state_committer.commit({uuid: state.as_dict for uuid, state in self.runs.items()})
 
     def load_state(self):
         runs = self.state_committer.load()
