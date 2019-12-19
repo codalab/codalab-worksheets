@@ -89,13 +89,14 @@ class BundleInfo(object):
         }  # type: Dict[DependencyKey, Dependency]
         self.location = location  # set if local filesystem
 
-    def to_dict(self):
+    @property
+    def as_dict(self):
         dct = generic_to_dict(self)
         dct['dependencies'] = [v for k, v in dct['dependencies'].items()]
         return dct
 
     def __str__(self):
-        return str(self.to_dict())
+        return str(self.as_dict)
 
     @classmethod
     def from_dict(cls, dct):
@@ -137,7 +138,8 @@ class RunResources(object):
         self.disk = disk
         self.network = network
 
-    def to_dict(self):
+    @property
+    def as_dict(self):
         return generic_to_dict(self)
 
     @classmethod
@@ -201,7 +203,8 @@ class BundleCheckinState(object):
             failure_message=dct['failure_message'],
         )
 
-    def to_dict(self):
+    @property
+    def as_dict(self):
         return generic_to_dict(self)
 
 
@@ -213,6 +216,8 @@ def generic_to_dict(obj):
         iter_dict = obj._asdict()
     elif hasattr(obj, '__dict__'):
         iter_dict = obj.__dict__
+    elif hasattr(obj, 'as_dict'):
+        iter_dict = obj.as_dict
     else:
         return obj
     for k, v in iter_dict.items():
