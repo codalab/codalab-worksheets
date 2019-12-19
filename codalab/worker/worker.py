@@ -164,7 +164,7 @@ class Worker:
                     logger.info('Connected! Successful check in!')
                 self.last_checkin_successful = True
 
-                has_runs = len(self.all_runs) > 0
+                has_runs = len(self.runs) > 0
                 now = time.time()
                 if has_runs:
                     last_time_ran = now
@@ -216,13 +216,16 @@ class Worker:
         """
         request = {
             'tag': self.tag,
-            'cpus': self.cpus,
-            'gpus': self.gpus,
-            'memory_bytes': self.memory_bytes,
+            'cpus': len(self.cpuset),
+            'gpus': len(self.gpuset),
+            'memory_bytes': psutil.virtual_memory().total,
             'free_disk_bytes': self.free_disk_bytes,
             'dependencies': [
-                (dep_key.parent_uuid, dep_key.parent_path) for dep_key in self.all_dependencies
-            ],
+                (dep_key.parent_uuid, dep_key.parent_path)
+                for dep_key in self.dependency_manager.all_dependencies
+            ]
+            if not self.shared_file_system
+            else [],
             'hostname': socket.gethostname(),
             'runs': [run.as_dict for run in self.all_runs],
             'shared_file_system': self.shared_file_system,
@@ -316,14 +319,6 @@ class Worker:
 
         return propose_set(cpuset, request_cpus), propose_set(gpuset, request_gpus)
 
-    def has_run(self, uuid):
-        """
-        Returns True if the run with the given UUID is managed
-        by this RunManager, False otherwise
-        """
-        with self.lock:
-            return uuid in self.runs
-
     @property
     def all_runs(self):
         """
@@ -346,39 +341,6 @@ class Worker:
                 )
                 for run_state in self.runs.values()
             ]
-
-    @property
-    def all_dependencies(self):
-        """
-        Returns a list of all dependencies available in this RunManager
-        If on a shared filesystem, reports nothing since all bundles are on the
-        same filesystem and the concept of caching dependencies doesn't apply
-        to this worker.
-        """
-        if self.shared_file_system:
-            return []
-        return self.dependency_manager.all_dependencies
-
-    @property
-    def cpus(self):
-        """
-        Total number of CPUs this RunManager has
-        """
-        return len(self.cpuset)
-
-    @property
-    def gpus(self):
-        """
-        Total number of GPUs this RunManager has
-        """
-        return len(self.gpuset)
-
-    @property
-    def memory_bytes(self):
-        """
-        Total installed memory of this RunManager
-        """
-        return psutil.virtual_memory().total
 
     @property
     def free_disk_bytes(self):
@@ -506,18 +468,17 @@ class Worker:
         """
         Marks the run as finalized server-side so it can be discarded
         """
-        if uuid in self.runs:
-            with self.lock:
-                self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
+        with self.lock:
+            self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
 
     def kill(self, uuid):
         """
         Kill bundle with uuid
         """
-        run_state = self.runs[uuid]
         with self.lock:
-            run_state = run_state._replace(kill_message='Kill requested', is_killed=True)
-            self.runs[run_state.bundle.uuid] = run_state
+            self.runs[uuid] = self.runs[uuid]._replace(
+                kill_message='Kill requested', is_killed=True
+            )
 
     def write(self, uuid, path, string):
         run_state = self.runs[uuid]
