@@ -10,7 +10,7 @@ import docker
 import codalab.worker.docker_utils as docker_utils
 
 from codalab.worker.state_committer import JsonStateCommitter
-from codalab.worker.bundle_state import BundleInfo, RunResources, WorkerRun
+from codalab.worker.bundle_state import BundleInfo, RunResources, BundleCheckinState
 from codalab.worker.worker_run_state import RunStateMachine, RunStage, RunState
 from codalab.worker.reader import Reader
 
@@ -358,7 +358,7 @@ class RunManager:
         """
         with self._lock:
             return [
-                WorkerRun(
+                BundleCheckinState(
                     uuid=run_state.bundle.uuid,
                     run_status=run_state.run_status,
                     bundle_start_time=run_state.bundle_start_time,
