@@ -32,7 +32,7 @@ class DownloadAbortedException(Exception):
         super(DownloadAbortedException, self).__init__(message)
 
 
-class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager):
+class DependencyManager(StateTransitioner, BaseDependencyManager):
     """
     This dependency manager downloads dependency bundles from Codalab server
     to the local filesystem. It caches all downloaded dependencies but cleans up the
@@ -51,7 +51,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     MAX_SERIALIZED_LEN = 60000
 
     def __init__(self, commit_file, bundle_service, worker_dir, max_cache_size_bytes):
-        super(LocalFileSystemDependencyManager, self).__init__()
+        super(DependencyManager, self).__init__()
         self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
         self.add_terminal(DependencyStage.READY)
         self.add_terminal(DependencyStage.FAILED)
@@ -59,9 +59,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         self._state_committer = JsonStateCommitter(commit_file)
         self._bundle_service = bundle_service
         self._max_cache_size_bytes = max_cache_size_bytes
-        self.dependencies_dir = os.path.join(
-            worker_dir, LocalFileSystemDependencyManager.DEPENDENCIES_DIR_NAME
-        )
+        self.dependencies_dir = os.path.join(worker_dir, DependencyManager.DEPENDENCIES_DIR_NAME)
         if not os.path.exists(self.dependencies_dir):
             logger.info('{} doesn\'t exist, creating.'.format(self.dependencies_dir))
             os.makedirs(self.dependencies_dir, 0o770)
@@ -202,7 +200,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 for dep_key, dep_state in self._dependencies.items()
                 if dep_state.stage == DependencyStage.FAILED
                 and time.time() - dep_state.last_used
-                > LocalFileSystemDependencyManager.DEPENDENCY_FAILURE_COOLDOWN
+                > DependencyManager.DEPENDENCY_FAILURE_COOLDOWN
             }
             for dep_key, dep_state in failed_deps.items():
                 self._delete_dependency(dep_key)
@@ -224,7 +222,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 serialized_length = len(codalab.worker.pyjson.dumps(self._dependencies))
                 if (
                     bytes_used > self._max_cache_size_bytes
-                    or serialized_length > LocalFileSystemDependencyManager.MAX_SERIALIZED_LEN
+                    or serialized_length > DependencyManager.MAX_SERIALIZED_LEN
                 ):
                     logger.debug(
                         '%d dependencies in cache, disk usage: %s (max %s), serialized size: %s (max %s)',
@@ -232,7 +230,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                         size_str(bytes_used),
                         size_str(self._max_cache_size_bytes),
                         size_str(serialized_length),
-                        LocalFileSystemDependencyManager.MAX_SERIALIZED_LEN,
+                        DependencyManager.MAX_SERIALIZED_LEN,
                     )
                     ready_deps = {
                         dep_key: dep_state

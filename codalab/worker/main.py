@@ -18,9 +18,9 @@ from codalab.lib.formatting import parse_size
 from .bundle_service_client import BundleServiceClient, BundleAuthException
 from . import docker_utils
 from .worker import Worker
-from .local_run.local_dependency_manager import LocalFileSystemDependencyManager
-from .local_run.docker_image_manager import DockerImageManager
-from .local_run.local_run_manager import LocalRunManager
+from codalab.worker.dependency_manager import DependencyManager
+from codalab.worker.docker_image_manager import DockerImageManager
+from codalab.worker.run_manager import RunManager
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +162,7 @@ def main():
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
 
-    def create_local_run_manager(worker):
+    def create_run_manager(worker):
         """
         To avoid circular dependencies the Worker initializes takes a RunManager factory
         to initilize its run manager. This method creates a LocalFilesystem-Docker RunManager
@@ -172,7 +172,7 @@ def main():
         cpuset = parse_cpuset_args(args.cpuset)
         gpuset = parse_gpuset_args(args.gpuset)
 
-        dependency_manager = LocalFileSystemDependencyManager(
+        dependency_manager = DependencyManager(
             os.path.join(args.work_dir, 'dependencies-state.json'),
             bundle_service,
             args.work_dir,
@@ -183,7 +183,7 @@ def main():
             os.path.join(args.work_dir, 'images-state.json'), max_image_cache_size_bytes
         )
 
-        return LocalRunManager(
+        return RunManager(
             worker,
             image_manager,
             dependency_manager,
@@ -197,7 +197,7 @@ def main():
         )
 
     worker = Worker(
-        create_local_run_manager,
+        create_run_manager,
         os.path.join(args.work_dir, 'worker-state.json'),
         args.id,
         args.tag,

@@ -17,7 +17,7 @@ from codalab.worker.worker_thread import ThreadDict
 logger = logging.getLogger(__name__)
 
 
-class LocalRunStage(object):
+class RunStage(object):
     """
     Defines the finite set of possible stages and transition functions
     Note that it is important that each state be able to be re-executed
@@ -30,45 +30,45 @@ class LocalRunStage(object):
     This stage involves setting up the directory structure for the run
     and preparing to start the container
     """
-    PREPARING = 'LOCAL_RUN.PREPARING'
+    PREPARING = 'RUN_STAGE.PREPARING'
     WORKER_STATE_TO_SERVER_STATE[PREPARING] = State.PREPARING
 
     """
     Running encompasses the state where the user's job is running
     """
-    RUNNING = 'LOCAL_RUN.RUNNING'
+    RUNNING = 'RUN_STAGE.RUNNING'
     WORKER_STATE_TO_SERVER_STATE[RUNNING] = State.RUNNING
 
     """
     This stage encompasses cleaning up intermediary components like
     the dependency symlinks and also the releasing of dependencies
     """
-    CLEANING_UP = 'LOCAL_RUN.CLEANING_UP'
+    CLEANING_UP = 'RUN_STAGE.CLEANING_UP'
     WORKER_STATE_TO_SERVER_STATE[CLEANING_UP] = State.RUNNING
 
     """
     Uploading results means the job's results are getting uploaded to the server
     """
-    UPLOADING_RESULTS = 'LOCAL_RUN.UPLOADING_RESULTS'
+    UPLOADING_RESULTS = 'RUN_STAGE.UPLOADING_RESULTS'
     WORKER_STATE_TO_SERVER_STATE[UPLOADING_RESULTS] = State.RUNNING
 
     """
     Finalizing means the worker is finalizing the bundle metadata with the server
     """
-    FINALIZING = 'LOCAL_RUN.FINALIZING'
+    FINALIZING = 'RUN_STAGE.FINALIZING'
     WORKER_STATE_TO_SERVER_STATE[FINALIZING] = State.FINALIZING
 
     """
     Finished means the worker is done with this run
     """
-    FINISHED = 'LOCAL_RUN.FINISHED'
+    FINISHED = 'RUN_STAGE.FINISHED'
     WORKER_STATE_TO_SERVER_STATE[FINISHED] = State.READY
 
 
-LocalRunState = namedtuple(
+RunState = namedtuple(
     'RunState',
     [
-        'stage',  # LocalRunStage
+        'stage',  # RunStage
         'run_status',  # str
         'bundle',  # BundleInfo
         'bundle_path',  # str
@@ -96,7 +96,7 @@ LocalRunState = namedtuple(
 )
 
 
-class LocalRunStateMachine(StateTransitioner):
+class RunStateMachine(StateTransitioner):
     """
     Manages the state machine of the runs running on the local machine
 
@@ -118,15 +118,13 @@ class LocalRunStateMachine(StateTransitioner):
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
     ):
-        super(LocalRunStateMachine, self).__init__()
-        self.add_transition(LocalRunStage.PREPARING, self._transition_from_PREPARING)
-        self.add_transition(LocalRunStage.RUNNING, self._transition_from_RUNNING)
-        self.add_transition(LocalRunStage.CLEANING_UP, self._transition_from_CLEANING_UP)
-        self.add_transition(
-            LocalRunStage.UPLOADING_RESULTS, self._transition_from_UPLOADING_RESULTS
-        )
-        self.add_transition(LocalRunStage.FINALIZING, self._transition_from_FINALIZING)
-        self.add_terminal(LocalRunStage.FINISHED)
+        super(RunStateMachine, self).__init__()
+        self.add_transition(RunStage.PREPARING, self._transition_from_PREPARING)
+        self.add_transition(RunStage.RUNNING, self._transition_from_RUNNING)
+        self.add_transition(RunStage.CLEANING_UP, self._transition_from_CLEANING_UP)
+        self.add_transition(RunStage.UPLOADING_RESULTS, self._transition_from_UPLOADING_RESULTS)
+        self.add_transition(RunStage.FINALIZING, self._transition_from_FINALIZING)
+        self.add_terminal(RunStage.FINISHED)
 
         self.dependency_manager = dependency_manager
         self.docker_image_manager = docker_image_manager
@@ -164,7 +162,7 @@ class LocalRunStateMachine(StateTransitioner):
         4- If all is successful, move to RUNNING state
         """
         if run_state.is_killed:
-            return run_state._replace(stage=LocalRunStage.CLEANING_UP)
+            return run_state._replace(stage=RunStage.CLEANING_UP)
 
         dependencies_ready = True
         status_messages = []
@@ -182,7 +180,7 @@ class LocalRunStateMachine(StateTransitioner):
                 elif dependency_state.stage == DependencyStage.FAILED:
                     # Failed to download dependency; -> CLEANING_UP
                     return run_state._replace(
-                        stage=LocalRunStage.CLEANING_UP,
+                        stage=RunStage.CLEANING_UP,
                         failure_message='Failed to download dependency %s: %s'
                         % (dep.child_path, dependency_state.message),
                     )
@@ -199,7 +197,7 @@ class LocalRunStateMachine(StateTransitioner):
             # Failed to pull image; -> CLEANING_UP
             message = 'Failed to download Docker image: %s' % image_state.message
             logger.error(message)
-            return run_state._replace(stage=LocalRunStage.CLEANING_UP, failure_message=message)
+            return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
 
         # stop proceeding if dependency and image downloads aren't all done
         if not dependencies_ready:
@@ -221,9 +219,7 @@ class LocalRunStateMachine(StateTransitioner):
                         "your worker is mounted properly or contact your administrators."
                     )
                     logger.error(message)
-                    return run_state._replace(
-                        stage=LocalRunStage.CLEANING_UP, failure_message=message
-                    )
+                    return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
                 return run_state._replace(
                     run_status="Waiting for bundle directory to be created by the server",
                     bundle_dir_wait_num_tries=run_state.bundle_dir_wait_num_tries - 1,
@@ -244,7 +240,7 @@ class LocalRunStateMachine(StateTransitioner):
                 # to get out of their parent bundles
                 message = 'Invalid key for dependency: %s' % (dep.child_path)
                 logger.error(message)
-                return run_state._replace(stage=LocalRunStage.CLEANING_UP, failure_message=message)
+                return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
             docker_dependency_path = os.path.join(docker_dependencies_path, dep.child_path)
             if self.shared_file_system:
                 # On a shared FS, we know where the dep is stored and can get the contents directly
@@ -274,7 +270,7 @@ class LocalRunStateMachine(StateTransitioner):
             message = "Cannot assign enough resources: %s" % str(e)
             logger.error(message)
             logger.error(traceback.format_exc())
-            return run_state._replace(stage=LocalRunStage.CLEANING_UP, failure_message=message)
+            return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
 
         # 4) Start container
         try:
@@ -298,7 +294,7 @@ class LocalRunStateMachine(StateTransitioner):
             raise
 
         return run_state._replace(
-            stage=LocalRunStage.RUNNING,
+            stage=RunStage.RUNNING,
             run_status='Running job in Docker container',
             container_id=container.id,
             container=container,
@@ -403,7 +399,7 @@ class LocalRunStateMachine(StateTransitioner):
                         logger.error(traceback.format_exc())
             self.disk_utilization[run_state.bundle.uuid]['running'] = False
             self.disk_utilization.remove(run_state.bundle.uuid)
-            return run_state._replace(stage=LocalRunStage.CLEANING_UP)
+            return run_state._replace(stage=RunStage.CLEANING_UP)
         if run_state.finished:
             logger.debug(
                 'Finished run with UUID %s, exitcode %s, failure_message %s',
@@ -413,9 +409,7 @@ class LocalRunStateMachine(StateTransitioner):
             )
             self.disk_utilization[run_state.bundle.uuid]['running'] = False
             self.disk_utilization.remove(run_state.bundle.uuid)
-            return run_state._replace(
-                stage=LocalRunStage.CLEANING_UP, run_status='Uploading results'
-            )
+            return run_state._replace(stage=RunStage.CLEANING_UP, run_status='Uploading results')
         else:
             return run_state
 
@@ -459,9 +453,7 @@ class LocalRunStateMachine(StateTransitioner):
         if not self.shared_file_system and run_state.has_contents:
             # No need to upload results since results are directly written to bundle store
             return run_state._replace(
-                stage=LocalRunStage.UPLOADING_RESULTS,
-                run_status='Uploading results',
-                container=None,
+                stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
             )
         else:
             return self.finalize_run(run_state)
@@ -531,7 +523,7 @@ class LocalRunStateMachine(StateTransitioner):
         """
         if not run_state.failure_message and run_state.is_killed:
             run_state = run_state._replace(failure_message=run_state.kill_message)
-        return run_state._replace(stage=LocalRunStage.FINALIZING, run_status="Finalizing bundle")
+        return run_state._replace(stage=RunStage.FINALIZING, run_status="Finalizing bundle")
 
     def _transition_from_FINALIZING(self, run_state):
         """
@@ -541,6 +533,6 @@ class LocalRunStateMachine(StateTransitioner):
         if run_state.finalized:
             if not self.shared_file_system:
                 remove_path(run_state.bundle_path)  # don't remove bundle if shared FS
-            return run_state._replace(stage=LocalRunStage.FINISHED, run_status='Finished')
+            return run_state._replace(stage=RunStage.FINISHED, run_status='Finished')
         else:
             return run_state
