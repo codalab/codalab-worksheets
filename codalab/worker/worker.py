@@ -439,30 +439,32 @@ class Worker:
         def reply(err, message={}, data=None):
             self.bundle_service_reply(socket_id, err, message, data)
 
-        try:
-            # TODO: handle this in a thread since this could take a while
-            run_state = self.runs[uuid]
-            container_ip = docker_utils.get_container_ip(
-                self.worker_docker_network.name, run_state.container
-            )
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect((container_ip, port))
-            s.sendall(message.encode())
+        def netcat_fn():
+            try:
+                run_state = self.runs[uuid]
+                container_ip = docker_utils.get_container_ip(
+                    self.worker_docker_network.name, run_state.container
+                )
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.connect((container_ip, port))
+                s.sendall(message.encode())
 
-            total_data = []
-            while True:
-                data = s.recv(Worker.NETCAT_BUFFER_SIZE)
-                if not data:
-                    break
-                total_data.append(data)
-            s.close()
-            reply(None, {}, b''.join(total_data))
-        except BundleServiceException:
-            traceback.print_exc()
-        except Exception as e:
-            traceback.print_exc()
-            err = (http.client.INTERNAL_SERVER_ERROR, str(e))
-            reply(err)
+                total_data = []
+                while True:
+                    data = s.recv(Worker.NETCAT_BUFFER_SIZE)
+                    if not data:
+                        break
+                    total_data.append(data)
+                s.close()
+                reply(None, {}, b''.join(total_data))
+            except BundleServiceException:
+                traceback.print_exc()
+            except Exception as e:
+                traceback.print_exc()
+                err = (http.client.INTERNAL_SERVER_ERROR, str(e))
+                reply(err)
+
+        threading.Thread(target=netcat_fn).start()
 
     def mark_finalized(self, uuid):
         """
@@ -484,8 +486,12 @@ class Worker:
         run_state = self.runs[uuid]
         if os.path.normpath(path) in set(dep.child_path for dep in run_state.bundle.dependencies):
             return
-        with open(os.path.join(run_state.bundle_path, path), 'w') as f:
-            f.write(string)
+
+        def write_fn():
+            with open(os.path.join(run_state.bundle_path, path), 'w') as f:
+                f.write(string)
+
+        threading.Thread(target=write_fn).start()
 
     def upload_bundle_contents(self, bundle_uuid, bundle_path, update_status):
         self.execute_bundle_service_command_with_retry(
