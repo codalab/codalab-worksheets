@@ -153,9 +153,10 @@ class RunResources(object):
         )
 
 
-class WorkerRun(object):
+class BundleCheckinState(object):
     """
-    Defines all the field the worker needs to check in with the server for its runs
+    Defines all the fields the worker needs to check in with the server
+    for a given bundle it's running.
     """
 
     def __init__(
