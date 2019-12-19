@@ -1,7 +1,6 @@
 import logging
 import os
 from subprocess import PIPE, Popen
-import threading
 import time
 import traceback
 import socket
@@ -86,7 +85,6 @@ class Worker:
         self.docker_runtime = docker_runtime
 
         self.runs = {}  # bundle_uuid -> RunState
-        self.lock = threading.RLock()
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
             docker_image_manager=self.image_manager,
@@ -245,9 +243,11 @@ class Worker:
                     self.read_run_missing(socket_id)
                 return
             if action_type == 'kill':
-                self.kill(uuid)
+                self.runs[uuid] = self.runs[uuid]._replace(
+                    kill_message='Kill requested', is_killed=True
+                )
             elif action_type == 'mark_finalized':
-                self.mark_finalized(uuid)
+                self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
             elif action_type == 'read':
                 self.read(socket_id, uuid, response['path'], response['read_args'])
             elif action_type == 'netcat':
@@ -259,26 +259,25 @@ class Worker:
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
-        with self.lock:
-            # transition all runs
-            for bundle_uuid in self.runs.keys():
-                run_state = self.runs[bundle_uuid]
-                self.runs[bundle_uuid] = self.run_state_manager.transition(run_state)
+        # transition all runs
+        for bundle_uuid in self.runs.keys():
+            run_state = self.runs[bundle_uuid]
+            self.runs[bundle_uuid] = self.run_state_manager.transition(run_state)
 
-            # filter out finished runs
-            finished_container_ids = [
-                run.container
-                for run in self.runs.values()
-                if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
-                and run.container_id is not None
-            ]
-            for container_id in finished_container_ids:
-                try:
-                    container = self.docker.containers.get(container_id)
-                    container.remove(force=True)
-                except (docker.errors.NotFound, docker.errors.NullResource):
-                    pass
-            self.runs = {k: v for k, v in self.runs.items() if v.stage != RunStage.FINISHED}
+        # filter out finished runs
+        finished_container_ids = [
+            run.container
+            for run in self.runs.values()
+            if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
+            and run.container_id is not None
+        ]
+        for container_id in finished_container_ids:
+            try:
+                container = self.docker.containers.get(container_id)
+                container.remove(force=True)
+            except (docker.errors.NotFound, docker.errors.NullResource):
+                pass
+        self.runs = {k: v for k, v in self.runs.items() if v.stage != RunStage.FINISHED}
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
@@ -297,11 +296,10 @@ class Worker:
         """
         cpuset, gpuset = set(self.cpuset), set(self.gpuset)
 
-        with self.lock:
-            for run_state in self.runs.values():
-                if run_state.stage == RunStage.RUNNING:
-                    cpuset -= run_state.cpuset
-                    gpuset -= run_state.gpuset
+        for run_state in self.runs.values():
+            if run_state.stage == RunStage.RUNNING:
+                cpuset -= run_state.cpuset
+                gpuset -= run_state.gpuset
 
         if len(cpuset) < request_cpus:
             raise Exception(
@@ -324,23 +322,22 @@ class Worker:
         """
         Returns a list of all the runs managed by this RunManager
         """
-        with self.lock:
-            return [
-                BundleCheckinState(
-                    uuid=run_state.bundle.uuid,
-                    run_status=run_state.run_status,
-                    bundle_start_time=run_state.bundle_start_time,
-                    container_time_total=run_state.container_time_total,
-                    container_time_user=run_state.container_time_user,
-                    container_time_system=run_state.container_time_system,
-                    docker_image=run_state.docker_image,
-                    state=RunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
-                    remote=self.id,
-                    exitcode=run_state.exitcode,
-                    failure_message=run_state.failure_message,
-                )
-                for run_state in self.runs.values()
-            ]
+        return [
+            BundleCheckinState(
+                uuid=run_state.bundle.uuid,
+                run_status=run_state.run_status,
+                bundle_start_time=run_state.bundle_start_time,
+                container_time_total=run_state.container_time_total,
+                container_time_user=run_state.container_time_user,
+                container_time_system=run_state.container_time_system,
+                docker_image=run_state.docker_image,
+                state=RunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
+                remote=self.id,
+                exitcode=run_state.exitcode,
+                failure_message=run_state.failure_message,
+            )
+            for run_state in self.runs.values()
+        ]
 
     @property
     def free_disk_bytes(self):
@@ -386,15 +383,14 @@ class Worker:
                 if self.shared_file_system
                 else os.path.join(self.local_bundles_dir, bundle.uuid)
             )
-            now = time.time()
-            run_state = RunState(
+            self.runs[bundle.uuid] = RunState(
                 stage=RunStage.PREPARING,
                 run_status='',
                 bundle=bundle,
                 bundle_path=os.path.realpath(bundle_path),
                 bundle_dir_wait_num_tries=Worker.BUNDLE_DIR_WAIT_NUM_TRIES,
                 resources=resources,
-                bundle_start_time=now,
+                bundle_start_time=time.time(),
                 container_time_total=0,
                 container_time_user=0,
                 container_time_system=0,
@@ -413,8 +409,6 @@ class Worker:
                 finished=False,
                 finalized=False,
             )
-            with self.lock:
-                self.runs[bundle.uuid] = run_state
         else:
             print(
                 'Bundle {} no longer assigned to this worker'.format(bundle['uuid']),
@@ -463,22 +457,6 @@ class Worker:
             traceback.print_exc()
             err = (http.client.INTERNAL_SERVER_ERROR, str(e))
             reply(err)
-
-    def mark_finalized(self, uuid):
-        """
-        Marks the run as finalized server-side so it can be discarded
-        """
-        with self.lock:
-            self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
-
-    def kill(self, uuid):
-        """
-        Kill bundle with uuid
-        """
-        with self.lock:
-            self.runs[uuid] = self.runs[uuid]._replace(
-                kill_message='Kill requested', is_killed=True
-            )
 
     def write(self, uuid, path, string):
         run_state = self.runs[uuid]
