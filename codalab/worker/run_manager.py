@@ -21,7 +21,7 @@ class RunManager:
     """
     RunManager executes the runs locally, each one in its own Docker
     container. It manages its cache of local Docker images and its own local
-    Docker network.
+    Docker network as well as a cache for downloaded bundle dependencies.
     """
 
     # Network buffer size to use while proxying with netcat
@@ -164,7 +164,11 @@ class RunManager:
         with self._lock:
             for uuid in self._runs.keys():
                 run_state = self._runs[uuid]
-                run_state = run_state._replace(kill_message='Worker stopped', is_killed=True)
+                run_state = run_state._replace(
+                    kill_message="Run had to be terminated due to the Codalab "
+                    "worker process terminating. Please contact administrators.",
+                    is_killed=True,
+                )
                 self._runs[uuid] = run_state
         # Wait until all runs finished or KILL_TIMEOUT seconds pas
         for attempt in range(RunManager.KILL_TIMEOUT):
