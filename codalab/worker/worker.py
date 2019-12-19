@@ -123,7 +123,7 @@ class Worker:
         # Remove complex container objects from state before serializing, these can be retrieved
         runs = {
             uuid: state._replace(
-                container=None, bundle=state.bundle.to_dict(), resources=state.resources.to_dict()
+                container=None, bundle=state.bundle.as_dict, resources=state.resources.as_dict
             )
             for uuid, state in self.runs.items()
         }
@@ -224,7 +224,7 @@ class Worker:
                 (dep_key.parent_uuid, dep_key.parent_path) for dep_key in self.all_dependencies
             ],
             'hostname': socket.gethostname(),
-            'runs': [run.to_dict() for run in self.all_runs],
+            'runs': [run.as_dict for run in self.all_runs],
             'shared_file_system': self.shared_file_system,
         }
         response = self.bundle_service.checkin(self.id, request)
