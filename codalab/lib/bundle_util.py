@@ -29,7 +29,7 @@ def bundle_to_bundle_info(model, bundle):
         bundle.metadata.to_dict(),
         dependencies,
         '',
-    ).to_dict()
+    ).as_dict
 
     # For some reason computing the args requires the rest of the dict
     # This is ugly but we have to deal with it for the time being
