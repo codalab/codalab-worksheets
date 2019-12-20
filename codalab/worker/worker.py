@@ -37,21 +37,20 @@ class Worker:
     NETCAT_BUFFER_SIZE = 4096
     # Number of seconds to wait for bundle kills to propagate before forcing kill
     KILL_TIMEOUT = 100
-    # Directory name to store running bundles in worker filesystem
-    BUNDLES_DIR_NAME = 'runs'
     # Number of loops to check for bundle directory creation by server on shared FS workers
     BUNDLE_DIR_WAIT_NUM_TRIES = 120
 
     def __init__(
         self,
         image_manager,  # type: DockerImageManager
-        dependency_manager,  # type: DependencyManager
+        dependency_manager,  # type: Optional[DependencyManager]
         commit_file,  # type: str
         cpuset,  # type: Set[str]
         gpuset,  # type: Set[str]
         worker_id,  # type: str
         tag,  # type: str
         work_dir,  # type: str
+        local_bundles_dir,  # type: Optional[str]
         exit_when_idle,  # type: str
         idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
@@ -59,33 +58,31 @@ class Worker:
         docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
     ):
-        self.id = worker_id
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
         self.reader = Reader()
+        self.state_committer = JsonStateCommitter(commit_file)
+        self.bundle_service = bundle_service
+
         self.docker = docker.from_env()
         self.cpuset = cpuset
         self.gpuset = gpuset
 
-        self.state_committer = JsonStateCommitter(commit_file)
+        self.id = worker_id
         self.tag = tag
+
         self.work_dir = work_dir
-        self.bundle_service = bundle_service
-        self.exit_when_idle = exit_when_idle
-        self.idle_seconds = idle_seconds
-        self.stop = False
-        self.last_checkin_successful = False
+        self.local_bundles_dir = local_bundles_dir
         self.shared_file_system = shared_file_system
 
-        if not shared_file_system:
-            self.local_bundles_dir = os.path.join(work_dir, Worker.BUNDLES_DIR_NAME)
-            if not os.path.exists(self.local_bundles_dir):
-                logger.info('%s doesn\'t exist, creating.', self.local_bundles_dir)
-                os.makedirs(self.local_bundles_dir, 0o770)
+        self.exit_when_idle = exit_when_idle
+        self.idle_seconds = idle_seconds
 
-        self.docker_runtime = docker_runtime
+        self.stop = False
+        self.last_checkin_successful = False
+        self.last_time_ran = None  # type: Optional[bool]
 
-        self.runs = {}  # bundle_uuid -> RunState
+        self.runs = {}  # type: Dict[str, RunState]
         self.lock = threading.RLock()
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
@@ -97,7 +94,7 @@ class Worker:
             docker_runtime=docker_runtime,
             upload_bundle_callback=self.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
-            shared_file_system=shared_file_system,
+            shared_file_system=self.shared_file_system,
         )
 
     def init_docker_networks(self, docker_network_prefix):
@@ -146,13 +143,20 @@ class Worker:
                 resources=RunResources.from_dict(run_state.resources),
             )
 
+    @property
+    def should_stop_because_idle(self):
+        now = time.time()
+        if len(self.runs) > 0 or self.last_time_ran is None:
+            self.last_time_ran = now
+        is_idle = now - self.last_time_ran > self.idle_seconds
+        return self.exit_when_idle and is_idle and self.last_checkin_successful
+
     def start(self):
         """Return whether we ran anything."""
         self.load_state()
         self.image_manager.start()
         if not self.shared_file_system:
             self.dependency_manager.start()
-        last_time_ran = None  # When was the last time we ran something?
         while not self.stop:
             try:
                 self.process_runs()
@@ -163,20 +167,9 @@ class Worker:
                 if not self.last_checkin_successful:
                     logger.info('Connected! Successful check in!')
                 self.last_checkin_successful = True
-
-                has_runs = len(self.runs) > 0
-                now = time.time()
-                if has_runs:
-                    last_time_ran = now
-
-                if last_time_ran is None:
-                    last_time_ran = now
-                is_idle = now - last_time_ran > self.idle_seconds
-
-                if self.exit_when_idle and is_idle and self.last_checkin_successful:
+                if self.should_stop_because_idle:
                     self.stop = True
                     break
-
             except Exception:
                 self.last_checkin_successful = False
                 traceback.print_exc()
