@@ -270,7 +270,7 @@ class RunStateMachine(StateTransitioner):
             message = "Cannot assign enough resources: %s" % str(e)
             logger.error(message)
             logger.error(traceback.format_exc())
-            return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
+            return run_state._replace(run_status=message)
 
         # 4) Start container
         try:
