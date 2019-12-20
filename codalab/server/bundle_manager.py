@@ -320,9 +320,13 @@ class BundleManager(object):
             reverse=True,
         )
 
-        # Get bundles in RUNNING state from the bundle table
-        running_bundles = self._model.batch_get_bundles(state=State.RUNNING)
-        # Build a dictionary which maps from uuid to bundle
+        # Get all the run_uuids from workers
+        run_uuids = []
+        for worker in workers.workers():
+            run_uuids.extend(worker["run_uuids"])
+        # Get the running bundles that exist in the bundle table
+        running_bundles = self._model.batch_get_bundles(uuid=run_uuids)
+        # Build a dictionary which maps from uuid to running bundle
         uuid_to_running_bundles = {bundle.uuid: bundle for bundle in running_bundles}
 
         # Dispatch bundles
