@@ -145,6 +145,7 @@ class Worksheet extends React.Component {
             showNewUpload: false,
             showNewRun: false,
             showNewText: false,
+            showRerun: false,
             isValid: true,
             checkedBundles: {},
             BulkBundleDialog: null,
@@ -413,7 +414,7 @@ class Worksheet extends React.Component {
         return true;
     };
     // BULK OPERATION RELATED CODE ABOVE======================================
-    setDeleteItemCallBack = (callback) => {
+    setDeleteItemCallback = (callback) => {
         this.setState({ deleteItemCallback: callback, openDeleteItem: true });
     };
 
@@ -471,6 +472,7 @@ class Worksheet extends React.Component {
             showNewUpload: false,
             showNewRun: false,
             showNewText: false,
+            showNewRerun: false,
         });
         if (shouldScroll) {
             this.scrollToItem(index, subIndex);
@@ -586,6 +588,8 @@ class Worksheet extends React.Component {
     setupEventHandlers() {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
+        let editPermission = this.state.ws.info && this.state.ws.info.edit_permission;
+
         window.onpopstate = function(event) {
             if (event.state === null) return;
             this.setState({ ws: new WorksheetContent(event.state.uuid) });
@@ -594,6 +598,11 @@ class Worksheet extends React.Component {
 
         if (this.state.activeComponent === 'action') {
             // no need for other keys, we have the action bar focused
+            return;
+        }
+
+        if (!this.state.ws.info) {
+            // disable all keyboard shortcuts when loading worksheet
             return;
         }
 
@@ -700,7 +709,7 @@ class Worksheet extends React.Component {
                     }
                 }.bind(this),
             );
-            if (!this.state.showBundleOperationButtons) {
+            if (!this.state.showBundleOperationButtons && editPermission) {
                 // insert text after current cell
                 Mousetrap.bind(
                     ['a t'],
@@ -735,6 +744,16 @@ class Worksheet extends React.Component {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
                         this.setState({ showNewRun: true });
+                    }.bind(this),
+                    'keyup',
+                );
+
+                // edit and rerun current bundle
+                Mousetrap.bind(
+                    ['a n'],
+                    function(e) {
+                        if (this.state.focusIndex < 0) return;
+                        this.setState({ showNewRerun: true });
                     }.bind(this),
                     'keyup',
                 );
@@ -1256,6 +1275,7 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Edit Source'
+                    disabled={!info}
                 >
                     <EditIcon className={classes.buttonIcon} />
                     {sourceStr}
@@ -1266,6 +1286,7 @@ class Worksheet extends React.Component {
                     color='inherit'
                     aria-label='Expand CLI'
                     id='terminal-button'
+                    disabled={!info}
                 >
                     {this.state.showActionBar ? (
                         <ContractIcon className={classes.buttonIcon} />
@@ -1279,6 +1300,7 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Delete Worksheet'
+                    disabled={!editPermission}
                 >
                     <Tooltip
                         disableFocusListener
@@ -1373,12 +1395,14 @@ class Worksheet extends React.Component {
                 showNewUpload={this.state.showNewUpload}
                 showNewRun={this.state.showNewRun}
                 showNewText={this.state.showNewText}
+                showNewRerun={this.state.showNewRerun}
                 onHideNewUpload={() => this.setState({ showNewUpload: false })}
                 onHideNewRun={() => this.setState({ showNewRun: false })}
                 onHideNewText={() => this.setState({ showNewText: false })}
+                onHideNewRerun={() => this.setState({ showNewRerun: false })}
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
-                setDeleteItemCallBack={this.setDeleteItemCallBack}
+                setDeleteItemCallback={this.setDeleteItemCallback}
             />
         );
 
@@ -1478,7 +1502,6 @@ const styles = (theme) => ({
     worksheetDesktop: {
         backgroundColor: theme.color.grey.lightest,
         marginTop: NAVBAR_HEIGHT,
-        paddingBottom: 25, // Height of Footer
     },
     worksheetOuter: {
         maxWidth: 1200, // Worksheet width

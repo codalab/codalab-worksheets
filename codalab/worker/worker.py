@@ -103,7 +103,7 @@ class Worker(object):
                 for dep_key in self._run_manager.all_dependencies
             ],
             'hostname': socket.gethostname(),
-            'runs': [run.to_dict() for run in self._run_manager.all_runs],
+            'runs': [run.as_dict for run in self._run_manager.all_runs],
             'shared_file_system': self._shared_file_system,
         }
         response = self._bundle_service.checkin(self.id, request)

@@ -116,17 +116,6 @@ def start_bundle_container(
     tty=False,
     runtime=DEFAULT_RUNTIME,
 ):
-    # Impose a minimum container request memory 4mb, same as docker's minimum allowed value
-    # https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory
-    # When using the REST api, it is allowed to set Memory to 0 but that means the container has unbounded
-    # access to the host machine's memory, which we have decided to not allow
-    if memory_bytes < parse_size('4m'):
-        raise DockerException(
-            'Bundle {}: minimum memory to start {} must be 4m ({} bytes), '
-            'current available memory is {} bytes'.format(
-                uuid, docker_image, parse_size('4m'), memory_bytes
-            )
-        )
     if not command.endswith(';'):
         command = '{};'.format(command)
     docker_command = ['bash', '-c', '( %s ) >stdout 2>stderr' % command]
