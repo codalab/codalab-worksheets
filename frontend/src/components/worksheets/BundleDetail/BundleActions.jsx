@@ -27,18 +27,13 @@ class BundleActions extends React.Component<
 			});
 		});
 		run.dependencies = dependencies;
+		run.name = bundleInfo.metadata.name;
+		run.description = bundleInfo.metadata.description;
 		run.disk = bundleInfo.metadata.request_disk;
 		run.cpu = bundleInfo.metadata.request_cpus;
 		run.gpu = bundleInfo.metadata.request_gpus;
 		run.memory = bundleInfo.metadata.request_memory;
-		let docker_image = bundleInfo.metadata.docker_image;
-		if (docker_image && docker_image.startsWith('codalab/default-cpu')){
-			docker_image = 'codalab/default-cpu';
-		}
-		else if (docker_image && docker_image.startsWith('codalab/default-gpu')){
-			docker_image = 'codalab/default-gpu';
-		}
-		run.docker = docker_image;
+		run.docker = bundleInfo.metadata.request_docker_image
 		run.networkAccess = bundleInfo.metadata.request_network;
 		run.failedDependencies = bundleInfo.metadata.allow_failed_dependencies;
 		this.props.rerunItem(run);
@@ -60,6 +55,7 @@ class BundleActions extends React.Component<
 
 	render() {
 		const { bundleInfo, editPermission } = this.props;
+		console.log(bundleInfo.metadata);
 		const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
 		const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
 		const isKillableBundle = (bundleInfo.state === 'running' 
