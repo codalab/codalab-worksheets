@@ -47,20 +47,6 @@ class TextEditorItem extends React.Component<{
         this.keymap = {};
     }
 
-    capture_keys = (ev) => {
-        this.keymap[ev.keyCode] = ev.type === 'keydown';
-        const pressed = [];
-        Object.keys(this.keymap).forEach((key) => {
-            if (this.keymap[key]) {
-                pressed.push(key);
-            }
-        });
-        if (pressed.includes('27')) {
-            // Close editor upon pressing Escape
-            this.props.closeEditor();
-        }
-    };
-
     updateText = (ev) => {
         this.text = ev.target.value;
     };
@@ -121,9 +107,14 @@ class TextEditorItem extends React.Component<{
 
     render() {
         const { classes, defaultValue, showDefault } = this.props;
-        Mousetrap.bindGlobal(['ctrl+enter', 'ctrl+s'], () => {
+        Mousetrap.bindGlobal(['ctrl+enter'], () => {
             this.saveText();
-            Mousetrap.unbindGlobal(['ctrl+enter', 'ctrl+s']);
+            Mousetrap.unbindGlobal(['ctrl+enter']);
+        });
+
+        Mousetrap.bindGlobal(['esc'], () => {
+            this.props.closeEditor();
+            Mousetrap.unbindGlobal(['esc']);
         });
 
         return (
