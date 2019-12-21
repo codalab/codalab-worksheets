@@ -174,9 +174,6 @@ runs on the server in the background in a loop.  Its duties are:
 
 ## Worker
 
-The worker has to be designed to work with many different backends (local
-worker, Slurm, and Azure/AWS Batch).
-
 The worker's main entry point is
 [codalab/worker/main.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/main.py).
 
@@ -186,18 +183,18 @@ is generic logic.
 
 The worker creates a run manager, which manages the actual execution of the runs.
 By default, a
-([LocalRunManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/local_run/local_run_manager.py))
+([RunManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/run_manager.py))
 is used.
 
 The run manager has a
-[DockerImageManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/local_run/docker_image_manager.py)
+[DockerImageManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/docker_image_manager.py)
 for maintaining Docker images
-and a [LocalFilesystemDependencyManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/local_run/local_dependency_manager.py)
+and a [DependencyManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/dependency_manager.py)
 for maintaining bundle dependencies, both of which are download asynchronously
 and require a cache.
 
 Finally, the
-[LocalRunStateMachine](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/local_run/local_run_state.py)
+[RunStateMachine](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/worker_run_state.py)
 does most of the heavy lifting and transitions jobs between different states.
 
 # Deployment

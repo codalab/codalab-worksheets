@@ -145,7 +145,7 @@ class BundleManager(object):
                 if killed_uuids:
                     failure_message += ' Parent bundles were killed: %s' % ', '.join(killed_uuids)
                 if failure_message:
-                    failure_message += ' (Please use the --allow-failed-dependencies flag to depend on results fo failed or killed bundles)'
+                    failure_message += ' (Please use the --allow-failed-dependencies flag to depend on results of failed or killed bundles)'
                     bundles_to_fail.append((bundle, failure_message))
                     continue
 
@@ -320,9 +320,13 @@ class BundleManager(object):
             reverse=True,
         )
 
-        # Get bundles in RUNNING state from the bundle table
-        running_bundles = self._model.batch_get_bundles(state=State.RUNNING)
-        # Build a dictionary which maps from uuid to bundle
+        # Get all the run_uuids from workers
+        run_uuids = []
+        for worker in workers.workers():
+            run_uuids.extend(worker["run_uuids"])
+        # Get the running bundles that exist in the bundle table
+        running_bundles = self._model.batch_get_bundles(uuid=run_uuids)
+        # Build a dictionary which maps from uuid to running bundle
         uuid_to_running_bundles = {bundle.uuid: bundle for bundle in running_bundles}
 
         # Dispatch bundles
@@ -331,9 +335,9 @@ class BundleManager(object):
             workers_list = workers.user_owned_workers(bundle.owner_id)
 
             # If there is no user_owned worker, try to schedule the current bundle to run on a CodaLab's public worker.
-            if not workers_list:
+            if len(workers_list) == 0:
                 # Check if there is enough parallel run quota left for this user
-                if not self._model.get_user_parallel_run_quota_left(bundle.owner_id):
+                if self._model.get_user_parallel_run_quota_left(bundle.owner_id) <= 0:
                     logger.info(
                         "User %s has no parallel run quota left, skipping job for now",
                         bundle.owner_id,
@@ -558,7 +562,7 @@ class BundleManager(object):
 
         # Figure out the resource requirements.
         bundle_resources = self._compute_bundle_resources(bundle)
-        message['resources'] = bundle_resources.to_dict()
+        message['resources'] = bundle_resources.as_dict
         return message
 
     def _compute_bundle_resources(self, bundle):

@@ -89,13 +89,14 @@ class BundleInfo(object):
         }  # type: Dict[DependencyKey, Dependency]
         self.location = location  # set if local filesystem
 
-    def to_dict(self):
+    @property
+    def as_dict(self):
         dct = generic_to_dict(self)
         dct['dependencies'] = [v for k, v in dct['dependencies'].items()]
         return dct
 
     def __str__(self):
-        return str(self.to_dict())
+        return str(self.as_dict)
 
     @classmethod
     def from_dict(cls, dct):
@@ -137,7 +138,8 @@ class RunResources(object):
         self.disk = disk
         self.network = network
 
-    def to_dict(self):
+    @property
+    def as_dict(self):
         return generic_to_dict(self)
 
     @classmethod
@@ -153,9 +155,10 @@ class RunResources(object):
         )
 
 
-class WorkerRun(object):
+class BundleCheckinState(object):
     """
-    Defines all the field the worker needs to check in with the server for its runs
+    Defines all the fields the worker needs to check in with the server
+    for a given bundle it's running.
     """
 
     def __init__(
@@ -163,7 +166,6 @@ class WorkerRun(object):
         uuid,  # type: str
         run_status,  # type: str
         bundle_start_time,  # type: int
-        container_start_time,  # type: int
         container_time_total,  # type: int
         container_time_user,  # type: int
         container_time_system,  # type: int
@@ -176,7 +178,6 @@ class WorkerRun(object):
         self.uuid = uuid
         self.run_status = run_status
         self.bundle_start_time = bundle_start_time
-        self.container_start_time = container_start_time
         self.container_time_total = container_time_total
         self.container_time_user = container_time_user
         self.container_time_system = container_time_system
@@ -192,7 +193,6 @@ class WorkerRun(object):
             uuid=dct['uuid'],
             run_status=dct['run_status'],
             bundle_start_time=dct['bundle_start_time'],
-            container_start_time=dct['container_start_time'],
             container_time_total=dct['container_time_total'],
             container_time_user=dct['container_time_user'],
             container_time_system=dct['container_time_system'],
@@ -203,7 +203,8 @@ class WorkerRun(object):
             failure_message=dct['failure_message'],
         )
 
-    def to_dict(self):
+    @property
+    def as_dict(self):
         return generic_to_dict(self)
 
 
@@ -215,6 +216,8 @@ def generic_to_dict(obj):
         iter_dict = obj._asdict()
     elif hasattr(obj, '__dict__'):
         iter_dict = obj.__dict__
+    elif hasattr(obj, 'as_dict'):
+        iter_dict = obj.as_dict
     else:
         return obj
     for k, v in iter_dict.items():
