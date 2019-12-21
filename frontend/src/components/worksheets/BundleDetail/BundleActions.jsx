@@ -55,7 +55,6 @@ class BundleActions extends React.Component<
 
 	render() {
 		const { bundleInfo, editPermission } = this.props;
-		console.log(bundleInfo.metadata);
 		const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
 		const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
 		const isKillableBundle = (bundleInfo.state === 'running' 
