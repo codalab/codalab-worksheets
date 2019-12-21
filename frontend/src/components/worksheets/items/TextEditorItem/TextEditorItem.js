@@ -123,8 +123,6 @@ class TextEditorItem extends React.Component<{
                     defaultValue={defaultValue || ''}
                     className={classes.input}
                     onChange={this.updateText}
-                    onKeyUp={this.capture_keys}
-                    onKeyDown={this.capture_keys}
                     autoFocus={true}
                     multiline
                 />
