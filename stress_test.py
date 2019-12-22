@@ -5,7 +5,6 @@ import string
 import sys
 import time
 
-from abc import ABC, abstractmethod
 from enum import Enum
 from multiprocessing import cpu_count, Process, Pool
 from threading import Thread
@@ -26,25 +25,12 @@ Script to stress test CodaLab's backend. The following is a list of what's being
 - Call CodaLab repeatedly to get information to check if the system is still responsive
 """
 
-# List of random, large docker images
-_LARGE_DOCKER_IMAGES = [
-    'adreeve/python-numpy',
-    'larger/rdp:dev',
-    'openjdk:11.0.5-jre',
-    'tensorflow/tensorflow:devel-gpu',
-    'iwane/numpy-matplotlib',
-    'aaronyalai/openaibaselines:gym3',
-    'mysql:latest',
-    'couchbase:latest',
-    'large64/docker-test:ruby',
-    'pytorch/pytorch:1.3-cuda10.1-cudnn7-devel',
-]
-
 
 class StressTestArg(Enum):
     CL_EXECUTABLE = 'cl_executable'
     HEAVY = 'heavy'
-    BYPASS_CLEAN_UP = 'bypass_clean_up'
+    CLEANUP_ONLY = 'cleanup_only'
+    BYPASS_CLEANUP = 'bypass_cleanup'
     LARGE_FILE_SIZE_GB = 'large_file_size_gb'
     BUNDLE_UPLOAD_COUNT = 'bundle_upload_count'
     CREATE_WORKSHEET_COUNT = 'create_worksheet_count'
@@ -80,7 +66,7 @@ class TestFile:
 
     def _make_random_file(self):
         with open(self._file_name, 'wb') as file:
-            file.seek(self._size_mb * 1024 * 1024)  # seek takes in file size in terms of bytes
+            file.seek(self._size_mb * 1024 * 1024)  # Seek takes in file size in terms of bytes
             file.write(b'0')
         print('Created file {} of size {} MB.'.format(self._file_name, self._size_mb))
 
@@ -102,19 +88,33 @@ class TestFile:
             print('File {} has already been deleted.'.format(self._file_name))
 
 
-class StressTestRunner(ABC):
+class StressTestRunner:
     """
     Abstract class that holds common logic for stress test runners.
 
     Args:
         cl: cl instance used to run CodaLab commands
+        args: command line arguments
     """
+
+    # List of random, large docker images
+    _LARGE_DOCKER_IMAGES = [
+        'adreeve/python-numpy',
+        'larger/rdp:dev',
+        'openjdk:11.0.5-jre',
+        'tensorflow/tensorflow:devel-gpu',
+        'iwane/numpy-matplotlib',
+        'aaronyalai/openaibaselines:gym3',
+        'mysql:latest',
+        'couchbase:latest',
+        'large64/docker-test:ruby',
+        'pytorch/pytorch:1.3-cuda10.1-cudnn7-devel',
+    ]
+    _TAG = 'codalab-stress-test'
 
     def __init__(self, cl, args):
         self._cl = cl
-        self._args = vars(args)
-        self._worksheets = []
-        self._bundles = []
+        self._args = args
 
     def run(self):
         print('Running stress tests...')
@@ -128,14 +128,8 @@ class StressTestRunner(ABC):
         self._test_infinite_gpu()
         self._test_infinite_disk()
         self._test_many_disk_writes()
-        self._cleanup()
+        self.cleanup()
         print('Done.')
-
-    def get_arg_val(self, argname, default):
-        if argname in self._args and self._args.get(argname) is not None:
-            return self._args.get(argname)
-        else:
-            return default
 
     def _start_heartbeat(self):
         # Start heartbeats in the background. Each heartbeat creates a worksheet and prints its content.
@@ -146,10 +140,10 @@ class StressTestRunner(ABC):
     def _heartbeat(self):
         while True:
             # Run a search in a separate thread and check if it times out or not.
-            p = Process(target=StressTestRunner._search_failed_runs, args=(self._cl,))
-            p.start()
-            p.join(timeout=10)
-            if p.is_alive():
+            t = Thread(target=StressTestRunner._search_failed_runs, args=(self._cl,))
+            t.start()
+            t.join(timeout=10)
+            if t.is_alive():
                 print('Heartbeat failed. Exiting...')
                 sys.exit(1)
             # Have heartbeat run every 5 seconds
@@ -157,14 +151,14 @@ class StressTestRunner(ABC):
 
     def _test_large_bundle(self):
         self._set_worksheet('large_bundles')
-        large_file = TestFile('large_file', self.get_large_file_size_gb() * 1000)
+        large_file = TestFile('large_file', self._get_large_file_size_gb() * 1000)
         self._run_bundle([self._cl, 'upload', large_file.name()])
         large_file.delete()
 
     def _test_many_bundle_uploads(self):
         self._set_worksheet('many_bundle_uploads')
         file = TestFile('small_file', 1)
-        for _ in range(self.get_bundle_uploads_count()):
+        for _ in range(self._get_bundle_uploads_count()):
             self._run_bundle([self._cl, 'upload', file.name()])
         file.delete()
 
@@ -177,23 +171,23 @@ class StressTestRunner(ABC):
         file.delete()
 
         # Create many worksheets with current worksheet's content copied over
-        for _ in range(self.get_create_worksheets_count()):
-            worksheet_name = self._create_worksheet_name('other_worksheet_copy')
-            other_worksheet_uuid = run_command([self._cl, 'new', worksheet_name])
-            self._worksheets.append(other_worksheet_uuid)
-            run_command([self._cl, 'wadd', worksheet_uuid, other_worksheet_uuid])
+        for _ in range(self._get_create_worksheets_count()):
+            other_worksheet_uuid = self._set_worksheet('other_worksheet_copy')
+            run_command(
+                [self._cl, 'wadd', worksheet_uuid, other_worksheet_uuid], force_subprocess=True
+            )
 
     def _test_parallel_runs(self):
         self._set_worksheet('parallel_runs')
         pool = Pool(cpu_count())
-        for _ in range(self.get_parallel_runs_count()):
-            pool.apply(StressTestRunner._simple_run, (self._cl, self._bundles))
+        for _ in range(self._get_parallel_runs_count()):
+            pool.apply(StressTestRunner._simple_run, (self._cl,))
         pool.close()
 
     def _test_many_docker_runs(self):
         self._set_worksheet('many_docker_runs')
-        for _ in range(self.get_num_of_docker_rounds()):
-            for image in _LARGE_DOCKER_IMAGES:
+        for _ in range(self._get_num_of_docker_rounds()):
+            for image in StressTestRunner._LARGE_DOCKER_IMAGES:
                 self._run_bundle(
                     [
                         self._cl,
@@ -205,7 +199,7 @@ class StressTestRunner(ABC):
                 )
 
     def _test_infinite_memory(self):
-        if not self.should_test_infinite_memory():
+        if not self._should_test_infinite_memory():
             return
         self._set_worksheet('infinite_memory')
         file = self._create_infinite_memory_script()
@@ -214,12 +208,12 @@ class StressTestRunner(ABC):
         file.delete()
 
     def _test_infinite_gpu(self):
-        if not self.should_test_infinite_gpu():
+        if not self._should_test_infinite_gpu():
             return
         self._set_worksheet('infinite_gpu')
         file = self._create_infinite_memory_script()
         self._run_bundle([self._cl, 'upload', file.name()])
-        for _ in range(self.get_infinite_gpu_run_count()):
+        for _ in range(self._get_infinite_gpu_run_count()):
             self._run_bundle(
                 [self._cl, 'run', ':' + file.name(), 'python ' + file.name(), '--request-gpus=1']
             )
@@ -230,7 +224,7 @@ class StressTestRunner(ABC):
         return TestFile('stress_memory.py', content=code)
 
     def _test_infinite_disk(self):
-        if not self.should_test_infinite_disk():
+        if not self._should_test_infinite_disk():
             return
         self._set_worksheet('infinite_disk')
         # Infinitely write out random characters to disk
@@ -239,15 +233,15 @@ class StressTestRunner(ABC):
 
     def _test_many_disk_writes(self):
         self._set_worksheet('many_disk_writes')
-        for _ in range(self.get_disk_write_count()):
+        for _ in range(self._get_disk_write_count()):
             # Write out 1 GB worth of bytes out to disk
             self._run_bundle([self._cl, 'run', 'dd if=/dev/zero of=1g.bin bs=1G count=1;'])
 
     def _set_worksheet(self, run_name):
         worksheet_name = self._create_worksheet_name(run_name)
-        uuid = run_command([self._cl, 'new', worksheet_name])
-        run_command([self._cl, 'work', worksheet_name])
-        self._worksheets.append(uuid)
+        uuid = run_command([self._cl, 'new', worksheet_name], force_subprocess=True)
+        run_command([self._cl, 'work', worksheet_name], force_subprocess=True)
+        run_command([self._cl, 'wedit', '--tag=%s' % StressTestRunner._TAG], force_subprocess=True)
         return uuid
 
     def _create_worksheet_name(self, base_name):
@@ -259,154 +253,100 @@ class StressTestRunner(ABC):
         )
 
     def _run_bundle(self, args):
-        uuid = run_command(args)
-        self._bundles.append(uuid)
-        return uuid
+        args.append('--tags=%s' % StressTestRunner._TAG)
+        return run_command(args, force_subprocess=True)
 
-    def _cleanup(self):
-        if self.get_arg_val(StressTestArg.BYPASS_CLEAN_UP.value, False):
+    def cleanup(self):
+        if self._should_bypass_cleanup():
             return
         print('Cleaning up...')
-        for uuid in self._bundles:
-            # wait until the bundle finishes and then delete it
-            print(run_command([self._cl, 'wait', uuid]))
-            print(run_command([self._cl, 'rm', uuid, '--force']))
-        for uuid in self._worksheets:
-            print(run_command([self._cl, 'wrm', uuid, '--force']))
-        print(
-            'Removed {} bundles and {} worksheets.'.format(
-                len(self._bundles), len(self._worksheets)
-            )
-        )
+        bundles = run_command(
+            [self._cl, 'search', 'tags=%s' % StressTestRunner._TAG, '.limit=10000', '--uuid-only'],
+            force_subprocess=True,
+        ).split('\n')
+        worksheets = run_command(
+            [self._cl, 'wsearch', 'tag=%s' % StressTestRunner._TAG, '.limit=1000', '--uuid-only'],
+            force_subprocess=True,
+        ).split('\n')
+        for uuid in bundles:
+            if len(uuid) == 0:
+                continue
+            # Wait until the bundle finishes and then delete it
+            run_command([self._cl, 'wait', uuid], force_subprocess=True)
+            run_command([self._cl, 'rm', uuid, '--force'], force_subprocess=True)
+        for uuid in worksheets:
+            if len(uuid) == 0:
+                continue
+            run_command([self._cl, 'wrm', uuid, '--force'], force_subprocess=True)
+        print('Removed {} bundles and {} worksheets.'.format(len(bundles), len(worksheets)))
 
-    @abstractmethod
-    def get_large_file_size_gb(self):
-        pass
+    def _should_bypass_cleanup(self):
+        return self._args[StressTestArg.BYPASS_CLEANUP.value]
 
-    @abstractmethod
-    def get_bundle_uploads_count(self):
-        pass
+    def _get_large_file_size_gb(self):
+        return self._args[StressTestArg.LARGE_FILE_SIZE_GB.value]
 
-    @abstractmethod
-    def get_create_worksheets_count(self):
-        pass
+    def _get_bundle_uploads_count(self):
+        return self._args[StressTestArg.BUNDLE_UPLOAD_COUNT.value]
 
-    @abstractmethod
-    def get_parallel_runs_count(self):
-        pass
+    def _get_create_worksheets_count(self):
+        return self._args[StressTestArg.CREATE_WORKSHEET_COUNT.value]
 
-    @abstractmethod
-    def get_num_of_docker_rounds(self):
-        pass
+    def _get_parallel_runs_count(self):
+        return self._args[StressTestArg.PARALLEL_RUNS_COUNT.value]
 
-    @abstractmethod
-    def should_test_infinite_memory(self):
-        pass
+    def _get_num_of_docker_rounds(self):
+        return self._args[StressTestArg.LARGE_DOCKER_RUNS_COUNT.value]
 
-    @abstractmethod
-    def should_test_infinite_disk(self):
-        pass
+    def _should_test_infinite_memory(self):
+        return self._args[StressTestArg.TEST_INFINITE_MEMORY.value]
 
-    @abstractmethod
-    def should_test_infinite_gpu(self):
-        pass
+    def _should_test_infinite_disk(self):
+        return self._args[StressTestArg.TEST_INFINITE_DISK.value]
 
-    @abstractmethod
-    def get_infinite_gpu_run_count(self):
-        pass
+    def _should_test_infinite_gpu(self):
+        return self._args[StressTestArg.TEST_INFINITE_GPU.value]
 
-    @abstractmethod
-    def get_disk_write_count(self):
-        pass
+    def _get_infinite_gpu_run_count(self):
+        return self._args[StressTestArg.INFINITE_GPU_RUNS_COUNT.value]
+
+    def _get_disk_write_count(self):
+        return self._args[StressTestArg.LARGE_DISK_WRITE_COUNT.value]
 
     @staticmethod
-    def _simple_run(cl, bundles):
-        bundles.append(run_command([cl, 'run', 'echo stress testing...']))
+    def _simple_run(cl):
+        run_command(
+            [cl, 'run', 'echo stress testing...', '--tags=%s' % StressTestRunner._TAG],
+            force_subprocess=True,
+        )
 
     @staticmethod
     def _search_failed_runs(cl):
-        run_command([cl, 'search', 'state=failed', 'created=.sort-'])
-
-
-class LightStressTestRunner(StressTestRunner):
-    def __init__(self, cl, args):
-        super().__init__(cl, args)
-
-    def get_large_file_size_gb(self):
-        return self.get_arg_val(StressTestArg.LARGE_FILE_SIZE_GB.value, 1)
-
-    def get_bundle_uploads_count(self):
-        return self.get_arg_val(StressTestArg.BUNDLE_UPLOAD_COUNT.value, 1)
-
-    def get_create_worksheets_count(self):
-        return self.get_arg_val(StressTestArg.CREATE_WORKSHEET_COUNT.value, 1)
-
-    def get_parallel_runs_count(self):
-        return self.get_arg_val(StressTestArg.PARALLEL_RUNS_COUNT.value, 4)
-
-    def get_num_of_docker_rounds(self):
-        return self.get_arg_val(StressTestArg.LARGE_DOCKER_RUNS_COUNT.value, 1)
-
-    def should_test_infinite_memory(self):
-        return self.get_arg_val(StressTestArg.TEST_INFINITE_MEMORY.value, False)
-
-    def should_test_infinite_disk(self):
-        return self.get_arg_val(StressTestArg.TEST_INFINITE_DISK.value, False)
-
-    def should_test_infinite_gpu(self):
-        return self.get_arg_val(StressTestArg.TEST_INFINITE_GPU.value, False)
-
-    def get_infinite_gpu_run_count(self):
-        return self.get_arg_val(StressTestArg.INFINITE_GPU_RUNS_COUNT.value, 0)
-
-    def get_disk_write_count(self):
-        return self.get_arg_val(StressTestArg.LARGE_DISK_WRITE_COUNT.value, 1)
-
-
-class HeavyStressTestRunner(StressTestRunner):
-    def __init__(self, cl, args):
-        super().__init__(cl, args)
-
-    def get_large_file_size_gb(self):
-        return self.get_arg_val(StressTestArg.LARGE_FILE_SIZE_GB.value, 20)
-
-    def get_bundle_uploads_count(self):
-        return self.get_arg_val(StressTestArg.BUNDLE_UPLOAD_COUNT.value, 2000)
-
-    def get_create_worksheets_count(self):
-        return self.get_arg_val(StressTestArg.CREATE_WORKSHEET_COUNT.value, 2000)
-
-    def get_parallel_runs_count(self):
-        return self.get_arg_val(StressTestArg.PARALLEL_RUNS_COUNT.value, 1000)
-
-    def get_num_of_docker_rounds(self):
-        return self.get_arg_val(StressTestArg.LARGE_DOCKER_RUNS_COUNT.value, 1000)
-
-    def should_test_infinite_memory(self):
-        return self.get_arg_val(StressTestArg.TEST_INFINITE_MEMORY.value, True)
-
-    def should_test_infinite_disk(self):
-        return self.get_arg_val(StressTestArg.TEST_INFINITE_DISK.value, True)
-
-    def should_test_infinite_gpu(self):
-        return self.get_arg_val(StressTestArg.TEST_INFINITE_GPU.value, True)
-
-    def get_infinite_gpu_run_count(self):
-        return self.get_arg_val(StressTestArg.INFINITE_GPU_RUNS_COUNT.value, 1000)
-
-    def get_disk_write_count(self):
-        return self.get_arg_val(StressTestArg.LARGE_DISK_WRITE_COUNT.value, 1000)
+        run_command([cl, 'search', 'state=failed', 'created=.sort-'], force_subprocess=True)
 
 
 def main():
-    if args.heavy:
-        print('Created a HeavyStressTestRunner...')
-        runner = HeavyStressTestRunner(cl, args)
-    else:
-        print('Created a LightStressTestRunner...')
-        runner = LightStressTestRunner(cl, args)
+    if args[StressTestArg.CLEANUP_ONLY.value]:
+        runner = StressTestRunner(cl, args)
+        runner.cleanup()
+        return
+
+    if args[StressTestArg.HEAVY.value]:
+        print('Setting the heavy configuration...')
+        args[StressTestArg.LARGE_FILE_SIZE_GB.value] = 20
+        args[StressTestArg.BUNDLE_UPLOAD_COUNT.value] = 2000
+        args[StressTestArg.CREATE_WORKSHEET_COUNT.value] = 2000
+        args[StressTestArg.PARALLEL_RUNS_COUNT.value] = 1000
+        args[StressTestArg.LARGE_DOCKER_RUNS_COUNT.value] = 1000
+        args[StressTestArg.TEST_INFINITE_MEMORY.value] = True
+        args[StressTestArg.TEST_INFINITE_DISK.value] = True
+        args[StressTestArg.TEST_INFINITE_GPU.value] = True
+        args[StressTestArg.INFINITE_GPU_RUNS_COUNT.value] = 1000
+        args[StressTestArg.LARGE_DISK_WRITE_COUNT.value] = 1000
+    print(args)
 
     # Run stress tests and time how long it takes to complete
+    runner = StressTestRunner(cl, args)
     start_time = time.time()
     runner.run()
     duration_seconds = time.time() - start_time
@@ -414,89 +354,91 @@ def main():
 
 
 if __name__ == '__main__':
-
-    def str_to_bool(val):
-        if val.lower() == 'true':
-            return True
-        elif val.lower() == 'false':
-            return False
-        else:
-            raise argparse.ArgumentTypeError('Boolean value of "true" or "false" expected.')
-
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab stress tests against the specified CodaLab instance (defaults to localhost).'
     )
     parser.add_argument(
         StressTestArg.CL_EXECUTABLE.get_cla_form(),
         type=str,
-        help='Path to codalab CLI executable. The default is "cl".',
+        help='Path to Codalab CLI executable (defaults to "cl")',
         default='cl',
     )
     parser.add_argument(
         StressTestArg.HEAVY.get_cla_form(),
         action='store_true',
-        help='Runs a heavy version of the stress tests. The default is false.',
+        help='Whether to run the heavy version of the stress tests (defaults to false)',
     )
-
     parser.add_argument(
-        StressTestArg.BYPASS_CLEAN_UP.get_cla_form(),
+        StressTestArg.CLEANUP_ONLY.get_cla_form(),
         action='store_true',
-        help='Bypasses clean up of all the worksheets and bundles post-stress testing. The default is false.',
+        help='Whether to just clean up bundles and worksheets from previous stress test runs (defaults to false)',
+    )
+    parser.add_argument(
+        StressTestArg.BYPASS_CLEANUP.get_cla_form(),
+        action='store_true',
+        help='Whether to bypass clean up of all the worksheets and bundles post-stress testing (defaults to false)',
     )
 
     # Custom stress test runner arguments
     parser.add_argument(
         StressTestArg.LARGE_FILE_SIZE_GB.get_cla_form(),
         type=int,
-        help='Override size of large file in GB for single upload.',
+        help='Size of large file in GB for single upload (defaults to 1)',
+        default=0,
     )
     parser.add_argument(
         StressTestArg.BUNDLE_UPLOAD_COUNT.get_cla_form(),
         type=int,
-        help='Override number of small bundles to upload.',
+        help='Number of small bundles to upload (defaults to 1)',
+        default=1,
     )
     parser.add_argument(
         StressTestArg.CREATE_WORKSHEET_COUNT.get_cla_form(),
         type=int,
-        help='Override number of worksheets to create.',
+        help='Number of worksheets to create (defaults to 1)',
+        default=1,
     )
     parser.add_argument(
         StressTestArg.PARALLEL_RUNS_COUNT.get_cla_form(),
         type=int,
-        help='Override number of small, parallel runs.',
+        help='Number of small, parallel runs (defaults to 4)',
+        default=4,
     )
     parser.add_argument(
         StressTestArg.LARGE_DOCKER_RUNS_COUNT.get_cla_form(),
         type=int,
-        help='Override number of runs with large docker images.',
+        help='Number of runs with large docker images (defaults to 1)',
+        default=1,
     )
     parser.add_argument(
         StressTestArg.TEST_INFINITE_MEMORY.get_cla_form(),
-        type=str_to_bool,
-        help='Override whether infinite memory stress test is run by passing in "true" or "false".',
+        action='store_true',
+        help='Whether infinite memory stress test is run (defaults to false)',
     )
     parser.add_argument(
         StressTestArg.TEST_INFINITE_DISK.get_cla_form(),
-        type=str_to_bool,
-        help='Override whether infinite disk write test is run by passing in "true" or "false".',
+        action='store_true',
+        help='Whether infinite disk write test is run (defaults to false)',
     )
     parser.add_argument(
         StressTestArg.TEST_INFINITE_GPU.get_cla_form(),
-        type=str_to_bool,
-        help='Override whether infinite gpu usage test is run by passing in "true" or "false".',
+        action='store_true',
+        help='Whether infinite gpu usage test is run (defaults to false)',
     )
     parser.add_argument(
         StressTestArg.INFINITE_GPU_RUNS_COUNT.get_cla_form(),
         type=int,
-        help='Override number of infinite gpu runs.',
+        help='Number of infinite gpu runs (defaults to 0)',
+        default=0,
     )
     parser.add_argument(
         StressTestArg.LARGE_DISK_WRITE_COUNT.get_cla_form(),
         type=int,
-        help='Override number of runs with 1 GB disk writes.',
+        help='Number of runs with 1 GB disk writes (defaults to 1)',
+        default=1,
     )
 
     # Parse args and run this script
-    args = parser.parse_args()
-    cl = args.cl_executable
+    args = vars(parser.parse_args())
+    cl = args[StressTestArg.CL_EXECUTABLE.value]
     main()
