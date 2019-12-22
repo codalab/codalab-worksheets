@@ -184,7 +184,7 @@ class BundleRow extends Component {
                         {rowContent}
                     </a>
                 );
-            if (typeof rowContent === 'object') {
+            if (!rowContent || rowContent.name === '<invalid>') {
                 rowContent = '';
             }
 
