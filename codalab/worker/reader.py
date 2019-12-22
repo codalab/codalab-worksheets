@@ -3,7 +3,6 @@ import http.client
 import os
 import threading
 
-from codalab.worker.run_manager import Reader
 import codalab.worker.download_util as download_util
 from codalab.worker.download_util import get_target_path, PathException
 from codalab.worker.file_util import (
@@ -15,14 +14,25 @@ from codalab.worker.file_util import (
 )
 
 
-class LocalReader(Reader):
-    """
-    Class that implements read functions for bundles executed on the local filesystem
-    """
-
+class Reader(object):
     def __init__(self):
-        super(LocalReader, self).__init__()
+        self.read_handlers = {
+            'get_target_info': self.get_target_info,
+            'stream_directory': self.stream_directory,
+            'stream_file': self.stream_file,
+            'read_file_section': self.read_file_section,
+            'summarize_file': self.summarize_file,
+        }
         self.read_threads = []  # Threads
+
+    def read(self, run_state, path, read_args, reply):
+        read_type = read_args['type']
+        handler = self.read_handlers.get(read_type, None)
+        if handler:
+            handler(run_state, path, read_args, reply)
+        else:
+            err = (http.client.BAD_REQUEST, "Unsupported read_type for read: %s" % read_type)
+            reply(err)
 
     def stop(self):
         for thread in self.read_threads:

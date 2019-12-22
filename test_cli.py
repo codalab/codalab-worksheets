@@ -20,6 +20,7 @@ from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
 
 import argparse
+import io
 import json
 import os
 import random
@@ -29,6 +30,7 @@ import subprocess
 import sys
 import time
 import traceback
+from unittest.mock import patch
 
 
 global cl
@@ -112,9 +114,55 @@ def sanitize(string, max_chars=256):
     return string
 
 
+class FakeStdout(io.StringIO):
+    """Fake class to mimic stdout. We can't just use io.StringIO because we need
+    to fake the ability to write binary files to sys.stdout.buffer (thus this
+    class has a "buffer" attribute that behaves the same way).
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.buffer = io.BytesIO()
+
+    def getvalue(self):
+        """
+        If self.buffer has a non-unicode value, return that value.
+        Otherwise, decode the self.buffer value and append it
+        to self.getvalue().
+
+        This is because this function is mimicking the behavior of `sys.stdout`.
+        `sys.stdout` can be read as either a string or bytes.
+
+        When a string is written to `sys.stdout`, it returns a string when doing `getvalue()`.
+
+        When bytes are written to `sys.stdout` (by writing to `sys.stdout.buffer`),
+        it returns bytes when doing `getvalue()`. The reason we need to account for this
+        case is that there are tests in which a binary file is uploaded, then it is
+        printed out (by writing to `sys.stdout.buffer`), and then the test reads what's
+        printed out and makes sure it matches the original file.
+        """
+        try:
+            buffer_value = self.buffer.getvalue().decode()
+        except UnicodeDecodeError:
+            return self.buffer.getvalue()
+        return super().getvalue() + buffer_value
+
+
 def run_command(
-    args, expected_exit_code=0, max_output_chars=1024, env=None, include_stderr=False, binary=False
+    args,
+    expected_exit_code=0,
+    max_output_chars=1024,
+    env=None,
+    include_stderr=False,
+    binary=False,
+    force_subprocess=False,
 ):
+    # We import the following imports here because codalab_service.py imports TestModule from
+    # this file. If we kept the imports at the top, then anyone who ran codalab_service.py
+    # would also have to install all the dependencies that BundleCLI and CodaLabManager use.
+    from codalab.lib.bundle_cli import BundleCLI
+    from codalab.lib.codalab_manager import CodaLabManager
+
     """If we don't care about the exit code, set `expected_exit_code` to None.
     """
     print(">>", *map(str, args), sep=" ")
@@ -126,10 +174,23 @@ def run_command(
             kwargs = dict(kwargs, encoding="utf-8")
         if include_stderr:
             kwargs = dict(kwargs, stderr=subprocess.STDOUT)
-        output = subprocess.check_output(
-            [a.encode() if type(a) is str else a for a in args], **kwargs
-        )
-        exitcode = 0
+        if not force_subprocess and args[0] == cl:
+            # In this case, run the codalab CLI directly, which is much faster
+            # than opening a new subprocess to do so.
+            # We skip doing this if force_subprocess is set to true (which forces
+            # us to use subprocess even for cl commands.)
+            stderr = io.StringIO()  # Not used; we just don't want to redirect cli.stderr to stdout.
+            stdout = FakeStdout()
+            cli = BundleCLI(CodaLabManager(), stdout=stdout, stderr=stderr)
+            try:
+                cli.do_command(args[1:])
+                exitcode = 0
+            except SystemExit as e:
+                exitcode = e.code
+            output = stdout.getvalue()
+        else:
+            output = subprocess.check_output([a.encode() for a in args], **kwargs)
+            exitcode = 0
     except subprocess.CalledProcessError as e:
         output = e.output
         exitcode = e.returncode
@@ -924,7 +985,9 @@ def test(ctx):
     # Modify to non-ascii tags
     # TODO: enable with Unicode support.
     non_ascii_tags = ['你好世界😊', 'fáncy ünicode']
-    run_command([cl, 'wedit', wname, '--tags'] + non_ascii_tags, 1)
+    run_command(
+        [cl, 'wedit', wname, '--tags'] + non_ascii_tags, 1, force_subprocess=True
+    )  # TODO: find a way to make this work without force_subprocess
     # check_contains(non_ascii_tags, run_command([cl, 'ls', '-w', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])

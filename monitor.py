@@ -6,11 +6,8 @@ from collections import defaultdict
 from smtplib import SMTP
 from email.mime.text import MIMEText
 import subprocess
-import re
 import time
-import socket
 import argparse
-import json
 
 BASE_DIR = os.path.dirname(__file__)
 
@@ -48,6 +45,7 @@ parser.add_argument(
     type=int,
     default=24 * 60 * 60,
 )
+
 args = parser.parse_args()
 
 # Get MySQL username and password for bundles
@@ -73,6 +71,9 @@ sender_password = os.environ['CODALAB_EMAIL_PASSWORD']
 # Create backup directory
 if not os.path.exists(args.backup_path):
     os.mkdir(args.backup_path)
+
+# Comma-separated list of worker ids to monitor. Example: vm-clws-prod-worker-0,vm-clws-prod-worker-1
+public_workers = set(os.environ['CODALAB_PUBLIC_WORKERS'].split(','))
 
 report = []  # Build up the current report to send in an email
 
@@ -254,6 +255,28 @@ def check_disk_space(paths):
         )
 
 
+def poll_online_workers():
+    if len(public_workers) == 0:
+        error_logs(
+            'worker check failed', 'Missing value for environment variable CODALAB_PUBLIC_WORKERS.'
+        )
+    lines = run_command(['cl', 'workers']).split('\n')
+    workers_info = lines[2:]
+    online_workers = set()
+    for line in workers_info:
+        online_workers.add(line.split()[0].strip())
+
+    workers_intersection = public_workers.intersection(online_workers)
+    offline_public_workers = public_workers - workers_intersection
+    if len(offline_public_workers) > 0:
+        error_logs(
+            'worker offline',
+            'The following public workers are offline:\n{}.'.format(
+                '\n'.join(offline_public_workers)
+            ),
+        )
+
+
 # Make sure we can connect (might prompt for username/password)
 if subprocess.call(['cl', 'work']) != 0:
     sys.exit(1)
@@ -283,6 +306,10 @@ while True:
             run_command(['cl', 'workers'])
             run_command(['cl', 'work'])
             run_command(['cl', 'search', '.count'])
+
+        # Get online workers and contact administrators when there are public workers offline.
+        if ping_time():
+            poll_online_workers()
 
         if run_time():
             # More intense

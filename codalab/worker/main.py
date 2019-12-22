@@ -18,14 +18,14 @@ from codalab.lib.formatting import parse_size
 from .bundle_service_client import BundleServiceClient, BundleAuthException
 from . import docker_utils
 from .worker import Worker
-from .local_run.local_dependency_manager import LocalFileSystemDependencyManager
-from .local_run.docker_image_manager import DockerImageManager
-from .local_run.local_run_manager import LocalRunManager
+from codalab.worker.dependency_manager import DependencyManager
+from codalab.worker.docker_image_manager import DockerImageManager
+from codalab.worker.run_manager import RunManager
 
 logger = logging.getLogger(__name__)
 
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
     parser.add_argument('--tag', help='Tag that allows for scheduling runs on specific workers.')
     parser.add_argument(
@@ -110,23 +110,24 @@ def main():
         action='store_true',
         help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def connect_to_codalab_server(server, password_file):
     # Get the username and password.
-    logger.info('Connecting to %s' % args.server)
-    if args.password_file:
-        if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+    logger.info('Connecting to %s' % server)
+    if password_file:
+        if os.stat(password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
             print(
-                """
-Permissions on password file are too lax.
-Only the user should be allowed to access the file.
-On Linux, run:
-chmod 600 %s"""
-                % args.password_file,
+                "Permissions on password file are too lax.\n\
+                Only the user should be allowed to access the file.\n\
+                On Linux, run:\n\
+                chmod 600 %s"
+                % password_file,
                 file=sys.stderr,
             )
-            exit(1)
-        with open(args.password_file) as f:
+            sys.exit(1)
+        with open(password_file) as f:
             username = f.readline().strip()
             password = f.readline().strip()
     else:
@@ -136,31 +137,32 @@ chmod 600 %s"""
         password = os.environ.get('CODALAB_PASSWORD')
         if password is None:
             password = getpass.getpass()
-
-    # Set up logging.
-    if args.verbose:
-        logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
-    else:
-        logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
-
     try:
-        bundle_service = BundleServiceClient(args.server, username, password)
+        bundle_service = BundleServiceClient(server, username, password)
+        return bundle_service
     except BundleAuthException as ex:
         logger.error('Cannot log into the bundle service. Please check your worker credentials.\n')
         logger.debug('Auth error: {}'.format(ex))
-        return
+        sys.exit(1)
+
+
+def main():
+    args = parse_args()
+    bundle_service = connect_to_codalab_server(args.server, args.password_file)
+    logging.basicConfig(
+        format='%(asctime)s %(message)s', level=(logging.DEBUG if args.verbose else logging.INFO)
+    )
 
     max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
-    if args.max_image_cache_size is None:
-        max_images_bytes = None
-    else:
-        max_images_bytes = parse_size(args.max_image_cache_size)
+    max_image_cache_size_bytes = (
+        parse_size(args.max_image_cache_size) if args.max_image_cache_size else None
+    )
 
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
 
-    def create_local_run_manager(worker):
+    def create_run_manager(worker):
         """
         To avoid circular dependencies the Worker initializes takes a RunManager factory
         to initilize its run manager. This method creates a LocalFilesystem-Docker RunManager
@@ -170,7 +172,7 @@ chmod 600 %s"""
         cpuset = parse_cpuset_args(args.cpuset)
         gpuset = parse_gpuset_args(args.gpuset)
 
-        dependency_manager = LocalFileSystemDependencyManager(
+        dependency_manager = DependencyManager(
             os.path.join(args.work_dir, 'dependencies-state.json'),
             bundle_service,
             args.work_dir,
@@ -178,10 +180,10 @@ chmod 600 %s"""
         )
 
         image_manager = DockerImageManager(
-            os.path.join(args.work_dir, 'images-state.json'), max_images_bytes
+            os.path.join(args.work_dir, 'images-state.json'), max_image_cache_size_bytes
         )
 
-        return LocalRunManager(
+        return RunManager(
             worker,
             image_manager,
             dependency_manager,
@@ -195,7 +197,7 @@ chmod 600 %s"""
         )
 
     worker = Worker(
-        create_local_run_manager,
+        create_run_manager,
         os.path.join(args.work_dir, 'worker-state.json'),
         args.id,
         args.tag,

@@ -102,7 +102,7 @@ class MainContent extends React.Component<
                         color='inherit'
                         aria-label='Expand file viewer'
                         >
-                        {'Files'}
+                        {fileContents? 'Contents' : 'Files'}
                         {this.state.showFileBrowser 
                             ? <KeyboardArrowDownIcon />
                             : <ChevronRightIcon />}
@@ -147,7 +147,7 @@ const styles = (theme) => ({
         flexWrap: 'wrap', 
         flexShrink: 1,
         overflow:'auto',
-        whiteSpace: 'pre-line',
+        whiteSpace: 'pre-wrap',
     },
     greyBackground: {
         backgroundColor: theme.color.grey.lightest,

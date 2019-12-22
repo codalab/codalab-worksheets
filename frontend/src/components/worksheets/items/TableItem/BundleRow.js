@@ -1,5 +1,5 @@
-import React, { Component } from 'react';
 import classNames from 'classnames';
+import React, { Component } from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -27,7 +27,6 @@ class BundleRow extends Component {
             showNewUpload: 0,
             showNewRun: 0,
             bundleInfoUpdates: {},
-            showDetail: false,
             openDelete: false,
             runProp: {},
             hovered: false,
@@ -122,6 +121,9 @@ class BundleRow extends Component {
             reloadWorksheet,
             isLast,
             checkStatus,
+            showNewRerun,
+            onHideNewRerun,
+            editPermission,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
@@ -158,7 +160,7 @@ class BundleRow extends Component {
                 );
                 showDetailButton = (
                     <IconButton onClick={this.handleDetailClick} style={{ padding: 2 }}>
-                        {this.state.showDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        {showDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                     </IconButton>
                 );
             } else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
@@ -182,7 +184,9 @@ class BundleRow extends Component {
                         {rowContent}
                     </a>
                 );
-            // else rowContent = rowContent + '';
+            if (!rowContent || rowContent.name === '<invalid>') {
+                rowContent = '';
+            }
 
             return (
                 <TableCell
@@ -193,7 +197,7 @@ class BundleRow extends Component {
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                 >
-                    {checkBox}
+                    {editPermission && checkBox}
                     {showDetailButton}
                     {rowContent}
                 </TableCell>
@@ -225,6 +229,9 @@ class BundleRow extends Component {
             Mousetrap.bind(
                 ['x'],
                 (e) => {
+                    if (!editPermission) {
+                        return;
+                    }
                     if (!this.props.confirmBundleRowAction(e.code)) {
                         this.props.handleCheckBundle(
                             uuid,
@@ -249,7 +256,7 @@ class BundleRow extends Component {
                     className={classNames({
                         [classes.contentRow]: true,
                         [classes.highlight]: this.props.focused,
-                        [classes.lowlight]: !this.props.focused && this.state.showDetail,
+                        [classes.lowlight]: !this.props.focused && showDetail,
                     })}
                 >
                     {rowCells}
@@ -281,6 +288,13 @@ class BundleRow extends Component {
                                     });
                                 }}
                                 rerunItem={this.rerunItem}
+                                isFocused={this.props.focused}
+                                focusIndex={this.props.focusIndex}
+                                showNewRerun={showNewRerun}
+                                onHideNewRerun={onHideNewRerun}
+                                showDetail={showDetail}
+                                handleDetailClick={this.handleDetailClick}
+                                editPermission={editPermission}
                             />
                         </TableCell>
                     </TableRow>
@@ -294,7 +308,11 @@ class BundleRow extends Component {
                             <div className={classes.insertBox}>
                                 <NewRun
                                     ws={this.props.ws}
-                                    onSubmit={() => this.setState({ showNewRun: 0 })}
+                                    onSubmit={() => {
+                                        this.setState({ showNewRun: 0 });
+                                        onHideNewRerun();
+                                        this.handleDetailClick();
+                                    }}
                                     after_sort_key={bundleInfo.sort_key}
                                     reloadWorksheet={reloadWorksheet}
                                     defaultRun={runProp}
