@@ -181,12 +181,7 @@ The top-level
 [worker.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/worker.py)
 is generic logic.
 
-The worker creates a run manager, which manages the actual execution of the runs.
-By default, a
-([RunManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/run_manager.py))
-is used.
-
-The run manager has a
+The worker has a
 [DockerImageManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/docker_image_manager.py)
 for maintaining Docker images
 and a [DependencyManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/dependency_manager.py)
