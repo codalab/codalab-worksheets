@@ -20,7 +20,6 @@ from . import docker_utils
 from .worker import Worker
 from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
-from codalab.worker.run_manager import RunManager
 
 logger = logging.getLogger(__name__)
 
@@ -162,43 +161,27 @@ def main():
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
 
-    def create_run_manager(worker):
-        """
-        To avoid circular dependencies the Worker initializes takes a RunManager factory
-        to initilize its run manager. This method creates a LocalFilesystem-Docker RunManager
-        which is the default execution architecture Codalab uses
-        """
-        docker_runtime = docker_utils.get_available_runtime()
-        cpuset = parse_cpuset_args(args.cpuset)
-        gpuset = parse_gpuset_args(args.gpuset)
+    docker_runtime = docker_utils.get_available_runtime()
+    cpuset = parse_cpuset_args(args.cpuset)
+    gpuset = parse_gpuset_args(args.gpuset)
 
-        dependency_manager = DependencyManager(
-            os.path.join(args.work_dir, 'dependencies-state.json'),
-            bundle_service,
-            args.work_dir,
-            max_work_dir_size_bytes,
-        )
+    dependency_manager = DependencyManager(
+        os.path.join(args.work_dir, 'dependencies-state.json'),
+        bundle_service,
+        args.work_dir,
+        max_work_dir_size_bytes,
+    )
 
-        image_manager = DockerImageManager(
-            os.path.join(args.work_dir, 'images-state.json'), max_image_cache_size_bytes
-        )
-
-        return RunManager(
-            worker,
-            image_manager,
-            dependency_manager,
-            os.path.join(args.work_dir, 'run-state.json'),
-            cpuset,
-            gpuset,
-            args.work_dir,
-            args.shared_file_system,
-            docker_runtime=docker_runtime,
-            docker_network_prefix=args.network_prefix,
-        )
+    image_manager = DockerImageManager(
+        os.path.join(args.work_dir, 'images-state.json'), max_image_cache_size_bytes
+    )
 
     worker = Worker(
-        create_run_manager,
+        image_manager,
+        dependency_manager,
         os.path.join(args.work_dir, 'worker-state.json'),
+        cpuset,
+        gpuset,
         args.id,
         args.tag,
         args.work_dir,
@@ -206,6 +189,8 @@ def main():
         args.idle_seconds,
         bundle_service,
         args.shared_file_system,
+        docker_runtime=docker_runtime,
+        docker_network_prefix=args.network_prefix,
     )
 
     # Register a signal handler to ensure safe shutdown.
