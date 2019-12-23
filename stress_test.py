@@ -151,7 +151,9 @@ class StressTestRunner:
 
     def _test_large_bundle(self):
         self._set_worksheet('large_bundles')
-        large_file = TestFile('large_file', self._args[StressTestArg.LARGE_FILE_SIZE_GB.value] * 1000)
+        large_file = TestFile(
+            'large_file', self._args[StressTestArg.LARGE_FILE_SIZE_GB.value] * 1000
+        )
         self._run_bundle([self._cl, 'upload', large_file.name()])
         large_file.delete()
 
