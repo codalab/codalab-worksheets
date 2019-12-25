@@ -26,7 +26,17 @@ class BundleActions extends React.Component<
 				alias: dep.child_path,
 			});
 		});
+		// The rerun config matches genpath = 'args', except for request_time and request_priority
 		run.dependencies = dependencies;
+		run.name = bundleInfo.metadata.name;
+		run.description = bundleInfo.metadata.description;
+		run.disk = bundleInfo.metadata.request_disk;
+		run.cpu = bundleInfo.metadata.request_cpus;
+		run.gpu = bundleInfo.metadata.request_gpus;
+		run.memory = bundleInfo.metadata.request_memory;
+		run.docker = bundleInfo.metadata.request_docker_image;
+		run.networkAccess = bundleInfo.metadata.request_network;
+		run.failedDependencies = bundleInfo.metadata.allow_failed_dependencies;
 		this.props.rerunItem(run);
 	}
 
