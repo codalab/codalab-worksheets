@@ -246,48 +246,7 @@ class StressTestRunner:
     def cleanup(self):
         if self._args.bypass_cleanup:
             return
-        print('Cleaning up...')
-        # Clean up bundles tagged with "codalab-stress-test"
-        bundles_removed = 0
-        while True:
-            # Query 1000 bundles at a time for removal
-            query_result = run_command(
-                [
-                    self._cl,
-                    'search',
-                    'tags=%s' % StressTestRunner._TAG,
-                    '.limit=1000',
-                    '--uuid-only',
-                ],
-                force_subprocess=True,
-            )
-            if len(query_result) == 0:
-                break
-            for uuid in query_result.split('\n'):
-                # Wait until the bundle finishes and then delete it
-                run_command([self._cl, 'wait', uuid], force_subprocess=True)
-                run_command([self._cl, 'rm', uuid, '--force'], force_subprocess=True)
-                bundles_removed += 1
-
-        # Clean up worksheets tagged with "codalab-stress-test"
-        worksheets_removed = 0
-        while True:
-            query_result = run_command(
-                [
-                    self._cl,
-                    'wsearch',
-                    'tag=%s' % StressTestRunner._TAG,
-                    '.limit=1000',
-                    '--uuid-only',
-                ],
-                force_subprocess=True,
-            )
-            if len(query_result) == 0:
-                break
-            for uuid in query_result.split('\n'):
-                run_command([self._cl, 'wrm', uuid, '--force'], force_subprocess=True)
-                worksheets_removed += 1
-        print('Removed {} bundles and {} worksheets.'.format(bundles_removed, worksheets_removed))
+        cleanup(self._cl, StressTestRunner._TAG)
 
     @staticmethod
     def _simple_run(cl):
@@ -299,6 +258,44 @@ class StressTestRunner:
     @staticmethod
     def _search_failed_runs(cl):
         run_command([cl, 'search', 'state=failed', 'created=.sort-'], force_subprocess=True)
+
+
+def cleanup(cl, tag):
+    '''
+    Removes all bundles and worksheets with the specified tag.
+    :param cl: str
+        Path to CodaLab command line.
+    :param tag: str
+        Specific tag use to search for bundles and worksheets to delete.
+    :return:
+    '''
+    print('Cleaning up bundles and worksheets tagged with {}...'.format(tag))
+    # Clean up tagged bundles
+    bundles_removed = 0
+    while True:
+        # Query 1000 bundles at a time for removal
+        query_result = run_command(
+            [cl, 'search', 'tags=%s' % tag, '.limit=1000', '--uuid-only'], force_subprocess=True
+        )
+        if len(query_result) == 0:
+            break
+        for uuid in query_result.split('\n'):
+            # Wait until the bundle finishes and then delete it
+            run_command([cl, 'wait', uuid], force_subprocess=True)
+            run_command([cl, 'rm', uuid, '--force'], force_subprocess=True)
+            bundles_removed += 1
+    # Clean up tagged worksheets
+    worksheets_removed = 0
+    while True:
+        query_result = run_command(
+            [cl, 'wsearch', 'tag=%s' % tag, '.limit=1000', '--uuid-only'], force_subprocess=True
+        )
+        if len(query_result) == 0:
+            break
+        for uuid in query_result.split('\n'):
+            run_command([cl, 'wrm', uuid, '--force'], force_subprocess=True)
+            worksheets_removed += 1
+    print('Removed {} bundles and {} worksheets.'.format(bundles_removed, worksheets_removed))
 
 
 def main():
@@ -313,7 +310,7 @@ def main():
         args.bundle_upload_count = 2000
         args.create_worksheet_count = 2000
         args.parallel_runs_count = 1000
-        args.large_docker_runs_count = 1000
+        args.large_docker_runs_count = 100
         args.test_infinite_memory = True
         args.test_infinite_disk = True
         args.test_infinite_gpu = True
