@@ -23,8 +23,7 @@ def checkin(worker_id):
     """
     WAIT_TIME_SECS = 3.0
 
-    # Old workers might not have all the fields, so allow subsets to be
-    # missing.
+    # Old workers might not have all the fields, so allow subsets to be missing.
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id,
         worker_id,
@@ -34,9 +33,8 @@ def checkin(worker_id):
         request.json.get("memory_bytes"),
         request.json.get("free_disk_bytes"),
         request.json["dependencies"],
-        request.json.get("shared_file_system"),
+        request.json.get("shared_file_system", False),
     )
-
     for run in request.json["runs"]:
         try:
             worker_run = BundleCheckinState.from_dict(run)
