@@ -5,6 +5,7 @@ import Button from '@material-ui/core/Button';
 import InputBase from '@material-ui/core/InputBase';
 import { withStyles } from '@material-ui/core/styles';
 import { createAlertText } from '../../../../util/worksheet_utils';
+import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 
 /*
 This component has 2 modes:
@@ -45,24 +46,6 @@ class TextEditorItem extends React.Component<{
         this.text = null;
         this.keymap = {};
     }
-
-    capture_keys = (ev) => {
-        this.keymap[ev.keyCode] = ev.type === 'keydown';
-        const pressed = [];
-        Object.keys(this.keymap).forEach((key) => {
-            if (this.keymap[key]) {
-                pressed.push(key);
-            }
-        });
-        if (pressed.includes('17') && (pressed.includes('13') || pressed.includes('83'))) {
-            /* Pressed ctrl+enter or ctrl+s */
-            this.saveText();
-        }
-        if (pressed.includes('27')) {
-            // Close editor upon pressing Escape
-            this.props.closeEditor();
-        }
-    };
 
     updateText = (ev) => {
         this.text = ev.target.value;
@@ -124,6 +107,15 @@ class TextEditorItem extends React.Component<{
 
     render() {
         const { classes, defaultValue, showDefault } = this.props;
+        Mousetrap.bindGlobal(['ctrl+enter'], () => {
+            this.saveText();
+            Mousetrap.unbindGlobal(['ctrl+enter']);
+        });
+
+        Mousetrap.bindGlobal(['esc'], () => {
+            this.props.closeEditor();
+            Mousetrap.unbindGlobal(['esc']);
+        });
 
         return (
             <div className={classes.container}>
@@ -131,8 +123,6 @@ class TextEditorItem extends React.Component<{
                     defaultValue={defaultValue || ''}
                     className={classes.input}
                     onChange={this.updateText}
-                    onKeyUp={this.capture_keys}
-                    onKeyDown={this.capture_keys}
                     autoFocus={true}
                     multiline
                 />

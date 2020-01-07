@@ -31,8 +31,9 @@ but they expect the platform specific RunManagers they use to implement a common
 
 
 class Worker:
-    # Number of seconds to retry a bundle service client command
-    COMMAND_RETRY_SECONDS = 60 * 12
+    # Number of retries when a bundle service client command failed to execute. Defining a large number here
+    # would allow offline workers to patiently wait until connection to server is re-established.
+    COMMAND_RETRY_ATTEMPTS = 720
     # Network buffer size to use while proxying with netcat
     NETCAT_BUFFER_SIZE = 4096
     # Number of seconds to wait for bundle kills to propagate before forcing kill
@@ -163,7 +164,6 @@ class Worker:
                 self.save_state()
                 self.checkin()
                 self.save_state()
-
                 if not self.last_checkin_successful:
                     logger.info('Connected! Successful check in!')
                 self.last_checkin_successful = True
@@ -201,6 +201,23 @@ class Worker:
     def signal(self):
         self.stop = True
 
+    @property
+    def cached_dependencies(self):
+        """
+        Returns a list of the keys (as tuples) of all bundle dependencies this worker
+        has cached, in the format the server expects it in the worker check-in.
+        If the worker is on shared file system, it doesn't cache any dependencies and an
+        empty list is returned even though all dependencies are accessible on the shared
+        file system.
+        """
+        if self.shared_file_system:
+            return []
+        else:
+            return [
+                (dep_key.parent_uuid, dep_key.parent_path)
+                for dep_key in self.dependency_manager.all_dependencies
+            ]
+
     def checkin(self):
         """
         Checkin with the server and get a response. React to this response.
@@ -213,12 +230,7 @@ class Worker:
             'gpus': len(self.gpuset),
             'memory_bytes': psutil.virtual_memory().total,
             'free_disk_bytes': self.free_disk_bytes,
-            'dependencies': [
-                (dep_key.parent_uuid, dep_key.parent_path)
-                for dep_key in self.dependency_manager.all_dependencies
-            ]
-            if not self.shared_file_system
-            else [],
+            'dependencies': self.cached_dependencies,
             'hostname': socket.gethostname(),
             'runs': [run.as_dict for run in self.all_runs],
             'shared_file_system': self.shared_file_system,
@@ -505,7 +517,7 @@ class Worker:
 
     @staticmethod
     def execute_bundle_service_command_with_retry(cmd):
-        retries_left = Worker.COMMAND_RETRY_SECONDS
+        retries_left = Worker.COMMAND_RETRY_ATTEMPTS
         while True:
             try:
                 retries_left -= 1

@@ -1025,11 +1025,14 @@ def test(ctx):
     ctx.collect_bundle(uuid2)
     # State after the above: 1 2 1 2
     run_command([cl, 'detach', uuid1], 1)  # multiple indices
-    run_command([cl, 'detach', uuid1, '-n', '3'], 1)  # indes out of range
+    run_command([cl, 'detach', uuid1, '-n', '3'], 1)  # index out of range
     run_command([cl, 'detach', uuid2, '-n', '2'])  # State: 1 1 2
     check_equals(get_info('^', 'uuid'), uuid2)
     run_command([cl, 'detach', uuid2])  # State: 1 1
     check_equals(get_info('^', 'uuid'), uuid1)
+    run_command([cl, 'detach', uuid1, '-n', '2'])  # State: 1
+    run_command([cl, 'detach', uuid1])  # Worksheet becomes empty
+    check_equals('', run_command([cl, 'ls', '-u']))  # Return string from `cl ls -u` should be empty
 
 
 @TestModule.register('perm')
