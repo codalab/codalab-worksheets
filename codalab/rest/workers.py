@@ -35,6 +35,7 @@ def checkin(worker_id):
         request.json["dependencies"],
         request.json.get("shared_file_system", False),
     )
+
     for run in request.json["runs"]:
         try:
             worker_run = BundleCheckinState.from_dict(run)
