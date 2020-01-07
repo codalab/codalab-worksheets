@@ -75,16 +75,12 @@ services:
     command: cl-server
     <<: *codalab-base
     <<: *codalab-server
-    depends_on:
-      - mysql
 
   bundle-manager:
     image: codalab/server:${CODALAB_VERSION}
     command: cl-bundle-manager
     <<: *codalab-base
     <<: *codalab-server
-    depends_on:
-      - mysql
 
   worker-manager-cpu:
     image: codalab/server:${CODALAB_VERSION}
