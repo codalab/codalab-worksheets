@@ -448,6 +448,16 @@ class Worker:
             reply(err)
 
     def netcat(self, socket_id, uuid, port, message):
+        """
+        Sends `message` to `port` of the Docker container of the run with `uuid` and
+        streams the response on `socket_id`.
+
+        This is all done on an unmanaged thread (ie launched and forgotten) because
+        the thread has no further effects on the run as far as the worker is concerned
+        and we do not need to terminate/join the thread from the worker process. It just
+        terminates when the user is done with their connection or the Docker container for
+        the run terminates.
+        """
         def reply(err, message={}, data=None):
             self.bundle_service_reply(socket_id, err, message, data)
 
