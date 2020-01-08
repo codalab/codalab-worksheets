@@ -530,7 +530,7 @@ class CodaLabManager(object):
         epoch_str = formatting.datetime_str(datetime.datetime.utcfromtimestamp(0))
         last_check_str = self.state.get('last_check_version_datetime', epoch_str)
         last_check_dt = formatting.parse_datetime(last_check_str)
-        now = datetime.datetime.now()
+        now = datetime.datetime.utcnow()
         if (now - last_check_dt) < datetime.timedelta(days=1):
             return
         self.state['last_check_version_datetime'] = formatting.datetime_str(now)

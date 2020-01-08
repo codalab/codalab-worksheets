@@ -9,8 +9,8 @@ created if not.
 import logging
 import os
 import docker
-from dateutil import parser, tz
-import datetime
+from dateutil import parser
+from datetime import datetime, timezone
 from codalab.lib.formatting import parse_size
 
 
@@ -258,10 +258,14 @@ def get_container_running_time(container):
     start_time = container.attrs['State']['StartedAt']
     # Calculate the end_time of the current container. If 'Status' of the current container is not 'exited',
     # then using the current time as end_time
+    # Because naive datetime objects are treated by many datetime methods as local times,
+    # it is preferred to use aware datetimes to represent times in UTC. As such, the
+    # recommended way to create an object representing the current time in UTC is
+    # by calling datetime.now(timezone.utc).
     end_time = (
         container.attrs['State']['FinishedAt']
         if container.attrs['State']['Status'] == 'exited'
-        else str(datetime.datetime.now().replace(tzinfo=tz.tzutc()))
+        else str(datetime.now(timezone.utc))
     )
     # Docker reports both the start_time and the end_time in ISO format. We currently use dateutil.parser.isoparse to
     # parse them. In Python3.7 or above, the built-in function datetime.fromisoformat() can be used to parse ISO
