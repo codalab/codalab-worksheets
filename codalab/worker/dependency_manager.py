@@ -114,20 +114,27 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
     def _sync_state(self):
         """
         Synchronize dependency states between dependencies-state.json and the local file system as follows:
-        1. self._dependencies, self._dependency_locks, and self._paths: populated from dependencies-state.json in function _load_state()
+        1. self._dependencies, self._dependency_locks, and self._paths: populated from dependencies-state.json
+            in function _load_state()
         2. directories on the local file system: the bundle contents
         This function forces the 1 and 2 to be in sync by taking the intersection (e.g., deleting bundles from the
         local file system that don't appear in the dependencies-state.json and vice-versa)
         """
-        # Get all the dependency directories on the local file system under self.dependencies_dir
+        # Get the paths that exist in dependency state, loaded path and
+        # the local file system (the dependency directories under self.dependencies_dir)
         local_directories = set(os.listdir(self.dependencies_dir))
+        paths_in_loaded_state = [dep_state.path for dep_state in self._dependencies.values()]
+        self._paths = self._paths.intersection(paths_in_loaded_state).intersection(
+            local_directories
+        )
 
         # Remove the orphaned dependencies from self._dependencies and
-        # self._dependency_locks if they don't exist on the local file system
+        # self._dependency_locks if they don't exist in self._paths (intersection of paths in dependency state,
+        # loaded paths and the paths on the local file system)
         dependencies_to_remove = [
             dep
             for dep, dep_state in self._dependencies.items()
-            if dep_state.path not in local_directories
+            if dep_state.path not in self._paths
         ]
         for dep in dependencies_to_remove:
             logger.info(
@@ -139,12 +146,6 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             del self._dependencies[dep]
             del self._dependency_locks[dep]
 
-        # Get the paths that exist in dependency state, loaded path and the local file system
-        paths_in_loaded_state = [dep_state.path for dep_state in self._dependencies.values()]
-        self._paths = self._paths.intersection(paths_in_loaded_state).intersection(
-            local_directories
-        )
-
         # Remove the orphaned directories from the local file system
         directories_to_remove = local_directories - self._paths
         for dir in directories_to_remove:
@@ -154,7 +155,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             )
             remove_path(full_path)
 
-        # Save the current state back to the state file: dependency-state.json as
+        # Save the current synced state back to the state file: dependency-state.json as
         # the current state might have been changed during the state syncing phase
         self._save_state()
 
