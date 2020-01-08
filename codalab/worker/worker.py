@@ -30,8 +30,9 @@ but they expect the platform specific RunManagers they use to implement a common
 
 
 class Worker:
-    # Number of seconds to retry a bundle service client command
-    COMMAND_RETRY_SECONDS = 60 * 12
+    # Number of retries when a bundle service client command failed to execute. Defining a large number here
+    # would allow offline workers to patiently wait until connection to server is re-established.
+    COMMAND_RETRY_ATTEMPTS = 720
     # Network buffer size to use while proxying with netcat
     NETCAT_BUFFER_SIZE = 4096
     # Number of seconds to wait for bundle kills to propagate before forcing kill
@@ -502,7 +503,7 @@ class Worker:
 
     @staticmethod
     def execute_bundle_service_command_with_retry(cmd):
-        retries_left = Worker.COMMAND_RETRY_SECONDS
+        retries_left = Worker.COMMAND_RETRY_ATTEMPTS
         while True:
             try:
                 retries_left -= 1
