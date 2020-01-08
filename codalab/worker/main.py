@@ -45,7 +45,7 @@ def parse_args():
     )
     parser.add_argument(
         '--cpuset',
-        type=cpuset_args,
+        type=parse_cpuset_args,
         metavar='CPUSET_STR',
         default='ALL',
         help='Comma-separated list of CPUs in which to allow bundle execution, '
@@ -53,7 +53,7 @@ def parse_args():
     )
     parser.add_argument(
         '--gpuset',
-        type=gpuset_args,
+        type=parse_gpuset_args,
         metavar='GPUSET_STR',
         default='ALL',
         help='Comma-separated list of GPUs in which to allow bundle execution. '
@@ -210,7 +210,7 @@ def main():
     worker.start()
 
 
-def cpuset_args(arg):
+def parse_cpuset_args(arg):
     """
     Parse given arg into a set of integers representing cpus
 
@@ -235,7 +235,7 @@ def cpuset_args(arg):
     return set(cpuset)
 
 
-def gpuset_args(arg):
+def parse_gpuset_args(arg):
     """
     Parse given arg into a set of strings representing gpu UUIDs
 

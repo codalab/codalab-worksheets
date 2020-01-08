@@ -144,8 +144,15 @@ class Worker:
                 resources=RunResources.from_dict(run_state.resources),
             )
 
-    @property
-    def should_stop_because_idle(self):
+    def check_idle_stop(self):
+        """
+        Checks whether the worker is idle (ie if it hasn't had runs for longer than the configured
+        number of idle seconds) and if so, checks whether it is configured to exit when idle.
+
+        :returns: True if the worker should stop because it is idle.
+        In other words, True if the worker is configured to exit when idle,
+        it is idle, and it has checked in at least once with the server.
+        """
         now = time.time()
         if len(self.runs) > 0 or self.last_time_ran is None:
             self.last_time_ran = now
@@ -167,7 +174,7 @@ class Worker:
                 if not self.last_checkin_successful:
                     logger.info('Connected! Successful check in!')
                 self.last_checkin_successful = True
-                if self.should_stop_because_idle:
+                if self.check_idle_stop():
                     self.stop = True
                     break
             except Exception:
