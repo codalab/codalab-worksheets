@@ -2957,7 +2957,7 @@ class BundleCLI(object):
                 owner = client.fetch('users', args.owner_spec)
                 info['owner'] = JsonApiRelationship('users', owner['id'])
             if args.freeze:
-                info['frozen'] = datetime.datetime.utcnow()
+                info['frozen'] = datetime.datetime.utcnow().isoformat()
             if args.anonymous is not None:
                 info['is_anonymous'] = args.anonymous
 
