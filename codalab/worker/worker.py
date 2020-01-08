@@ -459,6 +459,7 @@ class Worker:
         terminates when the user is done with their connection or the Docker container for
         the run terminates.
         """
+
         def reply(err, message={}, data=None):
             self.bundle_service_reply(socket_id, err, message, data)
 
