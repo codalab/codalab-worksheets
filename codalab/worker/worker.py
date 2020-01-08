@@ -256,11 +256,9 @@ class Worker:
                     self.read_run_missing(socket_id)
                 return
             if action_type == 'kill':
-                self.runs[uuid] = self.runs[uuid]._replace(
-                    kill_message='Kill requested', is_killed=True
-                )
+                self.kill(uuid)
             elif action_type == 'mark_finalized':
-                self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
+                self.mark_finalized(uuid)
             elif action_type == 'read':
                 self.read(socket_id, uuid, response['path'], response['read_args'])
             elif action_type == 'netcat':
@@ -427,6 +425,18 @@ class Worker:
                 'Bundle {} no longer assigned to this worker'.format(bundle['uuid']),
                 file=sys.stdout,
             )
+
+    def kill(self, uuid):
+        """
+        Marks the run as killed so that the next time its state is processed it is terminated.
+        """
+        self.runs[uuid] = self.runs[uuid]._replace(kill_message='Kill requested', is_killed=True)
+
+    def mark_finalized(self, uuid):
+        """
+        Marks the run with uuid as finalized so it might be purged from the worker state
+        """
+        self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
 
     def read(self, socket_id, uuid, path, args):
         def reply(err, message={}, data=None):
