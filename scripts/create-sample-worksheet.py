@@ -6,7 +6,9 @@ from stress_test import cleanup
 from test_cli import run_command
 
 """
-Script to create tiny and giant worksheets in any instance.
+Script to create tiny and giant worksheets in any instance. The purpose of the tiny worksheet is to test all features
+CodaLab offers on the front end. The giant worksheet is a large version of the tiny worksheet in order to push the limit
+and stress test the frontend rendering capabilities.
 """
 
 
