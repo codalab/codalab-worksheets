@@ -21,6 +21,7 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           -p, --pack               If path is an archive file (e.g., zip, tar.gz), keep it packed.
           -z, --force-compression  Always use compression (this may speed up single-file uploads over a slow network).
           -w, --worksheet-spec     Upload to this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+          -i, --ignore             Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
           -n, --name               Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
           -d, --description        Full description of the bundle.
           --tags                   Space-separated list of tags used for search (e.g., machine-learning).
@@ -47,6 +48,7 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           target_spec                  [<key>]:[[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
           command                      Arbitrary Linux command to execute.
           -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+          -a, --after_sort_key         Insert after this sort_key
           -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
           -d, --description            Full description of the bundle.
           --tags                       Space-separated list of tags used for search (e.g., machine-learning).
@@ -279,6 +281,12 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           message               Arbitrary message to send.
           -f, --file            Add this file at end of message
           --verbose             Verbose mode.
+          -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+
+      ancestors:
+        Print ancestors.
+        Arguments:
+          bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
           -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
 

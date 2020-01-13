@@ -113,6 +113,7 @@ BUNDLE_COMMANDS = (
     'write',
     'mount',
     'netcat',
+    'ancestors',
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -1822,6 +1823,57 @@ class BundleCLI(object):
         else:
             for uuid in deleted_uuids:
                 print(uuid, file=self.stdout)
+
+    @Commands.command(
+        'ancestors',
+        help='Print ancestors.',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+    def do_ancestors_command(self, args):
+        def render_ancestor(indent_level, curr_bundle):
+            bundle_name = curr_bundle['metadata']['name']
+            bundle_uuid = curr_bundle['id']
+            formatted_bundle_id = worksheet_util.apply_func(UUID_POST_FUNC, bundle_uuid)
+
+            return '{}- {}({})'.format(" " * indent_level, bundle_name, formatted_bundle_id)
+
+        bundle_stack = []
+        processed_bundles = set()
+
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        # Get the initial bundle uuids and enqueue them for processing
+        bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        bundle_stack.extend([(uuid, 0) for uuid in bundle_uuids])
+
+        # Traversal through all ancestors, avoid printing entire tree on repeated worksheets
+        while len(bundle_stack) != 0:
+            curr_bundle_uuid, level = bundle_stack.pop()
+            # Assume only 1 bundle in bundle array
+            curr_bundle = client.fetch('bundles', params={'specs': curr_bundle_uuid})[0]
+            print(
+                render_ancestor(level, curr_bundle)
+                + ('...' if curr_bundle_uuid in processed_bundles else '')
+            )
+
+            if curr_bundle_uuid not in processed_bundles:
+                processed_bundles.add(curr_bundle_uuid)
+                parent_bundle_uuids = [
+                    parent_bundle['parent_uuid'] for parent_bundle in curr_bundle['dependencies']
+                ]
+                bundle_stack.extend(
+                    [(parent_bundle_uuid, level + 2) for parent_bundle_uuid in parent_bundle_uuids]
+                )
 
     @Commands.command(
         'search',
