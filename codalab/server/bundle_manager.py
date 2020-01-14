@@ -581,11 +581,10 @@ class BundleManager(object):
         Fail bundles in uploading, staged and running state if we haven't heard from them for more than
         BUNDLE_TIMEOUT_DAYS days.
         """
-        bundles_to_fail = (
-            self._model.batch_get_bundles(state=State.UPLOADING)
-            + self._model.batch_get_bundles(state=State.STAGED)
-            + self._model.batch_get_bundles(state=State.RUNNING)
+        bundles_to_fail = self._model.batch_get_bundles(
+            state=[State.UPLOADING, State.STAGED, State.RUNNING]
         )
+
         now = time.time()
 
         for bundle in bundles_to_fail:
