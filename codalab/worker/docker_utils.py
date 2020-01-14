@@ -11,13 +11,14 @@ import os
 import docker
 from dateutil import parser, tz
 import datetime
-from codalab.lib.formatting import parse_size
+import requests
 
 
 MIN_API_VERSION = '1.17'
 NVIDIA_RUNTIME = 'nvidia'
 DEFAULT_RUNTIME = 'runc'
 DEFAULT_TIMEOUT = 720
+DOCKER_REGISTRY_HTTP_API_V2_PREFIX = 'https://hub.docker.com/v2/repositories/'
 
 
 logger = logging.getLogger(__name__)
@@ -268,3 +269,26 @@ def get_container_running_time(container):
     # formatted datetime string directly.
     container_running_time = parser.isoparse(end_time) - parser.isoparse(start_time)
     return container_running_time.total_seconds()
+
+
+@wrap_exception('Unable to get image size without pulling from Docker Hub')
+def get_image_size_without_pulling(image_spec):
+    """
+    Get the compressed size of a docker image without pulling it from Docker Hub
+    :param image_spec: image_spec will be in the format of 'codalab/default-cpu:latest'
+    :return: the compressed image size in bytes
+    """
+    logger.info("Downloading tag information for {}".format(image_spec))
+    image_name, image_tag = image_spec.split(":")
+    # Example URL: https://hub.docker.com/v2/repositories/codalab/default-cpu/tags
+    # Note that since docker-py doesn't report the accurate compressed image size, e.g. the size reported
+    # from the RegistryData object, we then switch to use Docker Registry HTTP API V2
+    request = DOCKER_REGISTRY_HTTP_API_V2_PREFIX + image_name + '/tags'
+    response = requests.get(url=request)
+    data = response.json()
+
+    # Find all the full_size of the matched images
+    matched_image_sizes = [r['full_size'] for r in data['results'] if r['name'] == image_tag]
+    image_size_bytes = matched_image_sizes[0] if len(matched_image_sizes) == 1 else None
+
+    return image_size_bytes
