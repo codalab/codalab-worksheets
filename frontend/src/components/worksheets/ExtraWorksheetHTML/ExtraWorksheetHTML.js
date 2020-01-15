@@ -133,6 +133,18 @@ const GlossaryModal = ({ show, toggle }) => (
                     </tr>
                     <tr>
                         <td>
+                            <kbd>a s</kbd>
+                        </td>
+                        <td>Download the focused bundle (should the bundle be downloadable)</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>i</kbd>
+                        </td>
+                        <td>Input the focused worksheet uid to the terminal</td>
+                    </tr>
+                    <tr>
+                        <td>
                             <kbd>?</kbd>
                         </td>
                         <td>Show keyboard shortcut help</td>
