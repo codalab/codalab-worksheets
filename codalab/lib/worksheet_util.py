@@ -168,6 +168,7 @@ def get_worksheet_lines(worksheet_info):
                     description += ' -- ' + deps
                 command = bundle_info.get('command')
                 if command:
+                    command = command.replace('\n',' ')
                     description += ' : ' + command
             lines.append(bundle_line(description, bundle_info['uuid']))
         elif item_type == TYPE_WORKSHEET:
