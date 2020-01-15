@@ -277,7 +277,11 @@ def mimic_bundles(
                                     item2['worksheet'] = JsonApiRelationship(
                                         'worksheets', worksheet_uuid
                                     )
-                                    client.create('worksheet-items', data=item2)
+                                    client.create(
+                                        'worksheet-items',
+                                        data=item2,
+                                        params={'uuid': worksheet_uuid},
+                                    )
 
                             # Add the bundle item
                             client.create(
@@ -287,6 +291,7 @@ def mimic_bundles(
                                     'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
                                     'bundle': JsonApiRelationship('bundles', new_bundle_uuid),
                                 },
+                                params={'uuid': worksheet_uuid},
                             )
                             new_bundle_uuids_added.add(new_bundle_uuid)
                             just_added = True
@@ -310,6 +315,7 @@ def mimic_bundles(
                         'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
                         'bundle': JsonApiRelationship('bundles', new_bundle_uuid),
                     },
+                    params={'uuid': worksheet_uuid},
                 )
 
     return plan

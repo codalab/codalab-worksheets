@@ -79,6 +79,16 @@ def parse_args():
         'is not specified.',
     )
     parser.add_argument(
+        '--max-image-size',
+        type=str,
+        metavar='SIZE',
+        default='10g',
+        help='Limit the size of Docker images to download from the Docker Hub'
+        '(e.g. 3, 3k, 3m, 3g, 3t). If the limit is exceeded, '
+        'the requested image will not be downloaded. '
+        'The bundle depends on this image will fail accordingly.',
+    )
+    parser.add_argument(
         '--password-file',
         help='Path to the file containing the username and '
         'password for logging into the bundle service, '
@@ -156,6 +166,7 @@ def main():
     max_image_cache_size_bytes = (
         parse_size(args.max_image_cache_size) if args.max_image_cache_size else None
     )
+    max_image_size_bytes = parse_size(args.max_image_size)
 
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
@@ -173,7 +184,9 @@ def main():
     )
 
     image_manager = DockerImageManager(
-        os.path.join(args.work_dir, 'images-state.json'), max_image_cache_size_bytes
+        os.path.join(args.work_dir, 'images-state.json'),
+        max_image_cache_size_bytes,
+        max_image_size_bytes,
     )
 
     worker = Worker(

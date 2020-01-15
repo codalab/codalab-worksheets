@@ -1354,6 +1354,7 @@ class BundleCLI(object):
                         'worksheet': JsonApiRelationship('worksheets', dest_worksheet_uuid),
                         'bundle': JsonApiRelationship('bundles', source_bundle_uuid),
                     },
+                    params={'uuid': dest_worksheet_uuid},
                 )
             return
 
@@ -1755,7 +1756,9 @@ class BundleCLI(object):
             if not detach:
                 new_items.append(item)
 
-        client.create('worksheet-items', data=new_items, params={'replace': True})
+        client.create(
+            'worksheet-items', data=new_items, params={'replace': True, 'uuid': worksheet_uuid}
+        )
 
     @Commands.command(
         'rm',
@@ -1902,6 +1905,7 @@ class BundleCLI(object):
                     }
                     for bundle in bundles
                 ],
+                params={'uuid': worksheet_uuid},
             )
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print(
@@ -2755,6 +2759,7 @@ class BundleCLI(object):
                             'worksheet': JsonApiRelationship('worksheets', dest_worksheet_uuid),
                             'value': item_spec[1:].strip(),
                         },
+                        params={'uuid': dest_worksheet_uuid},
                     )
                 else:
                     dest_client.create(
@@ -2764,6 +2769,7 @@ class BundleCLI(object):
                             'worksheet': JsonApiRelationship('worksheets', dest_worksheet_uuid),
                             'value': item_spec,
                         },
+                        params={'uuid': dest_worksheet_uuid},
                     )
 
         elif args.item_type == 'bundle':
@@ -2804,6 +2810,7 @@ class BundleCLI(object):
                         'worksheet': JsonApiRelationship('worksheets', dest_worksheet_uuid),
                         'subworksheet': JsonApiRelationship('worksheets', subworksheet_uuid),
                     },
+                    params={'uuid': dest_worksheet_uuid},
                 )
 
     @Commands.command(
@@ -3203,7 +3210,11 @@ class BundleCLI(object):
         # Save all items to the destination worksheet
         for item in source_items:
             item['worksheet'] = JsonApiRelationship('worksheets', dest_worksheet_uuid)
-        dest_client.create('worksheet-items', source_items, params={'replace': args.replace})
+        dest_client.create(
+            'worksheet-items',
+            source_items,
+            params={'replace': args.replace, 'uuid': dest_worksheet_uuid},
+        )
 
         # Copy over the bundles
         for item in source_items:
