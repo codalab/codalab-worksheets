@@ -29,22 +29,15 @@ class RecordItem extends React.Component {
             return (
                 <tr ref={ref} key={index}>
                     <th>{item[k]}</th>
-                    <td>{item[v]}</td>
+                    <td style={{ maxWidth: '500px', wordWrap: 'break-word' }}>
+                        {JSON.stringify(item[v])}
+                    </td>
                 </tr>
             );
         });
+
         return (
-            <div
-                className='ws-item'
-                onClick={this.handleClick}
-                onContextMenu={this.props.handleContextMenu.bind(
-                    null,
-                    bundleInfo.uuid,
-                    this.props.focusIndex,
-                    0,
-                    bundleInfo.bundle_type === 'run',
-                )}
-            >
+            <div className='ws-item' onClick={this.handleClick}>
                 <div className='type-record'>
                     <table className={className}>
                         <tbody>{items}</tbody>
