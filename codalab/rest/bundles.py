@@ -280,7 +280,8 @@ def _create_bundles():
     bundles_dict = get_bundle_infos(created_uuids)
 
     # Return bundles in original order
-    # There is a chance that a bundle is created and deleted right after, while fetching bundles info's
+    # Need to check if the UUID is in the dict, since there is a chance that a bundle is deleted
+    # right after being created.
     bundles = [bundles_dict[uuid] for uuid in created_uuids if uuid in bundles_dict]
     return BundleSchema(many=True).dump(bundles).data
 
@@ -309,7 +310,8 @@ def _update_bundles():
     bundles_dict = get_bundle_infos(bundle_uuids)
 
     # Create list of bundles in original order
-    # There is a chance that a bundle is updated and deleted right after, while fetching bundles info's
+    # Need to check if the UUID is in the dict, since there is a chance that a bundle is deleted
+    # right after being updated.
     updated_bundles = [bundles_dict[uuid] for uuid in bundle_uuids if uuid in bundles_dict]
 
     return BundleSchema(many=True).dump(updated_bundles).data
