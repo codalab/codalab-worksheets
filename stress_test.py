@@ -246,7 +246,7 @@ class StressTestRunner:
     def cleanup(self):
         if self._args.bypass_cleanup:
             return
-        cleanup(self._cl, StressTestRunner._TAG)
+        cleanup(self._cl, StressTestRunner._TAG, not self._args.bypass_wait)
 
     @staticmethod
     def _simple_run(cl):
@@ -260,13 +260,15 @@ class StressTestRunner:
         run_command([cl, 'search', 'state=failed', 'created=.sort-'], force_subprocess=True)
 
 
-def cleanup(cl, tag):
+def cleanup(cl, tag, should_wait=True):
     '''
     Removes all bundles and worksheets with the specified tag.
     :param cl: str
         Path to CodaLab command line.
     :param tag: str
         Specific tag use to search for bundles and worksheets to delete.
+    :param should_wait: boolean
+        Whether to wait for a bundle to finish running before deleting (default is true).
     :return:
     '''
     print('Cleaning up bundles and worksheets tagged with {}...'.format(tag))
@@ -280,8 +282,9 @@ def cleanup(cl, tag):
         if len(query_result) == 0:
             break
         for uuid in query_result.split('\n'):
-            # Wait until the bundle finishes and then delete it
-            run_command([cl, 'wait', uuid], force_subprocess=True)
+            if should_wait:
+                # Wait until the bundle finishes and then delete it
+                run_command([cl, 'wait', uuid], force_subprocess=True)
             run_command([cl, 'rm', uuid, '--force'], force_subprocess=True)
             bundles_removed += 1
     # Clean up tagged worksheets
@@ -340,6 +343,11 @@ if __name__ == '__main__':
         '--heavy',
         action='store_true',
         help='Whether to run the heavy version of the stress tests (defaults to false)',
+    )
+    parser.add_argument(
+        '--bypass-wait',
+        action='store_true',
+        help='Whether to bypass waiting for bundles to finish before cleaning them up (defaults to false)',
     )
     parser.add_argument(
         '--cleanup-only',
