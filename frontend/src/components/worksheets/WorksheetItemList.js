@@ -100,12 +100,10 @@ class WorksheetItemList extends React.Component {
         Mousetrap.bind(
             ['g g'],
             function() {
-                if (this.props.focusIndex >= 0) {
-                    $('body')
-                        .stop(true)
-                        .animate({ scrollTop: 0 }, 'fast');
-                    this.props.setFocus(0, 0);
-                }
+                $('body')
+                    .stop(true)
+                    .animate({ scrollTop: 0 }, 'fast');
+                this.props.setFocus(0, 0);
             }.bind(this),
             'keydown',
         );
@@ -114,10 +112,8 @@ class WorksheetItemList extends React.Component {
         Mousetrap.bind(
             ['shift+g'],
             function() {
-                if (this.props.focusIndex >= 0) {
-                    this.props.setFocus(this.props.ws.info.items.length - 1, 'end');
-                    $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
-                }
+                this.props.setFocus(this.props.ws.info.items.length - 1, 'end');
+                $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
             }.bind(this),
             'keydown',
         );
