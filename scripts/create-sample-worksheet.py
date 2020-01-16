@@ -202,8 +202,8 @@ class SampleWorksheet:
             self._add_bundle(uuid)
 
         self._add_subheader('Record')
-        # self._add_line('% display record valid_schema')
-        # self._add_bundles(self._valid_bundles)
+        self._add_line('% display record valid_schema')
+        self._add_bundles(self._valid_bundles)
 
         self._add_subheader('HTML')
         for uuid in self._search_bundles('.html'):
