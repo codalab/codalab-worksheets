@@ -610,7 +610,10 @@ def expand_raw_item(raw_item):
                 bundle_uuids = search_result['result']
                 bundle_infos = rest_util.get_bundle_infos(bundle_uuids)
                 for bundle_uuid in bundle_uuids:
-                    raw_items.append(bundle_item(bundle_infos[bundle_uuid]) + (None, None))
+                    # Since bundle UUID's are queried first, we can't assume a UUID exists in
+                    # the subsequent bundle info query.
+                    if bundle_uuid in bundle_infos:
+                        raw_items.append(bundle_item(bundle_infos[bundle_uuid]) + (None, None))
         elif is_wsearch:
             worksheet_infos = search_worksheets(keywords)
             for worksheet_info in worksheet_infos:
