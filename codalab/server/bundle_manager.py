@@ -240,7 +240,7 @@ class BundleManager(object):
         Such workers probably died without checking out properly.
         """
         for worker in workers.workers():
-            if datetime.datetime.now() - worker['checkin_time'] > datetime.timedelta(
+            if datetime.datetime.utcnow() - worker['checkin_time'] > datetime.timedelta(
                 seconds=WORKER_TIMEOUT_SECONDS
             ):
                 logger.info(

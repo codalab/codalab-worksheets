@@ -107,7 +107,7 @@ def send_email(subject, message):
 
 def get_date():
     # Only save a backup for every month to save space
-    return datetime.datetime.now().strftime('%Y-%m')
+    return datetime.datetime.utcnow().strftime('%Y-%m')
 
 
 def log(line, newline=True):
