@@ -210,7 +210,15 @@ To reference a set of bundles by a search criteria:
 
     % search <keyword-1> ... <keyword-n>
 
-See documentation for `cl search` for more information.
+See [CLI documentation](https://codalab-worksheets.readthedocs.io/en/latest/CLI-Reference/) for `cl search` for more information.
+
+### Displaying a dynamic set of worksheets
+
+To reference a set of worksheets by a search criterira:
+    
+    % wsearch <keyword-1> ... <keyword-n>
+
+See [CLI documentation](https://codalab-worksheets.readthedocs.io/en/latest/CLI-Reference/) for `cl wsearch` for more information.
 
 ## Frequently asked questions
 
