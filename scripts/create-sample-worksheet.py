@@ -6,8 +6,7 @@ import sys
 import time
 
 sys.path.append('..')
-from stress_test import cleanup
-from test_cli import run_command
+from test_util import cleanup, run_command
 
 """
 Script to create small and large sample worksheets in any instance to stress test the front end. The purpose of 

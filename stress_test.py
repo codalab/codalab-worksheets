@@ -8,7 +8,7 @@ import time
 from multiprocessing import cpu_count, Pool
 from threading import Thread
 
-from test_cli import run_command
+from test_util import cleanup, run_command
 
 """
 Script to stress test CodaLab's backend. The following is a list of what's being tested:
@@ -261,47 +261,6 @@ class StressTestRunner:
     @staticmethod
     def _search_failed_runs(cl):
         run_command([cl, 'search', 'state=failed', 'created=.sort-'], force_subprocess=True)
-
-
-def cleanup(cl, tag, should_wait=True):
-    '''
-    Removes all bundles and worksheets with the specified tag.
-    :param cl: str
-        Path to CodaLab command line.
-    :param tag: str
-        Specific tag use to search for bundles and worksheets to delete.
-    :param should_wait: boolean
-        Whether to wait for a bundle to finish running before deleting (default is true).
-    :return:
-    '''
-    print('Cleaning up bundles and worksheets tagged with {}...'.format(tag))
-    # Clean up tagged bundles
-    bundles_removed = 0
-    while True:
-        # Query 1000 bundles at a time for removal
-        query_result = run_command(
-            [cl, 'search', 'tags=%s' % tag, '.limit=1000', '--uuid-only'], force_subprocess=True
-        )
-        if len(query_result) == 0:
-            break
-        for uuid in query_result.split('\n'):
-            if should_wait:
-                # Wait until the bundle finishes and then delete it
-                run_command([cl, 'wait', uuid], force_subprocess=True)
-            run_command([cl, 'rm', uuid, '--force'], force_subprocess=True)
-            bundles_removed += 1
-    # Clean up tagged worksheets
-    worksheets_removed = 0
-    while True:
-        query_result = run_command(
-            [cl, 'wsearch', 'tag=%s' % tag, '.limit=1000', '--uuid-only'], force_subprocess=True
-        )
-        if len(query_result) == 0:
-            break
-        for uuid in query_result.split('\n'):
-            run_command([cl, 'wrm', uuid, '--force'], force_subprocess=True)
-            worksheets_removed += 1
-    print('Removed {} bundles and {} worksheets.'.format(bundles_removed, worksheets_removed))
 
 
 def main():
