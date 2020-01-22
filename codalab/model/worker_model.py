@@ -59,7 +59,7 @@ class WorkerModel(object):
                 'gpus': gpus,
                 'memory_bytes': memory_bytes,
                 'free_disk_bytes': free_disk_bytes,
-                'checkin_time': datetime.datetime.now(),
+                'checkin_time': datetime.datetime.utcnow(),
                 'shared_file_system': shared_file_system,
             }
             existing_row = conn.execute(
