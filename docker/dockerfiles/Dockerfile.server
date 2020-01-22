@@ -50,6 +50,7 @@ COPY monitor.py monitor.py
 COPY scripts scripts
 COPY setup.py setup.py
 COPY test_cli.py test_cli.py
+COPY stress_test.py stress_test.py
 COPY tests tests
 COPY views views
 

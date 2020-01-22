@@ -83,6 +83,12 @@ class MarkdownItem extends React.Component {
                 }
             }.bind(this),
         );
+
+        // unbind shortcuts that are active for table_block and worksheet_block
+        Mousetrap.unbind('shift+enter');
+        Mousetrap.unbind('a s');
+        Mousetrap.unbind('x');
+        Mousetrap.unbind('i');
     };
 
     handleDeleteClick = () => {

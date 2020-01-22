@@ -43,6 +43,10 @@ class WorksheetItem extends React.Component {
             }.bind(this),
             'keydown',
         );
+
+        // unbind shortcuts that are active for table_block and markdown_block
+        Mousetrap.unbind('a s');
+        Mousetrap.unbind('x');
     }
 
     updateRowIndex = (rowIndex, open) => {
