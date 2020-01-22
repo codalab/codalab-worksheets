@@ -10,9 +10,9 @@ from stress_test import cleanup
 from test_cli import run_command
 
 """
-Script to create tiny and giant worksheets in any instance to stress test the front end. The purpose of 
-the tiny worksheet is to test all features CodaLab offers on the front end. The giant worksheet is a large 
-version of the tiny worksheet and its purpose is to push the limit and stress test the frontend rendering capabilities.
+Script to create small and large sample worksheets in any instance to stress test the front end. The purpose of 
+the small worksheet is to test all features CodaLab offers on the front end. The large worksheet is a much bigger 
+version of the small worksheet and its purpose is to push the limit and stress test the frontend rendering capabilities.
 """
 
 
@@ -31,12 +31,12 @@ class SampleWorksheet:
     )
 
     def __init__(self, cl, args):
-        # For simplicity, reference a set number of entities for each section of the tiny and giant worksheet.
-        if args.giant:
-            self._description = 'giant'
+        # For simplicity, reference a set number of entities for each section of the small and large worksheet.
+        if args.large:
+            self._description = 'large'
             self._entities_count = 100
         else:
-            self._description = 'tiny'
+            self._description = 'small'
             self._entities_count = 3
         self._cl = cl
         self._preview_mode = args.preview
@@ -367,9 +367,9 @@ if __name__ == '__main__':
         help='Whether to reference existing bundles and worksheets instead of creating new ones (defaults to false)',
     )
     parser.add_argument(
-        '--giant',
+        '--large',
         action='store_true',
-        help='Whether to create a giant worksheet (defaults to false)',
+        help='Whether to create a large worksheet (defaults to false)',
     )
     parser.add_argument(
         '--cleanup',
