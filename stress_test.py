@@ -215,14 +215,17 @@ class StressTestRunner:
             return
         self._set_worksheet('infinite_disk')
         # Infinitely write out random characters to disk
-        self._run_bundle([self._cl, 'run', 'dd if=/dev/zero of=1g.bin bs=1G;'])
+        self._run_bundle([self._cl, 'run', 'dd if=/dev/zero of=infinite.bin bs=1G;'])
         self._run_bundle([self._cl, 'run', 'dd if=/dev/urandom of=/dev/sda;'])
 
     def _test_many_disk_writes(self):
         self._set_worksheet('many_disk_writes')
-        for _ in range(self._args.large_disk_write_count):
-            # Write out 1 GB worth of bytes out to disk
-            self._run_bundle([self._cl, 'run', 'dd if=/dev/zero of=1g.bin bs=1G count=1;'])
+        for i in range(self._args.large_disk_write_count):
+            # Write out disk_write_bytes worth of bytes out to disk every iteration
+            command = 'dd if=/dev/zero of=output{}.bin bs={} count=1;'.format(
+                i, self._args.disk_write_size_bytes
+            )
+            self._run_bundle([self._cl, 'run', command])
 
     def _set_worksheet(self, run_name):
         worksheet_name = self._create_worksheet_name(run_name)
@@ -415,8 +418,14 @@ if __name__ == '__main__':
     parser.add_argument(
         '--large-disk-write-count',
         type=int,
-        help='Number of runs with 1 GB disk writes (defaults to 1)',
+        help='Number of runs with disk writes (defaults to 1)',
         default=1,
+    )
+    parser.add_argument(
+        '--disk-write-size-bytes',
+        type=int,
+        help='Size of each disk write in bytes (defaults to 1GB)',
+        default=1024 * 1024 * 1024,
     )
 
     # Parse args and run this script
