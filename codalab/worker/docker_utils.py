@@ -18,7 +18,8 @@ MIN_API_VERSION = '1.17'
 NVIDIA_RUNTIME = 'nvidia'
 DEFAULT_RUNTIME = 'runc'
 DEFAULT_TIMEOUT = 720
-DOCKER_REGISTRY_HTTP_API_V2_PREFIX = 'https://hub.docker.com/v2/repositories/'
+# Docker Registry HTTP API v2 URI prefix
+URI_PREFIX = 'https://hub.docker.com/v2/repositories/'
 
 
 logger = logging.getLogger(__name__)
@@ -280,10 +281,16 @@ def get_image_size_without_pulling(image_spec):
     """
     logger.info("Downloading tag information for {}".format(image_spec))
     image_name, image_tag = image_spec.split(":")
-    # Example URL: https://hub.docker.com/v2/repositories/codalab/default-cpu/tags
+    # Example URL:
+    # 1. image with namespace: https://hub.docker.com/v2/repositories/<namespace>/<image_name>/tags
+    #       e.g. https://hub.docker.com/v2/repositories/codalab/default-cpu/tags
+    # 2. image without namespace: https://hub.docker.com/v2/repositories/library/<image_name>/tags
+    #       e.g. https://hub.docker.com/v2/repositories/library/ubuntu/tags/
     # Note that since docker-py doesn't report the accurate compressed image size, e.g. the size reported
     # from the RegistryData object, we then switch to use Docker Registry HTTP API V2
-    request = DOCKER_REGISTRY_HTTP_API_V2_PREFIX + image_name + '/tags'
+    # URI prefix of an image without namespace will be adjusted to https://hub.docker.com/v2/repositories/library
+    uri_prefix_adjusted = URI_PREFIX + '/library/' if '/' not in image_name else URI_PREFIX
+    request = uri_prefix_adjusted + image_name + '/tags'
     response = requests.get(url=request)
     data = response.json()
 
