@@ -157,7 +157,7 @@ class Worksheet extends React.Component {
             openDeleteItem: false,
             forceDelete: false,
             showGlossaryModal: false,
-            errorMessage: "",
+            errorMessage: '',
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
         };
@@ -516,7 +516,7 @@ class Worksheet extends React.Component {
                     updating: false,
                     version: this.state.version + 1,
                     numOfBundles: this.getNumOfBundles(),
-                    errorMessage: ""
+                    errorMessage: '',
                 });
                 // Fix out of bounds.
             }.bind(this),
@@ -902,7 +902,7 @@ class Worksheet extends React.Component {
                 }
             }.bind(this),
             error: function(xhr, status, err) {
-                this.setState({errorMessage: xhr.responseText});
+                this.setState({ errorMessage: xhr.responseText });
                 $('#worksheet_container').hide();
             },
         });
@@ -1072,7 +1072,7 @@ class Worksheet extends React.Component {
                         });
                         return false;
                     }
-                    this.setState({errorMessage: ""});
+                    this.setState({ errorMessage: '' });
                     $('#update_progress').hide();
                     $('#worksheet_content').show();
                     var items = this.state.ws.info.items;
@@ -1150,7 +1150,7 @@ class Worksheet extends React.Component {
                 error: function(xhr, status, err) {
                     this.setState({
                         updating: false,
-                        errorMessage: xhr.responseText
+                        errorMessage: xhr.responseText,
                     });
                     $('#update_progress').hide();
                     $('#worksheet_container').hide();
@@ -1181,7 +1181,7 @@ class Worksheet extends React.Component {
     };
 
     saveAndUpdateWorksheet(fromRaw, rawIndex) {
-        this.setState({ updating: true, errorMessage: "" });
+        this.setState({ updating: true, errorMessage: '' });
         this.state.ws.saveWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
@@ -1191,7 +1191,7 @@ class Worksheet extends React.Component {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
-                this.setState({errorMessage: xhr.responseText});
+                this.setState({ errorMessage: xhr.responseText });
                 if (fromRaw) {
                     this.toggleEditMode(true);
                 }
@@ -1200,7 +1200,7 @@ class Worksheet extends React.Component {
     }
 
     deteleWorksheetAction = () => {
-        this.setState({ updating: true, errorMessage: "" });
+        this.setState({ updating: true, errorMessage: '' });
         this.state.ws.deleteWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
@@ -1210,7 +1210,7 @@ class Worksheet extends React.Component {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
-                this.setState({errorMessage: xhr.responseText});
+                this.setState({ errorMessage: xhr.responseText });
             }.bind(this),
         });
     };
@@ -1475,7 +1475,9 @@ class Worksheet extends React.Component {
                                             showGlossaryModal={this.state.showGlossaryModal}
                                             toggleGlossaryModal={this.toggleGlossaryModal}
                                             errorMessage={this.state.errorMessage}
-                                            clearErrorMessage={() => this.setState({errorMessage: ""})}
+                                            clearErrorMessage={() =>
+                                                this.setState({ errorMessage: '' })
+                                            }
                                         />
                                     </div>
                                 </div>

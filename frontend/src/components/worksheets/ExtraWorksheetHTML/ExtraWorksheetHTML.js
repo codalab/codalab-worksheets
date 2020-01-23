@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { Alert, Modal } from "react-bootstrap";
-import "./ExtraWorksheetHTML.scss";
+import { Alert, Modal } from 'react-bootstrap';
+import './ExtraWorksheetHTML.scss';
 
 const GlossaryModal = ({ show, toggle }) => (
     <Modal id='glossaryModal' tabIndex='-1' keyboard show={show} onHide={toggle}>
@@ -149,18 +149,22 @@ const GlossaryModal = ({ show, toggle }) => (
     </Modal>
 );
 
-let ExtraWorksheetHTML = ({ showGlossaryModal, toggleGlossaryModal, errorMessage, clearErrorMessage }) => (
+let ExtraWorksheetHTML = ({
+    showGlossaryModal,
+    toggleGlossaryModal,
+    errorMessage,
+    clearErrorMessage,
+}) => (
     <React.Fragment>
         <div id='update_progress' className='progress-message'>
             <img src='/img/Preloader_Small.gif' /> Updating...
         </div>
-        {errorMessage && <Alert className="codalab-error-message" bsStyle="danger" onDismiss={clearErrorMessage}>
-            <i className='glyphicon glyphicon-remove-circle' /> Error: {errorMessage}
-        </Alert>}
-        <GlossaryModal
-            show={showGlossaryModal}
-            toggle={toggleGlossaryModal}
-        />
+        {errorMessage && (
+            <Alert className='codalab-error-message' bsStyle='danger' onDismiss={clearErrorMessage}>
+                <i className='glyphicon glyphicon-remove-circle' /> Error: {errorMessage}
+            </Alert>
+        )}
+        <GlossaryModal show={showGlossaryModal} toggle={toggleGlossaryModal} />
     </React.Fragment>
 );
 
