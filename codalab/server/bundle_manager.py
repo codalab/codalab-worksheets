@@ -240,7 +240,7 @@ class BundleManager(object):
         Such workers probably died without checking out properly.
         """
         for worker in workers.workers():
-            if datetime.datetime.now() - worker['checkin_time'] > datetime.timedelta(
+            if datetime.datetime.utcnow() - worker['checkin_time'] > datetime.timedelta(
                 seconds=WORKER_TIMEOUT_SECONDS
             ):
                 logger.info(
@@ -320,10 +320,8 @@ class BundleManager(object):
             reverse=True,
         )
 
-        # Get bundles in RUNNING state from the bundle table
-        running_bundles = self._model.batch_get_bundles(state=State.RUNNING)
-        # Build a dictionary which maps from uuid to bundle
-        uuid_to_running_bundles = {bundle.uuid: bundle for bundle in running_bundles}
+        # Build a dictionary which maps from uuid to running bundle and bundle_resources
+        running_bundles_info = self._get_running_bundles_info(workers)
 
         # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
@@ -331,9 +329,9 @@ class BundleManager(object):
             workers_list = workers.user_owned_workers(bundle.owner_id)
 
             # If there is no user_owned worker, try to schedule the current bundle to run on a CodaLab's public worker.
-            if not workers_list:
+            if len(workers_list) == 0:
                 # Check if there is enough parallel run quota left for this user
-                if not self._model.get_user_parallel_run_quota_left(bundle.owner_id):
+                if self._model.get_user_parallel_run_quota_left(bundle.owner_id) <= 0:
                     logger.info(
                         "User %s has no parallel run quota left, skipping job for now",
                         bundle.owner_id,
@@ -343,15 +341,15 @@ class BundleManager(object):
                 # Get all the CodaLab's public workers
                 workers_list = workers.user_owned_workers(self._model.root_user_id)
 
-            workers_list = self._deduct_worker_resources(workers_list, uuid_to_running_bundles)
+            workers_list = self._deduct_worker_resources(workers_list, running_bundles_info)
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
 
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
-                if self._try_start_bundle(workers, worker, bundle):
+                if self._try_start_bundle(workers, worker, bundle, bundle_resources):
                     break
 
-    def _deduct_worker_resources(self, workers_list, uuid_to_running_bundles):
+    def _deduct_worker_resources(self, workers_list, running_bundles_info):
         """
         From each worker, subtract resources used by running bundles. Modifies the list.
         """
@@ -359,13 +357,13 @@ class BundleManager(object):
         for worker in workers_list:
             for uuid in worker['run_uuids']:
                 # Verify if the current bundle exists in both the worker table and the bundle table
-                if uuid not in uuid_to_running_bundles:
+                if uuid not in running_bundles_info:
                     logger.info(
                         'Bundle {} exists on worker {} but no longer found in the bundle table. '
                         'Skipping for resource deduction.'.format(uuid, worker['worker_id'])
                     )
                     continue
-                bundle_resources = self._compute_bundle_resources(uuid_to_running_bundles.get(uuid))
+                bundle_resources = running_bundles_info[uuid]["bundle_resources"]
                 worker['cpus'] -= bundle_resources.cpus
                 worker['gpus'] -= bundle_resources.gpus
                 worker['memory_bytes'] -= bundle_resources.memory
@@ -440,7 +438,7 @@ class BundleManager(object):
 
         return workers_list
 
-    def _try_start_bundle(self, workers, worker, bundle):
+    def _try_start_bundle(self, workers, worker, bundle, bundle_resources):
         """
         Tries to start running the bundle on the given worker, returning False
         if that failed.
@@ -454,7 +452,9 @@ class BundleManager(object):
                 remove_path(path)
                 os.mkdir(path)
             if self._worker_model.send_json_message(
-                worker['socket_id'], self._construct_run_message(worker, bundle), 0.2
+                worker['socket_id'],
+                self._construct_run_message(worker, bundle, bundle_resources),
+                0.2,
             ):
                 logger.info(
                     'Starting run bundle {} on worker {}'.format(bundle.uuid, worker['worker_id'])
@@ -541,7 +541,7 @@ class BundleManager(object):
             docker_image += ':latest'
         return docker_image
 
-    def _construct_run_message(self, worker, bundle):
+    def _construct_run_message(self, worker, bundle, bundle_resources):
         """
         Constructs the run message that is sent to the given worker to tell it
         to run the given bundle.
@@ -557,8 +557,7 @@ class BundleManager(object):
                 )
 
         # Figure out the resource requirements.
-        bundle_resources = self._compute_bundle_resources(bundle)
-        message['resources'] = bundle_resources.to_dict()
+        message['resources'] = bundle_resources.as_dict
         return message
 
     def _compute_bundle_resources(self, bundle):
@@ -566,8 +565,10 @@ class BundleManager(object):
             cpus=self._compute_request_cpus(bundle),
             gpus=self._compute_request_gpus(bundle),
             docker_image=self._get_docker_image(bundle),
+            # _compute_request_time contains database queries that may reduce efficiency
             time=self._compute_request_time(bundle),
             memory=self._compute_request_memory(bundle),
+            # _compute_request_disk contains database queries that may reduce efficiency
             disk=self._compute_request_disk(bundle),
             network=bundle.metadata.request_network,
         )
@@ -577,11 +578,10 @@ class BundleManager(object):
         Fail bundles in uploading, staged and running state if we haven't heard from them for more than
         BUNDLE_TIMEOUT_DAYS days.
         """
-        bundles_to_fail = (
-            self._model.batch_get_bundles(state=State.UPLOADING)
-            + self._model.batch_get_bundles(state=State.STAGED)
-            + self._model.batch_get_bundles(state=State.RUNNING)
+        bundles_to_fail = self._model.batch_get_bundles(
+            state=[State.UPLOADING, State.STAGED, State.RUNNING]
         )
+
         now = time.time()
 
         for bundle in bundles_to_fail:
@@ -718,3 +718,35 @@ class BundleManager(object):
                 staged_bundles_to_run.append((bundle, bundle_resources))
 
         return staged_bundles_to_run
+
+    def _get_running_bundles_info(self, workers):
+        """
+        Build a nested dictionary to store information (bundle and bundle_resources) of all the valid running bundles.
+        Note that the primary usage of this function is to improve efficiency when calling _compute_bundle_resources,
+        e.g. reusing constants (gpus, cpus, memory) from the returning values of _compute_bundle_resources as they
+        don't change over time.
+        However, be careful when using this function to improve efficiency for returning values like disk and time
+        from _compute_bundle_resources as they do depend on the number of jobs that are running during the time of
+        computation. Accuracy might be affected without considering this factor.
+        :param workers: a WorkerInfoAccessor object which stores information about running workers.
+        :return: a nested dictionary structured as follows:
+                {
+                    uuid: {
+                        "bundle": bundle,
+                        "bundle_resources": bundle_resources
+                    }
+                }
+        """
+        # Get uuid of all the running bundles from workers (a WorkerInfoAccessor object)
+        run_uuids = workers._uuid_to_worker.keys()
+        # Get the running bundles that exist in the bundle table
+        running_bundles = self._model.batch_get_bundles(uuid=run_uuids)
+        # Build a dictionary which maps from uuid to running bundle and bundle_resources
+        running_bundles_info = {
+            bundle.uuid: {
+                "bundle": bundle,
+                "bundle_resources": self._compute_bundle_resources(bundle),
+            }
+            for bundle in running_bundles
+        }
+        return running_bundles_info
