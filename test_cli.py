@@ -443,7 +443,11 @@ class ModuleContext(object):
         if len(self.bundles) > 0:
             for bundle in set(self.bundles):
                 try:
-                    if run_command([cl, 'info', '-f', 'state', bundle]) not in ('ready', 'failed'):
+                    if run_command([cl, 'info', '-f', 'state', bundle]) not in (
+                        'ready',
+                        'failed',
+                        'killed',
+                    ):
                         run_command([cl, 'kill', bundle])
                         run_command([cl, 'wait', bundle], expected_exit_code=1)
                 except AssertionError:
