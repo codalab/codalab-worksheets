@@ -73,7 +73,7 @@ if not os.path.exists(args.backup_path):
     os.mkdir(args.backup_path)
 
 # Comma-separated list of worker ids to monitor. Example: vm-clws-prod-worker-0,vm-clws-prod-worker-1
-public_workers = os.environ['CODALAB_PUBLIC_WORKERS'].split(',')
+public_workers = set(os.environ['CODALAB_PUBLIC_WORKERS'].split(','))
 
 report = []  # Build up the current report to send in an email
 
@@ -107,7 +107,7 @@ def send_email(subject, message):
 
 def get_date():
     # Only save a backup for every month to save space
-    return datetime.datetime.now().strftime('%Y-%m')
+    return datetime.datetime.utcnow().strftime('%Y-%m')
 
 
 def log(line, newline=True):
@@ -266,7 +266,7 @@ def poll_online_workers():
     for line in workers_info:
         online_workers.add(line.split()[0].strip())
 
-    workers_intersection = set(public_workers).intersection(online_workers)
+    workers_intersection = public_workers.intersection(online_workers)
     offline_public_workers = public_workers - workers_intersection
     if len(offline_public_workers) > 0:
         error_logs(

@@ -51,8 +51,8 @@ class GraphItem extends React.Component {
             for (var j = 0; j < points.length; j++) {
                 // For each point in that trajectory
                 var pt = points[j];
-                var x = pt[xi];
-                var y = pt[yi];
+                var x = pt[xi] ? pt[xi] : null;
+                var y = pt[yi] ? pt[xi] : null;
                 xcol.push(x);
                 ycol.push(y);
             }

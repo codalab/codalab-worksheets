@@ -13,6 +13,7 @@ from codalab.lib.server_util import (
     decoded_body,
     json_api_include,
     query_get_bool,
+    query_get_type,
     query_get_json_api_include_set,
     query_get_list,
 )
@@ -229,12 +230,16 @@ def create_worksheet_items():
     |replace| - Replace existing items in host worksheets. Default is False.
     """
     replace = query_get_bool('replace', False)
-
+    # Get the uuid of the current worksheet
+    worksheet_uuid = query_get_type(str, 'uuid')
     new_items = WorksheetItemSchema(strict=True, many=True).load(request.json).data
 
+    # Map of worksheet_uuid to list of items that exist in this worksheet
     worksheet_to_items = {}
+    worksheet_to_items.setdefault(worksheet_uuid, [])
+
     for item in new_items:
-        worksheet_to_items.setdefault(item['worksheet_uuid'], []).append(item)
+        worksheet_to_items[worksheet_uuid].append(item)
 
     for worksheet_uuid, items in worksheet_to_items.items():
         worksheet_info = get_worksheet_info(worksheet_uuid, fetch_items=True)
@@ -369,7 +374,7 @@ def update_worksheet_metadata(uuid, info):
             ensure_unused_worksheet_name(value)
         elif key == 'frozen' and value and not worksheet.frozen:
             # ignore the value the client provided, just freeze as long as it's truthy
-            value = datetime.datetime.now()
+            value = datetime.datetime.utcnow()
         metadata[key] = value
 
     local.model.update_worksheet_metadata(worksheet, metadata)

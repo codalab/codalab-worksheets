@@ -11,7 +11,7 @@ from bottle import abort, get, local, post, put, request, response
 from codalab.lib import spec_util
 from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-from codalab.worker.bundle_state import WorkerRun
+from codalab.worker.bundle_state import BundleCheckinState
 
 
 @post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedPlugin())
@@ -23,8 +23,7 @@ def checkin(worker_id):
     """
     WAIT_TIME_SECS = 3.0
 
-    # Old workers might not have all the fields, so allow subsets to be
-    # missing.
+    # Old workers might not have all the fields, so allow subsets to be missing.
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id,
         worker_id,
@@ -34,12 +33,12 @@ def checkin(worker_id):
         request.json.get("memory_bytes"),
         request.json.get("free_disk_bytes"),
         request.json["dependencies"],
-        request.json.get("shared_file_system"),
+        request.json.get("shared_file_system", False),
     )
 
     for run in request.json["runs"]:
         try:
-            worker_run = WorkerRun.from_dict(run)
+            worker_run = BundleCheckinState.from_dict(run)
             bundle = local.model.get_bundle(worker_run.uuid)
             local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id)
         except Exception:

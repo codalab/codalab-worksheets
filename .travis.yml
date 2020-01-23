@@ -1,16 +1,16 @@
 jobs:
   include:
-    - stage: style-backend
+    - stage: check
       language: python
       python: 3.6
       install: pip install --upgrade black==18.9b0
       script: black . --check --diff
-    - stage: style-frontend
+    - stage: check
       language: javascript
       install: cd frontend && npm install
       script:
         - npm run check-ci
-    - stage: functionality
+    - stage: check
       language: python
       sudo: required
       services:

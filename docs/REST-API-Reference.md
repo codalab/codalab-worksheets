@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.2_
+_version 0.5.5_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -905,6 +905,11 @@ If |force|, allow deletion of bundles that have descendants or that appear acros
 If |recursive|, add all bundles downstream too.
 If |data-only|, only remove from the bundle store, not the bundle metadata.
 If |dry-run|, just return list of bundles that would be deleted, but do not actually delete.
+
+### `POST /worksheets/<worksheet_uuid:re:0x[0-9a-f]{32}>/add-items`
+
+Replace worksheet items with 'ids' with new 'items'.
+The new items will be inserted after the after_sort_key
 
 ### `GET /worksheets/sample/`
 
