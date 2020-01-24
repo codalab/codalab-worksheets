@@ -47,7 +47,7 @@ class SMTPEmailer(Emailer):
         :param body: body of email
         :param recipient: recipient of email, must be valid email address
         :param sender: optional alternative 'From' header
-        :param mime_type: optional speficies the mime type
+        :param mime_type: optional specifies the mime type
         :param charset: optional specifies the character encoding; use 'utf-8'
                for unicode
         :return:
@@ -76,7 +76,7 @@ class SMTPEmailer(Emailer):
             log.debug(message.as_string())
 
         except smtplib.SMTPException:
-            log.error("Failed to send email, defaulting to console.")
+            log.exception("Failed to send email, defaulting to console.")
             ConsoleEmailer(sys.stderr).send_email(subject, body, recipient, sender)
 
 

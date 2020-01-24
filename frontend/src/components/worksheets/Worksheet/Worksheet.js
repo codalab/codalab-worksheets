@@ -664,7 +664,10 @@ class Worksheet extends React.Component {
                     var subFocusIndex = this.state.subFocusIndex;
                     var wsItems = this.state.ws.info.items;
 
-                    if (
+                    if (focusIndex === 0) {
+                        // Deselect all item when selecting up above the first item.
+                        this.setFocus(-1, 0);
+                    } else if (
                         focusIndex >= 0 &&
                         (wsItems[focusIndex].mode === 'table_block' ||
                             wsItems[focusIndex].mode === 'subworksheets_block')
