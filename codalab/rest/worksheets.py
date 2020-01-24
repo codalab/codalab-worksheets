@@ -374,7 +374,7 @@ def update_worksheet_metadata(uuid, info):
             ensure_unused_worksheet_name(value)
         elif key == 'frozen' and value and not worksheet.frozen:
             # ignore the value the client provided, just freeze as long as it's truthy
-            value = datetime.datetime.now()
+            value = datetime.datetime.utcnow()
         metadata[key] = value
 
     local.model.update_worksheet_metadata(worksheet, metadata)
