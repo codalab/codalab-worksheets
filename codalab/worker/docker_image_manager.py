@@ -5,14 +5,18 @@ import traceback
 import logging
 
 import docker
+import codalab.worker.docker_utils as docker_utils
 
 from codalab.worker.fsm import DependencyStage
 from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.worker_thread import ThreadDict
+from codalab.lib.formatting import size_str
+
 
 logger = logging.getLogger(__name__)
 
-# Stores the download state of a Docker image (also includes the digest being pulled, digest string, DependencyStage and relevant status message from the download)
+# Stores the download state of a Docker image (also includes the digest being pulled, digest string,
+# DependencyStage and relevant status message from the download)
 ImageAvailabilityState = namedtuple('ImageAvailabilityState', ['digest', 'stage', 'message'])
 # Stores information relevant about caching about docker images
 ImageCacheEntry = namedtuple(
@@ -21,11 +25,12 @@ ImageCacheEntry = namedtuple(
 
 
 class DockerImageManager:
-    def __init__(self, commit_file, max_image_cache_size):
+    def __init__(self, commit_file, max_image_cache_size, max_image_size):
         """
         Initializes a DockerImageManager
         :param commit_file: String path to where the state file should be committed
         :param max_image_cache_size: Total size in bytes that the image cache can use
+        :param max_image_size: Total size in bytes that the image can have
         """
         self._state_committer = JsonStateCommitter(commit_file)  # type: JsonStateCommitter
         self._docker = docker.from_env()  # type: DockerClient
@@ -34,6 +39,7 @@ class DockerImageManager:
             fields={'success': False, 'status': 'Download starting.'}, lock=True
         )
         self._max_image_cache_size = max_image_cache_size
+        self._max_image_size = max_image_size
         self._lock = threading.RLock()
 
         self._stop = False
@@ -218,12 +224,34 @@ class DockerImageManager:
                             'message'
                         ] = "Can't download image: {}".format(ex)
 
-                self._downloading.add_if_new(image_spec, threading.Thread(target=download, args=[]))
+                # Check docker image size before pulling from Docker Hub.
+                # Do not download images larger than self._max_image_size
+                image_size_bytes = docker_utils.get_image_size_without_pulling(image_spec)
+                if image_size_bytes is None:
+                    failure_msg = (
+                        "Unable to find image: " + image_spec + " from Docker HTTP API V2."
+                    )
+                elif image_size_bytes < self._max_image_size:
+                    self._downloading.add_if_new(
+                        image_spec, threading.Thread(target=download, args=[])
+                    )
+                    return ImageAvailabilityState(
+                        digest=None,
+                        stage=DependencyStage.DOWNLOADING,
+                        message=self._downloading[image_spec]['status'],
+                    )
+                else:
+                    failure_msg = (
+                        "The size of "
+                        + image_spec
+                        + ": {} exceeds the maximum image size allowed {}.".format(
+                            size_str(image_size_bytes), size_str(self._max_image_size)
+                        )
+                    )
                 return ImageAvailabilityState(
-                    digest=None,
-                    stage=DependencyStage.DOWNLOADING,
-                    message=self._downloading[image_spec]['status'],
+                    digest=None, stage=DependencyStage.FAILED, message=failure_msg
                 )
+
         except Exception as ex:
             return ImageAvailabilityState(
                 digest=None, stage=DependencyStage.FAILED, message=str(ex)

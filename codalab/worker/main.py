@@ -80,6 +80,16 @@ def parse_args():
         'is not specified.',
     )
     parser.add_argument(
+        '--max-image-size',
+        type=parse_size,
+        metavar='SIZE',
+        default='10g',
+        help='Limit the size of Docker images to download from the Docker Hub'
+        '(e.g. 3, 3k, 3m, 3g, 3t). If the limit is exceeded, '
+        'the requested image will not be downloaded. '
+        'The bundle depends on this image will fail accordingly.',
+    )
+    parser.add_argument(
         '--password-file',
         help='Path to the file containing the username and '
         'password for logging into the bundle service, '
@@ -177,7 +187,9 @@ def main():
 
     docker_runtime = docker_utils.get_available_runtime()
     image_manager = DockerImageManager(
-        os.path.join(args.work_dir, 'images-state.json'), args.max_image_cache_size
+        os.path.join(args.work_dir, 'images-state.json'),
+        args.max_image_cache_size,
+        args.max_image_size,
     )
 
     worker = Worker(

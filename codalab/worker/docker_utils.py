@@ -11,13 +11,15 @@ import os
 import docker
 from dateutil import parser, tz
 import datetime
-from codalab.lib.formatting import parse_size
+import requests
 
 
 MIN_API_VERSION = '1.17'
 NVIDIA_RUNTIME = 'nvidia'
 DEFAULT_RUNTIME = 'runc'
 DEFAULT_TIMEOUT = 720
+# Docker Registry HTTP API v2 URI prefix
+URI_PREFIX = 'https://hub.docker.com/v2/repositories/'
 
 
 logger = logging.getLogger(__name__)
@@ -118,7 +120,9 @@ def start_bundle_container(
 ):
     if not command.endswith(';'):
         command = '{};'.format(command)
-    docker_command = ['bash', '-c', '( %s ) >stdout 2>stderr' % command]
+    # Explicitly specifying "/bin/bash" instead of "bash" for bash shell to avoid the situation when
+    # the program can't find the symbolic link (default is "/bin/bash") of bash in the environment
+    docker_command = ['/bin/bash', '-c', '( %s ) >stdout 2>stderr' % command]
     docker_bundle_path = '/' + uuid
     volumes = get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependencies)
     environment = {'HOME': docker_bundle_path, 'CODALAB': 'true'}
@@ -268,3 +272,32 @@ def get_container_running_time(container):
     # formatted datetime string directly.
     container_running_time = parser.isoparse(end_time) - parser.isoparse(start_time)
     return container_running_time.total_seconds()
+
+
+@wrap_exception('Unable to get image size without pulling from Docker Hub')
+def get_image_size_without_pulling(image_spec):
+    """
+    Get the compressed size of a docker image without pulling it from Docker Hub
+    :param image_spec: image_spec will be in the format of 'codalab/default-cpu:latest'
+    :return: the compressed image size in bytes
+    """
+    logger.info("Downloading tag information for {}".format(image_spec))
+    image_name, image_tag = image_spec.split(":")
+    # Example URL:
+    # 1. image with namespace: https://hub.docker.com/v2/repositories/<namespace>/<image_name>/tags
+    #       e.g. https://hub.docker.com/v2/repositories/codalab/default-cpu/tags
+    # 2. image without namespace: https://hub.docker.com/v2/repositories/library/<image_name>/tags
+    #       e.g. https://hub.docker.com/v2/repositories/library/ubuntu/tags/
+    # Note that since docker-py doesn't report the accurate compressed image size, e.g. the size reported
+    # from the RegistryData object, we then switch to use Docker Registry HTTP API V2
+    # URI prefix of an image without namespace will be adjusted to https://hub.docker.com/v2/repositories/library
+    uri_prefix_adjusted = URI_PREFIX + '/library/' if '/' not in image_name else URI_PREFIX
+    request = uri_prefix_adjusted + image_name + '/tags'
+    response = requests.get(url=request)
+    data = response.json()
+
+    # Find all the full_size of the matched images
+    matched_image_sizes = [r['full_size'] for r in data['results'] if r['name'] == image_tag]
+    image_size_bytes = matched_image_sizes[0] if len(matched_image_sizes) == 1 else None
+
+    return image_size_bytes
