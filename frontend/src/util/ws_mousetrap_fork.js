@@ -188,7 +188,7 @@
      */
     function _characterFromEvent(e) {
         // for keypress events we should return the character as is
-        if (e.type == 'keypress') {
+        if (e.type === 'keypress') {
             var character = String.fromCharCode(e.which);
 
             // if the shift key is not pressed then it is safe to assume
@@ -300,7 +300,7 @@
      * @returns {boolean}
      */
     function _isModifier(key) {
-        return key == 'shift' || key == 'ctrl' || key == 'alt' || key == 'meta';
+        return key === 'shift' || key === 'ctrl' || key === 'alt' || key === 'meta';
     }
 
     /**
@@ -343,7 +343,7 @@
 
         // modifier keys don't work as expected with keypress,
         // switch to keydown
-        if (action == 'keypress' && modifiers.length) {
+        if (action === 'keypress' && modifiers.length) {
             action = 'keydown';
         }
 
@@ -393,7 +393,7 @@
             // if this is not a keypress event then we should
             // be smart about using shift keys
             // this will only work for US keyboards however
-            if (action && action != 'keypress' && _SHIFT_MAP[key]) {
+            if (action && action !== 'keypress' && _SHIFT_MAP[key]) {
                 key = _SHIFT_MAP[key];
                 modifiers.push('shift');
             }
@@ -543,7 +543,7 @@
             }
 
             // if a modifier key is coming up on its own we should allow it
-            if (action == 'keyup' && _isModifier(character)) {
+            if (action === 'keyup' && _isModifier(character)) {
                 modifiers = [character];
             }
 
@@ -557,14 +557,14 @@
                 if (
                     !sequenceName &&
                     callback.seq &&
-                    _sequenceLevels[callback.seq] != callback.level
+                    _sequenceLevels[callback.seq] !== callback.level
                 ) {
                     continue;
                 }
 
                 // if the action we are looking for doesn't match the action we got
                 // then we should keep going
-                if (action != callback.action) {
+                if (action !== callback.action) {
                     continue;
                 }
 
@@ -576,7 +576,7 @@
                 // safari will fire a keypress if meta or meta+shift is down
                 // firefox will fire a keypress if meta or control is down
                 if (
-                    (action == 'keypress' && !e.metaKey && !e.ctrlKey) ||
+                    (action === 'keypress' && !e.metaKey && !e.ctrlKey) ||
                     _modifiersMatch(modifiers, callback.modifiers)
                 ) {
                     // when you bind a combination or sequence a second time it
@@ -584,9 +584,9 @@
                     // combination is specified in this call it does just that
                     //
                     // @todo make deleting its own method?
-                    var deleteCombo = !sequenceName && callback.combo == combination;
+                    var deleteCombo = !sequenceName && callback.combo === combination;
                     var deleteSequence =
-                        sequenceName && callback.seq == sequenceName && callback.level == level;
+                        sequenceName && callback.seq === sequenceName && callback.level === level;
                     if (deleteCombo || deleteSequence) {
                         self._callbacks[character].splice(i, 1);
                     }
@@ -658,7 +658,7 @@
                     //
                     // any sequences that do not match here will be discarded
                     // below by the _resetSequences call
-                    if (callbacks[i].level != maxLevel) {
+                    if (callbacks[i].level !== maxLevel) {
                         continue;
                     }
 
@@ -698,12 +698,12 @@
             //
             // we ignore keypresses in a sequence that directly follow a keydown
             // for the same character
-            var ignoreThisKeypress = e.type == 'keypress' && _ignoreNextKeypress;
-            if (e.type == _nextExpectedAction && !_isModifier(character) && !ignoreThisKeypress) {
+            var ignoreThisKeypress = e.type === 'keypress' && _ignoreNextKeypress;
+            if (e.type === _nextExpectedAction && !_isModifier(character) && !ignoreThisKeypress) {
                 _resetSequences(doNotReset);
             }
 
-            _ignoreNextKeypress = processedSequenceCallback && e.type == 'keydown';
+            _ignoreNextKeypress = processedSequenceCallback && e.type === 'keydown';
         };
 
         /**
@@ -727,7 +727,7 @@
             }
 
             // need to use === for the character check because the character can be 0
-            if (e.type == 'keyup' && _ignoreNextKeyup === character) {
+            if (e.type === 'keyup' && _ignoreNextKeyup === character) {
                 _ignoreNextKeyup = false;
                 return;
             }
@@ -1003,9 +1003,9 @@
 
         // stop for input, select, and textarea
         return (
-            element.tagName == 'INPUT' ||
-            element.tagName == 'SELECT' ||
-            element.tagName == 'TEXTAREA' ||
+            element.tagName === 'INPUT' ||
+            element.tagName === 'SELECT' ||
+            element.tagName === 'TEXTAREA' ||
             element.isContentEditable
         );
     };
