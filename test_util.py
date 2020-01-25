@@ -3,9 +3,6 @@ import subprocess
 import sys
 import traceback
 
-from codalab.lib.bundle_cli import BundleCLI
-from codalab.lib.codalab_manager import CodaLabManager
-
 global cl
 
 
@@ -81,6 +78,12 @@ def run_command(
     binary=False,
     use_cli_directly=False,
 ):
+    # We import the following imports here because codalab_service.py imports TestModule from
+    # this file. If we kept the imports at the top, then anyone who ran codalab_service.py
+    # would also have to install all the dependencies that BundleCLI and CodaLabManager use.
+    from codalab.lib.bundle_cli import BundleCLI
+    from codalab.lib.codalab_manager import CodaLabManager
+
     def sanitize(string, max_chars=256):
         # Sanitize and truncate output so it can be printed on the command line.
         # Don't print out binary.
