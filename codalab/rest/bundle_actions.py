@@ -19,11 +19,7 @@ def create_bundle_actions():
     check_bundles_have_all_permission(local.model, request.user, [a['uuid'] for a in actions])
     for action in actions:
         bundle = local.model.get_bundle(action['uuid'])
-        if bundle.state in [
-            State.READY,
-            State.FAILED,
-            State.KILLED,
-        ]:
+        if bundle.state in [State.READY, State.FAILED, State.KILLED]:
             raise UsageError(
                 'Cannot execute this action on a bundle that is in the following states: ready, failed, killed. '
                 'Kill action can be executed on bundles in created, uploading, staged, making, starting, '
