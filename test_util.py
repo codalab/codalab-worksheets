@@ -3,6 +3,9 @@ import subprocess
 import sys
 import traceback
 
+from codalab.lib.bundle_cli import BundleCLI
+from codalab.lib.codalab_manager import CodaLabManager
+
 global cl
 
 
@@ -76,14 +79,8 @@ def run_command(
     env=None,
     include_stderr=False,
     binary=False,
-    force_subprocess=False,
+    use_cli_directly=False,
 ):
-    # We import the following imports here because codalab_service.py imports TestModule from
-    # this file. If we kept the imports at the top, then anyone who ran codalab_service.py
-    # would also have to install all the dependencies that BundleCLI and CodaLabManager use.
-    from codalab.lib.bundle_cli import BundleCLI
-    from codalab.lib.codalab_manager import CodaLabManager
-
     def sanitize(string, max_chars=256):
         # Sanitize and truncate output so it can be printed on the command line.
         # Don't print out binary.
@@ -93,8 +90,7 @@ def run_command(
             string = string[:max_chars] + ' (...more...)'
         return string
 
-    """If we don't care about the exit code, set `expected_exit_code` to None.
-    """
+    # If we don't care about the exit code, set `expected_exit_code` to None.
     print(">>", *map(str, args), sep=" ")
     sys.stdout.flush()
 
@@ -104,8 +100,8 @@ def run_command(
             kwargs = dict(kwargs, encoding="utf-8")
         if include_stderr:
             kwargs = dict(kwargs, stderr=subprocess.STDOUT)
-        if not force_subprocess and args[0] == cl:
-            # In this case, run the codalab CLI directly, which is much faster
+        if use_cli_directly:
+            # In this case, run the Codalab CLI directly, which is much faster
             # than opening a new subprocess to do so.
             # We skip doing this if force_subprocess is set to true (which forces
             # us to use subprocess even for cl commands.)
@@ -124,9 +120,10 @@ def run_command(
     except subprocess.CalledProcessError as e:
         output = e.output
         exitcode = e.returncode
-    except Exception as e:
+    except Exception:
         output = traceback.format_exc()
         exitcode = 'test-cli exception'
+
     if expected_exit_code is not None and exitcode != expected_exit_code:
         colorize = Colorizer.red
         extra = ' BAD'

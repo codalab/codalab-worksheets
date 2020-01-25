@@ -160,9 +160,7 @@ class StressTestRunner:
         # Create many worksheets with current worksheet's content copied over
         for _ in range(self._args.create_worksheet_count):
             other_worksheet_uuid = self._set_worksheet('other_worksheet_copy')
-            run_command(
-                [self._cl, 'wadd', worksheet_uuid, other_worksheet_uuid], force_subprocess=True
-            )
+            run_command([self._cl, 'wadd', worksheet_uuid, other_worksheet_uuid])
 
     def _test_parallel_runs(self):
         self._set_worksheet('parallel_runs')
@@ -229,9 +227,9 @@ class StressTestRunner:
 
     def _set_worksheet(self, run_name):
         worksheet_name = self._create_worksheet_name(run_name)
-        uuid = run_command([self._cl, 'new', worksheet_name], force_subprocess=True)
-        run_command([self._cl, 'work', worksheet_name], force_subprocess=True)
-        run_command([self._cl, 'wedit', '--tag=%s' % StressTestRunner._TAG], force_subprocess=True)
+        uuid = run_command([self._cl, 'new', worksheet_name])
+        run_command([self._cl, 'work', worksheet_name])
+        run_command([self._cl, 'wedit', '--tag=%s' % StressTestRunner._TAG])
         return uuid
 
     def _create_worksheet_name(self, base_name):
@@ -244,7 +242,7 @@ class StressTestRunner:
 
     def _run_bundle(self, args):
         args.append('--tags=%s' % StressTestRunner._TAG)
-        return run_command(args, force_subprocess=True)
+        return run_command(args)
 
     def cleanup(self):
         if self._args.bypass_cleanup:
@@ -253,14 +251,11 @@ class StressTestRunner:
 
     @staticmethod
     def _simple_run(cl):
-        run_command(
-            [cl, 'run', 'echo stress testing...', '--tags=%s' % StressTestRunner._TAG],
-            force_subprocess=True,
-        )
+        run_command([cl, 'run', 'echo stress testing...', '--tags=%s' % StressTestRunner._TAG])
 
     @staticmethod
     def _search_failed_runs(cl):
-        run_command([cl, 'search', 'state=failed', 'created=.sort-'], force_subprocess=True)
+        run_command([cl, 'search', 'state=failed', 'created=.sort-'])
 
 
 def main():

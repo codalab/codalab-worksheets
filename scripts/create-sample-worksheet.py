@@ -59,12 +59,12 @@ class SampleWorksheet:
     def _create_dependencies(self):
         if self._preview_mode:
             # When in preview mode, search for existing bundles and worksheets instead of creating new ones
-            random_worksheets = self._run(
+            random_worksheets = run_command(
                 [self._cl, 'wsearch', '.limit=%d' % self._entities_count, '--uuid-only']
             ).split('\n')
             self._valid_worksheets = random_worksheets
             self._private_worksheets = random_worksheets
-            random_bundles = self._run(
+            random_bundles = run_command(
                 [
                     self._cl,
                     'search',
@@ -88,7 +88,7 @@ class SampleWorksheet:
             title = 'Other Worksheet %s' % id
             self._valid_worksheets.append(self._create_tagged_worksheet(name, title))
             self._valid_bundles.append(
-                self._run(
+                run_command(
                     [self._cl, 'run', 'echo codalab rules!', '--tags=%s' % SampleWorksheet.TAG]
                 )
             )
@@ -96,12 +96,12 @@ class SampleWorksheet:
             name = 'valid_private_worksheet_%s' % id
             title = 'Other Private Worksheet %s' % id
             uuid = self._create_tagged_worksheet(name, title)
-            self._run([self._cl, 'wperm', uuid, 'public', 'none'])
+            run_command([self._cl, 'wperm', uuid, 'public', 'none'])
             self._private_worksheets.append(uuid)
-            uuid = self._run(
+            uuid = run_command(
                 [self._cl, 'run', 'echo private run', '--tags=%s' % SampleWorksheet.TAG]
             )
-            self._run([self._cl, 'perm', uuid, 'public', 'none'])
+            run_command([self._cl, 'perm', uuid, 'public', 'none'])
             self._private_bundles.append(uuid)
 
     def _create_sample_worksheet(self):
@@ -114,7 +114,7 @@ class SampleWorksheet:
         self._create_tagged_worksheet(self._worksheet_name, title)
 
         # Replace the content of the current worksheet with the temporary file's content. Delete the temp file after.
-        self._run([self._cl, 'wedit', '--file=' + SampleWorksheet._FILE_NAME])
+        run_command([self._cl, 'wedit', '--file=' + SampleWorksheet._FILE_NAME])
         os.remove(SampleWorksheet._FILE_NAME)
         print('Deleted file {}.'.format(SampleWorksheet._FILE_NAME))
 
@@ -123,9 +123,9 @@ class SampleWorksheet:
         self._add_line('This is the **{}** sample worksheet.'.format(self._description))
 
     def _create_tagged_worksheet(self, name, title):
-        uuid = self._run([self._cl, 'new', name])
-        self._run([self._cl, 'work', name])
-        self._run([self._cl, 'wedit', '--tag=%s' % SampleWorksheet.TAG, '--title=%s' % title])
+        uuid = run_command([self._cl, 'new', name])
+        run_command([self._cl, 'work', name])
+        run_command([self._cl, 'wedit', '--tag=%s' % SampleWorksheet.TAG, '--title=%s' % title])
         return uuid
 
     def _add_worksheet_references(self):
@@ -320,7 +320,7 @@ class SampleWorksheet:
             # When in preview mode, just return the cached UUIDs of valid bundles instead of performing a new search
             return self._valid_bundles
 
-        return self._run(
+        return run_command(
             [
                 self._cl,
                 'search',
@@ -330,9 +330,6 @@ class SampleWorksheet:
                 '--uuid-only',
             ]
         ).split('\n')
-
-    def _run(self, args):
-        return run_command(args, force_subprocess=True)
 
     def _random_id(self):
         return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(32))
