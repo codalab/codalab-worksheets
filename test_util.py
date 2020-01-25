@@ -103,8 +103,6 @@ def run_command(
         if use_cli_directly:
             # In this case, run the Codalab CLI directly, which is much faster
             # than opening a new subprocess to do so.
-            # We skip doing this if force_subprocess is set to true (which forces
-            # us to use subprocess even for cl commands.)
             stderr = io.StringIO()  # Not used; we just don't want to redirect cli.stderr to stdout.
             stdout = FakeStdout()
             cli = BundleCLI(CodaLabManager(), stdout=stdout, stderr=stderr)
@@ -154,26 +152,22 @@ def cleanup(cl, tag, should_wait=True):
     bundles_removed = 0
     while True:
         # Query 1000 bundles at a time for removal
-        query_result = run_command(
-            [cl, 'search', 'tags=%s' % tag, '.limit=1000', '--uuid-only'], force_subprocess=True
-        )
+        query_result = run_command([cl, 'search', 'tags=%s' % tag, '.limit=1000', '--uuid-only'])
         if len(query_result) == 0:
             break
         for uuid in query_result.split('\n'):
             if should_wait:
                 # Wait until the bundle finishes and then delete it
-                run_command([cl, 'wait', uuid], force_subprocess=True)
-            run_command([cl, 'rm', uuid, '--force'], force_subprocess=True)
+                run_command([cl, 'wait', uuid])
+            run_command([cl, 'rm', uuid, '--force'])
             bundles_removed += 1
     # Clean up tagged worksheets
     worksheets_removed = 0
     while True:
-        query_result = run_command(
-            [cl, 'wsearch', 'tag=%s' % tag, '.limit=1000', '--uuid-only'], force_subprocess=True
-        )
+        query_result = run_command([cl, 'wsearch', 'tag=%s' % tag, '.limit=1000', '--uuid-only'])
         if len(query_result) == 0:
             break
         for uuid in query_result.split('\n'):
-            run_command([cl, 'wrm', uuid, '--force'], force_subprocess=True)
+            run_command([cl, 'wrm', uuid, '--force'])
             worksheets_removed += 1
     print('Removed {} bundles and {} worksheets.'.format(bundles_removed, worksheets_removed))
