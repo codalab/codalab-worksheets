@@ -500,25 +500,27 @@ class BundleManager(object):
             return formatting.parse_size('2g')
         return formatting.parse_size(bundle.metadata.request_memory)
 
-    def _compute_request_disk(self, bundle):
+    def _compute_request_disk(self, bundle, user_info=None):
         """
         Compute the disk limit used for scheduling the run.
         The default is min(disk quota the user has left, global max)
         """
         if not bundle.metadata.request_disk:
             return min(
-                self._model.get_user_disk_quota_left(bundle.owner_id) - 1, self._max_request_disk
+                self._model.get_user_disk_quota_left(bundle.owner_id, user_info) - 1,
+                self._max_request_disk,
             )
         return formatting.parse_size(bundle.metadata.request_disk)
 
-    def _compute_request_time(self, bundle):
+    def _compute_request_time(self, bundle, user_info=None):
         """
         Compute the time limit used for scheduling the run.
         The default is min(time quota the user has left, global max)
         """
         if not bundle.metadata.request_time:
             return min(
-                self._model.get_user_time_quota_left(bundle.owner_id) - 1, self._max_request_time
+                self._model.get_user_time_quota_left(bundle.owner_id, user_info) - 1,
+                self._max_request_time,
             )
         return formatting.parse_duration(bundle.metadata.request_time)
 
@@ -560,16 +562,16 @@ class BundleManager(object):
         message['resources'] = bundle_resources.as_dict
         return message
 
-    def _compute_bundle_resources(self, bundle):
+    def _compute_bundle_resources(self, bundle, user_info=None):
         return RunResources(
             cpus=self._compute_request_cpus(bundle),
             gpus=self._compute_request_gpus(bundle),
             docker_image=self._get_docker_image(bundle),
             # _compute_request_time contains database queries that may reduce efficiency
-            time=self._compute_request_time(bundle),
+            time=self._compute_request_time(bundle, user_info),
             memory=self._compute_request_memory(bundle),
             # _compute_request_disk contains database queries that may reduce efficiency
-            disk=self._compute_request_disk(bundle),
+            disk=self._compute_request_disk(bundle, user_info),
             network=bundle.metadata.request_network,
         )
 
@@ -659,15 +661,25 @@ class BundleManager(object):
         """
         # Keep track of staged bundles that have valid resources requested
         staged_bundles_to_run = []
-        for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
-            bundle_resources = self._compute_bundle_resources(bundle)
-            failures = []
+        # A dictionary structured as {user id : user information} to track those visited user information
+        user_info_cache = {}
 
+        for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
+            # Cache those visited user information
+            if bundle.owner_id in user_info_cache:
+                user_info = user_info_cache[bundle.owner_id]
+            else:
+                user_info = self._model.get_user_info(bundle.owner_id)
+                user_info_cache[bundle.owner_id] = user_info
+
+            bundle_resources = self._compute_bundle_resources(bundle, user_info)
+
+            failures = []
             failures.append(
                 self._check_resource_failure(
                     bundle_resources.disk,
                     user_fail_string='Requested more disk (%s) than user disk quota left (%s)',
-                    user_max=self._model.get_user_disk_quota_left(bundle.owner_id),
+                    user_max=self._model.get_user_disk_quota_left(bundle.owner_id, user_info),
                     global_fail_string='Maximum job disk size (%s) exceeded (%s)',
                     global_max=self._max_request_disk,
                     pretty_print=formatting.size_str,
@@ -678,7 +690,7 @@ class BundleManager(object):
                 self._check_resource_failure(
                     bundle_resources.time,
                     user_fail_string='Requested more time (%s) than user time quota left (%s)',
-                    user_max=self._model.get_user_time_quota_left(bundle.owner_id),
+                    user_max=self._model.get_user_time_quota_left(bundle.owner_id, user_info),
                     global_fail_string='Maximum job time (%s) exceeded (%s)',
                     global_max=self._max_request_time,
                     pretty_print=formatting.duration_str,

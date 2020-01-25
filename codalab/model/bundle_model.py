@@ -2325,8 +2325,9 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
-    def get_user_time_quota_left(self, user_id):
-        user_info = self.get_user_info(user_id)
+    def get_user_time_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
         time_quota = user_info['time_quota']
         time_used = user_info['time_used']
         return time_quota - time_used
@@ -2363,8 +2364,9 @@ class BundleModel(object):
             or 0
         )
 
-    def get_user_disk_quota_left(self, user_id):
-        user_info = self.get_user_info(user_id)
+    def get_user_disk_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
         return user_info['disk_quota'] - user_info['disk_used']
 
     def update_user_disk_used(self, user_id):
