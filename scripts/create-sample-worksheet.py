@@ -2,11 +2,9 @@ import argparse
 import os
 import random
 import string
-import sys
 import time
 
-sys.path.append('..')
-from scripts.test_util import cleanup, run_command
+from test_util import cleanup, run_command
 
 """
 Script to create small and large sample worksheets in any instance to stress test the front end. The purpose of 
