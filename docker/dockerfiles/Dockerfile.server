@@ -45,7 +45,7 @@ COPY alembic.ini alembic.ini
 COPY codalab codalab
 COPY codalab_service.py codalab_service.py
 COPY docs docs
-COPY lib/test_util.py lib/test_util.py
+COPY lib lib
 COPY mkdocs.yml mkdocs.yml
 COPY monitor.py monitor.py
 COPY scripts scripts
