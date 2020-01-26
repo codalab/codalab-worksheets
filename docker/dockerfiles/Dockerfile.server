@@ -45,11 +45,11 @@ COPY alembic.ini alembic.ini
 COPY codalab codalab
 COPY codalab_service.py codalab_service.py
 COPY docs docs
+COPY lib/test_util.py lib/test_util.py
 COPY mkdocs.yml mkdocs.yml
 COPY monitor.py monitor.py
 COPY scripts scripts
 COPY setup.py setup.py
-COPY test_util.py test_util.py
 COPY test_cli.py test_cli.py
 COPY stress_test.py stress_test.py
 COPY tests tests

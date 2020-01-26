@@ -18,7 +18,7 @@ Things not tested:
 
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
-from test_util import Colorizer, run_command
+from codalab.lib.test_util import Colorizer, run_command
 
 import argparse
 import json
@@ -180,7 +180,7 @@ def _run_command(
     force_subprocess=False,
 ):
     # We skip using the cli directly if force_subprocess is set to true (which forces
-    # us to use subprocess even for cl commands.)
+    # us to use subprocess even for cl commands).
     use_cli_directly = not force_subprocess and args[0] == cl
     run_command(
         args, expected_exit_code, max_output_chars, env, include_stderr, binary, use_cli_directly
@@ -523,7 +523,6 @@ def test(ctx):
     uuid = _run_command([cl, 'run', 'echo hello'])
     print('Waiting echo hello with uuid %s' % uuid)
     wait(uuid)
-    #    _run_command([cl, 'wait', uuid])
     check_contains('0x', get_info(uuid, 'data_hash'))
 
 
