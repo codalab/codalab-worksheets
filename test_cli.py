@@ -18,7 +18,7 @@ Things not tested:
 
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
-from codalab.lib.test_util import Colorizer, run_command
+from scripts.test_util import Colorizer, run_command
 
 import argparse
 import json

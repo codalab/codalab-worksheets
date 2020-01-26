@@ -8,7 +8,7 @@ import time
 from multiprocessing import cpu_count, Pool
 from threading import Thread
 
-from codalab.lib.test_util import cleanup, run_command
+from scripts.test_util import cleanup, run_command
 
 """
 Script to stress test CodaLab's backend. The following is a list of what's being tested:
