@@ -1,12 +1,12 @@
 import logging
 import os
 from subprocess import PIPE, Popen
+import threading
 import time
 import traceback
 import socket
 import http.client
 import sys
-import threading
 
 import psutil
 
