@@ -319,12 +319,6 @@ class RunStateMachine(StateTransitioner):
 
             run_stats = docker_utils.get_container_stats(run_state.container)
 
-            run_state = run_state._replace(
-                max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
-            )
-
-            run_state = check_disk_utilization(run_state)
-
             container_time_total = docker_utils.get_container_running_time(run_state.container)
             run_state = run_state._replace(
                 container_time_total=container_time_total,
@@ -335,6 +329,12 @@ class RunStateMachine(StateTransitioner):
                     'container_time_system', run_state.container_time_system
                 ),
             )
+
+            run_state = run_state._replace(
+                max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
+            )
+
+            run_state = check_disk_utilization(run_state)
 
             if run_state.resources.time and container_time_total > run_state.resources.time:
                 kill_messages.append(
