@@ -80,14 +80,14 @@ class StressTestRunner:
     _LARGE_DOCKER_IMAGES = [
         'adreeve/python-numpy',
         'larger/rdp:dev',
-        'openjdk:11.0.5-jre',
-        'tensorflow/tensorflow:devel-gpu',
+        'openjdk:latest',
+        'tensorflow/tensorflow:latest',
         'iwane/numpy-matplotlib',
         'aaronyalai/openaibaselines:gym3',
         'mysql:latest',
         'couchbase:latest',
-        'large64/docker-test:ruby',
-        'pytorch/pytorch:1.3-cuda10.1-cudnn7-devel',
+        'rails:latest',
+        'pytorch/pytorch:latest',
     ]
     _TAG = 'codalab-stress-test'
 
