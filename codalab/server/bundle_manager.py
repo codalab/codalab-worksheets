@@ -307,11 +307,14 @@ class BundleManager(object):
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
                 self._model.transition_bundle_worker_offline(bundle)
 
-    def _schedule_run_bundles_on_workers(self, workers, staged_bundles_to_run):
+    def _schedule_run_bundles_on_workers(self, workers, staged_bundles_to_run, user_info_cache):
         """
-        Schedules STAGED bundles to run on the given workers. If user_owned is
-        True, then schedules on workers run by the owner of each bundle.
-        Otherwise, uses CodaLab-owned workers, which have user ID root_user_id.
+        Schedules STAGED bundles to run on the given workers. Always tries to schedule bundles to
+        run on workers that are owned by the owner of each bundle first. If there are no such qualified
+        private workers, uses CodaLab-owned workers, which have user ID root_user_id.
+        :param workers: a WorkerInfoAccessor object containing worker related information e.g. running uuid.
+        :param staged_bundles_to_run: a list of tuples each contains a valid bundle and its bundle resources.
+        :param user_info_cache: a dictionary mapping user id to user information.
         """
         # Reorder the stage_bundles so that bundles which were requested to run on a personal worker
         # will be scheduled to run first
@@ -331,7 +334,12 @@ class BundleManager(object):
             # If there is no user_owned worker, try to schedule the current bundle to run on a CodaLab's public worker.
             if len(workers_list) == 0:
                 # Check if there is enough parallel run quota left for this user
-                if self._model.get_user_parallel_run_quota_left(bundle.owner_id) <= 0:
+                if (
+                    self._model.get_user_parallel_run_quota_left(
+                        bundle.owner_id, user_info_cache[bundle.owner_id]
+                    )
+                    <= 0
+                ):
                     logger.info(
                         "User %s has no parallel run quota left, skipping job for now",
                         bundle.owner_id,
@@ -619,10 +627,11 @@ class BundleManager(object):
         self._restage_stuck_starting_bundles(workers)
         self._bring_offline_stuck_running_bundles(workers)
         self._acknowledge_recently_finished_bundles(workers)
-        staged_bundles_to_run = self._get_staged_bundles_to_run()
-
+        # A dictionary structured as {user id : user information} to track those visited user information
+        user_info_cache = {}
+        staged_bundles_to_run = self._get_staged_bundles_to_run(user_info_cache)
         # Schedule, preferring user-owned workers.
-        self._schedule_run_bundles_on_workers(workers, staged_bundles_to_run)
+        self._schedule_run_bundles_on_workers(workers, staged_bundles_to_run, user_info_cache)
 
     @staticmethod
     def _check_resource_failure(
@@ -651,18 +660,16 @@ class BundleManager(object):
                 return global_fail_string % (pretty_print(value), pretty_print(global_min))
         return None
 
-    def _get_staged_bundles_to_run(self):
+    def _get_staged_bundles_to_run(self, user_info_cache):
         """
         Fails bundles that request more resources than available for the given user.
         Note: allow more resources than available on any worker because new
         workers might get spun up in response to the presence of this run.
-
+        :param user_info_cache: a dictionary mapping user id to user information.
         :return: a list of tuple which contains valid staged bundles and their bundle_resources.
         """
         # Keep track of staged bundles that have valid resources requested
         staged_bundles_to_run = []
-        # A dictionary structured as {user id : user information} to track those visited user information
-        user_info_cache = {}
 
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
             # Cache those visited user information
@@ -740,7 +747,7 @@ class BundleManager(object):
         However, be careful when using this function to improve efficiency for returning values like disk and time
         from _compute_bundle_resources as they do depend on the number of jobs that are running during the time of
         computation. Accuracy might be affected without considering this factor.
-        :param workers: a WorkerInfoAccessor object which stores information about running workers.
+        :param workers: a WorkerInfoAccessor object containing worker related information e.g. running uuid.
         :return: a nested dictionary structured as follows:
                 {
                     uuid: {
