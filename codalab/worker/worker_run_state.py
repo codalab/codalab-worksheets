@@ -521,8 +521,13 @@ class RunStateMachine(StateTransitioner):
         Prepare the finalize message to be sent with the next checkin
         """
         if run_state.is_killed:
-            # Set the failure message as the kill_message, which contains useful information on why a run was killed.
-            run_state = run_state._replace(failure_message=run_state.kill_message)
+            # Append kill_message, which contains more useful info on why a run was killed, to the failure message.
+            failure_message = (
+                "{}. {}".format(run_state.failure_message, run_state.kill_message)
+                if run_state.failure_message
+                else run_state.kill_messsage
+            )
+            run_state = run_state._replace(failure_message=failure_message)
         return run_state._replace(stage=RunStage.FINALIZING, run_status="Finalizing bundle")
 
     def _transition_from_FINALIZING(self, run_state):
