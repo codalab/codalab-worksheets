@@ -134,18 +134,11 @@ class RunStateMachine(StateTransitioner):
         self.docker_runtime = docker_runtime
         # bundle.uuid -> {'thread': Thread, 'run_status': str}
         self.uploading = ThreadDict(fields={'run_status': 'Upload started', 'success': False})
-        # bundle.uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
-        self.disk_utilization = ThreadDict(
-            fields={'disk_utilization': 0, 'running': True, 'lock': None}
-        )
         self.upload_bundle_callback = upload_bundle_callback
         self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
         self.shared_file_system = shared_file_system
 
     def stop(self):
-        for uuid in self.disk_utilization.keys():
-            self.disk_utilization[uuid]['running'] = False
-        self.disk_utilization.stop()
         self.uploading.stop()
 
     def _transition_from_PREPARING(self, run_state):
@@ -329,9 +322,8 @@ class RunStateMachine(StateTransitioner):
             run_state = run_state._replace(
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
             )
-            run_state = run_state._replace(
-                disk_utilization=self.disk_utilization[run_state.bundle.uuid]['disk_utilization']
-            )
+
+            run_state = check_disk_utilization(run_state)
 
             container_time_total = docker_utils.get_container_running_time(run_state.container)
             run_state = run_state._replace(
@@ -349,6 +341,9 @@ class RunStateMachine(StateTransitioner):
                     'Time limit exceeded. (Container uptime %s > time limit %s)'
                     % (duration_str(container_time_total), duration_str(run_state.resources.time))
                 )
+            logger.info("max_memory = {}".format(run_state.max_memory))
+            logger.info("run_state.resources.memory = {}".format(run_state.resources.memory))
+            logger.info("run_state.exitcode = {}".format(run_state.exitcode))
 
             if run_state.max_memory > run_state.resources.memory or run_state.exitcode == '137':
                 kill_messages.append(
@@ -365,27 +360,14 @@ class RunStateMachine(StateTransitioner):
 
             return run_state
 
-        def check_disk_utilization():
-            running = True
-            while running:
-                start_time = time.time()
-                try:
-                    disk_utilization = get_path_size(run_state.bundle_path)
-                    self.disk_utilization[run_state.bundle.uuid][
-                        'disk_utilization'
-                    ] = disk_utilization
-                    running = self.disk_utilization[run_state.bundle.uuid]['running']
-                except Exception:
-                    logger.error(traceback.format_exc())
-                end_time = time.time()
+        def check_disk_utilization(run_state):
+            try:
+                disk_utilization = get_path_size(run_state.bundle_path)
+                run_state._replace(disk_utilization=disk_utilization)
+            except Exception:
+                logger.error(traceback.format_exc())
+            return run_state
 
-                # To ensure that we don't hammer the disk for this computation when
-                # there are lots of files, we run it at most 10% of the time.
-                time.sleep(max((end_time - start_time) * 10, 1.0))
-
-        self.disk_utilization.add_if_new(
-            run_state.bundle.uuid, threading.Thread(target=check_disk_utilization, args=[])
-        )
         run_state = check_and_report_finished(run_state)
         run_state = check_resource_utilization(run_state)
 
@@ -397,8 +379,6 @@ class RunStateMachine(StateTransitioner):
                     finished, _, _ = docker_utils.check_finished(run_state.container)
                     if not finished:
                         logger.error(traceback.format_exc())
-            self.disk_utilization[run_state.bundle.uuid]['running'] = False
-            self.disk_utilization.remove(run_state.bundle.uuid)
             return run_state._replace(stage=RunStage.CLEANING_UP)
         if run_state.finished:
             logger.debug(
@@ -407,8 +387,6 @@ class RunStateMachine(StateTransitioner):
                 run_state.exitcode,
                 run_state.failure_message,
             )
-            self.disk_utilization[run_state.bundle.uuid]['running'] = False
-            self.disk_utilization.remove(run_state.bundle.uuid)
             return run_state._replace(stage=RunStage.CLEANING_UP, run_status='Uploading results')
         else:
             return run_state
