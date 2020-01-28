@@ -341,9 +341,6 @@ class RunStateMachine(StateTransitioner):
                     'Time limit exceeded. (Container uptime %s > time limit %s)'
                     % (duration_str(container_time_total), duration_str(run_state.resources.time))
                 )
-            logger.info("max_memory = {}".format(run_state.max_memory))
-            logger.info("run_state.resources.memory = {}".format(run_state.resources.memory))
-            logger.info("run_state.exitcode = {}".format(run_state.exitcode))
 
             if run_state.max_memory > run_state.resources.memory or run_state.exitcode == '137':
                 kill_messages.append(
