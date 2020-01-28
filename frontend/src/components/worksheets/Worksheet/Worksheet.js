@@ -154,12 +154,15 @@ class Worksheet extends React.Component {
             openDelete: false,
             openDetach: false,
             openKill: false,
+            openCopy: false,
             openDeleteItem: false,
             forceDelete: false,
             showGlossaryModal: false,
             errorMessage: '',
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
+            copyCallBacks: [],
+            copiedBundleIds: "",
         };
     }
 
@@ -358,6 +361,10 @@ class Worksheet extends React.Component {
         this.togglePopupNoEvent(cmd_type);
     };
 
+    addCopyBundleRowsCallBack = (callback)=>{
+        this.state.copyCallBacks.push(callback);
+    }
+
     togglePopup = (cmd_type) => () => {
         if (cmd_type === 'deleteItem') {
             this.setState({ openDeleteItem: !this.state.openDeleteItem });
@@ -365,15 +372,20 @@ class Worksheet extends React.Component {
         if (!this.state.showBundleOperationButtons) {
             return;
         }
-        const { openKill, openDelete, openDetach } = this.state;
+        const { openKill, openDelete, openDetach, openCopy } = this.state;
         if (cmd_type === 'rm') {
             this.setState({ openDelete: !openDelete });
         } else if (cmd_type === 'detach') {
             this.setState({ openDetach: !openDetach });
         } else if (cmd_type === 'kill') {
             this.setState({ openKill: !openKill });
-        }
+        } 
     };
+    
+    addCopyCallBack = (callback) => {
+        console.log("number");
+        this.state.copyCallBacks.push(callback);
+    }
 
     togglePopupNoEvent = (cmd_type) => {
         if (cmd_type === 'deleteItem') {
@@ -389,6 +401,24 @@ class Worksheet extends React.Component {
             this.setState({ openDetach: !openDetach });
         } else if (cmd_type === 'kill') {
             this.setState({ openKill: !openKill });
+        } else if (cmd_type === 'copy') {
+            let copiedBundleIds = "";
+            this.state.copyCallBacks.forEach((copyBundleCallBack =>{
+                let bundlesChecked = copyBundleCallBack();
+                bundlesChecked.forEach((uuid)=>{
+                    copiedBundleIds += "[]{" + uuid + "}\n";
+                })
+            }))
+            console.log("1 ", copiedBundleIds);
+            toast.info('Copied to clipboard', {
+                position: 'top-left',
+                autoClose: 1200,
+                hideProgressBar: true,
+                closeOnClick: true,
+                pauseOnHover: false,
+                draggable: true,
+            });
+            return copiedBundleIds;
         }
     };
 
@@ -1397,6 +1427,7 @@ class Worksheet extends React.Component {
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
                 setDeleteItemCallback={this.setDeleteItemCallback}
+                addCopyBundleRowsCallBack={this.addCopyBundleRowsCallBack}
             />
         );
 
@@ -1445,6 +1476,7 @@ class Worksheet extends React.Component {
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
                     togglePopup={this.togglePopup}
                     toggleGlossaryModal={this.toggleGlossaryModal}
+                    togglePopupNoEvent={this.togglePopupNoEvent}
                 />
                 {action_bar_display}
                 <ToastContainer

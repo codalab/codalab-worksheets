@@ -22,6 +22,7 @@ class ActionButtons extends React.Component<{
             handleSelectedBundleCommand,
             showBundleOperationButtons,
             togglePopup,
+            togglePopupNoEvent,
             info,
         } = this.props;
         let editPermission = info && info.edit_permission;
@@ -73,6 +74,7 @@ class ActionButtons extends React.Component<{
                     <BundleBulkActionMenu
                         handleSelectedBundleCommand={handleSelectedBundleCommand}
                         togglePopup={togglePopup}
+                        togglePopupNoEvent={togglePopupNoEvent}
                     />
                 ) : null}
             </div>
