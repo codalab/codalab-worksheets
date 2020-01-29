@@ -8,7 +8,7 @@ import time
 from multiprocessing import cpu_count, Pool
 from threading import Thread
 
-from test_cli import run_command
+from scripts.test_util import cleanup, run_command
 
 """
 Script to stress test CodaLab's backend. The following is a list of what's being tested:
@@ -80,14 +80,14 @@ class StressTestRunner:
     _LARGE_DOCKER_IMAGES = [
         'adreeve/python-numpy',
         'larger/rdp:dev',
-        'openjdk:11.0.5-jre',
-        'tensorflow/tensorflow:devel-gpu',
+        'openjdk:latest',
+        'tensorflow/tensorflow:latest',
         'iwane/numpy-matplotlib',
         'aaronyalai/openaibaselines:gym3',
         'mysql:latest',
         'couchbase:latest',
-        'large64/docker-test:ruby',
-        'pytorch/pytorch:1.3-cuda10.1-cudnn7-devel',
+        'rails:latest',
+        'pytorch/pytorch:latest',
     ]
     _TAG = 'codalab-stress-test'
 
@@ -160,9 +160,7 @@ class StressTestRunner:
         # Create many worksheets with current worksheet's content copied over
         for _ in range(self._args.create_worksheet_count):
             other_worksheet_uuid = self._set_worksheet('other_worksheet_copy')
-            run_command(
-                [self._cl, 'wadd', worksheet_uuid, other_worksheet_uuid], force_subprocess=True
-            )
+            run_command([self._cl, 'wadd', worksheet_uuid, other_worksheet_uuid])
 
     def _test_parallel_runs(self):
         self._set_worksheet('parallel_runs')
@@ -229,9 +227,9 @@ class StressTestRunner:
 
     def _set_worksheet(self, run_name):
         worksheet_name = self._create_worksheet_name(run_name)
-        uuid = run_command([self._cl, 'new', worksheet_name], force_subprocess=True)
-        run_command([self._cl, 'work', worksheet_name], force_subprocess=True)
-        run_command([self._cl, 'wedit', '--tag=%s' % StressTestRunner._TAG], force_subprocess=True)
+        uuid = run_command([self._cl, 'new', worksheet_name])
+        run_command([self._cl, 'work', worksheet_name])
+        run_command([self._cl, 'wedit', '--tag=%s' % StressTestRunner._TAG])
         return uuid
 
     def _create_worksheet_name(self, base_name):
@@ -244,7 +242,7 @@ class StressTestRunner:
 
     def _run_bundle(self, args):
         args.append('--tags=%s' % StressTestRunner._TAG)
-        return run_command(args, force_subprocess=True)
+        return run_command(args)
 
     def cleanup(self):
         if self._args.bypass_cleanup:
@@ -253,55 +251,11 @@ class StressTestRunner:
 
     @staticmethod
     def _simple_run(cl):
-        run_command(
-            [cl, 'run', 'echo stress testing...', '--tags=%s' % StressTestRunner._TAG],
-            force_subprocess=True,
-        )
+        run_command([cl, 'run', 'echo stress testing...', '--tags=%s' % StressTestRunner._TAG])
 
     @staticmethod
     def _search_failed_runs(cl):
-        run_command([cl, 'search', 'state=failed', 'created=.sort-'], force_subprocess=True)
-
-
-def cleanup(cl, tag, should_wait=True):
-    '''
-    Removes all bundles and worksheets with the specified tag.
-    :param cl: str
-        Path to CodaLab command line.
-    :param tag: str
-        Specific tag use to search for bundles and worksheets to delete.
-    :param should_wait: boolean
-        Whether to wait for a bundle to finish running before deleting (default is true).
-    :return:
-    '''
-    print('Cleaning up bundles and worksheets tagged with {}...'.format(tag))
-    # Clean up tagged bundles
-    bundles_removed = 0
-    while True:
-        # Query 1000 bundles at a time for removal
-        query_result = run_command(
-            [cl, 'search', 'tags=%s' % tag, '.limit=1000', '--uuid-only'], force_subprocess=True
-        )
-        if len(query_result) == 0:
-            break
-        for uuid in query_result.split('\n'):
-            if should_wait:
-                # Wait until the bundle finishes and then delete it
-                run_command([cl, 'wait', uuid], force_subprocess=True)
-            run_command([cl, 'rm', uuid, '--force'], force_subprocess=True)
-            bundles_removed += 1
-    # Clean up tagged worksheets
-    worksheets_removed = 0
-    while True:
-        query_result = run_command(
-            [cl, 'wsearch', 'tag=%s' % tag, '.limit=1000', '--uuid-only'], force_subprocess=True
-        )
-        if len(query_result) == 0:
-            break
-        for uuid in query_result.split('\n'):
-            run_command([cl, 'wrm', uuid, '--force'], force_subprocess=True)
-            worksheets_removed += 1
-    print('Removed {} bundles and {} worksheets.'.format(bundles_removed, worksheets_removed))
+        run_command([cl, 'search', 'state=failed', 'created=.sort-'])
 
 
 def main():
