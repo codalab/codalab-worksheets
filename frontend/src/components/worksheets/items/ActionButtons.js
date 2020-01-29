@@ -9,14 +9,12 @@ import BundleBulkActionMenu from '../BundleBulkActionMenu';
 
 class ActionButtons extends React.Component<{
     classes: {},
-    onShowNewUpload: () => void,
     onShowNewRun: () => void,
     onShowNewText: () => void,
 }> {
     render() {
         const {
             classes,
-            onShowNewUpload,
             onShowNewRun,
             onShowNewText,
             handleSelectedBundleCommand,
@@ -50,11 +48,13 @@ class ActionButtons extends React.Component<{
                         size='small'
                         color='inherit'
                         aria-label='Add New Upload'
-                        onClick={onShowNewUpload}
+                        className={classes.uploadButton}
                         disabled={!editPermission}
                     >
-                        <UploadIcon className={classes.buttonIcon} />
-                        Upload
+                        <label className={classes.uploadLabel} for='codalab-file-upload-input'>
+                            <UploadIcon className={classes.buttonIcon} />
+                            Upload
+                        </label>
                     </Button>
                 ) : null}
                 {!showBundleOperationButtons ? (
@@ -96,6 +96,17 @@ const styles = (theme) => ({
     },
     buttonIcon: {
         marginRight: theme.spacing.large,
+    },
+    uploadButton: {
+        padding: 0,
+    },
+    uploadLabel: {
+        width: '100%',
+        display: 'inherit',
+        padding: '4px 8px',
+        marginBottom: 0,
+        fontWeight: 'inherit',
+        cursor: 'inherit',
     },
 });
 
