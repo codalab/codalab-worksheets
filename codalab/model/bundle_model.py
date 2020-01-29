@@ -988,10 +988,9 @@ class BundleModel(object):
 
     def update_bundle(self, bundle, update, connection=None):
         """
-        Update a bundle's columns and metadata in the database and in memory.
-        The update is done as a diff: columns that do not appear in the update dict
-        and metadata keys that do not appear in the metadata sub-dict are unaffected.
-
+        For each key-value pair in the update dictionary, add or update key-value pair. Note
+        that metadata keys not in the update dictionary are not affected in the update operation.
+        Also, delete any metadata key-value pairs when the value specified is None.
         This method validates all updates to the bundle, so it is appropriate
         to use this method to update bundles based on user input (eg: cl edit).
         """
@@ -1000,31 +999,50 @@ class BundleModel(object):
         # Apply the column and metadata updates in memory and validate the result.
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
-        for (key, value) in metadata_update.items():
-            bundle.metadata.set_metadata_key(key, value)
+
+        # Generate a list of metadata keys that will be deleted and udpate metadata key-value pair
+        metadata_delete_keys = []
+        for key, value in metadata_update.items():
+            if value is None:
+                bundle.metadata.remove_metadata_key(key)
+                metadata_delete_keys.append(key)
+            else:
+                bundle.metadata.set_metadata_key(key, value)
+
+        # Delete metadata keys from metadata_update dictionary
+        for key in metadata_delete_keys:
+            del metadata_update[key]
+
         bundle.validate()
         # Construct clauses and update lists for updating certain bundle columns.
         if update:
             clause = cl_bundle.c.uuid == bundle.uuid
         if metadata_update:
-            metadata_clause = and_(
+            metadata_update_clause = and_(
                 cl_bundle_metadata.c.bundle_uuid == bundle.uuid,
                 cl_bundle_metadata.c.metadata_key.in_(metadata_update),
             )
-            metadata_values = [
+            metadata_update_values = [
                 row_dict
                 for row_dict in bundle.to_dict().pop('metadata')
                 if row_dict['metadata_key'] in metadata_update
             ]
+        if metadata_delete_keys:
+            metadata_delete_clause = and_(
+                cl_bundle_metadata.c.bundle_uuid == bundle.uuid,
+                cl_bundle_metadata.c.metadata_key.in_(metadata_delete_keys),
+            )
 
-        # Perform the actual updates.
+        # Perform the actual updates and deletes.
         def do_update(connection):
             try:
                 if update:
                     connection.execute(cl_bundle.update().where(clause).values(update))
                 if metadata_update:
-                    connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
-                    self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+                    connection.execute(cl_bundle_metadata.delete().where(metadata_update_clause))
+                    self.do_multirow_insert(connection, cl_bundle_metadata, metadata_update_values)
+                if metadata_delete_keys:
+                    connection.execute(cl_bundle_metadata.delete().where(metadata_delete_clause))
             except UnicodeError:
                 raise UsageError("Invalid character detected; use ascii characters only.")
 
