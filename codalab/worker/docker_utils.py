@@ -284,20 +284,29 @@ def get_image_size_without_pulling(image_spec):
     logger.info("Downloading tag information for {}".format(image_spec))
     image_name, image_tag = image_spec.split(":")
     # Example URL:
-    # 1. image with namespace: https://hub.docker.com/v2/repositories/<namespace>/<image_name>/tags
-    #       e.g. https://hub.docker.com/v2/repositories/codalab/default-cpu/tags
-    # 2. image without namespace: https://hub.docker.com/v2/repositories/library/<image_name>/tags
-    #       e.g. https://hub.docker.com/v2/repositories/library/ubuntu/tags/
+    # 1. image with namespace: https://hub.docker.com/v2/repositories/<namespace>/<image_name>/tags/?page=1
+    #       e.g. https://hub.docker.com/v2/repositories/codalab/default-cpu/tags/?page=1
+    # 2. image without namespace: https://hub.docker.com/v2/repositories/library/<image_name>/tags/?page=1
+    #       e.g. https://hub.docker.com/v2/repositories/library/ubuntu/tags/?page=1
+    # Each page will return at most 10 tags
     # Note that since docker-py doesn't report the accurate compressed image size, e.g. the size reported
     # from the RegistryData object, we then switch to use Docker Registry HTTP API V2
     # URI prefix of an image without namespace will be adjusted to https://hub.docker.com/v2/repositories/library
     uri_prefix_adjusted = URI_PREFIX + '/library/' if '/' not in image_name else URI_PREFIX
-    request = uri_prefix_adjusted + image_name + '/tags'
-    response = requests.get(url=request)
-    data = response.json()
-
-    # Find all the full_size of the matched images
-    matched_image_sizes = [r['full_size'] for r in data['results'] if r['name'] == image_tag]
-    image_size_bytes = matched_image_sizes[0] if len(matched_image_sizes) == 1 else None
+    request = uri_prefix_adjusted + image_name + '/tags/?page='
+    image_size_bytes = None
+    page = 1
+    while True:
+        response = requests.get(url=request + str(page))
+        if len(response) == 0:
+            break
+        data = response.json()
+        # Get the list of size information for matched images
+        matched_image_sizes = [r['full_size'] for r in data['results'] if r['name'] == image_tag]
+        image_size_bytes = matched_image_sizes[0] if len(matched_image_sizes) == 1 else None
+        # Break the loop when we find a matched image
+        if image_size_bytes:
+            break
+        page += 1
 
     return image_size_bytes
