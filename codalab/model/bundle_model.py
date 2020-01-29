@@ -1003,6 +1003,7 @@ class BundleModel(object):
         # Apply the column and metadata updates in memory and validate the result.
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
+
         # Currently we only allow deleting fields in metadata dict.
         # When delete = True, delete the keys from bundle.metadata dict
         # When delete = False, update the key, value pair in bundle.metadata dict
