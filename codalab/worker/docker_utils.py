@@ -295,9 +295,9 @@ def get_image_size_without_pulling(image_spec):
     uri_prefix_adjusted = URI_PREFIX + '/library/' if '/' not in image_name else URI_PREFIX
     request = uri_prefix_adjusted + image_name + '/tags/?page='
     image_size_bytes = None
-    page = 1
+    page_number = 1
     while True:
-        response = requests.get(url=request + str(page))
+        response = requests.get(url=request + str(page_number))
         data = response.json()
         if len(data['results']) == 0:
             break
@@ -307,6 +307,6 @@ def get_image_size_without_pulling(image_spec):
         # Break the loop when we find a matched image
         if image_size_bytes:
             break
-        page += 1
+        page_number += 1
 
     return image_size_bytes
