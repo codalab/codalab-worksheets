@@ -38,21 +38,20 @@ class Worker:
     NETCAT_BUFFER_SIZE = 4096
     # Number of seconds to wait for bundle kills to propagate before forcing kill
     KILL_TIMEOUT = 100
-    # Directory name to store running bundles in worker filesystem
-    BUNDLES_DIR_NAME = 'runs'
     # Number of loops to check for bundle directory creation by server on shared FS workers
     BUNDLE_DIR_WAIT_NUM_TRIES = 120
 
     def __init__(
         self,
         image_manager,  # type: DockerImageManager
-        dependency_manager,  # type: DependencyManager
+        dependency_manager,  # type: Optional[DependencyManager]
         commit_file,  # type: str
         cpuset,  # type: Set[str]
         gpuset,  # type: Set[str]
         worker_id,  # type: str
         tag,  # type: str
         work_dir,  # type: str
+        local_bundles_dir,  # type: Optional[str]
         exit_when_idle,  # type: str
         idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
@@ -60,34 +59,31 @@ class Worker:
         docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
     ):
-        self.id = worker_id
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
         self.reader = Reader()
+        self.state_committer = JsonStateCommitter(commit_file)
+        self.bundle_service = bundle_service
+
         self.docker = docker.from_env()
         self.cpuset = cpuset
         self.gpuset = gpuset
 
-        self.state_committer = JsonStateCommitter(commit_file)
+        self.id = worker_id
         self.tag = tag
+
         self.work_dir = work_dir
-        self.bundle_service = bundle_service
-        self.exit_when_idle = exit_when_idle
-        self.idle_seconds = idle_seconds
-        self.stop = False
-        self.last_checkin_successful = False
+        self.local_bundles_dir = local_bundles_dir
         self.shared_file_system = shared_file_system
 
-        if not shared_file_system:
-            self.local_bundles_dir = os.path.join(work_dir, Worker.BUNDLES_DIR_NAME)
-            if not os.path.exists(self.local_bundles_dir):
-                logger.info('%s doesn\'t exist, creating.', self.local_bundles_dir)
-                os.makedirs(self.local_bundles_dir, 0o770)
+        self.exit_when_idle = exit_when_idle
+        self.idle_seconds = idle_seconds
 
-        self.docker_runtime = docker_runtime
+        self.stop = False
+        self.last_checkin_successful = False
+        self.last_time_ran = None  # type: Optional[bool]
 
-        self.runs = {}  # bundle_uuid -> RunState
-        self.lock = threading.RLock()
+        self.runs = {}  # type: Dict[str, RunState]
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
             docker_image_manager=self.image_manager,
@@ -98,7 +94,7 @@ class Worker:
             docker_runtime=docker_runtime,
             upload_bundle_callback=self.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
-            shared_file_system=shared_file_system,
+            shared_file_system=self.shared_file_system,
         )
 
     def init_docker_networks(self, docker_network_prefix):
@@ -147,37 +143,39 @@ class Worker:
                 resources=RunResources.from_dict(run_state.resources),
             )
 
+    def check_idle_stop(self):
+        """
+        Checks whether the worker is idle (ie if it hasn't had runs for longer than the configured
+        number of idle seconds) and if so, checks whether it is configured to exit when idle.
+
+        :returns: True if the worker should stop because it is idle.
+        In other words, True if the worker is configured to exit when idle,
+        it is idle, and it has checked in at least once with the server.
+        """
+        now = time.time()
+        if len(self.runs) > 0 or self.last_time_ran is None:
+            self.last_time_ran = now
+        is_idle = now - self.last_time_ran > self.idle_seconds
+        return self.exit_when_idle and is_idle and self.last_checkin_successful
+
     def start(self):
         """Return whether we ran anything."""
         self.load_state()
         self.image_manager.start()
         if not self.shared_file_system:
             self.dependency_manager.start()
-        last_time_ran = None  # When was the last time we ran something?
         while not self.stop:
             try:
                 self.process_runs()
                 self.save_state()
                 self.checkin()
                 self.save_state()
-
                 if not self.last_checkin_successful:
                     logger.info('Connected! Successful check in!')
                 self.last_checkin_successful = True
-
-                has_runs = len(self.runs) > 0
-                now = time.time()
-                if has_runs:
-                    last_time_ran = now
-
-                if last_time_ran is None:
-                    last_time_ran = now
-                is_idle = now - last_time_ran > self.idle_seconds
-
-                if self.exit_when_idle and is_idle and self.last_checkin_successful:
+                if self.check_idle_stop():
                     self.stop = True
                     break
-
             except Exception:
                 self.last_checkin_successful = False
                 traceback.print_exc()
@@ -272,26 +270,25 @@ class Worker:
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
-        with self.lock:
-            # transition all runs
-            for bundle_uuid in self.runs.keys():
-                run_state = self.runs[bundle_uuid]
-                self.runs[bundle_uuid] = self.run_state_manager.transition(run_state)
+        # transition all runs
+        for bundle_uuid in self.runs.keys():
+            run_state = self.runs[bundle_uuid]
+            self.runs[bundle_uuid] = self.run_state_manager.transition(run_state)
 
-            # filter out finished runs
-            finished_container_ids = [
-                run.container
-                for run in self.runs.values()
-                if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
-                and run.container_id is not None
-            ]
-            for container_id in finished_container_ids:
-                try:
-                    container = self.docker.containers.get(container_id)
-                    container.remove(force=True)
-                except (docker.errors.NotFound, docker.errors.NullResource):
-                    pass
-            self.runs = {k: v for k, v in self.runs.items() if v.stage != RunStage.FINISHED}
+        # filter out finished runs
+        finished_container_ids = [
+            run.container
+            for run in self.runs.values()
+            if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
+            and run.container_id is not None
+        ]
+        for container_id in finished_container_ids:
+            try:
+                container = self.docker.containers.get(container_id)
+                container.remove(force=True)
+            except (docker.errors.NotFound, docker.errors.NullResource):
+                pass
+        self.runs = {k: v for k, v in self.runs.items() if v.stage != RunStage.FINISHED}
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
@@ -310,11 +307,10 @@ class Worker:
         """
         cpuset, gpuset = set(self.cpuset), set(self.gpuset)
 
-        with self.lock:
-            for run_state in self.runs.values():
-                if run_state.stage == RunStage.RUNNING:
-                    cpuset -= run_state.cpuset
-                    gpuset -= run_state.gpuset
+        for run_state in self.runs.values():
+            if run_state.stage == RunStage.RUNNING:
+                cpuset -= run_state.cpuset
+                gpuset -= run_state.gpuset
 
         if len(cpuset) < request_cpus:
             raise Exception(
@@ -337,23 +333,22 @@ class Worker:
         """
         Returns a list of all the runs managed by this RunManager
         """
-        with self.lock:
-            return [
-                BundleCheckinState(
-                    uuid=run_state.bundle.uuid,
-                    run_status=run_state.run_status,
-                    bundle_start_time=run_state.bundle_start_time,
-                    container_time_total=run_state.container_time_total,
-                    container_time_user=run_state.container_time_user,
-                    container_time_system=run_state.container_time_system,
-                    docker_image=run_state.docker_image,
-                    state=RunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
-                    remote=self.id,
-                    exitcode=run_state.exitcode,
-                    failure_message=run_state.failure_message,
-                )
-                for run_state in self.runs.values()
-            ]
+        return [
+            BundleCheckinState(
+                uuid=run_state.bundle.uuid,
+                run_status=run_state.run_status,
+                bundle_start_time=run_state.bundle_start_time,
+                container_time_total=run_state.container_time_total,
+                container_time_user=run_state.container_time_user,
+                container_time_system=run_state.container_time_system,
+                docker_image=run_state.docker_image,
+                state=RunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
+                remote=self.id,
+                exitcode=run_state.exitcode,
+                failure_message=run_state.failure_message,
+            )
+            for run_state in self.runs.values()
+        ]
 
     @property
     def free_disk_bytes(self):
@@ -399,15 +394,14 @@ class Worker:
                 if self.shared_file_system
                 else os.path.join(self.local_bundles_dir, bundle.uuid)
             )
-            now = time.time()
-            run_state = RunState(
+            self.runs[bundle.uuid] = RunState(
                 stage=RunStage.PREPARING,
                 run_status='',
                 bundle=bundle,
                 bundle_path=os.path.realpath(bundle_path),
                 bundle_dir_wait_num_tries=Worker.BUNDLE_DIR_WAIT_NUM_TRIES,
                 resources=resources,
-                bundle_start_time=now,
+                bundle_start_time=time.time(),
                 container_time_total=0,
                 container_time_user=0,
                 container_time_system=0,
@@ -426,13 +420,23 @@ class Worker:
                 finished=False,
                 finalized=False,
             )
-            with self.lock:
-                self.runs[bundle.uuid] = run_state
         else:
             print(
                 'Bundle {} no longer assigned to this worker'.format(bundle['uuid']),
                 file=sys.stdout,
             )
+
+    def kill(self, uuid):
+        """
+        Marks the run as killed so that the next time its state is processed it is terminated.
+        """
+        self.runs[uuid] = self.runs[uuid]._replace(kill_message='Kill requested', is_killed=True)
+
+    def mark_finalized(self, uuid):
+        """
+        Marks the run with uuid as finalized so it might be purged from the worker state
+        """
+        self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
 
     def read(self, socket_id, uuid, path, args):
         def reply(err, message={}, data=None):
@@ -489,22 +493,6 @@ class Worker:
                 reply(err)
 
         threading.Thread(target=netcat_fn).start()
-
-    def mark_finalized(self, uuid):
-        """
-        Marks the run as finalized server-side so it can be discarded
-        """
-        with self.lock:
-            self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
-
-    def kill(self, uuid):
-        """
-        Kill bundle with uuid
-        """
-        with self.lock:
-            self.runs[uuid] = self.runs[uuid]._replace(
-                kill_message='Kill requested', is_killed=True
-            )
 
     def write(self, uuid, path, string):
         run_state = self.runs[uuid]
