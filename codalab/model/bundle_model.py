@@ -986,11 +986,13 @@ class BundleModel(object):
             self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
             bundle.id = result.lastrowid
 
-    def update_bundle(self, bundle, update, connection=None):
+    def update_bundle(self, bundle, update, connection=None, delete=False):
         """
-        Update a bundle's columns and metadata in the database and in memory.
-        The update is done as a diff: columns that do not appear in the update dict
+        Update a bundle's columns and metadata (default) or delete a bundle's metadata in the database and in memory.
+        1. The update is done as a diff: columns that do not appear in the update dict
         and metadata keys that do not appear in the metadata sub-dict are unaffected.
+        2. The delete is done as a diff on metadata dict only:
+            metadata keys that do not appear in the metadata dict are unaffected.
 
         This method validates all updates to the bundle, so it is appropriate
         to use this method to update bundles based on user input (eg: cl edit).
@@ -1000,10 +1002,20 @@ class BundleModel(object):
         # Apply the column and metadata updates in memory and validate the result.
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
-        for (key, value) in metadata_update.items():
-            bundle.metadata.set_metadata_key(key, value)
+
+        # Currently we only allow deleting fields in metadata dict.
+        # When delete = True, delete the keys from bundle.metadata dict
+        # When delete = False, update the key, value pair in bundle.metadata dict
+        if delete:
+            for (key, value) in metadata_update.items():
+                bundle.metadata.remove_metadata_key(key)
+        else:
+            for (key, value) in metadata_update.items():
+                bundle.metadata.set_metadata_key(key, value)
+
+        # Validate the uuid and name of the current bundle
         bundle.validate()
-        # Construct clauses and update lists for updating certain bundle columns.
+        # Construct clauses and update lists for updating or deleting certain bundle columns.
         if update:
             clause = cl_bundle.c.uuid == bundle.uuid
         if metadata_update:
@@ -1011,11 +1023,15 @@ class BundleModel(object):
                 cl_bundle_metadata.c.bundle_uuid == bundle.uuid,
                 cl_bundle_metadata.c.metadata_key.in_(metadata_update),
             )
-            metadata_values = [
-                row_dict
-                for row_dict in bundle.to_dict().pop('metadata')
-                if row_dict['metadata_key'] in metadata_update
-            ]
+            metadata_values = (
+                [
+                    row_dict
+                    for row_dict in bundle.to_dict().pop('metadata')
+                    if row_dict['metadata_key'] in metadata_update
+                ]
+                if not delete
+                else []
+            )
 
         # Perform the actual updates.
         def do_update(connection):
@@ -1024,7 +1040,9 @@ class BundleModel(object):
                     connection.execute(cl_bundle.update().where(clause).values(update))
                 if metadata_update:
                     connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
-                    self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+                    # Update an existing field or add an additional field to metadata.
+                    if not delete:
+                        self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
             except UnicodeError:
                 raise UsageError("Invalid character detected; use ascii characters only.")
 
@@ -2325,8 +2343,9 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
-    def get_user_time_quota_left(self, user_id):
-        user_info = self.get_user_info(user_id)
+    def get_user_time_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
         time_quota = user_info['time_quota']
         time_used = user_info['time_used']
         return time_quota - time_used
@@ -2363,8 +2382,9 @@ class BundleModel(object):
             or 0
         )
 
-    def get_user_disk_quota_left(self, user_id):
-        user_info = self.get_user_info(user_id)
+    def get_user_disk_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
         return user_info['disk_quota'] - user_info['disk_used']
 
     def update_user_disk_used(self, user_id):

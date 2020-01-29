@@ -27,6 +27,9 @@ BUNDLE_TIMEOUT_DAYS = 60
 # When using the REST api, it is allowed to set Memory to 0 but that means the container has unbounded
 # access to the host machine's memory, which we have decided to not allow
 MINIMUM_REQUEST_MEMORY_BYTES = 4 * 1024 * 1024
+# CodaLab public workers: a comma-separated list of worker ids to monitor.
+# Example: vm-clws-prod-worker-0,vm-clws-prod-worker-1
+CODALAB_PUBLIC_WORKERS = os.environ['CODALAB_PUBLIC_WORKERS'].split(',')
 
 
 class BundleManager(object):
@@ -50,6 +53,8 @@ class BundleManager(object):
 
         self._make_uuids_lock = threading.Lock()
         self._make_uuids = set()
+        # A set of UUID of bundles without their requested private worker discovered in the system
+        self._bundles_without_matched_workers = set()
 
         def parse(to_value, field):
             return to_value(config[field]) if field in config else None
@@ -327,7 +332,6 @@ class BundleManager(object):
         for bundle, bundle_resources in staged_bundles_to_run:
             # Get user_owned workers.
             workers_list = workers.user_owned_workers(bundle.owner_id)
-
             # If there is no user_owned worker, try to schedule the current bundle to run on a CodaLab's public worker.
             if len(workers_list) == 0:
                 # Check if there is enough parallel run quota left for this user
@@ -353,7 +357,6 @@ class BundleManager(object):
         """
         From each worker, subtract resources used by running bundles. Modifies the list.
         """
-
         for worker in workers_list:
             for uuid in worker['run_uuids']:
                 # Verify if the current bundle exists in both the worker table and the bundle table
@@ -369,8 +372,7 @@ class BundleManager(object):
                 worker['memory_bytes'] -= bundle_resources.memory
         return workers_list
 
-    @staticmethod
-    def _filter_and_sort_workers(workers_list, bundle, bundle_resources):
+    def _filter_and_sort_workers(self, workers_list, bundle, bundle_resources):
         """
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
@@ -384,12 +386,7 @@ class BundleManager(object):
         # Filter by tag.
         request_queue = bundle.metadata.request_queue
         if request_queue:
-            tagm = re.match('tag=(.+)', request_queue)
-            if tagm:
-                workers_list = [worker for worker in workers_list if worker['tag'] == tagm.group(1)]
-            else:
-                # We don't know how to handle this type of request queue argument
-                return []
+            workers_list = self._get_matched_workers(request_queue, workers_list)
 
         # Filter by CPUs.
         workers_list = [
@@ -500,25 +497,27 @@ class BundleManager(object):
             return formatting.parse_size('2g')
         return formatting.parse_size(bundle.metadata.request_memory)
 
-    def _compute_request_disk(self, bundle):
+    def _compute_request_disk(self, bundle, user_info=None):
         """
         Compute the disk limit used for scheduling the run.
         The default is min(disk quota the user has left, global max)
         """
         if not bundle.metadata.request_disk:
             return min(
-                self._model.get_user_disk_quota_left(bundle.owner_id) - 1, self._max_request_disk
+                self._model.get_user_disk_quota_left(bundle.owner_id, user_info) - 1,
+                self._max_request_disk,
             )
         return formatting.parse_size(bundle.metadata.request_disk)
 
-    def _compute_request_time(self, bundle):
+    def _compute_request_time(self, bundle, user_info=None):
         """
         Compute the time limit used for scheduling the run.
         The default is min(time quota the user has left, global max)
         """
         if not bundle.metadata.request_time:
             return min(
-                self._model.get_user_time_quota_left(bundle.owner_id) - 1, self._max_request_time
+                self._model.get_user_time_quota_left(bundle.owner_id, user_info) - 1,
+                self._max_request_time,
             )
         return formatting.parse_duration(bundle.metadata.request_time)
 
@@ -560,16 +559,16 @@ class BundleManager(object):
         message['resources'] = bundle_resources.as_dict
         return message
 
-    def _compute_bundle_resources(self, bundle):
+    def _compute_bundle_resources(self, bundle, user_info=None):
         return RunResources(
             cpus=self._compute_request_cpus(bundle),
             gpus=self._compute_request_gpus(bundle),
             docker_image=self._get_docker_image(bundle),
             # _compute_request_time contains database queries that may reduce efficiency
-            time=self._compute_request_time(bundle),
+            time=self._compute_request_time(bundle, user_info),
             memory=self._compute_request_memory(bundle),
             # _compute_request_disk contains database queries that may reduce efficiency
-            disk=self._compute_request_disk(bundle),
+            disk=self._compute_request_disk(bundle, user_info),
             network=bundle.metadata.request_network,
         )
 
@@ -617,7 +616,7 @@ class BundleManager(object):
         self._restage_stuck_starting_bundles(workers)
         self._bring_offline_stuck_running_bundles(workers)
         self._acknowledge_recently_finished_bundles(workers)
-        staged_bundles_to_run = self._get_staged_bundles_to_run()
+        staged_bundles_to_run = self._get_staged_bundles_to_run(workers)
 
         # Schedule, preferring user-owned workers.
         self._schedule_run_bundles_on_workers(workers, staged_bundles_to_run)
@@ -649,7 +648,19 @@ class BundleManager(object):
                 return global_fail_string % (pretty_print(value), pretty_print(global_min))
         return None
 
-    def _get_staged_bundles_to_run(self):
+    def _get_matched_workers(self, request_queue, workers):
+        """
+        Get all of the workers that match with the name of the requested worker
+        :param request_queue: a tag that can be used to match workers
+        :param workers: a list of workers
+        :return: a list of matched workers
+        """
+        tagm = re.match('tag=(.+)', request_queue)
+        worker_tag = tagm.group(1)
+        matched_workers = [worker for worker in workers if worker['tag'] == worker_tag]
+        return matched_workers
+
+    def _get_staged_bundles_to_run(self, workers):
         """
         Fails bundles that request more resources than available for the given user.
         Note: allow more resources than available on any worker because new
@@ -657,17 +668,28 @@ class BundleManager(object):
 
         :return: a list of tuple which contains valid staged bundles and their bundle_resources.
         """
+
         # Keep track of staged bundles that have valid resources requested
         staged_bundles_to_run = []
-        for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
-            bundle_resources = self._compute_bundle_resources(bundle)
-            failures = []
+        # A dictionary structured as {user id : user information} to track those visited user information
+        user_info_cache = {}
 
+        for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
+            # Cache those visited user information
+            if bundle.owner_id in user_info_cache:
+                user_info = user_info_cache[bundle.owner_id]
+            else:
+                user_info = self._model.get_user_info(bundle.owner_id)
+                user_info_cache[bundle.owner_id] = user_info
+
+            bundle_resources = self._compute_bundle_resources(bundle, user_info)
+
+            failures = []
             failures.append(
                 self._check_resource_failure(
                     bundle_resources.disk,
                     user_fail_string='Requested more disk (%s) than user disk quota left (%s)',
-                    user_max=self._model.get_user_disk_quota_left(bundle.owner_id),
+                    user_max=self._model.get_user_disk_quota_left(bundle.owner_id, user_info),
                     global_fail_string='Maximum job disk size (%s) exceeded (%s)',
                     global_max=self._max_request_disk,
                     pretty_print=formatting.size_str,
@@ -678,7 +700,7 @@ class BundleManager(object):
                 self._check_resource_failure(
                     bundle_resources.time,
                     user_fail_string='Requested more time (%s) than user time quota left (%s)',
-                    user_max=self._model.get_user_time_quota_left(bundle.owner_id),
+                    user_max=self._model.get_user_time_quota_left(bundle.owner_id, user_info),
                     global_fail_string='Maximum job time (%s) exceeded (%s)',
                     global_max=self._max_request_time,
                     pretty_print=formatting.duration_str,
@@ -703,6 +725,18 @@ class BundleManager(object):
                     pretty_print=formatting.size_str,
                 )
             )
+            # Store a list of private workers that matches with the tag (specified by request_queue) requested from user
+            matched_workers = []
+            # Get a list of online private workers
+            private_workers = [
+                worker
+                for worker in workers.workers()
+                if not worker['worker_id'] in CODALAB_PUBLIC_WORKERS
+            ]
+
+            if bundle.metadata.request_queue:
+                request_queue = bundle.metadata.request_queue
+                matched_workers = self._get_matched_workers(request_queue, private_workers)
 
             failures = [f for f in failures if f is not None]
 
@@ -714,9 +748,33 @@ class BundleManager(object):
                     bundle,
                     {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
                 )
+            elif bundle.metadata.request_queue and len(matched_workers) == 0:
+                # For those bundles that were requested to run on a private worker, if the private worker does not exist
+                # temporarily, we filter out those bundles so that they won't be dispatched to run on workers.
+                if bundle.uuid not in self._bundles_without_matched_workers:
+                    # TODO: update bundles with batch operation: implement function batch_update_bundles()
+                    self._model.update_bundle(
+                        bundle,
+                        {
+                            'metadata': {
+                                'staged_status': 'Bundle is requested to run on the private worker {} which has '
+                                'not been connected to the CodaLab server yet.'.format(
+                                    request_queue
+                                )
+                            }
+                        },
+                    )
+                    self._bundles_without_matched_workers.add(bundle.uuid)
             else:
+                # Remove the uuid from self._bundles_without_matched_workers if a matched
+                # private worker is found in the system and update bundle's metadata
+                if bundle.uuid in self._bundles_without_matched_workers:
+                    # bundle.metadata.remove_metadata_key('staged_status')
+                    self._model.update_bundle(
+                        bundle, {'metadata': {'staged_status': ''}}, delete=True
+                    )
+                    self._bundles_without_matched_workers.remove(bundle.uuid)
                 staged_bundles_to_run.append((bundle, bundle_resources))
-
         return staged_bundles_to_run
 
     def _get_running_bundles_info(self, workers):
