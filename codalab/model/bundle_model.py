@@ -895,6 +895,7 @@ class BundleModel(object):
             was recorded during finalization of the bundle.
         """
         metadata = bundle.metadata.to_dict()
+        logger.info("**** transition_bundle_finished, metadata = {}".format(metadata))
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
         state = State.FAILED if failure_message or exitcode else State.READY
@@ -1002,6 +1003,7 @@ class BundleModel(object):
         # Apply the column and metadata updates in memory and validate the result.
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
+<<<<<<< HEAD
 
         # Currently we only allow deleting fields in metadata dict.
         # When delete = True, delete the keys from bundle.metadata dict
