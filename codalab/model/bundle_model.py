@@ -895,7 +895,6 @@ class BundleModel(object):
             was recorded during finalization of the bundle.
         """
         metadata = bundle.metadata.to_dict()
-        logger.info("**** transition_bundle_finished, metadata = {}".format(metadata))
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
         state = State.FAILED if failure_message or exitcode else State.READY
