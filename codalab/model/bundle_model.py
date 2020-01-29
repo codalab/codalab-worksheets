@@ -2332,8 +2332,9 @@ class BundleModel(object):
         time_used = user_info['time_used']
         return time_quota - time_used
 
-    def get_user_parallel_run_quota_left(self, user_id):
-        user_info = self.get_user_info(user_id)
+    def get_user_parallel_run_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
         parallel_run_quota = user_info['parallel_run_quota']
         with self.engine.begin() as connection:
             # Get all the runs belonging to this user whose workers are not personal workers
