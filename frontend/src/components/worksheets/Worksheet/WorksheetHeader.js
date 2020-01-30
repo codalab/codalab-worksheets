@@ -2,7 +2,6 @@ import React from 'react';
 import Grid from '@material-ui/core/Grid';
 import Popover from '@material-ui/core/Popover';
 import { WorksheetEditableField } from '../../EditableField';
-import {CopyToClipboard} from 'react-copy-to-clipboard';
 import PermissionDialog from '../PermissionDialog';
 import Sticky from 'react-stickynode';
 import ActionButtons from '../items/ActionButtons';
@@ -37,6 +36,7 @@ export default ({
     togglePopup,
     togglePopupNoEvent,
     toggleGlossaryModal,
+    copiedBundleIds,
 }) => (
     <Sticky top={6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
@@ -132,6 +132,7 @@ export default ({
                                 showBundleOperationButtons={showBundleOperationButtons}
                                 togglePopup={togglePopup}
                                 togglePopupNoEvent={togglePopupNoEvent}
+                                copiedBundleIds={copiedBundleIds}
                             />
                         </Grid>
                         <Grid item>

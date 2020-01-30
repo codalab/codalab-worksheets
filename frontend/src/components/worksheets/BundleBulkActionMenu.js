@@ -26,7 +26,6 @@ class BundleBulkActionMenu extends React.Component {
 
     render() {
         const { classes } = this.props;
-        console.log(this.props);
         return (
             <div className={classes.root}>
                 <Button
@@ -56,17 +55,15 @@ class BundleBulkActionMenu extends React.Component {
                     <HighlightOffIcon fontSize='small' />
                     <Typography variant='inherit'>Kill</Typography>
                 </Button>
-                <CopyToClipboard text={this.state.copyValue}>
                     <Button
                         size='small'
                         color='inherit'
                         aria-label='Copy'
-                        onClick={()=>{this.setState({copyValue: this.props.togglePopupNoEvent('copy')})}}
+                        onClick={this.props.togglePopup("copy")}
                     >
                             <FileCopyOutlinedIcon className={classes.buttonIcon} />
                             <Typography variant='inherit'>Copy</Typography>
                     </Button>
-                </CopyToClipboard>
             </div>
         );
     }

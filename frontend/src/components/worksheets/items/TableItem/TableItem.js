@@ -31,7 +31,7 @@ class TableItem extends React.Component<{
             numSelectedChild: 0,
             indeterminateCheckState: false,
         };
-        this.copyToCheckedBundleRows = this.copyToCheckedBundleRows.bind(this);
+        this.copyCheckedBundleRows = this.copyCheckedBundleRows.bind(this);
     }
 
     // BULK OPERATION RELATED CODE
@@ -97,7 +97,7 @@ class TableItem extends React.Component<{
         });
     };
 
-    copyToCheckedBundleRows = () => {
+    copyCheckedBundleRows = () => {
         let bundleRowsData = this.props.item.rows;
         let result = bundleRowsData.filter((item, index) =>{
             return this.state.childrenCheckState[index];
@@ -115,13 +115,12 @@ class TableItem extends React.Component<{
     render() {
         const { worksheetUUID, setFocus, prevItem, editPermission } = this.props;
         // Provide copy data callback
-        this.props.addCopyBundleRowsCallBack(this.copyToCheckedBundleRows);
+        this.props.addCopyBundleRowsCallBack(this.props.itemID, this.copyCheckedBundleRows);
         let prevItemProcessed = null;
         if (prevItem) {
             const { maxKey } = getMinMaxKeys(prevItem);
             prevItemProcessed = { sort_key: maxKey };
         }
-        console.log(this.state.childrenCheckState);
         var tableClassName = this.props.focused ? 'table focused' : 'table';
         var item = this.props.item;
         var canEdit = this.props.canEdit;

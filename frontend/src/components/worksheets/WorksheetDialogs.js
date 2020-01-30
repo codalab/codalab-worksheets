@@ -10,6 +10,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import IconButton from '@material-ui/core/IconButton';
 import InfoIcon from '@material-ui/icons/InfoOutlined';
 import Button from '@material-ui/core/Button';
+import {CopyToClipboard} from 'react-copy-to-clipboard';
 
 class WorksheetDialogs extends React.Component {
     render() {
@@ -141,6 +142,34 @@ class WorksheetDialogs extends React.Component {
                         </Button>
                     </DialogActions>
                 </Dialog>
+                <Dialog
+                    open={this.props.openCopy}
+                    onClose={this.props.togglePopup('copy')}
+                    aria-labelledby='copy-title'
+                    aria-describedby='deletion-description'
+                >
+                    <DialogContent className={classes.dialog}>
+                        <DialogContentText id='alert-dialog-description'>
+                            The following bundle ids will be copied to clipboard:
+                            {this.props.copiedBundleIds}
+                        </DialogContentText>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button color='primary' onClick={this.props.togglePopup('copy')}>
+                            CANCEL
+                        </Button>
+                        <CopyToClipboard
+                            color='primary'
+                            text={this.props.copiedBundleIds}
+                            onCopy={()=>this.props.togglePopupNoEvent('copy')}
+                        >
+                            <Button color='primary'>
+                            Copy
+                        </Button>
+                        </CopyToClipboard>
+                    </DialogActions>
+                </Dialog>
+                }
             </div>
         );
     }
