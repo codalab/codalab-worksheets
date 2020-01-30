@@ -527,7 +527,8 @@ class RunStateMachine(StateTransitioner):
                 if run_state.failure_message
                 else run_state.kill_messsage
             )
-            run_state = run_state._replace(failure_message=failure_message)
+            print("DEBUG: " + failure_message)
+            run_state = run_state._replace(failure_message=run_state.kill_message)
         return run_state._replace(stage=RunStage.FINALIZING, run_status="Finalizing bundle")
 
     def _transition_from_FINALIZING(self, run_state):
