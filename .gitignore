@@ -36,3 +36,6 @@ venv*/
 /frontend/node_modules
 pip-wheel-metadata
 site
+
+# Temporary bundle data
+codalab-worker-scratch
