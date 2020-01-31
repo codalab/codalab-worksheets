@@ -23,14 +23,15 @@ def wrap_exception(message):
             except urllib.error.HTTPError as e:
                 try:
                     client_error = e.read()
+                    error_code = e.code.decode() if isinstance(e.code, bytes) else e.code
                     if e.reason == 'invalid_grant':
                         raise BundleAuthException(
-                            message + ': ' + http.client.responses[e.code] + ' - ' + client_error,
+                            message + ': ' + http.client.responses[error_code] + ' - ' + client_error,
                             True,
                         )
                     else:
                         raise BundleServiceException(
-                            message + ': ' + http.client.responses[e.code] + ' - ' + client_error,
+                            message + ': ' + http.client.responses[error_code] + ' - ' + client_error,
                             e.code >= 400 and e.code < 500,
                         )
                 except json.decoder.JSONDecodeError as e:
