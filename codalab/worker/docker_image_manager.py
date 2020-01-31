@@ -25,6 +25,9 @@ ImageCacheEntry = namedtuple(
 
 
 class DockerImageManager:
+
+    CACHE_TAG = 'codalab-image-cache/last-used'
+
     def __init__(self, commit_file, max_image_cache_size, max_image_size):
         """
         Initializes a DockerImageManager
@@ -34,37 +37,26 @@ class DockerImageManager:
         """
         self._state_committer = JsonStateCommitter(commit_file)  # type: JsonStateCommitter
         self._docker = docker.from_env()  # type: DockerClient
-        self._image_cache = {}  # type: Dict[str, ImageCacheEntry]
         self._downloading = ThreadDict(
             fields={'success': False, 'status': 'Download starting.'}, lock=True
         )
         self._max_image_cache_size = max_image_cache_size
         self._max_image_size = max_image_size
-        self._lock = threading.RLock()
 
         self._stop = False
         self._sleep_secs = 10
         self._cleanup_thread = None
 
-        self._load_state()
-
-    def _save_state(self):
-        with self._lock:
-            self._state_committer.commit(self._image_cache)
-
-    def _load_state(self):
-        with self._lock:
-            self._image_cache = self._state_committer.load()
-
     def start(self):
         logger.info("Starting docker image manager")
+
         if self._max_image_cache_size:
+            self._tag_local_images()
 
             def cleanup_loop(self):
                 while not self._stop:
                     try:
                         self._cleanup()
-                        self._save_state()
                     except Exception:
                         traceback.print_exc()
                     time.sleep(self._sleep_secs)
@@ -82,6 +74,28 @@ class DockerImageManager:
             self._cleanup_thread.join()
         logger.info("Stopped docker image manager")
 
+    def _get_cache_use(self):
+        return sum(
+            float(image.attrs['VirtualSize']) for image in self._docker.images.list(self.CACHE_TAG)
+        )
+
+    def _tag_local_images(self):
+        """
+        Tag local docker images with CACHE_TAG. This is especially useful at the first release of this
+        new tagging mechanism. Any local docker images which don't have CACHE_TAG will be tagged automatically.
+        This will make sure all the existing local images will be tagged and be picked up in the cleanup phase properly.
+        """
+        try:
+            images = self._docker.images.list()
+            for image in images:
+                if not any(self.CACHE_TAG in tag for tag in image.tags):
+                    image.tag(self.CACHE_TAG, tag=str(time.time()))
+                    logger.info(
+                        "Finished tagging local image {}. Tags are {}.".format(image, image.tags)
+                    )
+        except Exception as ex:
+            logger.info("Unable to tag local images: {}".format(ex))
+
     def _cleanup(self):
         """
         Prunes the image cache for runs.
@@ -97,35 +111,42 @@ class DockerImageManager:
             use of images). Calling df gives us an accurate disk use of ALL the images on the machine
             but because of (1) we don't want to use that.
         """
-        while not self._stop:
-            # Sort the image cache in LRU order
-            deletable_entries = set(self._image_cache.values())
-            disk_use = sum(entry.virtual_size for entry in deletable_entries)
-            while disk_use > self._max_image_cache_size:
-                entry_to_remove = min(deletable_entries, key=lambda entry: entry.last_used)
-                logger.info(
-                    'Disk use (%s) > max cache size (%s), pruning image: %s',
-                    disk_use,
-                    self._max_image_cache_size,
-                    entry_to_remove.digest,
-                )
-                try:
-                    # Delete images from image cache in LRU order
-                    self._docker.images.remove(entry_to_remove.id)
-                    del self._image_cache[entry_to_remove.digest]
-                except docker.errors.ImageNotFound:
-                    # image doesn't exist anymore for some reason, stop tracking it
-                    del self._image_cache[entry_to_remove.digest]
-                except docker.errors.APIError as err:
-                    # Maybe we can't delete this image because its container is still running
-                    # (think a run that takes 4 days so this is the oldest image but still in use)
-                    # In that case we just continue with our lives, hoping it will get deleted once
-                    # it's no longer in use and the cache becomes full again
-                    logger.error(
-                        "Cannot remove image %s from cache: %s", entry_to_remove.digest, err
+        # Sort the image cache in LRU order
+        def last_used(image):
+            for tag in image.tags:
+                if tag.split(":")[0] == self.CACHE_TAG:
+                    return float(tag.split(":")[1])
+
+        cache_use = self._get_cache_use()
+        if cache_use > self._max_image_cache_size:
+            logger.info(
+                'Disk use (%s) > max cache size (%s): starting image pruning',
+                cache_use,
+                self._max_image_cache_size,
+            )
+            all_images = self._docker.images.list(self.CACHE_TAG)
+            all_images_sorted = sorted(all_images, key=last_used)
+            logger.info("Cached docker images: {}".format(all_images_sorted))
+            for image in all_images_sorted:
+                # We re-list all the images to get an updated total size since we may have deleted some
+                cache_use = self._get_cache_use()
+                if cache_use > self._max_image_cache_size:
+                    logger.info(
+                        'Disk use (%s) > max cache size (%s), pruning image: %s',
+                        cache_use,
+                        self._max_image_cache_size,
+                        image.attrs['RepoTags'][1],
                     )
-                deletable_entries.remove(entry_to_remove)
-                disk_use = sum(entry.virtual_size for entry in deletable_entries)
+                    try:
+                        self._docker.images.remove(image.id)
+                    except docker.errors.APIError as err:
+                        # Maybe we can't delete this image because its container is still running
+                        # (think a run that takes 4 days so this is the oldest image but still in use)
+                        # In that case we just continue with our lives, hoping it will get deleted once
+                        # it's no longer in use and the cache becomes full again
+                        logger.error(
+                            "Cannot remove image %s from cache: %s", image.attrs['RepoTags'][1], err
+                        )
         logger.debug("Stopping docker image manager cleanup")
 
     def get(self, image_spec):
@@ -151,20 +172,19 @@ class DockerImageManager:
                 image = self._docker.images.get(image_spec)
                 digests = image.attrs.get('RepoDigests', [image_spec])
                 digest = digests[0] if len(digests) > 0 else None
-                with self._lock:
-                    self._image_cache[digest] = ImageCacheEntry(
-                        id=image.id,
-                        digest=digest,
-                        last_used=time.time(),
-                        virtual_size=image.attrs['VirtualSize'],
-                        marginal_size=image.attrs['Size'],
-                    )
+                new_timestamp = str(time.time())
+                image.tag(self.CACHE_TAG, tag=new_timestamp)
+                for tag in image.tags:
+                    tag_label, timestamp = tag.split(":")
+                    # remove any other timestamp but not the current one
+                    if tag_label == self.CACHE_TAG and timestamp != new_timestamp:
+                        self._docker.images.remove(tag)
                 return ImageAvailabilityState(
                     digest=digest, stage=DependencyStage.READY, message=success_message
                 )
-            except Exception:
+            except Exception as ex:
                 return ImageAvailabilityState(
-                    digest=None, stage=DependencyStage.FAILED, message=failure_message
+                    digest=None, stage=DependencyStage.FAILED, message=failure_message % ex
                 )
 
         if ':' not in image_spec:
@@ -195,7 +215,7 @@ class DockerImageManager:
                                 image_spec,
                                 success_message='Image ready',
                                 failure_message='Image {} was downloaded successfully, '
-                                'but it can not be found locally due to unknown reasons'.format(
+                                'but it cannot be found locally due to unhandled error %s'.format(
                                     image_spec
                                 ),
                             )
@@ -204,7 +224,7 @@ class DockerImageManager:
                                 image_spec,
                                 success_message='Image {} can not be downloaded from DockerHub '
                                 'but it is found locally'.format(image_spec),
-                                failure_message=self._downloading[image_spec]['message'],
+                                failure_message=self._downloading[image_spec]['message'] + ": %s",
                             )
                         self._downloading.remove(image_spec)
                         return status
