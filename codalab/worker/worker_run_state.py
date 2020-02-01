@@ -350,7 +350,7 @@ class RunStateMachine(StateTransitioner):
                     % (duration_str(container_time_total), duration_str(run_state.resources.time))
                 )
 
-            if run_state.max_memory > run_state.resources.memory or run_state.exitcode == '137':
+            if run_state.max_memory > run_state.resources.memory or run_state.exitcode == 137:
                 kill_messages.append(
                     'Memory limit %s exceeded.' % size_str(run_state.resources.memory)
                 )
@@ -362,7 +362,6 @@ class RunStateMachine(StateTransitioner):
 
             if kill_messages:
                 run_state = run_state._replace(kill_message=' '.join(kill_messages), is_killed=True)
-
             return run_state
 
         def check_disk_utilization():
@@ -521,8 +520,14 @@ class RunStateMachine(StateTransitioner):
         """
         Prepare the finalize message to be sent with the next checkin
         """
-        if not run_state.failure_message and run_state.is_killed:
-            run_state = run_state._replace(failure_message=run_state.kill_message)
+        if run_state.is_killed:
+            # Append kill_message, which contains more useful info on why a run was killed, to the failure message.
+            failure_message = (
+                "{}. {}".format(run_state.failure_message, run_state.kill_message)
+                if run_state.failure_message
+                else run_state.kill_message
+            )
+            run_state = run_state._replace(failure_message=failure_message)
         return run_state._replace(stage=RunStage.FINALIZING, run_status="Finalizing bundle")
 
     def _transition_from_FINALIZING(self, run_state):
