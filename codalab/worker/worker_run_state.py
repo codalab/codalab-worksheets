@@ -525,7 +525,7 @@ class RunStateMachine(StateTransitioner):
             failure_message = (
                 "{}. {}".format(run_state.failure_message, run_state.kill_message)
                 if run_state.failure_message
-                else run_state.kill_messsage
+                else run_state.kill_message
             )
             run_state = run_state._replace(failure_message=failure_message)
         return run_state._replace(stage=RunStage.FINALIZING, run_status="Finalizing bundle")
