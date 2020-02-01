@@ -142,7 +142,6 @@ class Worksheet extends React.Component {
             updatingBundleUuids: {},
             isUpdatingBundles: false,
             anchorEl: null,
-            showNewUpload: false,
             showNewRun: false,
             showNewText: false,
             showRerun: false,
@@ -470,7 +469,6 @@ class Worksheet extends React.Component {
             focusIndex: index,
             subFocusIndex: subIndex,
             focusedBundleUuidList: focusedBundleUuidList,
-            showNewUpload: false,
             showNewRun: false,
             showNewText: false,
             showNewRerun: false,
@@ -733,7 +731,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        this.setState({ showNewUpload: true });
+                        document.querySelector('label[for=codalab-file-upload-input]').click();
                     }.bind(this),
                     'keyup',
                 );
@@ -1386,11 +1384,9 @@ class Worksheet extends React.Component {
                 openWorksheet={this.openWorksheet}
                 focusActionBar={this.focusActionBar}
                 ensureIsArray={this.ensureIsArray}
-                showNewUpload={this.state.showNewUpload}
                 showNewRun={this.state.showNewRun}
                 showNewText={this.state.showNewText}
                 showNewRerun={this.state.showNewRerun}
-                onHideNewUpload={() => this.setState({ showNewUpload: false })}
                 onHideNewRun={() => this.setState({ showNewRun: false })}
                 onHideNewText={() => this.setState({ showNewText: false })}
                 onHideNewRerun={() => this.setState({ showNewRerun: false })}
@@ -1438,7 +1434,6 @@ class Worksheet extends React.Component {
                     editButtons={editButtons}
                     anchorEl={anchorEl}
                     setAnchorEl={(e) => this.setState({ anchorEl: e })}
-                    onShowNewUpload={() => this.setState({ showNewUpload: true })}
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}

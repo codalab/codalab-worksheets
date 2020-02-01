@@ -2,7 +2,7 @@ import * as React from 'react';
 import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
-import { buildTerminalCommand } from '../../util/worksheet_utils';
+import { buildTerminalCommand, getMinMaxKeys } from '../../util/worksheet_utils';
 import { ContextMenuEnum, ContextMenuMixin } from './ContextMenu';
 import ContentsItem from './items/ContentsItem';
 import GraphItem from './items/GraphItem';
@@ -12,6 +12,7 @@ import RecordItem from './items/RecordItem';
 import TableItem from './items/TableItem';
 import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
+import NewUpload from './NewUpload/NewUpload';
 
 ////////////////////////////////////////////////////////////
 
@@ -67,7 +68,6 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             ws={props.ws}
             worksheetUUID={props.worksheetUUID}
             reloadWorksheet={props.reloadWorksheet}
-            showNewUpload={props.focusedForButtons && props.showNewUpload}
             showNewRun={props.focusedForButtons && props.showNewRun}
             showNewText={props.focusedForButtons && props.showNewText}
             onHideNewUpload={props.onHideNewUpload}
@@ -83,7 +83,9 @@ class WorksheetItemList extends React.Component {
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = Immutable({});
+        this.state = Immutable({
+            newUploadKey: Math.random() + '',
+        });
     }
 
     static displayName = 'WorksheetItemList';
@@ -202,6 +204,7 @@ class WorksheetItemList extends React.Component {
                 },
             ];
         }
+        let focusedForButtonsItem;
         if (info && info.items.length > 0) {
             var worksheet_items = [];
             info.items.forEach(
@@ -214,6 +217,10 @@ class WorksheetItemList extends React.Component {
                     const focusedForButtons =
                         focused ||
                         (this.props.focusIndex === -1 && index === info.items.length - 1);
+
+                    if (focusedForButtons) {
+                        focusedForButtonsItem = item;
+                    }
                     var props = {
                         worksheetUUID: info.uuid,
                         item: item,
@@ -230,7 +237,6 @@ class WorksheetItemList extends React.Component {
                         handleContextMenu: this.handleContextMenu,
                         reloadWorksheet: this.props.reloadWorksheet,
                         ws: this.props.ws,
-                        showNewUpload: this.props.showNewUpload,
                         showNewRun: this.props.showNewRun,
                         showNewText: this.props.showNewText,
                         showNewRerun: this.props.showNewRerun,
@@ -251,7 +257,22 @@ class WorksheetItemList extends React.Component {
                     );
                 }.bind(this),
             );
-            items_display = worksheet_items;
+            items_display = (
+                <>
+                    {worksheet_items}
+                    <NewUpload
+                        key={this.state.newUploadKey}
+                        after_sort_key={(getMinMaxKeys(focusedForButtonsItem) || {}).maxKey}
+                        worksheetUUID={info.uuid}
+                        reloadWorksheet={this.props.reloadWorksheet}
+                        // Reset newUploadKey so that NewUpload gets re-rendered. This way,
+                        // it is possible to upload the same file multiple times in a row
+                        // (otherwise, chrome will not call onchange on a file input when
+                        // the file hasn't changed)
+                        onUploadFinish={(e) => this.setState({ newUploadKey: Math.random() + '' })}
+                    />
+                </>
+            );
         } else {
             items_display = null;
         }
