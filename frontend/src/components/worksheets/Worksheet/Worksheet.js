@@ -406,7 +406,9 @@ class Worksheet extends React.Component {
         if (!this.state.showBundleOperationButtons) {
             return;
         }
-        const { openKill, openDelete, openDetach } = this.state;
+        const { openKill, openDelete, openDetach, openCopy } = this.state;
+        console.log("THHHHHHHHHHHHL", cmd_type, openCopy);
+
         if (cmd_type === 'rm') {
             this.setState({ openDelete: !openDelete });
         } else if (cmd_type === 'detach') {
@@ -414,7 +416,8 @@ class Worksheet extends React.Component {
         } else if (cmd_type === 'kill') {
             this.setState({ openKill: !openKill });
         } else if (cmd_type === 'copy') {
-            if (this.state.openCopy){
+            if (openCopy){
+                console.log("JHHHHHHHKJHKHK", openCopy);
                 this.setState({openCopy:false});
                 return;
             }
@@ -818,6 +821,16 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
         }
+            Mousetrap.bind(
+                ['enter'],
+                function(e) {
+                    console.log(document.getElementById("copyBundleIdToClipBoard"));
+                    if (this.state.openCopy){
+                        console.log("clicking");
+                        document.getElementById("copyBundleIdToClipBoard").click();
+                    }
+                }.bind(this),
+            );
 
         if (this.state.showBundleOperationButtons) {
             // Below are allowed shortcut even when a dialog is opened===================
