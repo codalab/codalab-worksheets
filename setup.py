@@ -36,17 +36,8 @@ class Install(install):
         self._check_path()
 
     def _check_path(self):
-        base_path = self.install_userbase if '--user' in install.user_options else self.install_base
-        cl_path = '{}/bin'.format(base_path)
+        cl_path = self.install_scripts
         executable_paths = os.environ['PATH'].split(os.pathsep)
-        # TODO: debug statement
-        attrs = vars(self)
-        print('\n\n\033[1m\033[93m')
-        print(',\n'.join("%s: %s" % item for item in attrs.items()))
-        print('\n\nArgs passed in:')
-        print(install.user_options)
-        print('--user' in install.user_options)
-        print('\033[0m')
         if cl_path not in executable_paths:
             # Prints a yellow, bold warning message in regards to the installation path not in $PATH
             print(
