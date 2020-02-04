@@ -131,23 +131,34 @@ class DockerImageManager:
                 # We re-list all the images to get an updated total size since we may have deleted some
                 cache_use = self._get_cache_use()
                 if cache_use > self._max_image_cache_size:
+                    image_tag = (
+                        image.attrs['RepoTags'][-1]
+                        if len(image.attrs['RepoTags']) > 0
+                        else '<none>'
+                    )
                     logger.info(
                         'Disk use (%s) > max cache size (%s), pruning image: %s',
                         cache_use,
                         self._max_image_cache_size,
-                        image.attrs['RepoTags'][1],
+                        image_tag,
                     )
                     try:
-                        self._docker.images.remove(image.id)
+                        self._docker.images.remove(image.id, force=True)
                     except docker.errors.APIError as err:
-                        # Maybe we can't delete this image because its container is still running
-                        # (think a run that takes 4 days so this is the oldest image but still in use)
-                        # In that case we just continue with our lives, hoping it will get deleted once
-                        # it's no longer in use and the cache becomes full again
+                        # Two types of 409 Client Error can be thrown here:
+                        # 1. 409 Client Error: Conflict ("conflict: unable to delete <image_id> (cannot be forced)")
+                        #   This happens when an image either has a running container or has multiple child dependents.
+                        # 2. 409 Client Error: Conflict ("conflict: unable to delete <image_id> (must be forced)")
+                        #   This happens when an image is referenced in multiple repositories.
+                        # We can only remove images in 2rd case using force=True, but not the 1st case. So after we
+                        # try to remove the image using force=True, if it failed, then this indicates that we were
+                        # trying to remove images in 1st case. Since we can't do much for images in 1st case, we
+                        # just continue with our lives, hoping it will get deleted once it's no longer in use and
+                        # the cache becomes full again
                         logger.error(
-                            "Cannot remove image %s from cache: %s", image.attrs['RepoTags'][1], err
+                            "Cannot forcibly remove image %s from cache: %s", image_tag, err
                         )
-        logger.debug("Stopping docker image manager cleanup")
+            logger.debug("Stopping docker image manager cleanup")
 
     def get(self, image_spec):
         """
