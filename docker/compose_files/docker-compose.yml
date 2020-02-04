@@ -172,6 +172,7 @@ services:
     networks:
       - service
       - worker
+    shm_size: '500mb'
 
   worker-shared-file-system:
     image: codalab/worker:${CODALAB_VERSION}
