@@ -1,3 +1,14 @@
+### I installed CodaLab using `pip`. Why am I seeing `-bash: cl: command not found` when trying to use the CLI?
+
+When installing CodaLab, `pip` will output the following error if the executable path is not in your $PATH. 
+
+    WARNING: The scripts cl, cl-bundle-manager, cl-competitiond, cl-server, cl-worker, cl-worker-manager and codalab-service are installed in '<cl path>' which is not on PATH.
+    Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+
+For Mac and Linux users, you can resolve this by appending `export PATH="$PATH:<cl path>"` to your `~/.bashrc`.
+
+For Windows users, select `System` from the `Control Panel`, select `Advance System Settings`, go to `Environment Variables` and add the path to the list.
+
 ### Why is my run bundle in `staged` for a long time?
 
 The `staged` state means that the bundle is ready to run but it is waiting for appropriate resources to free up.  CodaLab has a limited set of machines available (we're offering it for free after all), so when there are a lot of people wanting to run jobs, you might have to wait a long time.  You can check out the [CodaLab status](https://worksheets.codalab.org/worksheets/0xa590fd1b68944a1a95c1c40c4931dc7b/) page to see where your jobs are in the queue (note that this page only sees public jobs, so there might be hidden bundles in the queue that you can't see).  If you'd like to run your job earlier, you can easily [attach your own compute workers](Execution.md#running-your-own-worker), which you might want to do anyway if you have fancier GPUs, say.
