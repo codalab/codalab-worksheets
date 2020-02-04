@@ -51,7 +51,6 @@ class DockerImageManager:
         logger.info("Starting docker image manager")
 
         if self._max_image_cache_size:
-            self._tag_local_images()
 
             def cleanup_loop(self):
                 while not self._stop:
@@ -78,23 +77,6 @@ class DockerImageManager:
         return sum(
             float(image.attrs['VirtualSize']) for image in self._docker.images.list(self.CACHE_TAG)
         )
-
-    def _tag_local_images(self):
-        """
-        Tag local docker images with CACHE_TAG. This is especially useful at the first release of this
-        new tagging mechanism. Any local docker images which don't have CACHE_TAG will be tagged automatically.
-        This will make sure all the existing local images will be tagged and be picked up in the cleanup phase properly.
-        """
-        try:
-            images = self._docker.images.list()
-            for image in images:
-                if not any(self.CACHE_TAG in tag for tag in image.tags):
-                    image.tag(self.CACHE_TAG, tag=str(time.time()))
-                    logger.info(
-                        "Finished tagging local image {}. Tags are {}.".format(image, image.tags)
-                    )
-        except Exception as ex:
-            logger.info("Unable to tag local images: {}".format(ex))
 
     def _cleanup(self):
         """
