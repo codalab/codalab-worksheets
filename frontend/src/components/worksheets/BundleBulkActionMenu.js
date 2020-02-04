@@ -59,7 +59,7 @@ class BundleBulkActionMenu extends React.Component {
                         size='small'
                         color='inherit'
                         aria-label='Copy'
-                        onClick={this.props.togglePopup("copy")}
+                        onClick={this.props.togglePopup('copy')}
                     >
                             <FileCopyOutlinedIcon className={classes.buttonIcon} />
                             <Typography variant='inherit'>Copy</Typography>

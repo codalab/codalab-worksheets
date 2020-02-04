@@ -15,7 +15,6 @@ import {CopyToClipboard} from 'react-copy-to-clipboard';
 class WorksheetDialogs extends React.Component {
     render() {
         const { classes } = this.props;
-        console.log("Here:", this.props.openCopy);
         return (
             <div>
                 <Dialog
@@ -163,9 +162,9 @@ class WorksheetDialogs extends React.Component {
                             color='primary'
                             text={this.props.copiedBundleIds}
                              id="copyBundleIdToClipBoard"
-                            onCopy={()=>{console.log("Clicked");this.props.togglePopupNoEvent('copy')}}
+                            onCopy={()=>{console.log("Clicked")}}
                         >
-                            <Button color='primary'>
+                            <Button color='primary' onClick={this.props.togglePopup('copy')}>
                             Copy
                         </Button>
                         </CopyToClipboard>

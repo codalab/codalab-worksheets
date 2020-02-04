@@ -438,6 +438,7 @@ class Worksheet extends React.Component {
                 this.state.openDelete ||
                 this.state.openDetach ||
                 this.state.openKill ||
+                this.state.openCopy ||
                 this.state.BulkBundleDialog
             )
         ) {
@@ -451,6 +452,8 @@ class Worksheet extends React.Component {
             this.executeBundleCommandNoEvent('detach');
         } else if (this.state.openKill) {
             this.executeBundleCommandNoEvent('kill');
+        } else if (this.state.openCopy) {
+            document.getElementById("copyBundleIdToClipBoard").click();
         }
         return true;
     };
@@ -821,37 +824,33 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
         }
-            Mousetrap.bind(
-                ['enter'],
-                function(e) {
-                    console.log(document.getElementById("copyBundleIdToClipBoard"));
-                    if (this.state.openCopy){
-                        console.log("clicking");
-                        document.getElementById("copyBundleIdToClipBoard").click();
-                    }
-                }.bind(this),
-            );
 
         if (this.state.showBundleOperationButtons) {
             // Below are allowed shortcut even when a dialog is opened===================
             // The following three are bulk bundle operation shortcuts
             Mousetrap.bind(['backspace', 'del'], () => {
-                if (this.state.openDetach || this.state.openKill) {
+                if (this.state.openDetach || this.state.openKill || this.state.openCopy) {
                     return;
                 }
                 this.togglePopupNoEvent('rm');
             });
             Mousetrap.bind(['a d'], () => {
-                if (this.state.openDelete || this.state.openKill) {
+                if (this.state.openDelete || this.state.openKill || this.state.openCopy) {
                     return;
                 }
                 this.togglePopupNoEvent('detach');
             });
             Mousetrap.bind(['a k'], () => {
-                if (this.state.openDetach || this.state.openDelete) {
+                if (this.state.openDetach || this.state.openDelete || this.state.openCopy) {
                     return;
                 }
                 this.togglePopupNoEvent('kill');
+            });
+            Mousetrap.bind(['a c'], () => {
+                if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
+                    return;
+                }
+                this.togglePopupNoEvent('copy');
             });
 
             // Confirm bulk bundle operation
