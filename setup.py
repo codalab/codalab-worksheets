@@ -3,6 +3,7 @@ from setuptools.command.install import install
 
 import os
 import setuptools
+import sys
 
 
 # Should match codalab/common.py#CODALAB_VERSION
@@ -12,20 +13,50 @@ CODALAB_VERSION = "0.5.7"
 class Install(install):
     _WARNING_TEMPLATE = (
         '\n\n\033[1m\033[93mWarning! CodaLab was installed at {}, which is not\n'
-        'one of the following paths in PATH:\n\n{}\n\nConsider adding {} to be in the path in order\n'
-        'to be able to run commands using the command-line interface.\033[0m\n\n'
+        'one of the following paths in $PATH:\n\n{}\n\nConsider adding {} to $PATH\n'
+        'to use the CodaLab CLI. You can do this by {}\033[0m\n\n'
     )
+    _UNIX_FIX = 'appending the following line to your .bashrc:\nexport PATH="$PATH:{}"'
+    _WINDOWS_FIX = (
+        'by selecting System from the Control Panel, selecting Advanced system\n'
+        'settings, clicking Environment Variables and adding {} to the list.'
+    )
+    _WINDOWS_PLATFORM_VALUES = {'win32', 'cygwin'}
+
+    @staticmethod
+    def _build_fix_message(installed_path):
+        return (
+            Install._WINDOWS_FIX.format(installed_path)
+            if sys.platform in Install._WINDOWS_PLATFORM_VALUES
+            else Install._UNIX_FIX.format(installed_path)
+        )
 
     def run(self):
         install.run(self)
         self._check_path()
 
     def _check_path(self):
-        cl_path = self.install_scripts
+        base_path = self.install_userbase if '--user' in install.user_options else self.install_base
+        cl_path = '{}/bin'.format(base_path)
         executable_paths = os.environ['PATH'].split(os.pathsep)
+        # TODO: debug statement
+        attrs = vars(self)
+        print('\n\n\033[1m\033[93m')
+        print(',\n'.join("%s: %s" % item for item in attrs.items()))
+        print('\n\nArgs passed in:')
+        print(install.user_options)
+        print('--user' in install.user_options)
+        print('\033[0m')
         if cl_path not in executable_paths:
             # Prints a yellow, bold warning message in regards to the installation path not in $PATH
-            print(Install._WARNING_TEMPLATE.format(cl_path, '\n'.join(executable_paths), cl_path))
+            print(
+                Install._WARNING_TEMPLATE.format(
+                    cl_path,
+                    '\n'.join(executable_paths),
+                    cl_path,
+                    Install._build_fix_message(cl_path),
+                )
+            )
 
 
 def get_requirements(*requirements_file_paths):
@@ -79,4 +110,4 @@ setup(
         ]
     },
     zip_safe=False,
-),
+)
