@@ -7,7 +7,7 @@ services:
     volumes:
       - ./../../frontend/src:/opt/frontend/src
   # 2) Hot load the alembic version files so that we can create new database migrations (which need to written out
-  # of Docker into the `alembic` source directory)
+  # of Docker into the `alembic` source directory), as well as the backend files in codalab/
   rest-server:
     volumes:
       - ./../../alembic/:/opt/codalab-worksheets/alembic/
