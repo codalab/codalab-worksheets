@@ -44,6 +44,8 @@ x-codalab-env: &codalab-env
   - CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
   - CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS=${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
   - CODALAB_PUBLIC_WORKERS=${CODALAB_PUBLIC_WORKERS}
+  - CODALAB_SSL_KEY_FILE=${CODALAB_SSL_KEY_FILE}
+  - CODALAB_SSL_CERT_FILE=${CODALAB_SSL_CERT_FILE}
 
 # Properties that every service inherits.
 x-codalab-base: &codalab-base
@@ -144,8 +146,11 @@ services:
       - rest-server
     ports:
       - ${CODALAB_HTTP_PORT}:80
+      - ${CODALAB_HTTPS_PORT}:443
     volumes:
       - ./files/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${CODALAB_SSL_KEY_FILE}:/opt/ssl/codalab.key
+      - ${CODALAB_SSL_CERT_FILE}:/opt/ssl/codalab.crt
 
   mysql:
     # https://hub.docker.com/_/mysql
