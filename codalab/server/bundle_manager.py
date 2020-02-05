@@ -383,12 +383,6 @@ class BundleManager(object):
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
         """
-        # keep track of which workers have GPUs
-        has_gpu = {}
-        for worker in workers_list:
-            worker_id = worker['worker_id']
-            has_gpu[worker_id] = worker['gpus'] > 0
-
         # Filter by tag.
         request_queue = bundle.metadata.request_queue
         if request_queue:
@@ -436,11 +430,21 @@ class BundleManager(object):
             else:
                 deps = set(worker['dependencies'])
                 num_available_deps = len(needed_deps & deps)
-            worker_id = worker['worker_id']
 
-            # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
-            gpu_priority = bundle_resources.gpus or not has_gpu[worker_id]
-            return (gpu_priority, num_available_deps, worker['cpus'], random.random())
+            # If the bundle requested for GPUs, prioritize only those workers that have GPUs.
+            # If the bundle didn't request for GPUs (a CPU only job), prioritize all workers based criteria as follows:
+            # 1. number of running jobs.
+            # 2. number of available dependencies.
+            # 3. number of CPUs.
+            # 4. random seeds.
+            gpu_priority = bundle_resources.gpus and worker['gpus']
+            return (
+                gpu_priority,
+                -len(worker['run_uuids']),
+                num_available_deps,
+                worker['cpus'],
+                random.random(),
+            )
 
         workers_list.sort(key=get_sort_key, reverse=True)
 
