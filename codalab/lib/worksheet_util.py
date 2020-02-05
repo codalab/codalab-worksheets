@@ -604,12 +604,13 @@ def get_command(value_obj):  # For directives only
     return value_obj[0] if len(value_obj) > 0 else None
 
 
-def interpret_items(schemas, raw_items, db_model=None):
+def interpret_items(schemas, raw_items, db_model=None, brief=False):
     """
     Interpret different items based on their types.
     :param schemas: initial mapping from name to list of schema items (columns of a table)
     :param raw_items: list of (raw) worksheet items (triples) to interpret
     :param db_model: database model which is used to query database
+    :param brief: whether to return a brief version, in which case bundles are not fetched/resolved
     :return: {'items': interpreted_items, ...}, where interpreted_items is a list of:
     {
         'mode': display mode ('markup' | 'contents' | 'image' | 'html', etc.)
@@ -682,6 +683,14 @@ def interpret_items(schemas, raw_items, db_model=None):
         Having collected bundles in |bundle_infos|, flush them into |blocks|,
         potentially as a single table depending on the mode.
         """
+        if brief:
+            # Return a placeholder instead of actually loading bundle info.
+            # for item_index, bundle_info in bundle_infos:
+            if len(bundle_infos):
+                blocks.append(
+                    MarkupBlockSchema().load({'text': '<codalab_bundle_info_loading>'}).data
+                )
+            return
         if len(bundle_infos) == 0:
             return
 

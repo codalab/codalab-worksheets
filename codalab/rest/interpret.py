@@ -155,10 +155,13 @@ def fetch_interpreted_worksheet(uuid):
     Return information about a worksheet. Calls
     - get_worksheet_info: get basic info
     - resolve_interpreted_items: get more information about a worksheet.
-    In the future, for large worksheets, might want to break this up so
-    that we can render something basic.
+    
+    This endpoint can be called with &brief=1 in order to give an abbreviated version,
+    which does not resolve any bundle infos. Omitting the brief parameter resolves
+    all bundles.
     """
     bundle_uuids = request.query.getall('bundle_uuid')
+    brief = request.query.get("brief", "0") == "1"
     worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
 
     # Shim in additional data for the frontend
@@ -190,7 +193,7 @@ def fetch_interpreted_worksheet(uuid):
     # resolving the interpreted items.
     try:
         interpreted_blocks = interpret_items(
-            get_default_schemas(), worksheet_info['items'], db_model=local.model
+            get_default_schemas(), worksheet_info['items'], db_model=local.model, brief=brief
         )
     except UsageError as e:
         interpreted_blocks = {'blocks': []}

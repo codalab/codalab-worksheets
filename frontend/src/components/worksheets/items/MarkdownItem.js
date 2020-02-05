@@ -120,6 +120,7 @@ class MarkdownItem extends React.Component {
     render() {
         const { classes, item, editPermission } = this.props;
         var { showEdit } = this.state;
+
         var contents = item.text;
         // Order is important!
         contents = this.processMarkdown(contents);

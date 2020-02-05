@@ -35,6 +35,7 @@ import Grid from '@material-ui/core/Grid';
 import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import queryString from 'query-string';
 
 /*
 Information about the current worksheet and its items.
@@ -50,31 +51,25 @@ var WorksheetContent = (function() {
         this.info = null; // Worksheet info
     }
 
-    WorksheetContent.prototype.fetch = function(props) {
+    WorksheetContent.prototype.fetch = async function(props) {
         // Set defaults
         props = props || {};
-        props.success = props.success || function(data) {};
-        props.error = props.error || function(xhr, status, err) {};
         if (props.async === undefined) {
             props.async = true;
         }
-
-        $.ajax({
+        const queryParams = { brief: props.brief ? 1 : 0 };
+        const info = await $.ajax({
             type: 'GET',
-            url: '/rest/interpret/worksheet/' + this.uuid,
+            url:
+                '/rest/interpret/worksheet/' + this.uuid + '?' + queryString.stringify(queryParams),
             // TODO: migrate to using main API
             // url: '/rest/worksheets/' + ws.uuid,
             async: props.async,
             dataType: 'json',
             cache: false,
-            success: function(info) {
-                this.info = info;
-                props.success(this.info);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error(xhr, status, err);
-            },
         });
+        this.info = info;
+        return info;
     };
 
     WorksheetContent.prototype.saveWorksheet = function(props) {
@@ -506,47 +501,45 @@ class Worksheet extends React.Component {
         this.throttledScrollToItem(index, subIndex);
     };
 
-    componentWillMount() {
-        this.state.ws.fetch({
-            success: function(data) {
-                $('#worksheet_content').show();
-                this.setState({
-                    updating: false,
-                    version: this.state.version + 1,
-                    numOfBundles: this.getNumOfBundles(),
-                    errorMessage: '',
-                });
-                // Fix out of bounds.
-            }.bind(this),
-            error: function(xhr, status, err) {
-                this.setState({
-                    errorMessage: xhr.responseText,
-                    isValid: false,
-                });
-            }.bind(this),
-        });
-    }
-
-    componentDidMount() {
+    async componentDidMount() {
         // Initialize history stack
         window.history.replaceState({ uuid: this.state.ws.uuid }, '', window.location.pathname);
         $('body').addClass('ws-interface');
-        $.ajax({
-            url: '/rest/user',
-            dataType: 'json',
-            cache: false,
-            type: 'GET',
-            success: function(data) {
-                var userInfo = data.data.attributes;
-                userInfo.user_id = data.data.id;
-                this.setState({
-                    userInfo: userInfo,
-                });
-            }.bind(this),
-            error: function(xhr, status, err) {
-                console.error(xhr.responseText);
-            },
-        });
+        try {
+            await this.state.ws.fetch({ brief: true });
+            $('#worksheet_content').show();
+            this.setState({
+                updating: false,
+                version: this.state.version + 1,
+                numOfBundles: this.getNumOfBundles(),
+                errorMessage: '',
+            });
+
+            const data = await $.ajax({
+                url: '/rest/user',
+                dataType: 'json',
+                cache: false,
+                type: 'GET',
+            });
+            var userInfo = data.data.attributes;
+            userInfo.user_id = data.data.id;
+            this.setState({
+                userInfo: userInfo,
+            });
+
+            await this.state.ws.fetch({ brief: false });
+            this.setState({
+                updating: false,
+                version: this.state.version + 1,
+                numOfBundles: this.getNumOfBundles(),
+                errorMessage: '',
+            });
+        } catch (e) {
+            this.setState({
+                errorMessage: e,
+                isValid: false,
+            });
+        }
     }
 
     canEdit() {
@@ -1056,7 +1049,7 @@ class Worksheet extends React.Component {
     // Also, a non-null item could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
     // The bundle_infos for bundles that don't need updating are also null.
     // If rawIndexAfterEditMode is defined, this reloadWorksheet is called right after toggling editMode. It should resolve rawIndex to (focusIndex, subFocusIndex) pair.
-    reloadWorksheet = (
+    reloadWorksheet = async (
         partialUpdateItems,
         rawIndexAfterEditMode,
         { moveIndex = false, textDeleted = false } = {},
@@ -1064,99 +1057,91 @@ class Worksheet extends React.Component {
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
             this.setState({ updating: true });
-            this.state.ws.fetch({
-                success: function(data) {
-                    if (this.state.ws.uuid !== data.uuid) {
-                        this.setState({
-                            updating: false,
-                            version: this.state.version + 1,
-                        });
-                        return false;
-                    }
-                    this.setState({ errorMessage: '' });
-                    $('#update_progress').hide();
-                    $('#worksheet_content').show();
-                    var items = this.state.ws.info.items;
-                    var numOfBundles = this.getNumOfBundles();
-                    var focus = this.state.focusIndex;
-                    if (rawIndexAfterEditMode !== undefined) {
-                        var focusIndexPair = this.state.ws.info.raw_to_block[rawIndexAfterEditMode];
-                        if (focusIndexPair === undefined) {
-                            console.error(
-                                "Can't map raw index " +
-                                    rawIndexAfterEditMode +
-                                    ' to item index pair',
-                            );
-                            focusIndexPair = [0, 0]; // Fall back to default
-                        }
-
-                        if (focusIndexPair === null) {
-                            // happens in the case of an empty worksheet
-                            this.setFocus(-1, 0);
-                        } else {
-                            this.setFocus(focusIndexPair[0], focusIndexPair[1]);
-                        }
-                    } else if (
-                        this.state.numOfBundles !== -1 &&
-                        numOfBundles > this.state.numOfBundles
-                    ) {
-                        // If the number of bundles increases then the focus should be on the new bundle.
-                        // if the current focus is not on a table
-                        if (
-                            items[focus] &&
-                            items[focus].mode &&
-                            items[focus].mode !== 'table_block'
-                        ) {
-                            this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
-                        } else {
-                            this.setFocus(focus >= 0 ? focus : 'end', 'end');
-                        }
-                    } else if (numOfBundles < this.state.numOfBundles) {
-                        // If the number of bundles decreases, then focus should be on the same bundle as before
-                        // unless that bundle doesn't exist anymore, in which case we select the one above it.
-                        // the deleted bundle is the only item of the table
-                        if (this.state.subFocusIndex === 0) {
-                            // the deleted item is the last item of the worksheet
-                            if (items.length === focus + 1) {
-                                this.setFocus(focus - 1, 0);
-                            } else {
-                                this.setFocus(focus, 0);
-                            }
-                            // the deleted bundle is the last item of the table
-                            // note that for some reason subFocusIndex begins with 1, not 0
-                        } else if (this._numTableRows(items[focus]) === this.state.subFocusIndex) {
-                            this.setFocus(focus, this.state.subFocusIndex - 1);
-                        } else {
-                            this.setFocus(focus, this.state.subFocusIndex);
-                        }
-                    } else {
-                        if (moveIndex) {
-                            // for adding a new cell, we want the focus to be the one below the current focus
-                            this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
-                        }
-                        if (textDeleted) {
-                            // When deleting text, we want the focus to stay at the same index,
-                            // unless it is the last item in the worksheet, at which point the
-                            // focus goes to the last item in the worksheet.
-                            this.setFocus(items.length === focus ? items.length - 1 : focus, 'end');
-                        }
-                    }
+            try {
+                const data = await this.state.ws.fetch();
+                if (this.state.ws.uuid !== data.uuid) {
                     this.setState({
                         updating: false,
                         version: this.state.version + 1,
-                        numOfBundles: numOfBundles,
                     });
-                    this.checkRunBundle(this.state.ws.info);
-                }.bind(this),
-                error: function(xhr, status, err) {
-                    this.setState({
-                        updating: false,
-                        errorMessage: xhr.responseText,
-                    });
-                    $('#update_progress').hide();
-                    $('#worksheet_container').hide();
-                }.bind(this),
-            });
+                    return false;
+                }
+                this.setState({ errorMessage: '' });
+                $('#update_progress').hide();
+                $('#worksheet_content').show();
+                var items = this.state.ws.info.items;
+                var numOfBundles = this.getNumOfBundles();
+                var focus = this.state.focusIndex;
+                if (rawIndexAfterEditMode !== undefined) {
+                    var focusIndexPair = this.state.ws.info.raw_to_block[rawIndexAfterEditMode];
+                    if (focusIndexPair === undefined) {
+                        console.error(
+                            "Can't map raw index " + rawIndexAfterEditMode + ' to item index pair',
+                        );
+                        focusIndexPair = [0, 0]; // Fall back to default
+                    }
+
+                    if (focusIndexPair === null) {
+                        // happens in the case of an empty worksheet
+                        this.setFocus(-1, 0);
+                    } else {
+                        this.setFocus(focusIndexPair[0], focusIndexPair[1]);
+                    }
+                } else if (
+                    this.state.numOfBundles !== -1 &&
+                    numOfBundles > this.state.numOfBundles
+                ) {
+                    // If the number of bundles increases then the focus should be on the new bundle.
+                    // if the current focus is not on a table
+                    if (items[focus] && items[focus].mode && items[focus].mode !== 'table_block') {
+                        this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
+                    } else {
+                        this.setFocus(focus >= 0 ? focus : 'end', 'end');
+                    }
+                } else if (numOfBundles < this.state.numOfBundles) {
+                    // If the number of bundles decreases, then focus should be on the same bundle as before
+                    // unless that bundle doesn't exist anymore, in which case we select the one above it.
+                    // the deleted bundle is the only item of the table
+                    if (this.state.subFocusIndex === 0) {
+                        // the deleted item is the last item of the worksheet
+                        if (items.length === focus + 1) {
+                            this.setFocus(focus - 1, 0);
+                        } else {
+                            this.setFocus(focus, 0);
+                        }
+                        // the deleted bundle is the last item of the table
+                        // note that for some reason subFocusIndex begins with 1, not 0
+                    } else if (this._numTableRows(items[focus]) === this.state.subFocusIndex) {
+                        this.setFocus(focus, this.state.subFocusIndex - 1);
+                    } else {
+                        this.setFocus(focus, this.state.subFocusIndex);
+                    }
+                } else {
+                    if (moveIndex) {
+                        // for adding a new cell, we want the focus to be the one below the current focus
+                        this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
+                    }
+                    if (textDeleted) {
+                        // When deleting text, we want the focus to stay at the same index,
+                        // unless it is the last item in the worksheet, at which point the
+                        // focus goes to the last item in the worksheet.
+                        this.setFocus(items.length === focus ? items.length - 1 : focus, 'end');
+                    }
+                }
+                this.setState({
+                    updating: false,
+                    version: this.state.version + 1,
+                    numOfBundles: numOfBundles,
+                });
+                this.checkRunBundle(this.state.ws.info);
+            } catch (e) {
+                this.setState({
+                    errorMessage: e,
+                    updating: false,
+                });
+                $('#update_progress').hide();
+                $('#worksheet_container').hide();
+            }
         } else {
             var ws = _.clone(this.state.ws);
             for (var i = 0; i < partialUpdateItems.length; i++) {
