@@ -148,10 +148,12 @@ class WorksheetDialogs extends React.Component {
                     aria-labelledby='copy-title'
                     aria-describedby='deletion-description'
                 >
-                    <DialogContent className={classes.dialog}>
+                    <DialogContent className={classes.copyDialog}>
                         <DialogContentText id='alert-dialog-description'>
                             The following bundle ids will be copied to clipboard:
-                            {this.props.copiedBundleIds}
+                            <div  style={ { whiteSpace:'pre-wrap' } }>
+                                {this.props.copiedBundleIds}
+                            </div>
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
@@ -162,11 +164,10 @@ class WorksheetDialogs extends React.Component {
                             color='primary'
                             text={this.props.copiedBundleIds}
                              id="copyBundleIdToClipBoard"
-                            onCopy={()=>{console.log("Clicked")}}
                         >
                             <Button color='primary' onClick={this.props.togglePopup('copy')}>
-                            Copy
-                        </Button>
+                                Copy
+                            </Button>
                         </CopyToClipboard>
                     </DialogActions>
                 </Dialog>
@@ -186,6 +187,10 @@ const styles = () => ({
         width: 400,
         height: 120,
     },
+    copyDialog: {
+        width:400,
+        height: 200,
+    }
 });
 
 export default withStyles(styles)(WorksheetDialogs);

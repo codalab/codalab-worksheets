@@ -407,8 +407,6 @@ class Worksheet extends React.Component {
             return;
         }
         const { openKill, openDelete, openDetach, openCopy } = this.state;
-        console.log("THHHHHHHHHHHHL", cmd_type, openCopy);
-
         if (cmd_type === 'rm') {
             this.setState({ openDelete: !openDelete });
         } else if (cmd_type === 'detach') {
@@ -417,7 +415,6 @@ class Worksheet extends React.Component {
             this.setState({ openKill: !openKill });
         } else if (cmd_type === 'copy') {
             if (openCopy){
-                console.log("JHHHHHHHKJHKHK", openCopy);
                 this.setState({openCopy:false});
                 return;
             }
