@@ -253,7 +253,7 @@ class DockerImageManager:
                         return ImageAvailabilityState(
                             digest=None, stage=DependencyStage.FAILED, message=failure_msg
                         )
-                except docker_utils.DockerException as ex:
+                except Exception as ex:
                     logger.warn("Cannot fetch image size beforehands: %s", ex)
 
                 self._downloading.add_if_new(image_spec, threading.Thread(target=download, args=[]))
