@@ -15,6 +15,7 @@ class ImageItem extends React.Component {
 
     handleClick = () => {
         this.props.setFocus(this.props.focusIndex, 0);
+        this.setState({showDetail: !this.state.showDetail});
     };
 
     render() {
