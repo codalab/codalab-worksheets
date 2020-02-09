@@ -334,6 +334,7 @@ class BundleManager(object):
                     workers_list, bundle, bundles_resources[bundle.uuid]
                 )
                 return workers_list
+
             workers_list = None
             if bundle.owner_id != self._model.root_user_id:
                 workers_list = get_available_workers(bundle.owner_id)
@@ -584,7 +585,7 @@ class BundleManager(object):
         staged_bundles_to_run = []
 
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
-            bundle_resources = bundle_resources.get(bundle)
+            bundle_resources = bundle_resources[bundle.uuid]
 
             failures = []
             failures.append(
