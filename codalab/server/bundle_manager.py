@@ -1,3 +1,4 @@
+import copy
 import datetime
 import logging
 import os
@@ -251,7 +252,7 @@ class BundleManager(object):
                     'Cleaning up dead worker (%s, %s)', worker['user_id'], worker['worker_id']
                 )
                 self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
-                workers.remove(worker)
+                workers.remove(worker['worker_id'])
                 if callback is not None:
                     callback(worker)
 
@@ -327,24 +328,26 @@ class BundleManager(object):
         for bundle in staged_bundles_to_run:
 
             def get_available_workers(worker_owner_id):
-                workers_list = workers.user_owned_workers(worker_owner_id)
+                workers_list = copy.deepcopy(workers.user_owned_workers(worker_owner_id))
                 workers_list = self._deduct_worker_resources(workers_list, bundles_resources)
                 workers_list = self._filter_and_sort_workers(
                     workers_list, bundle, bundles_resources[bundle.uuid]
                 )
                 return workers_list
-
-            workers_list = get_available_workers(bundle.owner_id)
-            if len(workers_list) == 0:
-                # Check if there is enough parallel run quota left for this user
-                if users.get_parallel_run_quota_left(bundle.owner_id) <= 0:
-                    logger.info(
-                        "User %s has no parallel run quota left, skipping job for now",
-                        bundle.owner_id,
-                    )
-                    # Don't start this bundle yet, as there is no parallel_run_quota left for this user.
-                    continue
-            workers_list = get_available_workers(self._model.root_user_id)
+            workers_list = None
+            if bundle.owner_id != self._model.root_user_id:
+                workers_list = get_available_workers(bundle.owner_id)
+                if len(workers_list) == 0:
+                    # Check if there is enough parallel run quota left for this user
+                    if users.get_parallel_run_quota_left(bundle.owner_id) <= 0:
+                        logger.info(
+                            "User %s has no parallel run quota left, skipping job for now",
+                            bundle.owner_id,
+                        )
+                        # Don't start this bundle yet, as there is no parallel_run_quota left for this user.
+                        continue
+            if workers_list is None:
+                workers_list = get_available_workers(self._model.root_user_id)
 
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
@@ -440,7 +443,7 @@ class BundleManager(object):
         if that failed.
         """
         if self._model.transition_bundle_starting(bundle, worker['user_id'], worker['worker_id']):
-            workers.set_starting(bundle.uuid, worker)
+            workers.set_starting(bundle.uuid, worker['worker_id'])
             if worker['shared_file_system']:
                 # On a shared file system we create the path here to avoid NFS
                 # directory cache issues.
@@ -536,7 +539,7 @@ class BundleManager(object):
         self._bring_offline_stuck_running_bundles(workers)
         self._acknowledge_recently_finished_bundles(workers)
         # A dictionary structured as {user id : user information} to track those visited user information
-        staged_bundles_to_run = self._get_staged_bundles_to_run(bundles_resources)
+        staged_bundles_to_run = self._get_staged_bundles_to_run(users, bundles_resources)
         # Schedule, preferring user-owned workers.
         self._schedule_run_bundles_on_workers(
             workers, users, bundles_resources, staged_bundles_to_run
@@ -569,7 +572,7 @@ class BundleManager(object):
                 return global_fail_string % (pretty_print(value), pretty_print(global_min))
         return None
 
-    def _get_staged_bundles_to_run(self, bundle_resources):
+    def _get_staged_bundles_to_run(self, users, bundle_resources):
         """
         Fails bundles that request more resources than available for the given user.
         Note: allow more resources than available on any worker because new
@@ -581,7 +584,7 @@ class BundleManager(object):
         staged_bundles_to_run = []
 
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
-            bundle_resources = self.bundle_resources.get(bundle)
+            bundle_resources = bundle_resources.get(bundle)
 
             failures = []
             failures.append(
