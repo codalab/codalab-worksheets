@@ -1,3 +1,4 @@
+import copy
 import datetime
 import logging
 import os
@@ -247,7 +248,7 @@ class BundleManager(object):
                     'Cleaning up dead worker (%s, %s)', worker['user_id'], worker['worker_id']
                 )
                 self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
-                workers.remove(worker)
+                workers.remove(worker['worker_id'])
                 if callback is not None:
                     callback(worker)
 
@@ -328,29 +329,35 @@ class BundleManager(object):
 
         # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
-            # Get user_owned workers.
-            workers_list = workers.user_owned_workers(bundle.owner_id)
 
-            # If there is no user_owned worker, try to schedule the current bundle to run on a CodaLab's public worker.
-            if len(workers_list) == 0:
-                # Check if there is enough parallel run quota left for this user
-                if (
-                    self._model.get_user_parallel_run_quota_left(
-                        bundle.owner_id, user_info_cache[bundle.owner_id]
-                    )
-                    <= 0
-                ):
-                    logger.info(
-                        "User %s has no parallel run quota left, skipping job for now",
-                        bundle.owner_id,
-                    )
-                    # Don't start this bundle yet, as there is no parallel_run_quota left for this user.
-                    continue
-                # Get all the CodaLab's public workers
-                workers_list = workers.user_owned_workers(self._model.root_user_id)
+            def get_available_workers(user_id):
+                # Make a deepcopy of the workers list so the filtering and deducting don't modify the list
+                workers_list = copy.deepcopy(workers.user_owned_workers(user_id))
+                workers_list = self._deduct_worker_resources(workers_list, running_bundles_info)
+                workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
+                return workers_list
 
-            workers_list = self._deduct_worker_resources(workers_list, running_bundles_info)
-            workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
+            workers_list = None
+            if bundle.owner_id != self._model.root_user_id:
+                # First try private workers
+                workers_list = get_available_workers(bundle.owner_id)
+                # If there is no user_owned worker, try to schedule the current bundle to run on a CodaLab's public worker.
+                if len(workers_list) == 0:
+                    # Check if there is enough parallel run quota left for this user
+                    if (
+                        self._model.get_user_parallel_run_quota_left(
+                            bundle.owner_id, user_info_cache[bundle.owner_id]
+                        )
+                        <= 0
+                    ):
+                        logger.info(
+                            "User %s has no parallel run quota left, skipping job for now",
+                            bundle.owner_id,
+                        )
+                        # Don't start this bundle yet, as there is no parallel_run_quota left for this user.
+                        continue
+            if workers_list is None:
+                workers_list = get_available_workers(self._model.root_user_id)
 
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
@@ -457,7 +464,7 @@ class BundleManager(object):
         if that failed.
         """
         if self._model.transition_bundle_starting(bundle, worker['user_id'], worker['worker_id']):
-            workers.set_starting(bundle.uuid, worker)
+            workers.set_starting(bundle.uuid, worker['worker_id'])
             if worker['shared_file_system']:
                 # On a shared file system we create the path here to avoid NFS
                 # directory cache issues.
