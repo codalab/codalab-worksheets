@@ -931,7 +931,8 @@ class BundleModel(object):
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
         data_size = path_util.get_size(bundle_location, dirs_and_files)
         if enforce_disk_quota:
-            disk_left = self.get_user_disk_quota_left(bundle.owner_id)
+            user_info = self.get_user_info(bundle.owner_id)
+            disk_left = user_info['disk_quota'] - user_info['disk_used']
             if data_size > disk_left:
                 raise UsageError(
                     "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
@@ -2325,17 +2326,7 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
-    def get_user_time_quota_left(self, user_id, user_info=None):
-        if not user_info:
-            user_info = self.get_user_info(user_id)
-        time_quota = user_info['time_quota']
-        time_used = user_info['time_used']
-        return time_quota - time_used
-
-    def get_user_parallel_run_quota_left(self, user_id, user_info=None):
-        if not user_info:
-            user_info = self.get_user_info(user_id)
-        parallel_run_quota = user_info['parallel_run_quota']
+    def get_user_active_runs(self, user_id):
         with self.engine.begin() as connection:
             # Get all the runs belonging to this user whose workers are not personal workers
             # of the user themselves
@@ -2349,7 +2340,7 @@ class BundleModel(object):
                     )
                 )
             ).fetchall()
-        return parallel_run_quota - len(active_runs)
+        return active_runs
 
     def update_user_last_login(self, user_id):
         """
@@ -2364,11 +2355,6 @@ class BundleModel(object):
             ]
             or 0
         )
-
-    def get_user_disk_quota_left(self, user_id, user_info=None):
-        if not user_info:
-            user_info = self.get_user_info(user_id)
-        return user_info['disk_quota'] - user_info['disk_used']
 
     def update_user_disk_used(self, user_id):
         user_info = self.get_user_info(user_id)

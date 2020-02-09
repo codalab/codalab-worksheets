@@ -2,6 +2,36 @@ from collections import defaultdict
 import copy
 
 
+class UserInfoAccessor(object):
+    """
+    Intermediate object to cache user info from the model and compute derived values.
+    """
+
+    def __init__(self, bundle_model):
+        self.bundle_model = bundle_model
+        self.user_infos = {}
+        self.active_run_counts = {}
+
+    def get_user_info(self, user_id):
+        if user_id not in self.user_infos:
+            self.user_infos[user_id] = self.bundle_model.get_user_info(user_id)
+        return self.user_infos[user_id]
+
+    def get_parallel_run_quota_left(self, user_id):
+        user_info = self.get_user_info(user_id)
+        if user_id not in self.active_run_counts:
+            self.active_run_counts[user_id] = len(self.bundle_model.get_user_active_runs(user_id))
+        return user_info['parallel_run_quota'] - self.active_run_counts[user_id]
+
+    def get_disk_quota_left(self, user_id):
+        user_info = self.get_user_info(user_id)
+        return user_info['disk_quota'] - user_info['disk_used']
+
+    def get_time_quota_left(self, user_id):
+        user_info = self.get_user_info(user_id)
+        return user_info['time_quota'] - user_info['time_used']
+
+
 class WorkerInfoAccessor(object):
     """
     Helps with accessing the list of workers returned by the worker model.
