@@ -353,8 +353,6 @@ class BundleManager(object):
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
                 if self._try_start_bundle(workers, worker, bundle, bundles_resources[bundle.uuid]):
-                    # If we started a new worker, reset workers state to deduct its resources
-                    workers = WorkerInfoAccessor(self._worker_model.get_workers())
                     break
 
     def _deduct_worker_resources(self, workers_list, bundles_resources):
@@ -573,19 +571,19 @@ class BundleManager(object):
                 return global_fail_string % (pretty_print(value), pretty_print(global_min))
         return None
 
-    def _get_staged_bundles_to_run(self, users, bundle_resources):
+    def _get_staged_bundles_to_run(self, users, bundles_resources):
         """
         Fails bundles that request more resources than available for the given user.
         Note: allow more resources than available on any worker because new
         workers might get spun up in response to the presence of this run.
-        :param bundle_resources: A BundleResourceInfoAccessor for caching bundle resource information
+        :param bundles_resources: A BundleResourceInfoAccessor for caching bundle resource information
         :return: a list of bundles that should be run.
         """
         # Keep track of staged bundles that have valid resources requested
         staged_bundles_to_run = []
 
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
-            bundle_resources = bundle_resources[bundle.uuid]
+            bundle_resources = bundles_resources[bundle.uuid]
 
             failures = []
             failures.append(
