@@ -239,28 +239,29 @@ class DockerImageManager:
 
                 # Check docker image size before pulling from Docker Hub.
                 # Do not download images larger than self._max_image_size
-                image_size_bytes = docker_utils.get_image_size_without_pulling(image_spec)
-                if image_size_bytes is None:
-                    failure_msg = (
-                        "Unable to find image: " + image_spec + " from Docker HTTP API V2."
-                    )
-                elif image_size_bytes < self._max_image_size:
-                    self._downloading.add_if_new(
-                        image_spec, threading.Thread(target=download, args=[])
-                    )
-                    return ImageAvailabilityState(
-                        digest=None,
-                        stage=DependencyStage.DOWNLOADING,
-                        message=self._downloading[image_spec]['status'],
-                    )
-                else:
-                    failure_msg = (
-                        "The size of "
-                        + image_spec
-                        + ": {} exceeds the maximum image size allowed {}.".format(
-                            size_str(image_size_bytes), size_str(self._max_image_size)
+                try:
+                    image_size_bytes = docker_utils.get_image_size_without_pulling(image_spec)
+                except docker_utils.DockerException as ex:
+                    logger.warn("Cannot fetch image size beforehands: %s", ex)
+                    image_size_bytes = None
+                if image_size_bytes:
+                    if image_size_bytes < self._max_image_size:
+                        self._downloading.add_if_new(
+                            image_spec, threading.Thread(target=download, args=[])
                         )
-                    )
+                        return ImageAvailabilityState(
+                            digest=None,
+                            stage=DependencyStage.DOWNLOADING,
+                            message=self._downloading[image_spec]['status'],
+                        )
+                    else:
+                        failure_msg = (
+                            "The size of "
+                            + image_spec
+                            + ": {} exceeds the maximum image size allowed {}.".format(
+                                size_str(image_size_bytes), size_str(self._max_image_size)
+                            )
+                        )
                 return ImageAvailabilityState(
                     digest=None, stage=DependencyStage.FAILED, message=failure_msg
                 )
