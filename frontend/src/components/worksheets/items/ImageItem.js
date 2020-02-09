@@ -3,7 +3,6 @@ import { withStyles } from '@material-ui/core/styles';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import BundleDetail from '../BundleDetail';
 
-
 class ImageItem extends React.Component {
     /** Constructor. */
     constructor(props) {
@@ -23,7 +22,7 @@ class ImageItem extends React.Component {
 
     handleClick = () => {
         this.props.setFocus(this.props.focusIndex, 0);
-        this.setState({showDetail: !this.state.showDetail});
+        this.setState({ showDetail: !this.state.showDetail });
     };
 
     render() {
@@ -34,7 +33,7 @@ class ImageItem extends React.Component {
                 (e) => {
                     e.preventDefault();
                     if (!this.props.confirmBundleRowAction(e.code)) {
-                        this.setState({showDetail: !this.state.showDetail });
+                        this.setState({ showDetail: !this.state.showDetail });
                     }
                 },
                 'keydown',
@@ -42,7 +41,7 @@ class ImageItem extends React.Component {
             // unbind shortcuts that are active for markdown_block and worksheet_block
             Mousetrap.unbind('i');
         }
-        const {classes} = this.props;
+        const { classes } = this.props;
         var item = this.props.item;
         var bundleInfo = item.bundles_spec.bundle_infos[0];
         var className = 'type-image' + (this.props.focused ? ' focused' : '');
@@ -59,7 +58,7 @@ class ImageItem extends React.Component {
                 <div className={className} ref={this.props.item.ref} onClick={this.handleClick}>
                     <img style={styles} src={src} />
                 </div>
-                {this.state.showDetail &&
+                {this.state.showDetail && (
                     <BundleDetail
                         uuid={bundleInfo.uuid}
                         ref='bundleDetail'
@@ -75,7 +74,7 @@ class ImageItem extends React.Component {
                         showDetail={this.state.showDetail}
                         editPermission={this.props.editPermission}
                     />
-                }
+                )}
             </div>
         );
     }

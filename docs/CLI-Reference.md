@@ -253,9 +253,7 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           -v, --verbose                Display verbose output.
 
       kill:
-        Terminate the bundle(s) execution if it's being executed or remove it from the execution queue. 
-        Valid bundle states include:
-         created, uploading, staged, making, starting, running, preparing, or finalizing.
+        Instruct the appropriate worker to terminate the running bundle(s).
         Arguments:
           bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
           -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
