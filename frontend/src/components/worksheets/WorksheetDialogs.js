@@ -154,6 +154,7 @@ class WorksheetDialogs extends React.Component {
                             <div  style={ { whiteSpace:'pre-wrap' } }>
                                 {this.props.copiedBundleIds}
                             </div>
+                            You can click 'edit source' on your worksheets and paste the bundles.
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
