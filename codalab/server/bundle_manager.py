@@ -365,13 +365,18 @@ class BundleManager(object):
         for worker in workers_list:
             for uuid in worker['run_uuids']:
                 # Verify if the current bundle exists in both the worker table and the bundle table
-                if uuid not in running_bundles_info:
-                    logger.info(
-                        'Bundle {} exists on worker {} but no longer found in the bundle table. '
-                        'Skipping for resource deduction.'.format(uuid, worker['worker_id'])
-                    )
-                    continue
-                bundle_resources = running_bundles_info[uuid]["bundle_resources"]
+                if uuid in running_bundles_info:
+                    bundle_resources = running_bundles_info[uuid]["bundle_resources"]
+                else:
+                    try:
+                        bundle = self._model.get_bundle(uuid)
+                        bundle_resources = self._compute_bundle_resources(bundle)
+                    except NotFoundError:
+                        logger.info(
+                            'Bundle {} exists on worker {} but no longer found in the bundle table. '
+                            'Skipping for resource deduction.'.format(uuid, worker['worker_id'])
+                        )
+                        continue
                 worker['cpus'] -= bundle_resources.cpus
                 worker['gpus'] -= bundle_resources.gpus
                 worker['memory_bytes'] -= bundle_resources.memory
