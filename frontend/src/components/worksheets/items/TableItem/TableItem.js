@@ -99,12 +99,12 @@ class TableItem extends React.Component<{
 
     copyCheckedBundleRows = () => {
         let bundleRowsData = this.props.item.rows;
-        let result = bundleRowsData.filter((item, index) =>{
+        let result = bundleRowsData.filter((item, index) => {
             return this.state.childrenCheckState[index];
-        })
-        result = result.map((row)=>row["uuid[0:8]"])
+        });
+        result = result.map((row) => row['uuid[0:8]']);
         return result;
-    }
+    };
 
     // BULK OPERATION RELATED CODE ABOVE
 

@@ -5,7 +5,7 @@ import ExitToAppIcon from '@material-ui/icons/ExitToApp';
 import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
 import HighlightOffIcon from '@material-ui/icons/HighlightOff';
 import FileCopyOutlinedIcon from '@material-ui/icons/FileCopyOutlined';
-import {CopyToClipboard} from 'react-copy-to-clipboard';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 import Button from '@material-ui/core/Button';
 
 class BundleBulkActionMenu extends React.Component {
@@ -16,7 +16,7 @@ class BundleBulkActionMenu extends React.Component {
             openDetach: false,
             openKill: false,
             forceDelete: false,
-            copyValue: "",
+            copyValue: '',
         };
     }
 
@@ -55,15 +55,15 @@ class BundleBulkActionMenu extends React.Component {
                     <HighlightOffIcon fontSize='small' />
                     <Typography variant='inherit'>Kill</Typography>
                 </Button>
-                    <Button
-                        size='small'
-                        color='inherit'
-                        aria-label='Copy'
-                        onClick={this.props.togglePopup('copy')}
-                    >
-                            <FileCopyOutlinedIcon className={classes.buttonIcon} />
-                            <Typography variant='inherit'>Copy</Typography>
-                    </Button>
+                <Button
+                    size='small'
+                    color='inherit'
+                    aria-label='Copy'
+                    onClick={this.props.togglePopup('copy')}
+                >
+                    <FileCopyOutlinedIcon className={classes.buttonIcon} />
+                    <Typography variant='inherit'>Copy</Typography>
+                </Button>
             </div>
         );
     }

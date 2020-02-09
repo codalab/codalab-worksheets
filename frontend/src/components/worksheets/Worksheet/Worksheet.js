@@ -161,7 +161,7 @@ class Worksheet extends React.Component {
             errorMessage: '',
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
-            copiedBundleIds: "",
+            copiedBundleIds: '',
         };
         this.copyCallBacks = [];
         this.bundleTableID = new Set();
@@ -362,12 +362,11 @@ class Worksheet extends React.Component {
         this.togglePopupNoEvent(cmd_type);
     };
 
-    addCopyBundleRowsCallBack = (tableID, callback)=>{
-        if (this.bundleTableID.has(tableID))
-            return;
+    addCopyBundleRowsCallBack = (tableID, callback) => {
+        if (this.bundleTableID.has(tableID)) return;
         this.bundleTableID.add(tableID);
         this.copyCallBacks.push(callback);
-    }
+    };
 
     togglePopup = (cmd_type) => () => {
         if (cmd_type === 'deleteItem') {
@@ -384,17 +383,17 @@ class Worksheet extends React.Component {
         } else if (cmd_type === 'kill') {
             this.setState({ openKill: !openKill });
         } else if (cmd_type === 'copy') {
-            if (openCopy){
-                this.setState({openCopy:false});
+            if (openCopy) {
+                this.setState({ openCopy: false });
                 return;
             }
-            let tempBundleIds = "";
-            this.copyCallBacks.forEach((copyBundleCallBack =>{
+            let tempBundleIds = '';
+            this.copyCallBacks.forEach((copyBundleCallBack) => {
                 let bundlesChecked = copyBundleCallBack();
-                bundlesChecked.forEach((uuid)=>{
-                    tempBundleIds += "[]{" + uuid + "}\n";
-                })
-            }))
+                bundlesChecked.forEach((uuid) => {
+                    tempBundleIds += '[]{' + uuid + '}\n';
+                });
+            });
             this.setState({ openCopy: true, copiedBundleIds: tempBundleIds });
         }
     };
@@ -414,17 +413,17 @@ class Worksheet extends React.Component {
         } else if (cmd_type === 'kill') {
             this.setState({ openKill: !openKill });
         } else if (cmd_type === 'copy') {
-            if (openCopy){
-                this.setState({openCopy:false});
+            if (openCopy) {
+                this.setState({ openCopy: false });
                 return;
             }
-            let tempBundleIds = "";
-            this.copyCallBacks.forEach((copyBundleCallBack =>{
+            let tempBundleIds = '';
+            this.copyCallBacks.forEach((copyBundleCallBack) => {
                 let bundlesChecked = copyBundleCallBack();
-                bundlesChecked.forEach((uuid)=>{
-                    tempBundleIds += "[]{" + uuid + "}\n";
-                })
-            }))
+                bundlesChecked.forEach((uuid) => {
+                    tempBundleIds += '[]{' + uuid + '}\n';
+                });
+            });
             this.setState({ openCopy: true, copiedBundleIds: tempBundleIds });
         }
     };
@@ -450,7 +449,7 @@ class Worksheet extends React.Component {
         } else if (this.state.openKill) {
             this.executeBundleCommandNoEvent('kill');
         } else if (this.state.openCopy) {
-            document.getElementById("copyBundleIdToClipBoard").click();
+            document.getElementById('copyBundleIdToClipBoard').click();
         }
         return true;
     };

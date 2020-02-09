@@ -10,7 +10,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import IconButton from '@material-ui/core/IconButton';
 import InfoIcon from '@material-ui/icons/InfoOutlined';
 import Button from '@material-ui/core/Button';
-import {CopyToClipboard} from 'react-copy-to-clipboard';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 class WorksheetDialogs extends React.Component {
     render() {
@@ -151,7 +151,7 @@ class WorksheetDialogs extends React.Component {
                     <DialogContent className={classes.copyDialog}>
                         <DialogContentText id='alert-dialog-description'>
                             The following bundle ids will be copied to clipboard:
-                            <div  style={ { whiteSpace:'pre-wrap' } }>
+                            <div style={{ whiteSpace: 'pre-wrap' }}>
                                 {this.props.copiedBundleIds}
                             </div>
                             You can click 'edit source' on your worksheets and paste the bundles.
@@ -164,7 +164,7 @@ class WorksheetDialogs extends React.Component {
                         <CopyToClipboard
                             color='primary'
                             text={this.props.copiedBundleIds}
-                             id="copyBundleIdToClipBoard"
+                            id='copyBundleIdToClipBoard'
                         >
                             <Button color='primary' onClick={this.props.togglePopup('copy')}>
                                 Copy
@@ -189,9 +189,9 @@ const styles = () => ({
         height: 120,
     },
     copyDialog: {
-        width:400,
+        width: 400,
         height: 200,
-    }
+    },
 });
 
 export default withStyles(styles)(WorksheetDialogs);
