@@ -245,6 +245,7 @@ class Worker:
             response = self.bundle_service.checkin(self.id, request)
         except BundleServiceException as ex:
             logger.warn("Cannot checkin with server, will keep trying: %s", ex)
+            self.last_checkin_successful = False
             response = None
         if not response:
             return
