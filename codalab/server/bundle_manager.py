@@ -235,7 +235,7 @@ class BundleManager(object):
             with self._make_uuids_lock:
                 self._make_uuids.remove(bundle.uuid)
 
-    def _cleanup_dead_workers(self, workers, callback=None):
+    def _cleanup_dead_workers(self, workers):
         """
         Clean-up workers that we haven't heard from for more than WORKER_TIMEOUT_SECONDS seconds.
         Such workers probably died without checking out properly.
@@ -249,8 +249,6 @@ class BundleManager(object):
                 )
                 self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
                 workers.remove(worker['worker_id'])
-                if callback is not None:
-                    callback(worker)
 
     def _restage_stuck_starting_bundles(self, workers):
         """
