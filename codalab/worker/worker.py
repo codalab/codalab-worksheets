@@ -241,7 +241,11 @@ class Worker:
             'runs': [run.as_dict for run in self.all_runs],
             'shared_file_system': self.shared_file_system,
         }
-        response = self.bundle_service.checkin(self.id, request)
+        try:
+            response = self.bundle_service.checkin(self.id, request)
+        except BundleServiceException as ex:
+            logger.warn("Cannot checkin with server, will keep trying: %s", ex)
+            response = None
         if not response:
             return
         action_type = response['type']
