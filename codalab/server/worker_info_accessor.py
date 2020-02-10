@@ -7,18 +7,16 @@ class WorkerInfoAccessor(object):
     Helps with accessing the list of workers returned by the worker model.
     """
 
-    def refresh_cache(self):
-        def decorator(f):
-            def wrapper(*args, **kwargs):
-                if datetime.datetime.utcnow() - self._last_fetch >= datetime.timedelta(
-                    seconds=self._timeout_seconds
-                ):
-                    self._fetch_workers()
-                return f(*args, **kwargs)
+    def refresh_cache(f):
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            if datetime.datetime.utcnow() - self._last_fetch >= datetime.timedelta(
+                seconds=self._timeout_seconds
+            ):
+                self._fetch_workers()
+            return f(*args, **kwargs)
 
-            return wrapper
-
-        return decorator
+        return wrapper
 
     def __init__(self, model, timeout_seconds):
         self._model = model
