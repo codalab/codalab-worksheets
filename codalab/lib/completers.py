@@ -29,7 +29,7 @@ class WorksheetsCompleter(CodaLabCompleter):
     Complete worksheet specs with suggestions pulled from the current client.
     """
 
-    def __call__(self, prefix, **kwargs):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None):
         client, worksheet_spec = self.cli.parse_spec(prefix)
         worksheets = client.fetch('worksheets', params={'keywords': worksheet_spec})
 
@@ -55,7 +55,7 @@ class BundlesCompleter(CodaLabCompleter):
     worksheet specified in the current arguments if one exists.
     """
 
-    def __call__(self, prefix, action=None, parsed_args=None, worksheet_uuid=None):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None, worksheet_uuid=None):
         worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
         client, worksheet_uuid = self.cli.parse_client_worksheet_uuid(worksheet_spec)
 
@@ -82,7 +82,7 @@ class AddressesCompleter(CodaLabCompleter):
     Complete address with suggestions from the current worksheet.
     """
 
-    def __call__(self, prefix, action=None, parsed_args=None):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None):
         return (a for a in self.cli.manager.config.get('aliases', {}) if a.startswith(prefix))
 
 
@@ -91,7 +91,7 @@ class GroupsCompleter(CodaLabCompleter):
     Complete group specs with suggestions pulled from the current client.
     """
 
-    def __call__(self, prefix, action=None, parsed_args=None):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None):
         client = self.cli.manager.current_client()
         # TODO: allow fetch slice of attributes in API to optimize this
         group_dicts = client.fetch('groups')
@@ -134,7 +134,7 @@ def UnionCompleter(*completers):
 # TODO: fix, or building our own argument parsing/completion framework (e.g. like aws-cli).
 # TODO: https://github.com/codalab/codalab-worksheets/issues/223
 class TargetsCompleter(CodaLabCompleter):
-    def __call__(self, prefix, action=None, parsed_args=None):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None):
         key, target = cli_util.parse_key_target(prefix)
         if target is None:
             return ()
@@ -198,7 +198,7 @@ class DockerImagesCompleter(CodaLabCompleter):
     Completes names of Docker images available on DockerHub.
     """
 
-    def __call__(self, prefix, action=None, parsed_args=None):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None):
         if prefix == "":
             prefix = "codalab"
         first_slash = prefix.find('/')
