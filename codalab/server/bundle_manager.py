@@ -356,7 +356,9 @@ class BundleManager(object):
                         )
                         # Don't start this bundle yet, as there is no parallel_run_quota left for this user.
                         continue
-            if workers_list is None:
+            if (
+                not workers_list
+            ):  # Length is 0 (private user with no workers) or is None (root user)
                 workers_list = get_available_workers(self._model.root_user_id)
 
             # Try starting bundles on the workers that have enough computing resources
