@@ -5,9 +5,24 @@ from codalab.objects.metadata_spec import MetadataSpec
 from codalab.server.bundle_manager import BundleManager
 from codalab.worker.bundle_state import RunResources
 from codalab.bundles import RunBundle
+from codalab.lib.codalab_manager import CodaLabManager
 
 
 class BundleManagerTest(unittest.TestCase):
+    def setUp(self):
+        self.codalab_manager = Mock(CodaLabManager)
+        self.codalab_manager.config = {
+            "workers": {
+                'default_cpu_image': 'codalab/default-cpu:latest',
+                'default_gpu_image': 'codalab/default-gpu:latest',
+            }
+        }
+        self.bundle_manager = BundleManager(self.codalab_manager)
+
+    def tearDown(self):
+        del self.bundle_manager
+        del self.codalab_manager
+
     def get_sample_workers_list(self):
         workers_list = [
             {
@@ -52,7 +67,7 @@ class BundleManagerTest(unittest.TestCase):
         )
 
         # gpu worker should be last in the filtered and sorted list
-        sorted_workers_list = BundleManager._filter_and_sort_workers(
+        sorted_workers_list = self.bundle_manager._filter_and_sort_workers(
             self.get_sample_workers_list(), bundle, bundle_resources
         )
         self.assertEqual(len(sorted_workers_list), 3)
@@ -62,7 +77,7 @@ class BundleManagerTest(unittest.TestCase):
 
         # gpu worker should be the only worker in the filtered and sorted list
         bundle_resources.gpus = 1
-        sorted_workers_list = BundleManager._filter_and_sort_workers(
+        sorted_workers_list = self.bundle_manager._filter_and_sort_workers(
             self.get_sample_workers_list(), bundle, bundle_resources
         )
         self.assertEqual(len(sorted_workers_list), 1)
