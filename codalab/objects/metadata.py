@@ -56,6 +56,11 @@ class Metadata(object):
         self._metadata_keys.add(key)
         setattr(self, key, value)
 
+    def remove_metadata_key(self, key):
+        if key in self._metadata_keys:
+            self._metadata_keys.remove(key)
+            delattr(self, key)
+
     @classmethod
     def collapse_dicts(cls, metadata_specs, rows):
         '''
