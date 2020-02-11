@@ -368,7 +368,7 @@ class Worker:
                 lines = output.decode().split("\n")
                 headers = lines[0].split()
                 # The machine being attached as a worker may be using a different language other than
-                # english, so check the 4th header if "Available" is not present.
+                # English, so check the 4th header if "Available" is not present.
                 index = headers.index("Available") if "Available" in headers else 3
                 # We convert the original result from df command in unit of 1KB blocks into bytes.
                 return int(lines[1].split()[index]) * 1024
