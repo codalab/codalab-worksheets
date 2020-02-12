@@ -255,6 +255,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                         logger.info(
                             'Dependency quota full but there are only downloading dependencies, not cleaning up until downloads are over'
                         )
+                        self._release_all_locks()
                         break
                     if dep_key_to_remove:
                         self._delete_dependency(dep_key_to_remove)
