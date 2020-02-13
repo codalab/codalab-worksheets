@@ -1,8 +1,8 @@
 // @flow
-import * as React from 'react';
+import React from 'react';
 import $ from 'jquery';
 import { withStyles } from '@material-ui/core/styles';
-import CircularProgress from '@material-ui/core/CircularProgress';
+import JSZip from 'jszip';
 
 import {
     createDefaultBundleName,
@@ -41,23 +41,123 @@ class NewUpload extends React.Component<{
         percentComplete: 0,
     }
 
+    inputFolder = React.createRef();
     inputFile = React.createRef();
 
     setFile = () => {
         const files = this.inputFile.current.files;
+
         if (!files.length) {
             return;
         }
-        this.uploadFile(files[0]);
+        this.uploadFile(files);
     }
 
-    uploadFile = (file) => {
-        if (!file) {
+    setFolder = () => {
+        const files = this.inputFolder.current.files;
+        if (!files.length) {
+            return;
+        }
+        this.uploadFolder(files);
+    }
+
+    uploadFile = (files) => {
+        if (!files) {
             return;
         }
         const { worksheetUUID, after_sort_key } = this.props;
         const { name, description } = this.state;
-        const createBundleData = getDefaultBundleMetadata(name || file.name, description);
+
+        for (const file of files) {
+            const createBundleData = getDefaultBundleMetadata(name || file.name, description);
+            this.setState({
+                uploading: true,
+            });
+            let url = `/rest/bundles?worksheet=${ worksheetUUID }`;
+            if (after_sort_key) {
+                url += `&after_sort_key=${ after_sort_key }`;
+            }
+            $.ajax({
+                url,
+                data: JSON.stringify(createBundleData),
+                contentType: 'application/json',
+                type: 'POST',
+                success: (data, status, jqXHR) => {
+                    var bundleUuid = data.data[0].id;
+                    var reader = new FileReader();
+                    reader.onload = () => {
+                        var arrayBuffer = reader.result,
+                            bytesArray = new Uint8Array(arrayBuffer);
+                        var url =
+                            '/rest/bundles/' +
+                            bundleUuid +
+                            '/contents/blob/?' +
+                            getQueryParams(file.name);
+                        $.ajax({
+                            url: url,
+                            type: 'PUT',
+                            contentType: 'application/octet-stream',
+                            data: new Blob([bytesArray]),
+                            processData: false,
+                            xhr: () => {
+                                var xhr = new window.XMLHttpRequest();
+                                xhr.upload.addEventListener(
+                                    'progress',
+                                    (evt) => {
+                                        if (evt.lengthComputable) {
+                                            const percentComplete = parseInt(
+                                                (evt.loaded / evt.total) * 100,
+                                            );
+                                            this.setState({ percentComplete });
+                                        }
+                                    },
+                                    false,
+                                );
+                                return xhr;
+                            },
+                            success: (data, status, jqXHR) => {
+                                this.clearProgress();
+                                const moveIndex = true;
+                                const param = { moveIndex };
+                                this.props.reloadWorksheet(undefined, undefined, param);
+                                this.props.onUploadFinish();
+                            },
+                            error: (jqHXR, status, error) => {
+                                this.clearProgress();
+                                alert(
+                                    createAlertText(
+                                        reader.url,
+                                        jqHXR.responseText,
+                                        'refresh and try again.',
+                                    ),
+                                );
+                                this.props.onUploadFinish();
+                            },
+                        });
+                    };
+                    reader.readAsArrayBuffer(file);
+                },
+                error: (jqHXR, status, error) => {
+                    this.clearProgress();
+                    alert(createAlertText(url, jqHXR.responseText));
+                },
+            });
+        }
+    }
+
+    uploadFolder = (files) => {
+        if (!files) {
+            return;
+        }
+        const { worksheetUUID, after_sort_key } = this.props;
+        const { name, description } = this.state;
+        const folderNamePos = files[0].webkitRelativePath.indexOf("/");
+        var folderName = "";
+        if (folderNamePos != -1) {
+            folderName = files[0].webkitRelativePath.slice(0, folderNamePos)
+            console.log(folderName);
+        }
+        const createBundleData = getDefaultBundleMetadata(name || folderName + ".zip", description);
         this.setState({
             uploading: true,
         });
@@ -65,22 +165,26 @@ class NewUpload extends React.Component<{
         if (after_sort_key) {
             url += `&after_sort_key=${ after_sort_key }`;
         }
-        $.ajax({
-            url,
-            data: JSON.stringify(createBundleData),
-            contentType: 'application/json',
-            type: 'POST',
-            success: (data, status, jqXHR) => {
-                var bundleUuid = data.data[0].id;
-                var reader = new FileReader();
-                reader.onload = () => {
-                    var arrayBuffer = reader.result,
-                        bytesArray = new Uint8Array(arrayBuffer);
+
+        var zip = new JSZip();
+        [...files].map(file => {
+            zip.file(file.webkitRelativePath, file);
+        });
+
+        zip.generateAsync({type:"uint8array", compression: "DEFLATE"}).then((bytesArray) => {
+
+            $.ajax({
+                url,
+                data: JSON.stringify(createBundleData),
+                contentType: 'application/json',
+                type: 'POST',
+                success: (data, status, jqXHR) => {
+                    var bundleUuid = data.data[0].id;
                     var url =
                         '/rest/bundles/' +
                         bundleUuid +
                         '/contents/blob/?' +
-                        getQueryParams(file.name);
+                        getQueryParams(folderName + ".zip");
                     $.ajax({
                         url: url,
                         type: 'PUT',
@@ -114,7 +218,7 @@ class NewUpload extends React.Component<{
                             this.clearProgress();
                             alert(
                                 createAlertText(
-                                    reader.url,
+                                    url,
                                     jqHXR.responseText,
                                     'refresh and try again.',
                                 ),
@@ -122,41 +226,56 @@ class NewUpload extends React.Component<{
                             this.props.onUploadFinish();
                         },
                     });
-                };
-                reader.readAsArrayBuffer(file);
-            },
-            error: (jqHXR, status, error) => {
-                this.clearProgress();
-                alert(createAlertText(url, jqHXR.responseText));
-            },
+                },
+                error: (jqHXR, status, error) => {
+                    this.clearProgress();
+                    alert(createAlertText(url, jqHXR.responseText));
+                },
+            });
         });
     }
 
     clearProgress = () => {
         this.setState({ percentComplete: 0, uploading: false });
     }
-    
 
     render() {
         const { classes } = this.props;
         const { percentComplete, uploading } = this.state;
 
         return (
+
             <React.Fragment>
                 <input
                     type="file"
                     id="codalab-file-upload-input"
-                    style={ { visibility: 'hidden', position: 'absolute' } }
+                    multiple={true}
+                    style={ { display: "none" } }
                     ref={this.inputFile}
                     onChange={this.setFile}
                 />
-                { uploading && <CircularProgress
+                <input
+                    id="codalab-dir-upload-input"
+                    type="file"
+                    directory="true"
+                    webkitdirectory="true"
+                    mozdirectory="true"
+                    style={ { display: "none" } }
+                    ref={this.inputFolder}
+                    onChange={this.setFolder}
+                />
+                {/* { uploading && <CircularProgress
                         className={ classes.progress }
                         variant="determinate"
                         value={ percentComplete }
-                        size={ 80 }
+                        text={`${percentComplete}%`}
+                        size={ 100 }
+                        // styles={buildStyles({
+                        //     strokeLinecap: "butt",
+                        //     textSize: '16px',
+                        //   })}
                     />
-                }
+                } */}
             </React.Fragment>
         );
     }

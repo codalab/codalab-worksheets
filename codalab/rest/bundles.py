@@ -654,6 +654,8 @@ def _update_bundle_contents_blob(uuid):
     - `state_on_success`: (optional) Update the bundle state to this state if
       the upload completes successfully. Must be either 'ready' or 'failed'.
       Default is 'ready'.
+    - `is_dir_upload`: (optional) 1 if the user updates directories through web UI,
+      or 0 otherwise. Default is '0'.
     """
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
@@ -691,6 +693,7 @@ def _update_bundle_contents_blob(uuid):
             git=query_get_bool('git', default=False),
             unpack=query_get_bool('unpack', default=True),
             simplify_archives=query_get_bool('simplify', default=True),
+            is_dir_upload=query_get_bool('is_dir_upload', default=False),
         )  # See UploadManager for full explanation of 'simplify'
 
         bundle_location = local.bundle_store.get_bundle_location(uuid)

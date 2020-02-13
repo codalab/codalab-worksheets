@@ -6,12 +6,27 @@ import RunIcon from '@material-ui/icons/PlayCircleOutline';
 import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
 import AddIcon from '@material-ui/icons/AddBoxOutlined';
 import BundleBulkActionMenu from '../BundleBulkActionMenu';
-
+import Menu from '@material-ui/core/Menu';
+import MenuItem from '@material-ui/core/MenuItem';
 class ActionButtons extends React.Component<{
     classes: {},
     onShowNewRun: () => void,
     onShowNewText: () => void,
 }> {
+    constructor(props) {
+        super(props);
+        this.state = {
+            anchorEl: null,
+        };
+    }
+    handleClick = (event) => {
+        this.setState({ anchorEl: event.currentTarget });
+    };
+
+    handleClose = () => {
+        this.setState({ anchorEl: null });
+    };
+
     render() {
         const {
             classes,
@@ -44,18 +59,43 @@ class ActionButtons extends React.Component<{
                     </Button>
                 ) : null}
                 {!showBundleOperationButtons ? (
-                    <Button
-                        size='small'
-                        color='inherit'
-                        aria-label='Add New Upload'
-                        className={classes.uploadButton}
-                        disabled={!editPermission}
-                    >
-                        <label className={classes.uploadLabel} for='codalab-file-upload-input'>
+                    <span>
+                        <Button
+                            size='small'
+                            color='inherit'
+                            id='upload-button'
+                            aria-label='Add New Upload'
+                            onClick={this.handleClick}
+                            disabled={!editPermission}
+                        >
                             <UploadIcon className={classes.buttonIcon} />
                             Upload
-                        </label>
-                    </Button>
+                        </Button>
+                        <Menu
+                            id='upload-menu'
+                            anchorEl={this.state.anchorEl}
+                            keepMounted
+                            open={Boolean(this.state.anchorEl)}
+                            onClose={this.handleClose}
+                        >
+                            <MenuItem onClick={this.handleClose}>
+                                <label
+                                    className={classes.uploadLabel}
+                                    htmlFor='codalab-file-upload-input'
+                                >
+                                    File(s) Upload
+                                </label>
+                            </MenuItem>
+                            <MenuItem onClick={this.handleClose}>
+                                <label
+                                    className={classes.uploadLabel}
+                                    htmlFor='codalab-dir-upload-input'
+                                >
+                                    Folder Upload
+                                </label>
+                            </MenuItem>
+                        </Menu>
+                    </span>
                 ) : null}
                 {!showBundleOperationButtons ? (
                     <Button
