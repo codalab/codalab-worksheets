@@ -280,6 +280,8 @@ class JsonApiClient(RestClient):
         def unpack_object(obj_data):
             # Merge attributes, id, meta, and relationships into a single dict
             obj = {}
+            if 'id' not in obj_data:
+                raise Exception(obj_data)
             obj['id'] = obj_data['id']
             if 'attributes' in obj_data:
                 obj.update(obj_data['attributes'])
