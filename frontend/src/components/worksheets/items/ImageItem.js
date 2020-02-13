@@ -43,7 +43,7 @@ class ImageItem extends React.Component {
         }
         const { classes } = this.props;
         var item = this.props.item;
-        var bundleInfo = item.bundles_spec.bundle_infos[0];
+        const bundleInfo = item.bundles_spec.bundle_infos[0];
         var className = 'type-image' + (this.props.focused ? ' focused' : '');
         var src = 'data:image/png;base64,' + this.props.item.image_data;
         var styles = {};
