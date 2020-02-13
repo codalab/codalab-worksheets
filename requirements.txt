@@ -1,7 +1,7 @@
 bottle==0.12.9
 docker==3.7.0
 marshmallow-jsonapi==0.15.1
-marshmallow==2.6.1
+marshmallow==2.15.1
 setuptools>=40.0.0
 argcomplete==1.9.4
 PyYAML==5.1
