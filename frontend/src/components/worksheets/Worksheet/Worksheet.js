@@ -1420,7 +1420,9 @@ class Worksheet extends React.Component {
                 deleteItemCallback={this.state.deleteItemCallback}
             />
         );
-
+        if (info && info.title) {
+            document.title = info.title;
+        }
         return (
             <React.Fragment>
                 {context_menu_display}

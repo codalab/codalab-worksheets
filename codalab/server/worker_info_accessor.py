@@ -8,40 +8,32 @@ class WorkerInfoAccessor(object):
     """
 
     def __init__(self, workers):
-        self._workers = workers
+        self._workers = {worker['worker_id']: worker for worker in workers}
         self._uuid_to_worker = {}
         self._user_id_to_workers = defaultdict(list)
-        for worker in self._workers:
+        for worker in self._workers.values():
             for uuid in worker['run_uuids']:
                 self._uuid_to_worker[uuid] = worker
             self._user_id_to_workers[worker['user_id']].append(worker)
 
     def workers(self):
-        return list(self._workers)
-
-    def worker_with_id(self, user_id, worker_id):
-        for worker in self._workers:
-            if worker['user_id'] == user_id and worker['worker_id'] == worker_id:
-                return worker
-        return None
+        return list(self._workers.values())
 
     def user_owned_workers(self, user_id):
-        # A deep copy is necessary here due to the following facts:
-        # 1. assignment statements in Python do not copy objects, meaning it generates a shallow copy
-        # 2. deep copy is only necessary for compound objects which contains other objects, like lists or class instances
-        # 3. a deep copy will guarantee that one can change one copy without changing the other
-        return list(copy.deepcopy(worker) for worker in self._user_id_to_workers[user_id])
+        return list(worker for worker in self._user_id_to_workers[user_id])
 
-    def remove(self, worker):
-        self._workers.remove(worker)
+    def remove(self, worker_id):
+        worker = self._workers[worker_id]
         for uuid in worker['run_uuids']:
             del self._uuid_to_worker[uuid]
         self._user_id_to_workers[worker['user_id']].remove(worker)
+        del self._workers[worker_id]
 
     def is_running(self, uuid):
         return uuid in self._uuid_to_worker
 
-    def set_starting(self, uuid, worker):
+    def set_starting(self, uuid, worker_id):
+        worker = self._workers[worker_id]
         worker['run_uuids'].append(uuid)
         self._uuid_to_worker[uuid] = worker
 
