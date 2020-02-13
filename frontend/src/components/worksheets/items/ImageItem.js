@@ -17,7 +17,7 @@ class ImageItem extends React.Component {
         let { bundleInfoUpdates } = this.state;
         // Use object spread to update.
         bundleInfoUpdates = { ...bundleInfoUpdates, ...update };
-        this.setState({ bundleInfoUpdates });
+        this.setState({ bundleInfoUpdates: { ...bundleInfoUpdates, ...update } });
     };
 
     handleClick = () => {
