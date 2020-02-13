@@ -17,7 +17,7 @@ class ImageItem extends React.Component {
         let { bundleInfoUpdates } = this.state;
         // Use object spread to update.
         bundleInfoUpdates = { ...bundleInfoUpdates, ...update };
-        this.setState({ bundleInfoUpdates });
+        this.setState({ bundleInfoUpdates: { ...bundleInfoUpdates, ...update } });
     };
 
     handleClick = () => {
@@ -42,8 +42,8 @@ class ImageItem extends React.Component {
             Mousetrap.unbind('i');
         }
         const { classes } = this.props;
-        var item = this.props.item;
-        var bundleInfo = item.bundles_spec.bundle_infos[0];
+        const item = this.props.item;
+        const bundleInfo = item.bundles_spec.bundle_infos[0];
         var className = 'type-image' + (this.props.focused ? ' focused' : '');
         var src = 'data:image/png;base64,' + this.props.item.image_data;
         var styles = {};
