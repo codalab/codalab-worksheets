@@ -36,6 +36,7 @@ export default ({
     togglePopupNoEvent,
     toggleGlossaryModal,
     copiedBundleIds,
+    pasteToWorksheet,
 }) => (
     <Sticky top={6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
@@ -131,6 +132,7 @@ export default ({
                                 togglePopup={togglePopup}
                                 togglePopupNoEvent={togglePopupNoEvent}
                                 copiedBundleIds={copiedBundleIds}
+                                pasteToWorksheet={pasteToWorksheet}
                             />
                         </Grid>
                         <Grid item>

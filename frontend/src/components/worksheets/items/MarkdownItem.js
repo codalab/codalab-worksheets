@@ -152,6 +152,7 @@ class MarkdownItem extends React.Component {
                 defaultValue={item.text}
                 after_sort_key={after_sort_key}
                 reloadWorksheet={this.props.reloadWorksheet}
+                saveAndUpdateWorksheet={this.props.saveAndUpdateWorksheet}
                 worksheetUUID={this.props.worksheetUUID}
                 closeEditor={() => {
                     this.setState({ showEdit: false });

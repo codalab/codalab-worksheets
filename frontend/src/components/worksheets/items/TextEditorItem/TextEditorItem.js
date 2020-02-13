@@ -87,7 +87,7 @@ class TextEditorItem extends React.Component<{
             // Updating an existing item.
             data['ids'] = ids;
         }
-
+        console.log("Text:",data);
         $.ajax({
             url,
             data: JSON.stringify(data),
@@ -96,6 +96,7 @@ class TextEditorItem extends React.Component<{
             success: (data, status, jqXHR) => {
                 const moveIndex = true ? mode === 'create' : false;
                 const param = { moveIndex };
+                this.props.saveAndUpdateWorksheet(false, 0);
                 reloadWorksheet(undefined, undefined, param);
                 closeEditor();
             },

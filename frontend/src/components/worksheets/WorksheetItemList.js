@@ -73,6 +73,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             onHideNewUpload={props.onHideNewUpload}
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
+            saveAndUpdateWorksheet={props.saveAndUpdateWorksheet}
         >
             {elem}
         </ItemWrapper>,
@@ -250,6 +251,7 @@ class WorksheetItemList extends React.Component {
                         editPermission: info && info.edit_permission,
                         addCopyBundleRowsCallBack: this.props.addCopyBundleRowsCallBack,
                         itemID: index,
+                        saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
                     };
                     addWorksheetItems(
                         props,

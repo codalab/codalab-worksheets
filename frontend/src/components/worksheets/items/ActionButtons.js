@@ -5,6 +5,7 @@ import { withStyles } from '@material-ui/core/styles';
 import RunIcon from '@material-ui/icons/PlayCircleOutline';
 import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
 import AddIcon from '@material-ui/icons/AddBoxOutlined';
+import NoteAddIcon from '@material-ui/icons/NoteAdd';
 import BundleBulkActionMenu from '../BundleBulkActionMenu';
 
 class ActionButtons extends React.Component<{
@@ -24,7 +25,6 @@ class ActionButtons extends React.Component<{
             info,
         } = this.props;
         let editPermission = info && info.edit_permission;
-
         return (
             <div
                 onMouseMove={(ev) => {
@@ -70,6 +70,7 @@ class ActionButtons extends React.Component<{
                         Run
                     </Button>
                 ) : null}
+                
                 {showBundleOperationButtons ? (
                     <BundleBulkActionMenu
                         handleSelectedBundleCommand={handleSelectedBundleCommand}
@@ -77,6 +78,18 @@ class ActionButtons extends React.Component<{
                         togglePopupNoEvent={togglePopupNoEvent}
                     />
                 ) : null}
+                {
+                    <Button
+                        size='small'
+                        color='inherit'
+                        aria-label='Paste'
+                        onClick={this.props.pasteToWorksheet}
+                        disabled={!editPermission}
+                    >
+                        <NoteAddIcon className={classes.buttonIcon} />
+                        Paste
+                    </Button>
+                }
             </div>
         );
     }
