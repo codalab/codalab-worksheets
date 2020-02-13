@@ -38,8 +38,6 @@ class ImageItem extends React.Component {
                 },
                 'keydown',
             );
-            // unbind shortcuts that are active for markdown_block and worksheet_block
-            Mousetrap.unbind('i');
         }
         const { classes } = this.props;
         const item = this.props.item;
