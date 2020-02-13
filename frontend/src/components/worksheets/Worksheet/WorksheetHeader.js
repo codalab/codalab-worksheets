@@ -20,7 +20,6 @@ const styles = {
 };
 
 export default ({
-    onShowNewUpload,
     onShowNewRun,
     onShowNewText,
     canEdit,
@@ -125,7 +124,6 @@ export default ({
                         <Grid item>
                             <ActionButtons
                                 info={info}
-                                onShowNewUpload={onShowNewUpload}
                                 onShowNewRun={onShowNewRun}
                                 onShowNewText={onShowNewText}
                                 handleSelectedBundleCommand={handleSelectedBundleCommand}

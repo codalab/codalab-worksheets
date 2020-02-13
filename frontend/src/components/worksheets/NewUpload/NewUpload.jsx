@@ -2,11 +2,6 @@
 import * as React from 'react';
 import $ from 'jquery';
 import { withStyles } from '@material-ui/core/styles';
-import Button from '@material-ui/core/Button';
-import Grid from '@material-ui/core/Grid';
-import Typography from '@material-ui/core/Typography';
-import Input from '@material-ui/core/Input';
-import UploadIcon from '@material-ui/icons/CloudUpload';
 import CircularProgress from '@material-ui/core/CircularProgress';
 
 import {
@@ -15,36 +10,7 @@ import {
     getArchiveExt,
     getDefaultBundleMetadata,
     createAlertText,
-    createHandleRedirectFn,
 } from '../../../util/worksheet_utils';
-import ConfigPanel, {
-    ConfigLabel,
-    ConfigTextInput,
-    ConfigChipInput,
-    ConfigCodeInput,
-    ConfigSwitchInput,
-} from '../ConfigPanel';
-
-
-// React doesn't support transpilation of directory and
-// webkitdirectory properties, have to set them
-// programmatically.
-class InputDir extends React.Component {
-  
-  componentDidMount() {
-    this.inputDir.directory = true;
-    this.inputDir.webkitdirectory = true;
-  }
-
-  render() {
-    const { eleref, ...others } = this.props;
-    return <input
-      {...others}
-      type="file"
-      ref={ (ele) => { this.inputDir = ele; eleref(ele); } }
-    />;
-  }
-}
 
 function getQueryParams(filename) {
     const formattedFilename = createDefaultBundleName(filename);
@@ -75,15 +41,12 @@ class NewUpload extends React.Component<{
         percentComplete: 0,
     }
 
-    componentDidMount() {
-        this.inputFile.click();
-    }
+    inputFile = React.createRef();
 
     setFile = () => {
-        window.removeEventListener('focus', this.handleFocusBack);
-        const files = this.inputFile.files;
+        const files = this.inputFile.current.files;
         if (!files.length) {
-            this.props.onClose();
+            return;
         }
         this.uploadFile(files[0]);
     }
@@ -145,7 +108,7 @@ class NewUpload extends React.Component<{
                             const moveIndex = true;
                             const param = { moveIndex };
                             this.props.reloadWorksheet(undefined, undefined, param);
-                            this.props.onClose();
+                            this.props.onUploadFinish();
                         },
                         error: (jqHXR, status, error) => {
                             this.clearProgress();
@@ -156,6 +119,7 @@ class NewUpload extends React.Component<{
                                     'refresh and try again.',
                                 ),
                             );
+                            this.props.onUploadFinish();
                         },
                     });
                 };
@@ -171,17 +135,6 @@ class NewUpload extends React.Component<{
     clearProgress = () => {
         this.setState({ percentComplete: 0, uploading: false });
     }
-
-    // Handling cancel
-    // When the user cancels, will focus back on the window and triggers onClose()
-    handleFocusBack=()=>{
-        this.props.onClose();
-        window.removeEventListener('focus', this.handleFocusBack);
-    }
-
-    clickedFileInput=()=>{
-        window.addEventListener('focus', this.handleFocusBack);
-    }
     
 
     render() {
@@ -192,10 +145,10 @@ class NewUpload extends React.Component<{
             <React.Fragment>
                 <input
                     type="file"
+                    id="codalab-file-upload-input"
                     style={ { visibility: 'hidden', position: 'absolute' } }
-                    ref={ (ele) => { this.inputFile = ele; } }
-                    onChange={ this.setFile }
-                    onClick={ this.clickedFileInput }
+                    ref={this.inputFile}
+                    onChange={this.setFile}
                 />
                 { uploading && <CircularProgress
                         className={ classes.progress }
@@ -208,15 +161,6 @@ class NewUpload extends React.Component<{
         );
     }
 }
-
-// <div className={classes.spacer}/>
-// <ConfigLabel
-//     label="Clone from URL"
-//     tooltip="Clone an existing bundle on Codalab."
-// />
-// <ConfigTextInput
-//     value={this.state.url}
-//     onValueChange={(value) => this.setState({ url: value })}/>
 
 const styles = (theme) => ({
     progress: {

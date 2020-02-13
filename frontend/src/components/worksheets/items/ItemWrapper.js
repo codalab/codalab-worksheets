@@ -2,7 +2,6 @@
 import * as React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import NewRun from '../NewRun';
-import NewUpload from '../NewUpload';
 import TextEditorItem from './TextEditorItem';
 import { getMinMaxKeys } from '../../../util/worksheet_utils';
 
@@ -19,7 +18,6 @@ function getIds(item) {
 
 class ItemWrapper extends React.Component {
     state = {
-        showNewUpload: false,
         showNewRun: false,
         showNewText: false,
     };
@@ -34,7 +32,7 @@ class ItemWrapper extends React.Component {
             worksheetUUID,
             reloadWorksheet,
         } = this.props;
-        const { showNewUpload, showNewRun, showNewText } = this.props;
+        const { showNewRun, showNewText } = this.props;
 
         if (!item) {
             return null;
@@ -54,14 +52,6 @@ class ItemWrapper extends React.Component {
         return (
             <div className={isDummyItem ? '' : classes.container}>
                 {!isDummyItem && <div className={classes.main}>{children}</div>}
-                {showNewUpload && (
-                    <NewUpload
-                        after_sort_key={itemKeys.maxKey}
-                        worksheetUUID={worksheetUUID}
-                        reloadWorksheet={reloadWorksheet}
-                        onClose={() => this.props.onHideNewUpload()}
-                    />
-                )}
                 {showNewRun && (
                     <div className={classes.insertBox}>
                         <NewRun
