@@ -541,18 +541,22 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     truncation_text = query_get_type(str, 'truncation_text', default='')
     max_line_length = query_get_type(int, 'max_line_length', default=128)
     check_bundles_have_read_permission(local.model, request.user, [uuid])
-    bundle = local.model.get_bundle(uuid)
 
     try:
         target_info = local.download_manager.get_target_info(uuid, path, 0)
+        if target_info['uuid'] != uuid:
+            uuid = target_info['resolved_uuid']
+            path = target_info['resolved_path']
+            check_bundles_have_read_permission(local.model, request.user, [uuid])
     except NotFoundError as e:
         abort(http.client.NOT_FOUND, str(e))
     except Exception as e:
         abort(http.client.BAD_REQUEST, str(e))
 
     # Figure out the file name.
-    if not path and bundle.metadata.name:
-        filename = bundle.metadata.name
+    bundle_name = local.model.get_bundle(uuid).metadata.name
+    if not path and bundle_name:
+        filename = bundle_name
     else:
         filename = target_info['name']
 

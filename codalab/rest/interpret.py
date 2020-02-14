@@ -252,14 +252,14 @@ def fetch_interpreted_worksheet(uuid):
 #############################################################
 
 
-def cat_target(target):
+def cat_target(bundle_uuid, subpath):
     """
     Prints the contents of the target file into the file-like object out.
     The caller should ensure that the target is a file.
     """
-    rest_util.check_target_has_read_permission(target)
+    rest_util.check_target_has_read_permission((bundle_uuid, subpath))
     with closing(
-        local.download_manager.stream_file(target[0], target[1], gzipped=False)
+        local.download_manager.stream_file(bundle_uuid, subpath, gzipped=False)
     ) as fileobj:
         return fileobj.read()
 
@@ -268,20 +268,21 @@ def cat_target(target):
 MAX_BYTES_PER_LINE = 1024
 
 
-def head_target(target, max_num_lines):
+def head_target(bundle_uuid, subpath, max_num_lines):
     """
     Return the first max_num_lines of target as a list of strings.
 
     The caller should ensure that the target is a file.
 
-    :param target: (bundle_uuid, subpath)
+    :param bundle_uuid: UUID of bundle
+    :param subpath: Path to target within bundle
     :param max_num_lines: max number of lines to fetch
     """
-    rest_util.check_target_has_read_permission(target)
+    rest_util.check_target_has_read_permission((bundle_uuid, subpath))
     # Note: summarize_file returns bytes, but should be decodable to a string.
     lines = (
         local.download_manager.summarize_file(
-            target[0], target[1], max_num_lines, 0, MAX_BYTES_PER_LINE, None, gzipped=False
+            bundle_uuid, subpath, max_num_lines, 0, MAX_BYTES_PER_LINE, None, gzipped=False
         )
         .decode()
         .splitlines(True)
@@ -311,6 +312,8 @@ def resolve_interpreted_blocks(interpreted_blocks):
         if block is None:
             continue
         mode = block['mode']
+        bundle_uuid = block['bundles_spec']['bundle_infos'][0]['uuid']
+        target_path = block['target_genpath']
 
         try:
             # Replace data with a resolved version.
@@ -326,10 +329,9 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 block['rows'] = contents
             elif mode == BlockModes.contents_block or mode == BlockModes.image_block:
                 try:
-                    target_info = rest_util.get_target_info(
-                        (block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']),
-                        0,
-                    )
+                    target_info = rest_util.get_target_info(bundle_uuid, target_path, 0)
+                    target_uuid = target_info['resolved_uuid']
+                    target_path = target_info['resolved_path']
                     if target_info['type'] == 'directory' and mode == BlockModes.contents_block:
                         block['status']['code'] = FetchStatusCodes.ready
                         block['lines'] = ['<directory>']
@@ -337,23 +339,12 @@ def resolve_interpreted_blocks(interpreted_blocks):
                         block['status']['code'] = FetchStatusCodes.ready
                         if mode == BlockModes.contents_block:
                             block['lines'] = head_target(
-                                (
-                                    block['bundles_spec']['bundle_infos'][0]['uuid'],
-                                    block['target_genpath'],
-                                ),
-                                block['max_lines'],
+                                target_uuid, target_path, block['max_lines']
                             )
                         elif mode == BlockModes.image_block:
                             block['status']['code'] = FetchStatusCodes.ready
                             block['image_data'] = base64.b64encode(
-                                bytes(
-                                    cat_target(
-                                        (
-                                            block['bundles_spec']['bundle_infos'][0]['uuid'],
-                                            block['target_genpath'],
-                                        )
-                                    )
-                                )
+                                bytes(cat_target(target_uuid, target_path))
                             ).decode('utf-8')
                     else:
                         block['status']['code'] = FetchStatusCodes.not_found
@@ -372,13 +363,14 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 # data = list of {'target': ...}
                 # Add a 'points' field that contains the contents of the target.
                 for info in block['trajectories']:
-                    target = (info['bundle_uuid'], info['target_genpath'])
                     try:
-                        target_info = rest_util.get_target_info(target, 0)
+                        target_info = rest_util.get_target_info(bundle_uuid, target_path, 0)
+                        target_uuid = target_info['resolved_uuid']
+                        target_path = target_info['resolved_path']
                     except NotFoundError as e:
                         continue
                     if target_info['type'] == 'file':
-                        contents = head_target(target, block['max_lines'])
+                        contents = head_target(target_uuid, target_path, block['max_lines'])
                         # Assume TSV file without header for now, just return each line as a row
                         info['points'] = points = []
                         for line in contents:
@@ -479,9 +471,11 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
     if target not in target_cache:
         info = None
         try:
-            target_info = rest_util.get_target_info(target, 0)
+            target_info = rest_util.get_target_info(bundle_uuid, subpath, 0)
+            target_uuid = target_info['resolved_uuid']
+            target_path = target_info['resolved_path']
             if target_info['type'] == 'file':
-                contents = head_target(target, MAX_LINES)
+                contents = head_target(target_uuid, target_path, MAX_LINES)
 
                 if len(contents) == 0:
                     info = ''

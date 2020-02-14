@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import closing
 
 from codalab.common import http_error_to_exception, precondition, UsageError, NotFoundError
@@ -57,6 +58,19 @@ class DownloadManager(object):
         bundle_state = self._bundle_model.get_bundle_state(uuid)
         # Raises NotFoundException if uuid is invalid
 
+        def check_dependencies(err):
+            # if path not in bundle, check if it matches one of its dependencies
+            child_path_to_dep = {
+                dep.child_path: dep for dep in self._bundle_model.get_bundle_dependencies(uuid)
+            }
+            matching_dep = child_path_to_dep.get(os.path.split(path)[0], None)
+            if matching_dep:
+                # The path actually belongs to a dependency of this bundle
+                return self.get_target_info(
+                    matching_dep.parent_uuid, os.path.split(path)[1:], depth
+                )
+            raise err
+
         if bundle_state == State.PREPARING:
             raise NotFoundError(
                 "Bundle {} hasn't started running yet, files not available".format(uuid)
@@ -66,7 +80,7 @@ class DownloadManager(object):
             try:
                 return download_util.get_target_info(bundle_path, uuid, path, depth)
             except download_util.PathException as e:
-                raise NotFoundError(str(e))
+                return check_dependencies(NotFoundError(str(e)))
         else:
             # get_target_info calls are sent to the worker even on a shared file
             # system since 1) due to NFS caching the worker has more up to date
@@ -89,7 +103,10 @@ class DownloadManager(object):
                         )
                     )
                 elif 'error_code' in result:
-                    raise http_error_to_exception(result['error_code'], result['error_message'])
+                    try:
+                        raise http_error_to_exception(result['error_code'], result['error_message'])
+                    except NotFoundError as e:
+                        return check_dependencies(e)
                 return result['target_info']
             finally:
                 self._worker_model.deallocate_socket(response_socket_id)

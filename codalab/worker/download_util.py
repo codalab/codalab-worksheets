@@ -16,6 +16,14 @@ def get_target_info(bundle_path, uuid, path, depth):
         link: If type is 'link', where the symbolic link points to.
         contents: If type is 'directory', a list of entries for the contents.
 
+    For the top level entry, also contains:
+        resolved_uuid: UUID of the bundle the path is actually found on. This is
+            used for when a path resolves to a dependency of a bundle.
+        resolved_path: the particular path to resolve in the bundle UUID in the end. If
+            the path resolves to a dependency, then the first component of the
+            path is the dependency key and should not be used within the actual
+            dependency bundle. This field strips that value.
+
     Any entries more than depth levels deep are filtered out. Depth 0, for
     example, means only the top-level entry is included, and no contents. Depth
     1 means the contents of the top-level are included, but nothing deeper.
@@ -30,6 +38,8 @@ def get_target_info(bundle_path, uuid, path, depth):
         raise PathException('Path {} in bundle {} not found'.format(path, uuid))
 
     info = _compute_target_info(final_path, depth)
+    info['resolved_uuid'] = uuid
+    info['resolved_path'] = path
 
     return info
 
