@@ -63,11 +63,11 @@ class DownloadManager(object):
             child_path_to_dep = {
                 dep.child_path: dep for dep in self._bundle_model.get_bundle_dependencies(uuid)
             }
-            matching_dep = child_path_to_dep.get(os.path.split(path)[0], None)
+            matching_dep = child_path_to_dep.get(path.split(os.path.sep)[0], None)
             if matching_dep:
                 # The path actually belongs to a dependency of this bundle
                 return self.get_target_info(
-                    matching_dep.parent_uuid, os.path.split(path)[1:], depth
+                    matching_dep.parent_uuid, os.path.sep.join(path.split(os.path.sep)[1:]), depth
                 )
             raise err
 
