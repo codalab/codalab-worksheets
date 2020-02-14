@@ -544,7 +544,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
 
     try:
         target_info = local.download_manager.get_target_info(uuid, path, 0)
-        if target_info['uuid'] != uuid:
+        if target_info['resolved_uuid'] != uuid:
             uuid = target_info['resolved_uuid']
             path = target_info['resolved_path']
             check_bundles_have_read_permission(local.model, request.user, [uuid])
