@@ -312,8 +312,6 @@ def resolve_interpreted_blocks(interpreted_blocks):
         if block is None:
             continue
         mode = block['mode']
-        bundle_uuid = block['bundles_spec']['bundle_infos'][0]['uuid']
-        target_path = block['target_genpath']
 
         try:
             # Replace data with a resolved version.
@@ -328,6 +326,8 @@ def resolve_interpreted_blocks(interpreted_blocks):
 
                 block['rows'] = contents
             elif mode == BlockModes.contents_block or mode == BlockModes.image_block:
+                bundle_uuid = block['bundles_spec']['bundle_infos'][0]['uuid']
+                target_path = block['target_genpath']
                 try:
                     target_info = rest_util.get_target_info(bundle_uuid, target_path, 0)
                     target_uuid = target_info['resolved_uuid']
@@ -364,7 +364,9 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 # Add a 'points' field that contains the contents of the target.
                 for info in block['trajectories']:
                     try:
-                        target_info = rest_util.get_target_info(bundle_uuid, target_path, 0)
+                        target_info = rest_util.get_target_info(
+                            info['bundle_uuid'], info['target_genpath'], 0
+                        )
                         target_uuid = target_info['resolved_uuid']
                         target_path = target_info['resolved_path']
                     except NotFoundError as e:
