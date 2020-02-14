@@ -248,9 +248,12 @@ class Worker:
         except BundleServiceException as ex:
             logger.error("Disconnected from server! Failed check in: %s", ex)
             if not self.last_checkin_successful:
-                logger.info("Checkin failed twice in a row, sleeping %d seconds", CHECKIN_COOLDOWN)
-                time.sleep(CHECKIN_COOLDOWN)
+                logger.info(
+                    "Checkin failed twice in a row, sleeping %d seconds", self.CHECKIN_COOLDOWN
+                )
+                time.sleep(self.CHECKIN_COOLDOWN)
             self.last_checkin_successful = False
+            response = None
         if not response:
             return
         action_type = response['type']
