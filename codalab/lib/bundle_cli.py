@@ -1277,6 +1277,8 @@ class BundleCLI(object):
 
         # Do the download.
         target_info = client.fetch_contents_info(bundle_uuid, subpath, 0)
+        bundle_uuid = target_info.get('resolved_uuid', bundle_uuid)
+        resolved_subpath = target_info.get('resolved_path', subpath)
         if target_info['type'] == 'link':
             raise UsageError('Downloading symlinks is not allowed.')
 
@@ -1287,7 +1289,7 @@ class BundleCLI(object):
 
         progress = FileTransferProgress('Received ', f=self.stderr)
         contents = file_util.tracked(
-            client.fetch_contents_blob(bundle_uuid, subpath), progress.update
+            client.fetch_contents_blob(bundle_uuid, resolved_subpath), progress.update
         )
         with progress, closing(contents):
             if target_info['type'] == 'directory':
@@ -2300,6 +2302,8 @@ class BundleCLI(object):
             return None
 
         info_type = info.get('type')
+        bundle_uuid = info.get('resolved_uuid', bundle_uuid)
+        subpath = info.get('resolved_path', subpath)
         if info_type == 'file':
             kwargs = {}
             if head is not None:
@@ -2413,6 +2417,8 @@ class BundleCLI(object):
                 run_state = client.fetch('bundles', bundle_uuid)['state']
                 try:
                     client.fetch_contents_info(bundle_uuid, subpath, 0)
+                    bundle_uuid = info.get('resolved_uuid', bundle_uuid)
+                    subpath = info.get('resolved_path', subpath)
                 except NotFoundError:
                     time.sleep(SLEEP_PERIOD)
                     continue
@@ -2428,6 +2434,8 @@ class BundleCLI(object):
                 # file and if so, initialize the offset.
                 if subpath_is_file[i] is None:
                     target_info = client.fetch_contents_info(bundle_uuid, subpaths[i], 0)
+                    bundle_uuid = info.get('resolved_uuid', bundle_uuid)
+                    subpath = info.get('resolved_path', subpath)
                     if target_info['type'] == 'file':
                         subpath_is_file[i] = True
                         if from_start:
