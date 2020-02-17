@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { withStyles } from '@material-ui/core/styles';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import BundleDetail from '../BundleDetail';
 
@@ -39,7 +38,6 @@ class ImageItem extends React.Component {
                 'keydown',
             );
         }
-        const { classes } = this.props;
         const item = this.props.item;
         const bundleInfo = item.bundles_spec.bundle_infos[0];
         var className = 'type-image' + (this.props.focused ? ' focused' : '');
