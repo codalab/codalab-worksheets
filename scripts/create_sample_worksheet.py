@@ -5,7 +5,7 @@ import re
 import string
 import time
 
-from test_util import cleanup, run_command
+from scripts.test_util import cleanup, run_command
 
 """
 Script to create small and large sample worksheets in any instance to stress test the front end. The purpose of 
@@ -17,7 +17,7 @@ version of the small worksheet and its purpose is to push the limit and stress t
 class SampleWorksheet:
     TAG = 'codalab-sample-worksheet'
 
-    _FILE_NAME = 'sample-worksheet-temp.txt'
+    _WORKSHEET_FILE_PATH = '/tmp/sample-worksheet-temp.txt'
     _TEX_AND_MATH = (
         'The loss minimization framework is to cast learning as an optimization problem. We are estimating (fitting or '
         'learning) $\mathbf w$ using $ \mathcal{D}_\\text{train}$. A loss function $ \\text{Loss}(x, y, \mathbf w) $ '
@@ -43,22 +43,21 @@ class SampleWorksheet:
     _IMAGE_REGEX = '\[Image\]'
     _GRAPH_REGEX = '\[Graph\]'
 
-    def __init__(self, cl, args):
+    def __init__(self, cl, large=False, preview_mode=False):
         # For simplicity, reference a set number of entities for each section of the small and large worksheet.
-        if args.large:
+        if large:
             self._description = 'large'
             self._entities_count = 100
         else:
             self._description = 'small'
             self._entities_count = 3
         self._cl = cl
-        self._preview_mode = args.preview
+        self._preview_mode = preview_mode
         self._worksheet_name = 'cl_{}_worksheet'.format(self._description)
         self._content = []
 
         # For testing, _expected_line holds the expected regex pattern for each line of the worksheet
         self._expected_lines = []
-        self._test_mode = args.test
 
     def create(self):
         print('Creating a {} worksheet...'.format(self._description))
@@ -72,20 +71,15 @@ class SampleWorksheet:
         self._add_invalid_directives()
         self._add_rendering_logic()
         self._create_sample_worksheet()
-        self._test_worksheet()
         print('Done.')
 
-    def _test_worksheet(self):
-        # Only test the output of the created worksheet if in test mode
-        if not self._test_mode:
-            return
-
-        has_error = False
+    def validate_content(self):
         output_lines = run_command([self._cl, 'print', self._worksheet_name]).split('\n')
+        has_error = False
         for i in range(len(self._expected_lines)):
             if not re.match(self._expected_lines[i], output_lines[i]):
                 has_error = True
-                # Output mismatch in red
+                # Output mismatch message in red
                 print(
                     '\033[91mMISMATCH! line: {} pattern: {} output: {}\033[0m'.format(
                         i + 1, self._expected_lines[i], output_lines[i]
@@ -93,6 +87,8 @@ class SampleWorksheet:
                 )
 
         assert not has_error
+        print('Finished validating content of the sample worksheet...')
+        print('Success.')
 
     def _create_dependencies(self):
         if self._preview_mode:
@@ -144,7 +140,7 @@ class SampleWorksheet:
 
     def _create_sample_worksheet(self):
         # Write out the contents to a temporary file
-        with open(SampleWorksheet._FILE_NAME, 'w') as file:
+        with open(SampleWorksheet._WORKSHEET_FILE_PATH, 'w') as file:
             file.write('\n'.join(self._content))
 
         # Create the main worksheet used for stress testing the frontend
@@ -152,9 +148,9 @@ class SampleWorksheet:
         self._create_tagged_worksheet(self._worksheet_name, title)
 
         # Replace the content of the current worksheet with the temporary file's content. Delete the temp file after.
-        run_command([self._cl, 'wedit', '--file=' + SampleWorksheet._FILE_NAME])
-        os.remove(SampleWorksheet._FILE_NAME)
-        print('Deleted file {}.'.format(SampleWorksheet._FILE_NAME))
+        run_command([self._cl, 'wedit', '--file=' + SampleWorksheet._WORKSHEET_FILE_PATH])
+        os.remove(SampleWorksheet._WORKSHEET_FILE_PATH)
+        print('Deleted worksheet file at {}.'.format(SampleWorksheet._WORKSHEET_FILE_PATH))
 
     def _add_introduction(self):
         self._expected_lines.append(
@@ -322,7 +318,7 @@ class SampleWorksheet:
     def _add_search(self):
         self._add_header('Search')
         self._add_subheader('Bundle Search')
-        self._add_line('% search python run .limit={}'.format(self._entities_count))
+        self._add_line('% search echo run .limit={}'.format(self._entities_count))
         self._add_default_table_pattern(self._entities_count)
 
         self._add_subheader('Partial UUID Matching')
@@ -330,7 +326,7 @@ class SampleWorksheet:
         self._add_default_table_pattern(self._entities_count)
 
         self._add_subheader('Worksheet Search')
-        self._add_line('% wsearch test .limit={}'.format(self._entities_count))
+        self._add_line('% wsearch worksheet .limit={}'.format(self._entities_count))
         self._add_worksheets_pattern(self._entities_count)
 
         self._add_subheader('More Examples')
@@ -347,12 +343,14 @@ class SampleWorksheet:
         self._add_line('% search size=.sort- .limit={}'.format(self._entities_count))
         self._add_default_table_pattern(self._entities_count)
 
-        self._add_description('Search for recently failed runs')
-        self._add_line('% search state=failed .limit={} id=.sort-'.format(self._entities_count))
+        self._add_description('Search for recently ready runs')
+        self._add_line('% search state=ready .limit={} id=.sort-'.format(self._entities_count))
         self._add_default_table_pattern(self._entities_count)
 
-        self._add_description('Search for datasets (worksheets with tag "data")')
-        self._add_line('% wsearch tag=data id=.sort- .limit={}'.format(self._entities_count))
+        self._add_description('Search for worksheets (tag: {})'.format(SampleWorksheet.TAG))
+        self._add_line(
+            '% wsearch tag={} id=.sort- .limit={}'.format(SampleWorksheet.TAG, self._entities_count)
+        )
         self._add_worksheets_pattern(self._entities_count)
 
         self._add_description('Search for recently created bundles')
@@ -454,7 +452,7 @@ class SampleWorksheet:
             # When in preview mode, just return the cached UUIDs of valid bundles instead of performing a new search
             return self._valid_bundles
 
-        return run_command(
+        bundles = run_command(
             [
                 self._cl,
                 'search',
@@ -463,7 +461,10 @@ class SampleWorksheet:
                 'created=.sort-',
                 '--uuid-only',
             ]
-        ).split('\n')
+        )
+        if not bundles:
+            return []
+        return bundles.split('\n')
 
     def _add_table_pattern(self, headers, row_count):
         def add_row_pattern(values):
@@ -522,9 +523,12 @@ def main():
         cleanup(cl, SampleWorksheet.TAG)
         return
     print(args)
-    ws = SampleWorksheet(cl, args)
+
+    ws = SampleWorksheet(cl, args.large, args.preview)
     start_time = time.time()
     ws.create()
+    if args.test:
+        ws.validate_content()
     duration_seconds = time.time() - start_time
     print("--- Completion Time: {} minutes---".format(duration_seconds / 60))
 
