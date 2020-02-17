@@ -1702,7 +1702,7 @@ def test(ctx):
 @TestModule.register('worksheets')
 def test(ctx):
     # Create a comprehensive worksheet and validate its content
-    test_worksheet = SampleWorksheet()
+    test_worksheet = SampleWorksheet(cl)
     test_worksheet.create()
     test_worksheet.validate_content()
 
