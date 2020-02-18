@@ -6,7 +6,9 @@ jobs:
       install: pip install --upgrade black==18.9b0
       script: black . --check --diff
     - stage: check
-      language: javascript
+      language: node_js
+      node_js:
+        - 13
       install: cd frontend && npm install
       script:
         - npm run check-ci
