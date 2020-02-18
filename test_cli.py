@@ -1090,8 +1090,12 @@ def test(ctx):
         dir_cat = _run_command([cl, 'cat', uuid])
         assert 'dir' not in dir_cat, '"dir" should not be in bundle'
         assert 'file' not in dir_cat, '"file" should not be in bundle'
-        _run_command([cl, 'cat', uuid + '/dir'], 1)
-        _run_command([cl, 'cat', uuid + '/file'], 1)
+
+        # You should be able to cat dependencies if specified directly
+        dep_cat_output = _run_command([cl, 'cat', uuid + '/dir'])
+        check_contains('-AmMDnVl4s8', dep_cat_output)
+        dep_cat_output = _run_command([cl, 'cat', uuid + '/file'])
+        check_contains('This is a simple text file for CodaLab.', dep_cat_output)
 
         # Download the whole bundle.
         path = temp_path('')
