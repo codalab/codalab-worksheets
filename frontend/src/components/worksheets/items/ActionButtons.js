@@ -70,7 +70,6 @@ class ActionButtons extends React.Component<{
                         Run
                     </Button>
                 ) : null}
-                
                 {showBundleOperationButtons ? (
                     <BundleBulkActionMenu
                         handleSelectedBundleCommand={handleSelectedBundleCommand}

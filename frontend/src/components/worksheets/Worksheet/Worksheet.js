@@ -394,8 +394,7 @@ class Worksheet extends React.Component {
                 });
             });
             this.setState({ openCopy: true, copiedBundleIds: tempBundleIds });
-        } else if (cmd_type === "paste"){
-
+        } else if (cmd_type === 'paste') {
         }
     };
 
@@ -459,13 +458,22 @@ class Worksheet extends React.Component {
         this.setState({ deleteItemCallback: callback, openDeleteItem: true });
     };
 
-    pasteToWorksheet = ()=>{
-        console.log("Pasting to worksheet");
+    pasteToWorksheet = () => {
+        console.log('Pasting to worksheet');
         var promise = navigator.clipboard.readText();
-        promise.then((data)=>{
-        console.log("Data:\n", data)});
-        console.log(this.state.ws.info)
-    }
+        promise.then((data) => {
+            if (this.focusIndex !== -1 && this.focusIndex !== undefined) {
+                var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
+                var item_line = this.state.ws.info.block_to_raw[currentItemKey];
+                var source_line = this.state.ws.info.raw_item_to_line_index[item_line];
+                this.state.ws.info.raw.splice(source_line + 1, 0, data);
+                this.saveAndUpdateWorksheet(false, this.focusIndex);
+            } else {
+                this.state.ws.info.raw.push(data);
+                this.saveAndUpdateWorksheet(false, this.focusIndex);
+            }
+        });
+    };
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
@@ -1242,7 +1250,7 @@ class Worksheet extends React.Component {
         window.history.pushState({ uuid: this.state.ws.uuid }, '', '/worksheets/' + uuid + '/');
     };
 
-    saveAndUpdateWorksheet = (fromRaw, rawIndex) =>{
+    saveAndUpdateWorksheet = (fromRaw, rawIndex) => {
         this.setState({ updating: true, errorMessage: '' });
         this.state.ws.saveWorksheet({
             success: function(data) {
@@ -1259,7 +1267,7 @@ class Worksheet extends React.Component {
                 }
             }.bind(this),
         });
-    }
+    };
 
     deteleWorksheetAction = () => {
         this.setState({ updating: true, errorMessage: '' });

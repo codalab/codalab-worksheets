@@ -171,12 +171,14 @@ def fetch_interpreted_worksheet(uuid):
 
     # Fetch items.
     worksheet_info['raw'] = get_worksheet_lines(worksheet_info)
-
+    print("Hello:", len(worksheet_info['raw']), len(worksheet_info['items']), flush=True)
     # Replace searches with raw items.
     # This needs to be done before get_worksheet_lines because this replaces
     # user-written raw items.
-    worksheet_info['items'] = expand_raw_items(worksheet_info['items'])
-
+    result = expand_raw_items(worksheet_info['items'])
+    worksheet_info['items'] = result[0]
+    worksheet_info["raw_item_to_line_index"] = result[1]
+    print("Hello2:", len(worksheet_info['items']), flush=True)
     # Set permissions
     worksheet_info['edit_permission'] = worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL
     # Check enable chat box
@@ -576,7 +578,14 @@ def resolve_items_into_infos(items):
 
 
 def expand_raw_items(raw_items):
-    return list(chain.from_iterable([expand_raw_item(raw_item) for raw_item in raw_items]))
+    expanded_items_to_raw_lines = []
+    result = []
+    for index, raw_item in enumerate(raw_items):
+        expanded = expand_raw_item(raw_item)
+        result.append(expanded)
+        expanded_items_to_raw_lines.extend([index] * len(expanded))
+    print("HELLLO: ", expanded_items_to_raw_lines, len(expanded_items_to_raw_lines))
+    return list(chain.from_iterable(result)), expanded_items_to_raw_lines
 
 
 def expand_raw_item(raw_item):
