@@ -66,9 +66,10 @@ class DownloadManager(object):
             matching_dep = child_path_to_dep.get(path.split(os.path.sep)[0], None)
             if matching_dep:
                 # The path actually belongs to a dependency of this bundle
-                return self.get_target_info(
-                    matching_dep.parent_uuid, os.path.sep.join(path.split(os.path.sep)[1:]), depth
-                )
+                parent_path = matching_dep.parent_path
+                parent_subpath = path.split(os.path.sep)[1:]
+                new_path = os.path.sep.join([parent_path] + parent_subpath)
+                return self.get_target_info(matching_dep.parent_uuid, new_path, depth)
             raise err
 
         if bundle_state == State.PREPARING:
