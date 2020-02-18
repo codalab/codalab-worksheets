@@ -33,6 +33,7 @@ class SampleWorksheet:
 
     _FULL_UUID_REGEX = '0x[a-z0-9]{32}'
     _PARTIAL_UUID_REGEX = '0x[a-z0-9]{6}'
+    """The list of bundle states is populated from :ref:`codalab.worker.bundle_state`."""
     _BUNDLE_STATE_REGEX = (
         '(uploading|created|staged|making|starting|preparing|running'
         '|finalizing|ready|failed|killed|worker_offline)'
@@ -73,7 +74,7 @@ class SampleWorksheet:
         self._create_sample_worksheet()
         print('Done.')
 
-    def validate_content(self):
+    def test_print(self):
         output_lines = run_command([self._cl, 'print', self._worksheet_name]).split('\n')
         has_error = False
         for i in range(len(self._expected_lines)):
@@ -443,6 +444,8 @@ class SampleWorksheet:
         self._add_line('{%s}' % uuid)
 
     def _add_line(self, line, add_pattern=False):
+        # Add the line to the worksheet. If add_pattern is true, the regex form of the line will also be added
+        # to the list of expected patterns for testing purposes.
         self._content.append(line)
         if add_pattern:
             self._expected_lines.append(re.escape(line))
@@ -527,8 +530,8 @@ def main():
     ws = SampleWorksheet(cl, args.large, args.preview)
     start_time = time.time()
     ws.create()
-    if args.test:
-        ws.validate_content()
+    if args.test_print:
+        ws.test_print()
     duration_seconds = time.time() - start_time
     print("--- Completion Time: {} minutes---".format(duration_seconds / 60))
 
@@ -559,9 +562,9 @@ if __name__ == '__main__':
         help='Whether to clean up bundles and worksheets created from previous sample worksheets (defaults to false)',
     )
     parser.add_argument(
-        '--test',
+        '--test-print',
         action='store_true',
-        help='Whether to test the content of sample worksheet after it is created (defaults to false)',
+        help='Whether to test the content of sample worksheet after it is created by running cl print (defaults to false)',
     )
 
     # Parse args and run this script

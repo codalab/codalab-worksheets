@@ -1701,10 +1701,10 @@ def test(ctx):
 
 @TestModule.register('worksheets')
 def test(ctx):
-    # Create a comprehensive worksheet and validate its content
+    # Create a comprehensive worksheet and test the output of cl print
     test_worksheet = SampleWorksheet(cl)
     test_worksheet.create()
-    test_worksheet.validate_content()
+    test_worksheet.test_print()
 
 
 if __name__ == '__main__':
