@@ -863,8 +863,14 @@ class Worksheet extends React.Component {
             }
         } else {
             // Go into edit mode.
-            this.setState({ editMode: editMode }); // Needs to be before focusing
-            $('#worksheet-editor').focus();
+            this.setState({
+                editMode: editMode,
+                uuidBundlesCheckedCount: {},
+                checkedBundles: {},
+                showBundleOperationButtons: false,
+                updating: false,
+            });
+            $('#worksheet-editor').focus(); // Needs to be before focusing
         }
     }
 
