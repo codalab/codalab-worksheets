@@ -26,7 +26,10 @@ class RecordItem extends React.Component {
     };
 
     shouldComponentUpdate(nextProps, nextState) {
-        return worksheetItemPropsChanged(this.props, nextProps) || this.state.showDetail != nextState.showDetail;
+        return (
+            worksheetItemPropsChanged(this.props, nextProps) ||
+            this.state.showDetail !== nextState.showDetail
+        );
     }
 
     render() {
