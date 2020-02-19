@@ -46,6 +46,7 @@
   "devDependencies": {
     "flow-bin": "^0.91.0",
     "prettier": "^1.19.1",
+    "eslint": "^6.8.0",
     "react-scripts": "^3.2.0"
   },
   "browserslist": [
