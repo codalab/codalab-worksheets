@@ -50,15 +50,18 @@ class DownloadManager(object):
     def get_target_info(self, uuid, path, depth):
         """
         Returns information about an individual target inside the bundle,
+        If the path is not found within the bundle files, checks whether the path
+        points to one of the dependencies of the bundle, and if so, recursively
+        tries to get the information for the path within that dependency bundle.
+
         Raises NotFoundError if the bundle or the path within the bundle is not found
 
         For information about the format of the return value, see
         worker.download_util.get_target_info.
         """
-        bundle_state = self._bundle_model.get_bundle_state(uuid)
-        # Raises NotFoundException if uuid is invalid
-
-        def check_dependencies(err):
+        try:
+            return self._get_target_info_within_bundle(uuid, path, depth)
+        except NotFoundError as err:
             # if path not in bundle, check if it matches one of its dependencies
             child_path_to_dep = {
                 dep.child_path: dep for dep in self._bundle_model.get_bundle_dependencies(uuid)
@@ -66,11 +69,25 @@ class DownloadManager(object):
             matching_dep = child_path_to_dep.get(path.split(os.path.sep)[0], None)
             if matching_dep:
                 # The path actually belongs to a dependency of this bundle
+                # Get the subpath of the dependency, and the subpath requested in this call and join them
+                # ie if dependency is key:dep-bundle/dep-subpath and the requested path is bundle/key/path-subpath
+                # call get_target_info(dep-bundle, dep-subpath/path-subpath)
                 parent_path = matching_dep.parent_path
                 parent_subpath = path.split(os.path.sep)[1:]
                 new_path = os.path.sep.join([parent_path] + parent_subpath)
                 return self.get_target_info(matching_dep.parent_uuid, new_path, depth)
             raise err
+        except Exception as ex:
+            raise NotFoundError(str(ex))
+
+    def _get_target_info_within_bundle(self, uuid, path, depth):
+        """
+        Helper for get_target_info that only checks for the target info within that bundle
+        without considering the path might be pointing to one of the dependencies.
+        Raises NotFoundError if the path is not found.
+        """
+        bundle_state = self._bundle_model.get_bundle_state(uuid)
+        # Raises NotFoundException if uuid is invalid
 
         if bundle_state == State.PREPARING:
             raise NotFoundError(
@@ -80,8 +97,8 @@ class DownloadManager(object):
             bundle_path = self._bundle_store.get_bundle_location(uuid)
             try:
                 return download_util.get_target_info(bundle_path, uuid, path, depth)
-            except download_util.PathException as e:
-                return check_dependencies(NotFoundError(str(e)))
+            except download_util.PathException as err:
+                raise NotFoundError(str(err))
         else:
             # get_target_info calls are sent to the worker even on a shared file
             # system since 1) due to NFS caching the worker has more up to date
@@ -104,10 +121,7 @@ class DownloadManager(object):
                         )
                     )
                 elif 'error_code' in result:
-                    try:
-                        raise http_error_to_exception(result['error_code'], result['error_message'])
-                    except NotFoundError as e:
-                        return check_dependencies(e)
+                    raise http_error_to_exception(result['error_code'], result['error_message'])
                 return result['target_info']
             finally:
                 self._worker_model.deallocate_socket(response_socket_id)
