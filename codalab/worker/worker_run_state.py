@@ -449,7 +449,12 @@ class RunStateMachine(StateTransitioner):
             except Exception:
                 logger.error(traceback.format_exc())
 
-        if not self.shared_file_system and run_state.has_contents and not run_state.is_killed:
+        if (
+            not self.shared_file_system
+            and run_state.has_contents
+            and not run_state.is_killed
+            and not run_state.failure_message
+        ):
             # No need to upload results since results are directly written to bundle store
             return run_state._replace(
                 stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
