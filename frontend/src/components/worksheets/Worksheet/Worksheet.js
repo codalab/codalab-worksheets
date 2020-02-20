@@ -463,12 +463,14 @@ class Worksheet extends React.Component {
         var promise = navigator.clipboard.readText();
         promise.then((data) => {
             if (this.focusIndex !== -1 && this.focusIndex !== undefined) {
+                // Insert after the source line
                 var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
                 var item_line = this.state.ws.info.block_to_raw[currentItemKey];
-                var source_line = this.state.ws.info.raw_item_to_line_index[item_line];
+                var source_line = this.state.ws.info.raw_item_to_source_line[item_line];
                 this.state.ws.info.raw.splice(source_line + 1, 0, data);
                 this.saveAndUpdateWorksheet(false, this.focusIndex);
             } else {
+                // Add to the end of the worksheet if no focus
                 this.state.ws.info.raw.push(data);
                 this.saveAndUpdateWorksheet(false, this.focusIndex);
             }
@@ -804,7 +806,15 @@ class Worksheet extends React.Component {
                     }.bind(this),
                     'keyup',
                 );
-
+                // run after current cell
+                Mousetrap.bind(
+                    ['a v'],
+                    function(e) {
+                        // paste to worksheet
+                        this.pasteToWorksheet();
+                    }.bind(this),
+                    'keyup',
+                );
                 // edit and rerun current bundle
                 Mousetrap.bind(
                     ['a n'],
