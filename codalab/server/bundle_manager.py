@@ -237,7 +237,7 @@ class BundleManager(object):
             with self._make_uuids_lock:
                 self._make_uuids.remove(bundle.uuid)
 
-    def _cleanup_dead_workers(self, workers, callback=None):
+    def _cleanup_dead_workers(self, workers):
         """
         Clean-up workers that we haven't heard from for more than WORKER_TIMEOUT_SECONDS seconds.
         Such workers probably died without checking out properly.
@@ -251,8 +251,6 @@ class BundleManager(object):
                 )
                 self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
                 workers.remove(worker['worker_id'])
-                if callback is not None:
-                    callback(worker)
 
     def _restage_stuck_starting_bundles(self, workers):
         """
@@ -358,9 +356,8 @@ class BundleManager(object):
                         )
                         # Don't start this bundle yet, as there is no parallel_run_quota left for this user.
                         continue
-            if (
-                not workers_list
-            ):  # Length is 0 (private user with no workers) or is None (root user)
+            if not workers_list:
+                # Length is 0 (private user with no workers) or is None (root user)
                 workers_list = get_available_workers(self._model.root_user_id)
 
             # Try starting bundles on the workers that have enough computing resources
@@ -630,7 +627,7 @@ class BundleManager(object):
         READY / FAILED, no worker_run DB entry:
             Finished.
         """
-        workers = WorkerInfoAccessor(self._worker_model.get_workers())
+        workers = WorkerInfoAccessor(self._worker_model, WORKER_TIMEOUT_SECONDS - 5)
 
         # Handle some exceptional cases.
         self._cleanup_dead_workers(workers)
