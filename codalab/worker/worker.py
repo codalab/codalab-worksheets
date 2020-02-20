@@ -40,6 +40,8 @@ class Worker:
     KILL_TIMEOUT = 100
     # Number of loops to check for bundle directory creation by server on shared FS workers
     BUNDLE_DIR_WAIT_NUM_TRIES = 120
+    # Number of seconds to sleep if checking in with server fails two times in a row
+    CHECKIN_COOLDOWN = 5
 
     def __init__(
         self,
@@ -170,9 +172,6 @@ class Worker:
                 self.save_state()
                 self.checkin()
                 self.save_state()
-                if not self.last_checkin_successful:
-                    logger.info('Connected! Successful check in!')
-                self.last_checkin_successful = True
                 if self.check_idle_stop():
                     self.stop = True
                     break
@@ -241,7 +240,20 @@ class Worker:
             'runs': [run.as_dict for run in self.all_runs],
             'shared_file_system': self.shared_file_system,
         }
-        response = self.bundle_service.checkin(self.id, request)
+        try:
+            response = self.bundle_service.checkin(self.id, request)
+            if not self.last_checkin_successful:
+                logger.info('Connected! Successful check in!')
+            self.last_checkin_successful = True
+        except BundleServiceException as ex:
+            logger.error("Disconnected from server! Failed check in: %s", ex)
+            if not self.last_checkin_successful:
+                logger.info(
+                    "Checkin failed twice in a row, sleeping %d seconds", self.CHECKIN_COOLDOWN
+                )
+                time.sleep(self.CHECKIN_COOLDOWN)
+            self.last_checkin_successful = False
+            response = None
         if not response:
             return
         action_type = response['type']
@@ -366,7 +378,10 @@ class Worker:
 
             if output:
                 lines = output.decode().split("\n")
-                index = lines[0].split().index("Available")
+                headers = lines[0].split()
+                # The machine being attached as a worker may be using a different language other than
+                # English, so check the 4th header if "Available" is not present.
+                index = headers.index("Available") if "Available" in headers else 3
                 # We convert the original result from df command in unit of 1KB blocks into bytes.
                 return int(lines[1].split()[index]) * 1024
 

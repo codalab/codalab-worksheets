@@ -10,7 +10,7 @@ import time
 import traceback
 
 from codalab.objects.permission import check_bundles_have_read_permission
-from codalab.common import PermissionError, NotFoundError
+from codalab.common import PermissionError
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
@@ -51,6 +51,8 @@ class BundleManager(object):
 
         self._make_uuids_lock = threading.Lock()
         self._make_uuids = set()
+        # Set of bundle UUIDs with an unknown requested worker
+        self._bundles_without_matched_workers = set()
 
         def parse(to_value, field):
             return to_value(config[field]) if field in config else None
@@ -388,8 +390,7 @@ class BundleManager(object):
                 worker['memory_bytes'] -= bundle_resources.memory
         return workers_list
 
-    @staticmethod
-    def _filter_and_sort_workers(workers_list, bundle, bundle_resources):
+    def _filter_and_sort_workers(self, workers_list, bundle, bundle_resources):
         """
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
@@ -403,12 +404,7 @@ class BundleManager(object):
         # Filter by tag.
         request_queue = bundle.metadata.request_queue
         if request_queue:
-            tagm = re.match('tag=(.+)', request_queue)
-            if tagm:
-                workers_list = [worker for worker in workers_list if worker['tag'] == tagm.group(1)]
-            else:
-                # We don't know how to handle this type of request queue argument
-                return []
+            workers_list = self._get_matched_workers(request_queue, workers_list)
 
         # Filter by CPUs.
         workers_list = [
@@ -640,7 +636,8 @@ class BundleManager(object):
         self._acknowledge_recently_finished_bundles(workers)
         # A dictionary structured as {user id : user information} to track those visited user information
         user_info_cache = {}
-        staged_bundles_to_run = self._get_staged_bundles_to_run(user_info_cache)
+        staged_bundles_to_run = self._get_staged_bundles_to_run(workers, user_info_cache)
+
         # Schedule, preferring user-owned workers.
         self._schedule_run_bundles_on_workers(workers, staged_bundles_to_run, user_info_cache)
 
@@ -671,11 +668,26 @@ class BundleManager(object):
                 return global_fail_string % (pretty_print(value), pretty_print(global_min))
         return None
 
-    def _get_staged_bundles_to_run(self, user_info_cache):
+    @staticmethod
+    def _get_matched_workers(request_queue, workers):
+        """
+        Get all of the workers that match with the name of the requested worker
+        :param request_queue: a tag that can be used to match workers
+        :param workers: a list of workers
+        :return: a list of matched workers
+        """
+        tagm = re.match('tag=(.+)', request_queue)
+        if tagm != None:
+            worker_tag = tagm.group(1)
+            matched_workers = [worker for worker in workers if worker['tag'] == worker_tag]
+        return matched_workers or []
+
+    def _get_staged_bundles_to_run(self, workers, user_info_cache):
         """
         Fails bundles that request more resources than available for the given user.
         Note: allow more resources than available on any worker because new
         workers might get spun up in response to the presence of this run.
+        :param workers: a WorkerInfoAccessor object containing worker related information e.g. running uuid.
         :param user_info_cache: a dictionary mapping user id to user information.
         :return: a list of tuple which contains valid staged bundles and their bundle_resources.
         """
@@ -744,6 +756,33 @@ class BundleManager(object):
                     bundle,
                     {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
                 )
+            elif bundle.metadata.request_queue:
+                matched_workers = self._get_matched_workers(
+                    bundle.metadata.request_queue, workers.workers()
+                )
+                # For those bundles that were requested to run on a worker which does not exist in the system
+                # temporarily, we filter out those bundles so that they won't be dispatched to run on workers.
+                if len(matched_workers) == 0:
+                    if bundle.uuid not in self._bundles_without_matched_workers:
+                        self._model.update_bundle(
+                            bundle,
+                            {
+                                'metadata': {
+                                    'staged_status': 'Bundle is requested to run on a worker {} which has '
+                                    'not been connected to the CodaLab server yet.'.format(
+                                        bundle.metadata.request_queue
+                                    )
+                                }
+                            },
+                        )
+                        self._bundles_without_matched_workers.add(bundle.uuid)
+                else:
+                    # Remove the uuid from self._bundles_without_matched_workers if a matched
+                    # private worker is found in the system and update bundle's metadata
+                    if bundle.uuid in self._bundles_without_matched_workers:
+                        self._model.update_bundle(bundle, {'metadata': {'staged_status': None}})
+                        self._bundles_without_matched_workers.remove(bundle.uuid)
+                    staged_bundles_to_run.append((bundle, bundle_resources))
             else:
                 staged_bundles_to_run.append((bundle, bundle_resources))
 

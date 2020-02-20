@@ -83,7 +83,7 @@ def parse_args():
         '--max-image-size',
         type=parse_size,
         metavar='SIZE',
-        default='10g',
+        default=None,
         help='Limit the size of Docker images to download from the Docker Hub'
         '(e.g. 3, 3k, 3m, 3g, 3t). If the limit is exceeded, '
         'the requested image will not be downloaded. '
@@ -227,7 +227,7 @@ def parse_cpuset_args(arg):
     Parse given arg into a set of integers representing cpus
 
     Arguments:
-        arg: comma seperated string of ints, or "ALL" representing all available cpus
+        arg: comma separated string of ints, or "ALL" representing all available cpus
     """
     cpu_count = multiprocessing.cpu_count()
     if arg == 'ALL':
@@ -252,7 +252,7 @@ def parse_gpuset_args(arg):
     Parse given arg into a set of strings representing gpu UUIDs
 
     Arguments:
-        arg: comma seperated string of ints, or "ALL" representing all gpus
+        arg: comma separated string of ints, or "ALL" representing all gpus
     """
     if arg == '':
         return set()
