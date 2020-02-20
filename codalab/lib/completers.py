@@ -170,7 +170,7 @@ class TargetsCompleter(CodaLabCompleter):
             bundle_uuid = resolved_target[2]
             dir_target = (bundle_uuid, os.path.dirname(subpath))
             try:
-                info = client.fetch_contents_info(dir_target[0], dir_target[1], depth=1)
+                info = client.fetch_contents_info(dir_target, depth=1)
             except NotFoundError:
                 return ()
             if info['type'] == 'directory':

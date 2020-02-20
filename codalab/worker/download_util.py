@@ -5,7 +5,7 @@ class PathException(Exception):
     pass
 
 
-def get_target_info(bundle_path, uuid, path, depth):
+def get_target_info(bundle_path, target, depth):
     """
     Generates an index of the contents of the given path. The index contains
     the fields:
@@ -16,10 +16,10 @@ def get_target_info(bundle_path, uuid, path, depth):
         link: If type is 'link', where the symbolic link points to.
         contents: If type is 'directory', a list of entries for the contents.
 
-    For the top level entry, also contains:
-        resolved_uuid: UUID of the bundle the path is actually found on. This is
+    For the top level entry, also contains resolved_target, a dict with:
+        uuid: UUID of the bundle the path is actually found on. This is
             used for when a path resolves to a dependency of a bundle.
-        resolved_path: the particular path to resolve in the bundle UUID in the end. If
+        path: the particular path to resolve in the bundle UUID in the end. If
             the path resolves to a dependency, then the first component of the
             path is the dependency key and should not be used within the actual
             dependency bundle. This field strips that value.
@@ -32,25 +32,24 @@ def get_target_info(bundle_path, uuid, path, depth):
 
     If reading the given path is not secure, raises a PathException.
     """
-    final_path = _get_normalized_target_path(bundle_path, uuid, path)
+    final_path = _get_normalized_target_path(bundle_path, target)
 
     if not os.path.islink(final_path) and not os.path.exists(final_path):
-        raise PathException('Path {} in bundle {} not found'.format(path, uuid))
+        raise PathException('Path {} in bundle {} not found'.format(*target))
 
     info = _compute_target_info(final_path, depth)
-    info['resolved_uuid'] = uuid
-    info['resolved_path'] = path
+    info['resolved_target'] = target
 
     return info
 
 
-def get_target_path(bundle_path, uuid, path):
+def get_target_path(bundle_path, target):
     """
     Returns the path to the given target, which is assumed to exist.
     If reading the given path is not secure, raises a PathException.
     """
-    final_path = _get_normalized_target_path(bundle_path, uuid, path)
-    error_path = _get_target_path(uuid, path)
+    final_path = _get_normalized_target_path(bundle_path, target)
+    error_path = _get_target_path(*target)
 
     if os.path.islink(final_path):
         # We shouldn't get here, unless the user is a hacker or a developer
@@ -63,10 +62,10 @@ def get_target_path(bundle_path, uuid, path):
 BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 
 
-def _get_normalized_target_path(bundle_path, uuid, path):
+def _get_normalized_target_path(bundle_path, target):
     real_bundle_path = os.path.realpath(bundle_path)
-    normalized_target_path = os.path.normpath(_get_target_path(real_bundle_path, path))
-    error_path = _get_target_path(uuid, path)
+    normalized_target_path = os.path.normpath(_get_target_path(real_bundle_path, target[1]))
+    error_path = _get_target_path(*target)
 
     if not normalized_target_path.startswith(real_bundle_path):
         raise PathException('%s is not inside the bundle.' % error_path)

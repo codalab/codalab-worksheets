@@ -205,17 +205,15 @@ def check_target_has_read_permission(target):
     check_bundles_have_read_permission(local.model, request.user, [target[0]])
 
 
-def get_target_info(bundle_uuid, subpath, depth):
+def get_target_info(target, depth):
     """
     Returns information about an individual target inside the bundle
     Raises NotFoundError if target bundle or path don't exist
     """
-    check_target_has_read_permission((bundle_uuid, subpath))
-    target_info = local.download_manager.get_target_info(bundle_uuid, subpath, depth)
-    if target_info['resolved_uuid'] != bundle_uuid:
-        check_target_has_read_permission(
-            (target_info['resolved_uuid'], target_info['resolved_path'])
-        )
+    check_target_has_read_permission(target)
+    target_info = local.download_manager.get_target_info(target, depth)
+    if target_info['resolved_target'] != target:
+        check_target_has_read_permission(target_info['resolved_target'])
     return target_info
 
 

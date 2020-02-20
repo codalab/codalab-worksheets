@@ -46,7 +46,7 @@ class Reader(object):
             - Otherwise starts a thread calling stream_fn on the computed final path
         """
         try:
-            final_path = get_target_path(run_state.bundle_path, run_state.bundle.uuid, path)
+            final_path = get_target_path(run_state.bundle_path, (run_state.bundle.uuid, path))
         except PathException as e:
             reply_fn((http.client.NOT_FOUND, str(e)), None, None)
         read_thread = threading.Thread(target=stream_fn, args=[final_path])
@@ -71,7 +71,7 @@ class Reader(object):
         else:
             try:
                 target_info = download_util.get_target_info(
-                    run_state.bundle_path, run_state.bundle.uuid, path, args['depth']
+                    run_state.bundle_path, (run_state.bundle.uuid, path), args['depth']
                 )
             except PathException as e:
                 err = (http.client.NOT_FOUND, str(e))
