@@ -240,21 +240,35 @@ class DockerImageManager:
                 # Check docker image size before pulling from Docker Hub.
                 # Do not download images larger than self._max_image_size
                 # Download images if size cannot be obtained
-                try:
-                    image_size_bytes = docker_utils.get_image_size_without_pulling(image_spec)
-                    if image_size_bytes > self._max_image_size:
-                        failure_msg = (
-                            "The size of "
-                            + image_spec
-                            + ": {} exceeds the maximum image size allowed {}.".format(
-                                size_str(image_size_bytes), size_str(self._max_image_size)
+                if self._max_image_size:
+                    try:
+                        image_size_bytes = docker_utils.get_image_size_without_pulling(image_spec)
+                        if image_size_bytes is None:
+                            failure_msg = "Unable to find Docker image: {} from Docker HTTP API V2.".format(
+                                image_spec
                             )
+                            return ImageAvailabilityState(
+                                digest=None, stage=DependencyStage.FAILED, message=failure_msg
+                            )
+                        elif image_size_bytes > self._max_image_size:
+                            failure_msg = (
+                                "The size of "
+                                + image_spec
+                                + ": {} exceeds the maximum image size allowed {}.".format(
+                                    size_str(image_size_bytes), size_str(self._max_image_size)
+                                )
+                            )
+                            return ImageAvailabilityState(
+                                digest=None, stage=DependencyStage.FAILED, message=failure_msg
+                            )
+                    except Exception as ex:
+                        failure_msg = "Cannot fetch image size before pulling Docker image: {} from Docker Hub: {}.".format(
+                            image_spec, ex
                         )
+                        logger.error(failure_msg)
                         return ImageAvailabilityState(
                             digest=None, stage=DependencyStage.FAILED, message=failure_msg
                         )
-                except Exception as ex:
-                    logger.warn("Cannot fetch image size beforehands: %s", ex)
 
                 self._downloading.add_if_new(image_spec, threading.Thread(target=download, args=[]))
                 return ImageAvailabilityState(
