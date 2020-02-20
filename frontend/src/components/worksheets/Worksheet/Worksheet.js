@@ -1412,12 +1412,7 @@ class Worksheet extends React.Component {
                 </Button>
             </div>
         );
-        // if (info && info.items.length && this.state.focusIndex >= 0){
-        //     console.log("Hello:", this.state.focusIndex, getMinMaxKeys(info.items[this.state.focusIndex]));
-        // }
-        // if (info){
-        // console.log(info.items[0]);
-        // }
+
         let last_key = null;
         if (info && info.items.length) {
             // Non-empty worksheet

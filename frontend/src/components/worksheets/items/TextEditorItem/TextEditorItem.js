@@ -87,7 +87,7 @@ class TextEditorItem extends React.Component<{
             // Updating an existing item.
             data['ids'] = ids;
         }
-        console.log('Text:', data);
+
         $.ajax({
             url,
             data: JSON.stringify(data),
