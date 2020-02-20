@@ -200,6 +200,9 @@ def pack_files_for_upload(
         basefn = os.path.basename(fn)
         return any(fnmatch(basefn, p) for p in exclude_patterns)
 
+    def filter(tarinfo):
+        return None if should_exclude(tarinfo.name) else tarinfo
+
     for source in sources:
         if should_unpack and path_is_archive(source):
             # Unpack archive into scratch space
@@ -211,9 +214,7 @@ def pack_files_for_upload(
             archive.add(dest_path, arcname=dest_basename, recursive=True)
         else:
             # Add file to archive, or add files recursively if directory
-            archive.add(
-                source, arcname=os.path.basename(source), recursive=True, exclude=should_exclude
-            )
+            archive.add(source, arcname=os.path.basename(source), recursive=True, filter=filter)
 
     # Clean up, rewind archive file, and return it
     archive.close()

@@ -152,6 +152,7 @@ def start_bundle_container(
         name=container_name,
         network=network,
         mem_limit=memory_bytes,
+        shm_size='1G',
         cpuset_cpus=cpuset_str,
         environment=environment,
         working_dir=working_dir,
@@ -283,7 +284,8 @@ def get_image_size_without_pulling(image_spec):
     :param image_spec: image_spec can have two formats as follows:
             1. "repo:tag": 'codalab/default-cpu:latest'
             2. "repo@digest": studyfang/hotpotqa@sha256:f0ee6bc3b8deefa6bdcbb56e42ec97b498befbbca405a630b9ad80125dc65857
-    :return: the compressed image size in bytes
+    :return: 1. when fetching from Docker rest API V2 succeeded, return the compressed image size in bytes
+             2. when fetching from Docker rest API V2 failed, return None
     """
     logger.info("Downloading tag information for {}".format(image_spec))
 
