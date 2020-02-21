@@ -84,7 +84,9 @@ class Reader(object):
             target_info['contents'] = [
                 child for child in target_info['contents'] if child['name'] not in dep_paths
             ]
-
+        # Object is not JSON serializable so submit its dict in API response
+        # The client is responsible for deserializing it
+        target_info['resolved_target'] = target_info['resolved_target'].__dict__
         reply_fn(None, {'target_info': target_info}, None)
 
     def stream_directory(self, run_state, path, args, reply_fn):

@@ -132,7 +132,12 @@ class DownloadManager(object):
                     )
                 elif 'error_code' in result:
                     raise http_error_to_exception(result['error_code'], result['error_message'])
-                return result['target_info']
+                target_info = result['target_info']
+                # Deserialize dict response sent over JSON
+                target_info['resolved_target'] = download_util.BundleTarget.from_dict(
+                    target_info['resolved_target']
+                )
+                return target_info
             finally:
                 self._worker_model.deallocate_socket(response_socket_id)
 

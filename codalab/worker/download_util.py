@@ -23,7 +23,7 @@ class BundleTarget:
         return self.bundle_uuid == other.bundle_uuid and self.subpath == other.subpath
 
     def __hash__(self):
-        return hash(self.bundle_uuid, self.subpath)
+        return hash((self.bundle_uuid, self.subpath))
 
     @classmethod
     def from_dict(cls, dct):

@@ -167,9 +167,10 @@ class TargetsCompleter(CodaLabCompleter):
             )
         else:
             # then suggest completions for subpath
-            resolved_target = self.cli.resolve_target(client, worksheet_uuid, target)
-            bundle_uuid = resolved_target[2]
-            dir_target = BundleTarget(bundle_uuid, os.path.dirname(subpath))
+            client, worksheet_uuid, resolved_target = self.cli.resolve_target(
+                client, worksheet_uuid, target
+            )
+            dir_target = BundleTarget(resolved_target.bundle_uuid, os.path.dirname(subpath))
             try:
                 info = client.fetch_contents_info(dir_target, depth=1)
             except NotFoundError:

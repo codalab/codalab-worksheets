@@ -1693,7 +1693,9 @@ def test(ctx):
     uuid = _run_command([cl, 'upload', path])
     response = ctx.client.fetch_contents_info(BundleTarget(uuid, ''))
     check_equals(response['name'], uuid)
-    check_equals(open(path, 'rb').read(), ctx.client.fetch_contents_blob(BundleTarget(uuid, '/')).read())
+    check_equals(
+        open(path, 'rb').read(), ctx.client.fetch_contents_blob(BundleTarget(uuid, '/')).read()
+    )
 
     # Display image - should not crash
     wuuid = _run_command([cl, 'work', '-u'])
