@@ -6,6 +6,7 @@ import urllib.request, urllib.parse, urllib.error
 
 from codalab.common import http_error_to_exception, precondition, UsageError
 from codalab.worker.rest_client import RestClient, RestClientException
+from codalab.worker.download_util import BundleTarget
 
 
 def wrap_exception(message):
@@ -594,6 +595,10 @@ class JsonApiClient(RestClient):
             urllib.parse.quote(target.subpath),
         )
         response = self._make_request('GET', request_path, query_params={'depth': depth})
+        # Deserialize the target. See /rest/bundles/_fetch_contents_info for serialization side
+        response['data']['resolved_target'] = BundleTarget.from_dict(
+            response['data']['resolved_target']
+        )
         return response['data']
 
     @wrap_exception('Unable to fetch contents blob of bundle {1}')

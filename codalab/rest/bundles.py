@@ -403,6 +403,8 @@ def _fetch_bundle_contents_info(uuid, path=''):
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     try:
         info = local.download_manager.get_target_info(target, depth)
+        # Object is not JSON serializable so get its dict
+        info['resolved_target'] = info['resolved_target'].__dict__
     except NotFoundError as e:
         abort(http.client.NOT_FOUND, str(e))
     except Exception as e:

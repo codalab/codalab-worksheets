@@ -25,6 +25,10 @@ class BundleTarget:
     def __hash__(self):
         return hash(self.bundle_uuid, self.subpath)
 
+    @classmethod
+    def from_dict(cls, dct):
+        return cls(dct['bundle_uuid'], dct['subpath'])
+
 
 def get_target_info(bundle_path, target, depth):
     """
