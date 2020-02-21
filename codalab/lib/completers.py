@@ -13,6 +13,7 @@ from argcomplete import warn
 
 from codalab.common import NotFoundError
 from codalab.lib import spec_util, worksheet_util, cli_util
+from codalab.worker.download_util import BundleTarget
 
 
 class CodaLabCompleter(object):
@@ -168,7 +169,7 @@ class TargetsCompleter(CodaLabCompleter):
             # then suggest completions for subpath
             resolved_target = self.cli.resolve_target(client, worksheet_uuid, target)
             bundle_uuid = resolved_target[2]
-            dir_target = (bundle_uuid, os.path.dirname(subpath))
+            dir_target = BundleTarget(bundle_uuid, os.path.dirname(subpath))
             try:
                 info = client.fetch_contents_info(dir_target, depth=1)
             except NotFoundError:
@@ -180,7 +181,7 @@ class TargetsCompleter(CodaLabCompleter):
                     if child['name'].startswith(basename):
                         matching_child_names.append(child['name'])
                 return (
-                    suggestion_format.format(os.path.join(dir_target[1], child_name))
+                    suggestion_format.format(os.path.join(dir_target.subpath, child_name))
                     for child_name in matching_child_names
                 )
             else:

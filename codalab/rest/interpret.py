@@ -40,6 +40,7 @@ from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
 from codalab.rest.worksheets import get_worksheet_info, search_worksheets
 from codalab.rest.worksheet_block_schemas import BlockModes, MarkupBlockSchema, FetchStatusCodes
+from codalab.worker.download_util import BundleTarget
 
 
 @post('/interpret/search')
@@ -325,7 +326,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
             elif mode == BlockModes.contents_block or mode == BlockModes.image_block:
                 bundle_uuid = block['bundles_spec']['bundle_infos'][0]['uuid']
                 target_path = block['target_genpath']
-                target = (bundle_uuid, target_path)
+                target = BundleTarget(bundle_uuid, target_path)
                 try:
                     target_info = rest_util.get_target_info(target, 0)
                     if target_info['type'] == 'directory' and mode == BlockModes.contents_block:
@@ -340,7 +341,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
                         elif mode == BlockModes.image_block:
                             block['status']['code'] = FetchStatusCodes.ready
                             block['image_data'] = base64.b64encode(
-                                bytes(cat_target(target_info['resolved_path']))
+                                bytes(cat_target(target_info['resolved_target']))
                             ).decode('utf-8')
                     else:
                         block['status']['code'] = FetchStatusCodes.not_found
@@ -359,13 +360,13 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 # data = list of {'target': ...}
                 # Add a 'points' field that contains the contents of the target.
                 for info in block['trajectories']:
-                    target = (info['bundle_uuid'], info['target_genpath'])
+                    target = BundleTarget(info['bundle_uuid'], info['target_genpath'])
                     try:
                         target_info = rest_util.get_target_info(target, 0)
                     except NotFoundError as e:
                         continue
                     if target_info['type'] == 'file':
-                        contents = head_target(target_info['resolved_path'], block['max_lines'])
+                        contents = head_target(target_info['resolved_target'], block['max_lines'])
                         # Assume TSV file without header for now, just return each line as a row
                         info['points'] = points = []
                         for line in contents:
@@ -462,7 +463,7 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
     else:
         subpath, key = genpath, None
 
-    target = (bundle_uuid, subpath)
+    target = BundleTarget(bundle_uuid, subpath)
     if target not in target_cache:
         info = None
         try:

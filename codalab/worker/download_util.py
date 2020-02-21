@@ -5,6 +5,27 @@ class PathException(Exception):
     pass
 
 
+class BundleTarget:
+    """
+        bundle_uuid: UUID of the bundle the path is actually found on. This is
+            used for when a path resolves to a dependency of a bundle.
+        subpath: the particular path to resolve in the bundle UUID in the end. If
+            the path resolves to a dependency, then the first component of the
+            path is the dependency key and should not be used within the actual
+            dependency bundle. This field strips that value.
+    """
+
+    def __init__(self, bundle_uuid, subpath):
+        self.bundle_uuid = bundle_uuid
+        self.subpath = subpath
+
+    def __eq__(self, other):
+        return self.bundle_uuid == other.bundle_uuid and self.subpath == other.subpath
+
+    def __hash__(self):
+        return hash(self.bundle_uuid, self.subpath)
+
+
 def get_target_info(bundle_path, target, depth):
     """
     Generates an index of the contents of the given path. The index contains
@@ -16,13 +37,7 @@ def get_target_info(bundle_path, target, depth):
         link: If type is 'link', where the symbolic link points to.
         contents: If type is 'directory', a list of entries for the contents.
 
-    For the top level entry, also contains resolved_target, a dict with:
-        uuid: UUID of the bundle the path is actually found on. This is
-            used for when a path resolves to a dependency of a bundle.
-        path: the particular path to resolve in the bundle UUID in the end. If
-            the path resolves to a dependency, then the first component of the
-            path is the dependency key and should not be used within the actual
-            dependency bundle. This field strips that value.
+    For the top level entry, also contains resolved_target, a BundleTarget:
 
     Any entries more than depth levels deep are filtered out. Depth 0, for
     example, means only the top-level entry is included, and no contents. Depth
@@ -35,7 +50,9 @@ def get_target_info(bundle_path, target, depth):
     final_path = _get_normalized_target_path(bundle_path, target)
 
     if not os.path.islink(final_path) and not os.path.exists(final_path):
-        raise PathException('Path {} in bundle {} not found'.format(*target))
+        raise PathException(
+            'Path {} in bundle {} not found'.format(target.bundle_uuid, target.subpath)
+        )
 
     info = _compute_target_info(final_path, depth)
     info['resolved_target'] = target
@@ -49,7 +66,7 @@ def get_target_path(bundle_path, target):
     If reading the given path is not secure, raises a PathException.
     """
     final_path = _get_normalized_target_path(bundle_path, target)
-    error_path = _get_target_path(*target)
+    error_path = _get_target_path(target.bundle_uuid, target.subpath)
 
     if os.path.islink(final_path):
         # We shouldn't get here, unless the user is a hacker or a developer
@@ -64,8 +81,8 @@ BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 
 def _get_normalized_target_path(bundle_path, target):
     real_bundle_path = os.path.realpath(bundle_path)
-    normalized_target_path = os.path.normpath(_get_target_path(real_bundle_path, target[1]))
-    error_path = _get_target_path(*target)
+    normalized_target_path = os.path.normpath(_get_target_path(real_bundle_path, target.subpath))
+    error_path = _get_target_path(target.bundle_uuid, target.subpath)
 
     if not normalized_target_path.startswith(real_bundle_path):
         raise PathException('%s is not inside the bundle.' % error_path)

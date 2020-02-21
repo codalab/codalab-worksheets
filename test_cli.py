@@ -18,6 +18,7 @@ Things not tested:
 
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
+from codalab.worker.download_util import BundleTarget
 from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
 
@@ -1690,9 +1691,9 @@ def test(ctx):
     # Basic getting info and blob contents of a bundle
     path = test_path('a.txt')
     uuid = _run_command([cl, 'upload', path])
-    response = ctx.client.fetch_contents_info((uuid, ''))
+    response = ctx.client.fetch_contents_info(BundleTarget(uuid, ''))
     check_equals(response['name'], uuid)
-    check_equals(open(path, 'rb').read(), ctx.client.fetch_contents_blob((uuid, '/')).read())
+    check_equals(open(path, 'rb').read(), ctx.client.fetch_contents_blob(BundleTarget(uuid, '/')).read())
 
     # Display image - should not crash
     wuuid = _run_command([cl, 'work', '-u'])

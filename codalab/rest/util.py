@@ -202,7 +202,7 @@ def _filter_readable_worksheet_uuids(model, worksheet_uuids):
 
 
 def check_target_has_read_permission(target):
-    check_bundles_have_read_permission(local.model, request.user, [target[0]])
+    check_bundles_have_read_permission(local.model, request.user, [target.bundle_uuid])
 
 
 def get_target_info(target, depth):

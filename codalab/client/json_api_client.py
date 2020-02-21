@@ -584,7 +584,15 @@ class JsonApiClient(RestClient):
 
     @wrap_exception('Unable to fetch contents info of bundle {1}')
     def fetch_contents_info(self, target, depth=0):
-        request_path = '/bundles/%s/contents/info/%s' % (target[0], urllib.parse.quote(target[1]))
+        """
+        Calls download_manager.get_target_info server-side and returns the target_info.
+        For details on return value look at worker.download_util.get_target_info
+        :param target: a worker.download_util.BundleTarget
+        """
+        request_path = '/bundles/%s/contents/info/%s' % (
+            target.bundle_uuid,
+            urllib.parse.quote(target.subpath),
+        )
         response = self._make_request('GET', request_path, query_params={'depth': depth})
         return response['data']
 
@@ -593,15 +601,16 @@ class JsonApiClient(RestClient):
         """
         Returns a file-like object for the target on the given bundle.
 
-        :param target: A tuple of bundle_id, path where:
-            bundle_id: id of target bundle
-            path: path to target in bundle
+        :param target: A worker.download_util.BundleTarget
         :param range_: range of bytes to fetch
         :param head: number of lines to summarize from beginning of file
         :param tail: number of lines to summarize from end of file
         :return: file-like object containing requested data blob
         """
-        request_path = '/bundles/%s/contents/blob/%s' % (target[0], urllib.parse.quote(target[1]))
+        request_path = '/bundles/%s/contents/blob/%s' % (
+            target.bundle_uuid,
+            urllib.parse.quote(target.subpath),
+        )
         headers = {'Accept-Encoding': 'gzip'}
         if range_ is not None:
             headers['Range'] = 'bytes=%d-%d' % range_

@@ -54,7 +54,7 @@ class DownloadManager(object):
         points to one of the dependencies of the bundle, and if so, recursively
         tries to get the information for the path within that dependency bundle.
 
-        :param target: a Tuple[str, str] of bundle UUID and path within the bundle
+        :param target: a download_util.BundleTarget containing the bundle UUID and subpath
 
         Raises NotFoundError if the bundle or the path within the bundle is not found
 
@@ -65,23 +65,25 @@ class DownloadManager(object):
             return self._get_target_info_within_bundle(target, depth)
         except NotFoundError as err:
             # if path not in bundle, check if it matches one of its dependencies
-            uuid, path = target
             child_path_to_dep = {
-                dep.child_path: dep for dep in self._bundle_model.get_bundle_dependencies(uuid)
+                dep.child_path: dep
+                for dep in self._bundle_model.get_bundle_dependencies(target.bundle_uuid)
             }
-            matching_dep = child_path_to_dep.get(path.split(os.path.sep)[0])
+            matching_dep = child_path_to_dep.get(target.subpath.split(os.path.sep)[0])
             if matching_dep:
                 # The path actually belongs to a dependency of this bundle
                 # Get the subpath of the dependency, and the subpath requested in this call and join them
                 # ie if dependency is key:dep-bundle/dep-subpath and the requested path is bundle/key/path-subpath
                 # call get_target_info((dep-bundle, dep-subpath/path-subpath))
                 parent_path = matching_dep.parent_path
-                parent_subpath = path.split(os.path.sep)[1:]
+                parent_subpath = target.subpath.split(os.path.sep)[1:]
                 if parent_path:
                     new_path = os.path.sep.join([parent_path] + parent_subpath)
                 else:
                     new_path = os.path.sep.join(parent_subpath)
-                return self.get_target_info((matching_dep.parent_uuid, new_path), depth)
+                return self.get_target_info(
+                    download_util.BundleTarget(matching_dep.parent_uuid, new_path), depth
+                )
             raise err
         except Exception as ex:
             raise NotFoundError(str(ex))
@@ -92,16 +94,17 @@ class DownloadManager(object):
         without considering the path might be pointing to one of the dependencies.
         Raises NotFoundError if the path is not found.
         """
-        uuid = target[0]
-        bundle_state = self._bundle_model.get_bundle_state(uuid)
+        bundle_state = self._bundle_model.get_bundle_state(target.bundle_uuid)
         # Raises NotFoundException if uuid is invalid
 
         if bundle_state == State.PREPARING:
             raise NotFoundError(
-                "Bundle {} hasn't started running yet, files not available".format(uuid)
+                "Bundle {} hasn't started running yet, files not available".format(
+                    target.bundle_uuid
+                )
             )
         elif bundle_state != State.RUNNING:
-            bundle_path = self._bundle_store.get_bundle_location(uuid)
+            bundle_path = self._bundle_store.get_bundle_location(target.bundle_uuid)
             try:
                 return download_util.get_target_info(bundle_path, target, depth)
             except download_util.PathException as err:
@@ -111,7 +114,7 @@ class DownloadManager(object):
             # system since 1) due to NFS caching the worker has more up to date
             # information on directory contents, and 2) the logic of hiding
             # the dependency paths doesn't need to be re-implemented here.
-            worker = self._bundle_model.get_bundle_worker(uuid)
+            worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
             )
@@ -139,13 +142,14 @@ class DownloadManager(object):
         Returns a file-like object containing a tarred and gzipped archive
         of the given directory.
         """
-        uuid = target[0]
-        bundle_state = self._bundle_model.get_bundle_state(uuid)
+        bundle_state = self._bundle_model.get_bundle_state(target.bundle_uuid)
         # Raises NotFoundException if uuid is invalid
 
         if bundle_state == State.PREPARING:
             raise NotFoundError(
-                "Bundle {} hasn't started running yet, files not available".format(uuid)
+                "Bundle {} hasn't started running yet, files not available".format(
+                    target.bundle_uuid
+                )
             )
         elif bundle_state != State.RUNNING:
             directory_path = self._get_target_path(target)
@@ -157,7 +161,7 @@ class DownloadManager(object):
             #   information on directory contents
             # 2) the logic of hiding
             #   the dependency paths doesn't need to be re-implemented here.
-            worker = self._bundle_model.get_bundle_worker(uuid)
+            worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
             )
@@ -183,7 +187,7 @@ class DownloadManager(object):
             else:
                 return open(file_path, 'rb')
         else:
-            worker = self._bundle_model.get_bundle_worker(target[0])
+            worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
             )
@@ -211,7 +215,7 @@ class DownloadManager(object):
                 bytestring = file_util.gzip_bytestring(bytestring)
             return bytestring
         else:
-            worker = self._bundle_model.get_bundle_worker(target[0])
+            worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
             )
@@ -248,7 +252,7 @@ class DownloadManager(object):
                 bytestring = file_util.gzip_bytestring(bytestring)
             return bytestring
         else:
-            worker = self._bundle_model.get_bundle_worker(target[0])
+            worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
             )
@@ -287,13 +291,15 @@ class DownloadManager(object):
         return bytestring
 
     def _is_available_locally(self, target):
-        uuid = target[0]
-        if self._bundle_model.get_bundle_state(uuid) in [State.RUNNING, State.PREPARING]:
-            return self._bundle_model.get_bundle_worker(uuid)['shared_file_system']
+        if self._bundle_model.get_bundle_state(target.bundle_uuid) in [
+            State.RUNNING,
+            State.PREPARING,
+        ]:
+            return self._bundle_model.get_bundle_worker(target.bundle_uuid)['shared_file_system']
         return True
 
     def _get_target_path(self, target):
-        bundle_path = self._bundle_store.get_bundle_location(target[0])
+        bundle_path = self._bundle_store.get_bundle_location(target.bundle_uuid)
         try:
             return download_util.get_target_path(bundle_path, target)
         except download_util.PathException as e:
@@ -303,8 +309,8 @@ class DownloadManager(object):
         message = {
             'type': 'read',
             'socket_id': response_socket_id,
-            'uuid': target[0],
-            'path': target[1],
+            'uuid': target.bundle_uuid,
+            'path': target.subpath,
             'read_args': read_args,
         }
         if not self._worker_model.send_json_message(
