@@ -273,7 +273,7 @@ def head_target(target, max_num_lines):
 
     The caller should ensure that the target is a file.
 
-    :param target: A target dict with uuid and path as keys
+    :param target: A worker.download_util.BundleTarget with bundle_uuid and subpath
     :param max_num_lines: max number of lines to fetch
     """
     rest_util.check_target_has_read_permission(target)

@@ -2423,7 +2423,7 @@ class BundleCLI(object):
             while run_state not in State.FINAL_STATES:
                 run_state = client.fetch('bundles', bundle_uuid)['state']
                 try:
-                    client.fetch_contents_info((bundle_uuid, subpath), 0)
+                    client.fetch_contents_info(BundleTarget(bundle_uuid, subpath), 0)
                 except NotFoundError:
                     time.sleep(SLEEP_PERIOD)
                     continue
