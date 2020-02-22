@@ -237,7 +237,7 @@ class BundleManager(object):
             with self._make_uuids_lock:
                 self._make_uuids.remove(bundle.uuid)
 
-    def _cleanup_dead_workers(self, workers, callback=None):
+    def _cleanup_dead_workers(self, workers):
         """
         Clean-up workers that we haven't heard from for more than WORKER_TIMEOUT_SECONDS seconds.
         Such workers probably died without checking out properly.
@@ -251,8 +251,6 @@ class BundleManager(object):
                 )
                 self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
                 workers.remove(worker['worker_id'])
-                if callback is not None:
-                    callback(worker)
 
     def _restage_stuck_starting_bundles(self, workers):
         """
@@ -327,7 +325,7 @@ class BundleManager(object):
         )
 
         # Build a dictionary which maps from uuid to running bundle and bundle_resources
-        running_bundles_info = self._get_running_bundles_info(workers)
+        running_bundles_info = self._get_running_bundles_info(workers, staged_bundles_to_run)
 
         # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
@@ -358,9 +356,8 @@ class BundleManager(object):
                         )
                         # Don't start this bundle yet, as there is no parallel_run_quota left for this user.
                         continue
-            if (
-                not workers_list
-            ):  # Length is 0 (private user with no workers) or is None (root user)
+            if not workers_list:
+                # Length is 0 (private user with no workers) or is None (root user)
                 workers_list = get_available_workers(self._model.root_user_id)
 
             # Try starting bundles on the workers that have enough computing resources
@@ -372,7 +369,6 @@ class BundleManager(object):
         """
         From each worker, subtract resources used by running bundles. Modifies the list.
         """
-
         for worker in workers_list:
             for uuid in worker['run_uuids']:
                 # Verify if the current bundle exists in both the worker table and the bundle table
@@ -630,7 +626,7 @@ class BundleManager(object):
         READY / FAILED, no worker_run DB entry:
             Finished.
         """
-        workers = WorkerInfoAccessor(self._worker_model.get_workers())
+        workers = WorkerInfoAccessor(self._worker_model, WORKER_TIMEOUT_SECONDS - 5)
 
         # Handle some exceptional cases.
         self._cleanup_dead_workers(workers)
@@ -791,15 +787,17 @@ class BundleManager(object):
 
         return staged_bundles_to_run
 
-    def _get_running_bundles_info(self, workers):
+    def _get_running_bundles_info(self, workers, staged_bundles_to_run):
         """
-        Build a nested dictionary to store information (bundle and bundle_resources) of all the valid running bundles.
-        Note that the primary usage of this function is to improve efficiency when calling _compute_bundle_resources,
-        e.g. reusing constants (gpus, cpus, memory) from the returning values of _compute_bundle_resources as they
-        don't change over time.
-        However, be careful when using this function to improve efficiency for returning values like disk and time
-        from _compute_bundle_resources as they do depend on the number of jobs that are running during the time of
-        computation. Accuracy might be affected without considering this factor.
+        Build a nested dictionary to store information (bundle and bundle_resources) including 
+        the current running bundles and staged bundles.
+        Note that the primary usage of this function is to improve efficiency when calling 
+        self._compute_bundle_resources(), e.g. reusing constants (gpus, cpus, memory) from 
+        the returning values of self._compute_bundle_resources() as they don't change over time.
+        However, be careful when using this function to improve efficiency for returning values 
+        like disk and time from self._compute_bundle_resources() as they do depend on the number 
+        of jobs that are running during the time of computation. Accuracy might be affected 
+        without considering this factor.
         :param workers: a WorkerInfoAccessor object containing worker related information e.g. running uuid.
         :return: a nested dictionary structured as follows:
                 {
@@ -810,15 +808,27 @@ class BundleManager(object):
                 }
         """
         # Get uuid of all the running bundles from workers (a WorkerInfoAccessor object)
-        run_uuids = workers._uuid_to_worker.keys()
-        # Get the running bundles that exist in the bundle table
-        running_bundles = self._model.batch_get_bundles(uuid=run_uuids)
+        run_uuids = list(workers._uuid_to_worker.keys())
+        staged_bundles_to_run_dict = {
+            bundle.uuid: bundle_resources for (bundle, bundle_resources) in staged_bundles_to_run
+        }
+        # Get uuid of all the staged bundles that will be dispatched on workers
+        staged_uuids = list(staged_bundles_to_run_dict.keys())
+
+        # Get the running bundles (including the potential running bundles: staged bundles) that exist
+        # in the bundle table as well. Including staged bundles here is to avoid overestimating worker resources in
+        # the function self._deduct_worker_resources(). We could potentially be conservative on dispatching jobs to
+        # workers, but this is still better than over assigning jobs.
+        running_bundles = self._model.batch_get_bundles(uuid=run_uuids + staged_uuids)
         # Build a dictionary which maps from uuid to running bundle and bundle_resources
         running_bundles_info = {
             bundle.uuid: {
                 "bundle": bundle,
-                "bundle_resources": self._compute_bundle_resources(bundle),
+                "bundle_resources": self._compute_bundle_resources(bundle)
+                if bundle.uuid in run_uuids
+                else staged_bundles_to_run_dict[bundle.uuid],
             }
             for bundle in running_bundles
         }
+
         return running_bundles_info
