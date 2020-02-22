@@ -13,6 +13,10 @@ class BundleTarget:
             the path resolves to a dependency, then the first component of the
             path is the dependency key and should not be used within the actual
             dependency bundle. This field strips that value.
+
+        for example if a bundle has the dependency key:dep-bundle/dep-subpath
+        the bundle target (bundle, key/subpath) would resolve to
+        (dep-bundle, dep-subpath/subpath)
     """
 
     def __init__(self, bundle_uuid, subpath):

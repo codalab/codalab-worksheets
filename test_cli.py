@@ -1694,7 +1694,7 @@ def test(ctx):
     response = ctx.client.fetch_contents_info(BundleTarget(uuid, ''))
     check_equals(response['name'], uuid)
     check_equals(
-        open(path, 'rb').read(), ctx.client.fetch_contents_blob(BundleTarget(uuid, '/')).read()
+        open(path, 'rb').read(), ctx.client.fetch_contents_blob(BundleTarget(uuid, '')).read()
     )
 
     # Display image - should not crash
