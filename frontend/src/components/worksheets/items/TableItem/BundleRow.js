@@ -65,6 +65,9 @@ class BundleRow extends Component {
                 this.props.refreshCheckBox,
             );
         }
+        if (this.props.uuid !== prevProp.uuid) {
+            this.setState({ showDetail: false });
+        }
     }
     // BULK OPERATION RELATED CODE
 
@@ -317,9 +320,8 @@ class BundleRow extends Component {
                                 <NewRun
                                     ws={ws}
                                     onSubmit={() => {
-                                        this.setState({ showNewRun: 0 });
+                                        this.setState({ showNewRun: 0, showDetail: false });
                                         onHideNewRerun();
-                                        this.handleDetailClick();
                                     }}
                                     after_sort_key={bundleInfo.sort_key}
                                     reloadWorksheet={reloadWorksheet}
