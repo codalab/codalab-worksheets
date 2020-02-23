@@ -29,6 +29,19 @@ jobs:
       install:
         - python3 codalab_service.py build services --version ${TRAVIS_BRANCH} --pull $([ -z "${CODALAB_DOCKER_USERNAME}" ] || [ "$TRAVIS_PULL_REQUEST_BRANCH" != "" ] || echo "--push")
         - python3 codalab_service.py start --services default monitor --version ${TRAVIS_BRANCH}
+        - pip install -r requirements.txt
+      before_script:
+        # For testing CodaLab in Chrome
+        - wget https://chromedriver.storage.googleapis.com/2.41/chromedriver_linux64.zip
+        - unzip chromedriver_linux64.zip
+        - sudo mv chromedriver /usr/bin/chromedriver
+        - sudo chown root:root /usr/bin/chromedriver
+        - sudo chmod +x /usr/bin/chromedriver
+        # For testing CodaLab in Firefox
+        - wget https://github.com/mozilla/geckodriver/releases/download/v0.21.0/geckodriver-v0.21.0-linux64.tar.gz
+        - mkdir geckodriver
+        - tar -xzf geckodriver-v0.21.0-linux64.tar.gz -C geckodriver
+        - export PATH=$PATH:$PWD/geckodriver
       script:
         - python3 codalab_service.py test --version ${TRAVIS_BRANCH} default
           # Make sure restarting worker doesn't cause any issues (ie in serialization/deserialization)
