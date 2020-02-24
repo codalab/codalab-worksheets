@@ -15,6 +15,8 @@ from selenium.webdriver.support.wait import WebDriverWait
 class UITester(ABC):
     _SCREENSHOT_DIFF_THRESHOLD_PERCENT = 9
     _BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+    _DEFAULT_USERNAME = os.getenv('CODALAB_USERNAME', 'codalab')
+    _DEFAULT_PASSWORD = os.getenv('CODALAB_PASSWORD', 'codalab')
 
     def __init__(self, test_name, base_url='http://localhost'):
         self._test_name = test_name
@@ -43,7 +45,7 @@ class UITester(ABC):
         self.test()
         self._driver.close()
 
-    def login(self, username='codalab', password='codalab'):
+    def login(self, username=_DEFAULT_USERNAME, password=_DEFAULT_PASSWORD):
         self._driver.get(self.get_url('/home'))
         self.click_link('LOGIN')
         self.fill_field('id_login', username)
