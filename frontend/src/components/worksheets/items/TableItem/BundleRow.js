@@ -188,7 +188,11 @@ class BundleRow extends Component {
                 <TableCell
                     key={col}
                     classes={{
-                        root: classes.rootNoPad,
+                        root: classNames({
+                            [classes.rootNoPad]: true,
+                            [classes.noCheckBox]: !(editPermission && checkBox),
+                            [classes.withCheckBox]: editPermission && checkBox,
+                        }),
                     }}
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
@@ -355,8 +359,14 @@ const styles = (theme) => ({
         border: 'none !important',
         padding: '0px !important',
         wordWrap: 'break-word',
+    },
+    noCheckBox: {
         maxWidth: 200,
-        minWidth: 100,
+        minWidth: 110,
+    },
+    withCheckBox: {
+        maxWidth: 200,
+        minWidth: 130,
     },
     bundleDetail: {
         paddingLeft: `${theme.spacing.largest}px !important`,
