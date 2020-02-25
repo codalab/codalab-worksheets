@@ -13,4 +13,3 @@ echo "Installing GeckoDriver and placing it on PATH..."
 wget https://github.com/mozilla/geckodriver/releases/download/v0.21.0/geckodriver-v0.21.0-linux64.tar.gz
 mkdir geckodriver
 tar -xzf geckodriver-v0.21.0-linux64.tar.gz -C geckodriver
-export PATH=$PATH:$PWD/geckodriver
