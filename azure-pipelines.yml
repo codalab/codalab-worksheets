@@ -17,7 +17,7 @@ jobs:
       versionSpec: '3.6'
       addToPath: true
       architecture: 'x64'
-  - script:
+  - script: |
       pip install --upgrade black==18.9b0
       black . --check --diff
     displayName: 'check backend'
@@ -27,7 +27,7 @@ jobs:
     inputs:
       versionSpec: 13.x
     displayName: 'Install Node.js'
-  - script:
+  - script: |
       cd frontend
       npm install
       npm run check-ci
@@ -39,14 +39,14 @@ jobs:
       versionSpec: '3.6'
       addToPath: true
       architecture: 'x64'
-  - script:
-        python codalab_service.py build services --version ${TRAVIS_BRANCH} --pull $([ -z "${CODALAB_DOCKER_USERNAME}" ] || [ "$TRAVIS_PULL_REQUEST_BRANCH" != "" ] || echo "--push")
-        python codalab_service.py start --services default monitor --version ${TRAVIS_BRANCH}
-        python codalab_service.py test --version ${TRAVIS_BRANCH} default
-        docker restart codalab_worker_1 && python3 codalab_service.py test run --version ${TRAVIS_BRANCH}
-        docker stop codalab_worker_1
-        python codalab_service.py start --services worker --version ${TRAVIS_BRANCH} --shared-file-system
-        python codalab_service.py test --version ${TRAVIS_BRANCH} --shared-file-system basic run read write kill resources netcat netcurl workers
+  - script: |
+      python codalab_service.py build services --version ${TRAVIS_BRANCH} --pull $([ -z "${CODALAB_DOCKER_USERNAME}" ] || [ "$TRAVIS_PULL_REQUEST_BRANCH" != "" ] || echo "--push")
+      python codalab_service.py start --services default monitor --version ${TRAVIS_BRANCH}
+      python codalab_service.py test --version ${TRAVIS_BRANCH} default
+      docker restart codalab_worker_1 && python3 codalab_service.py test run --version ${TRAVIS_BRANCH}
+      docker stop codalab_worker_1
+      python codalab_service.py start --services worker --version ${TRAVIS_BRANCH} --shared-file-system
+      python codalab_service.py test --version ${TRAVIS_BRANCH} --shared-file-system basic run read write kill resources netcat netcurl workers
     displayName: 'docker build and test'
     env:
       CODALAB_USERNAME: codalab
