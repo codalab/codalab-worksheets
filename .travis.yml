@@ -1,18 +1,25 @@
 jobs:
   include:
-    - stage: style
+    - stage: check
       language: python
       python: 3.6
       install: pip install --upgrade black==18.9b0
       script: black . --check --diff
-    - stage: functionality
+    - stage: check
+      language: node_js
+      node_js:
+        - 13
+      install: cd frontend && npm install
+      script:
+        - npm run check-ci
+    - stage: check
       language: python
       sudo: required
       services:
         - docker
       env:
-        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
-      python: 2.7
+        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=true
+      python: 3.6
       before_install:
         - sudo rm /usr/local/bin/docker-compose
         - curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
@@ -20,9 +27,15 @@ jobs:
         - sudo mv docker-compose /usr/local/bin
         - sudo service mysql stop
       install:
-        - ./codalab_service.py build services --version ${TRAVIS_BRANCH} --pull --push
+        - python3 codalab_service.py build services --version ${TRAVIS_BRANCH} --pull $([ -z "${CODALAB_DOCKER_USERNAME}" ] || [ "$TRAVIS_PULL_REQUEST_BRANCH" != "" ] || echo "--push")
+        - python3 codalab_service.py start --services default monitor --version ${TRAVIS_BRANCH}
       script:
-        - ./codalab_service.py start --services default monitor test --version ${TRAVIS_BRANCH}
+        - python3 codalab_service.py test --version ${TRAVIS_BRANCH} default
+          # Make sure restarting worker doesn't cause any issues (ie in serialization/deserialization)
+        - docker restart codalab_worker_1 && python3 codalab_service.py test run --version ${TRAVIS_BRANCH}
+        - docker stop codalab_worker_1
+        - python3 codalab_service.py start --services worker --version ${TRAVIS_BRANCH} --shared-file-system
+        - python3 codalab_service.py test --version ${TRAVIS_BRANCH} --shared-file-system basic run read write kill resources netcat netcurl workers
     - stage: deploy
       script: echo "Deploying"
       language: python
@@ -30,8 +43,8 @@ jobs:
       services:
         - docker
       env:
-        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=false
-      python: 2.7
+        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=true
+      python: 3.6
       after_success: echo "skipped"
       before_deploy:
         - pip install twine

@@ -1,2 +1,2 @@
-include worker/requirements.txt
+include requirements.txt
 include rc

@@ -37,7 +37,7 @@ import tempfile
 import textwrap
 import time
 from distutils.util import strtobool
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import CODALAB_VERSION, PermissionError, UsageError
@@ -69,9 +69,9 @@ def write_pretty_json(data, path):
 
 
 def read_json_or_die(path):
+    with open(path, 'r') as f:
+        string = f.read()
     try:
-        with open(path, 'rb') as f:
-            string = f.read()
         return json.loads(string)
     except ValueError as e:
         print("Invalid JSON in %s:\n%s" % (path, string))
@@ -90,7 +90,7 @@ def prompt_bool(prompt, default=None):
         raise ValueError("default must be None, True, or False")
 
     while True:
-        response = raw_input(prompt).strip()
+        response = input(prompt).strip()
         if default is not None and len(response) == 0:
             return default
         try:
@@ -107,7 +107,7 @@ def prompt_str(prompt, default=None):
         prompt = "%s " % (prompt,)
 
     while True:
-        response = raw_input(prompt).strip()
+        response = input(prompt).strip()
         if len(response) > 0:
             return response
         elif default is not None:
@@ -138,11 +138,12 @@ class CodaLabManager(object):
             self.init_config()
         self.config = read_json_or_die(self.config_path)
 
+        # TODO: get rid of this
         # Substitute environment variables
         codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
         def replace(x):
-            if isinstance(x, basestring):
+            if isinstance(x, str):
                 return x.replace('$CODALAB_CLI', codalab_cli)
             if isinstance(x, dict):
                 return dict((k, replace(v)) for k, v in x.items())
@@ -194,7 +195,7 @@ class CodaLabManager(object):
                 'auth': {'class': 'RestOAuthHandler'},
                 'verbose': 1,
             },
-            'aliases': {'main': MAIN_BUNDLE_SERVICE, 'localhost': 'http://localhost:2900'},
+            'aliases': {'main': MAIN_BUNDLE_SERVICE, 'localhost': 'http://localhost'},
             'workers': {
                 'default_cpu_image': 'codalab/default-cpu:latest',
                 'default_gpu_image': 'codalab/default-gpu:latest',
@@ -253,7 +254,7 @@ class CodaLabManager(object):
         if store_type == MultiDiskBundleStore.__name__:
             return MultiDiskBundleStore(self.codalab_home)
         else:
-            print >>sys.stderr, "Invalid bundle store type \"%s\"", store_type
+            print("Invalid bundle store type \"%s\"", store_type, file=sys.stderr)
             sys.exit(1)
 
     def apply_alias(self, key):
@@ -340,30 +341,15 @@ class CodaLabManager(object):
                 engine_url=self.config['server']['engine_url'],
                 default_user_info=self.default_user_info(),
             )
-        elif model_class == 'SQLiteModel':
-            from codalab.model.sqlite_model import SQLiteModel
-
-            # Patch for backwards-compatibility until we have a cleaner abstraction around config
-            # that can update configs to newer "versions"
-            engine_url = self.config['server'].get(
-                'engine_url', "sqlite:///{}".format(os.path.join(self.codalab_home, 'bundle.db'))
-            )
-            model = SQLiteModel(engine_url=engine_url, default_user_info=self.default_user_info())
         else:
-            raise UsageError(
-                'Unexpected model class: %s, expected MySQLModel or SQLiteModel' % (model_class,)
-            )
+            raise UsageError('Unexpected model class: %s, expected MySQLModel' % (model_class,))
         model.root_user_id = self.root_user_id()
         model.system_user_id = self.system_user_id()
         return model
 
     @cached
     def worker_model(self):
-        # Whether the file system is shared between the worker and the bundle
-        # service. Note, that the file system is considered to be shared only if
-        # the worker is running as the root user.
-        shared_file_system = self.config['workers'].get('shared_file_system', False)
-        return WorkerModel(self.model().engine, self.worker_socket_dir, shared_file_system)
+        return WorkerModel(self.model().engine, self.worker_socket_dir)
 
     @cached
     def upload_manager(self):
@@ -393,7 +379,7 @@ class CodaLabManager(object):
             # Default to authless SMTP (supported by some servers) if user/password is unspecified.
             return SMTPEmailer(
                 host=self.config['email']['host'],
-                user=self.config['email'].get('user', 'noreply@codalab.org'),
+                user=self.config['email'].get('username', 'noreply@codalab.org'),
                 password=self.config['email'].get('password', None),
                 use_tls=self.config['email'].get('use_tls', True),
                 port=self.config['email'].get('port', 587),
@@ -502,6 +488,7 @@ class CodaLabManager(object):
             print('Requesting access at %s' % cache_key)
         if username is None:
             sys.stdout.write('Username: ')  # Use write to avoid extra space
+            sys.stdout.flush()
             username = sys.stdin.readline().rstrip()
         if password is None:
             password = getpass.getpass()
@@ -543,14 +530,14 @@ class CodaLabManager(object):
         epoch_str = formatting.datetime_str(datetime.datetime.utcfromtimestamp(0))
         last_check_str = self.state.get('last_check_version_datetime', epoch_str)
         last_check_dt = formatting.parse_datetime(last_check_str)
-        now = datetime.datetime.now()
+        now = datetime.datetime.utcnow()
         if (now - last_check_dt) < datetime.timedelta(days=1):
             return
         self.state['last_check_version_datetime'] = formatting.datetime_str(now)
         self.save_state()
 
         # Print notice if server version is newer
-        if map(int, server_version.split('.')) > map(int, CODALAB_VERSION.split('.')):
+        if list(map(int, server_version.split('.'))) > list(map(int, CODALAB_VERSION.split('.'))):
             message = (
                 "NOTICE: "
                 "The instance you are connected to is running CodaLab v{}. "

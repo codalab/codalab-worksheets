@@ -151,12 +151,12 @@ class RunBundleBuilder extends React.Component<Props> {
             target = target.path === '' ? shortUuid : shortUuid + '/' + target.path;
             clCommand.push(key + ':' + target);
         }
-        if (command != null) clCommand.push(command);
+        if (command !== null) clCommand.push(command);
         return buildTerminalCommand(clCommand);
     }
 
     componentWillReceiveProps(newProps) {
-        if (newProps.escCount != this.props.escCount && this.state.showBuilder) {
+        if (newProps.escCount !== this.props.escCount && this.state.showBuilder) {
             this.toggleBuilder();
         }
     }

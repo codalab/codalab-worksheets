@@ -1,7 +1,7 @@
 import unittest
 from collections import namedtuple
 
-from codalabworker import pyjson
+from codalab.worker import pyjson
 
 
 class PyJSONTest(unittest.TestCase):
@@ -21,16 +21,18 @@ class PyJSONTest(unittest.TestCase):
             'a_namedtuple': t2(3, 4, 6),
             'set_of_namedtuples': {t1(1, 2, 3), t1(2, 4, 6), t2(20, 40, 60)},
             ('key', 'tuple'): 'blah',
-            (u'unicode', 'key'): u'unicode_val',
-            u'unicode': 'val',
+            ('unicode', 'key'): 'unicode_val',
+            'unicode': 'val',
             '(\'key\', \'tuple\')': 'malicious_key',
+            t1('w1', 'w2', 'w3'): t2('r1', 't2', 'y3'),
+            t1('', '', ''): t2('', '', ''),
         }
 
         reloaded = pyjson.loads(pyjson.dumps(cases))
         self.assertEqual(reloaded, cases)
 
     def test_tuples(self):
-        tuple_dict = {(u'0x123799xasd', ''): {'dict': 'vals'}}
+        tuple_dict = {('0x123799xasd', ''): {'dict': 'vals'}}
 
         reloaded = pyjson.loads(pyjson.dumps(tuple_dict))
         self.assertEqual(reloaded, tuple_dict)

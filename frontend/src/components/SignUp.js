@@ -1,8 +1,6 @@
 import * as React from 'react';
-import classNames from 'classnames';
 import Immutable from 'seamless-immutable';
-import { Redirect } from 'react-router-dom';
-import $ from 'jquery';
+import { NavLink } from 'react-router-dom';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
 import queryString from 'query-string';
@@ -52,7 +50,8 @@ export class SignUp extends React.Component {
                 <SubHeader title='Sign Up' />
                 <ContentWrapper>
                     <p>
-                        Already have an account? Then please <a href='/account/login'>sign in</a>.
+                        Already have an account? Then please{' '}
+                        <NavLink to='/account/login'>sign in</NavLink>.
                     </p>
                     <form
                         className='signup'

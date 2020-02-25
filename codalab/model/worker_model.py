@@ -32,13 +32,21 @@ class WorkerModel(object):
        listen on these sockets for messages and send messages to these sockets.
     """
 
-    def __init__(self, engine, socket_dir, shared_file_system):
+    def __init__(self, engine, socket_dir):
         self._engine = engine
         self._socket_dir = socket_dir
-        self.shared_file_system = shared_file_system
 
     def worker_checkin(
-        self, user_id, worker_id, tag, cpus, gpus, memory_bytes, free_disk_bytes, dependencies
+        self,
+        user_id,
+        worker_id,
+        tag,
+        cpus,
+        gpus,
+        memory_bytes,
+        free_disk_bytes,
+        dependencies,
+        shared_file_system,
     ):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
@@ -51,7 +59,8 @@ class WorkerModel(object):
                 'gpus': gpus,
                 'memory_bytes': memory_bytes,
                 'free_disk_bytes': free_disk_bytes,
-                'checkin_time': datetime.datetime.now(),
+                'checkin_time': datetime.datetime.utcnow(),
+                'shared_file_system': shared_file_system,
             }
             existing_row = conn.execute(
                 cl_worker.select().where(
@@ -73,7 +82,7 @@ class WorkerModel(object):
                 conn.execute(cl_worker.insert().values(worker_row))
 
             # Update dependencies
-            blob = self._serialize_dependencies(dependencies)
+            blob = self._serialize_dependencies(dependencies).encode()
             if existing_row:
                 conn.execute(
                     cl_worker_dependency.update()
@@ -99,7 +108,7 @@ class WorkerModel(object):
 
     @staticmethod
     def _deserialize_dependencies(blob):
-        return map(tuple, json.loads(blob))
+        return list(map(tuple, json.loads(blob)))
 
     def worker_cleanup(self, user_id, worker_id):
         """
@@ -152,7 +161,10 @@ class WorkerModel(object):
         with self._engine.begin() as conn:
             worker_rows = conn.execute(
                 select([cl_worker, cl_worker_dependency.c.dependencies]).select_from(
-                    cl_worker.outerjoin(cl_worker_dependency)
+                    cl_worker.outerjoin(
+                        cl_worker_dependency,
+                        cl_worker.c.worker_id == cl_worker_dependency.c.worker_id,
+                    )
                 )
             ).fetchall()
             worker_run_rows = conn.execute(cl_worker_run.select()).fetchall()
@@ -172,33 +184,13 @@ class WorkerModel(object):
                 'run_uuids': [],
                 'dependencies': row.dependencies
                 and self._deserialize_dependencies(row.dependencies),
+                'shared_file_system': row.shared_file_system,
             }
             for row in worker_rows
         }
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
-        return worker_dict.values()
-
-    def get_bundle_worker(self, uuid):
-        """
-        Returns information about the worker that the given bundle is running
-        on. This method should be called only for bundles that are running.
-        """
-        with self._engine.begin() as conn:
-            row = conn.execute(
-                cl_worker_run.select().where(cl_worker_run.c.run_uuid == uuid)
-            ).fetchone()
-            precondition(row, 'Trying to find worker for bundle that is not running.')
-            worker_row = conn.execute(
-                cl_worker.select().where(
-                    and_(cl_worker.c.user_id == row.user_id, cl_worker.c.worker_id == row.worker_id)
-                )
-            ).fetchone()
-            return {
-                'user_id': worker_row.user_id,
-                'worker_id': worker_row.worker_id,
-                'socket_id': worker_row.socket_id,
-            }
+        return list(worker_dict.values())
 
     def allocate_socket(self, user_id, worker_id, conn=None):
         """
@@ -250,7 +242,7 @@ class WorkerModel(object):
         sock.listen(0)
         return sock
 
-    ACK = 'a'
+    ACK = b'a'
 
     def get_stream(self, sock, timeout_secs):
         """
@@ -286,7 +278,7 @@ class WorkerModel(object):
             return None
 
         with closing(fileobj):
-            return json.loads(fileobj.read())
+            return json.loads(fileobj.read().decode())
 
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """
@@ -373,7 +365,7 @@ class WorkerModel(object):
                         'Received invalid ack on socket.',
                     )
 
-                sock.sendall(json.dumps(message))
+                sock.sendall(json.dumps(message).encode())
                 return True
 
         return False

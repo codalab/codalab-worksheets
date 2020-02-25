@@ -1,9 +1,9 @@
 import * as React from 'react';
-import classNames from 'classnames';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
 import Immutable from 'seamless-immutable';
 import queryString from 'query-string';
+import { NavLink } from 'react-router-dom';
 
 export const PasswordResetSent = (props) => {
     return (
@@ -27,7 +27,7 @@ export const PasswordResetComplete = (props) => {
                 <p>Your password has been updated.</p>
                 {!props.auth.isAuthenticated && (
                     <p>
-                        You may go ahead and <a href='/account/login'>log in</a> now.
+                        You may go ahead and <NavLink to='/account/login'>log in</NavLink> now.
                     </p>
                 )}
             </ContentWrapper>
@@ -131,7 +131,7 @@ export class PasswordResetVerified extends React.Component {
                             {
                                 'The password reset link was invalid, possibly because it has already been used. Please request a '
                             }
-                            <a href='/account/reset'>new password reset</a>.
+                            <NavLink to='/account/reset'>new password reset</NavLink>.
                         </p>
                     )}
                     <div class='row'>

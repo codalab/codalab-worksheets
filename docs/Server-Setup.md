@@ -6,8 +6,8 @@ CodaLab features.
 # Requirements
 
 All you need is a version of Docker and docker-compose compatible with docker-compose file version 3.5.
-Note that while Docker/docker-compose should be cross-platform, we have only tested Ubuntu.
-If you try to use CodaLab on MacOS or Windows and run into issues, feel free to let us know, but those platforms
+Note that while Docker/docker-compose should be cross-platform, we have only tested Ubuntu and MacOS.
+If you try to use CodaLab on Windows and run into issues, feel free to let us know, but those platforms
 are not officially supported at the moment.
 
 * [docker](https://docs.docker.com/install/) version 17.12.0+
@@ -127,35 +127,23 @@ To run the tests against an instance that you've already set up:
 
 Or to run a specific test (e.g., basic):
 
-    docker exec codalab_rest-server_1 python test_cli.py basic
+    docker exec codalab_rest-server_1 python3 test_cli.py basic
 
 You can also start an instance and run tests on it:
 
     ./codalab_service.py start -bd -s default test
 
-To fix any style issues for the Python code:
-
-    virtualenv -p python3.6 venv3.6
-    venv3.6/bin/pip install black
-    venv3.6/bin/black codalab worker scripts *.py --diff
-
 These must pass before you submit a PR.
 
-## Other
+## Pre-commit
 
-To auto-generate the REST reference and CLI references:
+Before you commit, you should run the following script that makes automated
+changes on your PR:
 
-    virtualenv -p python2.7 venv2.7
-    venv2.7/bin/pip install -r requirements-server.txt
-    venv2.7/bin/python scripts/gen-rest-docs.py
-    venv2.7/bin/python scripts/gen-cli-docs.py
+    ./pre-commit.sh
 
-To generate the readthedocs documentation to preview locally:
-
-    virtualenv -p python2.7 venv2.7
-    venv2.7/bin/pip install -r requirements.docs.txt
-    venv2.7/bin/mkdocs build  # Outputs to `site`
-    venv2.7/bin/mkdocs serve  # Does a live preview
+This script reformats your code to match our style conventions and
+auto-generates documentation.
 
 ## Debugging
 
@@ -184,15 +172,11 @@ If you want to modify the database schema, use `alembic` to create a migration. 
 
         ./codalab_service.py start -bd -s rest-server
 
-1. Auto-generate the migration script:
+1. Auto-generate the migration script. Running the following command generates a file named by a format similar to `2019091920_description_of_your_migration_1975ea83b712.py`. Note that when running `codalab_service.py` with `-d` option (dev mode), this script will be stored at a volume mounted into the Docker container in the `alembic` directory:
 
         docker exec codalab_rest-server_1 alembic revision --autogenerate -m "description of your migration"
 
-1. The migration script is created in the Docker image (the file name of the script is printed to stdout, call it <file>), which you need to copy out into your local codebase:
-
-        docker cp codalab_rest-server_1:/opt/codalab-worksheets/alembic/versions/<file> alembic/versions
-
-1. Modify the migration script <file> as necessary.
+1. Modify the migration script `2019091920_description_of_your_migration_1975ea83b712.py` as necessary.
 
 1. Rebuild the Docker image:
 
@@ -209,21 +193,14 @@ If you want to modify the database schema, use `alembic` to create a migration. 
 
 # Production
 
-If you want to make the CodaLab instance more permanent and exposed to a larger set of users, there are a couple
-details to pay attention to.
+If you want to make the CodaLab instance more permanent and exposed to a larger
+set of users, there are a couple details to pay attention to.
 
-## Persistent Storage
-
-By default data files are stored in ephemeral Docker volumes. It's a good idea
-to store Codalab data on a persistent location on your host machine's disk if
-you're running real workflows on it. Here are a few configuration options you
-might want to set for a real-use persistent instance:
-
-- `--codalab-home`: Path to store server configuration and bundle data files.
-- `--mysql-mount`: Path to store DB configuration and data files.
-- `--external-db-url`: If you want to run your DB on another machine, this is the URL to connect to that database. You can set the user and password for this database using the `--mysql-user` and `--mysql-password` arguments.
-- `--worker-dir`: Path to store worker configuration and temporary data files.
-- `--bundle-store`: [EXPERIMENTAL] Another path to store bundle data. You can add as many of these as possible and bundle data will be distributed evenly across these paths. Good for when you mount multiple disks to distribute bundle data. WARNING: This is not fully supported and tested yet, but support is under development.
+The preferred way to set CodaLab service options is via environment variables
+instead of command-line options. This is useful for sensitive options like
+passwords, and also useful for setting local defaults instead of reusing long
+argument lists.  For the list of environment variables, look at
+`codalab_service.py`.  Below, we provide the command-line variants.
 
 ## Security and Credentials
 
@@ -231,11 +208,11 @@ By default, a lot of credentials are set to unsafe defaults (`"codalab"`).  You
 should override these with more secure options.  Here's a list of all
 credential options:
 
-* `--codalab-username` [codalab]: Username of the admin account on the CodaLab platform
-* `--codalab-password` [codalab]: Password of the admin account on the CodaLab platform
-* `--mysql-root-password` [codalab]: Root password for the MYSQL database.
-* `--mysql-user` [codalab]: MYSQL username for the CodaLab account on the MYSQL database
-* `--mysql-password` [codalab]: MYSQL password for the CodaLab account on the MYSQL database
+* `--codalab-username`: Username of the admin account on the CodaLab platform
+* `--codalab-password`: Password of the admin account on the CodaLab platform
+* `--mysql-root-password`: Root password for the MYSQL database.
+* `--mysql-username`: MYSQL username for the CodaLab account on the MYSQL database
+* `--mysql-password`: MYSQL password for the CodaLab account on the MYSQL database
 
 ### SSL
 
@@ -249,19 +226,6 @@ your domain, you can serve over HTTPS as well. To do so:
     * `--use-ssl`: If specified, use SSL
     * `--ssl-cert-file`: Path to the certificate file
     * `--ssl-key-file`: Path to the key file
-
-## Ports to be exposed
-
-Normally the service exposes a minimal number of port outside the Docker
-network.  if for whatever reason you want direct access to the individual ports
-of the services, you can expose these at host ports of your choosing.
-
-* `--rest-port` [2900]: Port for REST API
-* `--http-port` [80]: Port to serve HTTP from (nginx)
-* `--mysql-port` [3306]: Port to expose the MySQL database
-* `--frontend-port`: Port to serve the React frontend
-
-# Advanced customization
 
 ## Multiple instances
 
@@ -277,19 +241,21 @@ service on the same machine, be careful about the following:
   ports for different instances, at the very least you need to configure the
   `http-port` of later instances to something other than `80`.
 
-## Custom docker compose file
+## Troubleshooting
 
-For less common use cases, you might want to get your feet wet in Docker and
-docker-compose and provide a custom docker-compose file to override our
-configurations. You can use the `--user-compose-file` option to include a
-custom docker-compose file that will override any configuration you want. To
-understand our `compose` setup, please look into the source of
-`codalab_service.py` and the docker-related files in the `./docker/` directory.
+For macOS, you might come across an error with `gunicorn` when running `./codalab_service.py start -bd`
 
-## Configuration with environment variables
+The issue is documented in detail [here](https://github.com/benoitc/gunicorn/issues/1388), and the fix
+is to unselect `/tmp` in Docker's preferences under file sharing.
 
-Some of the CodaLab service options can be set via environment variables
-instead of command-line options. This is useful for sensitive options like
-passwords, and also useful for setting local defaults instead of reusing long
-argument lists.  For the list of environment variables, look at
-`ARG_TO_ENV_VAR` in `codalab_service.py`.
+The image below shows where the file sharing pane is.
+<img src="images/docker-preferences.png" />
+
+## Sending Slack notifications from the monitor.py service
+If you need to send Slack notifications from monitor.py service, you can configure your system by Slack Email App as follows:
+* Go to [Slack Email App](https://slack.com/apps/A0F81496D-email) 
+* Sign in to install and follow instructions listed on the above web page to generate your special Slack email address.
+* Since the system notifications from monitor.py are sent to $CODALAB_ADMIN_EMAIL, you can set $CODALAB_ADMIN_EMAIL to your special 
+   Slack email address which will show up in a designated Slack channel.
+* Note that this integration only works with workspaces on *the Slack Standard Plan and above*.
+

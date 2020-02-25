@@ -2,29 +2,29 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 
-// See worker.formatting in codalab-worksheets
+// See codalab.lib.formatting in codalab-worksheets
 export function renderDuration(s) {
     // s: number of seconds
     // Return a human-readable string.
     // Example: 100 => "1m40s", 10000 => "2h46m"
-    if (s == null) {
+    if (s === null) {
         return '<none>';
     }
 
     var m = Math.floor(s / 60);
-    if (m == 0) return Math.round(s * 10) / 10 + 's';
+    if (m === 0) return Math.round(s * 10) / 10 + 's';
 
     s -= m * 60;
     var h = Math.floor(m / 60);
-    if (h == 0) return Math.round(m) + 'm' + Math.round(s) + 's';
+    if (h === 0) return Math.round(m) + 'm' + Math.round(s) + 's';
 
     m -= h * 60;
     var d = Math.floor(h / 24);
-    if (d == 0) return Math.round(h) + 'h' + Math.round(m) + 'm';
+    if (d === 0) return Math.round(h) + 'h' + Math.round(m) + 'm';
 
     h -= d * 24;
     var y = Math.floor(d / 365);
-    if (y == 0) return Math.round(d) + 'd' + Math.round(h) + 'h';
+    if (y === 0) return Math.round(d) + 'd' + Math.round(h) + 'h';
 
     d -= y * 365;
     return Math.round(y) + 'y' + Math.round(d) + 'd';
@@ -45,25 +45,10 @@ export function renderDate(epochSeconds) {
     // epochSeconds: unix timestamp
     // Return a human-readable string.
     var dt = new Date(epochSeconds * 1000);
-    var year = dt.getFullYear();
-    var month = dt.getMonth() + 1;
-    var date = dt.getDate();
     var hour = dt.getHours();
     var min = dt.getMinutes();
     var sec = dt.getSeconds();
-    return (
-        year +
-        '-' +
-        padInt(month, 2) +
-        '-' +
-        padInt(date, 2) +
-        ' ' +
-        padInt(hour, 2) +
-        ':' +
-        padInt(min, 2) +
-        ':' +
-        padInt(sec, 2)
-    );
+    return dt.toDateString() + ' ' + padInt(hour, 2) + ':' + padInt(min, 2) + ':' + padInt(sec, 2);
 }
 
 export function renderSize(size) {
@@ -148,11 +133,11 @@ export function renderPermissions(state) {
 
     return (
         <div>
-            you({wrapPermissionInColorSpan(state.permission_spec)})
+            &nbsp;&#91;you({wrapPermissionInColorSpan(state.permission_spec)})
             {_.map(state.group_permissions || [], function(perm) {
                 return (
                     <span key={perm.group_name}>
-                        {' '}
+                        &nbsp;
                         {perm.group_name}
                         {'('}
                         {wrapPermissionInColorSpan(perm.permission_spec)}
@@ -160,6 +145,7 @@ export function renderPermissions(state) {
                     </span>
                 );
             })}
+            &#93;
         </div>
     );
 }
@@ -170,35 +156,37 @@ export function shorten_uuid(uuid) {
 
 export function keepPosInView(pos) {
     var navbarHeight = parseInt($('body').css('padding-top'));
-    var viewportHeight = Math.max($('.ws-container').innerHeight() || 0);
+    const worksheetContainerEl = $('#worksheet_container');
+    var viewportHeight = Math.max(worksheetContainerEl.innerHeight() || 0);
 
     // How far is the pos from top of viewport?
     var distanceFromTopViewPort = pos - navbarHeight;
 
-    if (distanceFromTopViewPort < 0 || distanceFromTopViewPort > viewportHeight * 0.8) {
+    if (distanceFromTopViewPort < 100 || distanceFromTopViewPort > viewportHeight * 0.8) {
         // If pos is off the top of the screen or it is more than 80% down the screen,
-        // then scroll so that it is at 25% down the screen.
+        // then scroll so that it is at 50% down the screen.
         // Where is the top of the element on the page and does it fit in the
-        // the upper fourth of the page?
-        var scrollTo = $('.ws-container').scrollTop() + pos - navbarHeight - viewportHeight * 0.25;
-        $('.ws-container')
-            .stop(true)
-            .animate({ scrollTop: scrollTo }, 50);
+        // the upper half of the page?
+        var scrollTo =
+            worksheetContainerEl.scrollTop() + distanceFromTopViewPort - viewportHeight * 0.5;
+        worksheetContainerEl.stop(true).animate({ scrollTop: scrollTo }, 50);
     }
 }
 
 // Whether an interpreted item changed - used in shouldComponentUpdate.
 export function worksheetItemPropsChanged(props, nextProps) {
     /*console.log('worksheetItemPropsChanged',
-      props.active != nextProps.active,
-      props.focused != nextProps.focused,
-      props.subFocusIndex != nextProps.subFocusIndex,
-      props.version != nextProps.version);*/
+      props.active !== nextProps.active,
+      props.focused !== nextProps.focused,
+      props.subFocusIndex !== nextProps.subFocusIndex,
+      props.version !== nextProps.version);*/
     return (
-        props.active != nextProps.active ||
-        props.focused != nextProps.focused ||
-        (nextProps.focused && props.subFocusIndex != nextProps.subFocusIndex) ||
-        props.version != nextProps.version
+        props.active !== nextProps.active ||
+        props.focused !== nextProps.focused ||
+        props.focusIndex !== nextProps.focusIndex ||
+        props.ws.info.items.length !== nextProps.ws.info.items.length ||
+        (nextProps.focused && props.subFocusIndex !== nextProps.subFocusIndex) ||
+        props.version !== nextProps.version
     );
 }
 
@@ -284,14 +272,14 @@ export function createDefaultBundleName(name) {
     return name;
 }
 
-export function getDefaultBundleMetadata(name) {
+export function getDefaultBundleMetadata(name, description = '') {
     return {
         data: [
             {
                 attributes: {
                     bundle_type: 'dataset',
                     metadata: {
-                        description: '',
+                        description,
                         license: '',
                         name: createDefaultBundleName(name),
                         source_url: '',
@@ -312,4 +300,43 @@ export function createHandleRedirectFn(worksheetUuid) {
         window.location.href =
             '/account/login?next=' + encodeURIComponent('/worksheets/' + worksheetUuid);
     };
+}
+
+export function getMinMaxKeys(item) {
+    if (!item) {
+        return { minKey: null, maxKey: null };
+    }
+    let minKey = null;
+    let maxKey = null;
+    if (item.mode === 'markup_block') {
+        if (item.sort_keys && item.sort_keys.length > 0) {
+            const { sort_keys, ids } = item;
+            const keys = [];
+            sort_keys.forEach((k, idx) => {
+                const key = k || ids[idx];
+                if (key !== null && key !== undefined) {
+                    keys.push(key);
+                }
+            });
+            if (keys.length > 0) {
+                minKey = Math.min(...keys);
+                maxKey = Math.max(...keys);
+            }
+        }
+    } else if (item.mode === 'table_block') {
+        if (item.bundles_spec && item.bundles_spec.bundle_infos) {
+            const keys = [];
+            item.bundles_spec.bundle_infos.forEach((info) => {
+                const key = info.sort_key || info.id;
+                if (key !== null && key !== undefined) {
+                    keys.push(key);
+                }
+            });
+            if (keys.length > 0) {
+                minKey = Math.min(...keys);
+                maxKey = Math.max(...keys);
+            }
+        }
+    }
+    return { minKey, maxKey };
 }

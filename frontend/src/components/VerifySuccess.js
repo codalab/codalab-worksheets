@@ -1,7 +1,7 @@
 import * as React from 'react';
-import classNames from 'classnames';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
+import { NavLink } from 'react-router-dom';
 
 const VerifySuccess = (props) => {
     return (
@@ -14,13 +14,9 @@ const VerifySuccess = (props) => {
                         {props.auth.isAuthenticated && (
                             <p className='user-authenticated'>
                                 Check out your{' '}
-                                <a
-                                    href='/rest/worksheets/?name=dashboard'
-                                    tabIndex={2}
-                                    target='_self'
-                                >
+                                <NavLink to='/worksheets?name=dashboard' tabIndex={2}>
                                     dashboard
-                                </a>{' '}
+                                </NavLink>{' '}
                                 to get started.
                             </p>
                         )}

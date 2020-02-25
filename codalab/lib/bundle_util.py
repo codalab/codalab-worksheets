@@ -4,6 +4,7 @@ from codalab.bundles import get_bundle_subclass
 from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship
 from codalab.common import UsageError
 from codalab.lib import worksheet_util
+from codalab.worker.bundle_state import BundleInfo
 
 
 def bundle_to_bundle_info(model, bundle):
@@ -11,26 +12,29 @@ def bundle_to_bundle_info(model, bundle):
     Helper: Convert bundle to bundle_info.
     """
     # See tables.py
-    result = {
-        'uuid': bundle.uuid,
-        'bundle_type': bundle.bundle_type,
-        'owner_id': bundle.owner_id,
-        'command': bundle.command,
-        'data_hash': bundle.data_hash,
-        'state': bundle.state,
-        'is_anonymous': bundle.is_anonymous,
-        'metadata': bundle.metadata.to_dict(),
-        'dependencies': [dep.to_dict() for dep in bundle.dependencies],
-    }
-    if result['dependencies']:
-        dep_names = model.get_bundle_names([dep['parent_uuid'] for dep in result['dependencies']])
-        for dep in result['dependencies']:
+    dependencies = [dep.to_dict() for dep in bundle.dependencies]
+    if dependencies:
+        dep_names = model.get_bundle_names([dep['parent_uuid'] for dep in dependencies])
+        for dep in dependencies:
             dep['parent_name'] = dep_names.get(dep['parent_uuid'])
 
-    # Shim in args
-    result['args'] = worksheet_util.interpret_genpath(result, 'args')
+    info = BundleInfo(
+        bundle.uuid,
+        bundle.bundle_type,
+        bundle.owner_id,
+        bundle.command,
+        bundle.data_hash,
+        bundle.state,
+        bundle.is_anonymous,
+        bundle.metadata.to_dict(),
+        dependencies,
+        '',
+    ).as_dict
 
-    return result
+    # For some reason computing the args requires the rest of the dict
+    # This is ugly but we have to deal with it for the time being
+    info['args'] = worksheet_util.interpret_genpath(info, 'args')
+    return info
 
 
 def mimic_bundles(
@@ -81,7 +85,7 @@ def mimic_bundles(
         # dictionary along the way.
         result = bundle_uuids
         visited = set()
-        for _ in xrange(depth):
+        for _ in range(depth):
             next_bundle_uuids = []
             for bundle_uuid in bundle_uuids:
                 if bundle_uuid in visited:
@@ -108,7 +112,7 @@ def mimic_bundles(
             bundle_uuids = next_bundle_uuids
         return result
 
-    all_bundle_uuids = get_self_and_ancestors(infos.keys())
+    all_bundle_uuids = get_self_and_ancestors(list(infos.keys()))
 
     # Now go recursively create the bundles.
     old_to_new = {}  # old_uuid -> new_uuid
@@ -273,7 +277,11 @@ def mimic_bundles(
                                     item2['worksheet'] = JsonApiRelationship(
                                         'worksheets', worksheet_uuid
                                     )
-                                    client.create('worksheet-items', data=item2)
+                                    client.create(
+                                        'worksheet-items',
+                                        data=item2,
+                                        params={'uuid': worksheet_uuid},
+                                    )
 
                             # Add the bundle item
                             client.create(
@@ -283,6 +291,7 @@ def mimic_bundles(
                                     'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
                                     'bundle': JsonApiRelationship('bundles', new_bundle_uuid),
                                 },
+                                params={'uuid': worksheet_uuid},
                             )
                             new_bundle_uuids_added.add(new_bundle_uuid)
                             just_added = True
@@ -306,6 +315,7 @@ def mimic_bundles(
                         'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
                         'bundle': JsonApiRelationship('bundles', new_bundle_uuid),
                     },
+                    params={'uuid': worksheet_uuid},
                 )
 
     return plan

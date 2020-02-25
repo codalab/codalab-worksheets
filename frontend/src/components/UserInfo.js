@@ -1,5 +1,4 @@
 import * as React from 'react';
-import classNames from 'classnames';
 import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import _ from 'underscore';
@@ -76,8 +75,8 @@ class UserInfo extends React.Component {
             context: this,
             xhr: function() {
                 // Hack for IE < 9 to use PATCH method
-                return window.XMLHttpRequest == null ||
-                    new window.XMLHttpRequest().addEventListener == null
+                return window.XMLHttpRequest === null ||
+                    new window.XMLHttpRequest().addEventListener === null
                     ? new window.ActiveXObject('Microsoft.XMLHTTP')
                     : $.ajaxSettings.xhr();
             },

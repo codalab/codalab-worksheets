@@ -21,11 +21,12 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           -p, --pack               If path is an archive file (e.g., zip, tar.gz), keep it packed.
           -z, --force-compression  Always use compression (this may speed up single-file uploads over a slow network).
           -w, --worksheet-spec     Upload to this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
-          --source-url             URL corresponding to the original source of this bundle.
-          --tags                   Space-separated list of tags used for search (e.g., machine-learning).
+          -i, --ignore             Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
           -n, --name               Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
-          --license                The license under which this program/dataset is released.
           -d, --description        Full description of the bundle.
+          --tags                   Space-separated list of tags used for search (e.g., machine-learning).
+          --license                The license under which this program/dataset is released.
+          --source-url             URL corresponding to the original source of this bundle.
           -e, --edit               Show an editor to allow editing of the bundle metadata.
 
       make:
@@ -35,10 +36,10 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
         Arguments:
           target_spec                  [<key>:][[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
           -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
-          --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
-          --tags                       Space-separated list of tags used for search (e.g., machine-learning).
           -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
           -d, --description            Full description of the bundle.
+          --tags                       Space-separated list of tags used for search (e.g., machine-learning).
+          --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
           -e, --edit                   Show an editor to allow editing of the bundle metadata.
 
       run:
@@ -47,19 +48,20 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           target_spec                  [<key>]:[[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
           command                      Arbitrary Linux command to execute.
           -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
-          --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
-          --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.
-          --tags                       Space-separated list of tags used for search (e.g., machine-learning).
-          --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.
-          -d, --description            Full description of the bundle.
-          --request-network            Whether to allow network access.
-          --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.
-          --request-queue              Submit run to this job queue.
-          --request-cpus               Number of CPUs allowed for this run.
-          --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.
-          --request-priority           Job priority (higher is more important).
-          --request-gpus               Number of GPUs allowed for this run.
+          -a, --after_sort_key         Insert after this sort_key
           -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
+          -d, --description            Full description of the bundle.
+          --tags                       Space-separated list of tags used for search (e.g., machine-learning).
+          --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
+          --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.
+          --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.
+          --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.
+          --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.
+          --request-cpus               Number of CPUs allowed for this run.
+          --request-gpus               Number of GPUs allowed for this run.
+          --request-queue              Submit run to this job queue.
+          --request-priority           Job priority (higher is more important).
+          --request-network            Whether to allow network access.
           -e, --edit                   Show an editor to allow editing of the bundle metadata.
           -W, --wait                   Wait until run finishes.
           -t, --tail                   Wait until run finishes, displaying stdout/stderr.
@@ -71,19 +73,19 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           target_spec                  [<key>]:[[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
           command                      Arbitrary Linux command to execute.
           -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
-          --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
-          --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.
-          --tags                       Space-separated list of tags used for search (e.g., machine-learning).
-          --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.
-          -d, --description            Full description of the bundle.
-          --request-network            Whether to allow network access.
-          --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.
-          --request-queue              Submit run to this job queue.
-          --request-cpus               Number of CPUs allowed for this run.
-          --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.
-          --request-priority           Job priority (higher is more important).
-          --request-gpus               Number of GPUs allowed for this run.
           -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
+          -d, --description            Full description of the bundle.
+          --tags                       Space-separated list of tags used for search (e.g., machine-learning).
+          --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
+          --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.
+          --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.
+          --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.
+          --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.
+          --request-cpus               Number of CPUs allowed for this run.
+          --request-gpus               Number of GPUs allowed for this run.
+          --request-queue              Submit run to this job queue.
+          --request-priority           Job priority (higher is more important).
+          --request-network            Whether to allow network access.
           -e, --edit                   Show an editor to allow editing of the bundle metadata.
           -W, --wait                   Wait until run finishes.
           -t, --tail                   Wait until run finishes, displaying stdout/stderr.
@@ -123,17 +125,33 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
 
       search (s):
         Search for bundles on a CodaLab instance (returns 10 results by default).
-          search <keyword> ... <keyword> : Match name and description.
-          search name=<name>             : More targeted search of using metadata fields.
-          search group=<group_spec>      : Search bundles shared with the group identfied by group_spec.
-          search size=.sort              : Sort by a particular field.
-          search size=.sort-             : Sort by a particular field in reverse.
-          search size=.sum               : Compute total of a particular field.
-          search .mine                   : Match only bundles I own.
-          search .shared                 : Search bundles that have been shared with any of the groups I am in.
-          search .floating               : Match bundles that aren't on any worksheet.
-          search .count                  : Count the number of bundles.
-          search .limit=10               : Limit the number of results to the top 10.
+          search <keyword> ... <keyword>         : Name or uuid contains each <keyword>.
+          search name=<value>                    : Name is <value>, where `name` can be any metadata field (e.g., description).
+          search type=<type>                     : Bundle type is <type> (`run` or `dataset`).
+          search id=<id>                         : Has <id> (integer used for sorting, strictly increasing over time).
+          search uuid=<uuid>                     : UUID is <uuid> (e.g., 0x...).
+          search state=<state>                   : State is <state> (e.g., staged, running, ready, failed).
+          search command=<command>               : Command to run is <command>.
+          search dependency=<uuid>               : Has a dependency with <uuid>.
+          search dependency/<name>=<uuid>        : Has a dependency <name>:<uuid>.
+        
+          search owner=<owner>                   : Owned by <owner> (e.g., `pliang`).
+          search .mine                           : Owned by me.
+          search group=<group>                   : Shared with <group>.
+          search .shared                         : Shared with any of the groups I'm in.
+        
+          search host_worksheet=<worksheet>      : On <worksheet>.
+          search .floating                       : Not on any worksheet.
+        
+          search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
+          search .offset=<offset>                : Return results starting at <offset>.
+        
+          search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
+          search size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).
+          search .last                           : Sort in reverse chronological order (equivalent to id=.sort-).
+          search .count                          : Count the number of matching bundles.
+          search size=.sum                       : Compute total of a particular field (e.g., `size`).
+          search .format=<format>                : Apply <format> function (see worksheet markdown).
         Arguments:
           keywords              Keywords to search for.
           -a, --append          Append these bundles to the current worksheet.
@@ -186,19 +204,19 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
         Any provided metadata arguments will override the original metadata in mimicked bundles.
         Arguments:
           bundles                      Bundles: old_input_1 ... old_input_n old_output new_input_1 ... new_input_n ([[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)).
-          --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies. (for makes and runs)
-          --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left. (for runs)
-          --tags                       Space-separated list of tags used for search (e.g., machine-learning). (for makes and runs)
-          --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. (for runs)
-          -d, --description            Full description of the bundle. (for makes and runs)
-          --request-network            Whether to allow network access. (for runs)
-          --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use. (for runs)
-          --request-queue              Submit run to this job queue. (for runs)
-          --request-cpus               Number of CPUs allowed for this run. (for runs)
-          --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left. (for runs)
-          --request-priority           Job priority (higher is more important). (for runs)
-          --request-gpus               Number of GPUs allowed for this run. (for runs)
           -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$. (for makes and runs)
+          -d, --description            Full description of the bundle. (for makes and runs)
+          --tags                       Space-separated list of tags used for search (e.g., machine-learning). (for makes and runs)
+          --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies. (for makes and runs)
+          --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use. (for runs)
+          --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left. (for runs)
+          --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. (for runs)
+          --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left. (for runs)
+          --request-cpus               Number of CPUs allowed for this run. (for runs)
+          --request-gpus               Number of GPUs allowed for this run. (for runs)
+          --request-queue              Submit run to this job queue. (for runs)
+          --request-priority           Job priority (higher is more important). (for runs)
+          --request-network            Whether to allow network access. (for runs)
           --depth                      Number of parents to look back from the old output in search of the old input.
           -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
           -i, --dry-run                Perform a dry run (just show what will be done without doing it)
@@ -213,19 +231,19 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
         Arguments:
           macro_name                   Name of the macro (look for <macro_name>-in1, <macro_name>-in-<name>, ..., and <macro_name>-out bundles).
           bundles                      Bundles: new_input_1 ... new_input_n named_input_name:named_input_bundle other_named_input_name:other_named_input_bundle ([[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>))
-          --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies. (for makes and runs)
-          --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left. (for runs)
-          --tags                       Space-separated list of tags used for search (e.g., machine-learning). (for makes and runs)
-          --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. (for runs)
-          -d, --description            Full description of the bundle. (for makes and runs)
-          --request-network            Whether to allow network access. (for runs)
-          --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use. (for runs)
-          --request-queue              Submit run to this job queue. (for runs)
-          --request-cpus               Number of CPUs allowed for this run. (for runs)
-          --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left. (for runs)
-          --request-priority           Job priority (higher is more important). (for runs)
-          --request-gpus               Number of GPUs allowed for this run. (for runs)
           -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$. (for makes and runs)
+          -d, --description            Full description of the bundle. (for makes and runs)
+          --tags                       Space-separated list of tags used for search (e.g., machine-learning). (for makes and runs)
+          --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies. (for makes and runs)
+          --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use. (for runs)
+          --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left. (for runs)
+          --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. (for runs)
+          --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left. (for runs)
+          --request-cpus               Number of CPUs allowed for this run. (for runs)
+          --request-gpus               Number of GPUs allowed for this run. (for runs)
+          --request-queue              Submit run to this job queue. (for runs)
+          --request-priority           Job priority (higher is more important). (for runs)
+          --request-network            Whether to allow network access. (for runs)
           --depth                      Number of parents to look back from the old output in search of the old input.
           -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
           -i, --dry-run                Perform a dry run (just show what will be done without doing it)
@@ -261,7 +279,8 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
           port                  Port
           message               Arbitrary message to send.
-          --verbose             Verbose mode for BundleFUSE.
+          -f, --file            Add this file at end of message
+          --verbose             Verbose mode.
           -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
 
@@ -334,11 +353,12 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           --force         Delete worksheet even if it is non-empty and frozen.
 
       wls (wsearch, ws):
-        List worksheets on the current instance matching the given keywords.
+        List worksheets on the current instance matching the given keywords (returns 10 results by default).
           wls tag=paper           : List worksheets tagged as "paper".
           wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.
           wls .mine               : List my worksheets.
           wls .shared             : List worksheets that have been shared with any of the groups I am in.
+          wls .limit=10           : Limit the number of results to the top 10.
         Arguments:
           keywords         Keywords to search for.
           -a, --address    (<alias>|<address>)
@@ -430,21 +450,8 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
 
 
     Commands for managing server:
-      server:
-        Start an instance of a CodaLab bundle service with a REST API.
-        Arguments:
-          --watch          Restart the server on code changes.
-          -p, --processes  Number of processes to use. A production deployment should use more than 1 process to make the best use of multiple CPUs.
-          -t, --threads    Number of threads to use. The server will be able to handle (--processes) x (--threads) requests at the same time.
-          -d, --debug      Run the development server for debugging.
-
       workers:
         Display worker information of this CodaLab instance. Root user only.
-
-      bundle-manager:
-        Start the bundle manager that executes run and make bundles.
-        Arguments:
-          --sleep-time  Number of seconds to wait between successive actions.
 
       bs-add-partition:
         Add another partition for storage (MultiDiskBundleStore only)
@@ -488,7 +495,7 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           alias <name> <instance> : Binds <name> to <instance>.
         Arguments:
           name          Name of the alias (e.g., main).
-          instance      Instance to bind the alias to (e.g., https://codalab.org/bundleservice).
+          instance      Instance to bind the alias to (e.g., https://worksheets.codalab.org).
           -r, --remove  Remove this alias.
 
       config:
@@ -497,7 +504,7 @@ This file is auto-generated from the output of `cl help -v` and provides the lis
           config <key> <value> : Sets <key> to <value>.
         Arguments:
           key           key to set (e.g., cli/verbose).
-          value         Instance to bind the alias to (e.g., https://codalab.org/bundleservice).
+          value         Instance to bind the alias to (e.g., https://worksheets.codalab.org).
           -r, --remove  Remove this key.
 
       logout:

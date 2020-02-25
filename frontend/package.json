@@ -8,35 +8,46 @@
   "keywords": [],
   "private": true,
   "dependencies": {
-    "@material-ui/core": "^3.6.2",
-    "@material-ui/icons": "^3.0.1",
+    "@material-ui/core": "^3.9.3",
+    "@material-ui/icons": "^3.0.2",
     "ace-builds": "^1.4.2",
-    "bootstrap": "^4.2.1",
+    "autosuggest-highlight": "^3.1.1",
+    "bootstrap": "^3.3.6",
     "c3": "^0.6.12",
     "classnames": "^2.2.6",
-    "jquery": "^3.3.1",
+    "husky": "^2.7.0",
+    "jquery": "^3.4.1",
     "jquery-ui": "^1.12.1",
     "jquery-ui-bundle": "^1.12.1-migrate",
     "jquery.terminal": "^2.1.2",
     "jsonapi-datastore": "^0.4.0-beta",
-    "marked": "^0.6.0",
+    "lint-staged": "^8.2.1",
+    "marked": "^0.6.2",
+    "material-ui-chip-input": "^1.0.0-beta.16",
     "query-string": "^6.2.0",
-    "react": "^16.6.3",
+    "react": "^16.8.6",
     "react-cookie": "^3.0.8",
-    "react-dom": "^16.6.3",
+    "react-copy-to-clipboard": "^5.0.1",
+    "react-dnd": "^9.4.0",
+    "react-dnd-html5-backend": "^9.4.0",
+    "react-dom": "^16.8.6",
     "react-responsive-embed": "^2.1.0",
     "react-router-dom": "^4.3.1",
-    "react-scripts": "2.1.1",
+    "react-select": "^2.4.3",
+    "react-stickynode": "^2.1.1",
+    "react-toastify": "^5.4.1",
     "react-x-editable": "0.0.10-beta",
     "reselect": "^4.0.0",
+    "sass": "^1.23.3",
     "seamless-immutable": "^7.1.4",
-    "select2": "^4.0.6-rc.1",
     "underscore": "^1.9.1",
     "wolfy87-eventemitter": "^5.2.5"
   },
   "devDependencies": {
     "flow-bin": "^0.91.0",
-    "prettier": "^1.15.3"
+    "prettier": "^1.19.1",
+    "eslint": "^6.8.0",
+    "react-scripts": "^3.2.0"
   },
   "browserslist": [
     ">0.2%",
@@ -49,7 +60,19 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "flow": "flow",
-    "format": "prettier --config ./.prettierrc --write 'src/**/*.js'",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "check-ci": "eslint src && prettier --config ./.prettierrc --check 'src/**/*.js'"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "src/**/*.js": [
+      "eslint --max-warnings=0",
+      "prettier --config ./.prettierrc --write",
+      "git add"
+    ]
   }
 }

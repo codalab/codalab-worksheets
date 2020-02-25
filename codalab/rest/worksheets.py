@@ -13,6 +13,7 @@ from codalab.lib.server_util import (
     decoded_body,
     json_api_include,
     query_get_bool,
+    query_get_type,
     query_get_json_api_include_set,
     query_get_list,
 )
@@ -74,7 +75,7 @@ def fetch_worksheet(uuid):
             for item in worksheet['items']
             if item['type'] == worksheet_util.TYPE_BUNDLE and item['bundle_uuid'] is not None
         }
-        bundle_infos = get_bundle_infos(bundle_uuids).values()
+        bundle_infos = list(get_bundle_infos(bundle_uuids).values())
         json_api_include(document, BundleSchema(), bundle_infos)
         if 'items.bundle.owner' in include_set:
             user_ids.update({b['owner_id'] for b in bundle_infos})
@@ -203,6 +204,24 @@ def delete_worksheets():
         delete_worksheet(uuid, force)
 
 
+@post(
+    '/worksheets/<worksheet_uuid:re:%s>/add-items' % spec_util.UUID_STR, apply=AuthenticatedPlugin()
+)
+def replace_items(worksheet_uuid):
+    """
+    Replace worksheet items with 'ids' with new 'items'.
+    The new items will be inserted after the after_sort_key
+    """
+    worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
+    check_worksheet_has_all_permission(local.model, request.user, worksheet)
+
+    ids = request.json.get('ids', [])
+    after_sort_key = request.json.get('after_sort_key')
+    # Default to process only markup items.
+    items = [worksheet_util.markup_item(item) for item in request.json.get('items', [])]
+    local.model.add_worksheet_items(worksheet_uuid, items, after_sort_key, ids)
+
+
 @post('/worksheet-items', apply=AuthenticatedPlugin())
 def create_worksheet_items():
     """
@@ -211,14 +230,18 @@ def create_worksheet_items():
     |replace| - Replace existing items in host worksheets. Default is False.
     """
     replace = query_get_bool('replace', False)
-
+    # Get the uuid of the current worksheet
+    worksheet_uuid = query_get_type(str, 'uuid')
     new_items = WorksheetItemSchema(strict=True, many=True).load(request.json).data
 
+    # Map of worksheet_uuid to list of items that exist in this worksheet
     worksheet_to_items = {}
-    for item in new_items:
-        worksheet_to_items.setdefault(item['worksheet_uuid'], []).append(item)
+    worksheet_to_items.setdefault(worksheet_uuid, [])
 
-    for worksheet_uuid, items in worksheet_to_items.iteritems():
+    for item in new_items:
+        worksheet_to_items[worksheet_uuid].append(item)
+
+    for worksheet_uuid, items in worksheet_to_items.items():
         worksheet_info = get_worksheet_info(worksheet_uuid, fetch_items=True)
         if replace:
             # Replace items in the worksheet
@@ -351,7 +374,7 @@ def update_worksheet_metadata(uuid, info):
             ensure_unused_worksheet_name(value)
         elif key == 'frozen' and value and not worksheet.frozen:
             # ignore the value the client provided, just freeze as long as it's truthy
-            value = datetime.datetime.now()
+            value = datetime.datetime.utcnow()
         metadata[key] = value
 
     local.model.update_worksheet_metadata(worksheet, metadata)
@@ -448,7 +471,7 @@ def add_worksheet_item(worksheet_uuid, item):
     worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     worksheet_util.check_worksheet_not_frozen(worksheet)
-    local.model.add_worksheet_item(worksheet_uuid, item)
+    local.model.add_worksheet_items(worksheet_uuid, [item])
 
 
 def delete_worksheet(uuid, force):

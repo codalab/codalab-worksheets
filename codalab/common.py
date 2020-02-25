@@ -4,11 +4,11 @@ This module exports some simple names used throughout the CodaLab bundle system:
   - The State class, an enumeration of all legal bundle states.
   - precondition, a utility method that check's a function's input preconditions.
 """
-import httplib
+import http.client
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '0.3.3'
+CODALAB_VERSION = '0.5.9'
 
 
 class IntegrityError(ValueError):
@@ -61,10 +61,10 @@ class PermissionError(UsageError):
 
 # Listed in order of most specific to least specific.
 http_codes_and_exceptions = [
-    (httplib.FORBIDDEN, PermissionError),
-    (httplib.UNAUTHORIZED, AuthorizationError),
-    (httplib.NOT_FOUND, NotFoundError),
-    (httplib.BAD_REQUEST, UsageError),
+    (http.client.FORBIDDEN, PermissionError),
+    (http.client.UNAUTHORIZED, AuthorizationError),
+    (http.client.NOT_FOUND, NotFoundError),
+    (http.client.BAD_REQUEST, UsageError),
 ]
 
 
@@ -74,8 +74,8 @@ def exception_to_http_error(e):
     """
     for known_code, exception_type in http_codes_and_exceptions:
         if isinstance(e, exception_type):
-            return known_code, e.message
-    return httplib.INTERNAL_SERVER_ERROR, e.message
+            return known_code, str(e)
+    return http.client.INTERNAL_SERVER_ERROR, str(e)
 
 
 def http_error_to_exception(code, message):

@@ -24,7 +24,8 @@ class WorksheetItem extends React.Component {
         // Open worksheet in new window/tab
         Mousetrap.bind(
             ['shift+enter'],
-            function(e) {
+            function() {
+                // TODO: Doesn't work for bundle rows right now, should address later
                 window.open(this.refs['row' + this.props.subFocusIndex].props.url, '_blank');
             }.bind(this),
             'keydown',
@@ -32,7 +33,7 @@ class WorksheetItem extends React.Component {
 
         // Paste uuid of focused worksheet into console
         Mousetrap.bind(
-            ['u'],
+            ['i'],
             function(e) {
                 var uuid = this.refs['row' + this.props.subFocusIndex].props.uuid;
                 $('#command_line')
@@ -42,6 +43,10 @@ class WorksheetItem extends React.Component {
             }.bind(this),
             'keydown',
         );
+
+        // unbind shortcuts that are active for table_block and markdown_block
+        Mousetrap.unbind('a s');
+        Mousetrap.unbind('x');
     }
 
     updateRowIndex = (rowIndex, open) => {
@@ -57,7 +62,7 @@ class WorksheetItem extends React.Component {
 
     _getItems() {
         var item = this.props.item;
-        if (item.mode == 'subworksheets_block') {
+        if (item.mode === 'subworksheets_block') {
             return item.subworksheet_infos;
         } else {
             throw 'Invalid: ' + item.mode;
@@ -78,7 +83,7 @@ class WorksheetItem extends React.Component {
 
         var body_rows_html = items.map(function(row_item, row_index) {
             var row_ref = 'row' + row_index;
-            var row_focused = self.props.focused && row_index == self.props.subFocusIndex;
+            var row_focused = self.props.focused && row_index === self.props.subFocusIndex;
             var url = '/worksheets/' + row_item.uuid;
             return (
                 <TableWorksheetRow
@@ -136,18 +141,13 @@ class TableWorksheetRow extends React.Component {
 
     render() {
         var item = this.props.item;
-        var worksheet_display = item.name;
-        if (item.title) {
-            worksheet_display = item.title + ' [' + item.name + ']';
-        }
-
         var className = /*'type-worksheet' + */ this.props.focused ? ' focused' : '';
         return (
             <tr className={className}>
                 <td>
                     <div onClick={this.handleRowClick}>
                         <a href='javascript:void(0)' onClick={this.handleTextClick}>
-                            {worksheet_display}
+                            {`${item.title + ' '}[${item.name}]`}
                         </a>
                     </div>
                 </td>

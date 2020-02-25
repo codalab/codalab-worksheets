@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Immutable from 'seamless-immutable';
-import $, { jQuery } from 'jquery';
+import $ from 'jquery';
 import _ from 'underscore';
 import 'jquery.terminal';
 
@@ -8,6 +8,7 @@ const ACTIONBAR_MINIMIZE_HEIGHT = 30;
 let ACTIONBAR_DRAGHEIGHT = 350;
 class WorksheetActionBar extends React.Component {
     /** Constructor. */
+
     constructor(props) {
         super(props);
         this.state = Immutable({});
@@ -197,7 +198,7 @@ class WorksheetActionBar extends React.Component {
             });
     }
     completeCommand(command) {
-        var deferred = jQuery.Deferred();
+        var deferred = $.Deferred();
         $.ajax({
             type: 'POST',
             cache: false,
@@ -225,7 +226,6 @@ class WorksheetActionBar extends React.Component {
         var actionbar = $('#ws_search');
         var topOffset = actionbar.offset().top;
         var worksheetHeight = $('#worksheet').height();
-        var worksheetPanel = $('#worksheet_panel');
         var commandLine = $('#command_line');
         $(document).mousemove(function(e) {
             e.preventDefault();
@@ -234,17 +234,15 @@ class WorksheetActionBar extends React.Component {
             var actionbarHeightPercentage = (actionbarHeight / worksheetHeight) * 100;
             if (65 < actionbarHeight && actionbarHeightPercentage < 90) {
                 // minimum height: 65px; maximum height: 90% of worksheet height
-                worksheetPanel.removeClass('actionbar-focus').addClass('actionbar-resized');
                 actionbar.css('height', actionbarHeight);
                 ACTIONBAR_DRAGHEIGHT = actionbarHeight - 20;
                 commandLine.terminal().resize(commandLine.width(), ACTIONBAR_DRAGHEIGHT);
-                worksheetPanel.css('padding-top', actionbarHeight);
             }
         });
     }
     render() {
         return (
-            <div id='ws_search'>
+            <div id='ws_search' className={this.props.hidden ? 'search-hidden' : ''}>
                 <div className=''>
                     <div id='command_line' />
                 </div>

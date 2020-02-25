@@ -34,21 +34,15 @@ We provide a small application built on the [CodaLab Worksheets API](REST-API-Re
 
 ## Installation and setup
 
-Checkout the CodaLab Worksheets repository (in the future, this should be available via pip):
+Install codalab package and its dependencies:
 
-    git clone https://github.com/codalab/codalab-worksheets
-
-Install all the dependencies:
-
-    cd codalab-worksheets
-    virtualenv -p python2.7 venv2.7
-    venv2.7/bin/pip install -e .
+    pip3 install codalab
 
 Now when you run the competition script with the help flag `-h`, you should see something like this:
 
-    venv2.7/bin/python scripts/competitiond.py -h
+    cl-competitiond -h
 
-    usage: competitiond.py [-h] [-l] [-d] [-v] config_file output_path
+    usage: cl-competitiond [-h] [-l] [-d] [-v] config_file output_path
 
     Competition leaderboard evaluation daemon.
 
@@ -121,7 +115,7 @@ There are many ways you could choose to set up the competition. The recommended 
 
 Running the competition script in daemon mode will start a long-running process that periodically checks for new submissions, runs them, then updates the leaderboard file.
 
-    venv2.7/bin/python scripts/competitiond.py -d ~/competition-config.yml /var/www/leaderboard.json
+    cl-competitiond -d ~/competition-config.yml /var/www/leaderboard.json
 
 ## Submitting a model (as a participant)
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os, sys
 import datetime
@@ -6,11 +6,8 @@ from collections import defaultdict
 from smtplib import SMTP
 from email.mime.text import MIMEText
 import subprocess
-import re
 import time
-import socket
 import argparse
-import json
 
 BASE_DIR = os.path.dirname(__file__)
 
@@ -48,6 +45,7 @@ parser.add_argument(
     type=int,
     default=24 * 60 * 60,
 )
+
 args = parser.parse_args()
 
 # Get MySQL username and password for bundles
@@ -62,7 +60,7 @@ print(
     )
 )
 
-hostname = socket.gethostname()
+hostname = os.environ['HOSTNAME']
 
 # Email
 admin_email = os.environ['CODALAB_ADMIN_EMAIL']
@@ -73,6 +71,9 @@ sender_password = os.environ['CODALAB_EMAIL_PASSWORD']
 # Create backup directory
 if not os.path.exists(args.backup_path):
     os.mkdir(args.backup_path)
+
+# Comma-separated list of worker ids to monitor. Example: vm-clws-prod-worker-0,vm-clws-prod-worker-1
+public_workers = set(os.environ['CODALAB_PUBLIC_WORKERS'].split(','))
 
 report = []  # Build up the current report to send in an email
 
@@ -106,7 +107,7 @@ def send_email(subject, message):
 
 def get_date():
     # Only save a backup for every month to save space
-    return datetime.datetime.now().strftime('%Y-%m')
+    return datetime.datetime.utcnow().strftime('%Y-%m')
 
 
 def log(line, newline=True):
@@ -118,7 +119,7 @@ def log(line, newline=True):
     sys.stdout.flush()
     report.append(line)
     out = open(args.log_path, 'a')
-    print >> out, line
+    print(line, file=out)
     out.close()
 
 
@@ -153,7 +154,7 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
     # We cap the running time to hard_time_limit, but print out an error if we exceed soft_time_limit.
     start_time = time.time()
     args = ['timeout', '%ss' % hard_time_limit] + args
-    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
     output, err_output = proc.communicate()
     exitcode = proc.returncode
     end_time = time.time()
@@ -164,7 +165,7 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
     l.append(duration)
     while len(l) > 1000:  # Keep the list bounded
         l.pop(0)
-    average_duration = sum(l) / len(l)
+    average_duration = sum(l) // len(l)
     max_duration = max(l)
 
     # Abstract away the concrete uuids
@@ -219,11 +220,11 @@ def backup_db():
     date = get_date()
     mysql_conf_path = os.path.join(args.codalab_home, 'monitor-mysql.cnf')
     with open(mysql_conf_path, 'w') as f:
-        print >> f, '[client]'
-        print >> f, 'host="%s"' % bundles_host
-        print >> f, 'port="%s"' % bundles_port
-        print >> f, 'user="%s"' % bundles_username
-        print >> f, 'password="%s"' % bundles_password
+        print('[client]', file=f)
+        print('host="%s"' % bundles_host, file=f)
+        print('port="%s"' % bundles_port, file=f)
+        print('user="%s"' % bundles_username, file=f)
+        print('password="%s"' % bundles_password, file=f)
     path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_database, date)
     run_command(
         [
@@ -250,7 +251,29 @@ def check_disk_space(paths):
     if total < 1000 * 1024:
         error_logs(
             'low disk space',
-            'Only %s MB of disk space left on %s!' % (total / 1024, ' '.join(paths)),
+            'Only %s MB of disk space left on %s!' % (total // 1024, ' '.join(paths)),
+        )
+
+
+def poll_online_workers():
+    if len(public_workers) == 0:
+        error_logs(
+            'worker check failed', 'Missing value for environment variable CODALAB_PUBLIC_WORKERS.'
+        )
+    lines = run_command(['cl', 'workers']).split('\n')
+    workers_info = lines[2:]
+    online_workers = set()
+    for line in workers_info:
+        online_workers.add(line.split()[0].strip())
+
+    workers_intersection = public_workers.intersection(online_workers)
+    offline_public_workers = public_workers - workers_intersection
+    if len(offline_public_workers) > 0:
+        error_logs(
+            'worker offline',
+            'The following public workers are offline:\n{}.'.format(
+                '\n'.join(offline_public_workers)
+            ),
         )
 
 
@@ -283,6 +306,10 @@ while True:
             run_command(['cl', 'workers'])
             run_command(['cl', 'work'])
             run_command(['cl', 'search', '.count'])
+
+        # Get online workers and contact administrators when there are public workers offline.
+        if ping_time():
+            poll_online_workers()
 
         if run_time():
             # More intense
@@ -320,7 +347,7 @@ while True:
         send_email('report', report)
 
     if ping_time():
-        print
+        print()
 
     # Update timer
     time.sleep(1)

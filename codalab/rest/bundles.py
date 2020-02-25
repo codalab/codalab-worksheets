@@ -1,11 +1,12 @@
-import httplib
+import http.client
 import logging
 import mimetypes
 import os
 import re
 import sys
 import time
-from itertools import izip
+from io import BytesIO
+from http.client import HTTPResponse
 
 from bottle import abort, get, post, put, delete, local, request, response
 from codalab.bundles import get_bundle_subclass, UploadedBundle
@@ -35,7 +36,8 @@ from codalab.rest.schemas import (
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-from codalabworker.bundle_state import State
+from codalab.worker.bundle_state import State
+from codalab.worker.download_util import BundleTarget
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +122,7 @@ def _fetch_bundles():
         )
     else:
         abort(
-            httplib.BAD_REQUEST,
+            http.client.BAD_REQUEST,
             "Request must include either 'keywords' " "or 'specs' query parameter",
         )
 
@@ -152,7 +154,7 @@ def build_bundles_document(bundle_uuids):
 
     # Shim in display metadata used by the front-end application
     if query_get_bool('include_display_metadata', default=False):
-        for bundle, data in izip(bundles, document['data']):
+        for bundle, data in zip(bundles, document['data']):
             bundle_class = get_bundle_subclass(bundle['bundle_type'])
             json_api_meta(
                 data,
@@ -205,10 +207,11 @@ def _create_bundles():
     """
     worksheet_uuid = request.query.get('worksheet')
     shadow_parent_uuid = request.query.get('shadow')
+    after_sort_key = request.query.get('after_sort_key')
     detached = query_get_bool('detached', default=False)
     if worksheet_uuid is None:
         abort(
-            httplib.BAD_REQUEST,
+            http.client.BAD_REQUEST,
             "Parent worksheet id must be specified as" "'worksheet' query parameter",
         )
 
@@ -268,8 +271,8 @@ def _create_bundles():
         # Add as item to worksheet
         if not detached:
             if shadow_parent_uuid is None:
-                local.model.add_worksheet_item(
-                    worksheet_uuid, worksheet_util.bundle_item(bundle_uuid)
+                local.model.add_worksheet_items(
+                    worksheet_uuid, [worksheet_util.bundle_item(bundle_uuid)], after_sort_key
                 )
             else:
                 local.model.add_shadow_worksheet_items(shadow_parent_uuid, bundle_uuid)
@@ -278,7 +281,9 @@ def _create_bundles():
     bundles_dict = get_bundle_infos(created_uuids)
 
     # Return bundles in original order
-    bundles = [bundles_dict[uuid] for uuid in created_uuids]
+    # Need to check if the UUID is in the dict, since there is a chance that a bundle is deleted
+    # right after being created.
+    bundles = [bundles_dict[uuid] for uuid in created_uuids if uuid in bundles_dict]
     return BundleSchema(many=True).dump(bundles).data
 
 
@@ -299,14 +304,16 @@ def _update_bundles():
     bundles = local.model.batch_get_bundles(uuid=bundle_uuids)
 
     # Update bundles
-    for bundle, update in izip(bundles, bundle_updates):
+    for bundle, update in zip(bundles, bundle_updates):
         local.model.update_bundle(bundle, update)
 
     # Get updated bundles
     bundles_dict = get_bundle_infos(bundle_uuids)
 
     # Create list of bundles in original order
-    updated_bundles = [bundles_dict[uuid] for uuid in bundle_uuids]
+    # Need to check if the UUID is in the dict, since there is a chance that a bundle is deleted
+    # right after being updated.
+    updated_bundles = [bundles_dict[uuid] for uuid in bundle_uuids if uuid in bundles_dict]
 
     return BundleSchema(many=True).dump(updated_bundles).data
 
@@ -389,16 +396,20 @@ def _fetch_bundle_contents_info(uuid, path=''):
     ```
     """
     depth = query_get_type(int, 'depth', default=0)
+    target = BundleTarget(uuid, path)
     if depth < 0:
-        abort(httplib.BAD_REQUEST, "Depth must be at least 0")
+        abort(http.client.BAD_REQUEST, "Depth must be at least 0")
 
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     try:
-        info = local.download_manager.get_target_info(uuid, path, depth)
+        info = local.download_manager.get_target_info(target, depth)
+        # Object is not JSON serializable so submit its dict in API response
+        # The client is responsible for deserializing it
+        info['resolved_target'] = info['resolved_target'].__dict__
     except NotFoundError as e:
-        abort(httplib.NOT_FOUND, e.message)
+        abort(http.client.NOT_FOUND, str(e))
     except Exception as e:
-        abort(httplib.BAD_REQUEST, e.message)
+        abort(http.client.BAD_REQUEST, str(e))
 
     return {'data': info}
 
@@ -409,13 +420,16 @@ def _netcat_bundle(uuid, port):
     Send a raw bytestring into the specified port of the running bundle with uuid.
     Return the response from this bundle.
     """
+    # Note that read permission is enough to hit the port (same for netcurl).
+    # This allows users to host demos that the public can play with.  In
+    # general, this is not safe, since hitting a port can mutate what's
+    # happening in the bundle.  In the future, we might want to make people
+    # explicitly expose ports to the world.
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
-    print(bundle.state)
     if bundle.state != State.RUNNING:
-        abort(httplib.FORBIDDEN, 'Cannot netcat bundle, bundle not running.')
-    info = local.download_manager.netcat(uuid, port, request.json['message'])
-    return {'data': info}
+        abort(http.client.FORBIDDEN, 'Cannot netcat bundle, bundle not running.')
+    return local.download_manager.netcat(uuid, port, request.json['message'])
 
 
 @post(
@@ -446,27 +460,43 @@ def _netcurl_bundle(uuid, port, path=''):
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
     if bundle.state in State.FINAL_STATES:
-        abort(httplib.FORBIDDEN, 'Cannot netcurl bundle, bundle already finalized.')
+        abort(http.client.FORBIDDEN, 'Cannot netcurl bundle, bundle already finalized.')
 
     try:
         request.path_shift(4)  # shift away the routing parts of the URL
 
+        # Put the request headers into the message
         headers_string = [
             '{}: {}'.format(h, request.headers.get(h)) for h in request.headers.keys()
         ]
         message = "{} {} HTTP/1.1\r\n".format(request.method, request.path)
         message += "\r\n".join(headers_string) + "\r\n"
         message += "\r\n"
-        message += request.body.read()
+        message += request.body.read().decode()  # Assume bytes can be decoded to string
 
-        info = local.download_manager.netcat(uuid, port, message)
+        bytestring = local.download_manager.netcat(uuid, port, message)
+
+        # Parse the response
+        class FakeSocket:
+            def __init__(self, bytestring):
+                self._file = BytesIO(bytestring)
+
+            def makefile(self, *args, **kwargs):
+                return self._file
+
+        new_response = HTTPResponse(FakeSocket(bytestring))
+        new_response.begin()
+        # Copy the headers over
+        for k in new_response.headers:
+            response.headers[k] = new_response.headers[k]
+        # Return the response (which sends back the body)
+        return new_response
+
     except Exception:
-        print >>sys.stderr, "{}".format(request.environ)
+        logger.error("{}".format(request.environ), file=sys.stderr)
         raise
     finally:
         request.path_shift(-4)  # restore the URL
-
-    return info
 
 
 @get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')
@@ -516,31 +546,37 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     truncation_text = query_get_type(str, 'truncation_text', default='')
     max_line_length = query_get_type(int, 'max_line_length', default=128)
     check_bundles_have_read_permission(local.model, request.user, [uuid])
-    bundle = local.model.get_bundle(uuid)
+    target = BundleTarget(uuid, path)
 
     try:
-        target_info = local.download_manager.get_target_info(uuid, path, 0)
+        target_info = local.download_manager.get_target_info(target, 0)
+        if target_info['resolved_target'] != target:
+            check_bundles_have_read_permission(
+                local.model, request.user, [target_info['resolved_target'].bundle_uuid]
+            )
+        target = target_info['resolved_target']
     except NotFoundError as e:
-        abort(httplib.NOT_FOUND, e.message)
+        abort(http.client.NOT_FOUND, str(e))
     except Exception as e:
-        abort(httplib.BAD_REQUEST, e.message)
+        abort(http.client.BAD_REQUEST, str(e))
 
     # Figure out the file name.
-    if not path and bundle.metadata.name:
-        filename = bundle.metadata.name
+    bundle_name = local.model.get_bundle(target.bundle_uuid).metadata.name
+    if not path and bundle_name:
+        filename = bundle_name
     else:
         filename = target_info['name']
 
     if target_info['type'] == 'directory':
         if byte_range:
-            abort(httplib.BAD_REQUEST, 'Range not supported for directory blobs.')
+            abort(http.client.BAD_REQUEST, 'Range not supported for directory blobs.')
         if head_lines or tail_lines:
-            abort(httplib.BAD_REQUEST, 'Head and tail not supported for directory blobs.')
+            abort(http.client.BAD_REQUEST, 'Head and tail not supported for directory blobs.')
         # Always tar and gzip directories
         gzipped_stream = False  # but don't set the encoding to 'gzip'
         mimetype = 'application/gzip'
         filename += '.tar.gz'
-        fileobj = local.download_manager.stream_tarred_gzipped_directory(uuid, path)
+        fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
     elif target_info['type'] == 'file':
         # Let's gzip to save bandwidth.
         # For simplicity, we do this even if the file is already a packed
@@ -559,21 +595,23 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             mimetype = 'application/octet-stream'
 
         if byte_range and (head_lines or tail_lines):
-            abort(httplib.BAD_REQUEST, 'Head and range not supported on the same request.')
+            abort(http.client.BAD_REQUEST, 'Head and range not supported on the same request.')
         elif byte_range:
             start, end = byte_range
             fileobj = local.download_manager.read_file_section(
-                uuid, path, start, end - start + 1, gzipped_stream
+                target, start, end - start + 1, gzipped_stream
             )
         elif head_lines or tail_lines:
             fileobj = local.download_manager.summarize_file(
-                uuid, path, head_lines, tail_lines, max_line_length, truncation_text, gzipped_stream
+                target, head_lines, tail_lines, max_line_length, truncation_text, gzipped_stream
             )
         else:
-            fileobj = local.download_manager.stream_file(uuid, path, gzipped_stream)
+            fileobj = local.download_manager.stream_file(target, gzipped_stream)
     else:
         # Symlinks.
-        abort(httplib.FORBIDDEN, 'Cannot download files of this type (%s).' % target_info['type'])
+        abort(
+            http.client.FORBIDDEN, 'Cannot download files of this type (%s).' % target_info['type']
+        )
 
     # Set headers.
     response.set_header('Content-Type', mimetype or 'text/plain')
@@ -620,7 +658,7 @@ def _update_bundle_contents_blob(uuid):
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
     if bundle.state in State.FINAL_STATES:
-        abort(httplib.FORBIDDEN, 'Contents cannot be modified, bundle already finalized.')
+        abort(http.client.FORBIDDEN, 'Contents cannot be modified, bundle already finalized.')
 
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
@@ -628,7 +666,8 @@ def _update_bundle_contents_blob(uuid):
     final_state = request.query.get('state_on_success', default=State.READY)
     if finalize_on_success and final_state not in State.FINAL_STATES:
         abort(
-            httplib.BAD_REQUEST, 'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES)
+            http.client.BAD_REQUEST,
+            'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES),
         )
 
     # If this bundle already has data, remove it.
@@ -654,7 +693,8 @@ def _update_bundle_contents_blob(uuid):
             simplify_archives=query_get_bool('simplify', default=True),
         )  # See UploadManager for full explanation of 'simplify'
 
-        local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
+        bundle_location = local.bundle_store.get_bundle_location(uuid)
+        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error
@@ -664,7 +704,7 @@ def _update_bundle_contents_blob(uuid):
         local.model.update_bundle(
             bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
         )
-        abort(httplib.BAD_REQUEST, msg)
+        abort(http.client.BAD_REQUEST, msg)
 
     except Exception as e:
         # Upload failed: cleanup, update state if desired, and return HTTP error
@@ -684,7 +724,7 @@ def _update_bundle_contents_blob(uuid):
                 bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
             )
 
-        abort(httplib.INTERNAL_SERVER_ERROR, msg)
+        abort(http.client.INTERNAL_SERVER_ERROR, msg)
 
     else:
         if finalize_on_success:
@@ -709,7 +749,7 @@ def get_request_range():
 
     m = re.match(r'bytes=(\d+)-(\d+)', request.headers['Range'].strip())
     if m is None:
-        abort(httplib.BAD_REQUEST, "Range must be 'bytes=START-END'.")
+        abort(http.client.BAD_REQUEST, "Range must be 'bytes=START-END'.")
 
     start, end = m.groups()
     return int(start), int(end)
@@ -737,7 +777,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     If |recursive|, add all bundles downstream too.
     If |data_only|, only remove from the bundle store, not the bundle metadata.
     """
-    relevant_uuids = local.model.get_self_and_descendants(uuids, depth=sys.maxint)
+    relevant_uuids = local.model.get_self_and_descendants(uuids, depth=sys.maxsize)
     if not recursive:
         # If any descendants exist, then we only delete uuids if force = True.
         if (not force) and set(uuids) != set(relevant_uuids):
@@ -764,7 +804,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         )
 
     # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
-    result = local.model.get_host_worksheet_uuids(relevant_uuids)
+    result = local.model.get_all_host_worksheet_uuids(relevant_uuids)
     for uuid, host_worksheet_uuids in result.items():
         worksheets = local.model.batch_get_worksheets(fetch_items=False, uuid=host_worksheet_uuids)
         frozen_worksheets = [worksheet for worksheet in worksheets if worksheet.frozen]

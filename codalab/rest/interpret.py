@@ -14,6 +14,7 @@ import types
 from contextlib import closing
 from itertools import chain
 import json
+import sys
 
 import yaml
 from bottle import get, post, local, request
@@ -39,6 +40,7 @@ from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
 from codalab.rest.worksheets import get_worksheet_info, search_worksheets
 from codalab.rest.worksheet_block_schemas import BlockModes, MarkupBlockSchema, FetchStatusCodes
+from codalab.worker.download_util import BundleTarget
 
 
 @post('/interpret/search')
@@ -188,7 +190,9 @@ def fetch_interpreted_worksheet(uuid):
     # Go and fetch more information about the worksheet contents by
     # resolving the interpreted items.
     try:
-        interpreted_blocks = interpret_items(get_default_schemas(), worksheet_info['items'])
+        interpreted_blocks = interpret_items(
+            get_default_schemas(), worksheet_info['items'], db_model=local.model
+        )
     except UsageError as e:
         interpreted_blocks = {'blocks': []}
         worksheet_info['error'] = str(e)
@@ -223,7 +227,7 @@ def fetch_interpreted_worksheet(uuid):
             continue
         if item['mode'] == 'table':
             for row_map in item['rows']:
-                for k, v in row_map.iteritems():
+                for k, v in row_map.items():
                     if v is None:
                         row_map[k] = formatting.contents_str(v)
         if 'bundle_info' in item:
@@ -255,9 +259,7 @@ def cat_target(target):
     The caller should ensure that the target is a file.
     """
     rest_util.check_target_has_read_permission(target)
-    with closing(
-        local.download_manager.stream_file(target[0], target[1], gzipped=False)
-    ) as fileobj:
+    with closing(local.download_manager.stream_file(target, gzipped=False)) as fileobj:
         return fileobj.read()
 
 
@@ -265,23 +267,24 @@ def cat_target(target):
 MAX_BYTES_PER_LINE = 1024
 
 
-def head_target(target, max_num_lines, replace_non_unicode=False):
+def head_target(target, max_num_lines):
     """
     Return the first max_num_lines of target as a list of strings.
 
     The caller should ensure that the target is a file.
 
-    :param target: (bundle_uuid, subpath)
+    :param target: A worker.download_util.BundleTarget with bundle_uuid and subpath
     :param max_num_lines: max number of lines to fetch
-    :param replace_non_unicode: replace non-unicode characters with something printable
     """
     rest_util.check_target_has_read_permission(target)
-    lines = local.download_manager.summarize_file(
-        target[0], target[1], max_num_lines, 0, MAX_BYTES_PER_LINE, None, gzipped=False
-    ).splitlines(True)
-
-    if replace_non_unicode:
-        lines = map(formatting.verbose_contents_str, lines)
+    # Note: summarize_file returns bytes, but should be decodable to a string.
+    lines = (
+        local.download_manager.summarize_file(
+            target, max_num_lines, 0, MAX_BYTES_PER_LINE, None, gzipped=False
+        )
+        .decode()
+        .splitlines(True)
+    )
 
     return lines
 
@@ -321,11 +324,11 @@ def resolve_interpreted_blocks(interpreted_blocks):
 
                 block['rows'] = contents
             elif mode == BlockModes.contents_block or mode == BlockModes.image_block:
+                bundle_uuid = block['bundles_spec']['bundle_infos'][0]['uuid']
+                target_path = block['target_genpath']
+                target = BundleTarget(bundle_uuid, target_path)
                 try:
-                    target_info = rest_util.get_target_info(
-                        (block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']),
-                        0,
-                    )
+                    target_info = rest_util.get_target_info(target, 0)
                     if target_info['type'] == 'directory' and mode == BlockModes.contents_block:
                         block['status']['code'] = FetchStatusCodes.ready
                         block['lines'] = ['<directory>']
@@ -333,23 +336,13 @@ def resolve_interpreted_blocks(interpreted_blocks):
                         block['status']['code'] = FetchStatusCodes.ready
                         if mode == BlockModes.contents_block:
                             block['lines'] = head_target(
-                                (
-                                    block['bundles_spec']['bundle_infos'][0]['uuid'],
-                                    block['target_genpath'],
-                                ),
-                                block['max_lines'],
-                                replace_non_unicode=True,
+                                target_info['resolved_target'], block['max_lines']
                             )
                         elif mode == BlockModes.image_block:
                             block['status']['code'] = FetchStatusCodes.ready
                             block['image_data'] = base64.b64encode(
-                                cat_target(
-                                    (
-                                        block['bundles_spec']['bundle_infos'][0]['uuid'],
-                                        block['target_genpath'],
-                                    )
-                                )
-                            )
+                                bytes(cat_target(target_info['resolved_target']))
+                            ).decode('utf-8')
                     else:
                         block['status']['code'] = FetchStatusCodes.not_found
                         if mode == BlockModes.contents_block:
@@ -367,13 +360,13 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 # data = list of {'target': ...}
                 # Add a 'points' field that contains the contents of the target.
                 for info in block['trajectories']:
-                    target = (info['bundle_uuid'], info['target_genpath'])
+                    target = BundleTarget(info['bundle_uuid'], info['target_genpath'])
                     try:
                         target_info = rest_util.get_target_info(target, 0)
                     except NotFoundError as e:
                         continue
                     if target_info['type'] == 'file':
-                        contents = head_target(target, block['max_lines'], replace_non_unicode=True)
+                        contents = head_target(target_info['resolved_target'], block['max_lines'])
                         # Assume TSV file without header for now, just return each line as a row
                         info['points'] = points = []
                         for line in contents:
@@ -386,9 +379,9 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 raise UsageError('Invalid display mode: %s' % mode)
 
         except UsageError as e:
-            set_error_data(block_index, e.message)
+            set_error_data(block_index, str(e))
 
-        except StandardError:
+        except Exception:
             import traceback
 
             traceback.print_exc()
@@ -401,7 +394,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
 
 def is_bundle_genpath_triple(value):
     # if called after an RPC call tuples may become lists
-    need_gen_types = (types.TupleType, types.ListType)
+    need_gen_types = (tuple, list)
 
     return isinstance(value, need_gen_types) and len(value) == 3
 
@@ -470,13 +463,13 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
     else:
         subpath, key = genpath, None
 
-    target = (bundle_uuid, subpath)
+    target = BundleTarget(bundle_uuid, subpath)
     if target not in target_cache:
         info = None
         try:
             target_info = rest_util.get_target_info(target, 0)
             if target_info['type'] == 'file':
-                contents = head_target(target, MAX_LINES)
+                contents = head_target(target_info['resolved_target'], MAX_LINES)
 
                 if len(contents) == 0:
                     info = ''
@@ -536,7 +529,7 @@ def resolve_items_into_infos(items):
     # optimized batch_get_bundles multiget method.
     bundle_uuids = set(i['bundle_uuid'] for i in items if i['bundle_uuid'] is not None)
 
-    bundle_dict = rest_util.get_bundle_infos(bundle_uuids)
+    bundle_dict = rest_util.get_bundle_infos(bundle_uuids, get_single_host_worksheet=True)
 
     # Go through the items and substitute the components
     new_items = []
@@ -546,6 +539,9 @@ def resolve_items_into_infos(items):
             if i['bundle_uuid']
             else None
         )
+        if bundle_info is not None:
+            bundle_info['sort_key'] = i['sort_key']
+            bundle_info['id'] = i['id']
         if i['subworksheet_uuid']:
             try:
                 subworksheet_info = local.model.get_worksheet(
@@ -561,7 +557,9 @@ def resolve_items_into_infos(items):
         value_obj = (
             formatting.string_to_tokens(i['value']) if i['type'] == TYPE_DIRECTIVE else i['value']
         )
-        new_items.append((bundle_info, subworksheet_info, value_obj, i['type']))
+        new_items.append(
+            (bundle_info, subworksheet_info, value_obj, i['type'], i['id'], i['sort_key'])
+        )
     return new_items
 
 
@@ -579,7 +577,7 @@ def expand_raw_item(raw_item):
     resolve_items_into_infos on the returned raw_items.
     """
 
-    (bundle_info, subworksheet_info, value_obj, item_type) = raw_item
+    (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = raw_item
 
     is_search = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search'
     is_wsearch = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'wsearch'
@@ -593,16 +591,21 @@ def expand_raw_item(raw_item):
             keywords = rest_util.resolve_owner_in_keywords(keywords)
             search_result = local.model.search_bundles(request.user.user_id, keywords)
             if search_result['is_aggregate']:
-                raw_items.append(markup_item(str(search_result['result'])))
+                # Add None's for the 'id' and 'sort_key' of the tuple, since these
+                # items are not really worksheet items.
+                raw_items.append(markup_item(str(search_result['result'])) + (None, None))
             else:
                 bundle_uuids = search_result['result']
                 bundle_infos = rest_util.get_bundle_infos(bundle_uuids)
                 for bundle_uuid in bundle_uuids:
-                    raw_items.append(bundle_item(bundle_infos[bundle_uuid]))
+                    # Since bundle UUID's are queried first, we can't assume a UUID exists in
+                    # the subsequent bundle info query.
+                    if bundle_uuid in bundle_infos:
+                        raw_items.append(bundle_item(bundle_infos[bundle_uuid]) + (None, None))
         elif is_wsearch:
             worksheet_infos = search_worksheets(keywords)
             for worksheet_info in worksheet_infos:
-                raw_items.append(subworksheet_item(worksheet_info))
+                raw_items.append(subworksheet_item(worksheet_info) + (None, None))
 
         return raw_items
     else:

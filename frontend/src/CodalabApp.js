@@ -7,8 +7,6 @@ import CodalabTheme from './theme';
 
 // Components
 import UserInfo from './components/UserInfo';
-import HomePage from './components/HomePage';
-import $ from 'jquery';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import Login from './components/Login';
@@ -16,7 +14,8 @@ import { SignUp, SignUpSuccess } from './components/SignUp';
 import { ChangeEmail, ChangeEmailSuccess } from './components/ChangeEmail';
 import VerifySuccess from './components/VerifySuccess';
 import VerifyError from './components/VerifyError';
-import Worksheet from './components/worksheets/Worksheet';
+import Worksheet from './components/worksheets/Worksheet/Worksheet';
+import WorksheetNameSearch from './components/worksheets/WorksheetNameSearch';
 import {
     PasswordReset,
     PasswordResetSent,
@@ -25,6 +24,7 @@ import {
 } from './components/PasswordReset';
 
 // Routes
+import HomePage from './routes/HomePage';
 import BundleRoute from './routes/BundleRoute';
 
 import history from './history';
@@ -44,7 +44,24 @@ function CodalabApp() {
                             <Route
                                 path='/'
                                 exact
-                                render={(props) => <HomePage {...props} auth={fakeAuth} />}
+                                render={(props) => (
+                                    <HomePage
+                                        {...props}
+                                        auth={fakeAuth}
+                                        redirectAuthToDashboard={true}
+                                    />
+                                )}
+                            />
+                            <Route
+                                path='/home'
+                                exact
+                                render={(props) => (
+                                    <HomePage
+                                        {...props}
+                                        auth={fakeAuth}
+                                        redirectAuthToDashboard={false}
+                                    />
+                                )}
                             />
                             <Route path='/account/signup/success' component={SignUpSuccess} />
                             <Route path='/account/verify/error' component={VerifyError} />
@@ -85,6 +102,12 @@ function CodalabApp() {
                             />
                             <PrivateRoute path='/account/profile' component={UserInfo} />
                             <Route path='/worksheets/:uuid' component={Worksheet} />
+                            <Route
+                                path='/worksheets'
+                                render={(props) => (
+                                    <WorksheetNameSearch {...props} auth={fakeAuth} />
+                                )}
+                            />
                             <Route path='/bundles/:uuid' component={BundleRoute} />
                             <Route component={PageNotFound} />
                         </Switch>
@@ -99,7 +122,7 @@ function CodalabApp() {
 
 function checkAuth() {
     let codalab_session = new Cookies().get('codalab_session');
-    return codalab_session != undefined;
+    return codalab_session !== undefined;
 }
 
 const fakeAuth = {

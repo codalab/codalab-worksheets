@@ -9,8 +9,12 @@
 
 tag=$1
 
-./codalab_service.py build all --version $tag --pull --push
+# Check if ENV variable CODALAB_DOCKER_USERNAME is set. If not, it means this build was triggered
+# by an external user. Then we shouldn't push the docker image to docker hub.
+PUSH_FLAG=$([ -z "${CODALAB_DOCKER_USERNAME}" ] || echo "--push")
+
+python3 codalab_service.py build --version $tag --pull $PUSH_FLAG
 if [ "$tag" != "master" ]; then
-  ./codalab_service.py build all --version latest --pull --push
+  python3 codalab_service.py build --version latest --pull $PUSH_FLAG
   ./scripts/upload-to-pypi.sh $tag
 fi

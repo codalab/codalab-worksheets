@@ -20,12 +20,9 @@ def bool_constructor(x=False):
 
 
 def unicode_constructor(s=""):
-    # Need this method so that any uninterpretable characters in the database will be
-    # replaced with '?'.
-    if isinstance(s, str):
-        s = unicode(s, encoding='utf-8')
-    cleaned = s.encode(encoding='ascii', errors='replace')
-    return unicode(cleaned)
+    # Need this method so that any uninterpretable characters
+    # in the database will be replaced with '?'.
+    return s.encode(encoding='ascii', errors='replace').decode()
 
 
 class MetadataSpec(object):
@@ -55,7 +52,7 @@ class MetadataSpec(object):
 
     def get_constructor(self):
         # Convert from string to type
-        if self.type == basestring:
+        if self.type == str:
             return unicode_constructor
         if self.type == bool:
             return bool_constructor

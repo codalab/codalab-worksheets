@@ -8,10 +8,10 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     iputils-ping \
     git \
-    python2.7 \
-    python-pip \
-    python-dev \
-    python-software-properties \
+    python2.7 \	
+    python-pip \	
+    python-dev \	
+    python-software-properties \	
     python-tk \
     software-properties-common \
     build-essential \
@@ -27,6 +27,7 @@ RUN add-apt-repository ppa:deadsnakes/ppa && \
     apt-get install python3.6 -y \
         python3.6-venv \
         python3.6-dev \
+        python3-pip \
         python3-software-properties
 
 # Set Python3.6 as the default python3 version
@@ -77,7 +78,7 @@ RUN pip2 install -U \
       scikit-learn \
       scikit-image \
       nltk
-RUN pip3 install -U \
+RUN python3 -m pip install -U \
       numpy \
       scipy \
       matplotlib \
@@ -92,13 +93,13 @@ RUN pip3 install -U \
       nltk
 
 RUN python -m spacy download en
-RUN python3.6 -m spacy download en
+RUN python3 -m spacy download en
 
 RUN pip2 install -U \
       tensorflow-gpu==1.12.0 \
       tensorboard \
       keras
-RUN pip3 install -U \
+RUN python3 -m pip install -U \
       tensorflow-gpu==1.12.0 \
       tensorboard \
       keras
@@ -106,6 +107,6 @@ RUN pip3 install -U \
 RUN pip2 install -U \
       torch==1.1.0 \
       torchvision
-RUN pip3 install -U \
+RUN python3 -m pip install -U \
       torch==1.1.0 \
       torchvision

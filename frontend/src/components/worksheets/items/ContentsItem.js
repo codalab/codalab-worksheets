@@ -9,7 +9,7 @@ class ContentsItem extends React.Component {
         this.state = Immutable({});
     }
 
-    handleClick = (event) => {
+    handleClick = () => {
         this.props.setFocus(this.props.focusIndex, 0);
     };
 

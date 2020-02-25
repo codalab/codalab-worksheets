@@ -13,6 +13,7 @@ from argcomplete import warn
 
 from codalab.common import NotFoundError
 from codalab.lib import spec_util, worksheet_util, cli_util
+from codalab.worker.download_util import BundleTarget
 
 
 class CodaLabCompleter(object):
@@ -29,7 +30,7 @@ class WorksheetsCompleter(CodaLabCompleter):
     Complete worksheet specs with suggestions pulled from the current client.
     """
 
-    def __call__(self, prefix, **kwargs):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None):
         client, worksheet_spec = self.cli.parse_spec(prefix)
         worksheets = client.fetch('worksheets', params={'keywords': worksheet_spec})
 
@@ -55,7 +56,7 @@ class BundlesCompleter(CodaLabCompleter):
     worksheet specified in the current arguments if one exists.
     """
 
-    def __call__(self, prefix, action=None, parsed_args=None, worksheet_uuid=None):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None, worksheet_uuid=None):
         worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
         client, worksheet_uuid = self.cli.parse_client_worksheet_uuid(worksheet_spec)
 
@@ -82,7 +83,7 @@ class AddressesCompleter(CodaLabCompleter):
     Complete address with suggestions from the current worksheet.
     """
 
-    def __call__(self, prefix, action=None, parsed_args=None):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None):
         return (a for a in self.cli.manager.config.get('aliases', {}) if a.startswith(prefix))
 
 
@@ -91,7 +92,7 @@ class GroupsCompleter(CodaLabCompleter):
     Complete group specs with suggestions pulled from the current client.
     """
 
-    def __call__(self, prefix, action=None, parsed_args=None):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None):
         client = self.cli.manager.current_client()
         # TODO: allow fetch slice of attributes in API to optimize this
         group_dicts = client.fetch('groups')
@@ -134,7 +135,7 @@ def UnionCompleter(*completers):
 # TODO: fix, or building our own argument parsing/completion framework (e.g. like aws-cli).
 # TODO: https://github.com/codalab/codalab-worksheets/issues/223
 class TargetsCompleter(CodaLabCompleter):
-    def __call__(self, prefix, action=None, parsed_args=None):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None):
         key, target = cli_util.parse_key_target(prefix)
         if target is None:
             return ()
@@ -166,11 +167,12 @@ class TargetsCompleter(CodaLabCompleter):
             )
         else:
             # then suggest completions for subpath
-            resolved_target = self.cli.resolve_target(client, worksheet_uuid, target)
-            bundle_uuid = resolved_target[2]
-            dir_target = (bundle_uuid, os.path.dirname(subpath))
+            client, worksheet_uuid, resolved_target = self.cli.resolve_target(
+                client, worksheet_uuid, target
+            )
+            dir_target = BundleTarget(resolved_target.bundle_uuid, os.path.dirname(subpath))
             try:
-                info = client.fetch_contents_info(dir_target[0], dir_target[1], depth=1)
+                info = client.fetch_contents_info(dir_target, depth=1)
             except NotFoundError:
                 return ()
             if info['type'] == 'directory':
@@ -180,7 +182,7 @@ class TargetsCompleter(CodaLabCompleter):
                     if child['name'].startswith(basename):
                         matching_child_names.append(child['name'])
                 return (
-                    suggestion_format.format(os.path.join(dir_target[1], child_name))
+                    suggestion_format.format(os.path.join(dir_target.subpath, child_name))
                     for child_name in matching_child_names
                 )
             else:
@@ -198,7 +200,7 @@ class DockerImagesCompleter(CodaLabCompleter):
     Completes names of Docker images available on DockerHub.
     """
 
-    def __call__(self, prefix, action=None, parsed_args=None):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None):
         if prefix == "":
             prefix = "codalab"
         first_slash = prefix.find('/')

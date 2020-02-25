@@ -165,7 +165,7 @@ When a **run bundle** is created, it transitions between states from
 **created** to **ready** or **failed**.
 
 The bundle manager
-([bundle_manager.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/bundle_manager.py))
+([bundle_manager.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/server/bundle_manager.py))
 runs on the server in the background in a loop.  Its duties are:
 
 - Move bundles between various stages (`created` to `staged` when dependencies are ready) and when bundles time out.
@@ -174,30 +174,22 @@ runs on the server in the background in a loop.  Its duties are:
 
 ## Worker
 
-The worker has to be designed to work with many different backends (local
-worker, Slurm, and Azure/AWS Batch).
-
 The worker's main entry point is
-[worker/codalabworker/main.py](https://github.com/codalab/codalab-worksheets/blob/master/worker/codalabworker/main.py).
+[codalab/worker/main.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/main.py).
 
 The top-level
-[worker.py](https://github.com/codalab/codalab-worksheets/blob/master/worker/codalabworker/worker.py)
+[worker.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/worker.py)
 is generic logic.
 
-The worker creates a run manager, which manages the actual execution of the runs.
-By default, a
-([LocalRunManager](https://github.com/codalab/codalab-worksheets/blob/master/worker/codalabworker/local_run/local_run_manager.py))
-is used.
-
-The run manager has a
-[DockerImageManager](https://github.com/codalab/codalab-worksheets/blob/master/worker/codalabworker/local_run/docker_image_manager.py)
+The worker has a
+[DockerImageManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/docker_image_manager.py)
 for maintaining Docker images
-and a [LocalFilesystemDependencyManager](https://github.com/codalab/codalab-worksheets/blob/master/worker/codalabworker/local_run/local_dependency_manager.py)
+and a [DependencyManager](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/dependency_manager.py)
 for maintaining bundle dependencies, both of which are download asynchronously
 and require a cache.
 
 Finally, the
-[LocalRunStateMachine](https://github.com/codalab/codalab-worksheets/blob/master/worker/codalabworker/local_run/local_run_state.py)
+[RunStateMachine](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/worker_run_state.py)
 does most of the heavy lifting and transitions jobs between different states.
 
 # Deployment

@@ -30,7 +30,6 @@ import copy
 import os
 import re
 import sys
-from itertools import izip
 
 
 from codalab.common import PermissionError, UsageError
@@ -63,11 +62,11 @@ TYPE_WORKSHEET = 'worksheet'
 WORKSHEET_ITEM_TYPES = (TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET)
 
 
-BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
-SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
+BUNDLE_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{([^{]*)\}\s*$')
+SUBWORKSHEET_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{\{(.*)\}\}\s*$')
 
 DIRECTIVE_CHAR = '%'
-DIRECTIVE_REGEX = re.compile(r'^' + DIRECTIVE_CHAR + '\s*(.*)$')
+DIRECTIVE_REGEX = re.compile(r'^\s*' + DIRECTIVE_CHAR + '\s*(.*)\s*$')
 
 # Default number of lines to pull for each display mode.
 DEFAULT_CONTENTS_MAX_LINES = 10
@@ -137,7 +136,7 @@ def get_worksheet_lines(worksheet_info):
     """
     lines = []
     for item in worksheet_info['items']:
-        (bundle_info, subworksheet_info, value_obj, item_type) = item
+        (bundle_info, subworksheet_info, value_obj, item_type) = item[:4]
 
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
@@ -169,6 +168,7 @@ def get_worksheet_lines(worksheet_info):
                     description += ' -- ' + deps
                 command = bundle_info.get('command')
                 if command:
+                    command = command.replace('\n', ' ')
                     description += ' : ' + command
             lines.append(bundle_line(description, bundle_info['uuid']))
         elif item_type == TYPE_WORKSHEET:
@@ -238,7 +238,7 @@ def get_metadata_types(cls):
     formatting/serialization is necessary.
     """
     return {
-        spec.key: (not issubclass(spec.type, basestring) and spec.formatting) or spec.type.__name__
+        spec.key: (not issubclass(spec.type, str) and spec.formatting) or spec.type.__name__
         for spec in cls.METADATA_SPECS
     }
 
@@ -288,17 +288,19 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
         if line_types[i] == TYPE_BUNDLE
     ]
     # bundle_specs = (line_indices, bundle_specs)
-    bundle_specs = zip(*bundle_lines) if len(bundle_lines) > 0 else [(), ()]
+    bundle_specs = list(zip(*bundle_lines)) if len(bundle_lines) > 0 else [(), ()]
     # bundle_uuids = {line_i: bundle_uuid, ...}
     bundle_uuids = dict(
-        zip(
-            bundle_specs[0],
-            canonicalize.get_bundle_uuids(model, user, worksheet_uuid, bundle_specs[1]),
+        list(
+            zip(
+                bundle_specs[0],
+                canonicalize.get_bundle_uuids(model, user, worksheet_uuid, bundle_specs[1]),
+            )
         )
     )
 
     items = []
-    for line_i, (line_type, line) in enumerate(izip(line_types, form_result)):
+    for line_i, (line_type, line) in enumerate(zip(line_types, form_result)):
         if line_type == 'comment':
             comment = line[2:]
             items.append(directive_item([DIRECTIVE_CHAR, comment]))
@@ -318,7 +320,7 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
                 }  # info doesn't need anything other than uuid
                 items.append(subworksheet_item(subworksheet_info))
             except UsageError as e:
-                items.append(markup_item(e.message + ': ' + line))
+                items.append(markup_item(str(e) + ': ' + line))
         elif line_type == TYPE_DIRECTIVE:
             directive = DIRECTIVE_REGEX.match(line).group(1)
             items.append(directive_item(formatting.string_to_tokens(directive)))
@@ -331,18 +333,27 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
 
 
 def is_file_genpath(genpath):
-    # Return whether the genpath is a file (e.g., '/stdout') or not (e.g., 'command')
+    """
+    Determine whether the genpath is a file (e.g., '/stdout') or not (e.g., 'command')
+    :param genpath: a generalized path
+    :return: a boolean value indicating if the genpath is a file.
+    """
     return genpath.startswith('/')
 
 
-def interpret_genpath(bundle_info, genpath):
+def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
     """
     Quickly interpret the genpaths (generalized path) that only require looking
     bundle_info (e.g., 'time', 'command').  The interpretation of generalized
     paths that require reading files is done by interpret_file_genpath.
+    If genpath is referring to a file, then just returns instructions for fetching that file rather than actually doing it.
+    :param bundle_info: dictionary which contains metadata of current bundle's information, e.g. uuid, bundle_type, owner_id, etc.
+    :param genpath: a generalized path, e.g. column names(summary, owner, etc.), args.
+    :param db_model (optional): database model which is used to query database
+    :param owner_cache (optional): a dictionary stores mappings from owner_id to owner
+    :return: the interpretation of genpath
     """
-    # If genpath is referring to a file, then just returns instructions for
-    # fetching that file rather than actually doing it.
+
     if is_file_genpath(genpath):
         return (bundle_info['uuid'], genpath)
 
@@ -433,6 +444,15 @@ def interpret_genpath(bundle_info, genpath):
             # FIXME(sckoo): we will be passing the old permissions format into this
             # which has been updated to accommodate the new formatting
             return group_permissions_str(bundle_info['group_permissions'])
+    elif genpath == 'owner':
+        if 'owner_id' in bundle_info:
+            if owner_cache is not None and bundle_info['owner_id'] in owner_cache:
+                return owner_cache[bundle_info['owner_id']]
+            else:
+                # We might batch this database operation in the future
+                owner = db_model.get_user(user_id=bundle_info['owner_id'])
+                owner_cache[bundle_info['owner_id']] = owner.user_name
+                return owner.user_name
 
     # Bundle field?
     value = bundle_info.get(genpath)
@@ -580,14 +600,17 @@ def get_default_schemas():
 
 
 def get_command(value_obj):  # For directives only
+
     return value_obj[0] if len(value_obj) > 0 else None
 
 
-def interpret_items(schemas, raw_items):
+def interpret_items(schemas, raw_items, db_model=None):
     """
-    schemas: initial mapping from name to list of schema items (columns of a table)
-    raw_items: list of (raw) worksheet items (triples) to interpret
-    Return {'items': interpreted_items, ...}, where interpreted_items is a list of:
+    Interpret different items based on their types.
+    :param schemas: initial mapping from name to list of schema items (columns of a table)
+    :param raw_items: list of (raw) worksheet items (triples) to interpret
+    :param db_model: database model which is used to query database
+    :return: {'items': interpreted_items, ...}, where interpreted_items is a list of:
     {
         'mode': display mode ('markup' | 'contents' | 'image' | 'html', etc.)
         'interpreted': one of
@@ -754,11 +777,18 @@ def interpret_items(schemas, raw_items):
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             processed_bundle_infos = []
+            # Cache the mapping between owner_id to owner on current worksheet
+            owner_cache = {}
             for item_index, bundle_info in bundle_infos:
                 if 'metadata' in bundle_info:
                     rows.append(
                         {
-                            name: apply_func(post, interpret_genpath(bundle_info, genpath))
+                            name: apply_func(
+                                post,
+                                interpret_genpath(
+                                    bundle_info, genpath, db_model=db_model, owner_cache=owner_cache
+                                ),
+                            )
                             for (name, genpath, post) in schema
                         }
                     )
@@ -776,6 +806,7 @@ def interpret_items(schemas, raw_items):
                         }
                     )
                     processed_bundle_infos.append(processed_bundle_info)
+
             blocks.append(
                 TableBlockSchema()
                 .load(
@@ -854,7 +885,7 @@ def interpret_items(schemas, raw_items):
     for raw_index, item in enumerate(raw_items):
         new_last_was_empty_line = True
         try:
-            (bundle_info, subworksheet_info, value_obj, item_type) = item
+            (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = item
 
             is_bundle = item_type == TYPE_BUNDLE
             is_search = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search'
@@ -891,10 +922,25 @@ def interpret_items(schemas, raw_items):
                 ):
                     # Join with previous markup item
                     blocks[-1]['text'] += '\n' + value_obj
+                    # Ids
+                    blocks[-1]['ids'] = blocks[-1].get('ids', [])
+                    blocks[-1]['ids'].append(id)
+                    blocks[-1]['sort_keys'] = blocks[-1].get('sort_keys', [])
+                    blocks[-1]['sort_keys'].append(sort_key)
                 elif not new_last_was_empty_line:
-                    blocks.append(
-                        MarkupBlockSchema().load({'id': len(blocks), 'text': value_obj}).data
+                    block = (
+                        MarkupBlockSchema()
+                        .load(
+                            {
+                                'id': len(blocks),
+                                'text': value_obj,
+                                'ids': [id],
+                                'sort_keys': [sort_key],
+                            }
+                        )
+                        .data
                     )
+                    blocks.append(block)
                 # Important: set raw_to_block after so we can focus on current item.
                 if new_last_was_empty_line:
                     raw_to_block.append(None)
@@ -946,13 +992,13 @@ def interpret_items(schemas, raw_items):
             worksheet_infos[:] = []
             blocks.append(
                 MarkupBlockSchema()
-                .load({'text': 'Error on line %d: %s' % (raw_index, e.message)})
+                .load({'text': 'Error on line %d: %s' % (raw_index, str(e))})
                 .data
             )
 
             raw_to_block.append((len(blocks) - 1, 0))
 
-        except StandardError:
+        except Exception:
             current_schema = None
             bundle_infos[:] = []
             worksheet_infos[:] = []
@@ -972,7 +1018,7 @@ def interpret_items(schemas, raw_items):
 
     # TODO: fix inconsistencies resulting from UsageErrors thrown in flush_bundles()
     if len(raw_to_block) != len(raw_items):
-        print >>sys.stderr, "WARNING: Length of raw_to_block does not match length of raw_items"
+        print("WARNING: Length of raw_to_block does not match length of raw_items", file=sys.stderr)
 
     # Package the result
     block_to_raw = {}

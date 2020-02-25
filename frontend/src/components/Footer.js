@@ -1,5 +1,4 @@
 import * as React from 'react';
-import classNames from 'classnames';
 import Immutable from 'seamless-immutable';
 import { CODALAB_VERSION } from '../constants';
 
@@ -34,7 +33,7 @@ class Footer extends React.Component {
                         </li>
                         <li>
                             <a
-                                href='https://codalab-worksheets.readthedocs.io/en/latest/Latest-Features'
+                                href='https://github.com/codalab/codalab-worksheets/releases'
                                 target='_blank'
                             >
                                 v{CODALAB_VERSION}

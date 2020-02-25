@@ -1,10 +1,8 @@
 // @flow
 import * as React from 'react';
 import * as $ from 'jquery';
-import classNames from 'classnames';
-import Editable from 'react-x-editable';
+import { withStyles } from '@material-ui/core/styles';
 import { renderFormat, serializeFormat } from '../util/worksheet_utils';
-import ReactDOM from 'react-dom';
 
 const KEYCODE_ESC = 27;
 
@@ -12,7 +10,7 @@ function isAscii(str) {
     return /^[\x00-\x7F]*$/.test(str);
 }
 
-export class EditableField extends React.Component<{
+class EditableFieldBase extends React.Component<{
     value: string,
     buildPayload: (string) => {},
     method: string,
@@ -23,7 +21,7 @@ export class EditableField extends React.Component<{
     /** Prop default values. */
     static defaultProps = {
         method: 'POST',
-        canEdit: true,
+        canEdit: false,
     };
 
     constructor(props) {
@@ -65,14 +63,14 @@ export class EditableField extends React.Component<{
             context: this, // automatically bind `this` in all callbacks
             xhr: function() {
                 // Hack for IE < 9 to use PATCH method
-                return window.XMLHttpRequest == null ||
-                    new window.XMLHttpRequest().addEventListener == null
+                return window.XMLHttpRequest === null ||
+                    new window.XMLHttpRequest().addEventListener === null
                     ? new window.ActiveXObject('Microsoft.XMLHTTP')
                     : $.ajaxSettings.xhr();
             },
         })
             .done(function(response) {
-                if (this.props.onChange) this.props.onChange();
+                if (this.props.onChange) this.props.onChange(this.state.value);
             })
             .fail(function(response, status, err) {
                 // TODO: this doesn't stop the value from updating in the frontend
@@ -86,8 +84,14 @@ export class EditableField extends React.Component<{
         }
     };
 
-    handleChange = (event) => {
+    handleAsciiChange = (event) => {
+        // only ascii
         this.setState({ value: event.target.value, isValid: isAscii(event.target.value) });
+    };
+
+    handleFreeChange = (event) => {
+        // allows non-ascii
+        this.setState({ value: event.target.value });
     };
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -102,19 +106,36 @@ export class EditableField extends React.Component<{
     render() {
         if (!this.state.editing) {
             return (
-                <a className='editable editable-click' onClick={this.onClick}>
-                    {this.state.value === '' ? '<none>' : this.state.value}
-                </a>
+                <span
+                    className='editable-field'
+                    onClick={this.onClick}
+                    style={{ color: '#225ea8' }}
+                >
+                    {this.state.value || '<none>'}
+                </span>
             );
         } else {
             return (
                 <form onSubmit={this.onBlur}>
                     <input
+                        type='text'
                         autoFocus
                         value={this.state.value}
                         onBlur={this.onBlur}
-                        onChange={this.handleChange}
+                        onChange={
+                            this.props.allowASCII ? this.handleFreeChange : this.handleAsciiChange
+                        }
                         onKeyDown={this.handleKeyPress}
+                        placeholder={this.props.placeholder}
+                        maxLength='259'
+                        style={{
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'pre',
+                            maxWidth: '100%',
+                            minWidth: '65px',
+                            padding: '0 4px 0 3px',
+                            color: '#225ea8',
+                        }}
                     />
                     {!this.state.isValid && (
                         <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>
@@ -124,6 +145,23 @@ export class EditableField extends React.Component<{
         }
     }
 }
+
+const efStyles = (theme) => ({
+    editableLinkContainer: {
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    editableLink: {
+        textDecoration: 'none',
+        color: theme.color.primary.dark,
+        '&:hover': {
+            color: theme.color.primary.base,
+        },
+    },
+});
+
+export const EditableField = withStyles(efStyles)(EditableFieldBase);
 
 export class WorksheetEditableField extends React.Component<{
     uuid: string,
@@ -154,6 +192,10 @@ export class WorksheetEditableField extends React.Component<{
         );
     }
 }
+
+WorksheetEditableField.defaultProps = {
+    allowASCII: false,
+};
 
 export class BundleEditableField extends React.Component<{
     value: any,
