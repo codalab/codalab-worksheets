@@ -394,7 +394,6 @@ class Worksheet extends React.Component {
                 });
             });
             this.setState({ openCopy: true, copiedBundleIds: tempBundleIds });
-        } else if (cmd_type === 'paste') {
         }
     };
 
@@ -936,13 +935,19 @@ class Worksheet extends React.Component {
             }
         } else {
             // Go into edit mode.
-            this.setState({
-                editMode: editMode,
-                uuidBundlesCheckedCount: {},
-                checkedBundles: {},
-                showBundleOperationButtons: false,
-                updating: false,
-            });
+            this.setState(
+                {
+                    editMode: editMode,
+                    uuidBundlesCheckedCount: {},
+                    checkedBundles: {},
+                    showBundleOperationButtons: false,
+                    updating: false,
+                },
+                () => {
+                    this.bundleTableID = new Set();
+                    this.copyCallBacks = [];
+                },
+            );
             $('#worksheet-editor').focus(); // Needs to be before focusing
         }
     }
@@ -1527,7 +1532,6 @@ class Worksheet extends React.Component {
                     toggleGlossaryModal={this.toggleGlossaryModal}
                     togglePopupNoEvent={this.togglePopupNoEvent}
                     copiedBundleIds={this.state.copiedBundleIds}
-                    pasteToWorksheet={this.pasteToWorksheet}
                 />
                 {action_bar_display}
                 <ToastContainer
