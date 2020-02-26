@@ -836,11 +836,10 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
         }
-        // run after current cell
+        // paste after current focused cell
         Mousetrap.bind(
             ['a v'],
             function(e) {
-                // paste to worksheet
                 this.pasteToWorksheet();
             }.bind(this),
             'keyup',
