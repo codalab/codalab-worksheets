@@ -7,6 +7,8 @@ import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
 import AddIcon from '@material-ui/icons/AddBoxOutlined';
 import NoteAddIcon from '@material-ui/icons/NoteAdd';
 import BundleBulkActionMenu from '../BundleBulkActionMenu';
+import Tooltip from '@material-ui/core/Tooltip';
+import IconButton from '@material-ui/core/IconButton';
 
 class ActionButtons extends React.Component<{
     classes: {},
@@ -23,6 +25,7 @@ class ActionButtons extends React.Component<{
             togglePopup,
             togglePopupNoEvent,
             info,
+            pasteToWorksheet,
         } = this.props;
         let editPermission = info && info.edit_permission;
         return (
@@ -77,18 +80,18 @@ class ActionButtons extends React.Component<{
                         togglePopupNoEvent={togglePopupNoEvent}
                     />
                 ) : null}
-                {
+                <Tooltip title='Paste text or uuids to this worksheet'>
                     <Button
                         size='small'
                         color='inherit'
                         aria-label='Paste'
-                        onClick={this.props.pasteToWorksheet}
+                        onClick={pasteToWorksheet}
                         disabled={!editPermission}
                     >
                         <NoteAddIcon className={classes.buttonIcon} />
                         Paste
                     </Button>
-                }
+                </Tooltip>
             </div>
         );
     }

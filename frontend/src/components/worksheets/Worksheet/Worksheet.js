@@ -459,6 +459,7 @@ class Worksheet extends React.Component {
 
     pasteToWorksheet = () => {
         console.log('Pasting to worksheet');
+        console.log(this.state.ws.info);
         var promise = navigator.clipboard.readText();
         promise.then((data) => {
             if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
@@ -467,11 +468,11 @@ class Worksheet extends React.Component {
                 var item_line = this.state.ws.info.block_to_raw[currentItemKey];
                 var source_line = this.state.ws.info.raw_item_to_source_line[item_line];
                 this.state.ws.info.raw.splice(source_line + 1, 0, data);
-                this.saveAndUpdateWorksheet(false, this.focusIndex);
+                this.saveAndUpdateWorksheet(false, item_line);
             } else {
                 // Add to the end of the worksheet if no focus
                 this.state.ws.info.raw.push(data);
-                this.saveAndUpdateWorksheet(false, this.focusIndex);
+                this.saveAndUpdateWorksheet(false, item_line);
             }
         });
     };
@@ -804,15 +805,6 @@ class Worksheet extends React.Component {
                     }.bind(this),
                     'keyup',
                 );
-                // run after current cell
-                Mousetrap.bind(
-                    ['a v'],
-                    function(e) {
-                        // paste to worksheet
-                        this.pasteToWorksheet();
-                    }.bind(this),
-                    'keyup',
-                );
                 // edit and rerun current bundle
                 Mousetrap.bind(
                     ['a n'],
@@ -844,6 +836,15 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
         }
+        // run after current cell
+        Mousetrap.bind(
+            ['a v'],
+            function(e) {
+                // paste to worksheet
+                this.pasteToWorksheet();
+            }.bind(this),
+            'keyup',
+        );
 
         if (this.state.showBundleOperationButtons) {
             // Below are allowed shortcut even when a dialog is opened===================
@@ -1531,6 +1532,7 @@ class Worksheet extends React.Component {
                     toggleGlossaryModal={this.toggleGlossaryModal}
                     togglePopupNoEvent={this.togglePopupNoEvent}
                     copiedBundleIds={this.state.copiedBundleIds}
+                    pasteToWorksheet={this.pasteToWorksheet}
                 />
                 {action_bar_display}
                 <ToastContainer
