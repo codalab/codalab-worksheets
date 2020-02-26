@@ -172,6 +172,36 @@ class WorksheetDialogs extends React.Component {
                         </CopyToClipboard>
                     </DialogActions>
                 </Dialog>
+                <Dialog
+                    open={this.props.openCut}
+                    onClose={this.props.togglePopup('cut')}
+                    aria-labelledby='copy-title'
+                    aria-describedby='deletion-description'
+                >
+                    <DialogContent className={classes.copyDialog}>
+                        <DialogContentText id='alert-dialog-description'>
+                            The following bundle ids will be cut to clipboard:
+                            <div style={{ whiteSpace: 'pre-wrap' }}>
+                                {this.props.copiedBundleIds}
+                            </div>
+                            Note: Search-generated bundle rows won't be removed
+                        </DialogContentText>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button color='primary' onClick={this.props.togglePopup('cut')}>
+                            CANCEL
+                        </Button>
+                        <CopyToClipboard
+                            color='primary'
+                            text={this.props.copiedBundleIds}
+                            id='cutBundleIdToClipBoard'
+                        >
+                            <Button color='primary' onClick={this.props.togglePopup('cut')}>
+                                Cut
+                            </Button>
+                        </CopyToClipboard>
+                    </DialogActions>
+                </Dialog>
                 }
             </div>
         );

@@ -154,6 +154,7 @@ class Worksheet extends React.Component {
             openDetach: false,
             openKill: false,
             openCopy: false,
+            openCut: false,
             openDeleteItem: false,
             forceDelete: false,
             showGlossaryModal: false,
@@ -161,6 +162,7 @@ class Worksheet extends React.Component {
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
             copiedBundleIds: '',
+            cutBundleKeys: [],
         };
         this.copyCallBacks = [];
         this.bundleTableID = new Set();
@@ -374,7 +376,7 @@ class Worksheet extends React.Component {
         if (!this.state.showBundleOperationButtons) {
             return;
         }
-        const { openKill, openDelete, openDetach, openCopy } = this.state;
+        const { openKill, openDelete, openDetach, openCopy, openCut } = this.state;
         if (cmd_type === 'rm') {
             this.setState({ openDelete: !openDelete });
         } else if (cmd_type === 'detach') {
@@ -388,12 +390,35 @@ class Worksheet extends React.Component {
             }
             let tempBundleIds = '';
             this.copyCallBacks.forEach((copyBundleCallBack) => {
-                let bundlesChecked = copyBundleCallBack();
+                let bundlesChecked = copyBundleCallBack()['uuid'];
                 bundlesChecked.forEach((uuid) => {
                     tempBundleIds += '[]{' + uuid + '}\n';
                 });
             });
             this.setState({ openCopy: true, copiedBundleIds: tempBundleIds });
+        } else if (cmd_type === 'cut') {
+            if (openCut) {
+                this.removeRawSourceLines();
+                this.setState({ openCut: false });
+                return;
+            }
+            let tempBundleIds = '';
+            let bundleRowSourceLinekeys = [];
+            this.copyCallBacks.forEach((copyBundleCallBack) => {
+                let bundlesCheckedObject = copyBundleCallBack();
+                let bundlesChecked = bundlesCheckedObject['uuid'];
+                bundlesChecked.forEach((uuid) => {
+                    tempBundleIds += '[]{' + uuid + '}\n';
+                });
+                console.log('HELLO:', bundlesCheckedObject);
+                bundleRowSourceLinekeys.push(...bundlesCheckedObject['keys']);
+            });
+            console.log(bundleRowSourceLinekeys);
+            this.setState({
+                openCut: true,
+                copiedBundleIds: tempBundleIds,
+                cutBundleKeys: bundleRowSourceLinekeys,
+            });
         }
     };
 
@@ -404,7 +429,7 @@ class Worksheet extends React.Component {
         if (!this.state.showBundleOperationButtons) {
             return;
         }
-        const { openKill, openDelete, openDetach, openCopy } = this.state;
+        const { openKill, openDelete, openDetach, openCopy, openCut } = this.state;
         if (cmd_type === 'rm') {
             this.setState({ openDelete: !openDelete });
         } else if (cmd_type === 'detach') {
@@ -418,13 +443,45 @@ class Worksheet extends React.Component {
             }
             let tempBundleIds = '';
             this.copyCallBacks.forEach((copyBundleCallBack) => {
-                let bundlesChecked = copyBundleCallBack();
+                let bundlesChecked = copyBundleCallBack()['uuid'];
                 bundlesChecked.forEach((uuid) => {
                     tempBundleIds += '[]{' + uuid + '}\n';
                 });
             });
             this.setState({ openCopy: true, copiedBundleIds: tempBundleIds });
+        } else if (cmd_type === 'cut') {
+            if (openCut) {
+                this.setState({ openCut: false });
+                return;
+            }
+            let tempBundleIds = '';
+            this.copyCallBacks.forEach((copyBundleCallBack) => {
+                let bundlesChecked = copyBundleCallBack()['uuid'];
+                bundlesChecked.forEach((uuid) => {
+                    tempBundleIds += '[]{' + uuid + '}\n';
+                });
+            });
+            this.setState({ openCut: true, copiedBundleIds: tempBundleIds });
         }
+    };
+
+    removeRawSourceLines = () => {
+        let keys = this.state.cutBundleKeys;
+        console.log(typeof keys);
+        let all_remove_lines = keys.map((key) => {
+            var item_line = this.state.ws.info.block_to_raw[key];
+            return this.state.ws.info.raw_item_to_source_line[item_line];
+        });
+        all_remove_lines.sort(function(a, b) {
+            return b - a;
+        });
+        console.log(this.state.ws.info.raw.length);
+        all_remove_lines.forEach((line_index) => {
+            console.log('INDEX:', line_index);
+            this.state.ws.info.raw.splice(line_index, 1);
+        });
+        console.log(this.state.ws.info.raw.length);
+        // this.saveAndUpdateWorksheet(false, -1);
     };
 
     confirmBundleRowAction = (code) => {
@@ -434,6 +491,7 @@ class Worksheet extends React.Component {
                 this.state.openDetach ||
                 this.state.openKill ||
                 this.state.openCopy ||
+                this.state.openCut ||
                 this.state.BulkBundleDialog
             )
         ) {
@@ -449,6 +507,8 @@ class Worksheet extends React.Component {
             this.executeBundleCommandNoEvent('kill');
         } else if (this.state.openCopy) {
             document.getElementById('copyBundleIdToClipBoard').click();
+        } else if (this.state.openCut) {
+            document.getElementById('cutBundleIdToClipBoard').click();
         }
         return true;
     };
@@ -849,25 +909,45 @@ class Worksheet extends React.Component {
             // Below are allowed shortcut even when a dialog is opened===================
             // The following three are bulk bundle operation shortcuts
             Mousetrap.bind(['backspace', 'del'], () => {
-                if (this.state.openDetach || this.state.openKill || this.state.openCopy) {
+                if (
+                    this.state.openDetach ||
+                    this.state.openKill ||
+                    this.state.openCopy ||
+                    this.state.openCut
+                ) {
                     return;
                 }
                 this.togglePopupNoEvent('rm');
             });
             Mousetrap.bind(['a d'], () => {
-                if (this.state.openDelete || this.state.openKill || this.state.openCopy) {
+                if (
+                    this.state.openDelete ||
+                    this.state.openKill ||
+                    this.state.openCopy ||
+                    this.state.openCut
+                ) {
                     return;
                 }
                 this.togglePopupNoEvent('detach');
             });
             Mousetrap.bind(['a k'], () => {
-                if (this.state.openDetach || this.state.openDelete || this.state.openCopy) {
+                if (
+                    this.state.openDetach ||
+                    this.state.openDelete ||
+                    this.state.openCopy ||
+                    this.state.openCut
+                ) {
                     return;
                 }
                 this.togglePopupNoEvent('kill');
             });
             Mousetrap.bind(['a c'], () => {
-                if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
+                if (
+                    this.state.openDetach ||
+                    this.state.openDelete ||
+                    this.state.openKill ||
+                    this.state.openCut
+                ) {
                     return;
                 }
                 this.togglePopupNoEvent('copy');
@@ -1494,6 +1574,7 @@ class Worksheet extends React.Component {
         var worksheet_dialogs = (
             <WorksheetDialogs
                 openCopy={this.state.openCopy}
+                openCut={this.state.openCut}
                 copiedBundleIds={this.state.copiedBundleIds}
                 openKill={this.state.openKill}
                 openDelete={this.state.openDelete}
@@ -1505,6 +1586,7 @@ class Worksheet extends React.Component {
                 forceDelete={this.state.forceDelete}
                 handleForceDelete={this.handleForceDelete}
                 deleteItemCallback={this.state.deleteItemCallback}
+                removeRawSourceLines={this.removeRawSourceLines}
             />
         );
         if (info && info.title) {
