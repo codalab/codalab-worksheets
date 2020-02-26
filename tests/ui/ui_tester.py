@@ -13,7 +13,10 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 
 class UITester(ABC):
-    _SCREENSHOT_DIFF_THRESHOLD_PERCENT = 9
+    # This image diff threshold is set to an upper bound of 10% for now. We should try our best
+    # to at least maintain this upper bound.
+    _SCREENSHOT_DIFF_THRESHOLD_PERCENT = 10
+
     _BASE_PATH = os.path.dirname(os.path.abspath(__file__))
     _DEFAULT_USERNAME = os.getenv('CODALAB_USERNAME', 'codalab')
     _DEFAULT_PASSWORD = os.getenv('CODALAB_PASSWORD', 'codalab')

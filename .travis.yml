@@ -32,7 +32,7 @@ jobs:
         - pip install -r requirements.txt
       before_script:
         - ./scripts/test-setup.sh
-        - export PATH=$PATH:$PWD/geckodriver
+        - export PATH=$PATH:/usr/bin/geckodriver
       script:
         - python3 codalab_service.py test --version ${TRAVIS_BRANCH} default
           # Make sure restarting worker doesn't cause any issues (ie in serialization/deserialization)

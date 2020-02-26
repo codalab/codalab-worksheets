@@ -11,8 +11,12 @@ automation only runs in Chrome and Firefox. We hope to support more browsers in 
 1. If you haven't already, install the Python dependencies specified in `requirements.txt`, located in the root of the 
 repository, by running `pip install -r requirements.txt`.
 2. Next, install [ChromeDriver](https://chromedriver.chromium.org/getting-started) (for Chrome) and 
-[GeckoDriver](https://github.com/mozilla/geckodriver) (for Firefox). These drivers are the links between the selenium 
+[GeckoDriver](https://github.com/mozilla/geckodriver) (for Firefox). These drivers are the links between the Selenium 
 tests and their respective browsers.
+    1. Run `./scripts/test-setup.sh` and place the installed GeckoDriver on your path by running 
+    `export PATH=$PATH:/usr/bin/geckodriver`. This is not needed for ChromeDriver.
+    3. An alternative is to simply use [Homebrew](https://brew.sh/) and run `brew install geckodriver && brew cask 
+    install chromedriver`. 
 
 #### Running the tests locally
 

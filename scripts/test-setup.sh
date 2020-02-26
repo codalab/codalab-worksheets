@@ -11,3 +11,6 @@ sudo chmod +x /usr/bin/chromedriver
 wget https://github.com/mozilla/geckodriver/releases/download/v0.21.0/geckodriver-v0.21.0-linux64.tar.gz
 mkdir geckodriver
 tar -xzf geckodriver-v0.21.0-linux64.tar.gz -C geckodriver
+sudo mv geckodriver /usr/bin/geckodriver
+sudo chown root:root /usr/bin/geckodriver
+sudo chmod +x /usr/bin/geckodriver
