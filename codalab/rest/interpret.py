@@ -40,6 +40,7 @@ from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
 from codalab.rest.worksheets import get_worksheet_info, search_worksheets
 from codalab.rest.worksheet_block_schemas import BlockModes, MarkupBlockSchema, FetchStatusCodes
+from codalab.worker.download_util import BundleTarget
 
 
 @post('/interpret/search')
@@ -258,9 +259,7 @@ def cat_target(target):
     The caller should ensure that the target is a file.
     """
     rest_util.check_target_has_read_permission(target)
-    with closing(
-        local.download_manager.stream_file(target[0], target[1], gzipped=False)
-    ) as fileobj:
+    with closing(local.download_manager.stream_file(target, gzipped=False)) as fileobj:
         return fileobj.read()
 
 
@@ -274,14 +273,14 @@ def head_target(target, max_num_lines):
 
     The caller should ensure that the target is a file.
 
-    :param target: (bundle_uuid, subpath)
+    :param target: A worker.download_util.BundleTarget with bundle_uuid and subpath
     :param max_num_lines: max number of lines to fetch
     """
     rest_util.check_target_has_read_permission(target)
     # Note: summarize_file returns bytes, but should be decodable to a string.
     lines = (
         local.download_manager.summarize_file(
-            target[0], target[1], max_num_lines, 0, MAX_BYTES_PER_LINE, None, gzipped=False
+            target, max_num_lines, 0, MAX_BYTES_PER_LINE, None, gzipped=False
         )
         .decode()
         .splitlines(True)
@@ -325,11 +324,11 @@ def resolve_interpreted_blocks(interpreted_blocks):
 
                 block['rows'] = contents
             elif mode == BlockModes.contents_block or mode == BlockModes.image_block:
+                bundle_uuid = block['bundles_spec']['bundle_infos'][0]['uuid']
+                target_path = block['target_genpath']
+                target = BundleTarget(bundle_uuid, target_path)
                 try:
-                    target_info = rest_util.get_target_info(
-                        (block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']),
-                        0,
-                    )
+                    target_info = rest_util.get_target_info(target, 0)
                     if target_info['type'] == 'directory' and mode == BlockModes.contents_block:
                         block['status']['code'] = FetchStatusCodes.ready
                         block['lines'] = ['<directory>']
@@ -337,23 +336,12 @@ def resolve_interpreted_blocks(interpreted_blocks):
                         block['status']['code'] = FetchStatusCodes.ready
                         if mode == BlockModes.contents_block:
                             block['lines'] = head_target(
-                                (
-                                    block['bundles_spec']['bundle_infos'][0]['uuid'],
-                                    block['target_genpath'],
-                                ),
-                                block['max_lines'],
+                                target_info['resolved_target'], block['max_lines']
                             )
                         elif mode == BlockModes.image_block:
                             block['status']['code'] = FetchStatusCodes.ready
                             block['image_data'] = base64.b64encode(
-                                bytes(
-                                    cat_target(
-                                        (
-                                            block['bundles_spec']['bundle_infos'][0]['uuid'],
-                                            block['target_genpath'],
-                                        )
-                                    )
-                                )
+                                bytes(cat_target(target_info['resolved_target']))
                             ).decode('utf-8')
                     else:
                         block['status']['code'] = FetchStatusCodes.not_found
@@ -372,13 +360,13 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 # data = list of {'target': ...}
                 # Add a 'points' field that contains the contents of the target.
                 for info in block['trajectories']:
-                    target = (info['bundle_uuid'], info['target_genpath'])
+                    target = BundleTarget(info['bundle_uuid'], info['target_genpath'])
                     try:
                         target_info = rest_util.get_target_info(target, 0)
                     except NotFoundError as e:
                         continue
                     if target_info['type'] == 'file':
-                        contents = head_target(target, block['max_lines'])
+                        contents = head_target(target_info['resolved_target'], block['max_lines'])
                         # Assume TSV file without header for now, just return each line as a row
                         info['points'] = points = []
                         for line in contents:
@@ -475,13 +463,13 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
     else:
         subpath, key = genpath, None
 
-    target = (bundle_uuid, subpath)
+    target = BundleTarget(bundle_uuid, subpath)
     if target not in target_cache:
         info = None
         try:
             target_info = rest_util.get_target_info(target, 0)
             if target_info['type'] == 'file':
-                contents = head_target(target, MAX_LINES)
+                contents = head_target(target_info['resolved_target'], MAX_LINES)
 
                 if len(contents) == 0:
                     info = ''

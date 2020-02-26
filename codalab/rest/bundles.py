@@ -37,6 +37,7 @@ from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from codalab.worker.bundle_state import State
+from codalab.worker.download_util import BundleTarget
 
 logger = logging.getLogger(__name__)
 
@@ -395,12 +396,16 @@ def _fetch_bundle_contents_info(uuid, path=''):
     ```
     """
     depth = query_get_type(int, 'depth', default=0)
+    target = BundleTarget(uuid, path)
     if depth < 0:
         abort(http.client.BAD_REQUEST, "Depth must be at least 0")
 
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     try:
-        info = local.download_manager.get_target_info(uuid, path, depth)
+        info = local.download_manager.get_target_info(target, depth)
+        # Object is not JSON serializable so submit its dict in API response
+        # The client is responsible for deserializing it
+        info['resolved_target'] = info['resolved_target'].__dict__
     except NotFoundError as e:
         abort(http.client.NOT_FOUND, str(e))
     except Exception as e:
@@ -541,18 +546,24 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     truncation_text = query_get_type(str, 'truncation_text', default='')
     max_line_length = query_get_type(int, 'max_line_length', default=128)
     check_bundles_have_read_permission(local.model, request.user, [uuid])
-    bundle = local.model.get_bundle(uuid)
+    target = BundleTarget(uuid, path)
 
     try:
-        target_info = local.download_manager.get_target_info(uuid, path, 0)
+        target_info = local.download_manager.get_target_info(target, 0)
+        if target_info['resolved_target'] != target:
+            check_bundles_have_read_permission(
+                local.model, request.user, [target_info['resolved_target'].bundle_uuid]
+            )
+        target = target_info['resolved_target']
     except NotFoundError as e:
         abort(http.client.NOT_FOUND, str(e))
     except Exception as e:
         abort(http.client.BAD_REQUEST, str(e))
 
     # Figure out the file name.
-    if not path and bundle.metadata.name:
-        filename = bundle.metadata.name
+    bundle_name = local.model.get_bundle(target.bundle_uuid).metadata.name
+    if not path and bundle_name:
+        filename = bundle_name
     else:
         filename = target_info['name']
 
@@ -565,7 +576,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         gzipped_stream = False  # but don't set the encoding to 'gzip'
         mimetype = 'application/gzip'
         filename += '.tar.gz'
-        fileobj = local.download_manager.stream_tarred_gzipped_directory(uuid, path)
+        fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
     elif target_info['type'] == 'file':
         # Let's gzip to save bandwidth.
         # For simplicity, we do this even if the file is already a packed
@@ -588,14 +599,14 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         elif byte_range:
             start, end = byte_range
             fileobj = local.download_manager.read_file_section(
-                uuid, path, start, end - start + 1, gzipped_stream
+                target, start, end - start + 1, gzipped_stream
             )
         elif head_lines or tail_lines:
             fileobj = local.download_manager.summarize_file(
-                uuid, path, head_lines, tail_lines, max_line_length, truncation_text, gzipped_stream
+                target, head_lines, tail_lines, max_line_length, truncation_text, gzipped_stream
             )
         else:
-            fileobj = local.download_manager.stream_file(uuid, path, gzipped_stream)
+            fileobj = local.download_manager.stream_file(target, gzipped_stream)
     else:
         # Symlinks.
         abort(

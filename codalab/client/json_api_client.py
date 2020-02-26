@@ -6,6 +6,7 @@ import urllib.request, urllib.parse, urllib.error
 
 from codalab.common import http_error_to_exception, precondition, UsageError
 from codalab.worker.rest_client import RestClient, RestClientException
+from codalab.worker.download_util import BundleTarget
 
 
 def wrap_exception(message):
@@ -583,26 +584,38 @@ class JsonApiClient(RestClient):
         return response
 
     @wrap_exception('Unable to fetch contents info of bundle {1}')
-    def fetch_contents_info(self, bundle_id, target_path='', depth=0):
-        request_path = '/bundles/%s/contents/info/%s' % (bundle_id, urllib.parse.quote(target_path))
+    def fetch_contents_info(self, target, depth=0):
+        """
+        Calls download_manager.get_target_info server-side and returns the target_info.
+        For details on return value look at worker.download_util.get_target_info
+        :param target: a worker.download_util.BundleTarget
+        """
+        request_path = '/bundles/%s/contents/info/%s' % (
+            target.bundle_uuid,
+            urllib.parse.quote(target.subpath),
+        )
         response = self._make_request('GET', request_path, query_params={'depth': depth})
+        # Deserialize the target. See /rest/bundles/_fetch_contents_info for serialization side
+        response['data']['resolved_target'] = BundleTarget.from_dict(
+            response['data']['resolved_target']
+        )
         return response['data']
 
     @wrap_exception('Unable to fetch contents blob of bundle {1}')
-    def fetch_contents_blob(
-        self, bundle_id, target_path='', range_=None, head=None, tail=None, truncation_text=None
-    ):
+    def fetch_contents_blob(self, target, range_=None, head=None, tail=None, truncation_text=None):
         """
         Returns a file-like object for the target on the given bundle.
 
-        :param bundle_id: id of target bundle
-        :param target_path: path to target in bundle
+        :param target: A worker.download_util.BundleTarget
         :param range_: range of bytes to fetch
         :param head: number of lines to summarize from beginning of file
         :param tail: number of lines to summarize from end of file
         :return: file-like object containing requested data blob
         """
-        request_path = '/bundles/%s/contents/blob/%s' % (bundle_id, urllib.parse.quote(target_path))
+        request_path = '/bundles/%s/contents/blob/%s' % (
+            target.bundle_uuid,
+            urllib.parse.quote(target.subpath),
+        )
         headers = {'Accept-Encoding': 'gzip'}
         if range_ is not None:
             headers['Range'] = 'bytes=%d-%d' % range_
