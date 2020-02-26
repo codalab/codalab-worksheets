@@ -462,8 +462,9 @@ class Worksheet extends React.Component {
         console.log('Pasting to worksheet');
         var promise = navigator.clipboard.readText();
         promise.then((data) => {
-            if (this.focusIndex !== -1 && this.focusIndex !== undefined) {
+            if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
                 // Insert after the source line
+                console.log('WHAHSKHAKSK');
                 var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
                 var item_line = this.state.ws.info.block_to_raw[currentItemKey];
                 var source_line = this.state.ws.info.raw_item_to_source_line[item_line];
