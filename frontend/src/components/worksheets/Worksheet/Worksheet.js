@@ -479,7 +479,6 @@ class Worksheet extends React.Component {
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
-
         // prevent multiple clicking from resetting the index
         if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex) {
             return;
@@ -721,7 +720,7 @@ class Worksheet extends React.Component {
                     var subFocusIndex = this.state.subFocusIndex;
                     var wsItems = this.state.ws.info.items;
 
-                    if (focusIndex === 0) {
+                    if (focusIndex === 0 && subFocusIndex === 0) {
                         // Deselect all item when selecting up above the first item.
                         this.setFocus(-1, 0);
                     } else if (
