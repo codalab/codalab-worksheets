@@ -7,7 +7,7 @@ export function renderDuration(s) {
     // s: number of seconds
     // Return a human-readable string.
     // Example: 100 => "1m40s", 10000 => "2h46m"
-    if (s === null) {
+    if (s == null) {
         return '<none>';
     }
 
