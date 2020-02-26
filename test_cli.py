@@ -18,6 +18,7 @@ Things not tested:
 
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
+from codalab.worker.download_util import BundleTarget
 from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
 
@@ -1091,8 +1092,12 @@ def test(ctx):
         dir_cat = _run_command([cl, 'cat', uuid])
         assert 'dir' not in dir_cat, '"dir" should not be in bundle'
         assert 'file' not in dir_cat, '"file" should not be in bundle'
-        _run_command([cl, 'cat', uuid + '/dir'], 1)
-        _run_command([cl, 'cat', uuid + '/file'], 1)
+
+        # You should be able to cat dependencies if specified directly
+        dep_cat_output = _run_command([cl, 'cat', uuid + '/dir'])
+        check_contains('-AmMDnVl4s8', dep_cat_output)
+        dep_cat_output = _run_command([cl, 'cat', uuid + '/file'])
+        check_contains('This is a simple text file for CodaLab.', dep_cat_output)
 
         # Download the whole bundle.
         path = temp_path('')
@@ -1686,9 +1691,11 @@ def test(ctx):
     # Basic getting info and blob contents of a bundle
     path = test_path('a.txt')
     uuid = _run_command([cl, 'upload', path])
-    response = ctx.client.fetch_contents_info(uuid)
+    response = ctx.client.fetch_contents_info(BundleTarget(uuid, ''))
     check_equals(response['name'], uuid)
-    check_equals(open(path, 'rb').read(), ctx.client.fetch_contents_blob(uuid, '/').read())
+    check_equals(
+        open(path, 'rb').read(), ctx.client.fetch_contents_blob(BundleTarget(uuid, '')).read()
+    )
 
     # Display image - should not crash
     wuuid = _run_command([cl, 'work', '-u'])

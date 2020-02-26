@@ -10,7 +10,7 @@ import time
 import traceback
 
 from codalab.objects.permission import check_bundles_have_read_permission
-from codalab.common import PermissionError, NotFoundError
+from codalab.common import NotFoundError, PermissionError
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
@@ -28,6 +28,9 @@ BUNDLE_TIMEOUT_DAYS = 60
 # When using the REST api, it is allowed to set Memory to 0 but that means the container has unbounded
 # access to the host machine's memory, which we have decided to not allow
 MINIMUM_REQUEST_MEMORY_BYTES = 4 * 1024 * 1024
+# Deduct DISK_QUOTA_SLACK_BYTES from the max user disk quota bytes when computing the default amount of disk space to
+# request. Then the default max disk quota that can be requested becomes disk quota left - DISK_QUOTA_SLACK_BYTES.
+DISK_QUOTA_SLACK_BYTES = 0.5 * 1024 * 1024 * 1024
 
 
 class BundleManager(object):
@@ -660,11 +663,23 @@ class BundleManager(object):
         """
         if value:
             if user_max and value > user_max:
-                return user_fail_string % (pretty_print(value), pretty_print(user_max))
+                return user_fail_string % (
+                    pretty_print(value),
+                    pretty_print(user_max),
+                    pretty_print(value - user_max),
+                )
             elif global_max and value > global_max:
-                return global_fail_string % (pretty_print(value), pretty_print(global_max))
+                return global_fail_string % (
+                    pretty_print(value),
+                    pretty_print(global_max),
+                    pretty_print(value - global_max),
+                )
             elif global_min and value < global_min:
-                return global_fail_string % (pretty_print(value), pretty_print(global_min))
+                return global_fail_string % (
+                    pretty_print(value),
+                    pretty_print(global_min),
+                    pretty_print(global_min - value),
+                )
         return None
 
     @staticmethod
@@ -707,8 +722,10 @@ class BundleManager(object):
             failures.append(
                 self._check_resource_failure(
                     bundle_resources.disk,
-                    user_fail_string='Requested more disk (%s) than user disk quota left (%s)',
-                    user_max=self._model.get_user_disk_quota_left(bundle.owner_id, user_info),
+                    user_fail_string='Requested more disk (%s) than user disk quota left (%s) by %s',
+                    # The default max disk quota that can be requested is disk quota left - DISK_QUOTA_SLACK_BYTES.
+                    user_max=self._model.get_user_disk_quota_left(bundle.owner_id, user_info)
+                    - DISK_QUOTA_SLACK_BYTES,
                     global_fail_string='Maximum job disk size (%s) exceeded (%s)',
                     global_max=self._max_request_disk,
                     pretty_print=formatting.size_str,
@@ -718,7 +735,7 @@ class BundleManager(object):
             failures.append(
                 self._check_resource_failure(
                     bundle_resources.time,
-                    user_fail_string='Requested more time (%s) than user time quota left (%s)',
+                    user_fail_string='Requested more time (%s) than user time quota left (%s) by %s',
                     user_max=self._model.get_user_time_quota_left(bundle.owner_id, user_info),
                     global_fail_string='Maximum job time (%s) exceeded (%s)',
                     global_max=self._max_request_time,
@@ -729,7 +746,7 @@ class BundleManager(object):
             failures.append(
                 self._check_resource_failure(
                     bundle_resources.memory,
-                    global_fail_string='Requested more memory (%s) than maximum limit (%s)',
+                    global_fail_string='Requested more memory (%s) than maximum limit (%s) by %s',
                     global_max=self._max_request_memory,
                     pretty_print=formatting.size_str,
                 )
@@ -739,7 +756,7 @@ class BundleManager(object):
             failures.append(
                 self._check_resource_failure(
                     bundle_resources.memory,
-                    global_fail_string='Requested less memory (%s) than minimum limit (%s)',
+                    global_fail_string='Requested less memory (%s) than minimum limit (%s) by %s',
                     global_min=self._min_request_memory,
                     pretty_print=formatting.size_str,
                 )

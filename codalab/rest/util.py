@@ -202,7 +202,7 @@ def _filter_readable_worksheet_uuids(model, worksheet_uuids):
 
 
 def check_target_has_read_permission(target):
-    check_bundles_have_read_permission(local.model, request.user, [target[0]])
+    check_bundles_have_read_permission(local.model, request.user, [target.bundle_uuid])
 
 
 def get_target_info(target, depth):
@@ -211,7 +211,10 @@ def get_target_info(target, depth):
     Raises NotFoundError if target bundle or path don't exist
     """
     check_target_has_read_permission(target)
-    return local.download_manager.get_target_info(target[0], target[1], depth)
+    target_info = local.download_manager.get_target_info(target, depth)
+    if target_info['resolved_target'] != target:
+        check_target_has_read_permission(target_info['resolved_target'])
+    return target_info
 
 
 #############################################################

@@ -47,6 +47,7 @@ from codalab.model.tables import (
 from codalab.objects.worksheet import item_sort_key, Worksheet
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Client, OAuth2Token
 from codalab.objects.user import User
+from codalab.objects.dependency import Dependency
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
 
@@ -1051,6 +1052,15 @@ class BundleModel(object):
         else:
             with self.engine.begin() as connection:
                 do_update(connection)
+
+    def get_bundle_dependencies(self, uuid):
+        with self.engine.begin() as connection:
+            dependency_rows = connection.execute(
+                cl_bundle_dependency.select()
+                .where(cl_bundle_dependency.c.child_uuid == uuid)
+                .order_by(cl_bundle_dependency.c.id)
+            ).fetchall()
+        return [Dependency(dep_val) for dep_val in dependency_rows]
 
     def get_bundle_state(self, uuid):
         result_dict = self.get_bundle_states([uuid])
