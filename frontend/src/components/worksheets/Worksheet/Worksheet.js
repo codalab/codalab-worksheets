@@ -1503,7 +1503,6 @@ class Worksheet extends React.Component {
                     toggleGlossaryModal={this.toggleGlossaryModal}
                     togglePopupNoEvent={this.togglePopupNoEvent}
                     copiedBundleIds={this.state.copiedBundleIds}
-                    pasteToWorksheet={this.pasteToWorksheet}
                 />
                 {action_bar_display}
                 <ToastContainer

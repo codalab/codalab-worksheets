@@ -70,7 +70,6 @@ class ActionButtons extends React.Component<{
                         Run
                     </Button>
                 ) : null}
-                
                 {showBundleOperationButtons ? (
                     <BundleBulkActionMenu
                         handleSelectedBundleCommand={handleSelectedBundleCommand}
@@ -78,18 +77,6 @@ class ActionButtons extends React.Component<{
                         togglePopupNoEvent={togglePopupNoEvent}
                     />
                 ) : null}
-                {
-                    <Button
-                        size='small'
-                        color='inherit'
-                        aria-label='Paste'
-                        onClick={this.props.pasteToWorksheet}
-                        disabled={!editPermission}
-                    >
-                        <NoteAddIcon className={classes.buttonIcon} />
-                        Paste
-                    </Button>
-                }
             </div>
         );
     }
