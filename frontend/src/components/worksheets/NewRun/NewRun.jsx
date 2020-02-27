@@ -438,7 +438,7 @@ class NewRun extends React.Component<{
                             </Grid>
                             <ConfigLabel
                                 label="Queue"
-                                tooltip="Tag of the queue"
+                                tooltip="Tag of the queue, this will add '--request-queue tag={input}' to the run"
                                 optional
                             />
                             <ConfigTextInput
