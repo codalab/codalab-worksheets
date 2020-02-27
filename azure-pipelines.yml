@@ -46,7 +46,7 @@ jobs:
       docker restart codalab_worker_1 && python3 codalab_service.py test run --version ${TRAVIS_BRANCH}
       docker stop codalab_worker_1
       python codalab_service.py start --services worker --version ${TRAVIS_BRANCH} --shared-file-system
-      python codalab_service.py test --version ${TRAVIS_BRANCH} --shared-file-system basic run read write kill resources netcat netcurl workers
+      python codalab_service.py test --version ${TRAVIS_BRANCH} --shared-file-system run
     displayName: 'docker build and test'
     env:
       CODALAB_USERNAME: codalab
