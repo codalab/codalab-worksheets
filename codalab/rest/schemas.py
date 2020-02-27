@@ -16,12 +16,14 @@ from codalab.lib.worksheet_util import WORKSHEET_ITEM_TYPES
 from codalab.lib.unicode_util import contains_unicode
 from codalab.objects.permission import parse_permission, permission_str
 
+
 class CompatibleInteger(fields.Integer):
     def serialize(self, attr, obj, accessor=None):
         """Overrides change done in https://github.com/marshmallow-code/marshmallow/compare/2.10.2...2.10.3#diff-c4881f63f8b05b8d3eadf046c3dc7912L641.
         """
         ret = Field.serialize(self, attr, obj, accessor=accessor)
         return self._to_string(ret) if (self.as_string and ret is not None) else ret
+
 
 class PermissionSpec(fields.Field):
     def _serialize(self, value, attr, obj):
