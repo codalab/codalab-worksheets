@@ -340,11 +340,11 @@ class CodaLabManager(object):
             model = MySQLModel(
                 engine_url=self.config['server']['engine_url'],
                 default_user_info=self.default_user_info(),
+                root_user_id=self.root_user_id(),
+                system_user_id=self.system_user_id(),
             )
         else:
             raise UsageError('Unexpected model class: %s, expected MySQLModel' % (model_class,))
-        model.root_user_id = self.root_user_id()
-        model.system_user_id = self.system_user_id()
         return model
 
     @cached
