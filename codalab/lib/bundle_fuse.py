@@ -8,6 +8,7 @@ import time
 from collections import OrderedDict
 
 from contextlib import closing
+from codalab.worker.download_util import BundleTarget
 
 try:
     from fuse import FUSE, FuseOSError, Operations
@@ -77,7 +78,7 @@ if fuse_is_available:
                 chunk_id * self.chunk_size + self.chunk_size - 1,
             )
             with closing(
-                self.client.fetch_contents_blob(self.bundle_uuid, path, byte_range)
+                self.client.fetch_contents_blob(BundleTarget(self.bundle_uuid, path), byte_range)
             ) as contents:
                 arr = contents.read()
 
@@ -176,7 +177,7 @@ if fuse_is_available:
         def _get_info(self, path):
             ''' Set a request through the json api client to get info about the bundle '''
             try:
-                info = self.client.fetch_contents_info(self.bundle_uuid, path, 1)
+                info = self.client.fetch_contents_info(BundleTarget(self.bundle_uuid, path), 1)
             except NotFoundError:
                 raise FuseOSError(errno.ENOENT)
             return info

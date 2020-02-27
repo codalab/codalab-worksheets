@@ -5,8 +5,7 @@ a list of CodaLab bundle system command-line arguments and executes them.
 Each of the supported commands corresponds to a method on this class.
 This function takes an argument list and does the action.
 
-For example:
-
+For example: 
   cl upload foo
 
 results in the following:
@@ -84,6 +83,7 @@ from codalab.lib.completers import (
 from codalab.lib.bundle_store import MultiDiskBundleStore
 from codalab.lib.print_util import FileTransferProgress
 from codalab.worker.file_util import un_tar_directory
+from codalab.worker.download_util import BundleTarget
 
 from codalab.lib.spec_util import generate_uuid
 from codalab.worker.docker_utils import get_available_runtime, start_bundle_container
@@ -517,7 +517,9 @@ class BundleCLI(object):
         supported
         """
         return [
-            self.resolve_target(default_client, default_worksheet_uuid, spec, allow_remote)[2]
+            self.resolve_target(default_client, default_worksheet_uuid, spec, allow_remote)[
+                2
+            ].bundle_uuid
             for spec in target_specs
         ]
 
@@ -535,8 +537,7 @@ class BundleCLI(object):
             - worksheet_uuid: The uuid of the worksheet the target bundle is from,
                 a new uuid if the target spec includes a worksheet spec
                 same as default_worksheet_uuid otherwise
-            - bundle_uuid: The uuid of the target bundle
-            - subpath: The subpath from the target_spec
+            - target: a worker.download_util.BundleTarget
         Raises UsageError if allow_remote is False but an instance is specified in the target_spec
         """
         instance, worksheet_spec, bundle_spec, subpath = parse_target_spec(target_spec)
@@ -565,12 +566,12 @@ class BundleCLI(object):
         # Rest of CLI treats empty string as no subpath and can't handle subpath being None
         subpath = '' if subpath is None else subpath
 
-        return (client, worksheet_uuid, bundle_uuid, subpath)
+        return (client, worksheet_uuid, BundleTarget(bundle_uuid, subpath))
 
     def resolve_key_targets(self, client, worksheet_uuid, target_specs):
         """
         Helper: target_specs is a list of strings which are [<key>]:<target>
-        Returns: [(key, (bundle_uuid, subpath)), ...]
+        Returns: [(key, worker.download_util.BundleTarget), ...]
         """
         keys = set()
         targets = []
@@ -581,10 +582,10 @@ class BundleCLI(object):
                     raise UsageError('Duplicate key: %s' % (key,))
                 else:
                     raise UsageError('Must specify keys when packaging multiple targets!')
-            _, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(
+            _, worksheet_uuid, target = self.resolve_target(
                 client, worksheet_uuid, target_spec, allow_remote=False
             )
-            targets.append((key, (bundle_uuid, subpath)))
+            targets.append((key, target))
             keys.add(key)
         return targets
 
@@ -1256,19 +1257,19 @@ class BundleCLI(object):
         default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(
             args.worksheet_spec
         )
-        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(
+        client, worksheet_uuid, target = self.resolve_target(
             default_client, default_worksheet_uuid, args.target_spec
         )
 
         # Figure out where to download.
-        info = client.fetch('bundles', bundle_uuid)
+        info = client.fetch('bundles', target.bundle_uuid)
         if args.output_path:
             local_path = args.output_path
         else:
             local_path = (
                 nested_dict_get(info, 'metadata', 'name', default='untitled')
-                if subpath == ''
-                else os.path.basename(subpath)
+                if target.subpath == ''
+                else os.path.basename(target.subpath)
             )
         final_path = os.path.join(os.getcwd(), local_path)
         if os.path.exists(final_path):
@@ -1276,18 +1277,18 @@ class BundleCLI(object):
             return
 
         # Do the download.
-        target_info = client.fetch_contents_info(bundle_uuid, subpath, 0)
+        target_info = client.fetch_contents_info(target, 0)
         if target_info['type'] == 'link':
             raise UsageError('Downloading symlinks is not allowed.')
 
         print(
-            'Downloading %s/%s => %s' % (self.simple_bundle_str(info), subpath, final_path),
+            'Downloading %s/%s => %s' % (self.simple_bundle_str(info), target.subpath, final_path),
             file=self.stdout,
         )
 
         progress = FileTransferProgress('Received ', f=self.stderr)
         contents = file_util.tracked(
-            client.fetch_contents_blob(bundle_uuid, subpath), progress.update
+            client.fetch_contents_blob(target_info['resolved_target']), progress.update
         )
         with progress, closing(contents):
             if target_info['type'] == 'directory':
@@ -1339,7 +1340,7 @@ class BundleCLI(object):
         # TODO: sync the metadata.
         try:
             dest_client.fetch('bundles', source_bundle_uuid)
-        except NotFoundError as e:
+        except NotFoundError:
             bundle_exists = False
         else:
             bundle_exists = True
@@ -1387,7 +1388,7 @@ class BundleCLI(object):
 
         # If bundle contents don't exist, finish after just copying metadata
         try:
-            target_info = source_client.fetch_contents_info(source_bundle_uuid)
+            target_info = source_client.fetch_contents_info((source_bundle_uuid, ''))
         except NotFoundError:
             return
 
@@ -1409,7 +1410,7 @@ class BundleCLI(object):
 
         # Send file over
         progress = FileTransferProgress('Copied ', f=self.stderr)
-        source = source_client.fetch_contents_blob(source_bundle_uuid)
+        source = source_client.fetch_contents_blob((source_bundle_uuid, ''))
         with closing(source), progress:
             dest_client.upload_contents_blob(
                 dest_bundle['id'],
@@ -1481,9 +1482,13 @@ class BundleCLI(object):
     def derive_bundle(self, bundle_type, command, targets, metadata):
         # List the dependencies of this bundle on its targets.
         dependencies = []
-        for (child_path, (parent_uuid, parent_path)) in targets:
+        for (child_path, parent_target) in targets:
             dependencies.append(
-                {'child_path': child_path, 'parent_uuid': parent_uuid, 'parent_path': parent_path}
+                {
+                    'child_path': child_path,
+                    'parent_uuid': parent_target.bundle_uuid,
+                    'parent_path': parent_target.subpath,
+                }
             )
         return {
             'bundle_type': bundle_type,
@@ -2166,13 +2171,13 @@ class BundleCLI(object):
 
         print(wrap('contents'), file=self.stdout)
         bundle_uuid = info['uuid']
-        info = self.print_target_info(client, bundle_uuid, '', head=10)
+        info = self.print_target_info(client, BundleTarget(bundle_uuid, ''), head=10)
         if info is not None and info['type'] == 'directory':
             for item in info['contents']:
                 if item['name'] not in ['stdout', 'stderr']:
                     continue
                 print(wrap(item['name']), file=self.stdout)
-                self.print_target_info(client, bundle_uuid, item['name'], head=10)
+                self.print_target_info(client, BundleTarget(bundle_uuid, item['name']), head=10)
 
     @Commands.command(
         'mount',
@@ -2202,18 +2207,21 @@ class BundleCLI(object):
             default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(
                 args.worksheet_spec
             )
-            client, worksheet_uuid, uuid, path = self.resolve_target(
+            client, worksheet_uuid, target = self.resolve_target(
                 default_client, default_worksheet_uuid, args.target_spec
             )
 
             mountpoint = path_util.normalize(args.mountpoint)
             path_util.check_isvalid(mountpoint, 'mount')
-            print('BundleFUSE mounting bundle {} on {}'.format(uuid, mountpoint), file=self.stdout)
+            print(
+                'BundleFUSE mounting bundle {} on {}'.format(target.bundle_uuid, mountpoint),
+                file=self.stdout,
+            )
             print(
                 'BundleFUSE will run and maintain the mounted filesystem in the foreground. CTRL-C to cancel.',
                 file=self.stdout,
             )
-            bundle_fuse.bundle_mount(client, mountpoint, uuid, args.verbose)
+            bundle_fuse.bundle_mount(client, mountpoint, target.bundle_uuid, args.verbose)
             print('BundleFUSE shutting down.', file=self.stdout)
         else:
             print('fuse is not installed', file=self.stdout)
@@ -2246,14 +2254,14 @@ class BundleCLI(object):
     )
     def do_netcat_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(
+        client, worksheet_uuid, target = self.resolve_target(
             client, worksheet_uuid, args.bundle_spec
         )
         message = args.message
         if args.file:
             with open(args.file) as f:
                 message += f.read()
-        contents = client.netcat(bundle_uuid, port=args.port, data={"message": message})
+        contents = client.netcat(target.bundle_uuid, port=args.port, data={"message": message})
         with closing(contents):
             shutil.copyfileobj(contents, self.stdout.buffer)
 
@@ -2284,17 +2292,19 @@ class BundleCLI(object):
         default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(
             args.worksheet_spec
         )
-        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(
+        client, worksheet_uuid, target = self.resolve_target(
             default_client, default_worksheet_uuid, args.target_spec
         )
-        info = self.print_target_info(client, bundle_uuid, subpath, head=args.head, tail=args.tail)
+        info = self.print_target_info(client, target, head=args.head, tail=args.tail)
         if info is None:
-            raise UsageError('Target {} doesn\'t exist in bundle {}'.format(subpath, bundle_uuid))
+            raise UsageError(
+                'Target {} doesn\'t exist in bundle {}'.format(target.subpath, target.bundle_uuid)
+            )
 
     # Helper: shared between info and cat
-    def print_target_info(self, client, bundle_uuid, subpath, head=None, tail=None):
+    def print_target_info(self, client, target, head=None, tail=None):
         try:
-            info = client.fetch_contents_info(bundle_uuid, subpath, 1)
+            info = client.fetch_contents_info(target, 1)
         except NotFoundError:
             print(formatting.verbose_contents_str(None), file=self.stdout)
             return None
@@ -2313,7 +2323,7 @@ class BundleCLI(object):
                 kwargs['tail'] = 50
                 kwargs['truncation_text'] = '\n... truncated ...\n\n'
 
-            contents = client.fetch_contents_blob(bundle_uuid, subpath, **kwargs)
+            contents = client.fetch_contents_blob(info['resolved_target'], **kwargs)
             with closing(contents):
                 shutil.copyfileobj(contents, self.stdout.buffer)
 
@@ -2374,21 +2384,21 @@ class BundleCLI(object):
         default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(
             args.worksheet_spec
         )
-        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(
+        client, worksheet_uuid, target = self.resolve_target(
             default_client, default_worksheet_uuid, args.target_spec
         )
 
         # Figure files to display
         subpaths = []
         if args.tail:
-            if subpath == '':
+            if target.subpath == '':
                 subpaths = ['stdout', 'stderr']
             else:
-                subpaths = [subpath]
-        state = self.follow_targets(client, bundle_uuid, subpaths)
+                subpaths = [target.subpath]
+        state = self.follow_targets(client, target.bundle_uuid, subpaths)
         if state != State.READY:
             self.exit(state)
-        print(bundle_uuid, file=self.stdout)
+        print(target.bundle_uuid, file=self.stdout)
 
     def follow_targets(self, client, bundle_uuid, subpaths, from_start=False):
         """
@@ -2403,6 +2413,7 @@ class BundleCLI(object):
         """
         subpath_is_file = [None] * len(subpaths)
         subpath_offset = [None] * len(subpaths)
+        subpath_targets = [None] * len(subpaths)
 
         SLEEP_PERIOD = 1.0
 
@@ -2412,7 +2423,7 @@ class BundleCLI(object):
             while run_state not in State.FINAL_STATES:
                 run_state = client.fetch('bundles', bundle_uuid)['state']
                 try:
-                    client.fetch_contents_info(bundle_uuid, subpath, 0)
+                    client.fetch_contents_info(BundleTarget(bundle_uuid, subpath), 0)
                 except NotFoundError:
                     time.sleep(SLEEP_PERIOD)
                     continue
@@ -2427,7 +2438,10 @@ class BundleCLI(object):
                 # If the subpath we're interested in appears, check if it's a
                 # file and if so, initialize the offset.
                 if subpath_is_file[i] is None:
-                    target_info = client.fetch_contents_info(bundle_uuid, subpaths[i], 0)
+                    target_info = client.fetch_contents_info(
+                        BundleTarget(bundle_uuid, subpaths[i]), 0
+                    )
+                    subpath_targets[i] = target_info['resolved_target']
                     if target_info['type'] == 'file':
                         subpath_is_file[i] = True
                         if from_start:
@@ -2446,7 +2460,7 @@ class BundleCLI(object):
                     READ_LENGTH = 16384
                     byte_range = (subpath_offset[i], subpath_offset[i] + READ_LENGTH - 1)
                     with closing(
-                        client.fetch_contents_blob(bundle_uuid, subpaths[i], byte_range)
+                        client.fetch_contents_blob(subpath_targets[i], byte_range)
                     ) as contents:
                         result = contents.read()
                     if not result:
@@ -2646,14 +2660,19 @@ class BundleCLI(object):
         default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(
             args.worksheet_spec
         )
-        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(
+        client, worksheet_uuid, target = self.resolve_target(
             default_client, default_worksheet_uuid, args.target_spec
         )
         client.create(
             'bundle-actions',
-            {'type': 'write', 'uuid': bundle_uuid, 'subpath': subpath, 'string': args.string},
+            {
+                'type': 'write',
+                'uuid': target.bundle_uuid,
+                'subpath': target.subpath,
+                'string': args.string,
+            },
         )
-        print(bundle_uuid, file=self.stdout)
+        print(target.bundle_uuid, file=self.stdout)
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
@@ -2774,16 +2793,13 @@ class BundleCLI(object):
 
         elif args.item_type == 'bundle':
             for bundle_spec in args.item_spec:
-                (
-                    source_client,
-                    source_worksheet_uuid,
-                    source_bundle_uuid,
-                    subpath,
-                ) = self.resolve_target(curr_client, curr_worksheet_uuid, bundle_spec)
+                (source_client, source_worksheet_uuid, source_target) = self.resolve_target(
+                    curr_client, curr_worksheet_uuid, bundle_spec
+                )
                 # copy (or add only if bundle already exists on destination)
                 self.copy_bundle(
                     source_client,
-                    source_bundle_uuid,
+                    source_target.bundle_uuid,
                     dest_client,
                     dest_worksheet_uuid,
                     copy_dependencies=args.copy_dependencies,
@@ -3067,7 +3083,9 @@ class BundleCLI(object):
                     maxlines = int(maxlines)
                 try:
                     self.print_target_info(
-                        client, bundle_info['uuid'], block['target_genpath'], head=maxlines
+                        client,
+                        BundleTarget(bundle_info['uuid'], block['target_genpath']),
+                        head=maxlines,
                     )
                 except UsageError as e:
                     print('ERROR:', e, file=self.stdout)
