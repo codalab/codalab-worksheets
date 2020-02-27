@@ -16,6 +16,13 @@ from codalab.lib.unicode_util import contains_unicode
 from codalab.objects.permission import parse_permission, permission_str
 
 
+class CompatibleInteger(fields.Integer):
+    def serialize(self, attr, obj, accessor=None):
+        """Overrides change done in https://github.com/marshmallow-code/marshmallow/compare/2.10.2...2.10.3#diff-c4881f63f8b05b8d3eadf046c3dc7912L641.
+        """
+        ret = Field.serialize(self, attr, obj, accessor=accessor)
+        return self._to_string(ret) if (self.as_string and ret is not None) else ret
+
 class PermissionSpec(fields.Field):
     def _serialize(self, value, attr, obj):
         try:
@@ -61,7 +68,7 @@ def validate_ascii(value):
 
 
 class WorksheetItemSchema(Schema):
-    id = fields.Integer(as_string=True, dump_only=True)
+    id = CompatibleInteger(as_string=True, dump_only=True)
     worksheet = fields.Relationship(
         include_resource_linkage=True, attribute='worksheet_uuid', type_='worksheets', required=True
     )
@@ -83,7 +90,7 @@ class WorksheetItemSchema(Schema):
 
 
 class WorksheetPermissionSchema(Schema):
-    id = fields.Integer(as_string=True, dump_only=True)
+    id = CompatibleInteger(as_string=True, dump_only=True)
     worksheet = fields.Relationship(
         include_resource_linkage=True,
         attribute='object_uuid',
@@ -151,7 +158,7 @@ class BundleDependencySchema(PlainSchema):
 
 
 class BundlePermissionSchema(Schema):
-    id = fields.Integer(as_string=True, dump_only=True)
+    id = CompatibleInteger(as_string=True, dump_only=True)
     bundle = fields.Relationship(
         include_resource_linkage=True,
         attribute='object_uuid',
