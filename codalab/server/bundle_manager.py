@@ -690,11 +690,9 @@ class BundleManager(object):
         :param workers: a list of workers
         :return: a list of matched workers
         """
-        tagm = re.match('tag=(.+)', request_queue)
+        tag_match = re.match('tag=(.+)', request_queue)
         if tagm != None:
-            worker_tag = tagm.group(1)
-            matched_workers = [worker for worker in workers if worker['tag'] == worker_tag]
-            return matched_workers
+            return [worker for worker in workers if worker['tag'] == tag_match.group(1)]
         return []
 
     def _get_staged_bundles_to_run(self, workers, user_info_cache):
