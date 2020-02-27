@@ -281,7 +281,8 @@ class JsonApiClient(RestClient):
         def unpack_object(obj_data):
             # Merge attributes, id, meta, and relationships into a single dict
             obj = {}
-            raise Exception(obj_data)
+            if 'type' in obj_data and obj_data['type'] == 'worksheet-items':
+                raise Exception(obj_data)
             obj['id'] = obj_data['id']
             if 'attributes' in obj_data:
                 obj.update(obj_data['attributes'])
