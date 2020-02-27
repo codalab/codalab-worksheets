@@ -166,6 +166,7 @@ class NewRun extends React.Component<{
         docker: kDefaultDockerCpu,
         networkAccess: false,
         failedDependencies: false,
+        queue: '',
     }
 
     /**
@@ -227,6 +228,7 @@ class NewRun extends React.Component<{
             docker,
             networkAccess,
             failedDependencies,
+            queue,
         } = this.state;
         const { after_sort_key } = this.props;
 
@@ -241,6 +243,7 @@ class NewRun extends React.Component<{
         if (cpu) args.push(`--request-cpus=${cpu}`);
         if (gpu) args.push(`--request-gpus=${gpu}`);
         if (docker) args.push(`--request-docker-image=${docker}`);
+        if (queue) args.push(`--request-queue=${queue}`);
         if (networkAccess) args.push(`--request-network`);
         if (failedDependencies) args.push(`--allow-failed-dependencies`);
 
@@ -343,6 +346,7 @@ class NewRun extends React.Component<{
                             this bundle."
                             optional
                         />
+                        
                         <ConfigChipInput
                             values={this.state.tags}
                             onValueAdd={(value) => this.setState(
@@ -352,7 +356,15 @@ class NewRun extends React.Component<{
                                 (state) => ({ tags: [...state.tags.slice(0, idx), ...state.tags.slice(idx+1)] })
                             )}
                         />
-
+                        <ConfigLabel
+                            label="Queue"
+                            optional
+                        />
+                        <ConfigTextInput
+                            value={this.state.queue}
+                            onValueChange={(value) => this.setState({ queue: value })}
+                            placeholder={''}
+                        />
                         <div className={classes.spacer}/>
                         <Typography variant='subtitle1'>Resources</Typography>
 
