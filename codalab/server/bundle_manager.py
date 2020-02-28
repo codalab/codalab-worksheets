@@ -691,7 +691,7 @@ class BundleManager(object):
         :return: a list of matched workers
         """
         tag_match = re.match('tag=(.+)', request_queue)
-        if tagm != None:
+        if tag_match != None:
             return [worker for worker in workers if worker['tag'] == tag_match.group(1)]
         return []
 
