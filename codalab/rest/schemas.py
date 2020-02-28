@@ -19,7 +19,7 @@ from codalab.objects.permission import parse_permission, permission_str
 
 class CompatibleInteger(fields.Integer):
     def serialize(self, attr, obj, accessor=None):
-        """Overrides change done in https://github.com/marshmallow-code/marshmallow/compare/2.10.2...2.10.3#diff-c4881f63f8b05b8d3eadf046c3dc7912L641.
+        """Overrides change done from 2.10.2->2.10.3 in https://github.com/marshmallow-code/marshmallow/commit/d81cab413e231ec40123020f110a8c0af22163ed.
         """
         ret = Field.serialize(self, attr, obj, accessor=accessor)
         return self._to_string(ret) if (self.as_string and ret is not None) else ret
