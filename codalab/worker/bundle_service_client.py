@@ -8,7 +8,7 @@ import time
 import urllib.request, urllib.parse, urllib.error
 
 from .rest_client import RestClient, RestClientException
-from .file_util import tar_gzip_directory
+from .file_util import tar_gzip_directory, BINARY_PLACEHOLDER
 
 
 def wrap_exception(message):
@@ -22,7 +22,8 @@ def wrap_exception(message):
                 raise BundleServiceException(message + ': ' + str(e), e.client_error)
             except urllib.error.HTTPError as e:
                 try:
-                    client_error = e.read()
+                    # Ensure the type of urllib.error.HTTPError response to be string
+                    client_error = ensure_str(e.read())
                     if e.reason == 'invalid_grant':
                         raise BundleAuthException(
                             message + ': ' + http.client.responses[e.code] + ' - ' + client_error,
@@ -41,6 +42,20 @@ def wrap_exception(message):
         return wrapper
 
     return decorator
+
+
+def ensure_str(response):
+    """
+    Ensure the data type of input response to be string
+    :param response: a response in bytes or string
+    :return: the input response in string
+    """
+    if isinstance(response, str):
+        return response
+    try:
+        return response.decode()
+    except UnicodeDecodeError:
+        return BINARY_PLACEHOLDER
 
 
 class BundleAuthException(RestClientException):
