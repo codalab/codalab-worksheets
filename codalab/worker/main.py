@@ -11,7 +11,6 @@ import signal
 import socket
 import stat
 import sys
-import multiprocessing
 
 
 from codalab.lib.formatting import parse_size
@@ -229,7 +228,7 @@ def parse_cpuset_args(arg):
     Arguments:
         arg: comma separated string of ints, or "ALL" representing all available cpus
     """
-    cpu_count = multiprocessing.cpu_count()
+    cpu_count = len(os.sched_getaffinity(0))
     if arg == 'ALL':
         cpuset = list(range(cpu_count))
     else:
