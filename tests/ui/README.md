@@ -13,7 +13,7 @@ repository, by running `pip install -r requirements.txt`.
 2. Next, install [ChromeDriver](https://chromedriver.chromium.org/getting-started) (for Chrome) and 
 [GeckoDriver](https://github.com/mozilla/geckodriver) (for Firefox). These drivers are the links between the Selenium 
 tests and their respective browsers.
-    1. Run `./scripts/test-setup.sh` and place the installed GeckoDriver on your path by running 
+    1. Run `sudo ./scripts/test-setup.sh` and place the installed GeckoDriver on your path by running 
     `export PATH=$PATH:/usr/bin/geckodriver`. This is not needed for ChromeDriver.
     2. An alternative is to simply use [Homebrew](https://brew.sh/) and run `brew install geckodriver && brew cask 
     install chromedriver`. 
