@@ -373,6 +373,9 @@ class Worksheet extends React.Component {
             this.copyCallBacks.forEach((copyBundleCallBack) => {
                 let bundlesChecked = copyBundleCallBack();
                 bundlesChecked.forEach((bundle) => {
+                    if (bundle.name === '<invalid>') {
+                        return;
+                    }
                     displayBundleInfo += '[]{' + bundle.uuid + '} (' + bundle.name + ')\n';
                     actualCopyBundleIds += '[]{' + bundle.uuid + '}\n';
                 });
@@ -408,6 +411,9 @@ class Worksheet extends React.Component {
             this.copyCallBacks.forEach((copyBundleCallBack) => {
                 let bundlesChecked = copyBundleCallBack();
                 bundlesChecked.forEach((bundle) => {
+                    if (bundle.name === '<invalid>') {
+                        return;
+                    }
                     displayBundleInfo += '[]{' + bundle.uuid + '} (' + bundle.name + ')\n';
                     actualCopyBundleIds += '[]{' + bundle.uuid + '}\n';
                 });

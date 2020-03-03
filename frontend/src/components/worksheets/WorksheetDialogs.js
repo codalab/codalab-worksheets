@@ -150,12 +150,12 @@ class WorksheetDialogs extends React.Component {
                 >
                     <DialogContent className={classes.copyDialog}>
                         <DialogContentText id='alert-dialog-description'>
-                            The following bundle ids will be copied to clipboard:
+                            The following bundle ids (excluded invalid ones) will be copied to
+                            clipboard:
                             <div style={{ whiteSpace: 'pre-wrap' }}>
                                 {this.props.copiedBundleIds.display}
                             </div>
-                            You can click "paste" to paste after focused row on different
-                            worksheets.
+                            Use "paste" to paste on different worksheets.
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
@@ -190,7 +190,7 @@ const styles = () => ({
         height: 120,
     },
     copyDialog: {
-        width: 400,
+        width: 600,
         height: 200,
     },
 });
