@@ -68,12 +68,14 @@ def str_key_dict(row):
 
 
 class BundleModel(object):
-    def __init__(self, engine, default_user_info):
+    def __init__(self, engine, default_user_info, root_user_id, system_user_id):
         """
         Initialize a BundleModel with the given SQLAlchemy engine.
         """
         self.engine = engine
         self.default_user_info = default_user_info
+        self.root_user_id = root_user_id
+        self.system_user_id = system_user_id
         self.public_group_uuid = ''
         self.create_tables()
 
