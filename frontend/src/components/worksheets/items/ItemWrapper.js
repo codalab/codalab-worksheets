@@ -70,7 +70,6 @@ class ItemWrapper extends React.Component {
                         after_sort_key={itemKeys.maxKey}
                         worksheetUUID={worksheetUUID}
                         reloadWorksheet={reloadWorksheet}
-                        saveAndUpdateWorksheet={saveAndUpdateWorksheet}
                         closeEditor={() => {
                             this.props.onHideNewText();
                         }}

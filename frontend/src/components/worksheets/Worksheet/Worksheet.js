@@ -864,7 +864,7 @@ class Worksheet extends React.Component {
             );
         }
         // paste after current focused cell
-        if (this.state.ws.info.editPermission) {
+        if (this.state.ws.info.edit_permission) {
             Mousetrap.bind(
                 ['a v'],
                 function(e) {
