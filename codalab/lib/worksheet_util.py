@@ -1013,7 +1013,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                 MarkupBlockSchema()
                 .load(
                     {
-                        'text': 'Unexpected error while parsing line %d' % raw_index + 1,
+                        'text': 'Unexpected error while parsing line %d' % (raw_index + 1),
                         'error': True,
                     }
                 )
