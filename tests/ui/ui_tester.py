@@ -105,6 +105,12 @@ class UITester(ABC):
             diff_percent = (
                 diff(baseline_img, out_img, delete_diff_file=True, ignore_alpha=True) * 100
             )
+            print(
+                '{}% difference in {} for {}'.format(
+                    diff_percent, self._get_browser(), screenshot_filename
+                )
+            )
+
             if diff_percent > UITester._SCREENSHOT_DIFF_THRESHOLD_PERCENT:
                 # If an image comparison has failed, generate diff and print an error message in red
                 has_failed = True
