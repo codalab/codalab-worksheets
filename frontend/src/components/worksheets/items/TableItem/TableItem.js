@@ -102,7 +102,12 @@ class TableItem extends React.Component<{
         let result = bundleRowsData.filter((item, index) => {
             return this.state.childrenCheckState[index];
         });
-        result = result.map((row) => row['uuid[0:8]']);
+        result = result.map((row) => {
+            let bundleIdName = {};
+            bundleIdName.uuid = row['uuid[0:8]'];
+            bundleIdName.name = row['name'];
+            return bundleIdName;
+        });
         return result;
     };
 

@@ -152,9 +152,10 @@ class WorksheetDialogs extends React.Component {
                         <DialogContentText id='alert-dialog-description'>
                             The following bundle ids will be copied to clipboard:
                             <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {this.props.copiedBundleIds}
+                                {this.props.copiedBundleIds.display}
                             </div>
-                            You can click 'edit source' on your worksheets and paste the bundles.
+                            You can click "paste" to paste after focused row on different
+                            worksheets.
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
@@ -163,7 +164,7 @@ class WorksheetDialogs extends React.Component {
                         </Button>
                         <CopyToClipboard
                             color='primary'
-                            text={this.props.copiedBundleIds}
+                            text={this.props.copiedBundleIds.actualContent}
                             id='copyBundleIdToClipBoard'
                         >
                             <Button color='primary' onClick={this.props.togglePopup('copy')}>

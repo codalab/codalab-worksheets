@@ -272,35 +272,16 @@ class Worksheet extends React.Component {
             worksheet_uuid,
         )
             .done(() => {
-                Object.keys(this.state.checkedBundles).forEach((uuid) => {
-                    if (this.state.checkedBundles[uuid] !== undefined) {
-                        Object.keys(this.state.checkedBundles[uuid]).forEach((identifier) => {
-                            if (this.state.checkedBundles[uuid][identifier] !== undefined) {
-                                this.state.checkedBundles[uuid][identifier]();
-                            }
-                        });
-                    }
+                this.clearCheckedBundles(() => {
+                    toast.info('Executing ' + cmd + ' command', {
+                        position: 'top-right',
+                        autoClose: 2000,
+                        hideProgressBar: true,
+                        closeOnClick: true,
+                        pauseOnHover: false,
+                        draggable: true,
+                    });
                 });
-
-                this.setState(
-                    {
-                        uuidBundlesCheckedCount: {},
-                        checkedBundles: {},
-                        showBundleOperationButtons: false,
-                        updating: false,
-                    },
-                    () => {
-                        toast.info('Executing ' + cmd + ' command', {
-                            position: 'top-right',
-                            autoClose: 2000,
-                            hideProgressBar: true,
-                            closeOnClick: true,
-                            pauseOnHover: false,
-                            draggable: true,
-                        });
-                    },
-                );
-
                 this.reloadWorksheet();
             })
             .fail((e) => {
@@ -386,14 +367,19 @@ class Worksheet extends React.Component {
                 this.setState({ openCopy: false });
                 return;
             }
-            let tempBundleIds = '';
+            let copyBundles = {};
+            let displayBundleInfo = '';
+            let actualCopyBundleIds = '';
             this.copyCallBacks.forEach((copyBundleCallBack) => {
                 let bundlesChecked = copyBundleCallBack();
-                bundlesChecked.forEach((uuid) => {
-                    tempBundleIds += '[]{' + uuid + '}\n';
+                bundlesChecked.forEach((bundle) => {
+                    displayBundleInfo += '[]{' + bundle.uuid + '} (' + bundle.name + ')\n';
+                    actualCopyBundleIds += '[]{' + bundle.uuid + '}\n';
                 });
             });
-            this.setState({ openCopy: true, copiedBundleIds: tempBundleIds });
+            copyBundles.display = displayBundleInfo;
+            copyBundles.actualContent = actualCopyBundleIds;
+            this.setState({ openCopy: true, copiedBundleIds: copyBundles });
         }
     };
 
@@ -416,14 +402,19 @@ class Worksheet extends React.Component {
                 this.setState({ openCopy: false });
                 return;
             }
-            let tempBundleIds = '';
+            let copyBundles = {};
+            let displayBundleInfo = '';
+            let actualCopyBundleIds = '';
             this.copyCallBacks.forEach((copyBundleCallBack) => {
                 let bundlesChecked = copyBundleCallBack();
-                bundlesChecked.forEach((uuid) => {
-                    tempBundleIds += '[]{' + uuid + '}\n';
+                bundlesChecked.forEach((bundle) => {
+                    displayBundleInfo += '[]{' + bundle.uuid + '} (' + bundle.name + ')\n';
+                    actualCopyBundleIds += '[]{' + bundle.uuid + '}\n';
                 });
             });
-            this.setState({ openCopy: true, copiedBundleIds: tempBundleIds });
+            copyBundles.display = displayBundleInfo;
+            copyBundles.actualContent = actualCopyBundleIds;
+            this.setState({ openCopy: true, copiedBundleIds: copyBundles });
         }
     };
 
@@ -458,23 +449,53 @@ class Worksheet extends React.Component {
     };
 
     pasteToWorksheet = () => {
+        // Unchecks all bundles after pasting
         console.log('Pasting to worksheet');
-        console.log(this.state.ws.info);
-        var promise = navigator.clipboard.readText();
-        promise.then((data) => {
+        var clipboardData = navigator.clipboard.readText();
+        clipboardData.then((data) => {
             if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
                 // Insert after the source line
                 var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
                 var item_line = this.state.ws.info.block_to_raw[currentItemKey];
                 var source_line = this.state.ws.info.raw_item_to_source_line[item_line];
                 this.state.ws.info.raw.splice(source_line + 1, 0, data);
-                this.saveAndUpdateWorksheet(false, item_line);
+                this.saveAndUpdateWorksheet(false);
             } else {
                 // Add to the end of the worksheet if no focus
                 this.state.ws.info.raw.push(data);
-                this.saveAndUpdateWorksheet(false, item_line);
+                this.saveAndUpdateWorksheet(false);
+            }
+
+            this.clearCheckedBundles();
+        });
+    };
+
+    clearCheckedBundles = (clear_callback) => {
+        // Clear the checks
+        Object.keys(this.state.checkedBundles).forEach((uuid) => {
+            if (this.state.checkedBundles[uuid] !== undefined) {
+                Object.keys(this.state.checkedBundles[uuid]).forEach((identifier) => {
+                    if (
+                        this.state.checkedBundles[uuid] &&
+                        this.state.checkedBundles[uuid][identifier] !== undefined
+                    ) {
+                        this.state.checkedBundles[uuid][identifier]();
+                    }
+                });
             }
         });
+
+        this.setState(
+            {
+                uuidBundlesCheckedCount: {},
+                checkedBundles: {},
+                showBundleOperationButtons: false,
+                updating: false,
+            },
+            clear_callback,
+        );
+        this.bundleTableID = new Set();
+        this.copyCallBacks = [];
     };
 
     setFocus = (index, subIndex, shouldScroll = true) => {
@@ -934,19 +955,8 @@ class Worksheet extends React.Component {
             }
         } else {
             // Go into edit mode.
-            this.setState(
-                {
-                    editMode: editMode,
-                    uuidBundlesCheckedCount: {},
-                    checkedBundles: {},
-                    showBundleOperationButtons: false,
-                    updating: false,
-                },
-                () => {
-                    this.bundleTableID = new Set();
-                    this.copyCallBacks = [];
-                },
-            );
+            this.setState({ editMode: editMode });
+            this.clearCheckedBundles();
             $('#worksheet-editor').focus(); // Needs to be before focusing
         }
     }
