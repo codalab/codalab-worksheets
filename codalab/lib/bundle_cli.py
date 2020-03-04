@@ -140,6 +140,9 @@ SERVER_COMMANDS = (
 )
 
 OTHER_COMMANDS = ('help', 'status', 'alias', 'config', 'logout')
+# Markdown headings
+HEADING_LEVEL_2 = '## '
+HEADING_LEVEL_3 = '### '
 
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
@@ -258,7 +261,7 @@ class Commands(object):
         return register_command
 
     @classmethod
-    def help_text(cls, verbose):
+    def help_text(cls, verbose, doc):
         def command_name(command):
             name = command
             aliases = cls.commands[command].aliases
@@ -309,7 +312,7 @@ class Commands(object):
             if verbose:
                 return '%s%s:\n%s\n%s' % (
                     ' ' * indent,
-                    name,
+                    HEADING_LEVEL_3 + name if doc else name,
                     '\n'.join((' ' * (indent * 2)) + line for line in command_obj.help),
                     '\n'.join(render_args(command_obj.arguments)),
                 )
@@ -324,30 +327,35 @@ class Commands(object):
         def command_group_help_text(commands):
             return '\n'.join([command_help_text(command) for command in commands])
 
-        return (
-            textwrap.dedent(
-                """
+        help_text_outline = """
         Usage: cl <command> <arguments>
 
-        Commands for bundles:
+        ()Commands for bundles:
         {bundle_commands}
 
-        Commands for worksheets:
+        ()Commands for worksheets:
         {worksheet_commands}
 
-        Commands for groups and permissions:
+        ()Commands for groups and permissions:
         {group_and_permission_commands}
 
-        Commands for users:
+        ()Commands for users:
         {user_commands}
 
-        Commands for managing server:
+        ()Commands for managing server:
         {server_commands}
 
-        Other commands:
+        ()Other commands:
         {other_commands}
         """
-            )
+        help_text_outline = (
+            help_text_outline.replace("()", HEADING_LEVEL_2)
+            if verbose and doc
+            else help_text_outline.replace("()", "")
+        )
+
+        return (
+            textwrap.dedent(help_text_outline)
             .format(
                 bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
                 worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
@@ -857,12 +865,19 @@ class BundleCLI(object):
             'Show usage information for commands.',
             '  help           : Show brief description for all commands.',
             '  help -v        : Show full usage information for all commands.',
+            '  help -v -d     : Show full usage information for all commands and pretty format.',
             '  help <command> : Show full usage information for <command>.',
         ],
         arguments=(
             Commands.Argument('command', help='name of command to look up', nargs='?'),
             Commands.Argument(
                 '-v', '--verbose', action='store_true', help='Display all options of all commands.'
+            ),
+            Commands.Argument(
+                '-d',
+                '--doc',
+                action='store_true',
+                help='Auto generate all options of all commands for CLI docs.',
             ),
         ),
     )
@@ -871,7 +886,7 @@ class BundleCLI(object):
         if args.command:
             self.do_command([args.command, '--help'])
             return
-        print(Commands.help_text(args.verbose), file=self.stdout)
+        print(Commands.help_text(args.verbose, args.doc), file=self.stdout)
 
     @Commands.command('status', aliases=('st',), help='Show current client status.')
     def do_status_command(self, args):
