@@ -865,7 +865,7 @@ class BundleCLI(object):
             'Show usage information for commands.',
             '  help           : Show brief description for all commands.',
             '  help -v        : Show full usage information for all commands.',
-            '  help -v -d     : Show full usage information for all commands and pretty format.',
+            '  help -v -d     : Show full usage information for all commands in the Markdown format.',
             '  help <command> : Show full usage information for <command>.',
         ],
         arguments=(
@@ -877,7 +877,7 @@ class BundleCLI(object):
                 '-d',
                 '--doc',
                 action='store_true',
-                help='Auto generate all options of all commands for CLI docs.',
+                help='Auto generate all options of all commands for CLI docs in the Markdown format.',
             ),
         ),
     )
