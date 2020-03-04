@@ -7,7 +7,7 @@ import urllib.request, urllib.parse, urllib.error
 from codalab.common import http_error_to_exception, precondition, UsageError
 from codalab.worker.rest_client import RestClient, RestClientException
 from codalab.worker.download_util import BundleTarget
-
+from codalab.worker.bundle_service_client import ensure_str
 
 def wrap_exception(message):
     def decorator(f):
@@ -16,7 +16,7 @@ def wrap_exception(message):
                 return f(*args, **kwargs)
             except urllib.error.HTTPError as e:
                 # Translate known errors to the standard CodaLab errors
-                error_body = e.read()
+                error_body = ensure_str(e.read())
                 exc = http_error_to_exception(e.code, error_body)
                 # All standard CodaLab errors are subclasses of UsageError
                 if isinstance(exc, UsageError):
