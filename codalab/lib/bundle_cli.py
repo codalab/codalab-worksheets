@@ -877,7 +877,7 @@ class BundleCLI(object):
                 '-d',
                 '--doc',
                 action='store_true',
-                help='Auto generate all options of all commands for CLI docs in the Markdown format.',
+                help='Auto-generate all options of all commands for CLI docs in the Markdown format.',
             ),
         ),
     )
