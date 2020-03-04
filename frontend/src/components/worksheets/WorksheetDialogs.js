@@ -155,7 +155,7 @@ class WorksheetDialogs extends React.Component {
                             <div style={{ whiteSpace: 'pre-wrap' }}>
                                 {this.props.copiedBundleIds.display}
                             </div>
-                            Use "paste" to paste on different worksheets.
+                            You can use "paste" to move the copied bundles
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
@@ -190,7 +190,7 @@ const styles = () => ({
         height: 120,
     },
     copyDialog: {
-        width: 600,
+        width: 450,
         height: 200,
     },
 });
