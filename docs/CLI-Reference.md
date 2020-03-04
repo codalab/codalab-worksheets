@@ -1,5 +1,5 @@
 # CLI reference 
-This file is auto-generated from the output of `cl help -v` and provides the list of all CLI commands.
+This file is auto-generated from the output of `cl help -v -d` and provides the list of all CLI commands.
 ## Commands for bundles:
   ### upload (up):
     Create a bundle by uploading an existing file/directory.
