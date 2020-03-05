@@ -3,7 +3,8 @@ import React from 'react';
 import $ from 'jquery';
 import { withStyles } from '@material-ui/core/styles';
 import JSZip from 'jszip';
-
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import "react-circular-progressbar/dist/styles.css";
 import {
     createDefaultBundleName,
     pathIsArchive,
@@ -63,6 +64,14 @@ class NewUpload extends React.Component<{
 
     uploadFile = (files) => {
         if (!files) {
+            return;
+        }
+        let folderSize = 0;
+        for (const file of files) {
+            folderSize += file.size;
+        }
+        if (folderSize/1024/1024/1024 > 2) {
+            alert('File size is large than 2 GB. Please upload your file(s) through CLI.');
             return;
         }
         const { worksheetUUID, after_sort_key } = this.props;
@@ -149,14 +158,19 @@ class NewUpload extends React.Component<{
         if (!files) {
             return;
         }
+        if (files.length > 1000) {
+            alert('There are too many files in the folder. Please zip your folder and upload again.');
+            return;
+        }
+
         const { worksheetUUID, after_sort_key } = this.props;
         const { name, description } = this.state;
         const folderNamePos = files[0].webkitRelativePath.indexOf("/");
         var folderName = "";
         if (folderNamePos != -1) {
             folderName = files[0].webkitRelativePath.slice(0, folderNamePos)
-            console.log(folderName);
         }
+
         const createBundleData = getDefaultBundleMetadata(name || folderName + ".zip", description);
         this.setState({
             uploading: true,
@@ -264,18 +278,18 @@ class NewUpload extends React.Component<{
                     ref={this.inputFolder}
                     onChange={this.setFolder}
                 />
-                {/* { uploading && <CircularProgress
+                { uploading && <CircularProgressbar
                         className={ classes.progress }
                         variant="determinate"
                         value={ percentComplete }
-                        text={`${percentComplete}%`}
-                        size={ 100 }
-                        // styles={buildStyles({
-                        //     strokeLinecap: "butt",
-                        //     textSize: '16px',
-                        //   })}
+                        text={`${percentComplete}% uploaded`}
+                        styles={buildStyles({
+                            textSize: '12px',
+                            // pathColor: 'teal',
+                            // strokeLinecap: "butt",
+                        })}
                     />
-                } */}
+                }
             </React.Fragment>
         );
     }
@@ -283,11 +297,12 @@ class NewUpload extends React.Component<{
 
 const styles = (theme) => ({
     progress: {
+        "z-index": 1000,
         position: 'fixed',
         left: '50vw',
         top: '50vh',
-        width: 80,
-        height: 80,
+        width: 110,
+        height: 110,
         transform: 'translateX(-50%) translateY(-50%)',
     },
 });
