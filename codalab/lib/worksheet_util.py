@@ -268,7 +268,7 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
     """
 
     def get_line_type(line):
-        if line.startswith('//'):
+        if line.startswith('//') or (line.startswith("<!--") and line.endswith("-->")):
             return 'comment'
         elif BUNDLE_REGEX.match(line) is not None:
             return TYPE_BUNDLE
