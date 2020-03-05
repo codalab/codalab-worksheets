@@ -367,10 +367,10 @@ class SampleWorksheet:
         self._add_header('Invalid Directives')
         self._add_line('% hi')
         self._add_blank_line_pattern()
-        self._expected_lines.append('Error on line [\d]+: unknown directive `hi`')
+        self._expected_lines.append('Error on source line [\d]+: unknown directive `hi`')
         self._add_line('% hello')
         self._add_blank_line_pattern()
-        self._expected_lines.append('Error on line [\d]+: unknown directive `hello`')
+        self._expected_lines.append('Error on source line [\d]+: unknown directive `hello`')
 
     def _add_rendering_logic(self):
         self._add_header('Rendering')
