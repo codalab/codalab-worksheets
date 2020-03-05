@@ -181,7 +181,7 @@ class WorksheetItemList extends React.Component {
     handleClickForDeselect = (event) => {
         //Deselect if clicking between worksheet row items
         if (event.target === event.currentTarget) {
-            this.props.setFocus(-1, 0);
+            this.props.setFocus(-1, 0, false);
         }
     };
 
