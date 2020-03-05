@@ -150,11 +150,12 @@ class WorksheetDialogs extends React.Component {
                 >
                     <DialogContent className={classes.copyDialog}>
                         <DialogContentText id='alert-dialog-description'>
-                            The following bundle ids will be copied to clipboard:
+                            The following bundle ids (excluded invalid ones) will be copied to
+                            clipboard:
                             <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {this.props.copiedBundleIds}
+                                {this.props.copiedBundleIds.display}
                             </div>
-                            You can click 'edit source' on your worksheets and paste the bundles.
+                            You can use "paste" to move the copied bundles
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
@@ -163,7 +164,7 @@ class WorksheetDialogs extends React.Component {
                         </Button>
                         <CopyToClipboard
                             color='primary'
-                            text={this.props.copiedBundleIds}
+                            text={this.props.copiedBundleIds.actualContent}
                             id='copyBundleIdToClipBoard'
                         >
                             <Button color='primary' onClick={this.props.togglePopup('copy')}>
@@ -180,11 +181,12 @@ class WorksheetDialogs extends React.Component {
                 >
                     <DialogContent className={classes.copyDialog}>
                         <DialogContentText id='alert-dialog-description'>
-                            The following bundle ids will be cut to clipboard:
+                            The following bundle ids (excluded invalid ones) will be cut to
+                            clipboard:
                             <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {this.props.copiedBundleIds}
+                                {this.props.copiedBundleIds.display}
                             </div>
-                            Note: Search-generated bundle rows won't be removed
+                            You can use "paste" to move the copied bundles
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
@@ -193,7 +195,7 @@ class WorksheetDialogs extends React.Component {
                         </Button>
                         <CopyToClipboard
                             color='primary'
-                            text={this.props.copiedBundleIds}
+                            text={this.props.copiedBundleIds.actualContent}
                             id='cutBundleIdToClipBoard'
                         >
                             <Button color='primary' onClick={this.props.togglePopup('cut')}>
@@ -219,7 +221,7 @@ const styles = () => ({
         height: 120,
     },
     copyDialog: {
-        width: 400,
+        width: 450,
         height: 200,
     },
 });
