@@ -8,7 +8,8 @@ import time
 import urllib.request, urllib.parse, urllib.error
 
 from .rest_client import RestClient, RestClientException
-from .file_util import tar_gzip_directory, BINARY_PLACEHOLDER
+from .file_util import tar_gzip_directory
+from codalab.common import ensure_str
 
 
 def wrap_exception(message):
@@ -42,20 +43,6 @@ def wrap_exception(message):
         return wrapper
 
     return decorator
-
-
-def ensure_str(response):
-    """
-    Ensure the data type of input response to be string
-    :param response: a response in bytes or string
-    :return: the input response in string
-    """
-    if isinstance(response, str):
-        return response
-    try:
-        return response.decode()
-    except UnicodeDecodeError:
-        return BINARY_PLACEHOLDER
 
 
 class BundleAuthException(RestClientException):
