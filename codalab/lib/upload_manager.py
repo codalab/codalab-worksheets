@@ -46,100 +46,76 @@ class UploadManager(object):
         |simplify_archives|: whether to simplify unpacked archives so that if they
                              contain a single file, the final path is just that file,
                              not a directory containing that file.
-        |is_dir_upload|: whether the incoming sources are individual files that need to be rebuild
-        into a directory or merely individual files.
         If |sources| contains one source, then the bundle contents will be that source.
         Otherwise, the bundle contents will be a directory with each of the sources.
         Exceptions:
         - If |git|, then each source is replaced with the result of running 'git clone |source|'
         - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
         """
-        if is_dir_upload:
-            try:
-                path_util.make_directory(bundle_path)
-                for source in sources:
-                    dirpath = source["webkitRelativePath"]
-
-                    if dirpath.rfind('/') != -1:
-                        dirpath = dirpath[:dirpath.rfind('/')]
-
-                    dirpath = os.path.join(bundle_path, dirpath)
-                    if not path_util.check_isdir(dirpath, 'dir_upload'):
-                        path_util.make_directory(dirpath)
-
-                    source_output_path = os.path.join(bundle_path, source["webkitRelativePath"])
-                    with open(source_output_path, 'wb') as out:
-                        shutil.copyfileobj(source, out)
-
-            except:
-                if os.path.exists(bundle_path):
-                    path_util.remove(bundle_path)
-                raise
-        else:
-            exclude_patterns = (
-                self._default_exclude_patterns + exclude_patterns
-                if exclude_patterns
-                else self._default_exclude_patterns
-            )
-            bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
-            try:
-                path_util.make_directory(bundle_path)
-                # Note that for uploads with a single source, the directory
-                # structure is simplified at the end.
-                for source in sources:
-                    is_url, is_local_path, is_fileobj, filename = self._interpret_source(source)
-                    source_output_path = os.path.join(bundle_path, filename)
-                    if is_url:
-                        if git:
-                            source_output_path = file_util.strip_git_ext(source_output_path)
-                            file_util.git_clone(source, source_output_path)
-                        else:
-                            file_util.download_url(source, source_output_path)
-                            if unpack and self._can_unpack_file(source_output_path):
-                                self._unpack_file(
-                                    source_output_path,
-                                    zip_util.strip_archive_ext(source_output_path),
-                                    remove_source=True,
-                                    simplify_archive=simplify_archives,
-                                )
-                    elif is_local_path:
-                        source_path = path_util.normalize(source)
-                        path_util.check_isvalid(source_path, 'upload')
-
-                        if unpack and self._can_unpack_file(source_path):
+        exclude_patterns = (
+            self._default_exclude_patterns + exclude_patterns
+            if exclude_patterns
+            else self._default_exclude_patterns
+        )
+        bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
+        try:
+            path_util.make_directory(bundle_path)
+            # Note that for uploads with a single source, the directory
+            # structure is simplified at the end.
+            for source in sources:
+                is_url, is_local_path, is_fileobj, filename = self._interpret_source(source)
+                source_output_path = os.path.join(bundle_path, filename)
+                if is_url:
+                    if git:
+                        source_output_path = file_util.strip_git_ext(source_output_path)
+                        file_util.git_clone(source, source_output_path)
+                    else:
+                        file_util.download_url(source, source_output_path)
+                        if unpack and self._can_unpack_file(source_output_path):
                             self._unpack_file(
-                                source_path,
-                                zip_util.strip_archive_ext(source_output_path),
-                                remove_source=remove_sources,
-                                simplify_archive=simplify_archives,
-                            )
-                        elif remove_sources:
-                            path_util.rename(source_path, source_output_path)
-                        else:
-                            path_util.copy(
-                                source_path,
                                 source_output_path,
-                                follow_symlinks=follow_symlinks,
-                                exclude_patterns=exclude_patterns,
-                            )
-                    elif is_fileobj:
-                        if unpack and zip_util.path_is_archive(filename):
-                            self._unpack_fileobj(
-                                source[0],
-                                source[1],
                                 zip_util.strip_archive_ext(source_output_path),
+                                remove_source=True,
                                 simplify_archive=simplify_archives,
                             )
-                        else:
-                            with open(source_output_path, 'wb') as out:
-                                shutil.copyfileobj(source[1], out)
+                elif is_local_path:
+                    source_path = path_util.normalize(source)
+                    path_util.check_isvalid(source_path, 'upload')
 
-                if len(sources) == 1:
-                    self._simplify_directory(bundle_path)
-            except:
-                if os.path.exists(bundle_path):
-                    path_util.remove(bundle_path)
-                raise
+                    if unpack and self._can_unpack_file(source_path):
+                        self._unpack_file(
+                            source_path,
+                            zip_util.strip_archive_ext(source_output_path),
+                            remove_source=remove_sources,
+                            simplify_archive=simplify_archives,
+                        )
+                    elif remove_sources:
+                        path_util.rename(source_path, source_output_path)
+                    else:
+                        path_util.copy(
+                            source_path,
+                            source_output_path,
+                            follow_symlinks=follow_symlinks,
+                            exclude_patterns=exclude_patterns,
+                        )
+                elif is_fileobj:
+                    if unpack and zip_util.path_is_archive(filename):
+                        self._unpack_fileobj(
+                            source[0],
+                            source[1],
+                            zip_util.strip_archive_ext(source_output_path),
+                            simplify_archive=simplify_archives,
+                        )
+                    else:
+                        with open(source_output_path, 'wb') as out:
+                            shutil.copyfileobj(source[1], out)
+
+            if len(sources) == 1:
+                self._simplify_directory(bundle_path)
+        except:
+            if os.path.exists(bundle_path):
+                path_util.remove(bundle_path)
+            raise
 
     def _interpret_source(self, source):
         is_url, is_local_path, is_fileobj = False, False, False

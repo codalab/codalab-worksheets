@@ -8,6 +8,19 @@ import AddIcon from '@material-ui/icons/AddBoxOutlined';
 import BundleBulkActionMenu from '../BundleBulkActionMenu';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
+
+const StyledMenuItem = withStyles((theme) => ({
+    root: {
+        '&:focus': {
+            backgroundColor: theme.palette.primary.main,
+            '& .MuiListItemIcon-root, & .MuiListItemText-primary': {
+                color: theme.palette.common.white,
+            },
+        },
+        border: '2px solid #d3d4d5',
+    },
+}))(MenuItem);
+
 class ActionButtons extends React.Component<{
     classes: {},
     onShowNewRun: () => void,
@@ -73,27 +86,37 @@ class ActionButtons extends React.Component<{
                         </Button>
                         <Menu
                             id='upload-menu'
+                            elevation={0}
+                            getContentAnchorEl={null}
+                            anchorOrigin={{
+                                vertical: 'bottom',
+                                horizontal: 'center',
+                            }}
+                            transformOrigin={{
+                                vertical: 'top',
+                                horizontal: 'center',
+                            }}
                             anchorEl={this.state.anchorEl}
                             keepMounted
                             open={Boolean(this.state.anchorEl)}
                             onClose={this.handleClose}
                         >
-                            <MenuItem onClick={this.handleClose}>
+                            <StyledMenuItem onClick={this.handleClose}>
                                 <label
                                     className={classes.uploadLabel}
                                     htmlFor='codalab-file-upload-input'
                                 >
                                     File(s) Upload
                                 </label>
-                            </MenuItem>
-                            <MenuItem onClick={this.handleClose}>
+                            </StyledMenuItem>
+                            <StyledMenuItem onClick={this.handleClose}>
                                 <label
                                     className={classes.uploadLabel}
                                     htmlFor='codalab-dir-upload-input'
                                 >
                                     Folder Upload
                                 </label>
-                            </MenuItem>
+                            </StyledMenuItem>
                         </Menu>
                     </span>
                 ) : null}

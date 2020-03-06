@@ -70,7 +70,7 @@ class NewUpload extends React.Component<{
         for (const file of files) {
             folderSize += file.size;
         }
-        if (folderSize/1024/1024/1024 > 2) {
+        if (folderSize > 2*1024*1024*1024) {
             alert('File size is large than 2 GB. Please upload your file(s) through CLI.');
             return;
         }
@@ -92,12 +92,12 @@ class NewUpload extends React.Component<{
                 contentType: 'application/json',
                 type: 'POST',
                 success: (data, status, jqXHR) => {
-                    var bundleUuid = data.data[0].id;
-                    var reader = new FileReader();
+                    const bundleUuid = data.data[0].id;
+                    let reader = new FileReader();
                     reader.onload = () => {
-                        var arrayBuffer = reader.result,
+                        let arrayBuffer = reader.result,
                             bytesArray = new Uint8Array(arrayBuffer);
-                        var url =
+                        let url =
                             '/rest/bundles/' +
                             bundleUuid +
                             '/contents/blob/?' +
@@ -109,7 +109,7 @@ class NewUpload extends React.Component<{
                             data: new Blob([bytesArray]),
                             processData: false,
                             xhr: () => {
-                                var xhr = new window.XMLHttpRequest();
+                                let xhr = new window.XMLHttpRequest();
                                 xhr.upload.addEventListener(
                                     'progress',
                                     (evt) => {
@@ -166,7 +166,7 @@ class NewUpload extends React.Component<{
         const { worksheetUUID, after_sort_key } = this.props;
         const { name, description } = this.state;
         const folderNamePos = files[0].webkitRelativePath.indexOf("/");
-        var folderName = "";
+        let folderName = "";
         if (folderNamePos != -1) {
             folderName = files[0].webkitRelativePath.slice(0, folderNamePos)
         }
@@ -180,7 +180,7 @@ class NewUpload extends React.Component<{
             url += `&after_sort_key=${ after_sort_key }`;
         }
 
-        var zip = new JSZip();
+        let zip = new JSZip();
         [...files].map(file => {
             zip.file(file.webkitRelativePath, file);
         });
@@ -193,8 +193,8 @@ class NewUpload extends React.Component<{
                 contentType: 'application/json',
                 type: 'POST',
                 success: (data, status, jqXHR) => {
-                    var bundleUuid = data.data[0].id;
-                    var url =
+                    const bundleUuid = data.data[0].id;
+                    const url =
                         '/rest/bundles/' +
                         bundleUuid +
                         '/contents/blob/?' +
@@ -206,7 +206,7 @@ class NewUpload extends React.Component<{
                         data: new Blob([bytesArray]),
                         processData: false,
                         xhr: () => {
-                            var xhr = new window.XMLHttpRequest();
+                            let xhr = new window.XMLHttpRequest();
                             xhr.upload.addEventListener(
                                 'progress',
                                 (evt) => {
