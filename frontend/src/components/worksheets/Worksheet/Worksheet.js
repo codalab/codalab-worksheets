@@ -505,7 +505,9 @@ class Worksheet extends React.Component {
         console.log(this.state.ws.info.raw.length);
         all_remove_lines.forEach((line_index) => {
             console.log('Removing line index: ', line_index);
-            this.state.ws.info.raw.splice(line_index, 1);
+            if (this.state.ws.info.raw[line_index][0] !== '%')
+                // don't delete directive lines
+                this.state.ws.info.raw.splice(line_index, 1);
         });
         console.log(this.state.focusIndex);
         this.saveAndUpdateWorksheet(false, this.state.focusIndex);
