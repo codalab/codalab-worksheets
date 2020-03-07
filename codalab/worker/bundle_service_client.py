@@ -9,6 +9,7 @@ import urllib.request, urllib.parse, urllib.error
 
 from .rest_client import RestClient, RestClientException
 from .file_util import tar_gzip_directory
+from codalab.common import ensure_str
 
 
 def wrap_exception(message):
@@ -22,7 +23,8 @@ def wrap_exception(message):
                 raise BundleServiceException(message + ': ' + str(e), e.client_error)
             except urllib.error.HTTPError as e:
                 try:
-                    client_error = e.read()
+                    # Ensure the type of urllib.error.HTTPError response to be string
+                    client_error = ensure_str(e.read())
                     if e.reason == 'invalid_grant':
                         raise BundleAuthException(
                             message + ': ' + http.client.responses[e.code] + ' - ' + client_error,

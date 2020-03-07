@@ -9,6 +9,7 @@ import http.client
 # Increment this on master when ready to cut a release.
 # http://semver.org/
 CODALAB_VERSION = '0.5.9'
+BINARY_PLACEHOLDER = '<binary>'
 
 
 class IntegrityError(ValueError):
@@ -93,3 +94,17 @@ def http_error_to_exception(code, message):
 def precondition(condition, message):
     if not condition:
         raise PreconditionViolation(message)
+
+
+def ensure_str(response):
+    """
+    Ensure the data type of input response to be string
+    :param response: a response in bytes or string
+    :return: the input response in string
+    """
+    if isinstance(response, str):
+        return response
+    try:
+        return response.decode()
+    except UnicodeDecodeError:
+        return BINARY_PLACEHOLDER

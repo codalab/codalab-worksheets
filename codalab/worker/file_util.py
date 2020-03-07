@@ -8,7 +8,8 @@ import tarfile
 import zlib
 import bz2
 
-BINARY_PLACEHOLDER = '<binary>'
+from codalab.common import BINARY_PLACEHOLDER
+
 NONE_PLACEHOLDER = '<none>'
 GIT_PATTERN = '.git'
 

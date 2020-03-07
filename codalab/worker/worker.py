@@ -317,7 +317,7 @@ class Worker:
 
         Throws an exception if unsuccessful.
         """
-        cpuset, gpuset = set(self.cpuset), set(self.gpuset)
+        cpuset, gpuset = set(map(str, self.cpuset)), set(map(str, self.gpuset))
 
         for run_state in self.runs.values():
             if run_state.stage == RunStage.RUNNING:
