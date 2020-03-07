@@ -61,6 +61,18 @@ class SampleWorksheet:
         self._expected_lines = []
 
     def create(self):
+        # Skip creating a sample worksheet if one already exists
+        worksheet_uuids = run_command(
+            [self._cl, 'wsearch', self._worksheet_name, '--uuid-only']
+        ).split('\n')
+        if re.match(SampleWorksheet._FULL_UUID_REGEX, worksheet_uuids[0]):
+            print(
+                'There is already an existing {} with UUID {}. Skipping creating a sample worksheet...'.format(
+                    self._worksheet_name, worksheet_uuids[0]
+                )
+            )
+            return
+
         print('Creating a {} worksheet...'.format(self._description))
         self._create_dependencies()
         self._add_introduction()
