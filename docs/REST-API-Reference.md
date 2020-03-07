@@ -175,7 +175,7 @@ Name | Type
 
 Name | Type
 --- | ---
-`id` | Integer
+`id` | CompatibleInteger
 `bundle` | Relationship([bundles](#bundles))
 `group` | Relationship([groups](#groups))
 `group_name` | String
@@ -234,7 +234,7 @@ Name | Type
 
 Name | Type
 --- | ---
-`id` | Integer
+`id` | CompatibleInteger
 `worksheet` | Relationship([worksheets](#worksheets))
 `subworksheet` | Relationship([worksheets](#worksheets))
 `bundle` | Relationship([bundles](#bundles))
@@ -247,7 +247,7 @@ Name | Type
 
 Name | Type
 --- | ---
-`id` | Integer
+`id` | CompatibleInteger
 `worksheet` | Relationship([worksheets](#worksheets))
 `group` | Relationship([groups](#groups))
 `group_name` | String

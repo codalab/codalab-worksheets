@@ -957,6 +957,7 @@ class Worksheet extends React.Component {
             editor.session.setUseWrapMode(false);
             editor.setShowPrintMargin(false);
             editor.session.setMode('ace/mode/markdown');
+            // editor.session.
             if (!this.canEdit()) {
                 editor.setOptions({
                     readOnly: true,
@@ -979,6 +980,30 @@ class Worksheet extends React.Component {
                     exec: function() {
                         this.discardChanges();
                     }.bind(this),
+                });
+                editor.commands.addCommand({
+                    name: 'comment',
+                    bindKey: { win: 'Ctrl+/', mac: 'cmd+/' },
+                    exec: function() {
+                        let selectionRange = editor.getSelectionRange();
+                        selectionRange.start.column = 0;
+                        let content = editor.session.getTextRange(selectionRange);
+                        let splitLines = content.split('\n');
+                        let commentAll = true;
+                        if (splitLines[0].startsWith('//')) {
+                            commentAll = false;
+                        }
+                        splitLines = splitLines.map((line) => {
+                            if (commentAll && !line.startsWith('//')) {
+                                return '//' + line;
+                            } else if (!commentAll && line.startsWith('//')) {
+                                console.log(line.substring(2));
+                                return line.substring(2);
+                            }
+                            return line;
+                        });
+                        editor.session.replace(selectionRange, splitLines.join('\n'));
+                    },
                 });
                 editor.focus();
 
