@@ -243,7 +243,13 @@ class NewRun extends React.Component<{
         if (cpu) args.push(`--request-cpus=${cpu}`);
         if (gpu) args.push(`--request-gpus=${gpu}`);
         if (docker) args.push(`--request-docker-image=${docker}`);
-        if (queue) args.push(`--request-queue tag=${queue}`);
+        if (queue) {
+            let finalQueue = queue;
+            if (finalQueue.startsWith("tag=")) {
+                finalQueue = finalQueue.substring(4);
+            }
+            args.push(`--request-queue ${finalQueue}`);
+        }
         if (networkAccess) args.push(`--request-network`);
         if (failedDependencies) args.push(`--allow-failed-dependencies`);
 
@@ -443,7 +449,9 @@ class NewRun extends React.Component<{
                             />
                             <ConfigTextInput
                                 value={this.state.queue}
-                                onValueChange={(value) => this.setState({ queue: value })}
+                                onValueChange={(value) => {
+                                    this.setState({ queue: value })
+                                }}
                                 placeholder={''}
                             />
                             <Grid item xs={12}>
