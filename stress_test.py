@@ -78,16 +78,26 @@ class StressTestRunner:
 
     # List of random, large docker images
     _LARGE_DOCKER_IMAGES = [
-        'adreeve/python-numpy',
-        'larger/rdp:dev',
-        'openjdk:latest',
-        'tensorflow/tensorflow:latest',
-        'iwane/numpy-matplotlib',
         'aaronyalai/openaibaselines:gym3',
-        'mysql:latest',
+        'adreeve/python-numpy',
         'couchbase:latest',
-        'rails:latest',
+        'golang:latest',
+        'iwane/numpy-matplotlib',
+        'jenkins:latest',
+        'larger/rdp:dev',
+        'maven:latest',
+        'mysql:latest',
+        'mongo:latest',
+        'neo4j:latest',
+        'node:latest',
+        'openjdk:latest',
+        'perl:latest',
+        'postgres:latest',
         'pytorch/pytorch:latest',
+        'rails:latest',
+        'solr:slim',
+        'sonarqube:latest',
+        'tensorflow/tensorflow:latest',
     ]
     _TAG = 'codalab-stress-test'
 
