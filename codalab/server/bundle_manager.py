@@ -313,14 +313,17 @@ class BundleManager(object):
 
     def _schedule_run_bundles_on_workers(self, workers, staged_bundles_to_run, user_info_cache):
         """
-        Schedules STAGED bundles to run on the given workers. Always tries to schedule bundles to
-        run on workers that are owned by the owner of each bundle first. If there are no such qualified
-        private workers, uses CodaLab-owned workers, which have user ID root_user_id.
+        Schedule STAGED bundles to run on available workers based on the following logic:
+        1. If the bundle requests to run on a specific worker, tries to schedule the bundle
+           to run on a worker that has a tag exactly match with request_queue.
+        2. If the bundle doesn't request to run on a specific worker,
+          (1) try to schedule the bundle to run on a worker that belongs to the bundle's owner
+          (2) if there is no such qualified private worker, uses CodaLab-owned workers, which have user ID root_user_id.
         :param workers: a WorkerInfoAccessor object containing worker related information e.g. running uuid.
         :param staged_bundles_to_run: a list of tuples each contains a valid bundle and its bundle resources.
         :param user_info_cache: a dictionary mapping user id to user information.
         """
-        # Reorder the stage_bundles so that bundles which were requested to run on a personal worker
+        # Reorder the stage_bundles so that bundles which were requested to run on a specific worker
         # will be scheduled to run first
         staged_bundles_to_run.sort(
             key=lambda b: (b[0].metadata.request_queue is not None, b[0].metadata.request_queue),
@@ -332,37 +335,21 @@ class BundleManager(object):
 
         # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
-
-            def get_available_workers(user_id):
-                # Make a deepcopy of the workers list so the filtering and deducting don't modify the list
-                workers_list = copy.deepcopy(workers.user_owned_workers(user_id))
-                workers_list = self._deduct_worker_resources(workers_list, running_bundles_info)
-                workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
-                return workers_list
-
-            workers_list = None
-            if bundle.owner_id != self._model.root_user_id:
-                # First try private workers
-                workers_list = get_available_workers(bundle.owner_id)
-                # If there is no user_owned worker, try to schedule the current bundle to run on a CodaLab's public worker.
-                if len(workers_list) == 0:
-                    # Check if there is enough parallel run quota left for this user
-                    if (
-                        self._model.get_user_parallel_run_quota_left(
-                            bundle.owner_id, user_info_cache[bundle.owner_id]
-                        )
-                        <= 0
-                    ):
-                        logger.info(
-                            "User %s has no parallel run quota left, skipping job for now",
-                            bundle.owner_id,
-                        )
-                        # Don't start this bundle yet, as there is no parallel_run_quota left for this user.
-                        continue
-            if not workers_list:
-                # Length is 0 (private user with no workers) or is None (root user)
-                workers_list = get_available_workers(self._model.root_user_id)
-
+            # Check if there is enough parallel run quota left for this user
+            if (
+                self._model.get_user_parallel_run_quota_left(
+                    bundle.owner_id, user_info_cache[bundle.owner_id]
+                )
+                <= 0
+            ):
+                # Don't include CodaLab-owned workers, as there is no parallel_run_quota left for this user.
+                codalab_owned_workers = []
+            else:
+                codalab_owned_workers = workers.user_owned_workers(self._model.root_user_id)
+            user_owned_workers = workers.user_owned_workers(bundle.owner_id)
+            workers_list = user_owned_workers + codalab_owned_workers
+            workers_list = self._deduct_worker_resources(workers_list, running_bundles_info)
+            workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
                 if self._try_start_bundle(workers, worker, bundle, bundle_resources):
@@ -370,8 +357,9 @@ class BundleManager(object):
 
     def _deduct_worker_resources(self, workers_list, running_bundles_info):
         """
-        From each worker, subtract resources used by running bundles. Modifies the list.
+        From each worker, subtract resources used by running bundles.
         """
+        workers_list = copy.deepcopy(workers_list)
         for worker in workers_list:
             for uuid in worker['run_uuids']:
                 # Verify if the current bundle exists in both the worker table and the bundle table
@@ -398,9 +386,8 @@ class BundleManager(object):
         the list sorted in order of preference for running the bundle.
         """
         # Filter by tag.
-        request_queue = bundle.metadata.request_queue
-        if request_queue:
-            workers_list = self._get_matched_workers(request_queue, workers_list)
+        if bundle.metadata.request_queue:
+            workers_list = self._get_matched_workers(bundle.metadata.request_queue, workers_list)
 
         # Filter by CPUs.
         workers_list = [
