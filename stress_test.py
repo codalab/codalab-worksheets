@@ -76,7 +76,7 @@ class StressTestRunner:
         args: command line arguments
     """
 
-    # List of random, large docker images
+    # List of random, large docker images in alphabetical order
     _LARGE_DOCKER_IMAGES = [
         'aaronyalai/openaibaselines:gym3',
         'adreeve/python-numpy',
