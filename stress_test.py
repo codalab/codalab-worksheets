@@ -360,7 +360,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--large-docker-runs-count',
         type=int,
-        help='Number of runs with large docker images (defaults to 20)',
+        help='Number of runs with large Docker images (defaults to 20)',
         default=20,
     )
     parser.add_argument(
