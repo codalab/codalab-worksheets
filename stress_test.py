@@ -2,6 +2,7 @@ import argparse
 import os
 import random
 import string
+import subprocess
 import sys
 import time
 
@@ -69,7 +70,8 @@ class TestFile:
 
 class StressTestRunner:
     """
-    Abstract class that holds common logic for stress test runners.
+    This runner object holds the logic on how the stress tests are run based on the command line
+    arguments passed in.
 
     Args:
         cl: cl instance used to run CodaLab commands
@@ -104,6 +106,10 @@ class StressTestRunner:
     def __init__(self, cl, args):
         self._cl = cl
         self._args = args
+
+        # Connect to the instance the stress tests will run on
+        print('Connecting to instance %s...' % args.instance)
+        subprocess.call([self._cl, 'work', '%s::' % args.instance])
 
     def run(self):
         print('Running stress tests...')
@@ -310,6 +316,12 @@ if __name__ == '__main__':
         type=str,
         help='Path to Codalab CLI executable (defaults to "cl")',
         default='cl',
+    )
+    parser.add_argument(
+        '--instance',
+        type=str,
+        help='CodaLab instance to run stress tests against (defaults to "localhost")',
+        default='localhost',
     )
     parser.add_argument(
         '--heavy',
