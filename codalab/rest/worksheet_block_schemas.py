@@ -17,6 +17,7 @@ class BlockModes:
     contents_block = 'contents_block'
     image_block = 'image_block'
     graph_block = 'graph_block'
+    schema_block = 'schema_block'
     subworksheets_block = 'subworksheets_block'
 
     values = (
@@ -26,6 +27,7 @@ class BlockModes:
         contents_block,
         image_block,
         graph_block,
+        schema_block,
         subworksheets_block,
     )
 
@@ -133,6 +135,23 @@ class BundleImageBlockSchema(BundleBlockSchema):
     height = fields.Integer()
     width = fields.Integer()
 
+class SchemaRowsSchema(WorksheetBlockSchema):
+    """
+    Schema for user defined schemas in worksheets
+    """
+
+    field_name = fields.String()
+    generated_path = fields.String()
+    post_processing = fields.String()
+
+class SchemaBlockSchema(WorksheetBlockSchema):
+    """
+    Schema for user defined schemas in worksheets
+    """
+
+    mode = fields.Constant(BlockModes.schema_block)
+    header = fields.List(fields.String(), required=True)
+    field_rows = fields.Nested(SchemaRowsSchema, required=True)
 
 class TableBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.table_block)

@@ -45,6 +45,7 @@ from codalab.rest.worksheet_block_schemas import (
     RecordsRowSchema,
     RecordsBlockSchema,
     GraphBlockSchema,
+    SchemaBlockSchema,
     SubworksheetsBlock,
     BundleUUIDSpecSchema,
 )
@@ -884,6 +885,7 @@ def interpret_items(schemas, raw_items, db_model=None):
 
     # Go through all the raw items...
     last_was_empty_line = False
+    current_schema_name = None
     for raw_index, item in enumerate(raw_items):
         new_last_was_empty_line = True
         try:
@@ -906,6 +908,18 @@ def interpret_items(schemas, raw_items, db_model=None):
 
             # Reset schema to minimize long distance dependencies of directives
             if not is_directive:
+                if (current_schema is not None):
+                    blocks.append(
+                        SchemaBlockSchema()
+                        .load(
+                            {
+                                'status': FetchStatusSchema.get_unknown_status(),
+                                'header': ["field", "generalized-path", "post-processing"],
+                                'field_rows': schemas[current_schema_name],
+                            }
+                        )
+                        .data
+                    )
                 current_schema = None
 
             if item_type == TYPE_BUNDLE:
@@ -958,6 +972,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                     if len(value_obj) < 2:
                         raise UsageError("`schema` missing name")
                     name = value_obj[1]
+                    current_schema_name = name
                     schemas[name] = current_schema = []
                 elif command == 'addschema':
                     # Add to schema
