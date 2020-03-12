@@ -25,13 +25,8 @@ class ActionButtons extends React.Component<{
     classes: {},
     onShowNewRun: () => void,
     onShowNewText: () => void,
+    onShowNewUpload: () => void,
 }> {
-    constructor(props) {
-        super(props);
-        this.state = {
-            anchorEl: null,
-        };
-    }
     handleClick = (event) => {
         this.setState({ anchorEl: event.currentTarget });
     };
@@ -45,6 +40,9 @@ class ActionButtons extends React.Component<{
             classes,
             onShowNewRun,
             onShowNewText,
+            onShowNewUpload,
+            onCloseNewUpload,
+            uploadAnchor,
             handleSelectedBundleCommand,
             showBundleOperationButtons,
             togglePopup,
@@ -78,7 +76,7 @@ class ActionButtons extends React.Component<{
                             color='inherit'
                             id='upload-button'
                             aria-label='Add New Upload'
-                            onClick={this.handleClick}
+                            onClick={onShowNewUpload}
                             disabled={!editPermission}
                         >
                             <UploadIcon className={classes.buttonIcon} />
@@ -96,12 +94,12 @@ class ActionButtons extends React.Component<{
                                 vertical: 'top',
                                 horizontal: 'center',
                             }}
-                            anchorEl={this.state.anchorEl}
+                            anchorEl={uploadAnchor}
                             keepMounted
-                            open={Boolean(this.state.anchorEl)}
-                            onClose={this.handleClose}
+                            open={Boolean(uploadAnchor)}
+                            onClose={onCloseNewUpload}
                         >
-                            <StyledMenuItem onClick={this.handleClose}>
+                            <StyledMenuItem onClick={onCloseNewUpload}>
                                 <label
                                     className={classes.uploadLabel}
                                     htmlFor='codalab-file-upload-input'
@@ -109,7 +107,7 @@ class ActionButtons extends React.Component<{
                                     File(s) Upload
                                 </label>
                             </StyledMenuItem>
-                            <StyledMenuItem onClick={this.handleClose}>
+                            <StyledMenuItem onClick={onCloseNewUpload}>
                                 <label
                                     className={classes.uploadLabel}
                                     htmlFor='codalab-dir-upload-input'

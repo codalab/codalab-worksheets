@@ -144,6 +144,7 @@ class Worksheet extends React.Component {
             anchorEl: null,
             showNewRun: false,
             showNewText: false,
+            uploadAnchor: null,
             showRerun: false,
             isValid: true,
             checkedBundles: {},
@@ -364,7 +365,7 @@ class Worksheet extends React.Component {
         if (!this.state.showBundleOperationButtons) {
             return;
         }
-        const { openKill, openDelete, openDetach } = this.state;
+        const { openKill, openDelete, openDetach, openUpload } = this.state;
         if (cmd_type === 'rm') {
             this.setState({ openDelete: !openDelete });
         } else if (cmd_type === 'detach') {
@@ -470,6 +471,7 @@ class Worksheet extends React.Component {
             focusedBundleUuidList: focusedBundleUuidList,
             showNewRun: false,
             showNewText: false,
+            // uploadAnchor: null,
             showNewRerun: false,
         });
         if (shouldScroll) {
@@ -611,7 +613,6 @@ class Worksheet extends React.Component {
             )
         ) {
             // Only enable these shortcuts when no dialog is opened
-
             //
             Mousetrap.bind(
                 ['shift+r'],
@@ -1251,9 +1252,24 @@ class Worksheet extends React.Component {
         this.setState({ BulkBundleDialog: deleteWorksheetDialog });
     }
 
+    onShowNewUpload = (e) => {
+        e.stopPropagation();
+        this.setState({ uploadAnchor: e.currentTarget });
+        let form = document.querySelector('Menu[id=upload-menu]');
+        Mousetrap.unbind(['up', 'k']);
+        Mousetrap.unbind(['down', 'j']);
+        Mousetrap.unbind(['enter']);
+        Mousetrap.reset();
+        Mousetrap(form).bind(['enter'], function(e) {
+            e.preventDefault();
+            // console.log(e.target.firstElementChild.htmlFor);
+            document.querySelector('label[for=' + e.target.firstElementChild.htmlFor + ']').click();
+        });
+    };
+
     render() {
         const { classes } = this.props;
-        const { anchorEl } = this.state;
+        const { anchorEl, uploadAnchor } = this.state;
 
         this.setupEventHandlers();
         var info = this.state.ws.info;
@@ -1443,6 +1459,9 @@ class Worksheet extends React.Component {
                     setAnchorEl={(e) => this.setState({ anchorEl: e })}
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
+                    uploadAnchor={uploadAnchor}
+                    onShowNewUpload={this.onShowNewUpload}
+                    onCloseNewUpload={() => this.setState({ uploadAnchor: null })}
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
                     togglePopup={this.togglePopup}
