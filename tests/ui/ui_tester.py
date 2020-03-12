@@ -141,7 +141,6 @@ class UITester(ABC):
         self.longer_pause()
 
     def expand_last_bundle(self):
-        self.pause()
         self.scroll_to_bottom('worksheet_container')
         self.browser.find_elements_by_tag_name('button')[-1].click()
         self.pause()
@@ -189,7 +188,6 @@ class UITester(ABC):
         webdriver.ActionChains(self.browser).move_to_element(element).send_keys(keys).perform()
 
     def send_keyboard_shortcut(self, keys):
-        self.pause()
         self.browser.find_element(By.TAG_NAME, 'html').send_keys(keys)
 
     def fill_field(self, by, selector, text, press_enter=False):
@@ -388,7 +386,7 @@ class EditWorksheetTest(UITester):
 
 
 def main():
-    # Register UI tests here to run them
+    # Add UI tests to the list to run them
     all_tests = [WorksheetTest(), EditWorksheetTest()]
 
     start_time = time.time()
