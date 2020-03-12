@@ -60,12 +60,13 @@ var WorksheetContent = (function() {
             props.async = true;
         }
         const queryParams = {
-            brief: props.brief ? 1: 0
+            brief: props.brief ? 1 : 0,
         };
 
         $.ajax({
             type: 'GET',
-            url: '/rest/interpret/worksheet/' + this.uuid + '?' + queryString.stringify(queryParams),
+            url:
+                '/rest/interpret/worksheet/' + this.uuid + '?' + queryString.stringify(queryParams),
             // TODO: migrate to using main API
             // url: '/rest/worksheets/' + ws.uuid,
             async: props.async,
@@ -1073,6 +1074,7 @@ class Worksheet extends React.Component {
             $('#update_progress').show();
             this.setState({ updating: true });
             this.state.ws.fetch({
+                brief: true,
                 success: function(data) {
                     if (this.state.ws.uuid !== data.uuid) {
                         this.setState({
