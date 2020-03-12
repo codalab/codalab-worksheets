@@ -162,31 +162,35 @@ def fetch_interpreted_worksheet(uuid):
     This endpoint can be called with &brief=1 in order to give an abbreviated version,
     which does not resolve searches or wsearches.
 
-    To return an interpreted worksheet that only resolves searches / wsearches, do ...
+    To return an interpreted worksheet that only resolves a particular search/wsearch,
+    pass in the search query to the "directive" argument. For example, &directive=search 0x .limit=100
     """
     bundle_uuids = request.query.getall('bundle_uuid')
     brief = request.query.get("brief", "0") == "1"
-    worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
-    # Shim in additional data for the frontend
-    import copy
 
-    worksheet_info['orig_orig_items'] = copy.deepcopy(worksheet_info['items'])
-    worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
+    directive = request.query.get("directive", None)
+
+    worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
+
+    if directive:
+        # Only perform a single search query.
+        worksheet_info['items'] = perform_search_query(formatting.string_to_tokens(directive))
+    else:
+        # Shim in additional data for the frontend
+        worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
+        worksheet_info['raw'] = get_worksheet_lines(worksheet_info)
+
     if worksheet_info['owner_id'] is None:
         worksheet_info['owner_name'] = None
     else:
         owner = local.model.get_user(user_id=worksheet_info['owner_id'])
         worksheet_info['owner_name'] = owner.user_name
 
-    # Fetch items.
-    worksheet_info['raw'] = get_worksheet_lines(worksheet_info)
-    worksheet_info['orig_items'] = copy.deepcopy(worksheet_info['items'])
-    # Replace searches with raw items, and only include searches in raw items.
+    # Replace searches with raw items.
     # This needs to be done before get_worksheet_lines because this replaces
     # user-written raw items.
-    if not brief:
+    if not directive and not brief:
         worksheet_info['items'] = expand_search_items(worksheet_info['items'])
-    worksheet_info['expanded_items'] = copy.deepcopy(worksheet_info['items'])
 
     # Set permissions
     worksheet_info['edit_permission'] = worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL
@@ -573,33 +577,13 @@ def resolve_items_into_infos(items):
     return new_items
 
 
-def get_is_search_or_wsearch(raw_item):
-    (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = raw_item
-    if item_type != TYPE_DIRECTIVE:
-        return False
+def perform_search_query(value_obj):
+    """
+    Perform a search query and return the resulting raw items.
+    Input: directive that is tokenized by formatting.string_to_tokens(), such as formatting.string_to_tokens("search 0x .limit=100")"""
     command = get_command(value_obj)
-    return command == 'search' or command == 'wsearch'
-
-
-def expand_search_items(raw_items):
-    return list(chain.from_iterable([expand_search_item(raw_item) for raw_item in raw_items]))
-
-
-def expand_search_item(raw_item):
-    """
-    Raw items that include searches must be expanded into more raw items.
-    Input: Raw item.
-    Output: Array of raw items. If raw item does not need expanding,
-    this returns an 1-length array that contains original raw item,
-    otherwise it contains the search result. You do not need to call
-    resolve_items_into_infos on the returned raw_items.
-    """
-
-    (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = raw_item
-
-    is_search = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search'
-    is_wsearch = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'wsearch'
-
+    is_search = command == 'search'
+    is_wsearch = command == 'wsearch'
     if is_search or is_wsearch:
         command = get_command(value_obj)
         keywords = value_obj[1:]
@@ -626,5 +610,25 @@ def expand_search_item(raw_item):
                 raw_items.append(subworksheet_item(worksheet_info) + (None, None))
 
         return raw_items
+    else:
+        raise Exception("not a search query")
+
+
+def expand_search_items(raw_items):
+    return list(chain.from_iterable([expand_search_item(raw_item) for raw_item in raw_items]))
+
+
+def expand_search_item(raw_item):
+    """
+    Raw items that include searches must be expanded into more raw items.
+    Input: Raw item.
+    Output: Array of raw items. If raw item does not need expanding,
+    this returns an 1-length array that contains original raw item,
+    otherwise it contains the search result. You do not need to call
+    resolve_items_into_infos on the returned raw_items.
+    """
+    (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = raw_item
+    if item_type == TYPE_DIRECTIVE and get_command(value_obj) in ('search', 'wsearch'):
+        return perform_search_query(value_obj)
     else:
         return [raw_item]

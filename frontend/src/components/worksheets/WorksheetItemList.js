@@ -15,7 +15,17 @@ import ItemWrapper from './items/ItemWrapper';
 import PlaceholderItem from './items/PlaceholderItem';
 import NewUpload from './NewUpload/NewUpload';
 
-////////////////////////////////////////////////////////////
+
+export const BLOCK_TO_COMPONENT = {
+    markup_block: MarkdownItem,
+    table_block: TableItem,
+    contents_block: ContentsItem,
+    subworksheets_block: WorksheetItem,
+    record_block: RecordItem,
+    image_block: ImageItem,
+    graph_block: GraphItem,
+    placeholder_block: PlaceholderItem
+};
 
 // Create a worksheet item based on props and add it to worksheet_items.
 // - item: information about the table to display
@@ -41,18 +51,9 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
     props.url = url;
     props.prevItem = prevItem;
 
-    var constructor = {
-        markup_block: MarkdownItem,
-        table_block: TableItem,
-        contents_block: ContentsItem,
-        subworksheets_block: WorksheetItem,
-        record_block: RecordItem,
-        image_block: ImageItem,
-        graph_block: GraphItem,
-        placeholder_block: PlaceholderItem
-    }[item.mode];
+    const constructor = BLOCK_TO_COMPONENT[item.mode];
 
-    var elem;
+    let elem;
     if (constructor) {
         elem = React.createElement(constructor, props);
     } else {
@@ -75,6 +76,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             onHideNewUpload={props.onHideNewUpload}
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
+            key={props.key}
         >
             {elem}
         </ItemWrapper>,

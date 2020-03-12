@@ -979,7 +979,11 @@ def interpret_items(schemas, raw_items, db_model=None):
                     current_display = value_obj[1:]
                 elif command in ('search', 'wsearch'):
                     # Show item placeholders in brief mode
-                    blocks.append(PlaceholderBlockSchema().load({'directive': value_obj}).data)
+                    blocks.append(
+                        PlaceholderBlockSchema()
+                        .load({'directive': formatting.tokens_to_string(value_obj)})
+                        .data
+                    )
 
                     raw_to_block.append((len(blocks) - 1, 0))
                 else:
