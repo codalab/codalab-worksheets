@@ -3109,6 +3109,8 @@ class BundleCLI(object):
                         '[Worksheet ' + self.simple_worksheet_str(worksheet_info) + ']',
                         file=self.stdout,
                     )
+            elif mode == BlockModes.placeholder_block:
+                print('[Placeholder]', block['directive'], file=self.stdout)
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
 

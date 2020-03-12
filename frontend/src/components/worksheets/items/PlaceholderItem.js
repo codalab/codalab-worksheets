@@ -1,5 +1,5 @@
 import React from 'react';
-import './ItemPlaceholder.scss';
+import './PlaceholderItem.scss';
 export default () => {
     return <div className='codalab-item-placeholder'></div>;
 };

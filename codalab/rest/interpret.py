@@ -323,7 +323,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
 
         try:
             # Replace data with a resolved version.
-            if mode == BlockModes.markup_block:
+            if mode in (BlockModes.markup_block, BlockModes.placeholder_block):
                 # no need to do anything
                 pass
             elif mode == BlockModes.record_block or mode == BlockModes.table_block:
@@ -582,8 +582,6 @@ def get_is_search_or_wsearch(raw_item):
 
 
 def expand_search_items(raw_items):
-    # filter raw items to only include search / wsearch items
-    raw_items = [item for item in raw_items if get_is_search_or_wsearch(item)]
     return list(chain.from_iterable([expand_search_item(raw_item) for raw_item in raw_items]))
 
 

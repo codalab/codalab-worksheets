@@ -12,7 +12,7 @@ import RecordItem from './items/RecordItem';
 import TableItem from './items/TableItem';
 import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
-import ItemPlaceholder from './items/ItemPlaceholder';
+import PlaceholderItem from './items/PlaceholderItem';
 import NewUpload from './NewUpload/NewUpload';
 
 ////////////////////////////////////////////////////////////
@@ -49,6 +49,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
         record_block: RecordItem,
         image_block: ImageItem,
         graph_block: GraphItem,
+        placeholder_block: PlaceholderItem
     }[item.mode];
 
     var elem;
@@ -61,27 +62,23 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             React.createElement('strong', null, 'Internal error: ', item.mode),
         );
     }
-    if (item.text === '<codalab_bundle_info_loading>') {
-        worksheet_items.push(<ItemPlaceholder />);
-    } else {
-        worksheet_items.push(
-            <ItemWrapper
-                prevItem={prevItem}
-                item={item}
-                afterItem={afterItem}
-                ws={props.ws}
-                worksheetUUID={props.worksheetUUID}
-                reloadWorksheet={props.reloadWorksheet}
-                showNewRun={props.focusedForButtons && props.showNewRun}
-                showNewText={props.focusedForButtons && props.showNewText}
-                onHideNewUpload={props.onHideNewUpload}
-                onHideNewRun={props.onHideNewRun}
-                onHideNewText={props.onHideNewText}
-            >
-                {elem}
-            </ItemWrapper>,
-        );
-    }
+    worksheet_items.push(
+        <ItemWrapper
+            prevItem={prevItem}
+            item={item}
+            afterItem={afterItem}
+            ws={props.ws}
+            worksheetUUID={props.worksheetUUID}
+            reloadWorksheet={props.reloadWorksheet}
+            showNewRun={props.focusedForButtons && props.showNewRun}
+            showNewText={props.focusedForButtons && props.showNewText}
+            onHideNewUpload={props.onHideNewUpload}
+            onHideNewRun={props.onHideNewRun}
+            onHideNewText={props.onHideNewText}
+        >
+            {elem}
+        </ItemWrapper>,
+    );
 };
 
 class WorksheetItemList extends React.Component {

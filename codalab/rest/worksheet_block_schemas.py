@@ -18,6 +18,7 @@ class BlockModes:
     image_block = 'image_block'
     graph_block = 'graph_block'
     subworksheets_block = 'subworksheets_block'
+    placeholder_block = 'placeholder_block'
 
     values = (
         markup_block,
@@ -27,6 +28,7 @@ class BlockModes:
         image_block,
         graph_block,
         subworksheets_block,
+        placeholder_block,
     )
 
 
@@ -182,3 +184,8 @@ class GraphBlockSchema(BundleBlockSchema):
 class SubworksheetsBlock(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.subworksheets_block)
     subworksheet_infos = fields.List(fields.Dict, required=True)
+
+
+class PlaceholderBlockSchema(WorksheetBlockSchema):
+    mode = fields.Constant(BlockModes.placeholder_block)
+    directive = fields.String()
