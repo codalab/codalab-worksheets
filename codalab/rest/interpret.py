@@ -160,8 +160,9 @@ def fetch_interpreted_worksheet(uuid):
     that we can render something basic.
 
     This endpoint can be called with &brief=1 in order to give an abbreviated version,
-    which does not resolve searches or wsearches. Omitting the brief parameter resolves
-    all searches.
+    which does not resolve searches or wsearches.
+
+    To return an interpreted worksheet that only resolves searches / wsearches, do ...
     """
     bundle_uuids = request.query.getall('bundle_uuid')
     brief = request.query.get("brief", "0") == "1"
@@ -183,7 +184,7 @@ def fetch_interpreted_worksheet(uuid):
     # Replace searches with raw items, and only include searches in raw items.
     # This needs to be done before get_worksheet_lines because this replaces
     # user-written raw items.
-    if brief:
+    if not brief:
         worksheet_info['items'] = expand_search_items(worksheet_info['items'])
     worksheet_info['expanded_items'] = copy.deepcopy(worksheet_info['items'])
 
@@ -582,7 +583,7 @@ def get_is_search_or_wsearch(raw_item):
 
 def expand_search_items(raw_items):
     # filter raw items to only include search / wsearch items
-    raw_items = [item for item in worksheet_info['items'] if get_is_search_or_wsearch(item)]
+    raw_items = [item for item in raw_items if get_is_search_or_wsearch(item)]
     return list(chain.from_iterable([expand_search_item(raw_item) for raw_item in raw_items]))
 
 

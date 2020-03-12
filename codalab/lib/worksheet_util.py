@@ -976,6 +976,17 @@ def interpret_items(schemas, raw_items, db_model=None):
                 elif command == 'display':
                     # Set display
                     current_display = value_obj[1:]
+                elif command in ('search', 'wsearch'):
+                    # Show item placeholders in brief mode
+                    blocks.append(
+                        MarkupBlockSchema()
+                        .load(
+                            {'text': '<codalab_bundle_info_loading>'}
+                        )
+                        .data
+                    )
+
+                    raw_to_block.append((len(blocks) - 1, 0))
                 else:
                     raise UsageError("unknown directive `%s`" % command)
 

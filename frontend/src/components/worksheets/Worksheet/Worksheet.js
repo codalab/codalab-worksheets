@@ -35,6 +35,7 @@ import Grid from '@material-ui/core/Grid';
 import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import queryString from 'query-string';
 
 /*
 Information about the current worksheet and its items.
@@ -58,10 +59,13 @@ var WorksheetContent = (function() {
         if (props.async === undefined) {
             props.async = true;
         }
+        const queryParams = {
+            brief: props.brief ? 1: 0
+        };
 
         $.ajax({
             type: 'GET',
-            url: '/rest/interpret/worksheet/' + this.uuid,
+            url: '/rest/interpret/worksheet/' + this.uuid + '?' + queryString.stringify(queryParams),
             // TODO: migrate to using main API
             // url: '/rest/worksheets/' + ws.uuid,
             async: props.async,
@@ -505,8 +509,9 @@ class Worksheet extends React.Component {
         this.throttledScrollToItem(index, subIndex);
     };
 
-    componentWillMount() {
+    componentDidMount() {
         this.state.ws.fetch({
+            brief: true,
             success: function(data) {
                 $('#worksheet_content').show();
                 this.setState({
@@ -524,9 +529,7 @@ class Worksheet extends React.Component {
                 });
             }.bind(this),
         });
-    }
 
-    componentDidMount() {
         // Initialize history stack
         window.history.replaceState({ uuid: this.state.ws.uuid }, '', window.location.pathname);
         $('body').addClass('ws-interface');

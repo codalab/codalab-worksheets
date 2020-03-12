@@ -53,6 +53,10 @@ class FetchStatusSchema(PlainSchema):
         return {'code': FetchStatusCodes.unknown, 'error_message': ''}
 
     @staticmethod
+    def get_pending_status():
+        return {'code': FetchStatusCodes.pending, 'error_message': ''}
+
+    @staticmethod
     def get_ready_status():
         return {'code': FetchStatusCodes.ready, 'error_message': ''}
 

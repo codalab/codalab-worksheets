@@ -12,6 +12,7 @@ import RecordItem from './items/RecordItem';
 import TableItem from './items/TableItem';
 import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
+import ItemPlaceholder from './items/ItemPlaceholder';
 import NewUpload from './NewUpload/NewUpload';
 
 ////////////////////////////////////////////////////////////
@@ -60,23 +61,27 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             React.createElement('strong', null, 'Internal error: ', item.mode),
         );
     }
-    worksheet_items.push(
-        <ItemWrapper
-            prevItem={prevItem}
-            item={item}
-            afterItem={afterItem}
-            ws={props.ws}
-            worksheetUUID={props.worksheetUUID}
-            reloadWorksheet={props.reloadWorksheet}
-            showNewRun={props.focusedForButtons && props.showNewRun}
-            showNewText={props.focusedForButtons && props.showNewText}
-            onHideNewUpload={props.onHideNewUpload}
-            onHideNewRun={props.onHideNewRun}
-            onHideNewText={props.onHideNewText}
-        >
-            {elem}
-        </ItemWrapper>,
-    );
+    if (item.text === '<codalab_bundle_info_loading>') {
+        worksheet_items.push(<ItemPlaceholder />);
+    } else {
+        worksheet_items.push(
+            <ItemWrapper
+                prevItem={prevItem}
+                item={item}
+                afterItem={afterItem}
+                ws={props.ws}
+                worksheetUUID={props.worksheetUUID}
+                reloadWorksheet={props.reloadWorksheet}
+                showNewRun={props.focusedForButtons && props.showNewRun}
+                showNewText={props.focusedForButtons && props.showNewText}
+                onHideNewUpload={props.onHideNewUpload}
+                onHideNewRun={props.onHideNewRun}
+                onHideNewText={props.onHideNewText}
+            >
+                {elem}
+            </ItemWrapper>,
+        );
+    }
 };
 
 class WorksheetItemList extends React.Component {
@@ -181,7 +186,7 @@ class WorksheetItemList extends React.Component {
     handleClickForDeselect = (event) => {
         //Deselect if clicking between worksheet row items
         if (event.target === event.currentTarget) {
-            this.props.setFocus(-1, 0, false);
+            this.props.setFocus(-1, 0);
         }
     };
 
