@@ -8,7 +8,7 @@ import http.client
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '0.5.9'
+CODALAB_VERSION = '0.5.11'
 BINARY_PLACEHOLDER = '<binary>'
 
 
