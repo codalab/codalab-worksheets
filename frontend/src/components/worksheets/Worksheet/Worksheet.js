@@ -182,7 +182,7 @@ class Worksheet extends React.Component {
     handleClickForDeselect = (event) => {
         //Deselecting when clicking outside worksheet_items component
         if (event.target === event.currentTarget) {
-            this.setFocus(-1, 0);
+            this.setFocus(-1, 0, false);
         }
     };
 

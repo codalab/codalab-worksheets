@@ -244,12 +244,11 @@ class DockerImageManager:
                     try:
                         image_size_bytes = docker_utils.get_image_size_without_pulling(image_spec)
                         if image_size_bytes is None:
-                            failure_msg = "Unable to find Docker image: {} from Docker HTTP API V2.".format(
-                                image_spec
+                            failure_msg = (
+                                "Unable to find Docker image: {} from Docker HTTP Rest API V2. "
+                                "Skipping Docker image size precheck.".format(image_spec)
                             )
-                            return ImageAvailabilityState(
-                                digest=None, stage=DependencyStage.FAILED, message=failure_msg
-                            )
+                            logger.info(failure_msg)
                         elif image_size_bytes > self._max_image_size:
                             failure_msg = (
                                 "The size of "
