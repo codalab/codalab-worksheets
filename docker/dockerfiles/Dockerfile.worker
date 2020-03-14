@@ -37,6 +37,7 @@ RUN python3.6 -m pip install --user --upgrade pip; \
 # Install code
 COPY codalab/lib codalab/lib
 COPY codalab/worker codalab/worker
+COPY codalab/common.py codalab/common.py
 COPY setup.py setup.py
 
 RUN python3 -m pip install -e .

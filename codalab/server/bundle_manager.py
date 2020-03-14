@@ -689,12 +689,12 @@ class BundleManager(object):
     def _get_matched_workers(request_queue, workers):
         """
         Get all of the workers that match with the name of the requested worker
-        :param request_queue: a tag that can be used to match workers
+        :param request_queue: a tag with the format "tag=worker_X" or "worker_X" that can be used to match workers
         :param workers: a list of workers
         :return: a list of matched workers
         """
-        tag_match = re.match('tag=(.+)', request_queue)
-        if tag_match != None:
+        tag_match = re.match('(?:tag=)?(.+)', request_queue)
+        if tag_match is not None:
             return [worker for worker in workers if worker['tag'] == tag_match.group(1)]
         return []
 
