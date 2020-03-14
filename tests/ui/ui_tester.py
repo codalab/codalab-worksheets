@@ -305,7 +305,7 @@ class UITester(ABC):
 
 class WorksheetTest(UITester):
     def __init__(self):
-        super().__init__('worksheet_rendering')
+        super().__init__('worksheet')
 
     def test(self):
         self.login()
