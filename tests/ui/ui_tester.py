@@ -71,7 +71,7 @@ class UITester(ABC):
         self.wait_until_page_loads('ws-item')
         # Wait until placeholder items have been resolved.
         by = By.CLASS_NAME
-        selector = "codalab-item-placeholder"
+        selector = "codalab-nonexistent-item-placeholder"
         timeout_message = 'Timed out while waiting for {}: {} to be hidden.'.format(by, selector)
         WebDriverWait(self._driver, 300).until(
             EC.invisibility_of_element_located((by, selector)), message=timeout_message
