@@ -15,7 +15,6 @@ import ItemWrapper from './items/ItemWrapper';
 import PlaceholderItem from './items/PlaceholderItem';
 import NewUpload from './NewUpload/NewUpload';
 
-
 export const BLOCK_TO_COMPONENT = {
     markup_block: MarkdownItem,
     table_block: TableItem,
@@ -24,7 +23,7 @@ export const BLOCK_TO_COMPONENT = {
     record_block: RecordItem,
     image_block: ImageItem,
     graph_block: GraphItem,
-    placeholder_block: PlaceholderItem
+    placeholder_block: PlaceholderItem,
 };
 
 // Create a worksheet item based on props and add it to worksheet_items.
