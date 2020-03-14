@@ -101,11 +101,13 @@ def clean_version(version):
     tag name for a Docker image."""
     return version.replace("/", "_").replace("-", "_")
 
+
 def get_default_version():
     """Get the current git branch."""
     return clean_version(
-        subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8')
-        .strip()
+        subprocess.check_output(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8'
+        ).strip()
     )
 
 
