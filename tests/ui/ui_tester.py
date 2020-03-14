@@ -70,10 +70,11 @@ class UITester(ABC):
     def wait_until_worksheet_loads(self):
         self.wait_until_page_loads('ws-item')
         # Wait until placeholder items have been resolved.
-        timeout_message = 'Timed out while waiting for {}: {}.'.format(by, selector)
+        by = By.CLASS_NAME
+        selector = "codalab-item-placeholder"
+        timeout_message = 'Timed out while waiting for {}: {} to be hidden.'.format(by, selector)
         WebDriverWait(self._driver, 30).until(
-            EC.invisibility_of_element_located((By.CLASS_NAME, "codalab-item-placeholder")),
-            message=timeout_message,
+            EC.invisibility_of_element_located((by, selector)), message=timeout_message
         )
 
     def wait_until_page_loads(self, selector, by=By.CLASS_NAME):
