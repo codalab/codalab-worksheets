@@ -104,7 +104,7 @@ class GraphItem extends React.Component {
     shouldComponentUpdate(nextProps, nextState) {
         var propsChanged = worksheetItemPropsChanged(this.props, nextProps);
         var chartChanged = this.state.chart !== nextState.chart;
-        return propsChanged || chartChanged || this.state.showDetail != nextState.showDetail;
+        return propsChanged || chartChanged || this.state.showDetail !== nextState.showDetail;
     }
 
     render() {
