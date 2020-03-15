@@ -64,6 +64,7 @@ const styles = (theme) => ({
     container: {
         flexGrow: 1,
         height: '100%',
+        maxWidth: 1080,
     },
     content: {
         backgroundColor: 'white',

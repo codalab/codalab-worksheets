@@ -266,6 +266,8 @@ CODALAB_ARGUMENTS = [
         default=2048,
         help='Default memory (in MB) for each worker in the AWS Batch Worker Manager',
     ),
+    ### Public workers
+    CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
 ]
 
 for worker_manager_type in ['cpu', 'gpu']:

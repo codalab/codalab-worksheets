@@ -4,7 +4,7 @@ import os
 import threading
 
 import codalab.worker.download_util as download_util
-from codalab.worker.download_util import get_target_path, PathException
+from codalab.worker.download_util import get_target_path, PathException, BundleTarget
 from codalab.worker.file_util import (
     gzip_file,
     gzip_bytestring,
@@ -46,7 +46,9 @@ class Reader(object):
             - Otherwise starts a thread calling stream_fn on the computed final path
         """
         try:
-            final_path = get_target_path(run_state.bundle_path, run_state.bundle.uuid, path)
+            final_path = get_target_path(
+                run_state.bundle_path, BundleTarget(run_state.bundle.uuid, path)
+            )
         except PathException as e:
             reply_fn((http.client.NOT_FOUND, str(e)), None, None)
         read_thread = threading.Thread(target=stream_fn, args=[final_path])
@@ -71,7 +73,7 @@ class Reader(object):
         else:
             try:
                 target_info = download_util.get_target_info(
-                    run_state.bundle_path, run_state.bundle.uuid, path, args['depth']
+                    run_state.bundle_path, BundleTarget(run_state.bundle.uuid, path), args['depth']
                 )
             except PathException as e:
                 err = (http.client.NOT_FOUND, str(e))
@@ -82,7 +84,9 @@ class Reader(object):
             target_info['contents'] = [
                 child for child in target_info['contents'] if child['name'] not in dep_paths
             ]
-
+        # Object is not JSON serializable so submit its dict in API response
+        # The client is responsible for deserializing it
+        target_info['resolved_target'] = target_info['resolved_target'].__dict__
         reply_fn(None, {'target_info': target_info}, None)
 
     def stream_directory(self, run_state, path, args, reply_fn):

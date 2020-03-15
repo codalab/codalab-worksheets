@@ -6,7 +6,9 @@ jobs:
       install: pip install --upgrade black==18.9b0
       script: black . --check --diff
     - stage: check
-      language: javascript
+      language: node_js
+      node_js:
+        - 13
       install: cd frontend && npm install
       script:
         - npm run check-ci
@@ -27,6 +29,10 @@ jobs:
       install:
         - python3 codalab_service.py build services --version ${TRAVIS_BRANCH} --pull $([ -z "${CODALAB_DOCKER_USERNAME}" ] || [ "$TRAVIS_PULL_REQUEST_BRANCH" != "" ] || echo "--push")
         - python3 codalab_service.py start --services default monitor --version ${TRAVIS_BRANCH}
+        - pip install -r requirements.txt
+      before_script:
+        - ./scripts/test-setup.sh
+        - export PATH=$PATH:/usr/bin/geckodriver
       script:
         - python3 codalab_service.py test --version ${TRAVIS_BRANCH} default
           # Make sure restarting worker doesn't cause any issues (ie in serialization/deserialization)
@@ -34,6 +40,7 @@ jobs:
         - docker stop codalab_worker_1
         - python3 codalab_service.py start --services worker --version ${TRAVIS_BRANCH} --shared-file-system
         - python3 codalab_service.py test --version ${TRAVIS_BRANCH} --shared-file-system basic run read write kill resources netcat netcurl workers
+        - python3 tests/ui/ui_tester.py --headless
     - stage: deploy
       script: echo "Deploying"
       language: python

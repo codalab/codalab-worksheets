@@ -142,7 +142,6 @@ class Worksheet extends React.Component {
             updatingBundleUuids: {},
             isUpdatingBundles: false,
             anchorEl: null,
-            showNewUpload: false,
             showNewRun: false,
             showNewText: false,
             showRerun: false,
@@ -157,6 +156,7 @@ class Worksheet extends React.Component {
             openDeleteItem: false,
             forceDelete: false,
             showGlossaryModal: false,
+            errorMessage: '',
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
         };
@@ -182,7 +182,7 @@ class Worksheet extends React.Component {
     handleClickForDeselect = (event) => {
         //Deselecting when clicking outside worksheet_items component
         if (event.target === event.currentTarget) {
-            this.setFocus(-1, 0);
+            this.setFocus(-1, 0, false);
         }
     };
 
@@ -420,7 +420,6 @@ class Worksheet extends React.Component {
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
-
         // prevent multiple clicking from resetting the index
         if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex) {
             return;
@@ -469,7 +468,6 @@ class Worksheet extends React.Component {
             focusIndex: index,
             subFocusIndex: subIndex,
             focusedBundleUuidList: focusedBundleUuidList,
-            showNewUpload: false,
             showNewRun: false,
             showNewText: false,
             showNewRerun: false,
@@ -510,20 +508,18 @@ class Worksheet extends React.Component {
     componentWillMount() {
         this.state.ws.fetch({
             success: function(data) {
-                $('#worksheet-message').hide();
                 $('#worksheet_content').show();
                 this.setState({
                     updating: false,
                     version: this.state.version + 1,
                     numOfBundles: this.getNumOfBundles(),
+                    errorMessage: '',
                 });
                 // Fix out of bounds.
             }.bind(this),
             error: function(xhr, status, err) {
-                $('#worksheet-message')
-                    .html(xhr.responseText)
-                    .addClass('alert-danger alert');
                 this.setState({
+                    errorMessage: xhr.responseText,
                     isValid: false,
                 });
             }.bind(this),
@@ -665,7 +661,10 @@ class Worksheet extends React.Component {
                     var subFocusIndex = this.state.subFocusIndex;
                     var wsItems = this.state.ws.info.items;
 
-                    if (
+                    if (focusIndex === 0 && subFocusIndex === 0) {
+                        // Deselect all item when selecting up above the first item.
+                        this.setFocus(-1, 0);
+                    } else if (
                         focusIndex >= 0 &&
                         (wsItems[focusIndex].mode === 'table_block' ||
                             wsItems[focusIndex].mode === 'subworksheets_block')
@@ -731,7 +730,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        this.setState({ showNewUpload: true });
+                        document.querySelector('label[for=codalab-file-upload-input]').click();
                     }.bind(this),
                     'keyup',
                 );
@@ -863,8 +862,14 @@ class Worksheet extends React.Component {
             }
         } else {
             // Go into edit mode.
-            this.setState({ editMode: editMode }); // Needs to be before focusing
-            $('#worksheet-editor').focus();
+            this.setState({
+                editMode: editMode,
+                uuidBundlesCheckedCount: {},
+                checkedBundles: {},
+                showBundleOperationButtons: false,
+                updating: false,
+            });
+            $('#worksheet-editor').focus(); // Needs to be before focusing
         }
     }
 
@@ -903,9 +908,7 @@ class Worksheet extends React.Component {
                 }
             }.bind(this),
             error: function(xhr, status, err) {
-                $('#worksheet-message')
-                    .html(xhr.responseText)
-                    .addClass('alert-danger alert');
+                this.setState({ errorMessage: xhr.responseText });
                 $('#worksheet_container').hide();
             },
         });
@@ -1075,7 +1078,8 @@ class Worksheet extends React.Component {
                         });
                         return false;
                     }
-                    $('#update_progress, #worksheet-message').hide();
+                    this.setState({ errorMessage: '' });
+                    $('#update_progress').hide();
                     $('#worksheet_content').show();
                     var items = this.state.ws.info.items;
                     var numOfBundles = this.getNumOfBundles();
@@ -1150,10 +1154,10 @@ class Worksheet extends React.Component {
                     this.checkRunBundle(this.state.ws.info);
                 }.bind(this),
                 error: function(xhr, status, err) {
-                    this.setState({ updating: false });
-                    $('#worksheet-message')
-                        .html(xhr.responseText)
-                        .addClass('alert-danger alert');
+                    this.setState({
+                        updating: false,
+                        errorMessage: xhr.responseText,
+                    });
                     $('#update_progress').hide();
                     $('#worksheet_container').hide();
                 }.bind(this),
@@ -1183,8 +1187,7 @@ class Worksheet extends React.Component {
     };
 
     saveAndUpdateWorksheet(fromRaw, rawIndex) {
-        $('#worksheet-message').hide();
-        this.setState({ updating: true });
+        this.setState({ updating: true, errorMessage: '' });
         this.state.ws.saveWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
@@ -1194,10 +1197,7 @@ class Worksheet extends React.Component {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
-                $('#worksheet-message')
-                    .html(xhr.responseText)
-                    .addClass('alert-danger alert')
-                    .show();
+                this.setState({ errorMessage: xhr.responseText });
                 if (fromRaw) {
                     this.toggleEditMode(true);
                 }
@@ -1206,7 +1206,7 @@ class Worksheet extends React.Component {
     }
 
     deteleWorksheetAction = () => {
-        this.setState({ updating: true });
+        this.setState({ updating: true, errorMessage: '' });
         this.state.ws.deleteWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
@@ -1216,10 +1216,7 @@ class Worksheet extends React.Component {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
-                $('#worksheet-message')
-                    .html(xhr.responseText)
-                    .addClass('alert-danger alert')
-                    .show();
+                this.setState({ errorMessage: xhr.responseText });
             }.bind(this),
         });
     };
@@ -1392,11 +1389,9 @@ class Worksheet extends React.Component {
                 openWorksheet={this.openWorksheet}
                 focusActionBar={this.focusActionBar}
                 ensureIsArray={this.ensureIsArray}
-                showNewUpload={this.state.showNewUpload}
                 showNewRun={this.state.showNewRun}
                 showNewText={this.state.showNewText}
                 showNewRerun={this.state.showNewRerun}
-                onHideNewUpload={() => this.setState({ showNewUpload: false })}
                 onHideNewRun={() => this.setState({ showNewRun: false })}
                 onHideNewText={() => this.setState({ showNewText: false })}
                 onHideNewRerun={() => this.setState({ showNewRerun: false })}
@@ -1430,7 +1425,9 @@ class Worksheet extends React.Component {
                 deleteItemCallback={this.state.deleteItemCallback}
             />
         );
-
+        if (info && info.title) {
+            document.title = info.title;
+        }
         return (
             <React.Fragment>
                 {context_menu_display}
@@ -1444,7 +1441,6 @@ class Worksheet extends React.Component {
                     editButtons={editButtons}
                     anchorEl={anchorEl}
                     setAnchorEl={(e) => this.setState({ anchorEl: e })}
-                    onShowNewUpload={() => this.setState({ showNewUpload: true })}
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
@@ -1480,6 +1476,14 @@ class Worksheet extends React.Component {
                                         {worksheet_display}
                                         {/* Show error dialog if bulk bundle execution failed*/}
                                         {this.state.BulkBundleDialog}
+                                        <ExtraWorksheetHTML
+                                            showGlossaryModal={this.state.showGlossaryModal}
+                                            toggleGlossaryModal={this.toggleGlossaryModal}
+                                            errorMessage={this.state.errorMessage}
+                                            clearErrorMessage={() =>
+                                                this.setState({ errorMessage: '' })
+                                            }
+                                        />
                                     </div>
                                 </div>
                             </div>

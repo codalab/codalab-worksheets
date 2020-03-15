@@ -47,6 +47,7 @@ from codalab.model.tables import (
 from codalab.objects.worksheet import item_sort_key, Worksheet
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Client, OAuth2Token
 from codalab.objects.user import User
+from codalab.objects.dependency import Dependency
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
 
@@ -67,12 +68,14 @@ def str_key_dict(row):
 
 
 class BundleModel(object):
-    def __init__(self, engine, default_user_info):
+    def __init__(self, engine, default_user_info, root_user_id, system_user_id):
         """
         Initialize a BundleModel with the given SQLAlchemy engine.
         """
         self.engine = engine
         self.default_user_info = default_user_info
+        self.root_user_id = root_user_id
+        self.system_user_id = system_user_id
         self.public_group_uuid = ''
         self.create_tables()
 
@@ -988,10 +991,9 @@ class BundleModel(object):
 
     def update_bundle(self, bundle, update, connection=None):
         """
-        Update a bundle's columns and metadata in the database and in memory.
-        The update is done as a diff: columns that do not appear in the update dict
-        and metadata keys that do not appear in the metadata sub-dict are unaffected.
-
+        For each key-value pair in the update dictionary, add or update key-value pair. Note
+        that metadata keys not in the update dictionary are not affected in the update operation.
+        Also, delete any metadata key-value pairs when the value specified is None.
         This method validates all updates to the bundle, so it is appropriate
         to use this method to update bundles based on user input (eg: cl edit).
         """
@@ -1000,31 +1002,50 @@ class BundleModel(object):
         # Apply the column and metadata updates in memory and validate the result.
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
-        for (key, value) in metadata_update.items():
-            bundle.metadata.set_metadata_key(key, value)
+
+        # Generate a list of metadata keys that will be deleted and udpate metadata key-value pair
+        metadata_delete_keys = []
+        for key, value in metadata_update.items():
+            if value is None:
+                bundle.metadata.remove_metadata_key(key)
+                metadata_delete_keys.append(key)
+            else:
+                bundle.metadata.set_metadata_key(key, value)
+
+        # Delete metadata keys from metadata_update dictionary
+        for key in metadata_delete_keys:
+            del metadata_update[key]
+
         bundle.validate()
         # Construct clauses and update lists for updating certain bundle columns.
         if update:
             clause = cl_bundle.c.uuid == bundle.uuid
         if metadata_update:
-            metadata_clause = and_(
+            metadata_update_clause = and_(
                 cl_bundle_metadata.c.bundle_uuid == bundle.uuid,
                 cl_bundle_metadata.c.metadata_key.in_(metadata_update),
             )
-            metadata_values = [
+            metadata_update_values = [
                 row_dict
                 for row_dict in bundle.to_dict().pop('metadata')
                 if row_dict['metadata_key'] in metadata_update
             ]
+        if metadata_delete_keys:
+            metadata_delete_clause = and_(
+                cl_bundle_metadata.c.bundle_uuid == bundle.uuid,
+                cl_bundle_metadata.c.metadata_key.in_(metadata_delete_keys),
+            )
 
-        # Perform the actual updates.
+        # Perform the actual updates and deletes.
         def do_update(connection):
             try:
                 if update:
                     connection.execute(cl_bundle.update().where(clause).values(update))
                 if metadata_update:
-                    connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
-                    self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+                    connection.execute(cl_bundle_metadata.delete().where(metadata_update_clause))
+                    self.do_multirow_insert(connection, cl_bundle_metadata, metadata_update_values)
+                if metadata_delete_keys:
+                    connection.execute(cl_bundle_metadata.delete().where(metadata_delete_clause))
             except UnicodeError:
                 raise UsageError("Invalid character detected; use ascii characters only.")
 
@@ -1033,6 +1054,15 @@ class BundleModel(object):
         else:
             with self.engine.begin() as connection:
                 do_update(connection)
+
+    def get_bundle_dependencies(self, uuid):
+        with self.engine.begin() as connection:
+            dependency_rows = connection.execute(
+                cl_bundle_dependency.select()
+                .where(cl_bundle_dependency.c.child_uuid == uuid)
+                .order_by(cl_bundle_dependency.c.id)
+            ).fetchall()
+        return [Dependency(dep_val) for dep_val in dependency_rows]
 
     def get_bundle_state(self, uuid):
         result_dict = self.get_bundle_states([uuid])
@@ -2325,14 +2355,16 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
-    def get_user_time_quota_left(self, user_id):
-        user_info = self.get_user_info(user_id)
+    def get_user_time_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
         time_quota = user_info['time_quota']
         time_used = user_info['time_used']
         return time_quota - time_used
 
-    def get_user_parallel_run_quota_left(self, user_id):
-        user_info = self.get_user_info(user_id)
+    def get_user_parallel_run_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
         parallel_run_quota = user_info['parallel_run_quota']
         with self.engine.begin() as connection:
             # Get all the runs belonging to this user whose workers are not personal workers
@@ -2363,8 +2395,9 @@ class BundleModel(object):
             or 0
         )
 
-    def get_user_disk_quota_left(self, user_id):
-        user_info = self.get_user_info(user_id)
+    def get_user_disk_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
         return user_info['disk_quota'] - user_info['disk_used']
 
     def update_user_disk_used(self, user_id):

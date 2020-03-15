@@ -421,9 +421,11 @@ class Competition(object):
         """
         logger.debug("Collecting latest submissions")
         submissions = self._fetch_latest_submissions()
-        previous_submission_ids, num_total_submissions, num_period_submissions = (
-            self._fetch_submission_history()
-        )
+        (
+            previous_submission_ids,
+            num_total_submissions,
+            num_period_submissions,
+        ) = self._fetch_submission_history()
         submissions = self._filter_submissions(
             submissions, previous_submission_ids, num_total_submissions, num_period_submissions
         )

@@ -62,11 +62,11 @@ TYPE_WORKSHEET = 'worksheet'
 WORKSHEET_ITEM_TYPES = (TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET)
 
 
-BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
-SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
+BUNDLE_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{([^{]*)\}\s*$')
+SUBWORKSHEET_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{\{(.*)\}\}\s*$')
 
 DIRECTIVE_CHAR = '%'
-DIRECTIVE_REGEX = re.compile(r'^' + DIRECTIVE_CHAR + '\s*(.*)$')
+DIRECTIVE_REGEX = re.compile(r'^\s*' + DIRECTIVE_CHAR + '\s*(.*)\s*$')
 
 # Default number of lines to pull for each display mode.
 DEFAULT_CONTENTS_MAX_LINES = 10
@@ -168,6 +168,7 @@ def get_worksheet_lines(worksheet_info):
                     description += ' -- ' + deps
                 command = bundle_info.get('command')
                 if command:
+                    command = command.replace('\n', ' ')
                     description += ' : ' + command
             lines.append(bundle_line(description, bundle_info['uuid']))
         elif item_type == TYPE_WORKSHEET:
@@ -702,7 +703,9 @@ def interpret_items(schemas, raw_items, db_model=None):
             for item_index, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
                     blocks.append(
-                        MarkupBlockSchema().load({'text': 'ERROR: cannot access bundle'}).data
+                        MarkupBlockSchema()
+                        .load({'text': 'ERROR: cannot access bundle', 'error': True})
+                        .data
                     )
                     continue
 
@@ -991,7 +994,9 @@ def interpret_items(schemas, raw_items, db_model=None):
             worksheet_infos[:] = []
             blocks.append(
                 MarkupBlockSchema()
-                .load({'text': 'Error on line %d: %s' % (raw_index, str(e))})
+                .load(
+                    {'text': 'Error in source line %d: %s' % (raw_index + 1, str(e)), 'error': True}
+                )
                 .data
             )
 
@@ -1006,7 +1011,12 @@ def interpret_items(schemas, raw_items, db_model=None):
             traceback.print_exc()
             blocks.append(
                 MarkupBlockSchema()
-                .load({'text': 'Unexpected error while parsing line %d' % raw_index})
+                .load(
+                    {
+                        'text': 'Unexpected error while parsing line %d' % (raw_index + 1),
+                        'error': True,
+                    }
+                )
                 .data
             )
 
