@@ -105,6 +105,7 @@ class MarkupBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.markup_block)
     is_refined = fields.Bool(validate=validate.Equal(True))  # always refined
     text = fields.String()
+    error = fields.Bool(default=False)  # True if the markdown shows an error
 
 
 class BundleBlockSchema(WorksheetBlockSchema):
