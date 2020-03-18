@@ -703,7 +703,9 @@ def interpret_items(schemas, raw_items, db_model=None):
             for item_index, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
                     blocks.append(
-                        MarkupBlockSchema().load({'text': 'ERROR: cannot access bundle'}).data
+                        MarkupBlockSchema()
+                        .load({'text': 'ERROR: cannot access bundle', 'error': True})
+                        .data
                     )
                     continue
 
@@ -992,7 +994,9 @@ def interpret_items(schemas, raw_items, db_model=None):
             worksheet_infos[:] = []
             blocks.append(
                 MarkupBlockSchema()
-                .load({'text': 'Error on line %d: %s' % (raw_index, str(e))})
+                .load(
+                    {'text': 'Error in source line %d: %s' % (raw_index + 1, str(e)), 'error': True}
+                )
                 .data
             )
 
@@ -1007,7 +1011,12 @@ def interpret_items(schemas, raw_items, db_model=None):
             traceback.print_exc()
             blocks.append(
                 MarkupBlockSchema()
-                .load({'text': 'Unexpected error while parsing line %d' % raw_index})
+                .load(
+                    {
+                        'text': 'Unexpected error while parsing line %d' % (raw_index + 1),
+                        'error': True,
+                    }
+                )
                 .data
             )
 

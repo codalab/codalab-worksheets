@@ -65,7 +65,7 @@ class MarkdownItem extends React.Component {
             ['enter'],
             function(ev) {
                 ev.preventDefault();
-                if (editPermission) {
+                if (editPermission && !this.props.item.error) {
                     this.toggleEdit();
                 }
             }.bind(this),
@@ -76,7 +76,7 @@ class MarkdownItem extends React.Component {
             ['backspace', 'del'],
             function(ev) {
                 ev.preventDefault();
-                if (this.props.focused) {
+                if (!this.props.item.error && this.props.focused) {
                     if (editPermission) {
                         this.props.setDeleteItemCallback(this.deleteItem);
                     }
@@ -121,6 +121,9 @@ class MarkdownItem extends React.Component {
         const { classes, item, editPermission } = this.props;
         var { showEdit } = this.state;
         var contents = item.text;
+        if (item.error) {
+            contents += ', please fix the line in source';
+        }
         // Order is important!
         contents = this.processMarkdown(contents);
 
@@ -163,7 +166,7 @@ class MarkdownItem extends React.Component {
                     className={`${className} ${classes.textRender}`}
                     dangerouslySetInnerHTML={{ __html: contents }}
                 />
-                {editPermission && (
+                {editPermission && !item.error && (
                     <div className={classes.buttonsPanel}>
                         <Tooltip title='Edit'>
                             <IconButton

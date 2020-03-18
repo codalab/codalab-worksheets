@@ -24,6 +24,7 @@ worker) with one command:
 
     ./codalab_service.py start
 
+Make sure to run the command **without** sudo. Running the service start up script with sudo can cause initialization of the mysql database to fail. See [Troubleshooting](#Troubleshooting) for how to resolve this.
 You can then go to `http://localhost`, sign in with the root `codalab` user
 (password `codalab`), try running some bundles.  Normally, you'd install the
 CLI using `pip`, but to use the version of the CLI from the repo, you can run
@@ -242,6 +243,17 @@ service on the same machine, be careful about the following:
   `http-port` of later instances to something other than `80`.
 
 ## Troubleshooting
+
+If you run the codalab_service script with root privileges and see an error about either of the following:
+
+    Unknown MySQL server host 'mysql' (0)
+    Host '*.*.*.*' is not allowed to connect to this MySQL server
+
+Make sure you can run docker commands without root privileges. If you cannot, make sure to run:
+
+    sudo usermod -aG docker ${USER}
+
+Exit the terminal window in which that command is run. Once you ensure docker commands can be run without sudo, Remove the `var` folder from within the `/codalab-worksheets` directory. **Warning: Removing the `var` folder leads to data loss for your local Codalab instance.** Backup any necessary data first.
 
 For macOS, you might come across an error with `gunicorn` when running `./codalab_service.py start -bd`
 
