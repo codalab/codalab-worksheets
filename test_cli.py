@@ -600,8 +600,8 @@ def test(ctx):
     run_command(['python3', os.path.join(base_path, 'scripts/gen-cli-docs.py'), '--docs', '/tmp'])
 
 
-#@TestModule.register('gen-readthedocs')
-#def test(ctx):
+# @TestModule.register('gen-readthedocs')
+# def test(ctx):
 #    """Generate the readthedocs site."""
 #    # Make sure there are no extraneous things.
 #    # mkdocs doesn't return exit code 1 for some warnings.
