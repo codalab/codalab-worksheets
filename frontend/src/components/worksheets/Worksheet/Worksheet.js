@@ -957,7 +957,9 @@ class Worksheet extends React.Component {
             editor.$blockScrolling = Infinity;
             editor.session.setUseWrapMode(false);
             editor.setShowPrintMargin(false);
-            editor.session.setMode('ace/mode/markdown');
+            editor.session.setMode('ace/mode/markdown', function() {
+                editor.session.$mode.blockComment = { start: '//', end: '' };
+            });
             if (!this.canEdit()) {
                 editor.setOptions({
                     readOnly: true,
