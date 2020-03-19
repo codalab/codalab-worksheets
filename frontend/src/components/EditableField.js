@@ -104,6 +104,9 @@ class EditableFieldBase extends React.Component<{
     }
 
     render() {
+        if (!this.props.canEdit) {
+            return <span style={{ color: '#225ea8' }}>{this.state.value || '<none>'}</span>;
+        }
         if (!this.state.editing) {
             return (
                 <span
