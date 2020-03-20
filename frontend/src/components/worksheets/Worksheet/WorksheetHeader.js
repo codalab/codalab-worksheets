@@ -32,8 +32,8 @@ export default ({
     setAnchorEl,
     handleSelectedBundleCommand,
     showBundleOperationButtons,
-    togglePopup,
-    togglePopupNoEvent,
+    toggleCmdDialog,
+    toggleCmdDialogNoEvent,
     toggleGlossaryModal,
     copiedBundleIds,
     pasteToWorksheet,
@@ -129,8 +129,8 @@ export default ({
                                 onShowNewText={onShowNewText}
                                 handleSelectedBundleCommand={handleSelectedBundleCommand}
                                 showBundleOperationButtons={showBundleOperationButtons}
-                                togglePopup={togglePopup}
-                                togglePopupNoEvent={togglePopupNoEvent}
+                                toggleCmdDialog={toggleCmdDialog}
+                                toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
                                 copiedBundleIds={copiedBundleIds}
                                 pasteToWorksheet={pasteToWorksheet}
                             />

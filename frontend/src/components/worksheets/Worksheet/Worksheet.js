@@ -334,12 +334,12 @@ class Worksheet extends React.Component {
 
     executeBundleCommand = (cmd_type) => () => {
         this.handleSelectedBundleCommand(cmd_type);
-        this.togglePopupNoEvent(cmd_type);
+        this.toggleCmdDialogNoEvent(cmd_type);
     };
 
     executeBundleCommandNoEvent = (cmd_type) => {
         this.handleSelectedBundleCommand(cmd_type);
-        this.togglePopupNoEvent(cmd_type);
+        this.toggleCmdDialogNoEvent(cmd_type);
     };
 
     addCopyBundleRowsCallBack = (tableID, callback) => {
@@ -348,45 +348,15 @@ class Worksheet extends React.Component {
         this.copyCallBacks.push(callback);
     };
 
-    togglePopup = (cmd_type) => () => {
-        if (cmd_type === 'deleteItem') {
-            this.setState({ openDeleteItem: !this.state.openDeleteItem });
-        }
-        if (!this.state.showBundleOperationButtons) {
-            return;
-        }
-        const { openKill, openDelete, openDetach, openCopy } = this.state;
-        if (cmd_type === 'rm') {
-            this.setState({ openDelete: !openDelete });
-        } else if (cmd_type === 'detach') {
-            this.setState({ openDetach: !openDetach });
-        } else if (cmd_type === 'kill') {
-            this.setState({ openKill: !openKill });
-        } else if (cmd_type === 'copy') {
-            if (openCopy) {
-                this.setState({ openCopy: false });
-                return;
-            }
-            let copyBundles = {};
-            let displayBundleInfo = '';
-            let actualCopyBundleIds = '';
-            this.copyCallBacks.forEach((copyBundleCallBack) => {
-                let bundlesChecked = copyBundleCallBack();
-                bundlesChecked.forEach((bundle) => {
-                    if (bundle.name === '<invalid>') {
-                        return;
-                    }
-                    displayBundleInfo += '[]{' + bundle.uuid + '} (' + bundle.name + ')\n';
-                    actualCopyBundleIds += '[]{' + bundle.uuid + '}\n';
-                });
-            });
-            copyBundles.display = displayBundleInfo;
-            copyBundles.actualContent = actualCopyBundleIds;
-            this.setState({ openCopy: true, copiedBundleIds: copyBundles });
-        }
+    toggleCmdDialog = (cmd_type) => () => {
+        this.handleCommand(cmd_type);
     };
 
-    togglePopupNoEvent = (cmd_type) => {
+    toggleCmdDialogNoEvent = (cmd_type) => {
+        this.handleCommand(cmd_type);
+    };
+
+    handleCommand = (cmd_type) => {
         if (cmd_type === 'deleteItem') {
             this.setState({ openDeleteItem: !this.state.openDeleteItem });
         }
@@ -858,7 +828,7 @@ class Worksheet extends React.Component {
                 function(e) {
                     e.preventDefault();
                     this.state.deleteItemCallback();
-                    this.togglePopupNoEvent('deleteItem');
+                    this.toggleCmdDialogNoEvent('deleteItem');
                 }.bind(this),
             );
         }
@@ -880,25 +850,25 @@ class Worksheet extends React.Component {
                 if (this.state.openDetach || this.state.openKill || this.state.openCopy) {
                     return;
                 }
-                this.togglePopupNoEvent('rm');
+                this.toggleCmdDialogNoEvent('rm');
             });
             Mousetrap.bind(['a d'], () => {
                 if (this.state.openDelete || this.state.openKill || this.state.openCopy) {
                     return;
                 }
-                this.togglePopupNoEvent('detach');
+                this.toggleCmdDialogNoEvent('detach');
             });
             Mousetrap.bind(['a k'], () => {
                 if (this.state.openDetach || this.state.openDelete || this.state.openCopy) {
                     return;
                 }
-                this.togglePopupNoEvent('kill');
+                this.toggleCmdDialogNoEvent('kill');
             });
             Mousetrap.bind(['a c'], () => {
                 if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
                     return;
                 }
-                this.togglePopupNoEvent('copy');
+                this.toggleCmdDialogNoEvent('copy');
             });
 
             // Confirm bulk bundle operation
@@ -1518,8 +1488,8 @@ class Worksheet extends React.Component {
                 openDelete={this.state.openDelete}
                 openDetach={this.state.openDetach}
                 openDeleteItem={this.state.openDeleteItem}
-                togglePopup={this.togglePopup}
-                togglePopupNoEvent={this.togglePopupNoEvent}
+                toggleCmdDialog={this.toggleCmdDialog}
+                toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
                 executeBundleCommand={this.executeBundleCommand}
                 forceDelete={this.state.forceDelete}
                 handleForceDelete={this.handleForceDelete}
@@ -1546,9 +1516,9 @@ class Worksheet extends React.Component {
                     onShowNewText={() => this.setState({ showNewText: true })}
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
-                    togglePopup={this.togglePopup}
+                    toggleCmdDialog={this.toggleCmdDialog}
                     toggleGlossaryModal={this.toggleGlossaryModal}
-                    togglePopupNoEvent={this.togglePopupNoEvent}
+                    toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
                     copiedBundleIds={this.state.copiedBundleIds}
                     pasteToWorksheet={this.pasteToWorksheet}
                 />
