@@ -456,7 +456,6 @@ class Worksheet extends React.Component {
 
     pasteToWorksheet = () => {
         // Unchecks all bundles after pasting
-        console.log('Pasting to worksheet');
         var clipboardData = navigator.clipboard.readText();
         clipboardData.then((data) => {
             if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
