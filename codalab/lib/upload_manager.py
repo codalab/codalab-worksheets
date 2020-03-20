@@ -28,7 +28,7 @@ class UploadManager(object):
         remove_sources,
         git,
         unpack,
-        simplify_archives
+        simplify_archives,
     ):
         """
         Uploads contents for the given bundle to the bundle store.
@@ -45,6 +45,7 @@ class UploadManager(object):
         |simplify_archives|: whether to simplify unpacked archives so that if they
                              contain a single file, the final path is just that file,
                              not a directory containing that file.
+
         If |sources| contains one source, then the bundle contents will be that source.
         Otherwise, the bundle contents will be a directory with each of the sources.
         Exceptions:
