@@ -535,6 +535,7 @@ class Worksheet extends React.Component {
 
             this.clearCheckedBundles();
         });
+        console.log(this.state.ws.info);
     };
 
     clearCheckedBundles = (clear_callback) => {
