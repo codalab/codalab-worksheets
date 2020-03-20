@@ -2369,9 +2369,7 @@ class BundleCLI(object):
         ),
     )
     def do_wait_command(self, args):
-        print("[debug] enter...")
         self._fail_if_headless(args)
-        print("[debug] 0")
 
         default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(
             args.worksheet_spec
@@ -2379,7 +2377,6 @@ class BundleCLI(object):
         client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(
             default_client, default_worksheet_uuid, args.target_spec
         )
-        print("[debug] 1")
 
         # Figure files to display
         subpaths = []
@@ -2389,12 +2386,9 @@ class BundleCLI(object):
             else:
                 subpaths = [subpath]
         state = self.follow_targets(client, bundle_uuid, subpaths)
-        print("[debug] 2 state={}".format(state))
         if state != State.READY:
             print("[debug] 3 state={}".format(state))
             self.exit(state)
-        print("[debug] 4 state={}".format(bundle_uuid))
-        print(bundle_uuid, file=self.stdout)
 
     def follow_targets(self, client, bundle_uuid, subpaths, from_start=False):
         """

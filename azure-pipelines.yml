@@ -29,5 +29,5 @@ steps:
     python3 codalab_service.py start --services default monitor --version master
     python3 codalab_service.py test --version master default
     # Make sure restarting worker doesn't cause any issues (ie in serialization/deserialization)
-    docker restart codalab_worker_1 && python3 codalab_service.py test run --version master
+    python3 codalab_service.py test run --version master
   displayName: 'Functionality'
