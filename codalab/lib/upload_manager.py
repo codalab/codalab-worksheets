@@ -28,8 +28,7 @@ class UploadManager(object):
         remove_sources,
         git,
         unpack,
-        simplify_archives,
-        is_dir_upload=False
+        simplify_archives
     ):
         """
         Uploads contents for the given bundle to the bundle store.

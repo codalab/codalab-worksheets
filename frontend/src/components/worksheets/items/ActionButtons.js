@@ -25,7 +25,7 @@ class ActionButtons extends React.Component<{
     classes: {},
     onShowNewRun: () => void,
     onShowNewText: () => void,
-    onShowNewUpload: () => void,
+    showUploadMenu: () => void,
 }> {
     handleClick = (event) => {
         this.setState({ anchorEl: event.currentTarget });
@@ -40,8 +40,8 @@ class ActionButtons extends React.Component<{
             classes,
             onShowNewRun,
             onShowNewText,
-            onShowNewUpload,
-            onCloseNewUpload,
+            showUploadMenu,
+            closeUploadMenu,
             uploadAnchor,
             handleSelectedBundleCommand,
             showBundleOperationButtons,
@@ -76,7 +76,7 @@ class ActionButtons extends React.Component<{
                             color='inherit'
                             id='upload-button'
                             aria-label='Add New Upload'
-                            onClick={onShowNewUpload}
+                            onClick={showUploadMenu}
                             disabled={!editPermission}
                         >
                             <UploadIcon className={classes.buttonIcon} />
@@ -97,9 +97,9 @@ class ActionButtons extends React.Component<{
                             anchorEl={uploadAnchor}
                             keepMounted
                             open={Boolean(uploadAnchor)}
-                            onClose={onCloseNewUpload}
+                            onClose={closeUploadMenu}
                         >
-                            <StyledMenuItem onClick={onCloseNewUpload}>
+                            <StyledMenuItem onClick={closeUploadMenu}>
                                 <label
                                     className={classes.uploadLabel}
                                     htmlFor='codalab-file-upload-input'
@@ -107,7 +107,7 @@ class ActionButtons extends React.Component<{
                                     File(s) Upload
                                 </label>
                             </StyledMenuItem>
-                            <StyledMenuItem onClick={onCloseNewUpload}>
+                            <StyledMenuItem onClick={closeUploadMenu}>
                                 <label
                                     className={classes.uploadLabel}
                                     htmlFor='codalab-dir-upload-input'

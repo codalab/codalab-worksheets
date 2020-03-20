@@ -12,6 +12,7 @@ import {
     getDefaultBundleMetadata,
     createAlertText,
 } from '../../../util/worksheet_utils';
+import {FILE_SIZE_LIMIT_B, FILE_SIZE_LIMIT_GB} from '../../../constants';
 
 function getQueryParams(filename) {
     const formattedFilename = createDefaultBundleName(filename);
@@ -51,7 +52,7 @@ class NewUpload extends React.Component<{
         if (!files.length) {
             return;
         }
-        this.uploadFile(files);
+        this.uploadFiles(files);
     }
 
     setFolder = () => {
@@ -62,26 +63,33 @@ class NewUpload extends React.Component<{
         this.uploadFolder(files);
     }
 
-    uploadFile = (files) => {
+    uploadFiles = (files) => {
         if (!files) {
             return;
         }
-        let folderSize = 0;
-        for (const file of files) {
-            folderSize += file.size;
+
+        if (!files) {
+            return;
         }
-        if (folderSize > 2*1024*1024*1024) {
-            alert('File size is large than 2 GB. Please upload your file(s) through CLI.');
+        let fileSize = 0;
+        for (const file of files) {
+            fileSize += file.size;
+        }
+
+        if (fileSize > FILE_SIZE_LIMIT_B) {
+            alert('File size is large than' + FILE_SIZE_LIMIT_GB + 'GB. Please upload your file(s) through CLI.');
             return;
         }
         const { worksheetUUID, after_sort_key } = this.props;
         const { name, description } = this.state;
+        this.setState({
+            uploading: true,
+        });
 
+        let index = -1;
         for (const file of files) {
             const createBundleData = getDefaultBundleMetadata(name || file.name, description);
-            this.setState({
-                uploading: true,
-            });
+            index += 1;
             let url = `/rest/bundles?worksheet=${ worksheetUUID }`;
             if (after_sort_key) {
                 url += `&after_sort_key=${ after_sort_key }`;
@@ -126,10 +134,12 @@ class NewUpload extends React.Component<{
                             },
                             success: (data, status, jqXHR) => {
                                 this.clearProgress();
-                                const moveIndex = true;
-                                const param = { moveIndex };
-                                this.props.reloadWorksheet(undefined, undefined, param);
-                                this.props.onUploadFinish();
+                                if (index == files.length - 1) {
+                                    const moveIndex = true;
+                                    const param = { moveIndex };
+                                    this.props.reloadWorksheet(undefined, undefined, param);
+                                    this.props.onUploadFinish();
+                                }
                             },
                             error: (jqHXR, status, error) => {
                                 this.clearProgress();
@@ -285,8 +295,6 @@ class NewUpload extends React.Component<{
                         text={`${percentComplete}% uploaded`}
                         styles={buildStyles({
                             textSize: '12px',
-                            // pathColor: 'teal',
-                            // strokeLinecap: "butt",
                         })}
                     />
                 }
@@ -297,7 +305,7 @@ class NewUpload extends React.Component<{
 
 const styles = (theme) => ({
     progress: {
-        "z-index": 1000,
+        zIndex: 1000,
         position: 'fixed',
         left: '50vw',
         top: '50vh',

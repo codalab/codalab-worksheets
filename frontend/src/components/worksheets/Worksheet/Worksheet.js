@@ -471,7 +471,7 @@ class Worksheet extends React.Component {
             focusedBundleUuidList: focusedBundleUuidList,
             showNewRun: false,
             showNewText: false,
-            // uploadAnchor: null,
+            uploadAnchor: null,
             showNewRerun: false,
         });
         if (shouldScroll) {
@@ -584,7 +584,6 @@ class Worksheet extends React.Component {
         this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
     };
     setupEventHandlers() {
-        var self = this;
         // Load worksheet from history when back/forward buttons are used.
         let editPermission = this.state.ws.info && this.state.ws.info.edit_permission;
 
@@ -613,7 +612,6 @@ class Worksheet extends React.Component {
             )
         ) {
             // Only enable these shortcuts when no dialog is opened
-            //
             Mousetrap.bind(
                 ['shift+r'],
                 function(e) {
@@ -731,7 +729,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        document.querySelector('Button[id=upload-button]').click();
+                        document.querySelector('#upload-button').click();
                     }.bind(this),
                     'keyup',
                 );
@@ -1254,19 +1252,17 @@ class Worksheet extends React.Component {
         this.setState({ BulkBundleDialog: deleteWorksheetDialog });
     }
 
-    onShowNewUpload = (e) => {
-        e.stopPropagation();
-        this.setState({ uploadAnchor: e.currentTarget });
-        let form = document.querySelector('Menu[id=upload-menu]');
-        Mousetrap.unbind(['up', 'k']);
-        Mousetrap.unbind(['down', 'j']);
-        Mousetrap.unbind(['enter']);
-        Mousetrap.reset();
+    showUploadMenu = (e) => {
+        // pause mousetrap events such as up, down, and enter
+        Mousetrap.pause();
+        let form = document.querySelector('#upload-menu');
+
         Mousetrap(form).bind(['enter'], function(e) {
-            e.preventDefault();
-            // console.log(e.target.firstElementChild.htmlFor);
+            e.stopPropagation();
             document.querySelector('label[for=' + e.target.firstElementChild.htmlFor + ']').click();
         });
+
+        this.setState({ uploadAnchor: e.currentTarget });
     };
 
     render() {
@@ -1462,8 +1458,11 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
                     uploadAnchor={uploadAnchor}
-                    onShowNewUpload={this.onShowNewUpload}
-                    onCloseNewUpload={() => this.setState({ uploadAnchor: null })}
+                    showUploadMenu={this.showUploadMenu}
+                    closeUploadMenu={() => {
+                        this.setState({ uploadAnchor: null });
+                        Mousetrap.unpause();
+                    }}
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
                     togglePopup={this.togglePopup}
