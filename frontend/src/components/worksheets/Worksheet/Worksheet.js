@@ -162,7 +162,7 @@ class Worksheet extends React.Component {
             deleteItemCallback: null,
             copiedBundleIds: '',
         };
-        this.copyCallBacks = [];
+        this.copyCallbacks = [];
         this.bundleTableID = new Set();
     }
 
@@ -342,12 +342,13 @@ class Worksheet extends React.Component {
         this.toggleCmdDialogNoEvent(cmd_type);
     };
 
-    addCopyBundleRowsCallBack = (tableID, callback) => {
+    addCopyBundleRowsCallback = (tableID, callback) => {
         if (this.bundleTableID.has(tableID)) return;
         this.bundleTableID.add(tableID);
-        this.copyCallBacks.push(callback);
+        this.copyCallbacks.push(callback);
     };
 
+    // Helper functions to deal with commands
     toggleCmdDialog = (cmd_type) => () => {
         this.handleCommand(cmd_type);
     };
@@ -358,6 +359,7 @@ class Worksheet extends React.Component {
 
     handleCommand = (cmd_type) => {
         if (cmd_type === 'deleteItem') {
+            // This is used to delete markdown blocks
             this.setState({ openDeleteItem: !this.state.openDeleteItem });
         }
         if (!this.state.showBundleOperationButtons) {
@@ -378,8 +380,8 @@ class Worksheet extends React.Component {
             let copyBundles = {};
             let displayBundleInfo = '';
             let actualCopyBundleIds = '';
-            this.copyCallBacks.forEach((copyBundleCallBack) => {
-                let bundlesChecked = copyBundleCallBack();
+            this.copyCallbacks.forEach((copyBundleCallback) => {
+                let bundlesChecked = copyBundleCallback();
                 bundlesChecked.forEach((bundle) => {
                     if (bundle.name === '<invalid>') {
                         return;
@@ -470,7 +472,7 @@ class Worksheet extends React.Component {
             clear_callback,
         );
         this.bundleTableID = new Set();
-        this.copyCallBacks = [];
+        this.copyCallbacks = [];
     };
 
     setFocus = (index, subIndex, shouldScroll = true) => {
@@ -1466,7 +1468,7 @@ class Worksheet extends React.Component {
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
                 setDeleteItemCallback={this.setDeleteItemCallback}
-                addCopyBundleRowsCallBack={this.addCopyBundleRowsCallBack}
+                addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
             />
         );
 

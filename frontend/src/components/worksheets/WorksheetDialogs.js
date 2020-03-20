@@ -112,7 +112,7 @@ class WorksheetDialogs extends React.Component {
                 </Dialog>
                 <Dialog
                     open={this.props.openDeleteItem}
-                    onClose={this.props.toggleCmdDialog('deleteItem')} //{this.props.toggleDeletePopup}
+                    onClose={this.props.toggleCmdDialog('deleteItem')}
                     aria-labelledby='deletion-confirmation-title'
                     aria-describedby='deletion-confirmation-description'
                 >
