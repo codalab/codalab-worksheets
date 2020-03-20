@@ -155,7 +155,7 @@ class WorksheetDialogs extends React.Component {
                             <div style={{ whiteSpace: 'pre-wrap' }}>
                                 {this.props.copiedBundleIds.display}
                             </div>
-                            You can use "paste" to move the copied bundles
+                            You can use "paste" to move the copied bundles.
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
