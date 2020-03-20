@@ -22,8 +22,8 @@ class ActionButtons extends React.Component<{
             onShowNewText,
             handleSelectedBundleCommand,
             showBundleOperationButtons,
-            togglePopup,
-            togglePopupNoEvent,
+            toggleCmdDialog,
+            toggleCmdDialogNoEvent,
             info,
             pasteToWorksheet,
         } = this.props;
@@ -76,8 +76,8 @@ class ActionButtons extends React.Component<{
                 {showBundleOperationButtons ? (
                     <BundleBulkActionMenu
                         handleSelectedBundleCommand={handleSelectedBundleCommand}
-                        togglePopup={togglePopup}
-                        togglePopupNoEvent={togglePopupNoEvent}
+                        toggleCmdDialog={toggleCmdDialog}
+                        toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
                     />
                 ) : null}
                 <Tooltip title='Paste text or uuids to this worksheet'>

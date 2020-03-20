@@ -182,7 +182,7 @@ class WorksheetItemList extends React.Component {
     handleClickForDeselect = (event) => {
         //Deselect if clicking between worksheet row items
         if (event.target === event.currentTarget) {
-            this.props.setFocus(-1, 0);
+            this.props.setFocus(-1, 0, false);
         }
     };
 
@@ -249,7 +249,7 @@ class WorksheetItemList extends React.Component {
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
                         setDeleteItemCallback: this.props.setDeleteItemCallback,
                         editPermission: info && info.edit_permission,
-                        addCopyBundleRowsCallBack: this.props.addCopyBundleRowsCallBack,
+                        addCopyBundleRowsCallback: this.props.addCopyBundleRowsCallback,
                         itemID: index,
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
                     };

@@ -84,7 +84,7 @@ class BundleManagerTest(unittest.TestCase):
                 'cpus': 6,
                 'gpus': 0,
                 'memory_bytes': 2 * 1000,
-                'tag': None,
+                'tag': 'worker_X',
                 'run_uuids': [],
                 'dependencies': [],
                 'shared_file_system': False,
@@ -111,3 +111,40 @@ class BundleManagerTest(unittest.TestCase):
         )
         self.assertEqual(len(sorted_workers_list), 5)
         self.assertEqual(sorted_workers_list[0]['worker_id'], 3)
+
+    def test__get_matched_workers_with_tag(self):
+        self.bundle.metadata.request_queue = "tag=worker_X"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 1)
+        self.assertEqual(matched_workers[0]['worker_id'], 4)
+
+    def test__get_matched_workers_with_bad_formatted_tag(self):
+        self.bundle.metadata.request_queue = "tag="
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 0)
+
+    def test__get_matched_workers_without_tag_prefix(self):
+        self.bundle.metadata.request_queue = "worker_X"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 1)
+        self.assertEqual(matched_workers[0]['worker_id'], 4)
+
+    def test__get_matched_workers_not_exist_tag(self):
+        self.bundle.metadata.request_queue = "worker_Y"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 0)
+
+    def test__get_matched_workers_empty_tag(self):
+        self.bundle.metadata.request_queue = ""
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 0)

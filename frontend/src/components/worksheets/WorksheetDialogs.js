@@ -19,7 +19,7 @@ class WorksheetDialogs extends React.Component {
             <div>
                 <Dialog
                     open={this.props.openDelete}
-                    onClose={this.props.togglePopup('rm')} //{this.props.toggleDeletePopup}
+                    onClose={this.props.toggleCmdDialog('rm')} //{this.props.toggleDeletePopup}
                     aria-labelledby='deletion-confirmation-title'
                     aria-describedby='deletion-confirmation-description'
                 >
@@ -60,7 +60,7 @@ class WorksheetDialogs extends React.Component {
                         ) : null}
                     </DialogContent>
                     <DialogActions>
-                        <Button color='primary' onClick={this.props.togglePopup('rm')}>
+                        <Button color='primary' onClick={this.props.toggleCmdDialog('rm')}>
                             CANCEL
                         </Button>
                         <Button color='primary' onClick={this.props.executeBundleCommand('rm')}>
@@ -70,7 +70,7 @@ class WorksheetDialogs extends React.Component {
                 </Dialog>
                 <Dialog
                     open={this.props.openDetach}
-                    onClose={this.props.togglePopup('detach')}
+                    onClose={this.props.toggleCmdDialog('detach')}
                     aria-labelledby='detach-confirmation-title'
                     aria-describedby='detach-confirmation-description'
                 >
@@ -78,7 +78,7 @@ class WorksheetDialogs extends React.Component {
                         {'Detach all selected bundle from this worksheet?'}
                     </DialogTitle>
                     <DialogActions>
-                        <Button color='primary' onClick={this.props.togglePopup('detach')}>
+                        <Button color='primary' onClick={this.props.toggleCmdDialog('detach')}>
                             CANCEL
                         </Button>
                         <Button color='primary' onClick={this.props.executeBundleCommand('detach')}>
@@ -88,7 +88,7 @@ class WorksheetDialogs extends React.Component {
                 </Dialog>
                 <Dialog
                     open={this.props.openKill}
-                    onClose={this.props.togglePopup('kill')}
+                    onClose={this.props.toggleCmdDialog('kill')}
                     aria-labelledby='kill-confirmation-title'
                     aria-describedby='kill-confirmation-description'
                 >
@@ -102,7 +102,7 @@ class WorksheetDialogs extends React.Component {
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
-                        <Button color='primary' onClick={this.props.togglePopup('kill')}>
+                        <Button color='primary' onClick={this.props.toggleCmdDialog('kill')}>
                             CANCEL
                         </Button>
                         <Button color='primary' onClick={this.props.executeBundleCommand('kill')}>
@@ -112,7 +112,7 @@ class WorksheetDialogs extends React.Component {
                 </Dialog>
                 <Dialog
                     open={this.props.openDeleteItem}
-                    onClose={this.props.togglePopup('deleteItem')} //{this.props.toggleDeletePopup}
+                    onClose={this.props.toggleCmdDialog('deleteItem')}
                     aria-labelledby='deletion-confirmation-title'
                     aria-describedby='deletion-confirmation-description'
                 >
@@ -128,14 +128,14 @@ class WorksheetDialogs extends React.Component {
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
-                        <Button color='primary' onClick={this.props.togglePopup('deleteItem')}>
+                        <Button color='primary' onClick={this.props.toggleCmdDialog('deleteItem')}>
                             CANCEL
                         </Button>
                         <Button
                             color='primary'
                             onClick={() => {
                                 this.props.deleteItemCallback();
-                                this.props.togglePopupNoEvent('deleteItem');
+                                this.props.toggleCmdDialogNoEvent('deleteItem');
                             }}
                         >
                             DELETE
@@ -144,22 +144,22 @@ class WorksheetDialogs extends React.Component {
                 </Dialog>
                 <Dialog
                     open={this.props.openCopy}
-                    onClose={this.props.togglePopup('copy')}
+                    onClose={this.props.toggleCmdDialog('copy')}
                     aria-labelledby='copy-title'
                     aria-describedby='deletion-description'
                 >
                     <DialogContent className={classes.copyDialog}>
                         <DialogContentText id='alert-dialog-description'>
-                            The following bundle ids (excluded invalid ones) will be copied to
+                            The following bundle ids (excluding invalid ones) will be copied to
                             clipboard:
                             <div style={{ whiteSpace: 'pre-wrap' }}>
                                 {this.props.copiedBundleIds.display}
                             </div>
-                            You can use "paste" to move the copied bundles
+                            You can use "paste" to move the copied bundles.
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
-                        <Button color='primary' onClick={this.props.togglePopup('copy')}>
+                        <Button color='primary' onClick={this.props.toggleCmdDialog('copy')}>
                             CANCEL
                         </Button>
                         <CopyToClipboard
@@ -167,7 +167,7 @@ class WorksheetDialogs extends React.Component {
                             text={this.props.copiedBundleIds.actualContent}
                             id='copyBundleIdToClipBoard'
                         >
-                            <Button color='primary' onClick={this.props.togglePopup('copy')}>
+                            <Button color='primary' onClick={this.props.toggleCmdDialog('copy')}>
                                 Copy
                             </Button>
                         </CopyToClipboard>
@@ -175,7 +175,7 @@ class WorksheetDialogs extends React.Component {
                 </Dialog>
                 <Dialog
                     open={this.props.openCut}
-                    onClose={this.props.togglePopup('cut')}
+                    onClose={this.props.toggleCmdDialog('cut')}
                     aria-labelledby='copy-title'
                     aria-describedby='deletion-description'
                 >
@@ -190,7 +190,7 @@ class WorksheetDialogs extends React.Component {
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
-                        <Button color='primary' onClick={this.props.togglePopup('cut')}>
+                        <Button color='primary' onClick={this.props.toggleCmdDialog('cut')}>
                             CANCEL
                         </Button>
                         <CopyToClipboard
@@ -198,7 +198,7 @@ class WorksheetDialogs extends React.Component {
                             text={this.props.copiedBundleIds.actualContent}
                             id='cutBundleIdToClipBoard'
                         >
-                            <Button color='primary' onClick={this.props.togglePopup('cut')}>
+                            <Button color='primary' onClick={this.props.toggleCmdDialog('cut')}>
                                 Cut
                             </Button>
                         </CopyToClipboard>

@@ -61,6 +61,18 @@ class SampleWorksheet:
         self._expected_lines = []
 
     def create(self):
+        # Skip creating a sample worksheet if one already exists
+        worksheet_uuids = run_command(
+            [self._cl, 'wsearch', self._worksheet_name, '--uuid-only']
+        ).split('\n')
+        if re.match(SampleWorksheet._FULL_UUID_REGEX, worksheet_uuids[0]):
+            print(
+                'There is already an existing {} with UUID {}. Skipping creating a sample worksheet...'.format(
+                    self._worksheet_name, worksheet_uuids[0]
+                )
+            )
+            return
+
         print('Creating a {} worksheet...'.format(self._description))
         self._create_dependencies()
         self._add_introduction()
@@ -75,6 +87,7 @@ class SampleWorksheet:
         print('Done.')
 
     def test_print(self):
+        self._wait_for_bundles_to_finish()
         output_lines = run_command([self._cl, 'print', self._worksheet_name]).split('\n')
         has_error = False
         for i in range(len(self._expected_lines)):
@@ -138,6 +151,11 @@ class SampleWorksheet:
             )
             run_command([self._cl, 'perm', uuid, 'public', 'none'])
             self._private_bundles.append(uuid)
+
+    def _wait_for_bundles_to_finish(self):
+        for bundle in self._valid_bundles:
+            run_command([self._cl, 'wait', bundle])
+            print('Bundle {} is finished.'.format(bundle))
 
     def _create_sample_worksheet(self):
         # Write out the contents to a temporary file
@@ -255,7 +273,7 @@ class SampleWorksheet:
         self._add_line('% add name')
         self._add_blank_line_pattern()
         self._expected_lines.append(
-            'Error on line [\d]+: `add` must be preceded by `schema` directive'
+            'Error in source line [\d]+: `add` must be preceded by `schema` directive'
         )
 
         self._add_description('Attempting to add a non-existing schema')
@@ -367,10 +385,10 @@ class SampleWorksheet:
         self._add_header('Invalid Directives')
         self._add_line('% hi')
         self._add_blank_line_pattern()
-        self._expected_lines.append('Error on line [\d]+: unknown directive `hi`')
+        self._expected_lines.append('Error in source line [\d]+: unknown directive `hi`')
         self._add_line('% hello')
         self._add_blank_line_pattern()
-        self._expected_lines.append('Error on line [\d]+: unknown directive `hello`')
+        self._expected_lines.append('Error in source line [\d]+: unknown directive `hello`')
 
     def _add_rendering_logic(self):
         self._add_header('Rendering')

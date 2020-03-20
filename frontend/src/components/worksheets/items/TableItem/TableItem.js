@@ -124,7 +124,7 @@ class TableItem extends React.Component<{
     render() {
         const { worksheetUUID, setFocus, prevItem, editPermission } = this.props;
         // Provide copy data callback
-        this.props.addCopyBundleRowsCallBack(this.props.itemID, this.copyCheckedBundleRows);
+        this.props.addCopyBundleRowsCallback(this.props.itemID, this.copyCheckedBundleRows);
         let prevItemProcessed = null;
         if (prevItem) {
             const { maxKey } = getMinMaxKeys(prevItem);

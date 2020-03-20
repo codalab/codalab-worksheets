@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Alert, Modal } from 'react-bootstrap';
 import './ExtraWorksheetHTML.scss';
 
-const GlossaryModal = ({ show, toggle }) => (
+const KeyboardShortCutModal = ({ show, toggle }) => (
     <Modal id='glossaryModal' tabIndex='-1' keyboard show={show} onHide={toggle}>
         <Modal.Header closeButton>
             <h4>Keyboard Shortcuts</h4>
@@ -99,6 +99,12 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Edit and add a rerun in bundle details</td>
                     </tr>
+                    <tr>
+                        <td>
+                            <kbd>a v</kbd>
+                        </td>
+                        <td>Paste clipboard content to source after focused line</td>
+                    </tr>
                     <th>Bundles operation</th>
                     <tr>
                         <td>
@@ -111,6 +117,12 @@ const GlossaryModal = ({ show, toggle }) => (
                             <kbd>a k</kbd>
                         </td>
                         <td>Kill all selected bundles</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>a c</kbd>
+                        </td>
+                        <td>Copy all selected bundles' ids</td>
                     </tr>
                     <th>Other</th>
                     <tr>
@@ -171,12 +183,13 @@ let ExtraWorksheetHTML = ({
         <div id='update_progress' className='progress-message'>
             <img src='/img/Preloader_Small.gif' /> Updating...
         </div>
+        {/*TODO: Move all error message to worksheet dialog */}
         {errorMessage && (
             <Alert className='codalab-error-message' bsStyle='danger' onDismiss={clearErrorMessage}>
                 <i className='glyphicon glyphicon-remove-circle' /> Error: {errorMessage}
             </Alert>
         )}
-        <GlossaryModal show={showGlossaryModal} toggle={toggleGlossaryModal} />
+        <KeyboardShortCutModal show={showGlossaryModal} toggle={toggleGlossaryModal} />
     </React.Fragment>
 );
 
