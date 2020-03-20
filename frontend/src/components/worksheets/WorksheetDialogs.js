@@ -150,7 +150,7 @@ class WorksheetDialogs extends React.Component {
                 >
                     <DialogContent className={classes.copyDialog}>
                         <DialogContentText id='alert-dialog-description'>
-                            The following bundle ids (excluded invalid ones) will be copied to
+                            The following bundle ids (excluding invalid ones) will be copied to
                             clipboard:
                             <div style={{ whiteSpace: 'pre-wrap' }}>
                                 {this.props.copiedBundleIds.display}
