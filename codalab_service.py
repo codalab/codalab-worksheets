@@ -96,14 +96,18 @@ def main():
     service_manager.execute()
 
 
+def clean_version(version):
+    """Clean version name (usually a branch name) so it can be used as a
+    tag name for a Docker image."""
+    return version.replace("/", "_").replace("-", "_")
+
+
 def get_default_version():
     """Get the current git branch."""
-    return (
-        subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8')
-        .strip()
-        # This is required so that branches with special names do not fail CI.
-        .replace("/", "_")
-        .replace("-", "_")
+    return clean_version(
+        subprocess.check_output(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], encoding='utf-8'
+        ).strip()
     )
 
 
@@ -508,6 +512,9 @@ class CodalabServiceManager(object):
 
     def __init__(self, args):
         self.args = args
+
+        if self.args.version:
+            self.args.version = clean_version(self.args.version)
         self.compose_cwd = os.path.join(BASE_DIR, 'docker', 'compose_files')
 
         self.compose_files = ['docker-compose.yml']
