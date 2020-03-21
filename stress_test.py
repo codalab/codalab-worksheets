@@ -2,6 +2,7 @@ import argparse
 import os
 import random
 import string
+import subprocess
 import sys
 import time
 
@@ -69,31 +70,46 @@ class TestFile:
 
 class StressTestRunner:
     """
-    Abstract class that holds common logic for stress test runners.
+    This runner object holds the logic on how the stress tests are run based on the command line
+    arguments passed in.
 
     Args:
         cl: cl instance used to run CodaLab commands
         args: command line arguments
     """
 
-    # List of random, large docker images
+    # List of random, large Docker images in alphabetical order
     _LARGE_DOCKER_IMAGES = [
-        'adreeve/python-numpy',
-        'larger/rdp:dev',
-        'openjdk:latest',
-        'tensorflow/tensorflow:latest',
-        'iwane/numpy-matplotlib',
         'aaronyalai/openaibaselines:gym3',
-        'mysql:latest',
+        'adreeve/python-numpy',
         'couchbase:latest',
-        'rails:latest',
+        'golang:latest',
+        'iwane/numpy-matplotlib',
+        'jenkins:latest',
+        'larger/rdp:dev',
+        'maven:latest',
+        'mysql:latest',
+        'mongo:latest',
+        'neo4j:latest',
+        'node:latest',
+        'openjdk:latest',
+        'perl:latest',
+        'postgres:latest',
         'pytorch/pytorch:latest',
+        'rails:latest',
+        'solr:slim',
+        'sonarqube:latest',
+        'tensorflow/tensorflow:latest',
     ]
     _TAG = 'codalab-stress-test'
 
     def __init__(self, cl, args):
         self._cl = cl
         self._args = args
+
+        # Connect to the instance the stress tests will run on
+        print('Connecting to instance %s...' % args.instance)
+        subprocess.call([self._cl, 'work', '%s::' % args.instance])
 
     def run(self):
         print('Running stress tests...')
@@ -172,16 +188,17 @@ class StressTestRunner:
     def _test_many_docker_runs(self):
         self._set_worksheet('many_docker_runs')
         for _ in range(self._args.large_docker_runs_count):
-            for image in StressTestRunner._LARGE_DOCKER_IMAGES:
-                self._run_bundle(
-                    [
-                        self._cl,
-                        'run',
-                        'echo building {}...'.format(image),
-                        '--request-docker-image',
-                        image,
-                    ]
-                )
+            # Pick a random image from the list of large Docker images to use for the run
+            image = random.choice(StressTestRunner._LARGE_DOCKER_IMAGES)
+            self._run_bundle(
+                [
+                    self._cl,
+                    'run',
+                    'echo building {}...'.format(image),
+                    '--request-docker-image',
+                    image,
+                ]
+            )
 
     def _test_infinite_memory(self):
         if not self._args.test_infinite_memory:
@@ -267,15 +284,19 @@ def main():
     if args.heavy:
         print('Setting the heavy configuration...')
         args.large_file_size_gb = 20
-        args.bundle_upload_count = 2000
-        args.create_worksheet_count = 2000
-        args.parallel_runs_count = 1000
-        args.large_docker_runs_count = 100
+        args.bundle_upload_count = 1000
+        args.create_worksheet_count = 1000
+        args.parallel_runs_count = 500
+        args.large_docker_runs_count = 2000
         args.test_infinite_memory = True
-        args.test_infinite_disk = True
         args.test_infinite_gpu = True
-        args.infinite_gpu_runs_count = 1000
-        args.large_disk_write_count = 1000
+        args.infinite_gpu_runs_count = 100
+        # TODO: It is a known issue that writing to disk with dd will cause the worker to go down.
+        # Disable these tests until we can fix this problem.
+        # Issue: https://github.com/codalab/codalab-worksheets/issues/1919
+        print('Skipping infinite disk write and large disk writes tests...')
+        args.test_infinite_disk = False
+        args.large_disk_write_count = 0  # TODO: set to 500
     print(args)
 
     # Run stress tests and time how long it takes to complete
@@ -295,6 +316,12 @@ if __name__ == '__main__':
         type=str,
         help='Path to Codalab CLI executable (defaults to "cl")',
         default='cl',
+    )
+    parser.add_argument(
+        '--instance',
+        type=str,
+        help='CodaLab instance to run stress tests against (defaults to "localhost")',
+        default='localhost',
     )
     parser.add_argument(
         '--heavy',
@@ -345,8 +372,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--large-docker-runs-count',
         type=int,
-        help='Number of runs with large docker images (defaults to 1)',
-        default=1,
+        help='Number of runs with large Docker images (defaults to 20)',
+        default=20,
     )
     parser.add_argument(
         '--test-infinite-memory',
