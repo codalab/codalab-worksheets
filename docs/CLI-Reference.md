@@ -339,8 +339,7 @@ Usage: cl <command> <arguments>
       -T, --tags        Change tags (must appear after worksheet_spec).
       -o, --owner-spec  Change owner of worksheet.
       --freeze          Freeze worksheet to prevent future modification (PERMANENT!).
-      --anonymous       Set worksheet to be anonymous (identity of the owner will NOT 
-be visible to users without 'all' permission on the worksheet).
+      --anonymous       Set worksheet to be anonymous (identity of the owner will NOT be visible to users without 'all' permission on the worksheet).
       --not-anonymous   Set bundle to be NOT anonymous.
       -f, --file        Replace the contents of the current worksheet with this file.
 
