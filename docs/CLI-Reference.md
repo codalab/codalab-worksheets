@@ -2,7 +2,7 @@
 
 This file is auto-generated from the output of `cl help -v -m` and provides the list of all CLI commands.
 
-Usage: cl <command> <arguments>
+Usage: `cl <command> <arguments>`
 
 ## Commands for bundles:
   ### upload (up):
