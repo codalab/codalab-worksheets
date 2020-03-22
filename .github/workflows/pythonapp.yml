@@ -14,6 +14,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Clear freespace
+      run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          df -h
     - uses: actions/checkout@v2
     - name: Set up Python 3.6
       uses: actions/setup-python@v1
