@@ -2387,7 +2387,6 @@ class BundleCLI(object):
                 subpaths = [subpath]
         state = self.follow_targets(client, bundle_uuid, subpaths)
         if state != State.READY:
-            print("[debug] 3 state={}".format(state))
             self.exit(state)
 
     def follow_targets(self, client, bundle_uuid, subpaths, from_start=False):

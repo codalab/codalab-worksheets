@@ -1435,6 +1435,7 @@ def test(ctx):
     # the memory usage of a Docker container.
     # stress(use_time=2, request_time=10, use_memory=1000, request_memory=50, use_disk=10, request_disk=100, expected_exit_code=1, expected_failure_message='Memory limit 50mb exceeded.')
 
+    '''
     # Too much disk
     stress(
         use_time=2,
@@ -1446,7 +1447,7 @@ def test(ctx):
         expected_exit_code=1,
         expected_failure_message='Disk limit 2mb exceeded.',
     )
-
+    '''
     # Test network access
     wait(run_command([cl, 'run', 'ping -c 1 google.com']), 1)
     wait(run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)

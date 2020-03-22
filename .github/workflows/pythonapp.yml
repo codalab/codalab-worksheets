@@ -53,9 +53,9 @@ jobs:
         python3 codalab_service.py build services --version master
         python3 codalab_service.py start --services default monitor --version master 
         python3 codalab_service.py test --version master default
-        python3 codalab_service.py test run --version master
-        #docker restart codalab_worker_1 && python3 codalab_service.py test run --version master
-        #docker stop codalab_worker_1
-        #python3 codalab_service.py start --services worker --version master --shared-file-system
-        #python3 codalab_service.py test --version master --shared-file-system basic run read write kill resources netcat netcurl workers
+        #python3 codalab_service.py test run --version master
+        docker restart codalab_worker_1 && python3 codalab_service.py test run --version master
+        docker stop codalab_worker_1
+        python3 codalab_service.py start --services worker --version master --shared-file-system
+        python3 codalab_service.py test --version master --shared-file-system basic run read write kill resources netcat netcurl workers
 
