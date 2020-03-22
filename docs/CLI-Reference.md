@@ -2,6 +2,8 @@
 
 This file is auto-generated from the output of `cl help -v -m` and provides the list of all CLI commands.
 
+Usage: cl <command> <arguments>
+
 ## Commands for bundles:
   ### upload (up):
     Create a bundle by uploading an existing file/directory.
@@ -99,8 +101,7 @@ This file is auto-generated from the output of `cl help -v -m` and provides the 
       -n, --name            Change the bundle name (format: ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$).
       -T, --tags            Change tags (must appear after worksheet_spec).
       -d, --description     New bundle description.
-      --anonymous           Set bundle to be anonymous (identity of the owner will NOT 
-be visible to users without 'all' permission on the bundle).
+      --anonymous           Set bundle to be anonymous (identity of the owner will NOT be visible to users without 'all' permission on the bundle).
       --not-anonymous       Set bundle to be NOT anonymous.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
