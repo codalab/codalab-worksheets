@@ -53,7 +53,7 @@ jobs:
         #chmod +x docker-compose
         #sudo mv docker-compose /usr/local/bin
         #sudo service mysql stop
-        python3 codalab_service.py build services --version master
+        python3 codalab_service.py build services --version master --pull
         python3 codalab_service.py start --services default monitor --version master 
         python3 codalab_service.py test --version master default
         #python3 codalab_service.py test run --version master
