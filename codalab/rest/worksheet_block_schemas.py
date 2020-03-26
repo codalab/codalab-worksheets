@@ -137,7 +137,7 @@ class BundleImageBlockSchema(BundleBlockSchema):
 
 class SchemaRowsSchema(WorksheetBlockSchema):
     """
-    Schema for user defined schemas in worksheets
+    Schema for user defined schema rows in worksheets
     """
 
     field_name = fields.String()
