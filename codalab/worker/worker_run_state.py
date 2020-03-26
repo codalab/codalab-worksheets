@@ -272,7 +272,11 @@ class RunStateMachine(StateTransitioner):
         else:
             docker_network = self.docker_network_internal.name
 
+<<<<<<< HEAD
         # 3) Start container
+=======
+        # 4) Start container
+>>>>>>> 0f2c9526... move cpu and gpu resource check to the beginning of _transition_from_PREPARING
         try:
             container = docker_utils.start_bundle_container(
                 run_state.bundle_path,
