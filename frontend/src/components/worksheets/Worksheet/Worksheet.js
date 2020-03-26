@@ -434,7 +434,7 @@ class Worksheet extends React.Component {
                 // Insert after the source line
                 var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
                 var item_line = this.state.ws.info.block_to_raw[currentItemKey];
-                var source_line = this.state.ws.info.raw_item_to_source_line[item_line];
+                var source_line = this.state.ws.info.expanded_items_to_raw_lines[item_line];
                 this.state.ws.info.raw.splice(source_line + 1, 0, data);
                 this.saveAndUpdateWorksheet(false);
             } else {
