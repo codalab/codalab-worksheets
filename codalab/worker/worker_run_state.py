@@ -10,7 +10,7 @@ import codalab.worker.docker_utils as docker_utils
 
 from codalab.lib.formatting import size_str, duration_str
 from codalab.worker.file_util import remove_path, get_path_size
-from codalab.worker.bundle_state import State
+from codalab.worker.bundle_state import State, DependencyKey
 from codalab.worker.fsm import DependencyStage, StateTransitioner
 from codalab.worker.worker_thread import ThreadDict
 
@@ -170,6 +170,7 @@ class RunStateMachine(StateTransitioner):
         if not self.shared_file_system:
             # No need to download dependencies if we're in the shared FS since they're already in our FS
             for dep_key, dep in run_state.bundle.dependencies:
+                # dep_key = DependencyKey(dep["parent_uuid"], dep["parent_path"])
                 dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
                 if dependency_state.stage == DependencyStage.DOWNLOADING:
                     status_messages.append(
@@ -234,6 +235,7 @@ class RunStateMachine(StateTransitioner):
             '/' + run_state.bundle.uuid + ('_dependencies' if not self.shared_file_system else '')
         )
         for dep_key, dep in run_state.bundle.dependencies:
+            # dep_key = DependencyKey(dep["parent_uuid"], dep["parent_path"])
             full_child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
             if not full_child_path.startswith(run_state.bundle_path):
                 # Dependencies should end up in their bundles (ie prevent using relative paths like ..
@@ -440,6 +442,7 @@ class RunStateMachine(StateTransitioner):
                     time.sleep(1)
 
         for dep_key, dep in run_state.bundle.dependencies:
+            # dep_key = DependencyKey(dep["parent_uuid"], dep["parent_path"])
             if not self.shared_file_system:  # No dependencies if shared fs worker
                 self.dependency_manager.release(run_state.bundle.uuid, dep_key)
 

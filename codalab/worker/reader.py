@@ -60,7 +60,7 @@ class Reader(object):
         Return target_info of path in bundle as a message on the reply_fn
         """
         target_info = None
-        dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies.values()])
+        dep_paths = set([dep.child_path for dep_key, dep in run_state.bundle.dependencies])
 
         # if path is a dependency raise an error
         if path and os.path.normpath(path) in dep_paths:
@@ -93,7 +93,7 @@ class Reader(object):
         """
         Stream the directory at path using a separate thread
         """
-        dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies.values()])
+        dep_paths = set([dep.child_path for dep_key, dep in run_state.bundle.dependencies])
         exclude_names = [] if path else dep_paths
 
         def stream_thread(final_path):

@@ -86,17 +86,17 @@ class BundleInfo(object):
                     child_path=dep["child_path"],
                     child_uuid=dep["child_uuid"],
                     location=dep.get("location", None),
-                )
+                ),
             )
             for dep in dependencies
-        ]  # type: List[(DependencyKey, Dependency)]
+        ]  # type: List[Dependency]
 
         self.location = location  # set if local filesystem
 
     @property
     def as_dict(self):
         dct = generic_to_dict(self)
-        dct['dependencies'] = [generic_to_dict(v) for k,v in dct['dependencies']]
+        dct['dependencies'] = [v._asdict() for k, v in dct['dependencies']]
         return dct
 
     def __str__(self):

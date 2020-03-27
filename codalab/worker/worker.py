@@ -511,7 +511,9 @@ class Worker:
 
     def write(self, uuid, path, string):
         run_state = self.runs[uuid]
-        if os.path.normpath(path) in set(dep.child_path for dep in run_state.bundle.dependencies):
+        if os.path.normpath(path) in set(
+            dep.child_path for dep_key, dep in run_state.bundle.dependencies
+        ):
             return
 
         def write_fn():
