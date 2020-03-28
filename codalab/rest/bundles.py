@@ -491,9 +491,12 @@ def _netcurl_bundle(uuid, port, path=''):
             response.headers[k] = new_response.headers[k]
         # Return the response (which sends back the body)
         return new_response
-
     except Exception:
-        logger.error("{}".format(request.environ), file=sys.stderr)
+        logger.exception(
+            "Failed to forward HTTP request for the bundle with uuid: {} for environment: {}".format(
+                uuid, request.environ
+            )
+        )
         raise
     finally:
         request.path_shift(-4)  # restore the URL
