@@ -393,7 +393,9 @@ class BundleManager(object):
             # tag-exclusive or don't have a tag defined.
             # (removing workers that are tag_exclusive and have tags defined).
             workers_list = [
-                worker for worker in workers_list if not worker['tag_exclusive'] or not worker['tag']
+                worker
+                for worker in workers_list
+                if not worker['tag_exclusive'] or not worker['tag']
             ]
 
         # Filter by CPUs.
