@@ -243,13 +243,7 @@ class NewRun extends React.Component<{
         if (cpu) args.push(`--request-cpus=${cpu}`);
         if (gpu) args.push(`--request-gpus=${gpu}`);
         if (docker) args.push(`--request-docker-image=${docker}`);
-        if (queue) {
-            let finalQueue = queue;
-            if (finalQueue.startsWith("tag=")) {
-                finalQueue = finalQueue.substring(4);
-            }
-            args.push(`--request-queue ${finalQueue}`);
-        }
+        if (queue) args.push(`--request-queue=${queue}`);
         if (networkAccess) args.push(`--request-network`);
         if (failedDependencies) args.push(`--allow-failed-dependencies`);
 
@@ -444,7 +438,7 @@ class NewRun extends React.Component<{
                             </Grid>
                             <ConfigLabel
                                 label="Queue"
-                                tooltip="Tag of the queue, this will add '--request-queue tag={input}' to the run"
+                                tooltip="Tag of the queue, this will add '--request-queue {input}' to the run"
                                 optional
                             />
                             <ConfigTextInput
