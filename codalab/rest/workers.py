@@ -135,10 +135,10 @@ def start_bundle(worker_id, uuid):
 
 @get("/workers/info", name="workers_info", apply=AuthenticatedPlugin())
 def workers_info():
-    if request.user.user_id != local.model.root_user_id:
-        abort(http.client.UNAUTHORIZED, "User is not root user")
-
     data = local.worker_model.get_workers()
+    if request.user.user_id != local.model.root_user_id:
+        # Filter to workers that only this user owns.
+        data = [worker for worker in data if worker['user_id'] == request.user.user_id]
 
     # edit entries in data to make them suitable for human reading
     for worker in data:
