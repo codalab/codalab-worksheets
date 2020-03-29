@@ -34,6 +34,7 @@ def checkin(worker_id):
         request.json.get("free_disk_bytes"),
         request.json["dependencies"],
         request.json.get("shared_file_system", False),
+        request.json.get("tag_exclusive", False),
     )
 
     for run in request.json["runs"]:

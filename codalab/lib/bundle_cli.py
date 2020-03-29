@@ -1052,6 +1052,7 @@ class BundleCLI(object):
             'tag',
             'runs',
             'shared_file_system',
+            'tag_exclusive',
         ]
 
         data = []
@@ -1070,6 +1071,7 @@ class BundleCLI(object):
                     'tag': worker['tag'],
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
+                    'tag_exclusive': worker['tag_exclusive'],
                 }
             )
 

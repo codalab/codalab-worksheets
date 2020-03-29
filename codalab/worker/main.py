@@ -120,6 +120,11 @@ def parse_args():
         action='store_true',
         help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
+    parser.add_argument(
+        '--tag-exclusive',
+        action='store_true',
+        help='To be used when the worker should only run bundles that match its tag.',
+    )
     return parser.parse_args()
 
 
@@ -206,6 +211,7 @@ def main():
         args.idle_seconds,
         bundle_service,
         args.shared_file_system,
+        args.tag_exclusive,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
     )
