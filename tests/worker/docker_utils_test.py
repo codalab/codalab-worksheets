@@ -1,4 +1,4 @@
-import docker
+from docker.errors import APIError
 import unittest
 
 from codalab.worker.docker_utils import DockerUserErrorException, DockerException, wrap_exception
@@ -13,12 +13,11 @@ class DockerUtilsTest(unittest.TestCase):
 
         @wrap_exception('Should throw DockerException')
         def throw_error():
-            raise docker.errors.ApiError(error)
+            raise APIError(error)
 
         try:
             throw_error()
         except Exception as e:
-            print(str(e))
             self.assertEqual(str(e), 'Should throw DockerException: ' + error)
             self.assertIsInstance(e, DockerException)
 
@@ -35,11 +34,10 @@ class DockerUtilsTest(unittest.TestCase):
 
         @wrap_exception('Should throw DockerUserErrorException')
         def throw_cuda_error():
-            raise docker.errors.ApiError(error)
+            raise APIError(error)
 
         try:
             throw_cuda_error()
         except Exception as e:
-            print(str(e))
             self.assertEqual(str(e), 'Should throw DockerUserErrorException: ' + error)
             self.assertIsInstance(e, DockerUserErrorException)
