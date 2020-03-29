@@ -266,7 +266,7 @@ def get_container_running_time(container):
     end_time = (
         container.attrs['State']['FinishedAt']
         if container.attrs['State']['Status'] == 'exited'
-        else str(datetime.datetime.now().replace(tzinfo=tz.tzutc()))
+        else str(datetime.datetime.now(tz.tzutc()))
     )
     # Docker reports both the start_time and the end_time in ISO format. We currently use dateutil.parser.isoparse to
     # parse them. In Python3.7 or above, the built-in function datetime.fromisoformat() can be used to parse ISO
