@@ -230,8 +230,9 @@ def parse_cpuset_args(arg):
         arg: comma separated string of ints, or "ALL" representing all available cpus
     """
     try:
-        # Get number of cores that the process can actually use.
-        cpu_count = len(os.sched_getaffinity(0))
+        # Get the set of cores that the process can actually use.
+        # For instance, on Slurm, the returning value may contain only 4 cores: {2,3,20,21}.
+        return os.sched_getaffinity(0)
     except AttributeError:
         # os.sched_getaffinity() isn't available on all platforms,
         # so fallback to using the number of physical cores.
