@@ -11,6 +11,7 @@ import os
 import docker
 from dateutil import parser, tz
 import datetime
+import re
 import requests
 
 
@@ -21,6 +22,12 @@ DEFAULT_TIMEOUT = 720
 # Docker Registry HTTP API v2 URI prefix
 URI_PREFIX = 'https://hub.docker.com/v2/repositories/'
 
+# This specific error happens when a user specifies an image with an incompatible version of Cuda
+NVIDIA_MOUNT_ERROR_REGEX = (
+    '[\s\S]*OCI runtime create failed[\s\S]*stderr: nvidia-container-cli: '
+    'mount error: file creation failed:[\s\S]*nvidia-smi'
+)
+
 
 logger = logging.getLogger(__name__)
 client = docker.from_env(timeout=DEFAULT_TIMEOUT)
@@ -29,16 +36,24 @@ client = docker.from_env(timeout=DEFAULT_TIMEOUT)
 def wrap_exception(message):
     def decorator(f):
         def wrapper(*args, **kwargs):
+            def format_error_message(exception):
+                return '{}: {}'.format(message, exception)
+
+            def check_for_user_error(exception):
+                error_message = format_error_message(e)
+                if re.match(NVIDIA_MOUNT_ERROR_REGEX, str(exception)):
+                    raise DockerUserErrorException(error_message)
+                else:
+                    raise DockerException(error_message)
+
             try:
                 return f(*args, **kwargs)
             except DockerException as e:
-                raise DockerException(message + ': ' + str(e))
-            except (
-                docker.errors.APIError,
-                docker.errors.ImageNotFound,
-                docker.errors.NotFound,
-            ) as e:
-                raise DockerException(message + ': ' + str(e))
+                raise DockerException(format_error_message(e))
+            except docker.errors.APIError as e:
+                check_for_user_error(e)
+            except (docker.errors.ImageNotFound, docker.errors.NotFound) as e:
+                raise DockerException(format_error_message(e))
 
         return wrapper
 
@@ -48,6 +63,11 @@ def wrap_exception(message):
 class DockerException(Exception):
     def __init__(self, message):
         super(DockerException, self).__init__(message)
+
+
+class DockerUserErrorException(Exception):
+    def __init__(self, message):
+        super(DockerUserErrorException, self).__init__(message)
 
 
 @wrap_exception('Unable to use Docker')
