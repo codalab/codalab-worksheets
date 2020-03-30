@@ -24,7 +24,7 @@ URI_PREFIX = 'https://hub.docker.com/v2/repositories/'
 
 # This specific error happens when a user specifies an image with an incompatible version of Cuda
 NVIDIA_MOUNT_ERROR_REGEX = (
-    '[\s\S]*OCI runtime create failed[\s\S]*stderr: nvidia-container-cli: '
+    '[\s\S]*OCI runtime create failed[\s\S]*stderr:[\s\S]*nvidia-container-cli: '
     'mount error: file creation failed:[\s\S]*nvidia-smi'
 )
 
