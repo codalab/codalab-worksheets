@@ -1049,14 +1049,8 @@ def test(ctx):
         [cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1
     )
 
-    # Multi-alias tests
-    multi_alias_uuid1 = _run_command(
-        [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo "two aliases"']
-    )
-    wait(multi_alias_uuid1)
-    check_equals('two aliases', _run_command([cl, 'cat', multi_alias_uuid1 + "/stdout"]))
-
-    multi_alias_uuid2 = _run_command(
+    # Test multiple keys pointing to the same bundle
+    multi_alias_uuid = _run_command(
         [
             cl,
             'run',
@@ -1066,8 +1060,16 @@ def test(ctx):
             'echo "three aliases"',
         ]
     )
-    wait(multi_alias_uuid2)
-    check_equals('three aliases', _run_command([cl, 'cat', multi_alias_uuid2 + "/stdout"]))
+    wait(multi_alias_uuid)
+    check_equals(
+        'three aliases', _run_command([cl, 'cat', ':{}'.format(multi_alias_uuid), "foo/stdout"])
+    )
+    check_equals(
+        'three aliases', _run_command([cl, 'cat', ':{}'.format(multi_alias_uuid), "foo1/stdout"])
+    )
+    check_equals(
+        'three aliases', _run_command([cl, 'cat', ':{}'.format(multi_alias_uuid), "foo2/stdout"])
+    )
 
 
 @TestModule.register('read')
