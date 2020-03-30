@@ -1034,9 +1034,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'workers',
-        help=[
-            'Display information about workers that you have connected to the CodaLab instance.'
-        ],
+        help=['Display information about workers that you have connected to the CodaLab instance.'],
         arguments=(),
     )
     def do_workers_command(self, args):
