@@ -95,4 +95,3 @@ class BundleStateTest(unittest.TestCase):
             ],
         )
         self.assertEqual(info.as_dict, BundleInfo.from_dict(info.as_dict).as_dict)
-
