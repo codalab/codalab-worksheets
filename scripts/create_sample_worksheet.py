@@ -87,6 +87,7 @@ class SampleWorksheet:
         print('Done.')
 
     def test_print(self):
+        self._wait_for_bundles_to_finish()
         output_lines = run_command([self._cl, 'print', self._worksheet_name]).split('\n')
         has_error = False
         for i in range(len(self._expected_lines)):
@@ -150,6 +151,12 @@ class SampleWorksheet:
             )
             run_command([self._cl, 'perm', uuid, 'public', 'none'])
             self._private_bundles.append(uuid)
+
+    def _wait_for_bundles_to_finish(self):
+        if self._valid_bundles:
+            for bundle in self._valid_bundles:
+                run_command([self._cl, 'wait', bundle])
+                print('Bundle {} is finished.'.format(bundle))
 
     def _create_sample_worksheet(self):
         # Write out the contents to a temporary file

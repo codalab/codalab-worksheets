@@ -164,6 +164,17 @@ class RunStateMachine(StateTransitioner):
         if run_state.is_killed:
             return run_state._replace(stage=RunStage.CLEANING_UP)
 
+        # Check CPU and GPU availability
+        try:
+            cpuset, gpuset = self.assign_cpu_and_gpu_sets_fn(
+                run_state.resources.cpus, run_state.resources.gpus
+            )
+        except Exception as e:
+            message = "Unexpectedly unable to assign enough resources: %s" % str(e)
+            logger.error(message)
+            logger.error(traceback.format_exc())
+            return run_state._replace(run_status=message)
+
         dependencies_ready = True
         status_messages = []
 
@@ -256,23 +267,12 @@ class RunStateMachine(StateTransitioner):
             #   dependency_path:docker_dependency_path:ro
             docker_dependencies.append((dependency_path, docker_dependency_path))
 
-        # 3) Set up container
         if run_state.resources.network:
             docker_network = self.docker_network_external.name
         else:
             docker_network = self.docker_network_internal.name
 
-        try:
-            cpuset, gpuset = self.assign_cpu_and_gpu_sets_fn(
-                run_state.resources.cpus, run_state.resources.gpus
-            )
-        except Exception as e:
-            message = "Cannot assign enough resources: %s" % str(e)
-            logger.error(message)
-            logger.error(traceback.format_exc())
-            return run_state._replace(run_status=message)
-
-        # 4) Start container
+        # 3) Start container
         try:
             container = docker_utils.start_bundle_container(
                 run_state.bundle_path,
@@ -287,6 +287,10 @@ class RunStateMachine(StateTransitioner):
                 runtime=self.docker_runtime,
             )
             self.worker_docker_network.connect(container)
+        except docker_utils.DockerUserErrorException as e:
+            message = 'Cannot start Docker container: {}'.format(e)
+            logger.warning(message)
+            return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
         except Exception as e:
             message = 'Cannot start Docker container: {}'.format(e)
             logger.error(message)
