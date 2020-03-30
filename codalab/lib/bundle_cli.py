@@ -313,7 +313,7 @@ class Commands(object):
                 if markdown:
                     name = HEADING_LEVEL_3 + name
                 return '%s%s:\n%s\n%s' % (
-                    # This is to make github Markdown format compatible with the readthedoc theme.
+                    # This is to make GitHub Markdown format compatible with the Read the Docs theme.
                     ' ' * indent if not markdown else '',
                     name,
                     '\n'.join((' ' * (indent * 2)) + line for line in command_obj.help),
