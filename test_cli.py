@@ -977,7 +977,7 @@ def test(ctx):
 @TestModule.register('run')
 def test(ctx):
     name = random_name()
-    uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
+    uuid = _run_command([cl, 'run', 'echo hello', '-n', name, '--request-memory', '200m'])
     wait(uuid)
     # test search
     check_contains(name, _run_command([cl, 'search', name]))
