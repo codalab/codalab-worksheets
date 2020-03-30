@@ -5,7 +5,7 @@ This file is auto-generated from the output of `cl help -v -m` and provides the 
 Usage: `cl <command> <arguments>`
 
 ## Commands for bundles:
-  ### upload (up):
+### upload (up):
     Create a bundle by uploading an existing file/directory.
       upload <path>            : Upload contents of file/directory <path> as a bundle.
       upload <path> ... <path> : Upload one bundle whose directory contents contain <path> ... <path>.
@@ -29,7 +29,7 @@ Usage: `cl <command> <arguments>`
       --source-url             URL corresponding to the original source of this bundle.
       -e, --edit               Show an editor to allow editing of the bundle metadata.
 
-  ### make:
+### make:
     Create a bundle by combining parts of existing bundles.
       make <bundle>/<subpath>                : New bundle's contents are copied from <subpath> in <bundle>.
       make <key>:<bundle> ... <key>:<bundle> : New bundle contains file/directories <key> ... <key>, whose contents are given.
@@ -42,7 +42,7 @@ Usage: `cl <command> <arguments>`
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
 
-  ### run:
+### run:
     Create a bundle by running a program bundle on an input bundle.
     Arguments:
       target_spec                  [<key>]:[[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
@@ -67,7 +67,7 @@ Usage: `cl <command> <arguments>`
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
       -v, --verbose                Display verbose output.
 
-  ### docker:
+### docker:
     Beta feature. Simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.
     Arguments:
       target_spec                  [<key>]:[[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
@@ -91,7 +91,7 @@ Usage: `cl <command> <arguments>`
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
       -v, --verbose                Display verbose output.
 
-  ### edit (e):
+### edit (e):
     Edit an existing bundle's metadata.
       edit           : Popup an editor.
       edit -n <name> : Edit the name metadata field (same for other fields).
@@ -105,14 +105,14 @@ Usage: `cl <command> <arguments>`
       --not-anonymous       Set bundle to be NOT anonymous.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### detach (de):
+### detach (de):
     Detach a bundle from this worksheet, but doesn't remove the bundle.
     Arguments:
       bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
       -n, --index           Specifies which occurrence (1, 2, ...) of the bundle to detach, counting from the end.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### rm:
+### rm:
     Remove a bundle (permanent!).
     Arguments:
       bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
@@ -122,7 +122,7 @@ Usage: `cl <command> <arguments>`
       -i, --dry-run         Perform a dry run (just show what will be done without doing it).
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### search (s):
+### search (s):
     Search for bundles on a CodaLab instance (returns 10 results by default).
       search <keyword> ... <keyword>         : Name or uuid contains each <keyword>.
       search name=<value>                    : Name is <value>, where `name` can be any metadata field (e.g., description).
@@ -157,13 +157,13 @@ Usage: `cl <command> <arguments>`
       -u, --uuid-only       Print only uuids.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### ls:
+### ls:
     List bundles in a worksheet.
     Arguments:
       -u, --uuid-only       Print only uuids.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### info (i):
+### info (i):
     Show detailed information for a bundle.
     Arguments:
       bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
@@ -172,7 +172,7 @@ Usage: `cl <command> <arguments>`
       -v, --verbose         Print top-level contents of bundle, children bundles, and host worksheets.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### cat:
+### cat:
     Print the contents of a file/directory in a bundle.
     Note that cat on a directory will list its files.
     Arguments:
@@ -181,21 +181,21 @@ Usage: `cl <command> <arguments>`
       -t, --tail            Display last NUM lines of contents
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### wait:
+### wait:
     Wait until a run bundle finishes.
     Arguments:
       target_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
       -t, --tail            Print out the tail of the file or bundle and block until the run bundle has finished running.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### download (down):
+### download (down):
     Download bundle from a CodaLab instance.
     Arguments:
       target_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
       -o, --output-path     Path to download bundle to.  By default, the bundle or subpath name in the current directory is used.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### mimic:
+### mimic:
     Creates a set of bundles based on analogy with another set.
       mimic <run>      : Rerun the <run> bundle.
       mimic A B        : For all run bundles downstream of A, rerun with B instead.
@@ -224,7 +224,7 @@ Usage: `cl <command> <arguments>`
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
       -v, --verbose                Display verbose output.
 
-  ### macro:
+### macro:
     Use mimicry to simulate macros.
       macro M A B <name1>:C <name2>:D <=> mimic M-in1 M-in2 M-in-name1 M-in-name2 M-out A B C D
     Arguments:
@@ -251,20 +251,20 @@ Usage: `cl <command> <arguments>`
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
       -v, --verbose                Display verbose output.
 
-  ### kill:
+### kill:
     Instruct the appropriate worker to terminate the running bundle(s).
     Arguments:
       bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### write:
+### write:
     Instruct the appropriate worker to write a small file into the running bundle(s).
     Arguments:
       target_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
       string                Write this string to the target file.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### mount:
+### mount:
     Beta feature: this command may change in a future release. Mount the contents of a bundle at a read-only mountpoint.
     Arguments:
       target_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
@@ -272,7 +272,7 @@ Usage: `cl <command> <arguments>`
       --verbose             Verbose mode for BundleFUSE.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### netcat:
+### netcat:
     Beta feature: this command may change in a future release. Send raw data into a port of a running bundle
     Arguments:
       bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
@@ -284,13 +284,13 @@ Usage: `cl <command> <arguments>`
 
 
 ## Commands for worksheets:
-  ### new:
+### new:
     Create a new worksheet.
     Arguments:
       name                  Name of worksheet (^[a-zA-Z_][a-zA-Z0-9_\.\-]*$).
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### add:
+### add:
     Append text items, bundles, or subworksheets to a worksheet (possibly on a different instance).
     Bundles that do not yet exist on the destination instance will be copied over.
     Arguments:
@@ -302,7 +302,7 @@ Usage: `cl <command> <arguments>`
       --dest-worksheet         Worksheet to which to add items ([(<alias>|<address>)::](<uuid>|<name>)).
       -d, --copy-dependencies  If adding bundles, also add dependencies of the bundles.
 
-  ### wadd:
+### wadd:
     Append all the items of the source worksheet to the destination worksheet.
     Bundles that do not yet exist on the destination service will be copied over.
     The existing items on the destination worksheet are not affected unless the -r/--replace flag is set.
@@ -311,7 +311,7 @@ Usage: `cl <command> <arguments>`
       dest_worksheet_spec    [(<alias>|<address>)::](<uuid>|<name>)
       -r, --replace          Replace everything on the destination worksheet with the items from the source worksheet, instead of appending (does not delete old bundles, just detaches).
 
-  ### work (w):
+### work (w):
     Set the current instance/worksheet.
       work <worksheet>          : Switch to the given worksheet on the current instance.
       work <alias>::            : Switch to the home worksheet on instance <alias>.
@@ -320,13 +320,13 @@ Usage: `cl <command> <arguments>`
       -u, --uuid-only  Print only the worksheet uuid.
       worksheet_spec   [(<alias>|<address>)::](<uuid>|<name>)
 
-  ### print (p):
+### print (p):
     Print the rendered contents of a worksheet.
     Arguments:
       worksheet_spec  [(<alias>|<address>)::](<uuid>|<name>)
       -r, --raw       Print out the raw contents (for editing).
 
-  ### wedit (we):
+### wedit (we):
     Edit the contents of a worksheet.
     See https://codalab-worksheets.readthedocs.io/en/latest/User_Worksheet-Markdown for the markdown syntax.
       wedit -n <name>          : Change the name of the worksheet.
@@ -343,14 +343,14 @@ Usage: `cl <command> <arguments>`
       --not-anonymous   Set bundle to be NOT anonymous.
       -f, --file        Replace the contents of the current worksheet with this file.
 
-  ### wrm:
+### wrm:
     Delete a worksheet.
     To be safe, you can only delete a worksheet if it has no items and is not frozen.
     Arguments:
       worksheet_spec  [(<alias>|<address>)::](<uuid>|<name>)
       --force         Delete worksheet even if it is non-empty and frozen.
 
-  ### wls (wsearch, ws):
+### wls (wsearch, ws):
     List worksheets on the current instance matching the given keywords (returns 10 results by default).
       wls tag=paper           : List worksheets tagged as "paper".
       wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.
@@ -364,40 +364,40 @@ Usage: `cl <command> <arguments>`
 
 
 ## Commands for groups and permissions:
-  ### gls:
+### gls:
     Show groups to which you belong.
     Arguments:
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### gnew:
+### gnew:
     Create a new group.
     Arguments:
       name  Name of new group (^[a-zA-Z_][a-zA-Z0-9_\.\-]*$).
 
-  ### grm:
+### grm:
     Delete a group.
     Arguments:
       group_spec  Group to delete ((<uuid>|<name>|public)).
 
-  ### ginfo:
+### ginfo:
     Show detailed information for a group.
     Arguments:
       group_spec  Group to show information about ((<uuid>|<name>|public)).
 
-  ### uadd:
+### uadd:
     Add a user to a group.
     Arguments:
       user_spec    Username to add.
       group_spec   Group to add user to ((<uuid>|<name>|public)).
       -a, --admin  Give admin privileges to the user for the group.
 
-  ### urm:
+### urm:
     Remove a user from a group.
     Arguments:
       user_spec   Username to remove.
       group_spec  Group to remove user from ((<uuid>|<name>|public)).
 
-  ### perm:
+### perm:
     Set a group's permissions for a bundle.
     Arguments:
       bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
@@ -405,14 +405,14 @@ Usage: `cl <command> <arguments>`
       permission_spec       ((n)one|(r)ead|(a)ll)
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
-  ### wperm:
+### wperm:
     Set a group's permissions for a worksheet.
     Arguments:
       worksheet_spec   [(<alias>|<address>)::](<uuid>|<name>)
       group_spec       (<uuid>|<name>|public)
       permission_spec  ((n)one|(r)ead|(a)ll)
 
-  ### chown:
+### chown:
     Set the owner of bundles.
     Arguments:
       user_spec             Username to set as the owner.
@@ -421,13 +421,13 @@ Usage: `cl <command> <arguments>`
 
 
 ## Commands for users:
-  ### uinfo:
+### uinfo:
     Show user information.
     Arguments:
       user_spec    Username or id of user to show [default: the authenticated user]
       -f, --field  Print out these comma-separated fields.
 
-  ### uedit:
+### uedit:
     Edit user information.
     Note that password and email can only be changed through the web interface.
     Arguments:
@@ -440,7 +440,7 @@ Usage: `cl <command> <arguments>`
       -p, --parallel-run-quota  Total amount of runs the user may have running at a time on shared public workers
       -d, --disk-quota          Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)
 
-  ### ufarewell:
+### ufarewell:
     Delete user permanently. Root user only.
     To be safe, you can only delete a user if user does not own any bundles, worksheets, or groups.
     Arguments:
@@ -448,24 +448,24 @@ Usage: `cl <command> <arguments>`
 
 
 ## Commands for managing server:
-  ### workers:
-    Display information about workers that you have connected to the CodaLab instance. For the root user, display all workers.
+### workers:
+    Display information about workers that you have connected to the CodaLab instance.
 
-  ### bs-add-partition:
+### bs-add-partition:
     Add another partition for storage (MultiDiskBundleStore only)
     Arguments:
       name  The name you'd like to give this partition for CodaLab.
       path  The target location you would like to use for storing bundles. This directory should be underneath a mountpoint for the partition you would like to use. You are responsible for configuring the mountpoint yourself.
 
-  ### bs-rm-partition:
+### bs-rm-partition:
     Remove a partition by its number (MultiDiskBundleStore only)
     Arguments:
       partition  The partition you want to remove.
 
-  ### bs-ls-partitions:
+### bs-ls-partitions:
     List available partitions (MultiDiskBundleStore only)
 
-  ### bs-health-check:
+### bs-health-check:
     Perform a health check on the bundle store, garbage collecting bad files in the store. Performs a dry run by default, use -f to force removal.
     Arguments:
       -f, --force      Perform all garbage collection and database updates instead of just printing what would happen
@@ -474,7 +474,7 @@ Usage: `cl <command> <arguments>`
 
 
 ## Other commands:
-  ### help:
+### help:
     Show usage information for commands.
       help           : Show brief description for all commands.
       help -v        : Show full usage information for all commands.
@@ -485,10 +485,10 @@ Usage: `cl <command> <arguments>`
       -v, --verbose   Display all options of all commands.
       -m, --markdown  Auto-generate all options of all commands for CLI markdown in Markdown format.
 
-  ### status (st):
+### status (st):
     Show current client status.
 
-  ### alias:
+### alias:
     Manage CodaLab instance aliases. These are mappings from names to CodaLab Worksheet servers.
       alias                   : List all aliases.
       alias <name>            : Shows which instance <name> is bound to.
@@ -498,7 +498,7 @@ Usage: `cl <command> <arguments>`
       instance      Instance to bind the alias to (e.g., https://worksheets.codalab.org).
       -r, --remove  Remove this alias.
 
-  ### config:
+### config:
     Set CodaLab configuration.
       config <key>         : Shows the value of <key>.
       config <key> <value> : Sets <key> to <value>.
@@ -507,7 +507,7 @@ Usage: `cl <command> <arguments>`
       value         Instance to bind the alias to (e.g., https://worksheets.codalab.org).
       -r, --remove  Remove this key.
 
-  ### logout:
+### logout:
     Logout of the current session, or a specific instance.
     Arguments:
       alias  Alias or URL of instance from which to logout. Default is the current session.
