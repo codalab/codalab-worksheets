@@ -979,7 +979,7 @@ def test(ctx):
 @TestModule.register('run')
 def test(ctx):
     name = random_name()
-    uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
+    uuid = _run_command([cl, 'run', 'echo hello', '-n', name, '--request-memory', '200m'])
     wait(uuid)
     # test search
     check_contains(name, _run_command([cl, 'search', name]))
@@ -1055,13 +1055,22 @@ def test(ctx):
 
     # Multi-alias tests
     multi_alias_uuid1 = _run_command(
-        [cl, 'run', 'foo:{uuid}, foo1:{uuid}'.format(uuid=uuid), 'echo "two alias"']
+        [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo "two alias"']
     )
+    wait(multi_alias_uuid1)
     check_equals('ready', _run_command([cl, 'info', '-f', 'state', multi_alias_uuid1]))
 
     multi_alias_uuid2 = _run_command(
-        [cl, 'run', 'foo:{uuid}, foo1:{uuid}, foo2:{uuid}'.format(uuid=uuid), 'echo "three alias"']
+        [
+            cl,
+            'run',
+            'foo:{}'.format(uuid),
+            'foo1:{}'.format(uuid),
+            'foo2:{}'.format(uuid),
+            'echo "three alias"',
+        ]
     )
+    wait(multi_alias_uuid2)
     check_equals('ready', _run_command([cl, 'info', '-f', 'state', multi_alias_uuid2]))
 
 
