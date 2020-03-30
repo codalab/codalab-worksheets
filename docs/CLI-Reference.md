@@ -449,7 +449,7 @@ Usage: `cl <command> <arguments>`
 
 ## Commands for managing server:
   ### workers:
-    Display worker information of this CodaLab instance. Root user only.
+    Display information about workers that you have connected to the CodaLab instance. For the root user, display all workers.
 
   ### bs-add-partition:
     Add another partition for storage (MultiDiskBundleStore only)
