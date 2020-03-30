@@ -62,7 +62,8 @@ def nested_dict_get(obj, *args, **kwargs):
 
 def parse_key_target(spec):
     """
-    Parses a keyed target spec into its key and the rest of the target spec
+    Parses a keyed target spec into its key and the rest of the target spec.
+    Raise UsageError when the value of the spec is empty.
     :param spec: a target spec in the form of
         [[<key>]:][<instance>::][<worksheet_spec>//]<bundle_spec>[/<subpath>]
     where <bundle_spec> is required and the rest are optional.
@@ -71,11 +72,19 @@ def parse_key_target(spec):
         - <key>: (<key> if present,
                     empty string if ':' in spec but no <key>,
                     None otherwise)
-        - <value> (where value is everyhing after a <key>: (or everything if no key specified)
+        - <value> (where value is everything after a <key>: (or everything if no key specified)
     """
-
     match = re.match(TARGET_KEY_REGEX, spec)
-    return match.groups()
+    key, value = match.groups()
+    # This check covers three usage errors:
+    # 1. both key and value are empty, e.g. "cl run : 'echo a'"
+    # 2. key is not empty, value is empty, e.g. "cl run a.txt: 'echo a'"
+    if value == '':
+        raise UsageError(
+            'target_spec (%s) in wrong format. Please provide a valid target_spec in the format of %s.'
+            % (spec, RUN_TARGET_SPEC_FORMAT)
+        )
+    return (key, value)
 
 
 def parse_target_spec(spec):
@@ -132,13 +141,6 @@ def desugar_command(orig_target_spec, command):
                     'key %s exists with multiple values: %s and %s' % (key, key2val[key], val)
                 )
         else:
-            if key is None:
-                raise UsageError(
-                    'target_spec is empty. Please provide a valid target_spec in the format of {}.'.format(
-                        RUN_TARGET_SPEC_FORMAT
-                    )
-                )
-
             key2val[key] = val
             target_spec.append(key + ':' + val)
         return key
