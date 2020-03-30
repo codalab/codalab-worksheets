@@ -1053,6 +1053,17 @@ def test(ctx):
         [cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1
     )
 
+    # Multi-alias tests
+    multi_alias_uuid1 = _run_command(
+        [cl, 'run', 'foo:{uuid}, foo1:{uuid}'.format(uuid=uuid), 'echo "two alias"']
+    )
+    check_equals('ready', _run_command([cl, 'info', '-f', 'state', multi_alias_uuid1]))
+
+    multi_alias_uuid2 = _run_command(
+        [cl, 'run', 'foo:{uuid}, foo1:{uuid}, foo2:{uuid}'.format(uuid=uuid), 'echo "three alias"']
+    )
+    check_equals('ready', _run_command([cl, 'info', '-f', 'state', multi_alias_uuid2]))
+
 
 @TestModule.register('read')
 def test(ctx):
