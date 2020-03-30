@@ -1051,10 +1051,10 @@ def test(ctx):
 
     # Multi-alias tests
     multi_alias_uuid1 = _run_command(
-        [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo "two alias"']
+        [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo "two aliases"']
     )
     wait(multi_alias_uuid1)
-    check_equals('two alias', _run_command([cl, 'cat', multi_alias_uuid1 + "/stdout"]))
+    check_equals('two aliases', _run_command([cl, 'cat', multi_alias_uuid1 + "/stdout"]))
 
     multi_alias_uuid2 = _run_command(
         [
@@ -1063,11 +1063,11 @@ def test(ctx):
             'foo:{}'.format(uuid),
             'foo1:{}'.format(uuid),
             'foo2:{}'.format(uuid),
-            'echo "three alias"',
+            'echo "three aliases"',
         ]
     )
     wait(multi_alias_uuid2)
-    check_equals('three alias', _run_command([cl, 'cat', multi_alias_uuid2 + "/stdout"]))
+    check_equals('three aliases', _run_command([cl, 'cat', multi_alias_uuid2 + "/stdout"]))
 
 
 @TestModule.register('read')
