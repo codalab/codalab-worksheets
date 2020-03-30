@@ -135,13 +135,13 @@ def start_bundle(worker_id, uuid):
 
 @get("/workers/info", name="workers_info", apply=AuthenticatedPlugin())
 def workers_info():
+    workers = local.worker_model.get_workers()
     if request.user.user_id != local.model.root_user_id:
-        abort(http.client.UNAUTHORIZED, "User is not root user")
-
-    data = local.worker_model.get_workers()
+        # Filter to workers that only this user owns.
+        workers = [worker for worker in workers if worker['user_id'] == request.user.user_id]
 
     # edit entries in data to make them suitable for human reading
-    for worker in data:
+    for worker in workers:
         # checkin_time: seconds since epoch
         worker["checkin_time"] = int(
             (worker["checkin_time"] - datetime.utcfromtimestamp(0)).total_seconds()
@@ -152,4 +152,4 @@ def workers_info():
         worker["cpus_in_use"] = sum(bundle.metadata.request_cpus for bundle in running_bundles)
         worker["gpus_in_use"] = sum(bundle.metadata.request_gpus for bundle in running_bundles)
 
-    return {"data": data}
+    return {"data": workers}
