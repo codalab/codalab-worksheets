@@ -310,12 +310,11 @@ class Commands(object):
                 )
 
             if verbose:
-                initial_indent = ' ' * indent
                 if markdown:
                     name = HEADING_LEVEL_3 + name
-                    initial_indent = ''
                 return '%s%s:\n%s\n%s' % (
-                    initial_indent,
+                    # This is to make github Markdown format compatible with the readthedoc theme.
+                    ' ' * indent if not markdown else '',
                     name,
                     '\n'.join((' ' * (indent * 2)) + line for line in command_obj.help),
                     '\n'.join(render_args(command_obj.arguments)),
