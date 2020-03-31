@@ -28,6 +28,7 @@ import textwrap
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
+from shlex import quote
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -803,7 +804,9 @@ class BundleCLI(object):
         """
         try:
             i = argv.index('---')
-            argv = argv[0:i] + [' '.join(argv[i + 1 :])]  # TODO: quote command properly
+            # Convert each element after '---' to a shell-escaped version of string.
+            shell_escaped_command = [quote(x) for x in argv[i + 1 :]]
+            argv = argv[0:i] + [' '.join(shell_escaped_command)]
         except:
             pass
 
@@ -1559,6 +1562,7 @@ class BundleCLI(object):
 
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
         params = {'worksheet': worksheet_uuid}
+        '''
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
         new_bundle = client.create(
@@ -1569,6 +1573,7 @@ class BundleCLI(object):
 
         print(new_bundle['uuid'], file=self.stdout)
         self.wait(client, args, new_bundle['uuid'])
+        '''
 
     @Commands.command(
         'docker',
