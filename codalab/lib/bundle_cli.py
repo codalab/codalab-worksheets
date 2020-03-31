@@ -2345,7 +2345,16 @@ class BundleCLI(object):
 
             contents = client.fetch_contents_blob(info['resolved_target'], **kwargs)
             with closing(contents):
-                shutil.copyfileobj(contents, self.stdout.buffer)
+                try:
+                    shutil.copyfileobj(contents, self.stdout.buffer)
+                except AttributeError:
+                    # self.stdout will have buffer attribute when it's an io.TextIOWrapper object. However, when
+                    # self.stdout gets reassigned to an io.StringIO object, self.stdout.buffer won't exist.
+                    # Therefore, we try to directly write file content as a String object to self.stdout.
+                    try:
+                        self.stdout.write(contents.read().decode())
+                    except UnicodeDecodeError:
+                        self.stdout.write("File contents cannot be decoded.")
 
             if self.headless:
                 print(
