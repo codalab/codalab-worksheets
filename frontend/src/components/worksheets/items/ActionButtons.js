@@ -87,6 +87,7 @@ class ActionButtons extends React.Component<{
                         aria-label='Paste'
                         onClick={pasteToWorksheet}
                         disabled={!editPermission}
+                        id='paste-button'
                     >
                         <NoteAddIcon className={classes.buttonIcon} />
                         Paste

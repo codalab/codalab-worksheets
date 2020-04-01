@@ -392,6 +392,10 @@ class Worksheet extends React.Component {
             });
             copyBundles.display = displayBundleInfo;
             copyBundles.actualContent = actualCopyBundleIds;
+            window.localStorage.setItem(
+                'CopiedBundles',
+                copyBundles.actualContent.substr(0, copyBundles.actualContent.length - 1),
+            );
             this.setState({ openCopy: true, copiedBundleIds: copyBundles });
         }
     };
@@ -428,24 +432,27 @@ class Worksheet extends React.Component {
 
     pasteToWorksheet = () => {
         // Unchecks all bundles after pasting
-        var clipboardData = navigator.clipboard.readText();
-        clipboardData.then((data) => {
-            if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
-                // Insert after the source line
-                var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
-                var item_line = this.state.ws.info.block_to_raw[currentItemKey];
-                var source_line = this.state.ws.info.expanded_items_to_raw_lines[item_line];
-                this.state.ws.info.raw.splice(source_line + 1, 0, data);
-                this.saveAndUpdateWorksheet(false);
-            } else {
-                // Add to the end of the worksheet if no focus
-                this.state.ws.info.raw.push(data);
-                this.saveAndUpdateWorksheet(false);
-            }
+        // It would be ideal to use navigator.clipboard.readText(); however, firefox does not support this
+        var pasteText = document.querySelector('#paste-hack');
+        pasteText.focus();
+        document.execCommand('paste');
+        console.log(pasteText.textContent);
+        const data = pasteText.textContent;
+        console.log(data);
+        if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
+            // Insert after the source line
+            var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
+            var item_line = this.state.ws.info.block_to_raw[currentItemKey];
+            var source_line = this.state.ws.info.expanded_items_to_raw_lines[item_line];
+            this.state.ws.info.raw.splice(source_line + 1, 0, data);
+            this.saveAndUpdateWorksheet(false);
+        } else {
+            // Add to the end of the worksheet if no focus
+            this.state.ws.info.raw.push(data);
+            this.saveAndUpdateWorksheet(false);
+        }
 
-            this.clearCheckedBundles();
-        });
-        console.log(this.state.ws.info);
+        this.clearCheckedBundles();
     };
 
     clearCheckedBundles = (clear_callback) => {
@@ -1502,6 +1509,7 @@ class Worksheet extends React.Component {
         if (info && info.title) {
             document.title = info.title;
         }
+
         return (
             <React.Fragment>
                 {context_menu_display}

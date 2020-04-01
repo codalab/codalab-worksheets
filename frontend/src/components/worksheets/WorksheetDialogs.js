@@ -166,6 +166,15 @@ class WorksheetDialogs extends React.Component {
                             color='primary'
                             text={this.props.copiedBundleIds.actualContent}
                             id='copyBundleIdToClipBoard'
+                            onCopy={() => {
+                                window.localStorage.setItem(
+                                    'CopiedBundles',
+                                    this.props.copiedBundleIds.actualContent.substr(
+                                        0,
+                                        this.props.copiedBundleIds.actualContent.length - 1,
+                                    ),
+                                );
+                            }}
                         >
                             <Button color='primary' onClick={this.props.toggleCmdDialog('copy')}>
                                 Copy
