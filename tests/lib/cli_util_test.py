@@ -59,6 +59,10 @@ class CLIUtilTest(unittest.TestCase):
         for spec, expected_parse in cases:
             self.assertEqual(cli_util.parse_key_target(spec), expected_parse)
 
+        usage_error_cases = [':', 'a:', '']
+        for spec in usage_error_cases:
+            self.assertRaises(UsageError, lambda: cli_util.parse_key_target(spec))
+
     def test_parse_target_spec(self):
         cases = [
             (
@@ -107,3 +111,6 @@ class CLIUtilTest(unittest.TestCase):
         )
         self.assertRaises(UsageError, lambda: cli_util.desugar_command([], 'echo %a:b% %a:c%'))
         self.assertRaises(UsageError, lambda: cli_util.desugar_command([':b'], 'echo %b:c%'))
+        self.assertRaises(UsageError, lambda: cli_util.desugar_command(['b:'], 'echo %b:c%'))
+        self.assertRaises(UsageError, lambda: cli_util.desugar_command([':'], 'echo %b:c%'))
+        self.assertRaises(UsageError, lambda: cli_util.desugar_command([''], 'echo %b:c%'))
