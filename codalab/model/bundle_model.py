@@ -685,7 +685,8 @@ class BundleModel(object):
             .where(and_(cl_bundle.c.command == command, cl_bundle.c.owner_id == user_id))
             .alias("filter_on_command")
         )
-        # Get a list of uuids that matches with the given dependencies from the cl_bundle table
+        # Get a list of uuids that matches with the given dependencies from the cl_bundle table.
+        # This step is to standardize uuid for future comparison.
         dep_clause = [
             cl_bundle_dependency.c.parent_uuid.like('%' + uuid + '%') for uuid in dependencies
         ]

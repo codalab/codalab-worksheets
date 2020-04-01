@@ -121,6 +121,7 @@ def mimic_bundles(
         set()
     )  # old_uuid -> whether we're downstream of an input (and actually needs to be mapped onto a new uuid)
     created_uuids = set()  # set of uuids which were newly created
+    memoized_uuids = set() # set of uuids which returned from memoized search
     plan = []  # sequence of (old, new) bundle infos to make
     for old, new in zip(old_inputs, new_inputs):
         old_to_new[old] = new
@@ -200,11 +201,8 @@ def mimic_bundles(
 
             if dry_run:
                 new_info['uuid'] = None
-            elif memo:
-                for bundle in memoized_bundles:
-                    if bundle['uuid'] != old_bundle_uuid:
-                        new_info = memoized_bundles[0]
-                        break
+            elif memo and len(memoized_bundles) > 0:
+                new_info = memoized_bundles[0]
             else:
                 if new_info['bundle_type'] not in ('make', 'run'):
                     raise UsageError(
@@ -225,8 +223,7 @@ def mimic_bundles(
             new_bundle_uuid = new_info['uuid']
             plan.append((old_info, new_info))
             downstream.add(old_bundle_uuid)
-            if not memo:
-                created_uuids.add(new_bundle_uuid)
+            created_uuids.add(new_bundle_uuid)
         else:
             new_bundle_uuid = old_bundle_uuid
 
@@ -275,8 +272,6 @@ def mimic_bundles(
 
             prelude_items = []  # The prelude that we're building up
             for item in worksheet_info['items']:
-                just_added = False
-
                 if item['type'] == worksheet_util.TYPE_BUNDLE:
                     old_bundle_uuid = item['bundle']['id']
                     if old_bundle_uuid in old_to_new:
@@ -308,7 +303,6 @@ def mimic_bundles(
                                 params={'uuid': worksheet_uuid},
                             )
                             new_bundle_uuids_added.add(new_bundle_uuid)
-                            just_added = True
 
                 if (item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or item[
                     'type'

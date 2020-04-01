@@ -1573,7 +1573,7 @@ class BundleCLI(object):
             if len(memoized_bundles) > 0:
                 print(memoized_bundles[0]['uuid'], file=self.stdout)
             else:
-                print("Cannot find memoized bundles.", file=self.stdout)
+                print("Cannot find any memoized bundle.", file=self.stdout)
         else:
             new_bundle = client.create(
                 'bundles',
