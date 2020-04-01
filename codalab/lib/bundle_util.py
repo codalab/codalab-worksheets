@@ -46,7 +46,7 @@ def mimic_bundles(
     worksheet_uuid,
     depth,
     shadow,
-    dry_run,
+    dry_run=True,
     metadata_override=None,
     skip_prelude=False,
 ):
@@ -148,6 +148,13 @@ def mimic_bundles(
             for dep in old_info['dependencies']
         ]
 
+        new_dependencies_list = [dep['parent_uuid'] for dep in new_dependencies]
+        print(">>>> old_uuid = {}, new_dependencies = {}".format(old_info['uuid'], new_dependencies_list))
+        existing_uuids = client.fetch(
+            'bundles',
+            params={'command': old_info['command'], 'dependencies': new_dependencies_list},
+        )
+
         # If there are no inputs or if we're downstream of any inputs, we need to make a new bundle.
         lone_output = len(old_inputs) == 0 and old_bundle_uuid == old_output
         downstream_of_inputs = any(
@@ -192,6 +199,9 @@ def mimic_bundles(
 
             if dry_run:
                 new_info['uuid'] = None
+            elif len(existing_uuids) > 0:
+                new_info = existing_uuids[0]
+                print('bundle_util existing_uuids = {}'.format(existing_uuids[0]['uuid']))
             else:
                 if new_info['bundle_type'] not in ('make', 'run'):
                     raise UsageError(
@@ -216,7 +226,6 @@ def mimic_bundles(
         else:
             new_bundle_uuid = old_bundle_uuid
 
-        old_to_new[old_bundle_uuid] = new_bundle_uuid  # Cache it
         return new_bundle_uuid
 
     if old_output:

@@ -677,6 +677,62 @@ class BundleModel(object):
 
         return self._execute_query(query)
 
+    def get_memoized_bundles(self, user_id, command, bundle_uuids, failed=False):
+        logger.info("command = {}, bundle_uuids = {}".format(command, bundle_uuids))
+
+        filter_on_command = (
+            select([cl_bundle.c.uuid])
+            .select_from(cl_bundle)
+            .where(and_(cl_bundle.c.command == command, cl_bundle.c.owner_id == user_id))
+            .alias("filter_on_command")
+        )
+
+        dep_condition = [
+            cl_bundle_dependency.c.parent_uuid.like('%' + uuid + '%') for uuid in bundle_uuids
+        ]
+        filter_on_dependencies = (
+            select([cl_bundle_dependency.c.child_uuid, cl_bundle_dependency.c.parent_uuid])
+            .select_from(cl_bundle_dependency)
+            .where(or_(*dep_condition))
+            .alias("filter_on_dependencies")
+        )
+        #result = self._execute_query(filter_on_command)
+        #logger.info("filter_on_command = {}".format(result))
+        #result = self._execute_query(filter_on_dependencies)
+        #logger.info("filter_on_dependencies = {}".format(result))
+
+
+        matched_dependencies = (
+            select(
+                [
+                    filter_on_dependencies.c.child_uuid,
+                    filter_on_dependencies.c.parent_uuid,
+                    func.count(filter_on_dependencies.c.parent_uuid).label('cnt'),
+                ]
+            )
+            .select_from(
+                filter_on_command.join(
+                    filter_on_dependencies,
+                    filter_on_dependencies.c.child_uuid == filter_on_command.c.uuid,
+                )
+            )
+            .group_by(filter_on_dependencies.c.child_uuid)
+            .alias("matched_dependencies")
+        )
+        #result = self._execute_query(matched_dependencies)
+        #logger.info("matched_dependencies = {}".format(result))
+
+        if len(bundle_uuids) == 0:
+            query = filter_on_command
+        else:
+            query = (
+                select([matched_dependencies.c.child_uuid])
+                .select_from(matched_dependencies)
+                .group_by(matched_dependencies.c.child_uuid)
+                .where(matched_dependencies.c.cnt == len(bundle_uuids))
+            )
+        return self._execute_query(query)
+
     def batch_get_bundles(self, **kwargs):
         """
         Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.

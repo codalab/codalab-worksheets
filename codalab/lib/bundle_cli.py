@@ -36,14 +36,7 @@ from codalab.bundles import get_bundle_subclass
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.run_bundle import RunBundle
-from codalab.common import (
-    CODALAB_VERSION,
-    NotFoundError,
-    PermissionError,
-    precondition,
-    UsageError,
-    ensure_str,
-)
+from codalab.common import CODALAB_VERSION, NotFoundError, PermissionError, precondition, UsageError
 from codalab.lib import (
     bundle_util,
     file_util,
@@ -147,9 +140,6 @@ SERVER_COMMANDS = (
 )
 
 OTHER_COMMANDS = ('help', 'status', 'alias', 'config', 'logout')
-# Markdown headings
-HEADING_LEVEL_2 = '## '
-HEADING_LEVEL_3 = '### '
 
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
@@ -268,7 +258,7 @@ class Commands(object):
         return register_command
 
     @classmethod
-    def help_text(cls, verbose, markdown):
+    def help_text(cls, verbose):
         def command_name(command):
             name = command
             aliases = cls.commands[command].aliases
@@ -317,11 +307,8 @@ class Commands(object):
                 )
 
             if verbose:
-                if markdown:
-                    name = HEADING_LEVEL_3 + name
                 return '%s%s:\n%s\n%s' % (
-                    # This is to make GitHub Markdown format compatible with the Read the Docs theme.
-                    ' ' * indent if not markdown else '',
+                    ' ' * indent,
                     name,
                     '\n'.join((' ' * (indent * 2)) + line for line in command_obj.help),
                     '\n'.join(render_args(command_obj.arguments)),
@@ -337,39 +324,31 @@ class Commands(object):
         def command_group_help_text(commands):
             return '\n'.join([command_help_text(command) for command in commands])
 
-        def doc_formatter():
-            return HEADING_LEVEL_2 if verbose and markdown else ''
-
-        def command_formatter():
-            return '`' if verbose and markdown else ''
-
         return (
             textwrap.dedent(
                 """
-        Usage: {inline_code}cl <command> <arguments>{inline_code}
+        Usage: cl <command> <arguments>
 
-        {heading}Commands for bundles:
+        Commands for bundles:
         {bundle_commands}
 
-        {heading}Commands for worksheets:
+        Commands for worksheets:
         {worksheet_commands}
 
-        {heading}Commands for groups and permissions:
+        Commands for groups and permissions:
         {group_and_permission_commands}
 
-        {heading}Commands for users:
+        Commands for users:
         {user_commands}
 
-        {heading}Commands for managing server:
+        Commands for managing server:
         {server_commands}
 
-        {heading}Other commands:
+        Other commands:
         {other_commands}
         """
             )
             .format(
-                heading=doc_formatter(),
-                inline_code=command_formatter(),
                 bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
                 worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
                 group_and_permission_commands=command_group_help_text(
@@ -878,19 +857,12 @@ class BundleCLI(object):
             'Show usage information for commands.',
             '  help           : Show brief description for all commands.',
             '  help -v        : Show full usage information for all commands.',
-            '  help -v -m     : Show full usage information for all commands in Markdown format.',
             '  help <command> : Show full usage information for <command>.',
         ],
         arguments=(
             Commands.Argument('command', help='name of command to look up', nargs='?'),
             Commands.Argument(
                 '-v', '--verbose', action='store_true', help='Display all options of all commands.'
-            ),
-            Commands.Argument(
-                '-m',
-                '--markdown',
-                action='store_true',
-                help='Auto-generate all options of all commands for CLI markdown in Markdown format.',
             ),
         ),
     )
@@ -899,7 +871,7 @@ class BundleCLI(object):
         if args.command:
             self.do_command([args.command, '--help'])
             return
-        print(Commands.help_text(args.verbose, args.markdown), file=self.stdout)
+        print(Commands.help_text(args.verbose), file=self.stdout)
 
     @Commands.command('status', aliases=('st',), help='Show current client status.')
     def do_status_command(self, args):
@@ -1042,7 +1014,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'workers',
-        help=['Display information about workers that you have connected to the CodaLab instance.'],
+        help=['Display worker information of this CodaLab instance. Root user only.'],
         arguments=(),
     )
     def do_workers_command(self, args):
@@ -1547,6 +1519,9 @@ class BundleCLI(object):
             Commands.Argument(  # Internal for web FE positioned insert.
                 '-a', '--after_sort_key', help='Insert after this sort_key', completer=NullCompleter
             ),
+            Commands.Argument(
+                '-m', '--memo', help='Memoized runs', completer=NullCompleter
+            )
         )
         + Commands.metadata_arguments([RunBundle])
         + EDIT_ARGUMENTS
@@ -1561,14 +1536,24 @@ class BundleCLI(object):
         params = {'worksheet': worksheet_uuid}
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
-        new_bundle = client.create(
-            'bundles',
-            self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
-            params=params,
-        )
+        print("target = {}".format(targets))
 
-        print(new_bundle['uuid'], file=self.stdout)
-        self.wait(client, args, new_bundle['uuid'])
+        dependency=[uuid for uuid, target in targets]
+        existing_bundles_uuids = client.fetch('bundles', params={'command': args.command, 'dependencies': dependency})
+        print("final result = {}".format(existing_bundles_uuids))
+
+
+        if len(existing_bundles_uuids) > 0:
+            print(existing_bundles_uuids[0]['uuid'], file=self.stdout)
+        else:
+            new_bundle = client.create(
+                'bundles',
+                self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
+                params=params,
+            )
+
+            print(new_bundle['uuid'], file=self.stdout)
+            self.wait(client, args, new_bundle['uuid'])
 
     @Commands.command(
         'docker',
@@ -1658,7 +1643,8 @@ class BundleCLI(object):
             Commands.Argument('-d', '--description', help='New bundle description.'),
             Commands.Argument(
                 '--anonymous',
-                help='Set bundle to be anonymous (identity of the owner will NOT be visible to users without \'all\' permission on the bundle).',
+                help='Set bundle to be anonymous (identity of the owner will NOT \n'
+                'be visible to users without \'all\' permission on the bundle).',
                 dest='anonymous',
                 action='store_true',
                 default=None,
@@ -2352,13 +2338,7 @@ class BundleCLI(object):
 
             contents = client.fetch_contents_blob(info['resolved_target'], **kwargs)
             with closing(contents):
-                try:
-                    shutil.copyfileobj(contents, self.stdout.buffer)
-                except AttributeError:
-                    # self.stdout will have buffer attribute when it's an io.TextIOWrapper object. However, when
-                    # self.stdout gets reassigned to an io.StringIO object, self.stdout.buffer won't exist.
-                    # Therefore, we try to directly write file content as a String object to self.stdout.
-                    self.stdout.write(ensure_str(contents.read()))
+                shutil.copyfileobj(contents, self.stdout.buffer)
 
             if self.headless:
                 print(
@@ -2963,7 +2943,8 @@ class BundleCLI(object):
             ),
             Commands.Argument(
                 '--anonymous',
-                help='Set worksheet to be anonymous (identity of the owner will NOT be visible to users without \'all\' permission on the worksheet).',
+                help='Set worksheet to be anonymous (identity of the owner will NOT \n'
+                'be visible to users without \'all\' permission on the worksheet).',
                 dest='anonymous',
                 action='store_true',
                 default=None,

@@ -105,6 +105,8 @@ def _fetch_bundles():
     specs = query_get_list('specs')
     worksheet_uuid = request.query.get('worksheet')
     descendant_depth = query_get_type(int, 'depth', None)
+    command = query_get_type(str, 'command', '')
+    dependencies = query_get_list('dependencies')
 
     if keywords:
         # Handle search keywords
@@ -119,6 +121,13 @@ def _fetch_bundles():
         # Resolve bundle specs
         bundle_uuids = canonicalize.get_bundle_uuids(
             local.model, request.user, worksheet_uuid, specs
+        )
+    elif command:
+        bundle_uuids = local.model.get_memoized_bundles(request.user.user_id, command, dependencies)
+        logger.info(
+            "[_fetch_bundles] bundle_uuids = {}, dependencies = {}, command = {}".format(
+                bundle_uuids, dependencies, command
+            )
         )
     else:
         abort(
