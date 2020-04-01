@@ -678,29 +678,32 @@ class BundleModel(object):
         return self._execute_query(query)
 
     def get_memoized_bundles(self, user_id, command, dependencies):
+        # Select bundles that has the given command from the bundle table
         filter_on_command = (
             select([cl_bundle.c.uuid])
             .select_from(cl_bundle)
             .where(and_(cl_bundle.c.command == command, cl_bundle.c.owner_id == user_id))
             .alias("filter_on_command")
         )
-
-        # Ensure the concatenated bundles' uuid in ascending order
+        # Get a list of uuids that matches with the given dependencies from the cl_bundle table
         dep_clause = [
             cl_bundle_dependency.c.parent_uuid.like('%' + uuid + '%') for uuid in dependencies
         ]
-
         build_dependency_query = (
             select([cl_bundle.c.uuid]).select_from(cl_bundle).where(or_(*dep_clause))
         )
         dependency_full_list = self._execute_query(build_dependency_query)
+        # Ensure the concatenated bundles' uuid in ascending order
         dependency_full_list.sort()
         concat_dependencies = ','.join(dependency_full_list)
-        matched_dependencies = (
+        # Join bundles between filter_on_command table and cl_bundle_dependency table
+        join = (
             select(
                 [
                     cl_bundle_dependency.c.child_uuid,
-                    func.group_concat(cl_bundle_dependency.c.parent_uuid).label('concat'),
+                    func.group_concat(cl_bundle_dependency.c.parent_uuid).label(
+                        'concat_dependencies'
+                    ),
                 ]
             )
             .select_from(
@@ -711,16 +714,16 @@ class BundleModel(object):
             )
             .where(or_(*dep_clause))
             .group_by(cl_bundle_dependency.c.child_uuid)
-            .alias("matched_dependencies")
+            .alias("join")
         )
 
         if len(dependencies) == 0:
             query = filter_on_command
         else:
             query = (
-                select([matched_dependencies.c.child_uuid])
-                .select_from(matched_dependencies)
-                .where(matched_dependencies.c.concat == concat_dependencies)
+                select([join.c.child_uuid])
+                .select_from(join)
+                .where(join.c.concat_dependencies == concat_dependencies)
             )
         return self._execute_query(query)
 

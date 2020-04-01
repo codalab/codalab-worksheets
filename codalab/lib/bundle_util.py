@@ -154,6 +154,14 @@ def mimic_bundles(
             dep['parent_uuid'] in downstream for dep in old_info['dependencies']
         )
         if lone_output or downstream_of_inputs:
+            if memo:
+                memoized_bundles = client.fetch(
+                    'bundles',
+                    params={
+                        'command': old_info['command'],
+                        'dependencies': [dep['parent_uuid'] for dep in new_dependencies],
+                    },
+                )
             # Now create a new bundle that mimics the old bundle.
             new_info = copy.deepcopy(old_info)
 
@@ -193,16 +201,9 @@ def mimic_bundles(
             if dry_run:
                 new_info['uuid'] = None
             elif memo:
-                existing_bundles = client.fetch(
-                    'bundles',
-                    params={
-                        'command': old_info['command'],
-                        'dependencies': [dep['parent_uuid'] for dep in new_dependencies],
-                    },
-                )
-                for bundle in existing_bundles:
+                for bundle in memoized_bundles:
                     if bundle['uuid'] != old_bundle_uuid:
-                        new_info = existing_bundles[0]
+                        new_info = memoized_bundles[0]
                         break
             else:
                 if new_info['bundle_type'] not in ('make', 'run'):
@@ -229,7 +230,7 @@ def mimic_bundles(
         else:
             new_bundle_uuid = old_bundle_uuid
 
-        old_to_new[old_bundle_uuid] = new_bundle_uuid
+        old_to_new[old_bundle_uuid] = new_bundle_uuid  # Cache it
         return new_bundle_uuid
 
     if old_output:
