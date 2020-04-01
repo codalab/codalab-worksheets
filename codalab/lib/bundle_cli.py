@@ -36,7 +36,14 @@ from codalab.bundles import get_bundle_subclass
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.run_bundle import RunBundle
-from codalab.common import CODALAB_VERSION, NotFoundError, PermissionError, precondition, UsageError
+from codalab.common import (
+    CODALAB_VERSION,
+    NotFoundError,
+    PermissionError,
+    precondition,
+    UsageError,
+    ensure_str,
+)
 from codalab.lib import (
     bundle_util,
     file_util,
@@ -140,6 +147,9 @@ SERVER_COMMANDS = (
 )
 
 OTHER_COMMANDS = ('help', 'status', 'alias', 'config', 'logout')
+# Markdown headings
+HEADING_LEVEL_2 = '## '
+HEADING_LEVEL_3 = '### '
 
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
@@ -258,7 +268,7 @@ class Commands(object):
         return register_command
 
     @classmethod
-    def help_text(cls, verbose):
+    def help_text(cls, verbose, markdown):
         def command_name(command):
             name = command
             aliases = cls.commands[command].aliases
@@ -307,8 +317,11 @@ class Commands(object):
                 )
 
             if verbose:
+                if markdown:
+                    name = HEADING_LEVEL_3 + name
                 return '%s%s:\n%s\n%s' % (
-                    ' ' * indent,
+                    # This is to make GitHub Markdown format compatible with the Read the Docs theme.
+                    ' ' * indent if not markdown else '',
                     name,
                     '\n'.join((' ' * (indent * 2)) + line for line in command_obj.help),
                     '\n'.join(render_args(command_obj.arguments)),
@@ -324,31 +337,39 @@ class Commands(object):
         def command_group_help_text(commands):
             return '\n'.join([command_help_text(command) for command in commands])
 
+        def doc_formatter():
+            return HEADING_LEVEL_2 if verbose and markdown else ''
+
+        def command_formatter():
+            return '`' if verbose and markdown else ''
+
         return (
             textwrap.dedent(
                 """
-        Usage: cl <command> <arguments>
+        Usage: {inline_code}cl <command> <arguments>{inline_code}
 
-        Commands for bundles:
+        {heading}Commands for bundles:
         {bundle_commands}
 
-        Commands for worksheets:
+        {heading}Commands for worksheets:
         {worksheet_commands}
 
-        Commands for groups and permissions:
+        {heading}Commands for groups and permissions:
         {group_and_permission_commands}
 
-        Commands for users:
+        {heading}Commands for users:
         {user_commands}
 
-        Commands for managing server:
+        {heading}Commands for managing server:
         {server_commands}
 
-        Other commands:
+        {heading}Other commands:
         {other_commands}
         """
             )
             .format(
+                heading=doc_formatter(),
+                inline_code=command_formatter(),
                 bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
                 worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
                 group_and_permission_commands=command_group_help_text(
@@ -857,12 +878,19 @@ class BundleCLI(object):
             'Show usage information for commands.',
             '  help           : Show brief description for all commands.',
             '  help -v        : Show full usage information for all commands.',
+            '  help -v -m     : Show full usage information for all commands in Markdown format.',
             '  help <command> : Show full usage information for <command>.',
         ],
         arguments=(
             Commands.Argument('command', help='name of command to look up', nargs='?'),
             Commands.Argument(
                 '-v', '--verbose', action='store_true', help='Display all options of all commands.'
+            ),
+            Commands.Argument(
+                '-m',
+                '--markdown',
+                action='store_true',
+                help='Auto-generate all options of all commands for CLI markdown in Markdown format.',
             ),
         ),
     )
@@ -871,7 +899,7 @@ class BundleCLI(object):
         if args.command:
             self.do_command([args.command, '--help'])
             return
-        print(Commands.help_text(args.verbose), file=self.stdout)
+        print(Commands.help_text(args.verbose, args.markdown), file=self.stdout)
 
     @Commands.command('status', aliases=('st',), help='Show current client status.')
     def do_status_command(self, args):
@@ -1014,7 +1042,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'workers',
-        help=['Display worker information of this CodaLab instance. Root user only.'],
+        help=['Display information about workers that you have connected to the CodaLab instance.'],
         arguments=(),
     )
     def do_workers_command(self, args):
@@ -1534,25 +1562,24 @@ class BundleCLI(object):
         params = {'worksheet': worksheet_uuid}
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
-
         if args.memo:
-            existing_bundles_uuids = client.fetch(
+            memoized_bundles = client.fetch(
                 'bundles',
                 params={
                     'command': args.command,
                     'dependencies': [uuid for uuid, target in targets],
                 },
             )
-            print("final result = {}".format(existing_bundles_uuids))
-            if len(existing_bundles_uuids) > 0:
-                print(existing_bundles_uuids[0]['uuid'], file=self.stdout)
+            if len(memoized_bundles) > 0:
+                print(memoized_bundles[0]['uuid'], file=self.stdout)
+            else:
+                print("Cannot find memoized bundles.", file=self.stdout)
         else:
             new_bundle = client.create(
                 'bundles',
                 self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
                 params=params,
             )
-
             print(new_bundle['uuid'], file=self.stdout)
             self.wait(client, args, new_bundle['uuid'])
 
@@ -1644,8 +1671,7 @@ class BundleCLI(object):
             Commands.Argument('-d', '--description', help='New bundle description.'),
             Commands.Argument(
                 '--anonymous',
-                help='Set bundle to be anonymous (identity of the owner will NOT \n'
-                'be visible to users without \'all\' permission on the bundle).',
+                help='Set bundle to be anonymous (identity of the owner will NOT be visible to users without \'all\' permission on the bundle).',
                 dest='anonymous',
                 action='store_true',
                 default=None,
@@ -2339,7 +2365,13 @@ class BundleCLI(object):
 
             contents = client.fetch_contents_blob(info['resolved_target'], **kwargs)
             with closing(contents):
-                shutil.copyfileobj(contents, self.stdout.buffer)
+                try:
+                    shutil.copyfileobj(contents, self.stdout.buffer)
+                except AttributeError:
+                    # self.stdout will have buffer attribute when it's an io.TextIOWrapper object. However, when
+                    # self.stdout gets reassigned to an io.StringIO object, self.stdout.buffer won't exist.
+                    # Therefore, we try to directly write file content as a String object to self.stdout.
+                    self.stdout.write(ensure_str(contents.read()))
 
             if self.headless:
                 print(
@@ -2946,8 +2978,7 @@ class BundleCLI(object):
             ),
             Commands.Argument(
                 '--anonymous',
-                help='Set worksheet to be anonymous (identity of the owner will NOT \n'
-                'be visible to users without \'all\' permission on the worksheet).',
+                help='Set worksheet to be anonymous (identity of the owner will NOT be visible to users without \'all\' permission on the worksheet).',
                 dest='anonymous',
                 action='store_true',
                 default=None,
