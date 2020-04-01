@@ -696,7 +696,8 @@ class BundleModel(object):
         # Ensure the concatenated bundles' uuid in ascending order
         dependency_full_list.sort()
         concat_dependencies = ','.join(dependency_full_list)
-        # Join bundles between filter_on_command table and cl_bundle_dependency table
+        # Join between filter_on_command table and cl_bundle_dependency table
+        # to get bundles that match with both input command and dependencies
         join = (
             select(
                 [
