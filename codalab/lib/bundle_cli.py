@@ -36,7 +36,14 @@ from codalab.bundles import get_bundle_subclass
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.run_bundle import RunBundle
-from codalab.common import CODALAB_VERSION, NotFoundError, PermissionError, precondition, UsageError
+from codalab.common import (
+    CODALAB_VERSION,
+    NotFoundError,
+    PermissionError,
+    precondition,
+    UsageError,
+    ensure_str,
+)
 from codalab.lib import (
     bundle_util,
     file_util,
@@ -2345,7 +2352,13 @@ class BundleCLI(object):
 
             contents = client.fetch_contents_blob(info['resolved_target'], **kwargs)
             with closing(contents):
-                shutil.copyfileobj(contents, self.stdout.buffer)
+                try:
+                    shutil.copyfileobj(contents, self.stdout.buffer)
+                except AttributeError:
+                    # self.stdout will have buffer attribute when it's an io.TextIOWrapper object. However, when
+                    # self.stdout gets reassigned to an io.StringIO object, self.stdout.buffer won't exist.
+                    # Therefore, we try to directly write file content as a String object to self.stdout.
+                    self.stdout.write(ensure_str(contents.read()))
 
             if self.headless:
                 print(
