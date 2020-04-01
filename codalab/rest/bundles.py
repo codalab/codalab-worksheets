@@ -124,11 +124,6 @@ def _fetch_bundles():
         )
     elif command:
         bundle_uuids = local.model.get_memoized_bundles(request.user.user_id, command, dependencies)
-        logger.info(
-            "[_fetch_bundles] bundle_uuids = {}, dependencies = {}, command = {}".format(
-                bundle_uuids, dependencies, command
-            )
-        )
     else:
         abort(
             http.client.BAD_REQUEST,

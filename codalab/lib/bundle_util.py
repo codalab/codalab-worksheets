@@ -229,6 +229,7 @@ def mimic_bundles(
         else:
             new_bundle_uuid = old_bundle_uuid
 
+        old_to_new[old_bundle_uuid] = new_bundle_uuid
         return new_bundle_uuid
 
     if old_output:
