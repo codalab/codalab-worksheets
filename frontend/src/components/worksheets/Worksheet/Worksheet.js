@@ -1429,7 +1429,9 @@ class Worksheet extends React.Component {
         );
         if (info && info.title) {
             document.title = info.title;
+            console.log('Info: ', info);
         }
+
         return (
             <React.Fragment>
                 {context_menu_display}

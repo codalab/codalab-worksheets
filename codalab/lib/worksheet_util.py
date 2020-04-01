@@ -909,13 +909,16 @@ def interpret_items(schemas, raw_items, db_model=None):
             # Reset schema to minimize long distance dependencies of directives
             if not is_directive:
                 if (current_schema is not None):
+                    print(current_schema, flush=True)
                     blocks.append(
                         SchemaBlockSchema()
                         .load(
                             {
                                 'status': FetchStatusSchema.get_unknown_status(),
-                                'header': ["field", "generalized-path", "post-processing"],
-                                'field_rows': schemas[current_schema_name],
+                                'header': ["field", "generated-path", "post-processing"],
+                                'schema_name': current_schema_name,
+                                'field_rows': [{"field": field, "generated-path": path, "post-processing": post} 
+                                                    for field, path, post in current_schema],
                             }
                         )
                         .data
@@ -987,6 +990,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                     if current_schema is None:
                         raise UsageError("`add` must be preceded by `schema` directive")
                     schema_item = canonicalize_schema_item(value_obj[1:])
+                    print(schema_item, type(schema_item))
                     current_schema.append(schema_item)
                 elif command == 'display':
                     # Set display

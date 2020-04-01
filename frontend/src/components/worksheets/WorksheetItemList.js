@@ -10,6 +10,7 @@ import ImageItem from './items/ImageItem';
 import MarkdownItem from './items/MarkdownItem';
 import RecordItem from './items/RecordItem';
 import TableItem from './items/TableItem';
+import SchemaItem from './items/SchemaItem';
 import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
 import NewUpload from './NewUpload/NewUpload';
@@ -48,6 +49,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
         record_block: RecordItem,
         image_block: ImageItem,
         graph_block: GraphItem,
+        schema_block: SchemaItem,
     }[item.mode];
 
     var elem;
