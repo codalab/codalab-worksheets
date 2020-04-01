@@ -121,7 +121,6 @@ def mimic_bundles(
         set()
     )  # old_uuid -> whether we're downstream of an input (and actually needs to be mapped onto a new uuid)
     created_uuids = set()  # set of uuids which were newly created
-    memoized_uuids = set() # set of uuids which returned from memoized search
     plan = []  # sequence of (old, new) bundle infos to make
     for old, new in zip(old_inputs, new_inputs):
         old_to_new[old] = new
