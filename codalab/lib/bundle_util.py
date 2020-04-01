@@ -46,10 +46,10 @@ def mimic_bundles(
     worksheet_uuid,
     depth,
     shadow,
-    dry_run=True,
+    dry_run,
     metadata_override=None,
     skip_prelude=False,
-    memo=True,
+    memo=False,
 ):
     """
     :param JsonApiClient client: client
@@ -320,7 +320,6 @@ def mimic_bundles(
             new_bundle_uuid = new_info['uuid']
             if new_bundle_uuid not in new_bundle_uuids_added:
                 print('adding: ' + new_bundle_uuid)
-
                 client.create(
                     'worksheet-items',
                     data={

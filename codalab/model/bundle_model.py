@@ -678,8 +678,6 @@ class BundleModel(object):
         return self._execute_query(query)
 
     def get_memoized_bundles(self, user_id, command, dependencies):
-        logger.info("command = {}, bundle_uuids = {}".format(command, dependencies))
-
         filter_on_command = (
             select([cl_bundle.c.uuid])
             .select_from(cl_bundle)
