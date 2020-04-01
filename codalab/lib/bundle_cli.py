@@ -1519,9 +1519,7 @@ class BundleCLI(object):
             Commands.Argument(  # Internal for web FE positioned insert.
                 '-a', '--after_sort_key', help='Insert after this sort_key', completer=NullCompleter
             ),
-            Commands.Argument(
-                '-m', '--memo', help='Memoized runs', completer=NullCompleter
-            )
+            Commands.Argument('-m', '--memo', help='Memoized runs', action='store_true'),
         )
         + Commands.metadata_arguments([RunBundle])
         + EDIT_ARGUMENTS
@@ -1536,15 +1534,18 @@ class BundleCLI(object):
         params = {'worksheet': worksheet_uuid}
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
-        print("target = {}".format(targets))
 
-        dependency=[uuid for uuid, target in targets]
-        existing_bundles_uuids = client.fetch('bundles', params={'command': args.command, 'dependencies': dependency})
-        print("final result = {}".format(existing_bundles_uuids))
-
-
-        if len(existing_bundles_uuids) > 0:
-            print(existing_bundles_uuids[0]['uuid'], file=self.stdout)
+        if args.memo:
+            existing_bundles_uuids = client.fetch(
+                'bundles',
+                params={
+                    'command': args.command,
+                    'dependencies': [uuid for uuid, target in targets],
+                },
+            )
+            print("final result = {}".format(existing_bundles_uuids))
+            if len(existing_bundles_uuids) > 0:
+                print(existing_bundles_uuids[0]['uuid'], file=self.stdout)
         else:
             new_bundle = client.create(
                 'bundles',
@@ -2512,6 +2513,7 @@ class BundleCLI(object):
                 nargs='+',
                 completer=BundlesCompleter,
             ),
+            Commands.Argument('-m', '--memo', help='Memoized runs', action='store_true'),
         )
         + Commands.metadata_arguments([MakeBundle, RunBundle])
         + MIMIC_ARGUMENTS,
@@ -2618,6 +2620,7 @@ class BundleCLI(object):
             args.shadow,
             args.dry_run,
             metadata_override=metadata,
+            memo=args.memo,
         )
         for (old, new) in plan:
             print(

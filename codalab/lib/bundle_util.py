@@ -49,6 +49,7 @@ def mimic_bundles(
     dry_run=True,
     metadata_override=None,
     skip_prelude=False,
+    memo=True,
 ):
     """
     :param JsonApiClient client: client
@@ -147,14 +148,6 @@ def mimic_bundles(
             }
             for dep in old_info['dependencies']
         ]
-
-        new_dependencies_list = [dep['parent_uuid'] for dep in new_dependencies]
-        print(">>>> old_uuid = {}, new_dependencies = {}".format(old_info['uuid'], new_dependencies_list))
-        existing_uuids = client.fetch(
-            'bundles',
-            params={'command': old_info['command'], 'dependencies': new_dependencies_list},
-        )
-
         # If there are no inputs or if we're downstream of any inputs, we need to make a new bundle.
         lone_output = len(old_inputs) == 0 and old_bundle_uuid == old_output
         downstream_of_inputs = any(
@@ -199,9 +192,18 @@ def mimic_bundles(
 
             if dry_run:
                 new_info['uuid'] = None
-            elif len(existing_uuids) > 0:
-                new_info = existing_uuids[0]
-                print('bundle_util existing_uuids = {}'.format(existing_uuids[0]['uuid']))
+            elif memo:
+                existing_bundles = client.fetch(
+                    'bundles',
+                    params={
+                        'command': old_info['command'],
+                        'dependencies': [dep['parent_uuid'] for dep in new_dependencies],
+                    },
+                )
+                for bundle in existing_bundles:
+                    if bundle['uuid'] != old_bundle_uuid:
+                        new_info = existing_bundles[0]
+                        break
             else:
                 if new_info['bundle_type'] not in ('make', 'run'):
                     raise UsageError(
@@ -222,7 +224,8 @@ def mimic_bundles(
             new_bundle_uuid = new_info['uuid']
             plan.append((old_info, new_info))
             downstream.add(old_bundle_uuid)
-            created_uuids.add(new_bundle_uuid)
+            if not memo:
+                created_uuids.add(new_bundle_uuid)
         else:
             new_bundle_uuid = old_bundle_uuid
 
@@ -317,6 +320,7 @@ def mimic_bundles(
             new_bundle_uuid = new_info['uuid']
             if new_bundle_uuid not in new_bundle_uuids_added:
                 print('adding: ' + new_bundle_uuid)
+
                 client.create(
                     'worksheet-items',
                     data={

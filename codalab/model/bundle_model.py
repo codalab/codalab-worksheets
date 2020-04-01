@@ -677,8 +677,8 @@ class BundleModel(object):
 
         return self._execute_query(query)
 
-    def get_memoized_bundles(self, user_id, command, bundle_uuids, failed=False):
-        logger.info("command = {}, bundle_uuids = {}".format(command, bundle_uuids))
+    def get_memoized_bundles(self, user_id, command, dependencies):
+        logger.info("command = {}, bundle_uuids = {}".format(command, dependencies))
 
         filter_on_command = (
             select([cl_bundle.c.uuid])
@@ -687,49 +687,42 @@ class BundleModel(object):
             .alias("filter_on_command")
         )
 
-        dep_condition = [
-            cl_bundle_dependency.c.parent_uuid.like('%' + uuid + '%') for uuid in bundle_uuids
+        # Ensure the concatenated bundles' uuid in ascending order
+        dep_clause = [
+            cl_bundle_dependency.c.parent_uuid.like('%' + uuid + '%') for uuid in dependencies
         ]
-        filter_on_dependencies = (
-            select([cl_bundle_dependency.c.child_uuid, cl_bundle_dependency.c.parent_uuid])
-            .select_from(cl_bundle_dependency)
-            .where(or_(*dep_condition))
-            .alias("filter_on_dependencies")
+
+        build_dependency_query = (
+            select([cl_bundle.c.uuid]).select_from(cl_bundle).where(or_(*dep_clause))
         )
-        #result = self._execute_query(filter_on_command)
-        #logger.info("filter_on_command = {}".format(result))
-        #result = self._execute_query(filter_on_dependencies)
-        #logger.info("filter_on_dependencies = {}".format(result))
-
-
+        dependency_full_list = self._execute_query(build_dependency_query)
+        dependency_full_list.sort()
+        concat_dependencies = ','.join(dependency_full_list)
         matched_dependencies = (
             select(
                 [
-                    filter_on_dependencies.c.child_uuid,
-                    filter_on_dependencies.c.parent_uuid,
-                    func.count(filter_on_dependencies.c.parent_uuid).label('cnt'),
+                    cl_bundle_dependency.c.child_uuid,
+                    func.group_concat(cl_bundle_dependency.c.parent_uuid).label('concat'),
                 ]
             )
             .select_from(
                 filter_on_command.join(
-                    filter_on_dependencies,
-                    filter_on_dependencies.c.child_uuid == filter_on_command.c.uuid,
+                    cl_bundle_dependency,
+                    cl_bundle_dependency.c.child_uuid == filter_on_command.c.uuid,
                 )
             )
-            .group_by(filter_on_dependencies.c.child_uuid)
+            .where(or_(*dep_clause))
+            .group_by(cl_bundle_dependency.c.child_uuid)
             .alias("matched_dependencies")
         )
-        #result = self._execute_query(matched_dependencies)
-        #logger.info("matched_dependencies = {}".format(result))
 
-        if len(bundle_uuids) == 0:
+        if len(dependencies) == 0:
             query = filter_on_command
         else:
             query = (
                 select([matched_dependencies.c.child_uuid])
                 .select_from(matched_dependencies)
-                .group_by(matched_dependencies.c.child_uuid)
-                .where(matched_dependencies.c.cnt == len(bundle_uuids))
+                .where(matched_dependencies.c.concat == concat_dependencies)
             )
         return self._execute_query(query)
 
