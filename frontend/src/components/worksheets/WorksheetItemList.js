@@ -70,7 +70,6 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             reloadWorksheet={props.reloadWorksheet}
             showNewRun={props.focusedForButtons && props.showNewRun}
             showNewText={props.focusedForButtons && props.showNewText}
-            onHideNewUpload={props.onHideNewUpload}
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
         >
@@ -240,7 +239,6 @@ class WorksheetItemList extends React.Component {
                         showNewRun: this.props.showNewRun,
                         showNewText: this.props.showNewText,
                         showNewRerun: this.props.showNewRerun,
-                        onHideNewUpload: this.props.onHideNewUpload,
                         onHideNewRun: this.props.onHideNewRun,
                         onHideNewText: this.props.onHideNewText,
                         onHideNewRerun: this.props.onHideNewRerun,
