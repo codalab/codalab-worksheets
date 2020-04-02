@@ -37,6 +37,7 @@ class BundleActions extends React.Component<
 		run.docker = bundleInfo.metadata.request_docker_image;
 		run.networkAccess = bundleInfo.metadata.request_network;
 		run.failedDependencies = bundleInfo.metadata.allow_failed_dependencies;
+		run.queue = bundleInfo.metadata.request_queue;
 		this.props.rerunItem(run);
 	}
 
