@@ -163,7 +163,8 @@ def fetch_interpreted_worksheet(uuid):
     which does not resolve searches or wsearches.
 
     To return an interpreted worksheet that only resolves a particular search/wsearch,
-    pass in the search query to the "directive" argument. For example, &directive=search 0x .limit=100
+    pass in the search query to the "directive" argument. The value for this argument
+    must be a search/wsearch query -- for example, &directive=search 0x .limit=100
     """
     bundle_uuids = request.query.getall('bundle_uuid')
     brief = request.query.get("brief", "0") == "1"
@@ -580,12 +581,13 @@ def resolve_items_into_infos(items):
 def perform_search_query(value_obj):
     """
     Perform a search query and return the resulting raw items.
-    Input: directive that is tokenized by formatting.string_to_tokens(), such as formatting.string_to_tokens("search 0x .limit=100")"""
+    Input: directive that is tokenized by formatting.string_to_tokens(),
+        such as formatting.string_to_tokens("search 0x .limit=100")
+    """
     command = get_command(value_obj)
     is_search = command == 'search'
     is_wsearch = command == 'wsearch'
     if is_search or is_wsearch:
-        command = get_command(value_obj)
         keywords = value_obj[1:]
         raw_items = []
 
@@ -611,7 +613,8 @@ def perform_search_query(value_obj):
 
         return raw_items
     else:
-        raise Exception("not a search query")
+        # Not a search query
+        return []
 
 
 def expand_search_items(raw_items):
