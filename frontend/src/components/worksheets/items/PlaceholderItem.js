@@ -38,7 +38,7 @@ export default forwardRef((props, ref) => {
         (async function() {
             try {
                 const { items } = await fetchData({ directive, worksheetUUID });
-                setItem(items[0]);
+                setItem(items.length === 0 ? null : items[0]);
             } catch (e) {
                 console.error(e);
                 setError(e);
@@ -47,6 +47,9 @@ export default forwardRef((props, ref) => {
     }, [directive, worksheetUUID]);
     if (error) {
         return <div ref={ref}>Error loading item.</div>;
+    }
+    if (item === null) {
+        return null;
     }
     if (!item) {
         return <div ref={ref} className='codalab-item-placeholder'></div>;
