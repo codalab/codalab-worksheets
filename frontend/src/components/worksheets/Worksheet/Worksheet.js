@@ -1440,7 +1440,6 @@ class Worksheet extends React.Component {
         if (info && info.title) {
             document.title = info.title;
         }
-        console.log(this.state.worksheetWidthPercentage);
         return (
             <React.Fragment>
                 {context_menu_display}
@@ -1523,7 +1522,6 @@ const styles = (theme) => ({
         marginTop: NAVBAR_HEIGHT,
     },
     worksheetOuter: {
-        // maxWidth: '1200px', // Worksheet width
         minHeight: 600, // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
