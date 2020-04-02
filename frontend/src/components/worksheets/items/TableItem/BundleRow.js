@@ -279,7 +279,7 @@ class BundleRow extends Component {
                 {/** ---------------------------------------------------------------------------------------------------
                  *  Bundle Detail (below)
                  */}
-                {(true || showDetail) && (
+                {showDetail && (
                     <TableRow>
                         <TableCell
                             colSpan='100%'
