@@ -160,6 +160,7 @@ class Worksheet extends React.Component {
             errorMessage: '',
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
+            worksheetWidthPercentage: window.localStorage.getItem('worksheetSize') || '50%',
         };
     }
 
@@ -582,6 +583,11 @@ class Worksheet extends React.Component {
     toggleGlossaryModal = () => {
         this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
     };
+    toggleWorksheetSize = () => {
+        let newPercentage = this.state.worksheetWidthPercentage === '50%' ? '80%' : '50%';
+        window.localStorage.setItem('worksheetSize', newPercentage);
+        this.setState({ worksheetWidthPercentage: newPercentage });
+    };
     setupEventHandlers() {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
@@ -763,6 +769,9 @@ class Worksheet extends React.Component {
             this.setState({
                 showGlossaryModal: true,
             });
+        });
+        Mousetrap.bind(['+'], (e) => {
+            this.toggleWorksheetSize();
         });
 
         Mousetrap.bind(['esc'], (e) => {
@@ -1431,6 +1440,7 @@ class Worksheet extends React.Component {
         if (info && info.title) {
             document.title = info.title;
         }
+        console.log(this.state.worksheetWidthPercentage);
         return (
             <React.Fragment>
                 {context_menu_display}
@@ -1450,6 +1460,7 @@ class Worksheet extends React.Component {
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
                     togglePopup={this.togglePopup}
                     toggleGlossaryModal={this.toggleGlossaryModal}
+                    toggleWorksheetSize={this.toggleWorksheetSize}
                 />
                 {action_bar_display}
                 <ToastContainer
@@ -1467,6 +1478,7 @@ class Worksheet extends React.Component {
                             <div
                                 className={classes.worksheetOuter}
                                 onClick={this.handleClickForDeselect}
+                                style={{ width: this.state.worksheetWidthPercentage }}
                             >
                                 <div
                                     className={classes.worksheetInner}
@@ -1511,7 +1523,7 @@ const styles = (theme) => ({
         marginTop: NAVBAR_HEIGHT,
     },
     worksheetOuter: {
-        maxWidth: '75%', // Worksheet width
+        // maxWidth: '1200px', // Worksheet width
         minHeight: 600, // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
