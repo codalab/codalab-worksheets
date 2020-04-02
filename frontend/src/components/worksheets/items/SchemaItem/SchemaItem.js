@@ -7,12 +7,16 @@ import TableCell from './SchemaCell';
 import TableRow from '@material-ui/core/TableRow';
 import { getMinMaxKeys } from '../../../../util/worksheet_utils';
 import SchemaRow from './SchemaRow';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import ExpandLessIcon from '@material-ui/icons/ExpandLess';
+import IconButton from '@material-ui/core/IconButton';
 import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import SvgIcon from '@material-ui/core/SvgIcon';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import classNames from 'classnames';
+import Paper from '@material-ui/core/Paper';
 
 class SchemaItem extends React.Component<{
     worksheetUUID: string,
@@ -46,7 +50,6 @@ class SchemaItem extends React.Component<{
             prevItemProcessed = { sort_key: maxKey };
         }
 
-        var tableClassName = this.props.focused ? 'table focused' : 'table';
         const schemaItem = this.props.item;
         const schemaHeaders = schemaItem.header;
         let headerHtml, bodyRowsHtml;
@@ -59,9 +62,7 @@ class SchemaItem extends React.Component<{
                         onMouseLeave={(e) => this.setState({ hovered: false })}
                         component='th'
                         key={index}
-                        style={
-                            editPermission || index !== 0 ? { paddingLeft: 0 } : { paddingLeft: 30 }
-                        }
+                        style={{ paddingLeft: '30px' }}
                     >
                         {item}
                     </TableCell>
@@ -93,6 +94,7 @@ class SchemaItem extends React.Component<{
                     />
                 );
             });
+        // bodyRowsHtml = this.state.showSchemaDetail &&
 
         if (this.props.focused) {
             // Use e.preventDefault to avoid openning selected link
@@ -105,32 +107,49 @@ class SchemaItem extends React.Component<{
                 'keydown',
             );
         }
+        let showSchemasButton = (
+            <IconButton
+                onClick={() => this.setState({ showSchemaDetail: !this.state.showSchemaDetail })}
+                style={{ padding: 2 }}
+            >
+                {this.state.showSchemaDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+        );
+
+        var className = 'type-markup ' + (this.props.focused ? 'focused' : '');
 
         return (
-            <div className='ws-item'>
+            <div
+                className='ws-item'
+                onClick={() => {
+                    this.props.setFocus(this.props.focusIndex, 0);
+                }}
+            >
                 <div
-                    className={classNames({
-                        [classes.highlight]: this.props.focused && this.props.subFocusIndex === 0,
-                    })}
+                    // className={classNames({
+                    //     [classes.highlight]: this.props.focused && this.props.subFocusIndex === 0,
+                    // })}
+                    className={`${className}`}
                 >
-                    {schemaItem.schema_name}
+                    {showSchemasButton}
+                    {'Schema: ' + schemaItem.schema_name}
                 </div>
-                <TableContainer style={{ overflowX: 'auto' }}>
-                    <Table className={tableClassName}>
-                        <TableHead>
-                            <TableRow
-                                style={{
-                                    height: 36,
-                                    borderTop: '2px solid #DEE2E6',
-                                    backgroundColor: '#F8F9FA',
-                                }}
-                            >
-                                {headerHtml}
-                            </TableRow>
-                        </TableHead>
-                        {bodyRowsHtml}
-                    </Table>
-                </TableContainer>
+                {/* <TableContainer component={Paper} style={{ overflowX: 'auto'}}> */}
+                <Table>
+                    <TableHead>
+                        <TableRow
+                            style={{
+                                height: 36,
+                                borderTop: '2px solid #DEE2E6',
+                                // backgroundColor: '#F8F9FA',
+                            }}
+                        >
+                            {headerHtml}
+                        </TableRow>
+                    </TableHead>
+                    {bodyRowsHtml}
+                </Table>
+                {/* </TableContainer> */}
             </div>
         );
     }
@@ -150,13 +169,11 @@ class _TableContainer extends React.Component {
 const styles = (theme) => ({
     tableContainer: {
         position: 'relative',
-    },
-    highlight: {
-        backgroundColor: `${theme.color.primary.lightest} !important`,
-        borderLeft: '3px solid #1d91c0',
+        backgroundColor: 'white',
+        borderColor: '3px solid black',
     },
 });
 
-const TableContainer = withStyles(styles)(_TableContainer);
+// const TableContainer = withStyles(styles)(_TableContainer);
 
 export default withStyles(styles)(SchemaItem);

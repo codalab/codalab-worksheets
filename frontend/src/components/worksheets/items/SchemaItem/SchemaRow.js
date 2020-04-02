@@ -4,6 +4,7 @@ import { withStyles } from '@material-ui/core/styles';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
+import { SchemaEditableField } from '../../../EditableField';
 import IconButton from '@material-ui/core/IconButton';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
@@ -46,71 +47,23 @@ class SchemaRow extends Component {
                     key={col}
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
+                    style={{ paddingLeft: '30px', width: '300px' }}
+                    component='th'
+                    scope='row'
                 >
                     {/* {editPermission && checkBox}
                     {showDetailButton} */}
-                    {rowContent}
+                    <SchemaEditableField
+                        canEdit={true}
+                        fieldName={headerKey}
+                        value={rowContent}
+
+                        // onChange={bundleMetadataChanged}
+                    />
                 </TableCell>
             );
         });
-        // if (this.props.focused) {
-        //     // Use e.preventDefault to avoid openning selected link
-        //     Mousetrap.bind(
-        //         ['enter'],
-        //         (e) => {
-        //             e.preventDefault();
-        //             if (!this.props.confirmBundleRowAction(e.code)) {
-        //                 this.setState((state) => ({ showDetail: !state.showDetail }));
-        //             }
-        //         },
-        //         'keydown',
-        //     );
-        //     Mousetrap.bind(
-        //         ['shift+enter'],
-        //         (e) => {
-        //             e.preventDefault();
-        //             window.open(this.props.url, '_blank');
-        //         },
-        //         'keydown',
-        //     );
-        //     Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
-        //     Mousetrap.bind(['x'], (e) => {
-        //         if (!editPermission) {
-        //             return;
-        //         }
-        //         if (!this.props.confirmBundleRowAction(e.code)) {
-        //             this.props.handleCheckBundle(
-        //                 uuid,
-        //                 this.state.uniqueIdentifier,
-        //                 !this.props.checkStatus,
-        //                 this.props.refreshCheckBox,
-        //             );
-        //             this.props.childrenCheck(this.props.rowIndex, !this.props.checkStatus);
-        //         }
-        //     });
 
-        //     if (
-        //         this.props.focusIndex >= 0 &&
-        //         ws.info.items[this.props.focusIndex].mode === 'table_block'
-        //     ) {
-        //         const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
-        //         const isDownloadableRunBundle =
-        //             bundleInfo.state !== 'preparing' &&
-        //             bundleInfo.state !== 'starting' &&
-        //             bundleInfo.state !== 'created' &&
-        //             bundleInfo.state !== 'staged';
-        //         Mousetrap.bind(['a s'], (e) => {
-        //             if (!isRunBundle || isDownloadableRunBundle) {
-        //                 const bundleDownloadUrl =
-        //                     '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
-        //                 window.open(bundleDownloadUrl, '_blank');
-        //             }
-        //         });
-        //     }
-
-        //     // unbind shortcuts that are active for markdown_block and worksheet_block
-        //     Mousetrap.unbind('i');
-        // }
         return (
             <TableBody classes={{ root: classes.tableBody }}>
                 {/** ---------------------------------------------------------------------------------------------------
@@ -118,9 +71,8 @@ class SchemaRow extends Component {
                  */}
                 <TableRow
                     className={classNames({
-                        [classes.contentRow]: true,
-                        [classes.highlight]: this.props.focused,
-                        [classes.lowlight]: !this.props.focused && showDetail,
+                        // [classes.contentRow]: true,
+                        // [classes.lowlight]: true,
                     })}
                 >
                     {rowCells}
@@ -135,6 +87,7 @@ const styles = (theme) => ({
         '&:hover $rightButtonStripe': {
             display: 'flex',
         },
+        width: '200px',
     },
     rightButtonStripe: {
         display: 'none',

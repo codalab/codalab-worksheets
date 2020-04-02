@@ -109,22 +109,25 @@ class EditableFieldBase extends React.Component<{
         }
         if (!this.state.editing) {
             return (
-                <span
-                    className='editable-field'
-                    onClick={this.onClick}
-                    style={{ color: '#225ea8' }}
-                >
+                <div className='editable-field' onClick={this.onClick} style={{ color: '#225ea8' }}>
                     {this.state.value || '<none>'}
-                </span>
+                </div>
             );
         } else {
+            let onBlurEvent = this.props.customSubmit
+                ? (e) => {
+                      this.props.customSubmit();
+                      this.setState({ editing: false });
+                      e.preventDefault();
+                  }
+                : this.onBlur;
             return (
-                <form onSubmit={this.onBlur}>
+                <form onSubmit={onBlurEvent}>
                     <input
                         type='text'
                         autoFocus
                         value={this.state.value}
-                        onBlur={this.onBlur}
+                        onBlur={onBlurEvent}
                         onChange={
                             this.props.allowASCII ? this.handleFreeChange : this.handleAsciiChange
                         }
@@ -234,6 +237,31 @@ export class BundleEditableField extends React.Component<{
                 url='/rest/bundles'
                 method='PATCH'
                 buildPayload={(value) => this.buildPayload(value)}
+            />
+        );
+    }
+}
+
+export class SchemaEditableField extends React.Component<{
+    value: any,
+    uuid: string,
+    fieldName: string,
+    dataType: string,
+}> {
+    /** Prop default values. */
+    static defaultProps = {
+        dataType: 'string',
+    };
+
+    render() {
+        return (
+            <EditableField
+                {...this.props}
+                value={renderFormat(this.props.value, this.props.dataType)}
+                customSubmit={(e) => {
+                    console.log('custom submit');
+                }}
+                // buildPayload={(value) => this.buildPayload(value)}
             />
         );
     }
