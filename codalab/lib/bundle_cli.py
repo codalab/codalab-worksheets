@@ -790,6 +790,7 @@ class BundleCLI(object):
             help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
             completer=WorksheetsCompleter,
         ),
+        Commands.Argument('-m', '--memo', help='Memoized runs', action='store_true'),
     ) + WAIT_ARGUMENTS
 
     @staticmethod
@@ -2545,7 +2546,6 @@ class BundleCLI(object):
                 nargs='+',
                 completer=BundlesCompleter,
             ),
-            Commands.Argument('-m', '--memo', help='Memoized runs', action='store_true'),
         )
         + Commands.metadata_arguments([MakeBundle, RunBundle])
         + MIMIC_ARGUMENTS,
