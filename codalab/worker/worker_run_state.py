@@ -10,7 +10,7 @@ import codalab.worker.docker_utils as docker_utils
 
 from codalab.lib.formatting import size_str, duration_str
 from codalab.worker.file_util import remove_path, get_path_size
-from codalab.worker.bundle_state import State
+from codalab.worker.bundle_state import State, DependencyKey
 from codalab.worker.fsm import DependencyStage, StateTransitioner
 from codalab.worker.worker_thread import ThreadDict
 
@@ -164,12 +164,24 @@ class RunStateMachine(StateTransitioner):
         if run_state.is_killed:
             return run_state._replace(stage=RunStage.CLEANING_UP)
 
+        # Check CPU and GPU availability
+        try:
+            cpuset, gpuset = self.assign_cpu_and_gpu_sets_fn(
+                run_state.resources.cpus, run_state.resources.gpus
+            )
+        except Exception as e:
+            message = "Unexpectedly unable to assign enough resources: %s" % str(e)
+            logger.error(message)
+            logger.error(traceback.format_exc())
+            return run_state._replace(run_status=message)
+
         dependencies_ready = True
         status_messages = []
 
         if not self.shared_file_system:
             # No need to download dependencies if we're in the shared FS since they're already in our FS
-            for dep_key, dep in run_state.bundle.dependencies.items():
+            for dep in run_state.bundle.dependencies:
+                dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
                 dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
                 if dependency_state.stage == DependencyStage.DOWNLOADING:
                     status_messages.append(
@@ -233,7 +245,8 @@ class RunStateMachine(StateTransitioner):
         docker_dependencies_path = (
             '/' + run_state.bundle.uuid + ('_dependencies' if not self.shared_file_system else '')
         )
-        for dep_key, dep in run_state.bundle.dependencies.items():
+        for dep in run_state.bundle.dependencies:
+            dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
             full_child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
             if not full_child_path.startswith(run_state.bundle_path):
                 # Dependencies should end up in their bundles (ie prevent using relative paths like ..
@@ -256,23 +269,12 @@ class RunStateMachine(StateTransitioner):
             #   dependency_path:docker_dependency_path:ro
             docker_dependencies.append((dependency_path, docker_dependency_path))
 
-        # 3) Set up container
         if run_state.resources.network:
             docker_network = self.docker_network_external.name
         else:
             docker_network = self.docker_network_internal.name
 
-        try:
-            cpuset, gpuset = self.assign_cpu_and_gpu_sets_fn(
-                run_state.resources.cpus, run_state.resources.gpus
-            )
-        except Exception as e:
-            message = "Cannot assign enough resources: %s" % str(e)
-            logger.error(message)
-            logger.error(traceback.format_exc())
-            return run_state._replace(run_status=message)
-
-        # 4) Start container
+        # 3) Start container
         try:
             container = docker_utils.start_bundle_container(
                 run_state.bundle_path,
@@ -287,6 +289,10 @@ class RunStateMachine(StateTransitioner):
                 runtime=self.docker_runtime,
             )
             self.worker_docker_network.connect(container)
+        except docker_utils.DockerUserErrorException as e:
+            message = 'Cannot start Docker container: {}'.format(e)
+            logger.warning(message)
+            return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
         except Exception as e:
             message = 'Cannot start Docker container: {}'.format(e)
             logger.error(message)
@@ -439,7 +445,8 @@ class RunStateMachine(StateTransitioner):
                     logger.error(traceback.format_exc())
                     time.sleep(1)
 
-        for dep_key, dep in run_state.bundle.dependencies.items():
+        for dep in run_state.bundle.dependencies:
+            dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
             if not self.shared_file_system:  # No dependencies if shared fs worker
                 self.dependency_manager.release(run_state.bundle.uuid, dep_key)
 
