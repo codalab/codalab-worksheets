@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.9_
+_version 0.5.11_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -175,7 +175,7 @@ Name | Type
 
 Name | Type
 --- | ---
-`id` | Integer
+`id` | CompatibleInteger
 `bundle` | Relationship([bundles](#bundles))
 `group` | Relationship([groups](#groups))
 `group_name` | String
@@ -234,7 +234,7 @@ Name | Type
 
 Name | Type
 --- | ---
-`id` | Integer
+`id` | CompatibleInteger
 `worksheet` | Relationship([worksheets](#worksheets))
 `subworksheet` | Relationship([worksheets](#worksheets))
 `bundle` | Relationship([bundles](#bundles))
@@ -247,7 +247,7 @@ Name | Type
 
 Name | Type
 --- | ---
-`id` | Integer
+`id` | CompatibleInteger
 `worksheet` | Relationship([worksheets](#worksheets))
 `group` | Relationship([groups](#groups))
 `group_name` | String
