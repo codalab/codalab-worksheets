@@ -68,9 +68,6 @@ class NewUpload extends React.Component<{
             return;
         }
 
-        if (!files) {
-            return;
-        }
         let fileSize = 0;
         for (const file of files) {
             fileSize += file.size;
@@ -268,7 +265,6 @@ class NewUpload extends React.Component<{
         const { percentComplete, uploading } = this.state;
 
         return (
-
             <React.Fragment>
                 <input
                     type="file"
