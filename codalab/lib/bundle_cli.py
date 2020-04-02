@@ -1562,7 +1562,6 @@ class BundleCLI(object):
 
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
         params = {'worksheet': worksheet_uuid}
-        '''
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
         new_bundle = client.create(
@@ -1573,7 +1572,6 @@ class BundleCLI(object):
 
         print(new_bundle['uuid'], file=self.stdout)
         self.wait(client, args, new_bundle['uuid'])
-        '''
 
     @Commands.command(
         'docker',
