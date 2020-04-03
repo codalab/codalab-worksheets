@@ -123,7 +123,7 @@ def parse_args():
     parser.add_argument(
         '--tag-exclusive',
         action='store_true',
-        help='To be used when the worker should only run bundles that match its tag.',
+        help='To be used when the worker should only run bundles that match the worker\'s tag.',
     )
     return parser.parse_args()
 
