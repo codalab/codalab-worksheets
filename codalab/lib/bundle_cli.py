@@ -805,7 +805,7 @@ class BundleCLI(object):
         try:
             i = argv.index('---')
             # Convert the command after '---' to a shell-escaped version of the string.
-            shell_escaped_command = [quote(x) for x in argv[i+1 : ]]
+            shell_escaped_command = [quote(x) for x in argv[i + 1 :]]
             argv = argv[0:i] + [' '.join(shell_escaped_command)]
         except:
             pass
