@@ -24,13 +24,12 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-
-    <!--TODO: Figure out how to access these from the NPM module, not some random CDN-->
-    <script id="mathjaxjs" type="text/javascript" async src=""></script>
     
+    <!-- TODO: Figure out how to access these from the NPM module, not some random CDN -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script>
+      // Load mathjax programatically so that we can attach the load event listener before the script is added
+      // to the DOM. This fixes a race case in which the load event listener wasn't always called.
       (function() {
         var el = document.createElement('script');
         el.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
