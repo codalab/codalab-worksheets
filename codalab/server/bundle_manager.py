@@ -444,7 +444,7 @@ class BundleManager(object):
             # 5. prioritize workers with fewer running jobs.
             # 6. break ties randomly by a random seed.
             return (
-                -int(worker['tag_exclusive']),
+                not worker['tag_exclusive'],
                 worker['gpus'],
                 -num_available_deps,
                 worker['cpus'],
