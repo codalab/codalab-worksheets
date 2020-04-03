@@ -28,7 +28,6 @@ import textwrap
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
-from shlex import quote
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -804,9 +803,7 @@ class BundleCLI(object):
         """
         try:
             i = argv.index('---')
-            # Convert each element after '---' to a shell-escaped version of string.
-            shell_escaped_command = [quote(x) for x in argv[i + 1 :]]
-            argv = argv[0:i] + [' '.join(shell_escaped_command)]
+            argv = argv[0:i] + [' '.join(argv[i + 1 :])]  # TODO: quote command properly
         except:
             pass
 
