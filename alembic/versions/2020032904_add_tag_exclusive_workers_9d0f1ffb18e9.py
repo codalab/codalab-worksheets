@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    op.add_column('worker', sa.Column('tag_exclusive', sa.Boolean(), nullable=False, server_default='0'))
+    op.add_column('worker', sa.Column('tag_exclusive', sa.Boolean(), nullable=False, server_default=sa.false()))
 
 
 def downgrade():
