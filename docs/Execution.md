@@ -148,4 +148,4 @@ To be concrete, a worker started with `cl worker --tag debug --tag-exclusive`
 will _only_ run bundles with `--request-queue debug`. This is especially
 useful for development, since it lets you set off a machine for fast-turnaround
 debugging of CodaLab bundles, even if you have many untagged jobs queued---just
-make sure to set `--request-queue tag=debug`.
+make sure to set `--request-queue debug`.
