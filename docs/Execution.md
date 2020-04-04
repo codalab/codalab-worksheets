@@ -142,10 +142,10 @@ And that's all.  Congrats!
 
 Yes, you can use the `--tag-exclusive` flag of `cl worker` (along with a
 `--tag`) to prevent your worker from running untagged bundles, since
-`tag_exclusive` workers only run bundles that match their tag.
+tag-exclusive workers only run bundles that match their tag.
 
 To be concrete, a worker started with `cl worker --tag debug --tag-exclusive`
-will _only_ run bundles with `--request-queue tag=debug`. This is especially
+will _only_ run bundles with `--request-queue debug`. This is especially
 useful for development, since it lets you set off a machine for fast-turnaround
 debugging of CodaLab bundles, even if you have many untagged jobs queued---just
 make sure to set `--request-queue tag=debug`.
