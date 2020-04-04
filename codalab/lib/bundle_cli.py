@@ -1061,7 +1061,7 @@ class BundleCLI(object):
             'free_disk',
             'last_checkin',
             'tag',
-            'tag_exclusive'
+            'tag_exclusive',
             'runs',
             'shared_file_system',
         ]
