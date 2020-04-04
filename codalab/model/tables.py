@@ -305,9 +305,6 @@ worker = Table(
     Column('user_id', String(63), ForeignKey(user.c.user_id), primary_key=True, nullable=False),
     Column('worker_id', String(127), primary_key=True, nullable=False),
     Column('tag', Text, nullable=True),  # Tag that allows for scheduling runs on specific workers.
-    Column(
-        'tag_exclusive', Boolean, nullable=False
-    ),  # Whether worker runs bundles if and only if they match tags.
     Column('cpus', Integer, nullable=False),  # Number of CPUs on worker.
     Column('gpus', Integer, nullable=False),  # Number of GPUs on worker.
     Column('memory_bytes', BigInteger, nullable=False),  # Total memory of worker.
@@ -319,6 +316,9 @@ worker = Table(
     Column(
         'shared_file_system', Boolean, nullable=False
     ),  # Whether the worker and the server have a shared filesystem.
+    Column(
+        'tag_exclusive', Boolean, nullable=False
+    ),  # Whether worker runs bundles if and only if they match tags.
 )
 
 # Store information about all sockets currently allocated to each worker.

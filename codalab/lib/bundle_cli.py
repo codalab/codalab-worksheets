@@ -1061,9 +1061,9 @@ class BundleCLI(object):
             'free_disk',
             'last_checkin',
             'tag',
-            'tag_exclusive'
             'runs',
             'shared_file_system',
+            'tag_exclusive',
         ]
 
         data = []
@@ -1080,9 +1080,9 @@ class BundleCLI(object):
                         formatting.duration_str(int(time.time()) - worker['checkin_time'])
                     ),
                     'tag': worker['tag'],
-                    'tag_exclusive': worker['tag_exclusive'],
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
+                    'tag_exclusive': worker['tag_exclusive'],
                 }
             )
 
