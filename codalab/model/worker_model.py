@@ -56,13 +56,13 @@ class WorkerModel(object):
         with self._engine.begin() as conn:
             worker_row = {
                 'tag': tag,
+                'tag_exclusive': tag_exclusive,
                 'cpus': cpus,
                 'gpus': gpus,
                 'memory_bytes': memory_bytes,
                 'free_disk_bytes': free_disk_bytes,
                 'checkin_time': datetime.datetime.utcnow(),
                 'shared_file_system': shared_file_system,
-                'tag_exclusive': tag_exclusive,
             }
             existing_row = conn.execute(
                 cl_worker.select().where(
@@ -176,6 +176,7 @@ class WorkerModel(object):
                 'user_id': row.user_id,
                 'worker_id': row.worker_id,
                 'tag': row.tag,
+                'tag_exclusive': row.tag_exclusive,
                 'cpus': row.cpus,
                 'gpus': row.gpus,
                 'memory_bytes': row.memory_bytes,
@@ -187,7 +188,6 @@ class WorkerModel(object):
                 'dependencies': row.dependencies
                 and self._deserialize_dependencies(row.dependencies),
                 'shared_file_system': row.shared_file_system,
-                'tag_exclusive': row.tag_exclusive,
             }
             for row in worker_rows
         }

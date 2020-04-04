@@ -233,6 +233,7 @@ class Worker:
         """
         request = {
             'tag': self.tag,
+            'tag_exclusive': self.tag_exclusive,
             'cpus': len(self.cpuset),
             'gpus': len(self.gpuset),
             'memory_bytes': psutil.virtual_memory().total,
@@ -241,7 +242,6 @@ class Worker:
             'hostname': socket.gethostname(),
             'runs': [run.as_dict for run in self.all_runs],
             'shared_file_system': self.shared_file_system,
-            'tag_exclusive': self.tag_exclusive,
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
