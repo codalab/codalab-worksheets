@@ -135,3 +135,13 @@ Check the bundle's `stdout`, and you should see something similar to before:
     ...
 
 And that's all.  Congrats!
+
+## Frequently asked questions
+
+### Can I reserve workers for particular tags?
+
+Yes, you can use the `--tag--exclusive` flag of `cl worker` (along with a
+`--tag`) to prevent it from running untagged bundles (i.e., it will only run
+bundles that match its tag). This is especially useful for development, since it
+lets you set off a machine for fast-turnaround debugging of CodaLab bundles,
+even if you have many untagged jobs queued.
