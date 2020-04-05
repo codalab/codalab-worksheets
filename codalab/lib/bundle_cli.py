@@ -793,7 +793,7 @@ class BundleCLI(object):
         Commands.Argument(
             '-m',
             '--memo',
-            help='Return a memoized bundle that matches with the requested command and dependencies',
+            help='Use a memoized bundle that matches with the given command and dependencies',
             action='store_true',
         ),
     ) + WAIT_ARGUMENTS
@@ -1556,7 +1556,7 @@ class BundleCLI(object):
             Commands.Argument(
                 '-m',
                 '--memo',
-                help='Return a memoized bundle that matches with the requested command and dependencies',
+                help='Use a memoized bundle that matches with the given command and dependencies',
                 action='store_true',
             ),
         )
