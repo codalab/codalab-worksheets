@@ -388,6 +388,15 @@ class BundleManager(object):
         # Filter by tag.
         if bundle.metadata.request_queue:
             workers_list = self._get_matched_workers(bundle.metadata.request_queue, workers_list)
+        else:
+            # The bundle is untagged, so we want to keep workers that are not
+            # tag-exclusive or don't have a tag defined.
+            # (removing workers that are tag_exclusive and have tags defined).
+            workers_list = [
+                worker
+                for worker in workers_list
+                if not worker['tag_exclusive'] or not worker['tag']
+            ]
 
         # Filter by CPUs.
         workers_list = [
@@ -428,12 +437,14 @@ class BundleManager(object):
                 num_available_deps = len(needed_deps & deps)
 
             # Subject to the worker meeting the resource requirements of the bundle, we also want to:
-            # 1. prioritize workers with fewer GPUs (including zero).
-            # 2. prioritize workers that have more bundle dependencies.
-            # 3. prioritize workers with fewer CPUs.
-            # 4. prioritize workers with fewer running jobs.
-            # 5. break ties randomly by a random seed.
+            # 1. prioritize workers that are tag-exclusive.
+            # 2. prioritize workers with fewer GPUs (including zero).
+            # 3. prioritize workers that have more bundle dependencies.
+            # 4. prioritize workers with fewer CPUs.
+            # 5. prioritize workers with fewer running jobs.
+            # 6. break ties randomly by a random seed.
             return (
+                not worker['tag_exclusive'],
                 worker['gpus'],
                 -num_available_deps,
                 worker['cpus'],
