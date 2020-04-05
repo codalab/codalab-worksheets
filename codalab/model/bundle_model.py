@@ -686,7 +686,6 @@ class BundleModel(object):
                              the dependencies that are used to match with memoized bundles.
         :return:
         '''
-        logger.info("command = {}, dependencies = {}".format(command, dependencies))
         # Select bundles that has the given command from the bundle table
         filter_on_command = (
             select([cl_bundle.c.uuid])
@@ -704,6 +703,7 @@ class BundleModel(object):
             )
             for d in dependencies
         ]
+
         dependency_query = (
             select(
                 [
@@ -717,42 +717,21 @@ class BundleModel(object):
             .select_from(cl_bundle_dependency)
             .where(or_(*dep_clause))
         )
+        # Avoid querying the database if there is no dependency to match
         standardized_dependencies = (
             self._execute_query(dependency_query) if len(dependencies) > 0 else []
         )
-        logger.info("standardized_dependencies = {}".format(standardized_dependencies))
+        # When the number of uniformed dependencies doesn't match with the length of the
+        # original list, this usually means there are bundles that cannot be found in database
+        # for whatever reason and this indicates that no matched memoized bundles can be found.
+        if len(standardized_dependencies) != len(dependencies):
+            return []
         # Ensure the concatenated bundles' dependencies string to match with mysql group_concat
         concat_dependencies = ','.join(standardized_dependencies)
-        logger.info("concat_dependencies = {}".format(concat_dependencies))
-        # Join between filter_on_command table and cl_bundle_dependency table
-        # to get bundles that match with both input command and dependencies
-        join = (
-            select(
-                [
-                    filter_on_command.c.uuid,
-                    func.group_concat(
-                        func.concat_ws(
-                            ':',
-                            cl_bundle_dependency.c.child_path,
-                            cl_bundle_dependency.c.parent_uuid,
-                        )
-                    ).label('concat_dependencies'),
-                ]
-            )
-            .select_from(
-                filter_on_command.join(
-                    cl_bundle_dependency,
-                    cl_bundle_dependency.c.child_uuid == filter_on_command.c.uuid,
-                )
-            )
-            .where(or_(*dep_clause))
-            .group_by(cl_bundle_dependency.c.child_uuid)
-            .alias("join")
-        )
 
-        if len(dependencies) == 0:
-            # When there is no dependency to be matched, the target memozied bundle
-            # should exist in the bundle table but not in the bundle_dependency table.
+        # When there is no dependency to be matched, the target memozied bundle
+        # should only exist in the bundle table but not in the bundle_dependency table.
+        if len(standardized_dependencies) == 0:
             query = (
                 select([filter_on_command.c.uuid])
                 .select_from(filter_on_command)
@@ -765,16 +744,38 @@ class BundleModel(object):
                 )
             )
         else:
+            # Join between filter_on_command table and cl_bundle_dependency table
+            # to get bundles that match with both input command and dependencies
+            join = (
+                select(
+                    [
+                        filter_on_command.c.uuid,
+                        func.group_concat(
+                            func.concat_ws(
+                                ':',
+                                cl_bundle_dependency.c.child_path,
+                                cl_bundle_dependency.c.parent_uuid,
+                            )
+                        ).label('concat_dependencies'),
+                    ]
+                )
+                .select_from(
+                    filter_on_command.join(
+                        cl_bundle_dependency,
+                        cl_bundle_dependency.c.child_uuid == filter_on_command.c.uuid,
+                    )
+                )
+                .where(or_(*dep_clause))
+                .group_by(cl_bundle_dependency.c.child_uuid)
+                .alias("join")
+            )
+
             query = (
                 select([join.c.uuid])
                 .select_from(join)
                 .where(join.c.concat_dependencies == concat_dependencies)
             )
-        result = self._execute_query(query)
-        if result:
-            # Return the most recent bundle
-            return result[-1]
-        return None
+        return self._execute_query(query)
 
     def batch_get_bundles(self, **kwargs):
         """

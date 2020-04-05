@@ -190,10 +190,10 @@ def mimic_bundles(
             new_info['metadata'] = new_metadata
             new_info['dependencies'] = new_dependencies
 
-            # Fetch the memoized bundle if memo option is set to True
-            memoized_bundle = None
+            # Fetch the memoized bundle if the memo option is set to be True
+            memoized_bundles = None
             if memo:
-                memoized_bundle = client.fetch(
+                memoized_bundles = client.fetch(
                     'bundles',
                     params={
                         'command': old_info['command'],
@@ -205,8 +205,8 @@ def mimic_bundles(
 
             if dry_run:
                 new_info['uuid'] = None
-            elif memo and memoized_bundle:
-                new_info = memoized_bundle
+            elif memo and len(memoized_bundles) > 0:
+                new_info = memoized_bundles[-1]
             else:
                 if new_info['bundle_type'] not in ('make', 'run'):
                     raise UsageError(

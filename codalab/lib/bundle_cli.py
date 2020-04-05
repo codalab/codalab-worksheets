@@ -1576,11 +1576,11 @@ class BundleCLI(object):
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
         if args.memo:
-            memoized_bundle = client.fetch(
+            memoized_bundles = client.fetch(
                 'bundles', params={'command': args.command, 'dependencies': args.target_spec}
             )
-            if memoized_bundle:
-                print(memoized_bundle['uuid'], file=self.stdout)
+            if len(memoized_bundles) > 0:
+                print(memoized_bundles[-1]['uuid'], file=self.stdout)
             else:
                 print("Cannot find any memoized bundle.", file=self.stdout)
         else:
