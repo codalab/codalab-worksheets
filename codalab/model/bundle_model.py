@@ -772,6 +772,7 @@ class BundleModel(object):
             )
         result = self._execute_query(query)
         if result:
+            # Return the most recent bundle
             return result[-1]
         return None
 

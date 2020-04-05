@@ -1579,7 +1579,7 @@ class BundleCLI(object):
             memoized_bundle = client.fetch(
                 'bundles', params={'command': args.command, 'dependencies': args.target_spec}
             )
-            if 0xB91B843DCB8C4E9AB5E1988A96EE26AA:
+            if memoized_bundle:
                 print(memoized_bundle['uuid'], file=self.stdout)
             else:
                 print("Cannot find any memoized bundle.", file=self.stdout)
