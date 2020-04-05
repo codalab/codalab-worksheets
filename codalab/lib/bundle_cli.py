@@ -790,7 +790,12 @@ class BundleCLI(object):
             help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
             completer=WorksheetsCompleter,
         ),
-        Commands.Argument('-m', '--memo', help='Memoized runs', action='store_true'),
+        Commands.Argument(
+            '-m',
+            '--memo',
+            help='Return a memoized bundle that matches with the requested command and dependencies',
+            action='store_true',
+        ),
     ) + WAIT_ARGUMENTS
 
     @staticmethod
@@ -1548,7 +1553,12 @@ class BundleCLI(object):
             Commands.Argument(  # Internal for web FE positioned insert.
                 '-a', '--after_sort_key', help='Insert after this sort_key', completer=NullCompleter
             ),
-            Commands.Argument('-m', '--memo', help='Memoized runs', action='store_true'),
+            Commands.Argument(
+                '-m',
+                '--memo',
+                help='Return a memoized bundle that matches with the requested command and dependencies',
+                action='store_true',
+            ),
         )
         + Commands.metadata_arguments([RunBundle])
         + EDIT_ARGUMENTS
@@ -1561,18 +1571,16 @@ class BundleCLI(object):
 
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
         params = {'worksheet': worksheet_uuid}
+        print(args.target_spec)
+
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
         if args.memo:
-            memoized_bundles = client.fetch(
-                'bundles',
-                params={
-                    'command': args.command,
-                    'dependencies': [uuid for uuid, target in targets],
-                },
+            memoized_bundle = client.fetch(
+                'bundles', params={'command': args.command, 'dependencies': args.target_spec}
             )
-            if len(memoized_bundles) > 0:
-                print(memoized_bundles[0]['uuid'], file=self.stdout)
+            if 0xB91B843DCB8C4E9AB5E1988A96EE26AA:
+                print(memoized_bundle['uuid'], file=self.stdout)
             else:
                 print("Cannot find any memoized bundle.", file=self.stdout)
         else:
