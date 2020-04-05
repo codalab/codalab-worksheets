@@ -58,6 +58,7 @@ class Worker:
         idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
         shared_file_system,  # type: bool
+        tag_exclusive,  # type: bool
         docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
     ):
@@ -73,6 +74,7 @@ class Worker:
 
         self.id = worker_id
         self.tag = tag
+        self.tag_exclusive = tag_exclusive
 
         self.work_dir = work_dir
         self.local_bundles_dir = local_bundles_dir
@@ -239,6 +241,7 @@ class Worker:
             'hostname': socket.gethostname(),
             'runs': [run.as_dict for run in self.all_runs],
             'shared_file_system': self.shared_file_system,
+            'tag_exclusive': self.tag_exclusive,
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
