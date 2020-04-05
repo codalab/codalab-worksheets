@@ -681,10 +681,10 @@ class BundleModel(object):
         '''
         Get the most recently finished bundle that matches with given command and dependencies.
         :param user_id: a string that specifies the current user id.
-        :param command: a string that specifies the command that is used to match with memoized bundles.
-        :param dependencies: a list of string in the structure of ["key1:uuid1","key2:uuid2"] specifies
-                             the dependencies that are used to match with memoized bundles.
-        :return:
+        :param command: a string that defines the command that is used to search for memoized bundles in the database.
+        :param dependencies: a list of string in the structure of ["key1:uuid1","key2:uuid2"] defines
+                            dependencies that are used to search for memoized bundles in the database.
+        :return: a list of matched uuids.
         '''
         # Select bundles that has the given command from the bundle table
         filter_on_command = (
@@ -703,7 +703,8 @@ class BundleModel(object):
             )
             for d in dependencies
         ]
-
+        # Find unique (multiple bundles may have the same set of dependencies) records
+        # from the bundle_dependency table that match with the given dependencies.
         dependency_query = (
             select(
                 [
@@ -712,7 +713,6 @@ class BundleModel(object):
                     )
                 ]
             )
-            # there could be multiple bundles using the same command and dependencies
             .distinct()
             .select_from(cl_bundle_dependency)
             .where(or_(*dep_clause))
