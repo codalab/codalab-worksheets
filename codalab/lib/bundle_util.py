@@ -154,16 +154,6 @@ def mimic_bundles(
             dep['parent_uuid'] in downstream for dep in old_info['dependencies']
         )
         if lone_output or downstream_of_inputs:
-            if memo:
-                memoized_bundle = client.fetch(
-                    'bundles',
-                    params={
-                        'command': old_info['command'],
-                        'dependencies': [
-                            dep['child_path'] + ':' + dep['parent_uuid'] for dep in new_dependencies
-                        ],
-                    },
-                )
             # Now create a new bundle that mimics the old bundle.
             new_info = copy.deepcopy(old_info)
 
@@ -199,6 +189,19 @@ def mimic_bundles(
             # Set up info dict
             new_info['metadata'] = new_metadata
             new_info['dependencies'] = new_dependencies
+
+            # Fetch the memoized bundle if memo option is set to True
+            memoized_bundle = None
+            if memo:
+                memoized_bundle = client.fetch(
+                    'bundles',
+                    params={
+                        'command': old_info['command'],
+                        'dependencies': [
+                            dep['child_path'] + ':' + dep['parent_uuid'] for dep in new_dependencies
+                        ],
+                    },
+                )
 
             if dry_run:
                 new_info['uuid'] = None
