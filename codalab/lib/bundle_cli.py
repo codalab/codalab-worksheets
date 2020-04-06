@@ -792,7 +792,7 @@ class BundleCLI(object):
         ),
         Commands.Argument(
             '-m',
-            '--memo',
+            '--memoize',
             help='Use a memoized bundle that matches with the given command and dependencies',
             action='store_true',
         ),
@@ -1555,7 +1555,7 @@ class BundleCLI(object):
             ),
             Commands.Argument(
                 '-m',
-                '--memo',
+                '--memoize',
                 help='Use a memoized bundle that matches with the given command and dependencies',
                 action='store_true',
             ),
