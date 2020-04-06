@@ -1759,7 +1759,9 @@ def test(ctx):
     check_contains('0x', get_info(uuid_deps, 'data_hash'))
     check_equals('hello', _run_command([cl, 'cat', uuid_deps + '/stdout']))
     # memo tests
-    uuid_deps_memo = _run_command([cl, 'run', ':{}'.format(uuid_deps), ':{}'.format(uuid_deps), 'echo hello', '--memoize'])
+    uuid_deps_memo = _run_command(
+        [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid), 'echo hello', '--memoize']
+    )
     check_equals(uuid_deps_memo, uuid_deps)
 
     # Case 4: multiple key points to the same bundle
