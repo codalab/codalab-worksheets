@@ -1727,7 +1727,7 @@ def test(ctx):
     test_worksheet.test_print()
 
 
-@TestModule.register('memo')
+@TestModule.register('memoize')
 def test(ctx):
     # Case 1: no dependency
     uuid = _run_command([cl, 'run', 'echo hello'])
