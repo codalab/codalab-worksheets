@@ -1748,12 +1748,16 @@ def test(ctx):
     check_equals(uuid_dep_memo, uuid_dep)
 
     # Case 3: with multiple key points to the same bundle
-    uuid_multi_alias = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello'])
+    uuid_multi_alias = _run_command(
+        [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello']
+    )
     wait(uuid_multi_alias)
     check_contains('0x', get_info(uuid_multi_alias, 'data_hash'))
     check_equals('hello', _run_command([cl, 'cat', uuid_multi_alias + '/stdout']))
     # memo tests
-    uuid_multi_alias_memo = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello', '--memo'])
+    uuid_multi_alias_memo = _run_command(
+        [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello', '--memo']
+    )
     check_equals(uuid_multi_alias_memo, uuid_multi_alias)
 
     # Case 4: with multiple dependencies
@@ -1771,16 +1775,24 @@ def test(ctx):
     check_contains('0x', get_info(uuid_b_a, 'data_hash'))
     check_equals("b_a", _run_command([cl, 'cat', uuid_b_a + '/stdout']))
     # test order a:<uuid_2>, b:<uuid_1>
-    uuid_b_a_order = _run_command([cl, 'run', 'a:{}'.format(uuid2), 'b:{}'.format(uuid), 'echo order_test'])
+    uuid_b_a_order = _run_command(
+        [cl, 'run', 'a:{}'.format(uuid2), 'b:{}'.format(uuid), 'echo order_test']
+    )
     wait(uuid_b_a)
     check_contains('0x', get_info(uuid_b_a, 'data_hash'))
     check_equals("order_test", _run_command([cl, 'cat', uuid_b_a_order + '/stdout']))
     # memo tests
-    uuid_a_b_memo = _run_command([cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid2), 'echo a_b', '--memo'])
+    uuid_a_b_memo = _run_command(
+        [cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid2), 'echo a_b', '--memo']
+    )
     check_equals(uuid_a_b_memo, uuid_a_b)
-    uuid_b_a_memo = _run_command([cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid2), 'echo b_a', '--memo'])
+    uuid_b_a_memo = _run_command(
+        [cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid2), 'echo b_a', '--memo']
+    )
     check_equals(uuid_b_a_memo, uuid_b_a)
-    uuid_b_a_order_memo = _run_command([cl, 'run', 'a:{}'.format(uuid2), 'b:{}'.format(uuid), 'echo order_test', '--memo'])
+    uuid_b_a_order_memo = _run_command(
+        [cl, 'run', 'a:{}'.format(uuid2), 'b:{}'.format(uuid), 'echo order_test', '--memo']
+    )
     check_equals(uuid_b_a_order_memo, uuid_b_a_order)
 
 
