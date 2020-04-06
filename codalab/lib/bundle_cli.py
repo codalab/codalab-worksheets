@@ -1574,7 +1574,7 @@ class BundleCLI(object):
 
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
-        if args.memo:
+        if args.memoize:
             memoized_bundles = client.fetch(
                 'bundles', params={'command': args.command, 'dependencies': args.target_spec}
             )
@@ -2659,7 +2659,7 @@ class BundleCLI(object):
             args.shadow,
             args.dry_run,
             metadata_override=metadata,
-            memo=args.memo,
+            memo=args.memoize,
         )
         for (old, new) in plan:
             print(
