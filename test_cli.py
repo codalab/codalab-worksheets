@@ -1763,6 +1763,7 @@ def test(ctx):
     # Case 4: with multiple dependencies
     uuid2 = _run_command([cl, 'run', 'echo hello2'])
     wait(uuid2)
+    check_contains('0x', get_info(uuid2, 'data_hash'))
     check_equals('hello2', _run_command([cl, 'cat', uuid2 + '/stdout']))
     # a:<uuid_1>, b:<uuid_2>
     uuid_a_b = _run_command([cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid2), 'echo a_b'])
@@ -1774,13 +1775,6 @@ def test(ctx):
     wait(uuid_b_a)
     check_contains('0x', get_info(uuid_b_a, 'data_hash'))
     check_equals("b_a", _run_command([cl, 'cat', uuid_b_a + '/stdout']))
-    # test order a:<uuid_2>, b:<uuid_1>
-    uuid_b_a_order = _run_command(
-        [cl, 'run', 'a:{}'.format(uuid2), 'b:{}'.format(uuid), 'echo order_test']
-    )
-    wait(uuid_b_a)
-    check_contains('0x', get_info(uuid_b_a, 'data_hash'))
-    check_equals("order_test", _run_command([cl, 'cat', uuid_b_a_order + '/stdout']))
     # memo tests
     uuid_a_b_memo = _run_command(
         [cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid2), 'echo a_b', '--memo']
@@ -1790,10 +1784,11 @@ def test(ctx):
         [cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid2), 'echo b_a', '--memo']
     )
     check_equals(uuid_b_a_memo, uuid_b_a)
+    # test order a:<uuid_2>, b:<uuid_1>
     uuid_b_a_order_memo = _run_command(
-        [cl, 'run', 'a:{}'.format(uuid2), 'b:{}'.format(uuid), 'echo order_test', '--memo']
+        [cl, 'run', 'a:{}'.format(uuid2), 'b:{}'.format(uuid), 'echo b_a', '--memo']
     )
-    check_equals(uuid_b_a_order_memo, uuid_b_a_order)
+    check_equals(uuid_b_a_order_memo, uuid_b_a)
 
 
 if __name__ == '__main__':
