@@ -1571,7 +1571,6 @@ class BundleCLI(object):
 
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
         params = {'worksheet': worksheet_uuid}
-        print(args.target_spec)
 
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
