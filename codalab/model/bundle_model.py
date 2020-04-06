@@ -679,7 +679,7 @@ class BundleModel(object):
 
     def get_memoized_bundles(self, user_id, command, dependencies):
         '''
-        Get the most recently finished bundle that matches with given command and dependencies.
+        Get the most recently finished bundle that matches with input command and dependencies.
         :param user_id: a string that specifies the current user id.
         :param command: a string that defines the command that is used to search for memoized bundles in the database.
         :param dependencies: a list of string in the structure of ["key1:uuid1","key2:uuid2"] defines
@@ -704,7 +704,7 @@ class BundleModel(object):
             for d in dependencies
         ]
         # Find unique (multiple bundles may have the same set of dependencies) records
-        # from the bundle_dependency table that match with the given dependencies.
+        # from the bundle_dependency table that match with the input dependencies.
         dependency_query = (
             select(
                 [
