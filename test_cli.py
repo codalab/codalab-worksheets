@@ -1784,7 +1784,7 @@ def test(ctx):
         [cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid2), 'echo b_a', '--memo']
     )
     check_equals(uuid_b_a_memo, uuid_b_a)
-    # test order a:<uuid_2>, b:<uuid_1>
+    # test dependency order: a:<uuid_2>, b:<uuid_1>
     uuid_b_a_order_memo = _run_command(
         [cl, 'run', 'a:{}'.format(uuid2), 'b:{}'.format(uuid), 'echo b_a', '--memo']
     )
