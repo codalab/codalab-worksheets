@@ -726,6 +726,7 @@ class BundleModel(object):
         # for whatever reason and this indicates that no matched memoized bundles can be found.
         if len(standardized_dependencies) != len(dependencies):
             return []
+        standardized_dependencies.sort()
         # Ensure the concatenated bundles' dependencies string to match with mysql group_concat
         concat_dependencies = ','.join(standardized_dependencies)
 
@@ -746,16 +747,16 @@ class BundleModel(object):
         else:
             # Join between filter_on_command table and cl_bundle_dependency table
             # to get bundles that match with both input command and dependencies
+            create_dependency_str = func.concat_ws(
+                ':', cl_bundle_dependency.c.child_path, cl_bundle_dependency.c.parent_uuid
+            )
             join = (
                 select(
                     [
                         filter_on_command.c.uuid,
+                        # ORDER BY will ensure those dependency strings group_concat in ascending order
                         func.group_concat(
-                            func.concat_ws(
-                                ':',
-                                cl_bundle_dependency.c.child_path,
-                                cl_bundle_dependency.c.parent_uuid,
-                            )
+                            create_dependency_str.op("ORDER BY")(create_dependency_str)
                         ).label('concat_dependencies'),
                     ]
                 )
@@ -771,10 +772,11 @@ class BundleModel(object):
             )
 
             query = (
-                select([join.c.uuid])
+                select([join.c.uuid, join.c.concat_dependencies])
                 .select_from(join)
                 .where(join.c.concat_dependencies == concat_dependencies)
             )
+
         return self._execute_query(query)
 
     def batch_get_bundles(self, **kwargs):
