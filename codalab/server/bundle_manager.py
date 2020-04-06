@@ -314,8 +314,10 @@ class BundleManager(object):
     def _schedule_run_bundles_on_workers(self, workers, staged_bundles_to_run, user_info_cache):
         """
         Schedule STAGED bundles to run on available workers based on the following logic:
-        1. If the bundle requests to run on a specific worker, tries to schedule the bundle
-           to run on a worker that has a tag exactly match with request_queue.
+        1. For a given user, schedule the highest-priority bundles first, followed by bundles
+           that request to run on a specific worker.
+        2. If the bundle requests to run on a specific worker, schedule the bundle
+           to run on a worker that has a tag that exactly matches the bundle's request_queue.
         2. If the bundle doesn't request to run on a specific worker,
           (1) try to schedule the bundle to run on a worker that belongs to the bundle's owner
           (2) if there is no such qualified private worker, uses CodaLab-owned workers, which have user ID root_user_id.
