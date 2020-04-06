@@ -1753,15 +1753,16 @@ def test(ctx):
     check_equals(uuid_dep_memo, uuid_dep)
 
     # Case 3: multiple dependencies without key
+    # target_spec: ":<uuid_1>, :<uuid_2>"
     uuid_deps = _run_command([cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid1), 'echo hello'])
     wait(uuid_deps)
     check_contains('0x', get_info(uuid_deps, 'data_hash'))
     check_equals('hello', _run_command([cl, 'cat', uuid_deps + '/stdout']))
     # memo tests
-    uuid_deps_memo = _run_command([cl, 'run', ':{}'.format(uuid_deps), 'echo hello', '--memoize'])
+    uuid_deps_memo = _run_command([cl, 'run', ':{}'.format(uuid_deps), ':{}'.format(uuid_deps), 'echo hello', '--memoize'])
     check_equals(uuid_deps_memo, uuid_deps)
 
-    # Case 3: multiple key points to the same bundle
+    # Case 4: multiple key points to the same bundle
     # target_spec: "foo:<uuid>, foo1:<uuid>"
     uuid_multi_alias = _run_command(
         [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello']
@@ -1775,7 +1776,7 @@ def test(ctx):
     )
     check_equals(uuid_multi_alias_memo, uuid_multi_alias)
 
-    # Case 4: duplicate dependencies
+    # Case 5: duplicate dependencies
     # target_spec: ":<uuid>, :<uuid>"
     uuid_dup_deps = _run_command([cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid), 'echo hello'])
     wait(uuid_dup_deps)
