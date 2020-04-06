@@ -323,12 +323,34 @@ class BundleManager(object):
         :param staged_bundles_to_run: a list of tuples each contains a valid bundle and its bundle resources.
         :param user_info_cache: a dictionary mapping user id to user information.
         """
-        # Reorder the stage_bundles so that bundles which were requested to run on a specific worker
-        # will be scheduled to run first
-        staged_bundles_to_run.sort(
-            key=lambda b: (b[0].metadata.request_queue is not None, b[0].metadata.request_queue),
-            reverse=True,
-        )
+        # Build a dictionary which maps from user id to positions in the queue of the
+        # user's staged bundles.
+        user_queue_positions = {}
+        for queue_position, staged_bundle in enumerate(staged_bundles_to_run):
+            if staged_bundle[0].owner_id not in user_queue_positions:
+                user_queue_positions[staged_bundle[0].owner_id] = []
+            user_queue_positions[staged_bundle[0].owner_id].append(queue_position)
+
+        for user, queue_positions in user_queue_positions.items():
+            sorted_queue_positions = sorted(queue_positions)
+            # Get this user's staged bundles
+            user_staged_bundles = [
+                staged_bundles_to_run[queue_position] for queue_position in queue_positions
+            ]
+            # Sort the staged bundles for this user, according to
+            # (1) their priority and (2) whether it requested to run on a specific worker.
+            sorted_user_staged_bundles = sorted(
+                user_staged_bundles,
+                key=lambda b: (
+                    b[0].metadata.request_priority is not None,
+                    b[0].metadata.request_priority,
+                    b[0].metadata.request_queue is not None,
+                    b[0].metadata.request_queue,
+                ),
+                reverse=True,
+            )
+            for queue_position, bundle in zip(sorted_queue_positions, sorted_user_staged_bundles):
+                staged_bundles_to_run[queue_position] = bundle
 
         # Build a dictionary which maps from uuid to running bundle and bundle_resources
         running_bundles_info = self._get_running_bundles_info(workers, staged_bundles_to_run)
