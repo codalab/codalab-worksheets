@@ -1739,6 +1739,7 @@ def test(ctx):
     check_equals(uuid_memo, uuid)
 
     # Case 2: with single dependency
+    # target_spec: ":<uuid>"
     uuid_dep = _run_command([cl, 'run', ':{}'.format(uuid), 'echo hello'])
     wait(uuid_dep)
     check_contains('0x', get_info(uuid_dep, 'data_hash'))
@@ -1748,6 +1749,7 @@ def test(ctx):
     check_equals(uuid_dep_memo, uuid_dep)
 
     # Case 3: with multiple key points to the same bundle
+    # target_spec: "foo:<uuid>, foo1:<uuid>"
     uuid_multi_alias = _run_command(
         [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello']
     )
@@ -1765,16 +1767,19 @@ def test(ctx):
     wait(uuid2)
     check_contains('0x', get_info(uuid2, 'data_hash'))
     check_equals('hello2', _run_command([cl, 'cat', uuid2 + '/stdout']))
-    # a:<uuid_1>, b:<uuid_2>
+
+    # target_spec: "a:<uuid_1>, b:<uuid_2>"
     uuid_a_b = _run_command([cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid2), 'echo a_b'])
     wait(uuid_a_b)
     check_contains('0x', get_info(uuid_a_b, 'data_hash'))
     check_equals("a_b", _run_command([cl, 'cat', uuid_a_b + '/stdout']))
-    # b:<uuid_1>, a:<uuid_2>
+
+    # target_spec: "b:<uuid_1>, a:<uuid_2>"
     uuid_b_a = _run_command([cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid2), 'echo b_a'])
     wait(uuid_b_a)
     check_contains('0x', get_info(uuid_b_a, 'data_hash'))
     check_equals("b_a", _run_command([cl, 'cat', uuid_b_a + '/stdout']))
+
     # memo tests
     uuid_a_b_memo = _run_command(
         [cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid2), 'echo a_b', '--memo']
@@ -1784,7 +1789,7 @@ def test(ctx):
         [cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid2), 'echo b_a', '--memo']
     )
     check_equals(uuid_b_a_memo, uuid_b_a)
-    # test dependency order: a:<uuid_2>, b:<uuid_1>
+    # test different dependency order in target_spec: "a:<uuid_2>, b:<uuid_1>"
     uuid_b_a_order_memo = _run_command(
         [cl, 'run', 'a:{}'.format(uuid2), 'b:{}'.format(uuid), 'echo b_a', '--memo']
     )
