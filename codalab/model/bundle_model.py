@@ -747,7 +747,7 @@ class BundleModel(object):
         else:
             # Join between filter_on_command table and cl_bundle_dependency table
             # to get bundles that match with both input command and dependencies
-            create_dependency_str = func.concat_ws(
+            generate_dependency_str = func.concat_ws(
                 ':', cl_bundle_dependency.c.child_path, cl_bundle_dependency.c.parent_uuid
             )
             join = (
@@ -756,7 +756,7 @@ class BundleModel(object):
                         filter_on_command.c.uuid,
                         # ORDER BY will ensure those dependency strings group_concat in ascending order
                         func.group_concat(
-                            create_dependency_str.op("ORDER BY")(create_dependency_str)
+                            generate_dependency_str.op("ORDER BY")(generate_dependency_str)
                         ).label('concat_dependencies'),
                     ]
                 )
