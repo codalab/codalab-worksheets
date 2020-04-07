@@ -710,8 +710,6 @@ class BundleModel(object):
                     .distinct()
                     .select_from(cl_bundle_dependency)
                     .where(cl_bundle_dependency.c.child_uuid.in_(uuids))
-                    # Ensure the order of the returning bundles will be in the order of they were created.
-                    .order_by(cl_bundle_dependency.c.id)
                 )
                 dependency_rows = connection.execute(query).fetchall()
                 dependency_uuids = set([row[0] for row in dependency_rows])
