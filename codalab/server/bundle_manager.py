@@ -333,7 +333,7 @@ class BundleManager(object):
             user_queue_positions[staged_bundle[0].owner_id].append(queue_position)
 
         for user, queue_positions in user_queue_positions.items():
-            sorted_queue_positions = sorted(queue_positions)
+            assert queue_positions == sorted(queue_positions)
             # Get this user's staged bundles
             user_staged_bundles = [
                 staged_bundles_to_run[queue_position] for queue_position in queue_positions
@@ -350,7 +350,7 @@ class BundleManager(object):
                 ),
                 reverse=True,
             )
-            for queue_position, bundle in zip(sorted_queue_positions, sorted_user_staged_bundles):
+            for queue_position, bundle in zip(queue_positions, sorted_user_staged_bundles):
                 staged_bundles_to_run[queue_position] = bundle
 
         # Build a dictionary which maps from uuid to running bundle and bundle_resources
