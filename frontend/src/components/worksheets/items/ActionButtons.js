@@ -145,7 +145,7 @@ class ActionButtons extends React.Component<{
                         size='small'
                         color='inherit'
                         aria-label='Paste'
-                        onClick={pasteToWorksheet}
+                        onClick={toggleCmdDialog('paste')}
                         disabled={!editPermission}
                         id='paste-button'
                     >

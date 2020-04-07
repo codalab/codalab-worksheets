@@ -184,10 +184,10 @@ class WorksheetDialogs extends React.Component {
                     </DialogActions>
                 </Dialog>
                 <Dialog
-                    open={this.props.openCopy}
+                    open={this.props.openPaste}
                     onClose={this.props.toggleCmdDialog('paste')}
-                    aria-labelledby='copy-title'
-                    aria-describedby='deletion-description'
+                    aria-labelledby='paste-title'
+                    aria-describedby='paste-description'
                 >
                     <DialogContent className={classes.copyDialog}>
                         <DialogContentText id='alert-dialog-description'>
@@ -197,16 +197,16 @@ class WorksheetDialogs extends React.Component {
                             autoFocus
                             margin='dense'
                             id='name'
-                            label='Email Address'
+                            label='Paste contents'
                             type='email'
                             fullWidth
                         />
                     </DialogContent>
                     <DialogActions>
-                        <Button color='primary' onClick={this.props.toggleCmdDialog('deleteItem')}>
+                        <Button color='primary' onClick={this.props.toggleCmdDialog('paste')}>
                             CANCEL
                         </Button>
-                        <Button color='primary'>DELETE</Button>
+                        <Button color='primary'>Paste</Button>
                     </DialogActions>
                 </Dialog>
                 }

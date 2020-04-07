@@ -155,6 +155,7 @@ class Worksheet extends React.Component {
             openDetach: false,
             openKill: false,
             openCopy: false,
+            openPaste: false,
             openDeleteItem: false,
             forceDelete: false,
             showGlossaryModal: false,
@@ -354,23 +355,6 @@ class Worksheet extends React.Component {
         this.handleCommand(cmd_type);
     };
 
-    togglePopup = (cmd_type) => () => {
-        if (cmd_type === 'deleteItem') {
-            this.setState({ openDeleteItem: !this.state.openDeleteItem });
-        }
-        if (!this.state.showBundleOperationButtons) {
-            return;
-        }
-        const { openKill, openDelete, openDetach, openUpload } = this.state;
-        if (cmd_type === 'rm') {
-            this.setState({ openDelete: !openDelete });
-        } else if (cmd_type === 'detach') {
-            this.setState({ openDetach: !openDetach });
-        } else if (cmd_type === 'kill') {
-            this.setState({ openKill: !openKill });
-        }
-    };
-
     toggleCmdDialogNoEvent = (cmd_type) => {
         this.handleCommand(cmd_type);
     };
@@ -380,10 +364,7 @@ class Worksheet extends React.Component {
             // This is used to delete markdown blocks
             this.setState({ openDeleteItem: !this.state.openDeleteItem });
         }
-        if (!this.state.showBundleOperationButtons) {
-            return;
-        }
-        const { openKill, openDelete, openDetach, openCopy } = this.state;
+        const { openKill, openDelete, openDetach, openCopy, openPaste } = this.state;
         if (cmd_type === 'rm') {
             this.setState({ openDelete: !openDelete });
         } else if (cmd_type === 'detach') {
@@ -415,6 +396,8 @@ class Worksheet extends React.Component {
                 copyBundles.actualContent.substr(0, copyBundles.actualContent.length - 1),
             );
             this.setState({ openCopy: true, copiedBundleIds: copyBundles });
+        } else if (cmd_type === 'paste') {
+            this.setState({ openPaste: !openPaste });
         }
     };
 
@@ -1522,6 +1505,7 @@ class Worksheet extends React.Component {
         var worksheet_dialogs = (
             <WorksheetDialogs
                 openCopy={this.state.openCopy}
+                openPaste={this.state.openPaste}
                 copiedBundleIds={this.state.copiedBundleIds}
                 openKill={this.state.openKill}
                 openDelete={this.state.openDelete}
