@@ -327,7 +327,13 @@ class BundleManager(object):
         :param user_info_cache: a dictionary mapping user id to user information.
         """
         # Build a dictionary which maps from user id to positions in the queue of the
-        # user's staged bundles.
+        # user's staged bundles. We use this to sort bundles within each user. For example,
+        # Suppose we have 4 staged bundles with the following attributes from 2 users:
+        # Users: [A, B, A, B, A]
+        # Bundle Priorities: [1, 2, 3, 1, 1]
+        # Bundle specified request_queue: [False, False, False, False, True]
+        # Original Bundle Order: [B1, B2, B3, B4, B5]
+        # Sorted bundle order: [B3, B2, B5, B4, B1]
         user_queue_positions = defaultdict(list)
         for queue_position, staged_bundle in enumerate(staged_bundles_to_run):
             user_queue_positions[staged_bundle[0].owner_id].append(queue_position)
