@@ -1,4 +1,5 @@
 import copy
+from collections import defaultdict
 import datetime
 import logging
 import os
@@ -327,10 +328,8 @@ class BundleManager(object):
         """
         # Build a dictionary which maps from user id to positions in the queue of the
         # user's staged bundles.
-        user_queue_positions = {}
+        user_queue_positions = defaultdict(list)
         for queue_position, staged_bundle in enumerate(staged_bundles_to_run):
-            if staged_bundle[0].owner_id not in user_queue_positions:
-                user_queue_positions[staged_bundle[0].owner_id] = []
             user_queue_positions[staged_bundle[0].owner_id].append(queue_position)
 
         for user, queue_positions in user_queue_positions.items():
