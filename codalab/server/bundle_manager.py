@@ -354,7 +354,6 @@ class BundleManager(object):
                     b[0].metadata.request_priority is not None,
                     b[0].metadata.request_priority,
                     b[0].metadata.request_queue is not None,
-                    b[0].metadata.request_queue,
                 ),
                 reverse=True,
             )
