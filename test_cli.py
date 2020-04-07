@@ -309,12 +309,12 @@ class ModuleContext(object):
                 traceback.print_exception(exc_type, exc_value, tb)
         else:
             print(Colorizer.green("[*] TEST PASSED"))
-
+        '''
         # Clean up and restore original worksheet
         print("[*][*] CLEANING UP")
         os.environ.clear()
         os.environ.update(self.original_environ)
-
+        
         _run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
             self.bundles.extend(_run_command([cl, 'ls', '-w', worksheet, '-u']).split())
@@ -339,7 +339,7 @@ class ModuleContext(object):
         # Delete all groups (dedup first)
         if len(self.groups) > 0:
             _run_command([cl, 'grm'] + list(set(self.groups)))
-
+        '''
         # Reraise only KeyboardInterrupt
         if exc_type is KeyboardInterrupt:
             return False
@@ -1732,11 +1732,9 @@ def test(ctx):
     # Case 1: no dependency
     uuid = _run_command([cl, 'run', 'echo hello'])
     wait(uuid)
-    check_contains('0x', get_info(uuid, 'data_hash'))
     check_equals('hello', _run_command([cl, 'cat', uuid + '/stdout']))
     uuid1 = _run_command([cl, 'run', 'echo hello2'])
     wait(uuid1)
-    check_contains('0x', get_info(uuid1, 'data_hash'))
     check_equals('hello2', _run_command([cl, 'cat', uuid1 + '/stdout']))
     # memo tests
     uuid_memo = _run_command([cl, 'run', 'echo hello', '--memoize'])
@@ -1746,7 +1744,6 @@ def test(ctx):
     # target_spec: ":<uuid>"
     uuid_dep = _run_command([cl, 'run', ':{}'.format(uuid), 'echo hello'])
     wait(uuid_dep)
-    check_contains('0x', get_info(uuid_dep, 'data_hash'))
     check_equals('hello', _run_command([cl, 'cat', uuid_dep + '/stdout']))
     # memo tests
     uuid_dep_memo = _run_command([cl, 'run', ':{}'.format(uuid), 'echo hello', '--memoize'])
@@ -1756,7 +1753,6 @@ def test(ctx):
     # target_spec: ":<uuid_1>, :<uuid_2>"
     uuid_deps = _run_command([cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid1), 'echo hello'])
     wait(uuid_deps)
-    check_contains('0x', get_info(uuid_deps, 'data_hash'))
     check_equals('hello', _run_command([cl, 'cat', uuid_deps + '/stdout']))
     # memo tests
     uuid_deps_memo = _run_command(
@@ -1770,7 +1766,6 @@ def test(ctx):
         [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello']
     )
     wait(uuid_multi_alias)
-    check_contains('0x', get_info(uuid_multi_alias, 'data_hash'))
     check_equals('hello', _run_command([cl, 'cat', uuid_multi_alias + '/stdout']))
     # memo tests
     uuid_multi_alias_memo = _run_command(
@@ -1782,7 +1777,6 @@ def test(ctx):
     # target_spec: ":<uuid>, :<uuid>"
     uuid_dup_deps = _run_command([cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid), 'echo hello'])
     wait(uuid_dup_deps)
-    check_contains('0x', get_info(uuid_dup_deps, 'data_hash'))
     check_equals('hello', _run_command([cl, 'cat', uuid_dup_deps + '/stdout']))
     # memo tests
     uuid_dup_deps_memo = _run_command(
@@ -1794,13 +1788,11 @@ def test(ctx):
     # target_spec: "a:<uuid_1>, b:<uuid_2>"
     uuid_a_b = _run_command([cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_b'])
     wait(uuid_a_b)
-    check_contains('0x', get_info(uuid_a_b, 'data_hash'))
     check_equals("a_b", _run_command([cl, 'cat', uuid_a_b + '/stdout']))
 
     # target_spec: "b:<uuid_1>, a:<uuid_2>"
     uuid_b_a = _run_command([cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid1), 'echo b_a'])
     wait(uuid_b_a)
-    check_contains('0x', get_info(uuid_b_a, 'data_hash'))
     check_equals("b_a", _run_command([cl, 'cat', uuid_b_a + '/stdout']))
 
     # memo tests

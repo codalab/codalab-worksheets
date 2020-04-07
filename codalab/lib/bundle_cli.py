@@ -1575,8 +1575,9 @@ class BundleCLI(object):
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
         if args.memoize:
+            dependencies = [key + ':' + bundle_target.bundle_uuid for key, bundle_target in targets]
             memoized_bundles = client.fetch(
-                'bundles', params={'command': args.command, 'dependencies': args.target_spec}
+                'bundles', params={'command': args.command, 'dependencies': dependencies}
             )
             if len(memoized_bundles) > 0:
                 print(memoized_bundles[-1]['uuid'], file=self.stdout)
@@ -2105,7 +2106,8 @@ class BundleCLI(object):
     def do_info_command(self, args):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-
+        print(args.bundle_spec)
+        '''
         bundles = client.fetch(
             'bundles',
             params={
@@ -2143,6 +2145,7 @@ class BundleCLI(object):
         # Headless client should fire OpenBundle UI action if no special flags used
         if self.headless and not (args.field or args.raw or args.verbose):
             return ui_actions.serialize([ui_actions.OpenBundle(bundle['id']) for bundle in bundles])
+        '''
 
     @staticmethod
     def key_value_str(key, value):
