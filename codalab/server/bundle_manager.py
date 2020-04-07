@@ -339,7 +339,9 @@ class BundleManager(object):
                 staged_bundles_to_run[queue_position] for queue_position in queue_positions
             ]
             # Sort the staged bundles for this user, according to
-            # (1) their priority and (2) whether it requested to run on a specific worker.
+            # (1) their priority (larger values indicate higher priority) and
+            # (2) whether it requested to run on a specific worker (bundles with a specified
+            # worker have higher priority).
             sorted_user_staged_bundles = sorted(
                 user_staged_bundles,
                 key=lambda b: (
