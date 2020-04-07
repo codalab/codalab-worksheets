@@ -314,7 +314,6 @@ class ModuleContext(object):
         print("[*][*] CLEANING UP")
         os.environ.clear()
         os.environ.update(self.original_environ)
-        
         _run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
             self.bundles.extend(_run_command([cl, 'ls', '-w', worksheet, '-u']).split())
