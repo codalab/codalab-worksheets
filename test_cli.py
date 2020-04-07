@@ -309,7 +309,7 @@ class ModuleContext(object):
                 traceback.print_exception(exc_type, exc_value, tb)
         else:
             print(Colorizer.green("[*] TEST PASSED"))
-        '''
+
         # Clean up and restore original worksheet
         print("[*][*] CLEANING UP")
         os.environ.clear()
@@ -339,7 +339,7 @@ class ModuleContext(object):
         # Delete all groups (dedup first)
         if len(self.groups) > 0:
             _run_command([cl, 'grm'] + list(set(self.groups)))
-        '''
+
         # Reraise only KeyboardInterrupt
         if exc_type is KeyboardInterrupt:
             return False
