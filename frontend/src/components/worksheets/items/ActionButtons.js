@@ -7,19 +7,44 @@ import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
 import AddIcon from '@material-ui/icons/AddBoxOutlined';
 import NoteAddIcon from '@material-ui/icons/NoteAdd';
 import BundleBulkActionMenu from '../BundleBulkActionMenu';
+import Menu from '@material-ui/core/Menu';
+import MenuItem from '@material-ui/core/MenuItem';
 import Tooltip from '@material-ui/core/Tooltip';
-import IconButton from '@material-ui/core/IconButton';
+
+const StyledMenuItem = withStyles((theme) => ({
+    root: {
+        '&:focus': {
+            backgroundColor: theme.palette.primary.main,
+            '& .MuiListItemIcon-root, & .MuiListItemText-primary': {
+                color: theme.palette.common.white,
+            },
+        },
+        border: '2px solid #d3d4d5',
+    },
+}))(MenuItem);
 
 class ActionButtons extends React.Component<{
     classes: {},
     onShowNewRun: () => void,
     onShowNewText: () => void,
+    showUploadMenu: () => void,
 }> {
+    handleClick = (event) => {
+        this.setState({ anchorEl: event.currentTarget });
+    };
+
+    handleClose = () => {
+        this.setState({ anchorEl: null });
+    };
+
     render() {
         const {
             classes,
             onShowNewRun,
             onShowNewText,
+            showUploadMenu,
+            closeUploadMenu,
+            uploadAnchor,
             handleSelectedBundleCommand,
             showBundleOperationButtons,
             toggleCmdDialog,
@@ -48,18 +73,53 @@ class ActionButtons extends React.Component<{
                     </Button>
                 ) : null}
                 {!showBundleOperationButtons ? (
-                    <Button
-                        size='small'
-                        color='inherit'
-                        aria-label='Add New Upload'
-                        className={classes.uploadButton}
-                        disabled={!editPermission}
-                    >
-                        <label className={classes.uploadLabel} for='codalab-file-upload-input'>
+                    <span>
+                        <Button
+                            size='small'
+                            color='inherit'
+                            id='upload-button'
+                            aria-label='Add New Upload'
+                            onClick={showUploadMenu}
+                            disabled={!editPermission}
+                        >
                             <UploadIcon className={classes.buttonIcon} />
                             Upload
-                        </label>
-                    </Button>
+                        </Button>
+                        <Menu
+                            id='upload-menu'
+                            elevation={0}
+                            getContentAnchorEl={null}
+                            anchorOrigin={{
+                                vertical: 'bottom',
+                                horizontal: 'center',
+                            }}
+                            transformOrigin={{
+                                vertical: 'top',
+                                horizontal: 'center',
+                            }}
+                            anchorEl={uploadAnchor}
+                            keepMounted
+                            open={Boolean(uploadAnchor)}
+                            onClose={closeUploadMenu}
+                        >
+                            <StyledMenuItem onClick={closeUploadMenu}>
+                                <label
+                                    className={classes.uploadLabel}
+                                    htmlFor='codalab-file-upload-input'
+                                >
+                                    File(s) Upload
+                                </label>
+                            </StyledMenuItem>
+                            <StyledMenuItem onClick={closeUploadMenu}>
+                                <label
+                                    className={classes.uploadLabel}
+                                    htmlFor='codalab-dir-upload-input'
+                                >
+                                    Folder Upload
+                                </label>
+                            </StyledMenuItem>
+                        </Menu>
+                    </span>
                 ) : null}
                 {!showBundleOperationButtons ? (
                     <Button

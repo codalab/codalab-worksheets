@@ -11,6 +11,7 @@ import IconButton from '@material-ui/core/IconButton';
 import InfoIcon from '@material-ui/icons/InfoOutlined';
 import Button from '@material-ui/core/Button';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
+import TextField from '@material-ui/core/TextField';
 
 class WorksheetDialogs extends React.Component {
     render() {
@@ -180,6 +181,32 @@ class WorksheetDialogs extends React.Component {
                                 Copy
                             </Button>
                         </CopyToClipboard>
+                    </DialogActions>
+                </Dialog>
+                <Dialog
+                    open={this.props.openCopy}
+                    onClose={this.props.toggleCmdDialog('paste')}
+                    aria-labelledby='copy-title'
+                    aria-describedby='deletion-description'
+                >
+                    <DialogContent className={classes.copyDialog}>
+                        <DialogContentText id='alert-dialog-description'>
+                            Paste the bundle ids or other contents to the box below
+                        </DialogContentText>
+                        <TextField
+                            autoFocus
+                            margin='dense'
+                            id='name'
+                            label='Email Address'
+                            type='email'
+                            fullWidth
+                        />
+                    </DialogContent>
+                    <DialogActions>
+                        <Button color='primary' onClick={this.props.toggleCmdDialog('deleteItem')}>
+                            CANCEL
+                        </Button>
+                        <Button color='primary'>DELETE</Button>
                     </DialogActions>
                 </Dialog>
                 }

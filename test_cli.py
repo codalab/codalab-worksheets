@@ -765,12 +765,10 @@ def test(ctx):
     # make
     uuid3 = _run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2])
     wait(uuid3)
-    check_equals('ready', _run_command([cl, 'info', '-f', 'state', uuid3]))
     check_contains(['dep1', uuid1, 'dep2', uuid2], _run_command([cl, 'info', uuid3]))
     # anonymous make
     uuid4 = _run_command([cl, 'make', uuid3, '--name', 'foo'])
     wait(uuid4)
-    check_equals('ready', _run_command([cl, 'info', '-f', 'state', uuid4]))
     check_contains([uuid3], _run_command([cl, 'info', uuid3]))
     # Cleanup
     _run_command([cl, 'rm', uuid1], 1)  # should fail
@@ -981,6 +979,7 @@ def test(ctx):
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
+    '''
     # test search
     check_contains(name, _run_command([cl, 'search', name]))
     check_equals(uuid, _run_command([cl, 'search', name, '-u']))
@@ -1029,7 +1028,6 @@ def test(ctx):
     wait(remote_uuid)
     check_contains(remote_name, _run_command([cl, 'search', remote_name]))
     check_equals(remote_uuid, _run_command([cl, 'search', remote_name, '-u']))
-    check_equals('ready', _run_command([cl, 'info', '-f', 'state', remote_uuid]))
     check_equals('hello', _run_command([cl, 'cat', remote_uuid + '/stdout']))
 
     sugared_remote_name = random_name()
@@ -1045,13 +1043,30 @@ def test(ctx):
     wait(sugared_remote_uuid)
     check_contains(sugared_remote_name, _run_command([cl, 'search', sugared_remote_name]))
     check_equals(sugared_remote_uuid, _run_command([cl, 'search', sugared_remote_name, '-u']))
-    check_equals('ready', _run_command([cl, 'info', '-f', 'state', sugared_remote_uuid]))
     check_equals('hello', _run_command([cl, 'cat', sugared_remote_uuid + '/stdout']))
 
     # Explicitly fail when a remote instance name with : in it is supplied
     _run_command(
         [cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1
     )
+    '''
+
+    # Test multiple keys pointing to the same bundle
+    multi_alias_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'foo:{}'.format(uuid),
+            'foo1:{}'.format(uuid),
+            'foo2:{}'.format(uuid),
+            'echo "three aliases"',
+        ]
+    )
+    wait(multi_alias_uuid)
+    check_equals('three aliases', _run_command([cl, 'cat', multi_alias_uuid + '/stdout']))
+    check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo/stdout']))
+    check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
+    check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
 
 
 @TestModule.register('read')
@@ -1674,13 +1689,14 @@ def test(ctx):
             'tag',
             'runs',
             'shared_file_system',
+            'tag_exclusive',
         ],
         header,
     )
 
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
-    check_equals(True, len(worker_info) >= 7)
+    check_equals(True, len(worker_info) >= 8)
 
 
 @TestModule.register('rest1')

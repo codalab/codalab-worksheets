@@ -144,6 +144,7 @@ class Worksheet extends React.Component {
             anchorEl: null,
             showNewRun: false,
             showNewText: false,
+            uploadAnchor: null,
             showRerun: false,
             isValid: true,
             checkedBundles: {},
@@ -353,6 +354,23 @@ class Worksheet extends React.Component {
         this.handleCommand(cmd_type);
     };
 
+    togglePopup = (cmd_type) => () => {
+        if (cmd_type === 'deleteItem') {
+            this.setState({ openDeleteItem: !this.state.openDeleteItem });
+        }
+        if (!this.state.showBundleOperationButtons) {
+            return;
+        }
+        const { openKill, openDelete, openDetach, openUpload } = this.state;
+        if (cmd_type === 'rm') {
+            this.setState({ openDelete: !openDelete });
+        } else if (cmd_type === 'detach') {
+            this.setState({ openDetach: !openDetach });
+        } else if (cmd_type === 'kill') {
+            this.setState({ openKill: !openKill });
+        }
+    };
+
     toggleCmdDialogNoEvent = (cmd_type) => {
         this.handleCommand(cmd_type);
     };
@@ -535,6 +553,7 @@ class Worksheet extends React.Component {
             focusedBundleUuidList: focusedBundleUuidList,
             showNewRun: false,
             showNewText: false,
+            uploadAnchor: null,
             showNewRerun: false,
         });
         if (shouldScroll) {
@@ -647,7 +666,6 @@ class Worksheet extends React.Component {
         this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
     };
     setupEventHandlers() {
-        var self = this;
         // Load worksheet from history when back/forward buttons are used.
         let editPermission = this.state.ws.info && this.state.ws.info.edit_permission;
 
@@ -676,8 +694,6 @@ class Worksheet extends React.Component {
             )
         ) {
             // Only enable these shortcuts when no dialog is opened
-
-            //
             Mousetrap.bind(
                 ['shift+r'],
                 function(e) {
@@ -795,7 +811,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        document.querySelector('label[for=codalab-file-upload-input]').click();
+                        document.querySelector('#upload-button').click();
                     }.bind(this),
                     'keyup',
                 );
@@ -1328,9 +1344,22 @@ class Worksheet extends React.Component {
         this.setState({ BulkBundleDialog: deleteWorksheetDialog });
     }
 
+    showUploadMenu = (e) => {
+        // pause mousetrap events such as up, down, and enter
+        Mousetrap.pause();
+        let form = document.querySelector('#upload-menu');
+
+        Mousetrap(form).bind(['enter'], function(e) {
+            e.stopPropagation();
+            document.querySelector('label[for=' + e.target.firstElementChild.htmlFor + ']').click();
+        });
+
+        this.setState({ uploadAnchor: e.currentTarget });
+    };
+
     render() {
         const { classes } = this.props;
-        const { anchorEl } = this.state;
+        const { anchorEl, uploadAnchor } = this.state;
 
         this.setupEventHandlers();
         var info = this.state.ws.info;
@@ -1525,6 +1554,12 @@ class Worksheet extends React.Component {
                     setAnchorEl={(e) => this.setState({ anchorEl: e })}
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
+                    uploadAnchor={uploadAnchor}
+                    showUploadMenu={this.showUploadMenu}
+                    closeUploadMenu={() => {
+                        this.setState({ uploadAnchor: null });
+                        Mousetrap.unpause();
+                    }}
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
                     toggleCmdDialog={this.toggleCmdDialog}

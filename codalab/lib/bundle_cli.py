@@ -28,6 +28,7 @@ import textwrap
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
+from shlex import quote
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -36,7 +37,14 @@ from codalab.bundles import get_bundle_subclass
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.run_bundle import RunBundle
-from codalab.common import CODALAB_VERSION, NotFoundError, PermissionError, precondition, UsageError
+from codalab.common import (
+    CODALAB_VERSION,
+    NotFoundError,
+    PermissionError,
+    precondition,
+    UsageError,
+    ensure_str,
+)
 from codalab.lib import (
     bundle_util,
     file_util,
@@ -313,7 +321,8 @@ class Commands(object):
                 if markdown:
                     name = HEADING_LEVEL_3 + name
                 return '%s%s:\n%s\n%s' % (
-                    ' ' * indent,
+                    # This is to make GitHub Markdown format compatible with the Read the Docs theme.
+                    ' ' * indent if not markdown else '',
                     name,
                     '\n'.join((' ' * (indent * 2)) + line for line in command_obj.help),
                     '\n'.join(render_args(command_obj.arguments)),
@@ -795,7 +804,9 @@ class BundleCLI(object):
         """
         try:
             i = argv.index('---')
-            argv = argv[0:i] + [' '.join(argv[i + 1 :])]  # TODO: quote command properly
+            # Convert the command after '---' to a shell-escaped version of the string.
+            shell_escaped_command = [quote(x) for x in argv[i + 1 :]]
+            argv = argv[0:i] + [' '.join(shell_escaped_command)]
         except:
             pass
 
@@ -1034,7 +1045,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'workers',
-        help=['Display worker information of this CodaLab instance. Root user only.'],
+        help=['Display information about workers that you have connected to the CodaLab instance.'],
         arguments=(),
     )
     def do_workers_command(self, args):
@@ -1052,6 +1063,7 @@ class BundleCLI(object):
             'tag',
             'runs',
             'shared_file_system',
+            'tag_exclusive',
         ]
 
         data = []
@@ -1070,6 +1082,7 @@ class BundleCLI(object):
                     'tag': worker['tag'],
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
+                    'tag_exclusive': worker['tag_exclusive'],
                 }
             )
 
@@ -2344,7 +2357,13 @@ class BundleCLI(object):
 
             contents = client.fetch_contents_blob(info['resolved_target'], **kwargs)
             with closing(contents):
-                shutil.copyfileobj(contents, self.stdout.buffer)
+                try:
+                    shutil.copyfileobj(contents, self.stdout.buffer)
+                except AttributeError:
+                    # self.stdout will have buffer attribute when it's an io.TextIOWrapper object. However, when
+                    # self.stdout gets reassigned to an io.StringIO object, self.stdout.buffer won't exist.
+                    # Therefore, we try to directly write file content as a String object to self.stdout.
+                    self.stdout.write(ensure_str(contents.read()))
 
             if self.headless:
                 print(
