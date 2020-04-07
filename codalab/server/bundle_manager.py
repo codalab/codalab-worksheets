@@ -318,7 +318,7 @@ class BundleManager(object):
            that request to run on a specific worker.
         2. If the bundle requests to run on a specific worker, schedule the bundle
            to run on a worker that has a tag that exactly matches the bundle's request_queue.
-        2. If the bundle doesn't request to run on a specific worker,
+        3. If the bundle doesn't request to run on a specific worker,
           (1) try to schedule the bundle to run on a worker that belongs to the bundle's owner
           (2) if there is no such qualified private worker, uses CodaLab-owned workers, which have user ID root_user_id.
         :param workers: a WorkerInfoAccessor object containing worker related information e.g. running uuid.
