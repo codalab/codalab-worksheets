@@ -695,6 +695,8 @@ class BundleModel(object):
                 .distinct()
                 .select_from(cl_bundle)
                 .where(and_(cl_bundle.c.command == command, cl_bundle.c.owner_id == user_id))
+                # Ensure the order of the returning bundles will be in the order of they were created.
+                .order_by(cl_bundle.c.id)
             )
             rows = connection.execute(filter_on_command).fetchall()
             if not rows:
@@ -708,7 +710,7 @@ class BundleModel(object):
                     .distinct()
                     .select_from(cl_bundle_dependency)
                     .where(cl_bundle_dependency.c.child_uuid.in_(uuids))
-                    # Ensure the order of the returning bundles in the order of they were created.
+                    # Ensure the order of the returning bundles will be in the order of they were created.
                     .order_by(cl_bundle_dependency.c.id)
                 )
                 dependency_rows = connection.execute(query).fetchall()
@@ -744,7 +746,7 @@ class BundleModel(object):
                 .select_from(cl_bundle_dependency)
                 .where(and_(cl_bundle_dependency.c.child_uuid.in_(uuids), or_(*dep_clause)))
                 .group_by(cl_bundle_dependency.c.child_uuid)
-                # Ensure the order of the returning bundles in the order of they were created.
+                # Ensure the order of the returning bundles will be in the order of they were created.
                 .order_by(cl_bundle_dependency.c.id)
                 .alias("filter_on_dependencies")
             )
