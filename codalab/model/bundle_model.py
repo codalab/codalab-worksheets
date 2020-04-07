@@ -735,7 +735,7 @@ class BundleModel(object):
                 select(
                     [
                         cl_bundle_dependency.c.child_uuid,
-                        # ORDER BY will ensure dependency strings being group concatenated in ascending order
+                        # ORDER BY will ensure group concatenating dependency strings in ascending order
                         func.group_concat(key_uuid_pair.op("ORDER BY")(key_uuid_pair)).label(
                             'concat_dependencies'
                         ),
