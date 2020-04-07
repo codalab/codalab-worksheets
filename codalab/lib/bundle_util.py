@@ -49,7 +49,7 @@ def mimic_bundles(
     dry_run,
     metadata_override=None,
     skip_prelude=False,
-    memo=False,
+    memoize=False,
 ):
     """
     :param JsonApiClient client: client
@@ -190,9 +190,9 @@ def mimic_bundles(
             new_info['metadata'] = new_metadata
             new_info['dependencies'] = new_dependencies
 
-            # Fetch the memoized bundle if the memo option is set to be True
+            # Fetch the memoized bundle if the memoize option is set to be True
             memoized_bundles = None
-            if memo:
+            if memoize:
                 memoized_bundles = client.fetch(
                     'bundles',
                     params={
@@ -205,7 +205,7 @@ def mimic_bundles(
 
             if dry_run:
                 new_info['uuid'] = None
-            elif memo and len(memoized_bundles) > 0:
+            elif memoize and len(memoized_bundles) > 0:
                 new_info = memoized_bundles[-1]
             else:
                 if new_info['bundle_type'] not in ('make', 'run'):
