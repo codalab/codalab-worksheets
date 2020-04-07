@@ -353,8 +353,7 @@ class BundleManager(object):
                 key=lambda b: (
                     b[0].metadata.request_priority is not None,
                     b[0].metadata.request_priority,
-                    b[0].metadata.request_queue is not None,
-                    b[0].metadata.request_queue,
+                    b[0].metadata.request_queue is not None
                 ),
                 reverse=True,
             )
