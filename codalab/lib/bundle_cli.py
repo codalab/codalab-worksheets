@@ -1571,18 +1571,19 @@ class BundleCLI(object):
 
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
         params = {'worksheet': worksheet_uuid}
-
+        print("target= {}".format(targets))
+        print("params = {}".format(params))
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
         if args.memoize:
             dependencies = [key + ':' + bundle_target.bundle_uuid for key, bundle_target in targets]
             memoized_bundles = client.fetch(
-                'bundles', params={'command': args.command, 'dependencies': dependencies}
+                'bundles', params={'command': args.command, 'key': dependencies}
             )
             if len(memoized_bundles) > 0:
                 print(memoized_bundles[-1]['uuid'], file=self.stdout)
             else:
-                print("Cannot find any memoized bundle.", file=self.stdout)
+                print("Cannot find any memoized bundle. Creating a new bundle now.", file=self.stdout)
         else:
             new_bundle = client.create(
                 'bundles',

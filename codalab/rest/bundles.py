@@ -108,6 +108,8 @@ def _fetch_bundles():
     command = query_get_type(str, 'command', '')
     dependencies = query_get_list('dependencies')
 
+    for d in dependencies:
+        logger.info("type is {}".format(type(d)))
     if keywords:
         # Handle search keywords
         keywords = resolve_owner_in_keywords(keywords)
@@ -118,6 +120,7 @@ def _fetch_bundles():
         # If not aggregate this is a list
         bundle_uuids = search_result['result']
     elif specs:
+        logger.info("[bundles.py] specs = {}".format(specs))
         # Resolve bundle specs
         bundle_uuids = canonicalize.get_bundle_uuids(
             local.model, request.user, worksheet_uuid, specs
