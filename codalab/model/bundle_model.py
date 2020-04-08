@@ -702,7 +702,7 @@ class BundleModel(object):
                     )
                 )
                 dependencies_dict[key] = uuid
-            filter_on_dependencies = (
+            query = (
                 select(
                     [
                         cl_bundle.c.uuid,
@@ -718,29 +718,25 @@ class BundleModel(object):
                 )
                 .select_from(
                     cl_bundle.join(
-                        cl_bundle_dependency,
-                        cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,
+                        cl_bundle_dependency, cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid
                     )
                 )
-                .where(or_(*dep_clause))
+                .where(
+                    and_(
+                        cl_bundle.c.owner_id == user_id,
+                        cl_bundle.c.command == command,
+                        or_(*dep_clause),
+                    )
+                )
                 .group_by(cl_bundle_dependency.c.child_uuid)
                 # Ensure the order of the returning bundles will be in the order of they were created.
                 .order_by(cl_bundle.c.id)
-                .alias("filter_on_dependencies")
             )
-            query = select(
-                [
-                    filter_on_dependencies.c.uuid,
-                    filter_on_dependencies.c.concat_dependencies,
-                ]
-            ).select_from(filter_on_dependencies)
 
             rows = connection.execute(query).fetchall()
-            if not rows:
-                return []
-
+            logger.info("rows = {}".format(rows))
             if len(dependencies) == 0:
-                return [row[0] for row in rows]
+                result = [row[0] for row in rows]
             else:
                 result = []
                 for uuid, concat in rows:
@@ -753,6 +749,7 @@ class BundleModel(object):
                         dep_dict[key] = uuid
                     if dep_dict == dependencies_dict:
                         result.append(uuid)
+            logger.info("results = {}".format(result))
 
             return result
 
