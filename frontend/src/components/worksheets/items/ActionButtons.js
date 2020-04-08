@@ -150,7 +150,7 @@ class ActionButtons extends React.Component<{
                         id='paste-button'
                     >
                         <NoteAddIcon className={classes.buttonIcon} />
-                        Paste
+                        PasteBoard
                     </Button>
                 </Tooltip>
             </div>

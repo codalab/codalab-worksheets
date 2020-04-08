@@ -431,15 +431,10 @@ class Worksheet extends React.Component {
         this.setState({ deleteItemCallback: callback, openDeleteItem: true });
     };
 
-    pasteToWorksheet = () => {
+    pasteToWorksheet = (pasteText) => {
         // Unchecks all bundles after pasting
         // It would be ideal to use navigator.clipboard.readText(); however, firefox does not support this
-        var pasteText = document.querySelector('#paste-hack');
-        pasteText.focus();
-        document.execCommand('paste');
-        console.log(pasteText.textContent);
-        const data = pasteText.textContent;
-        console.log(data);
+        const data = pasteText;
         if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
             // Insert after the source line
             var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
@@ -1517,6 +1512,7 @@ class Worksheet extends React.Component {
                 forceDelete={this.state.forceDelete}
                 handleForceDelete={this.handleForceDelete}
                 deleteItemCallback={this.state.deleteItemCallback}
+                pasteToWorksheet={this.pasteToWorksheet}
             />
         );
         if (info && info.title) {
@@ -1550,7 +1546,6 @@ class Worksheet extends React.Component {
                     toggleGlossaryModal={this.toggleGlossaryModal}
                     toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
                     copiedBundleIds={this.state.copiedBundleIds}
-                    pasteToWorksheet={this.pasteToWorksheet}
                 />
                 {action_bar_display}
                 <ToastContainer
