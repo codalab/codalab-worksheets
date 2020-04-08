@@ -384,29 +384,10 @@ class EditWorksheetTest(UITester):
         self.output_images('worksheet_container', num_of_screenshots)
         self.compare_to_baselines(num_of_screenshots)
 
-class CopyPasteTest(UITester):
-    def __init__(self):
-        super().__init__('worksheet')
-
-    def test(self):
-        self.login()
-        self.wait_until_worksheet_content_loads()
-        self.send_keyboard_shortcut(Keys.SHIFT + 'g')
-        # x = Select the bundle row
-        self.send_keyboard_shortcut('x')
-        self.send_keyboard_shortcut(Keys.ARROW_UP)
-        self.send_keyboard_shortcut('x')
-        self.wait_until_worksheet_content_loads()
-        self.click(By.ID, 'copy-button')
-        self.click(By.ID, 'copyBundleIdToClipBoard')
-        self.click(By.ID, 'paste-button')
-        self.wait_until_worksheet_content_loads()
-        self.output_images('worksheet_container')
-        self.compare_to_baselines()
 
 def main():
     # Add UI tests to the list to run them
-    all_tests = [CopyPasteTest()]#[WorksheetTest(), EditWorksheetTest()]
+    all_tests = [WorksheetTest(), EditWorksheetTest()]
 
     start_time = time.time()
     for test in all_tests:
