@@ -424,13 +424,32 @@ class Worksheet extends React.Component {
         this.setState({ deleteItemCallback: callback, openDeleteItem: true });
     };
 
+    onAsyncItemLoad = (focusIndex, item) => {
+        this.setState({
+            ws: {
+                ...this.state.ws,
+                info: {
+                    ...this.state.ws.info,
+                    // immutably change item at index *focusIndex*
+                    items: Object.assign([], this.state.ws.info.items, { [focusIndex]: item }),
+                },
+            },
+        });
+    };
+
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
         // prevent multiple clicking from resetting the index
         if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex) {
             return;
         }
-
+        const item = this.refs.list.refs['item' + index];
+        if (item && (!item.props || !item.props.item)) {
+            // Skip "no search results" items and scroll past them.
+            const offset = index - this.state.focusIndex;
+            this.setFocus(index + offset, subIndex, shouldScroll);
+            return;
+        }
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
             index = -1;
@@ -1417,6 +1436,7 @@ class Worksheet extends React.Component {
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
                 setDeleteItemCallback={this.setDeleteItemCallback}
+                onAsyncItemLoad={this.onAsyncItemLoad}
             />
         );
 
