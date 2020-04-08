@@ -9,7 +9,7 @@ import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from '../ExtraWorksheetHTML/ExtraWorksheetHTML';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
-import { NAVBAR_HEIGHT } from '../../../constants';
+import { NAVBAR_HEIGHT, EXPAND_PERCENTAGE, DEFAULT_PERCENTAGE } from '../../../constants';
 import WorksheetActionBar from '../WorksheetActionBar';
 import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
@@ -127,6 +127,12 @@ var WorksheetContent = (function() {
 class Worksheet extends React.Component {
     constructor(props) {
         super(props);
+        let expand = this.props.match.params['mode'] === 'expand';
+        // if the url doesn't have expand but localstorage has, we manually add it
+        if (!expand && window.localStorage.getItem('worksheetSize') === DEFAULT_PERCENTAGE) {
+            this.props.history.push('expand');
+            expand = true;
+        }
         this.state = {
             ws: new WorksheetContent(this.props.match.params['uuid']),
             version: 0, // Increment when we refresh
@@ -160,7 +166,7 @@ class Worksheet extends React.Component {
             errorMessage: '',
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
-            worksheetWidthPercentage: window.localStorage.getItem('worksheetSize') || '50%',
+            worksheetWidthPercentage: expand ? EXPAND_PERCENTAGE : DEFAULT_PERCENTAGE,
         };
     }
 
@@ -584,8 +590,16 @@ class Worksheet extends React.Component {
         this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
     };
     toggleWorksheetSize = () => {
-        let newPercentage = this.state.worksheetWidthPercentage === '50%' ? '80%' : '50%';
+        let newPercentage =
+            this.state.worksheetWidthPercentage === DEFAULT_PERCENTAGE
+                ? EXPAND_PERCENTAGE
+                : DEFAULT_PERCENTAGE;
         window.localStorage.setItem('worksheetSize', newPercentage);
+        if (newPercentage === 'EXPAND_PERCENTAGE') {
+            this.props.history.push('expand');
+        } else {
+            this.props.history.push(this.props.match.url.replace('expand', ''));
+        }
         this.setState({ worksheetWidthPercentage: newPercentage });
     };
     setupEventHandlers() {
