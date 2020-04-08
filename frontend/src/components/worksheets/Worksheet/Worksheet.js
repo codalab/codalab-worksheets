@@ -129,7 +129,7 @@ class Worksheet extends React.Component {
         super(props);
         let expand = this.props.match.params['mode'] === 'expand';
         // if the url doesn't have expand but localstorage has, we manually add it
-        if (!expand && window.localStorage.getItem('worksheetSize') === DEFAULT_PERCENTAGE) {
+        if (!expand && window.localStorage.getItem('worksheetSize') === EXPAND_PERCENTAGE) {
             this.props.history.push('expand');
             expand = true;
         }
@@ -595,7 +595,7 @@ class Worksheet extends React.Component {
                 ? EXPAND_PERCENTAGE
                 : DEFAULT_PERCENTAGE;
         window.localStorage.setItem('worksheetSize', newPercentage);
-        if (newPercentage === 'EXPAND_PERCENTAGE') {
+        if (newPercentage === EXPAND_PERCENTAGE) {
             this.props.history.push('expand');
         } else {
             this.props.history.push(this.props.match.url.replace('expand', ''));
