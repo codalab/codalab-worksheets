@@ -1689,13 +1689,14 @@ def test(ctx):
             'tag',
             'runs',
             'shared_file_system',
+            'tag_exclusive',
         ],
         header,
     )
 
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
-    check_equals(True, len(worker_info) >= 7)
+    check_equals(True, len(worker_info) >= 8)
 
 
 @TestModule.register('rest1')

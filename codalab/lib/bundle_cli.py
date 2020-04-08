@@ -28,6 +28,7 @@ import textwrap
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
+from shlex import quote
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -803,7 +804,9 @@ class BundleCLI(object):
         """
         try:
             i = argv.index('---')
-            argv = argv[0:i] + [' '.join(argv[i + 1 :])]  # TODO: quote command properly
+            # Convert the command after '---' to a shell-escaped version of the string.
+            shell_escaped_command = [quote(x) for x in argv[i + 1 :]]
+            argv = argv[0:i] + [' '.join(shell_escaped_command)]
         except:
             pass
 
@@ -1060,6 +1063,7 @@ class BundleCLI(object):
             'tag',
             'runs',
             'shared_file_system',
+            'tag_exclusive',
         ]
 
         data = []
@@ -1078,6 +1082,7 @@ class BundleCLI(object):
                     'tag': worker['tag'],
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
+                    'tag_exclusive': worker['tag_exclusive'],
                 }
             )
 

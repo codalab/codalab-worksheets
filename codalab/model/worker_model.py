@@ -47,6 +47,7 @@ class WorkerModel(object):
         free_disk_bytes,
         dependencies,
         shared_file_system,
+        tag_exclusive,
     ):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
@@ -61,6 +62,7 @@ class WorkerModel(object):
                 'free_disk_bytes': free_disk_bytes,
                 'checkin_time': datetime.datetime.utcnow(),
                 'shared_file_system': shared_file_system,
+                'tag_exclusive': tag_exclusive,
             }
             existing_row = conn.execute(
                 cl_worker.select().where(
@@ -185,6 +187,7 @@ class WorkerModel(object):
                 'dependencies': row.dependencies
                 and self._deserialize_dependencies(row.dependencies),
                 'shared_file_system': row.shared_file_system,
+                'tag_exclusive': row.tag_exclusive,
             }
             for row in worker_rows
         }
