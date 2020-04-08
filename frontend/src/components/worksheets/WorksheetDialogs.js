@@ -206,9 +206,7 @@ class WorksheetDialogs extends React.Component {
                             margin='dense'
                             id='paste-box'
                             onChange={(e) => {
-                                this.setState({ pasteInputValue: e.target.value }, () => {
-                                    console.log(this.state.pasteInputValue);
-                                });
+                                this.setState({ pasteInputValue: e.target.value });
                             }}
                             multiline
                         />
