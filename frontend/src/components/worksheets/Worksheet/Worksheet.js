@@ -89,7 +89,7 @@ var WorksheetContent = (function() {
             cache: false,
             url: '/rest/worksheets/' + this.uuid + '/raw',
             dataType: 'json',
-            data: this.info.raw.join('\n'),
+            data: this.info.source.join('\n'),
             success: function(data) {
                 console.log('Saved worksheet ' + this.info.uuid);
                 props.success(data);
@@ -840,7 +840,7 @@ class Worksheet extends React.Component {
             if (this.canEdit()) {
                 var editor = ace.edit('worksheet-editor');
                 if (saveChanges) {
-                    this.state.ws.info.raw = editor.getValue().split('\n');
+                    this.state.ws.info.source = editor.getValue().split('\n');
                 }
                 var rawIndex = editor.getCursorPosition().row;
                 this.setState({
@@ -1271,7 +1271,7 @@ class Worksheet extends React.Component {
 
         this.setupEventHandlers();
         var info = this.state.ws.info;
-        var rawWorksheet = info && info.raw.join('\n');
+        var rawWorksheet = info && info.source.join('\n');
         var editPermission = info && info.edit_permission;
         var canEdit = this.canEdit() && this.state.editMode;
 
