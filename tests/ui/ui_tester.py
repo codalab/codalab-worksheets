@@ -202,7 +202,7 @@ class UITester(ABC):
         by = By.CLASS_NAME
         selector = "codalab-item-placeholder"
         timeout_message = 'Timed out while waiting for {}: {} to be hidden.'.format(by, selector)
-        WebDriverWait(self._driver, 300).until(
+        WebDriverWait(self.browser, 300).until(
             EC.invisibility_of_element_located((by, selector)), message=timeout_message
         )
 
