@@ -66,7 +66,11 @@ class WorksheetDialogs extends React.Component {
                         <Button color='primary' onClick={this.props.togglePopup('rm')}>
                             CANCEL
                         </Button>
-                        <Button color='primary' onClick={this.props.executeBundleCommand('rm')}>
+                        <Button
+                            color='primary'
+                            variant='contained'
+                            onClick={this.props.executeBundleCommand('rm')}
+                        >
                             DELETE
                         </Button>
                     </DialogActions>
@@ -136,6 +140,7 @@ class WorksheetDialogs extends React.Component {
                         </Button>
                         <Button
                             color='primary'
+                            variant='contained'
                             onClick={() => {
                                 this.props.deleteItemCallback();
                                 this.props.togglePopupNoEvent('deleteItem');
