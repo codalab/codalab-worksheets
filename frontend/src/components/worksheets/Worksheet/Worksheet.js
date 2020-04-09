@@ -440,7 +440,7 @@ class Worksheet extends React.Component {
         console.log(typeof keys, keys);
         let all_remove_lines = keys.map((key) => {
             var item_line = this.state.ws.info.block_to_raw[key];
-            return this.state.ws.info.raw_item_to_source_line[item_line];
+            return this.state.ws.info.expanded_items_to_raw_lines[item_line];
         });
         all_remove_lines.sort(function(a, b) {
             return b - a;
@@ -452,8 +452,7 @@ class Worksheet extends React.Component {
                 // don't delete directive lines
                 this.state.ws.info.raw.splice(line_index, 1);
         });
-        console.log(this.state.focusIndex);
-        this.saveAndUpdateWorksheet(false, this.state.focusIndex);
+        this.saveAndUpdateWorksheet(false);
     };
 
     confirmBundleRowAction = (code) => {
