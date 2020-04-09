@@ -1,11 +1,11 @@
 import unittest
 
-from codalab.worker.bundle_state import State, BundleInfo
+from codalab.worker.bundle_state import State, BundleInfo, Dependency
 
 
 class BundleStateTest(unittest.TestCase):
-    def test_bundle_info_serialization(self):
-        bundle_info_fields = {
+    def setUp(self) -> None:
+        self.bundle_info_fields = {
             'uuid': '0xuuid',
             'bundle_type': 'bundle_type',
             'owner_id': 'owner_id',
@@ -33,17 +33,65 @@ class BundleStateTest(unittest.TestCase):
             ],
             'location': 'location',
         }
+
+    def tearDown(self) -> None:
+        del self.bundle_info_fields
+
+    def test_bundle_info_serialization(self):
         info = BundleInfo(
-            uuid=bundle_info_fields['uuid'],
-            bundle_type=bundle_info_fields['bundle_type'],
-            owner_id=bundle_info_fields['owner_id'],
-            command=bundle_info_fields['command'],
-            data_hash=bundle_info_fields['data_hash'],
-            state=bundle_info_fields['state'],
-            is_anonymous=bundle_info_fields['is_anonymous'],
-            metadata=bundle_info_fields['metadata'],
-            args=bundle_info_fields['args'],
-            dependencies=bundle_info_fields['dependencies'],
-            location=bundle_info_fields['location'],
+            uuid=self.bundle_info_fields['uuid'],
+            bundle_type=self.bundle_info_fields['bundle_type'],
+            owner_id=self.bundle_info_fields['owner_id'],
+            command=self.bundle_info_fields['command'],
+            data_hash=self.bundle_info_fields['data_hash'],
+            state=self.bundle_info_fields['state'],
+            is_anonymous=self.bundle_info_fields['is_anonymous'],
+            metadata=self.bundle_info_fields['metadata'],
+            args=self.bundle_info_fields['args'],
+            dependencies=self.bundle_info_fields['dependencies'],
+            location=self.bundle_info_fields['location'],
+        )
+
+        self.assertEqual(
+            info.dependencies,
+            [
+                Dependency(
+                    parent_name='parent_name_0',
+                    parent_path='parent_path_0',
+                    parent_uuid='parent_uuid_0',
+                    child_path='child_path_0',
+                    child_uuid='child_uuid_0',
+                    location=None,
+                ),
+                Dependency(
+                    parent_name='parent_name_1',
+                    parent_path='parent_path_1',
+                    parent_uuid='parent_uuid_1',
+                    child_path='child_path_1',
+                    child_uuid='child_uuid_1',
+                    location=None,
+                ),
+            ],
+        )
+        self.assertEqual(
+            info.as_dict['dependencies'],
+            [
+                {
+                    'parent_name': 'parent_name_0',
+                    'parent_path': 'parent_path_0',
+                    'parent_uuid': 'parent_uuid_0',
+                    'child_path': 'child_path_0',
+                    'child_uuid': 'child_uuid_0',
+                    'location': None,
+                },
+                {
+                    'parent_name': 'parent_name_1',
+                    'parent_path': 'parent_path_1',
+                    'parent_uuid': 'parent_uuid_1',
+                    'child_path': 'child_path_1',
+                    'child_uuid': 'child_uuid_1',
+                    'location': None,
+                },
+            ],
         )
         self.assertEqual(info.as_dict, BundleInfo.from_dict(info.as_dict).as_dict)

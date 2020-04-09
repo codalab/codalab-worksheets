@@ -144,6 +144,7 @@ class Worksheet extends React.Component {
             anchorEl: null,
             showNewRun: false,
             showNewText: false,
+            uploadAnchor: null,
             showRerun: false,
             isValid: true,
             checkedBundles: {},
@@ -155,6 +156,7 @@ class Worksheet extends React.Component {
             openKill: false,
             openCopy: false,
             openCut: false,
+            openPaste: false,
             openDeleteItem: false,
             forceDelete: false,
             showGlossaryModal: false,
@@ -364,10 +366,7 @@ class Worksheet extends React.Component {
             // This is used to delete markdown blocks
             this.setState({ openDeleteItem: !this.state.openDeleteItem });
         }
-        if (!this.state.showBundleOperationButtons) {
-            return;
-        }
-        const { openKill, openDelete, openDetach, openCopy, openCut } = this.state;
+        const { openKill, openDelete, openDetach, openCopy, openPaste, openCut } = this.state;
         if (cmd_type === 'rm') {
             this.setState({ openDelete: !openDelete });
         } else if (cmd_type === 'detach') {
@@ -394,6 +393,10 @@ class Worksheet extends React.Component {
             });
             copyBundles.display = displayBundleInfo;
             copyBundles.actualContent = actualCopyBundleIds;
+            window.localStorage.setItem(
+                'CopiedBundles',
+                copyBundles.actualContent.substr(0, copyBundles.actualContent.length - 1),
+            );
             this.setState({ openCopy: true, copiedBundleIds: copyBundles });
         } else if (cmd_type === 'cut') {
             if (openCut) {
@@ -427,38 +430,8 @@ class Worksheet extends React.Component {
                 copiedBundleIds: copyBundles,
                 cutBundleKeys: bundleRowSourceLinekeys,
             });
-        } else if (cmd_type === 'cut') {
-            if (openCut) {
-                this.removeRawSourceLines();
-                this.setState({ openCut: false });
-                return;
-            }
-            let copyBundles = {};
-            let displayBundleInfo = '';
-            let actualCopyBundleIds = '';
-            let bundleRowSourceLinekeys = [];
-            this.copyCallbacks.forEach((copyBundleCallback) => {
-                let bundlesChecked = copyBundleCallback();
-                let rowKeys = [];
-                bundlesChecked.forEach((bundle) => {
-                    if (bundle.name === '<invalid>') {
-                        return;
-                    }
-                    displayBundleInfo += '[]{' + bundle.uuid + '} (' + bundle.name + ')\n';
-                    actualCopyBundleIds += '[]{' + bundle.uuid + '}\n';
-                    rowKeys.push(bundle.key);
-                });
-                console.log('HELLO:', rowKeys);
-                bundleRowSourceLinekeys.push(...rowKeys);
-            });
-            console.log(bundleRowSourceLinekeys);
-            copyBundles.display = displayBundleInfo;
-            copyBundles.actualContent = actualCopyBundleIds;
-            this.setState({
-                openCut: true,
-                copiedBundleIds: copyBundles,
-                cutBundleKeys: bundleRowSourceLinekeys,
-            });
+        } else if (cmd_type === 'paste') {
+            this.setState({ openPaste: !openPaste });
         }
     };
 
@@ -516,26 +489,24 @@ class Worksheet extends React.Component {
         this.setState({ deleteItemCallback: callback, openDeleteItem: true });
     };
 
-    pasteToWorksheet = () => {
+    pasteToWorksheet = (pasteText) => {
         // Unchecks all bundles after pasting
-        var clipboardData = navigator.clipboard.readText();
-        clipboardData.then((data) => {
-            if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
-                // Insert after the source line
-                var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
-                var item_line = this.state.ws.info.block_to_raw[currentItemKey];
-                var source_line = this.state.ws.info.raw_item_to_source_line[item_line];
-                this.state.ws.info.raw.splice(source_line + 1, 0, data);
-                this.saveAndUpdateWorksheet(false);
-            } else {
-                // Add to the end of the worksheet if no focus
-                this.state.ws.info.raw.push(data);
-                this.saveAndUpdateWorksheet(false);
-            }
+        // It would be ideal to use navigator.clipboard.readText(); however, firefox does not support this
+        const data = pasteText;
+        if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
+            // Insert after the source line
+            var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
+            var item_line = this.state.ws.info.block_to_raw[currentItemKey];
+            var source_line = this.state.ws.info.expanded_items_to_raw_lines[item_line];
+            this.state.ws.info.raw.splice(source_line + 1, 0, data);
+            this.saveAndUpdateWorksheet(false);
+        } else {
+            // Add to the end of the worksheet if no focus
+            this.state.ws.info.raw.push(data);
+            this.saveAndUpdateWorksheet(false);
+        }
 
-            this.clearCheckedBundles();
-        });
-        console.log(this.state.ws.info);
+        this.clearCheckedBundles();
     };
 
     clearCheckedBundles = (clear_callback) => {
@@ -618,6 +589,7 @@ class Worksheet extends React.Component {
             focusedBundleUuidList: focusedBundleUuidList,
             showNewRun: false,
             showNewText: false,
+            uploadAnchor: null,
             showNewRerun: false,
         });
         if (shouldScroll) {
@@ -730,7 +702,6 @@ class Worksheet extends React.Component {
         this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
     };
     setupEventHandlers() {
-        var self = this;
         // Load worksheet from history when back/forward buttons are used.
         let editPermission = this.state.ws.info && this.state.ws.info.edit_permission;
 
@@ -759,8 +730,6 @@ class Worksheet extends React.Component {
             )
         ) {
             // Only enable these shortcuts when no dialog is opened
-
-            //
             Mousetrap.bind(
                 ['shift+r'],
                 function(e) {
@@ -878,7 +847,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        document.querySelector('label[for=codalab-file-upload-input]').click();
+                        document.querySelector('#upload-button').click();
                     }.bind(this),
                     'keyup',
                 );
@@ -1431,9 +1400,22 @@ class Worksheet extends React.Component {
         this.setState({ BulkBundleDialog: deleteWorksheetDialog });
     }
 
+    showUploadMenu = (e) => {
+        // pause mousetrap events such as up, down, and enter
+        Mousetrap.pause();
+        let form = document.querySelector('#upload-menu');
+
+        Mousetrap(form).bind(['enter'], function(e) {
+            e.stopPropagation();
+            document.querySelector('label[for=' + e.target.firstElementChild.htmlFor + ']').click();
+        });
+
+        this.setState({ uploadAnchor: e.currentTarget });
+    };
+
     render() {
         const { classes } = this.props;
-        const { anchorEl } = this.state;
+        const { anchorEl, uploadAnchor } = this.state;
 
         this.setupEventHandlers();
         var info = this.state.ws.info;
@@ -1597,6 +1579,7 @@ class Worksheet extends React.Component {
             <WorksheetDialogs
                 openCopy={this.state.openCopy}
                 openCut={this.state.openCut}
+                openPaste={this.state.openPaste}
                 copiedBundleIds={this.state.copiedBundleIds}
                 openKill={this.state.openKill}
                 openDelete={this.state.openDelete}
@@ -1609,11 +1592,13 @@ class Worksheet extends React.Component {
                 handleForceDelete={this.handleForceDelete}
                 deleteItemCallback={this.state.deleteItemCallback}
                 removeRawSourceLines={this.removeRawSourceLines}
+                pasteToWorksheet={this.pasteToWorksheet}
             />
         );
         if (info && info.title) {
             document.title = info.title;
         }
+
         return (
             <React.Fragment>
                 {context_menu_display}
@@ -1629,13 +1614,18 @@ class Worksheet extends React.Component {
                     setAnchorEl={(e) => this.setState({ anchorEl: e })}
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
+                    uploadAnchor={uploadAnchor}
+                    showUploadMenu={this.showUploadMenu}
+                    closeUploadMenu={() => {
+                        this.setState({ uploadAnchor: null });
+                        Mousetrap.unpause();
+                    }}
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
                     toggleCmdDialog={this.toggleCmdDialog}
                     toggleGlossaryModal={this.toggleGlossaryModal}
                     toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
                     copiedBundleIds={this.state.copiedBundleIds}
-                    pasteToWorksheet={this.pasteToWorksheet}
                 />
                 {action_bar_display}
                 <ToastContainer
