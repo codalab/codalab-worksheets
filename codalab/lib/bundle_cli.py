@@ -794,7 +794,7 @@ class BundleCLI(object):
         Commands.Argument(
             '-m',
             '--memoize',
-            help='Use a memoized bundle that matches with the given command and dependencies',
+            help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
             action='store_true',
         ),
     ) + WAIT_ARGUMENTS
@@ -1561,7 +1561,7 @@ class BundleCLI(object):
             Commands.Argument(
                 '-m',
                 '--memoize',
-                help='Use a memoized bundle that matches with the given command and dependencies',
+                help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
                 action='store_true',
             ),
         )
