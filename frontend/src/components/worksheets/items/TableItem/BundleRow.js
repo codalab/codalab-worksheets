@@ -236,7 +236,7 @@ class BundleRow extends Component {
 
             if (
                 this.props.focusIndex >= 0 &&
-                ws.info.items[this.props.focusIndex].mode === 'table_block'
+                ws.info.blocks[this.props.focusIndex].mode === 'table_block'
             ) {
                 const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
                 const isDownloadableRunBundle =

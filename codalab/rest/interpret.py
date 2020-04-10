@@ -253,25 +253,24 @@ def fetch_interpreted_worksheet(uuid):
                         block['bundle_info'][j] = None
                 if not is_relevant_block:
                     interpreted_blocks['blocks'][i] = None
-
-    worksheet_info['items'] = resolve_interpreted_blocks(interpreted_blocks['blocks'])
+    worksheet_info['blocks'] = resolve_interpreted_blocks(interpreted_blocks['blocks'])
     worksheet_info['raw_to_block'] = interpreted_blocks['raw_to_block']
     worksheet_info['block_to_raw'] = interpreted_blocks['block_to_raw']
 
-    for item in worksheet_info['items']:
-        if item is None:
+    for block in worksheet_info['blocks']:
+        if block is None:
             continue
-        if item['mode'] == 'table':
-            for row_map in item['rows']:
+        if block['mode'] == 'table':
+            for row_map in block['rows']:
                 for k, v in row_map.items():
                     if v is None:
                         row_map[k] = formatting.contents_str(v)
-        if 'bundle_info' in item:
+        if 'bundle_info' in block:
             infos = []
-            if isinstance(item['bundle_info'], list):
-                infos = item['bundle_info']
-            elif isinstance(item['bundle_info'], dict):
-                infos = [item['bundle_info']]
+            if isinstance(block['bundle_info'], list):
+                infos = block['bundle_info']
+            elif isinstance(block['bundle_info'], dict):
+                infos = [block['bundle_info']]
             for bundle_info in infos:
                 if bundle_info is None:
                     continue
@@ -279,8 +278,9 @@ def fetch_interpreted_worksheet(uuid):
                     continue  # empty info: invalid bundle reference
                 if isinstance(bundle_info, dict):
                     format_metadata(bundle_info.get('metadata'))
+    del worksheet_info['items']
     if bundle_uuids:
-        return {'items': worksheet_info['items']}
+        return {'blocks': worksheet_info['blocks']}
     return worksheet_info
 
 
