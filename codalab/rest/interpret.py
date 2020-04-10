@@ -130,6 +130,7 @@ def _interpret_genpath_table_contents():
         ]
     }
     ```
+
     JSON response body:
     ```
     {
