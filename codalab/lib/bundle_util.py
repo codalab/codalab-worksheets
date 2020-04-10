@@ -275,6 +275,8 @@ def mimic_bundles(
 
             prelude_items = []  # The prelude that we're building up
             for item in worksheet_info['items']:
+                just_added = False
+
                 if item['type'] == worksheet_util.TYPE_BUNDLE:
                     old_bundle_uuid = item['bundle']['id']
                     if old_bundle_uuid in old_to_new:
@@ -294,20 +296,20 @@ def mimic_bundles(
                                         data=item2,
                                         params={'uuid': worksheet_uuid},
                                     )
-                            if new_bundle_uuid not in new_bundle_uuids_added:
-                                # Add the bundle item
-                                client.create(
-                                    'worksheet-items',
-                                    data={
-                                        'type': worksheet_util.TYPE_BUNDLE,
-                                        'worksheet': JsonApiRelationship(
-                                            'worksheets', worksheet_uuid
-                                        ),
-                                        'bundle': JsonApiRelationship('bundles', new_bundle_uuid),
-                                    },
-                                    params={'uuid': worksheet_uuid},
-                                )
-                                new_bundle_uuids_added.add(new_bundle_uuid)
+                            # Add the bundle item
+                            client.create(
+                                'worksheet-items',
+                                data={
+                                    'type': worksheet_util.TYPE_BUNDLE,
+                                    'worksheet': JsonApiRelationship(
+                                        'worksheets', worksheet_uuid
+                                    ),
+                                    'bundle': JsonApiRelationship('bundles', new_bundle_uuid),
+                                },
+                                params={'uuid': worksheet_uuid},
+                            )
+                            new_bundle_uuids_added.add(new_bundle_uuid)
+                            just_added = True
 
                 if (item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or item[
                     'type'
