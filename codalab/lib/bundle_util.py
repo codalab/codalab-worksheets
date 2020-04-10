@@ -301,9 +301,7 @@ def mimic_bundles(
                                 'worksheet-items',
                                 data={
                                     'type': worksheet_util.TYPE_BUNDLE,
-                                    'worksheet': JsonApiRelationship(
-                                        'worksheets', worksheet_uuid
-                                    ),
+                                    'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
                                     'bundle': JsonApiRelationship('bundles', new_bundle_uuid),
                                 },
                                 params={'uuid': worksheet_uuid},
