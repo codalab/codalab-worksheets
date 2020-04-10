@@ -686,79 +686,80 @@ class BundleModel(object):
                             dependencies that are used to search for memoized bundles in the database.
         :return: a list of matched uuids.
         '''
-        # Get a list of uuids that matches with the given dependencies from the cl_bundle table.
-        # This step is to standardize uuid for future comparison.
-        with self.engine.begin() as connection:
-            # Select bundles that has the given command from the bundle table.
-            filter_on_command = (
-                select([cl_bundle.c.uuid, cl_bundle.c.id])
-                .distinct()
+
+        # When there is no dependency to be matched, the target memozied bundle
+        # should only exist in the bundle table but not in the bundle_dependency table.
+        if len(dependencies) == 0:
+            query = (
+                select([cl_bundle.c.uuid])
                 .select_from(cl_bundle)
-                .where(and_(cl_bundle.c.command == command, cl_bundle.c.owner_id == user_id))
-                .alias()
-            )
-            # When there is no dependency to be matched, the target memozied bundle
-            # should only exist in the bundle table but not in the bundle_dependency table.
-            if len(dependencies) == 0:
-                query = (
-                    select([filter_on_command.c.uuid])
-                    .select_from(filter_on_command)
-                    .where(
-                        filter_on_command.c.uuid.notin_(
+                .where(
+                    and_(
+                        cl_bundle.c.command == command,
+                        cl_bundle.c.owner_id == user_id,
+                        cl_bundle.c.uuid.notin_(
                             select([cl_bundle_dependency.c.child_uuid]).select_from(
                                 cl_bundle_dependency
                             )
-                        )
+                        ),
                     )
-                    .order_by(filter_on_command.c.id)
                 )
-            else:
-                joins = []
-                for dep in dependencies:
-                    key, uuid = dep.split(':')
-                    joins.append(
-                        (
-                            select([
+                .order_by(cl_bundle.c.id)
+            )
+        else:
+            joins = []
+            for dep in dependencies:
+                key, uuid = dep.split(':')
+                joins.append(
+                    (
+                        select(
+                            [
                                 cl_bundle_dependency.c.id,
                                 cl_bundle_dependency.c.child_uuid,
                                 cl_bundle_dependency.c.child_path,
                                 cl_bundle_dependency.c.parent_uuid,
-                            ])
-                            .select_from(
-                                cl_bundle.join(
-                                    cl_bundle_dependency,
-                                    cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid,
-                                )
+                            ]
+                        )
+                        .select_from(
+                            cl_bundle.join(
+                                cl_bundle_dependency,
+                                cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid,
                             )
-                            .where(
-                                and_(
-                                    cl_bundle.c.command == command,
-                                    cl_bundle.c.owner_id == user_id,
-                                    cl_bundle_dependency.c.child_path == key,
-                                    cl_bundle_dependency.c.parent_uuid == uuid,
-                                )
+                        )
+                        .where(
+                            and_(
+                                cl_bundle.c.command == command,
+                                cl_bundle.c.owner_id == user_id,
+                                cl_bundle_dependency.c.child_path == key,
+                                cl_bundle_dependency.c.parent_uuid == uuid,
                             )
                         )
                     )
-
-                unions = union_all(*joins).alias()
-
-                groupby = (
-                    select([unions.c.id, unions.c.child_uuid, func.count(unions.c.parent_uuid).label("cnt")])
-                    .select_from(unions)
-                    .group_by(unions.c.child_uuid)
-                    .alias()
                 )
 
-                query = (
-                    select([groupby.c.child_uuid])
-                    .select_from(groupby)
-                    .where(groupby.c.cnt == len(dependencies))
-                    .order_by(groupby.c.id)
-                )
+            unions = union_all(*joins).alias()
 
-            rows = connection.execute(query).fetchall()
-            return [row[0] for row in rows]
+            group_child_uuid = (
+                select(
+                    [
+                        unions.c.id,
+                        unions.c.child_uuid,
+                        func.count(unions.c.parent_uuid).label("cnt"),
+                    ]
+                )
+                .select_from(unions)
+                .group_by(unions.c.child_uuid)
+                .alias()
+            )
+
+            query = (
+                select([group_child_uuid.c.child_uuid])
+                .select_from(group_child_uuid)
+                .where(group_child_uuid.c.cnt == len(dependencies))
+                .order_by(group_child_uuid.c.id)
+            )
+
+        return self._execute_query(query)
 
     def batch_get_bundles(self, **kwargs):
         """
