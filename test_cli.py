@@ -1737,8 +1737,7 @@ def test(ctx):
     wait(uuid1)
     check_equals('hello2', _run_command([cl, 'cat', uuid1 + '/stdout']))
     # memo tests
-    uuid_memo = _run_command([cl, 'run', 'echo hello', '--memoize'])
-    check_equals(uuid_memo, uuid)
+    check_equals(uuid, _run_command([cl, 'run', 'echo hello', '--memoize']))
 
     # Case 2: single dependency
     # target_spec: ":<uuid>"
@@ -1746,8 +1745,7 @@ def test(ctx):
     wait(uuid_dep)
     check_equals('hello', _run_command([cl, 'cat', uuid_dep + '/stdout']))
     # memo tests
-    uuid_dep_memo = _run_command([cl, 'run', ':{}'.format(uuid), 'echo hello', '--memoize'])
-    check_equals(uuid_dep_memo, uuid_dep)
+    check_equals(uuid_dep, _run_command([cl, 'run', ':{}'.format(uuid), 'echo hello', '--memoize']))
 
     # Case 3: multiple dependencies without key
     # target_spec: ":<uuid_1>, :<uuid_2>"
@@ -1755,10 +1753,12 @@ def test(ctx):
     wait(uuid_deps)
     check_equals('hello', _run_command([cl, 'cat', uuid_deps + '/stdout']))
     # memo tests
-    uuid_deps_memo = _run_command(
-        [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid), 'echo hello', '--memoize']
+    check_equals(
+        uuid_deps,
+        _run_command(
+            [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid), 'echo hello', '--memoize']
+        ),
     )
-    check_equals(uuid_deps_memo, uuid_deps)
 
     # Case 4: multiple key points to the same bundle
     # target_spec: "foo:<uuid>, foo1:<uuid>"
@@ -1768,10 +1768,12 @@ def test(ctx):
     wait(uuid_multi_alias)
     check_equals('hello', _run_command([cl, 'cat', uuid_multi_alias + '/stdout']))
     # memo tests
-    uuid_multi_alias_memo = _run_command(
-        [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello', '--memoize']
+    check_equals(
+        uuid_multi_alias,
+        _run_command(
+            [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello', '--memoize']
+        ),
     )
-    check_equals(uuid_multi_alias_memo, uuid_multi_alias)
 
     # Case 5: duplicate dependencies
     # target_spec: ":<uuid>, :<uuid>"
@@ -1779,14 +1781,21 @@ def test(ctx):
     wait(uuid_dup_deps)
     check_equals('hello', _run_command([cl, 'cat', uuid_dup_deps + '/stdout']))
     # memo tests
-    uuid_dup_deps_memo = _run_command(
-        [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid), 'echo hello', '--memoize']
+    check_equals(
+        uuid_dup_deps,
+        _run_command(
+            [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid), 'echo hello', '--memoize']
+        ),
     )
-    check_equals(uuid_dup_deps_memo, uuid_dup_deps)
 
     # Case 5: multiple dependencies
     # target_spec: "a:<uuid_1>, b:<uuid_2>"
     uuid_a_b = _run_command([cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_b'])
+    wait(uuid_a_b)
+    check_equals("a_b", _run_command([cl, 'cat', uuid_a_b + '/stdout']))
+
+    # target_spec: "a:<uuid_1>, b:<uuid_2>"
+    uuid_a_bb = _run_command([cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_bb'])
     wait(uuid_a_b)
     check_equals("a_b", _run_command([cl, 'cat', uuid_a_b + '/stdout']))
 
@@ -1796,19 +1805,33 @@ def test(ctx):
     check_equals("b_a", _run_command([cl, 'cat', uuid_b_a + '/stdout']))
 
     # memo tests
-    uuid_a_b_memo = _run_command(
-        [cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_b', '--memoize']
+    check_equals(
+        uuid_a_b,
+        _run_command(
+            [cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_b', '--memoize']
+        ),
     )
-    check_equals(uuid_a_b_memo, uuid_a_b)
-    uuid_b_a_memo = _run_command(
-        [cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid1), 'echo b_a', '--memoize']
+
+    check_equals(
+        uuid_a_bb,
+        _run_command(
+            [cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_bb', '--memoize']
+        ),
     )
-    check_equals(uuid_b_a_memo, uuid_b_a)
+
+    check_equals(
+        uuid_b_a,
+        _run_command(
+            [cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid1), 'echo b_a', '--memoize']
+        ),
+    )
     # test different dependency order in target_spec: "a:<uuid_2>, b:<uuid_1>"
-    uuid_b_a_order_memo = _run_command(
-        [cl, 'run', 'a:{}'.format(uuid1), 'b:{}'.format(uuid), 'echo b_a', '--memoize']
+    check_equals(
+        uuid_b_a,
+        _run_command(
+            [cl, 'run', 'a:{}'.format(uuid1), 'b:{}'.format(uuid), 'echo b_a', '--memoize']
+        ),
     )
-    check_equals(uuid_b_a_order_memo, uuid_b_a)
 
 
 if __name__ == '__main__':

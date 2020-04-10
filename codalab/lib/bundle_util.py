@@ -191,7 +191,6 @@ def mimic_bundles(
             new_info['dependencies'] = new_dependencies
 
             # Fetch the memoized bundle if the memoize option is set to be True
-            memoized_bundles = None
             if memoize:
                 memoized_bundles = client.fetch(
                     'bundles',

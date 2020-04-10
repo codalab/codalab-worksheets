@@ -11,7 +11,7 @@ import logging
 
 from uuid import uuid4
 
-from sqlalchemy import and_, or_, not_, select, union, desc, func
+from sqlalchemy import and_, or_, not_, select, union, desc, func, distinct
 from sqlalchemy.sql.expression import literal, true
 
 from codalab.bundles import get_bundle_subclass
@@ -679,42 +679,35 @@ class BundleModel(object):
 
     def get_memoized_bundles(self, user_id, command, dependencies):
         '''
-        Get the most recently finished bundle that matches with input command and dependencies.
+        Get a list of bundles that match with input command and dependencies in the order of they were created.
         :param user_id: a string that specifies the current user id.
         :param command: a string that defines the command that is used to search for memoized bundles in the database.
-        :param dependencies: a list of string in the structure of ["key1:uuid1","key2:uuid2"] defines
+        :param dependencies: a list of strings in the structure of ["key1:uuid1","key2:uuid2"] defines
                             dependencies that are used to search for memoized bundles in the database.
         :return: a list of matched uuids.
         '''
         # Get a list of uuids that matches with the given dependencies from the cl_bundle table.
         # This step is to standardize uuid for future comparison.
-        with self.engine.begin() as connection:
-            # Select bundles that has the given command from the bundle table.
-            filter_on_command = (
+        # When there is no dependency to be matched, the target memozied bundle
+        # should only exist in the bundle table but not in the bundle_dependency table.
+        if len(dependencies) == 0:
+            query = (
                 select([cl_bundle.c.uuid])
-                .distinct()
                 .select_from(cl_bundle)
-                .where(and_(cl_bundle.c.command == command, cl_bundle.c.owner_id == user_id))
-                # Ensure the order of the returning bundles will be in the order of they were created.
+                .where(
+                    and_(
+                        cl_bundle.c.command == command,
+                        cl_bundle.c.owner_id == user_id,
+                        cl_bundle.c.uuid.notin_(
+                            select([cl_bundle_dependency.c.child_uuid]).select_from(
+                                cl_bundle_dependency
+                            )
+                        ),
+                    )
+                )
                 .order_by(cl_bundle.c.id)
             )
-            rows = connection.execute(filter_on_command).fetchall()
-            if not rows:
-                return []
-            uuids = [row[0] for row in rows]
-            # When there is no dependency to be matched, the target memozied bundle
-            # should only exist in the bundle table but not in the bundle_dependency table.
-            if len(dependencies) == 0:
-                query = (
-                    select([cl_bundle_dependency.c.child_uuid])
-                    .distinct()
-                    .select_from(cl_bundle_dependency)
-                    .where(cl_bundle_dependency.c.child_uuid.in_(uuids))
-                )
-                dependency_rows = connection.execute(query).fetchall()
-                dependency_uuids = set([row[0] for row in dependency_rows])
-                return [uuid for uuid in uuids if uuid not in dependency_uuids]
-
+        else:
             dep_clause = []
             for dep in dependencies:
                 key, uuid = dep.split(':')
@@ -724,37 +717,37 @@ class BundleModel(object):
                         cl_bundle_dependency.c.parent_uuid == uuid,
                     )
                 )
-            # Sort the dependencies list in ascending order
-            dependencies.sort()
-            concat_dependencies = ','.join(dependencies)
-            # Concatenate key (child_path) and uuid (parent_uuid) to be "key:uuid"
-            key_uuid_pair = func.concat_ws(
-                ':', cl_bundle_dependency.c.child_path, cl_bundle_dependency.c.parent_uuid
-            )
             filter_on_dependencies = (
                 select(
                     [
+                        cl_bundle_dependency.c.id,
                         cl_bundle_dependency.c.child_uuid,
-                        # ORDER BY will ensure group concatenating dependency strings in ascending order
-                        func.group_concat(key_uuid_pair.op("ORDER BY")(key_uuid_pair)).label(
-                            'concat_dependencies'
-                        ),
+                        func.count(cl_bundle_dependency.c.parent_uuid).label("cnt"),
                     ]
                 )
-                .select_from(cl_bundle_dependency)
-                .where(and_(cl_bundle_dependency.c.child_uuid.in_(uuids), or_(*dep_clause)))
+                .select_from(
+                    cl_bundle.join(
+                        cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid
+                    )
+                )
+                .where(
+                    and_(
+                        cl_bundle.c.command == command,
+                        cl_bundle.c.owner_id == user_id,
+                        or_(*dep_clause),
+                    )
+                )
                 .group_by(cl_bundle_dependency.c.child_uuid)
-                # Ensure the order of the returning bundles will be in the order of they were created.
-                .order_by(cl_bundle_dependency.c.id)
-                .alias("filter_on_dependencies")
+                .alias()
             )
             query = (
                 select([filter_on_dependencies.c.child_uuid])
                 .select_from(filter_on_dependencies)
-                .where(filter_on_dependencies.c.concat_dependencies == concat_dependencies)
+                .where(filter_on_dependencies.c.cnt == len(dependencies))
+                # Ensure the order of the returning bundles will be in the order of they were created.
+                .order_by(filter_on_dependencies.c.id)
             )
-            rows = connection.execute(query).fetchall()
-            return [row[0] for row in rows]
+        return self._execute_query(query)
 
     def batch_get_bundles(self, **kwargs):
         """

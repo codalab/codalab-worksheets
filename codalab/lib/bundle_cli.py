@@ -1579,10 +1579,18 @@ class BundleCLI(object):
             memoized_bundles = client.fetch(
                 'bundles', params={'command': args.command, 'dependencies': dependencies}
             )
-            if len(memoized_bundles) > 0:
-                print(memoized_bundles[-1]['uuid'], file=self.stdout)
-            else:
-                print("Cannot find any memoized bundle.", file=self.stdout)
+
+        if args.memoize and len(memoized_bundles) > 0:
+            new_bundle = memoized_bundles[-1]
+            print(new_bundle['uuid'], file=self.stdout)
+            self.copy_bundle(
+                source_client=client,
+                source_bundle_uuid=new_bundle['uuid'],
+                dest_client=client,
+                dest_worksheet_uuid=worksheet_uuid,
+                copy_dependencies=False,
+                add_to_worksheet=True,
+            )
         else:
             new_bundle = client.create(
                 'bundles',
