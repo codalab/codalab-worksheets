@@ -153,12 +153,6 @@ class WorksheetActionBar extends React.Component {
             openBundle: function(uuid) {
                 window.open('/bundles/' + uuid + '/', '_blank');
             },
-            upload: function() {
-                // Just switch focus to the upload button.
-                self.props.setFocus(-1, null);
-                self.terminal.focus(false);
-                $('#upload-bundle-button').focus();
-            },
         }[action](parameter));
     }
     executeCommand(command) {
