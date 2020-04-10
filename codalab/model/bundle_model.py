@@ -11,7 +11,7 @@ import logging
 
 from uuid import uuid4
 
-from sqlalchemy import and_, or_, not_, select, union, desc, func
+from sqlalchemy import and_, or_, not_, select, union, desc, func, union_all
 from sqlalchemy.sql.expression import literal, true
 
 from codalab.bundles import get_bundle_subclass
@@ -691,68 +691,72 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             # Select bundles that has the given command from the bundle table.
             filter_on_command = (
-                select([cl_bundle.c.uuid])
+                select([cl_bundle.c.uuid, cl_bundle.c.id])
                 .distinct()
                 .select_from(cl_bundle)
                 .where(and_(cl_bundle.c.command == command, cl_bundle.c.owner_id == user_id))
-                # Ensure the order of the returning bundles will be in the order of they were created.
-                .order_by(cl_bundle.c.id)
+                .alias()
             )
-            rows = connection.execute(filter_on_command).fetchall()
-            if not rows:
-                return []
-            uuids = [row[0] for row in rows]
             # When there is no dependency to be matched, the target memozied bundle
             # should only exist in the bundle table but not in the bundle_dependency table.
             if len(dependencies) == 0:
                 query = (
-                    select([cl_bundle_dependency.c.child_uuid])
-                    .distinct()
-                    .select_from(cl_bundle_dependency)
-                    .where(cl_bundle_dependency.c.child_uuid.in_(uuids))
-                )
-                dependency_rows = connection.execute(query).fetchall()
-                dependency_uuids = set([row[0] for row in dependency_rows])
-                return [uuid for uuid in uuids if uuid not in dependency_uuids]
-
-            dep_clause = []
-            for dep in dependencies:
-                key, uuid = dep.split(':')
-                dep_clause.append(
-                    and_(
-                        cl_bundle_dependency.c.child_path == key,
-                        cl_bundle_dependency.c.parent_uuid == uuid,
+                    select([filter_on_command.c.uuid])
+                    .select_from(filter_on_command)
+                    .where(
+                        filter_on_command.c.uuid.notin_(
+                            select([cl_bundle_dependency.c.child_uuid]).select_from(
+                                cl_bundle_dependency
+                            )
+                        )
                     )
+                    .order_by(filter_on_command.c.id)
                 )
-            # Sort the dependencies list in ascending order
-            dependencies.sort()
-            concat_dependencies = ','.join(dependencies)
-            # Concatenate key (child_path) and uuid (parent_uuid) to be "key:uuid"
-            key_uuid_pair = func.concat_ws(
-                ':', cl_bundle_dependency.c.child_path, cl_bundle_dependency.c.parent_uuid
-            )
-            filter_on_dependencies = (
-                select(
-                    [
-                        cl_bundle_dependency.c.child_uuid,
-                        # ORDER BY will ensure group concatenating dependency strings in ascending order
-                        func.group_concat(key_uuid_pair.op("ORDER BY")(key_uuid_pair)).label(
-                            'concat_dependencies'
-                        ),
-                    ]
+            else:
+                joins = []
+                for dep in dependencies:
+                    key, uuid = dep.split(':')
+                    joins.append(
+                        (
+                            select([
+                                cl_bundle_dependency.c.id,
+                                cl_bundle_dependency.c.child_uuid,
+                                cl_bundle_dependency.c.child_path,
+                                cl_bundle_dependency.c.parent_uuid,
+                            ])
+                            .select_from(
+                                cl_bundle.join(
+                                    cl_bundle_dependency,
+                                    cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid,
+                                )
+                            )
+                            .where(
+                                and_(
+                                    cl_bundle.c.command == command,
+                                    cl_bundle.c.owner_id == user_id,
+                                    cl_bundle_dependency.c.child_path == key,
+                                    cl_bundle_dependency.c.parent_uuid == uuid,
+                                )
+                            )
+                        )
+                    )
+
+                unions = union_all(*joins).alias()
+
+                groupby = (
+                    select([unions.c.id, unions.c.child_uuid, func.count(unions.c.parent_uuid).label("cnt")])
+                    .select_from(unions)
+                    .group_by(unions.c.child_uuid)
+                    .alias()
                 )
-                .select_from(cl_bundle_dependency)
-                .where(and_(cl_bundle_dependency.c.child_uuid.in_(uuids), or_(*dep_clause)))
-                .group_by(cl_bundle_dependency.c.child_uuid)
-                # Ensure the order of the returning bundles will be in the order of they were created.
-                .order_by(cl_bundle_dependency.c.id)
-                .alias("filter_on_dependencies")
-            )
-            query = (
-                select([filter_on_dependencies.c.child_uuid])
-                .select_from(filter_on_dependencies)
-                .where(filter_on_dependencies.c.concat_dependencies == concat_dependencies)
-            )
+
+                query = (
+                    select([groupby.c.child_uuid])
+                    .select_from(groupby)
+                    .where(groupby.c.cnt == len(dependencies))
+                    .order_by(groupby.c.id)
+                )
+
             rows = connection.execute(query).fetchall()
             return [row[0] for row in rows]
 
