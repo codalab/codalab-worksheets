@@ -682,8 +682,8 @@ class BundleModel(object):
         Get a list of bundles that match with input command and dependencies in the order of they were created.
         :param user_id: a string that specifies the current user id.
         :param command: a string that defines the command that is used to search for memoized bundles in the database.
-        :param dependencies: a list of strings in the structure of ["key1:uuid1","key2:uuid2"] defines
-                            dependencies that are used to search for memoized bundles in the database.
+        :param dependencies: a list of unique strings in the form of ["key1:uuid1","key2:uuid2"] that are used to
+                                search for memoized bundles in the database.
         :return: a list of matched uuids.
         '''
         # Get a list of uuids that matches with the given dependencies from the cl_bundle table.
