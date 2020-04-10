@@ -12,7 +12,7 @@
     "@material-ui/icons": "^3.0.2",
     "ace-builds": "^1.4.2",
     "autosuggest-highlight": "^3.1.1",
-    "bootstrap": "^3.3.6",
+    "bootstrap": "^3.4.1",
     "c3": "^0.6.12",
     "classnames": "^2.2.6",
     "husky": "^2.7.0",
@@ -23,7 +23,7 @@
     "jsonapi-datastore": "^0.4.0-beta",
     "jszip": "^3.2.2",
     "lint-staged": "^8.2.1",
-    "marked": "^0.6.2",
+    "marked": "^0.8.2",
     "material-ui-chip-input": "^1.0.0-beta.16",
     "query-string": "^6.2.0",
     "react": "^16.8.6",
@@ -47,10 +47,10 @@
     "wolfy87-eventemitter": "^5.2.5"
   },
   "devDependencies": {
+    "eslint": "^6.8.0",
     "flow-bin": "^0.91.0",
     "prettier": "^1.19.1",
-    "eslint": "^6.8.0",
-    "react-scripts": "^3.2.0"
+    "react-scripts": "^3.4.1"
   },
   "browserslist": [
     ">0.2%",
