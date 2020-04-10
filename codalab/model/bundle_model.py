@@ -686,8 +686,6 @@ class BundleModel(object):
                                 search for memoized bundles in the database.
         :return: a list of matched uuids.
         '''
-        # Get a list of uuids that matches with the given dependencies from the cl_bundle table.
-        # This step is to standardize uuid for future comparison.
         # When there is no dependency to be matched, the target memozied bundle
         # should only exist in the bundle table but not in the bundle_dependency table.
         if len(dependencies) == 0:
