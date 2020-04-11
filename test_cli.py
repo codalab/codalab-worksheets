@@ -32,6 +32,7 @@ import subprocess
 import sys
 import time
 import traceback
+from datetime import datetime
 
 
 global cl
@@ -972,6 +973,60 @@ def test(ctx):
     check_contains(group_buuid[:8], _run_command([cl, 'search', '.shared']))
     check_contains(group_buuid[:8], _run_command([cl, 'search', 'group={}'.format(group_uuid)]))
     check_contains(group_buuid[:8], _run_command([cl, 'search', 'group={}'.format(group_name)]))
+
+
+@TestModule.register('search_time')
+def test(ctx):
+    name = random_name()
+    time1 = datetime.now().isoformat()
+    # These sleeps are required to ensure that there is sufficient time that passes between tests
+    # If there is not enough time, all bundles might appear to have the same time
+    time.sleep(1)
+    uuid1 = run_command([cl, 'run', 'date', '-n', name])
+    time.sleep(1)
+    time2 = datetime.now().isoformat()
+    time.sleep(1)
+    uuid2 = run_command([cl, 'run', 'date', '-n', name])
+    uuid3 = run_command([cl, 'run', 'date', '-n', name])
+    time.sleep(1)
+    time3 = datetime.now().isoformat()
+
+    # No results
+    check_equals('', run_command([cl, 'search', 'name=' + name, '.before=' + time1, '-u']))
+    check_equals('', run_command([cl, 'search', 'name=' + name, '.after=' + time3, '-u']))
+
+    # Before
+    check_equals(
+        uuid1, run_command([cl, 'search', 'name=' + name, '.before=' + time2, 'id=.sort', '-u'])
+    )
+    check_equals(
+        uuid1 + '\n' + uuid2 + '\n' + uuid3,
+        run_command([cl, 'search', 'name=' + name, '.before=' + time3, 'id=.sort', '-u']),
+    )
+
+    # After
+    check_equals(
+        uuid1 + '\n' + uuid2 + '\n' + uuid3,
+        run_command([cl, 'search', 'name=' + name, '.after=' + time1, 'id=.sort', '-u']),
+    )
+    check_equals(
+        uuid2 + '\n' + uuid3,
+        run_command([cl, 'search', 'name=' + name, '.after=' + time2, 'id=.sort', '-u']),
+    )
+
+    # Before And After
+    check_equals(
+        uuid1,
+        run_command(
+            [cl, 'search', 'name=' + name, '.after=' + time1, '.before=' + time2, 'id=.sort', '-u']
+        ),
+    )
+    check_equals(
+        uuid2 + '\n' + uuid3,
+        run_command(
+            [cl, 'search', 'name=' + name, '.after=' + time2, '.before=' + time3, 'id=.sort', '-u']
+        ),
+    )
 
 
 @TestModule.register('run')
