@@ -3104,7 +3104,7 @@ class BundleCLI(object):
                 print(line, file=self.stdout)
         else:
             print(self._worksheet_description(worksheet_info), file=self.stdout)
-            interpreted_blocks = client.fetch_interpreted_worksheet(worksheet_uuid)['items']
+            interpreted_blocks = client.fetch_interpreted_worksheet(worksheet_uuid)['blocks']
             self.display_blocks(client, worksheet_info, interpreted_blocks)
 
     def display_blocks(self, client, worksheet_info, interpreted_blocks):
