@@ -50,7 +50,7 @@ class Worker:
         commit_file,  # type: str
         cpuset,  # type: Set[str]
         gpuset,  # type: Set[str]
-        max_memory,  # type:Optinal[int]
+        max_memory,  # type:Optional[int]
         worker_id,  # type: str
         tag,  # type: str
         work_dir,  # type: str
