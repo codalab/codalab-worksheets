@@ -9,6 +9,8 @@ import re
 import time
 import logging
 
+from dateutil import parser
+
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, not_, select, union, desc, func
@@ -522,6 +524,26 @@ class BundleModel(object):
                     clause = cl_bundle.c.uuid.in_(
                         alias(select([cl_worksheet_item.c.bundle_uuid]).where(condition))
                     )
+            elif key in ('.before', '.after'):
+                target_datetime = parser.isoparse(value)
+
+                subclause = None
+                if key == '.before':
+                    subclause = cl_bundle_metadata.c.metadata_value <= int(
+                        target_datetime.timestamp()
+                    )
+                if key == '.after':
+                    subclause = cl_bundle_metadata.c.metadata_value >= int(
+                        target_datetime.timestamp()
+                    )
+
+                clause = cl_bundle.c.uuid.in_(
+                    alias(
+                        select([cl_bundle_metadata.c.bundle_uuid]).where(
+                            and_(cl_bundle_metadata.c.metadata_key == 'created', subclause)
+                        )
+                    )
+                )
             elif key == 'uuid_name':  # Search uuid and name by default
                 clause = []
                 clause.append(cl_bundle.c.uuid.like('%' + value + '%'))
