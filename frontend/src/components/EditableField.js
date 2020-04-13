@@ -61,7 +61,7 @@ class EditableFieldBase extends React.Component<{
             dataType: 'json',
             cache: false,
             context: this, // automatically bind `this` in all callbacks
-            xhr: function() {
+            xhr: function () {
                 // Hack for IE < 9 to use PATCH method
                 return window.XMLHttpRequest === null ||
                     new window.XMLHttpRequest().addEventListener === null
@@ -69,10 +69,10 @@ class EditableFieldBase extends React.Component<{
                     : $.ajaxSettings.xhr();
             },
         })
-            .done(function(response) {
+            .done(function (response) {
                 if (this.props.onChange) this.props.onChange(this.state.value);
             })
-            .fail(function(response, status, err) {
+            .fail(function (response, status, err) {
                 // TODO: this doesn't stop the value from updating in the frontend
                 console.log('Invalid value entered: ', response.responseText);
             });

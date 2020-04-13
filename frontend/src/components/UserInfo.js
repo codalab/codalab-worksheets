@@ -73,7 +73,7 @@ class UserInfo extends React.Component {
             dataType: 'json',
             contentType: 'application/json',
             context: this,
-            xhr: function() {
+            xhr: function () {
                 // Hack for IE < 9 to use PATCH method
                 return window.XMLHttpRequest === null ||
                     new window.XMLHttpRequest().addEventListener === null
@@ -81,7 +81,7 @@ class UserInfo extends React.Component {
                     : $.ajaxSettings.xhr();
             },
         })
-            .done(function(response) {
+            .done(function (response) {
                 // Update state to reflect changed profile
                 var errors = $.extend({}, this.state.errors);
                 delete errors[key];
@@ -90,7 +90,7 @@ class UserInfo extends React.Component {
                     errors: errors,
                 });
             })
-            .fail(function(xhr, status, err) {
+            .fail(function (xhr, status, err) {
                 // Update errors for the specified field to pick up
                 var errors = $.extend({}, this.state.errors);
                 errors[key] = xhr.responseText;

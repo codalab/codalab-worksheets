@@ -63,7 +63,7 @@ class MarkdownItem extends React.Component {
         const { editPermission } = this.props;
         Mousetrap.bind(
             ['enter'],
-            function(ev) {
+            function (ev) {
                 ev.preventDefault();
                 if (editPermission && !this.props.item.error) {
                     this.toggleEdit();
@@ -74,7 +74,7 @@ class MarkdownItem extends React.Component {
         // Delete the line
         Mousetrap.bind(
             ['backspace', 'del'],
-            function(ev) {
+            function (ev) {
                 ev.preventDefault();
                 if (!this.props.item.error && this.props.focused) {
                     if (editPermission) {

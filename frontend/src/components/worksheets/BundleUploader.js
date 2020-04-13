@@ -80,7 +80,7 @@ class BundleUploader extends React.Component<Props> {
             data: JSON.stringify(createBundleData),
             contentType: 'application/json',
             type: 'POST',
-            success: function(data, status, jqXHR) {
+            success: function (data, status, jqXHR) {
                 var bundleUuid = data.data[0].id;
                 var fileEntryKey = this.addUploading(file.name, bundleUuid);
                 var progressbar = $('#' + PROGRESS_BAR_ID + bundleUuid);
@@ -88,7 +88,7 @@ class BundleUploader extends React.Component<Props> {
                 progressbar.progressbar({
                     value: 0,
                     max: 100,
-                    create: function() {
+                    create: function () {
                         progressLabel.text(
                             'Uploading ' +
                                 createDefaultBundleName(file.name) +
@@ -96,7 +96,7 @@ class BundleUploader extends React.Component<Props> {
                                 '0% completed.',
                         );
                     },
-                    change: function() {
+                    change: function () {
                         progressLabel.text(
                             'Uploading ' +
                                 createDefaultBundleName(file.name) +
@@ -105,12 +105,12 @@ class BundleUploader extends React.Component<Props> {
                                 '% completed.',
                         );
                     },
-                    complete: function() {
+                    complete: function () {
                         progressLabel.text('Waiting for server to finish processing bundle.');
                     },
                 });
                 var reader = new FileReader();
-                reader.onload = function() {
+                reader.onload = function () {
                     var arrayBuffer = this.result,
                         bytesArray = new Uint8Array(arrayBuffer);
                     var url =
@@ -124,11 +124,11 @@ class BundleUploader extends React.Component<Props> {
                         contentType: 'application/octet-stream',
                         data: new Blob([bytesArray]),
                         processData: false,
-                        xhr: function() {
+                        xhr: function () {
                             var xhr = new window.XMLHttpRequest();
                             xhr.upload.addEventListener(
                                 'progress',
-                                function(evt) {
+                                function (evt) {
                                     if (evt.lengthComputable) {
                                         var percentComplete = parseInt(
                                             (evt.loaded / evt.total) * 100,
@@ -140,11 +140,11 @@ class BundleUploader extends React.Component<Props> {
                             );
                             return xhr;
                         },
-                        success: function(data, status, jqXHR) {
+                        success: function (data, status, jqXHR) {
                             self.clearUploading(fileEntryKey);
                             self.props.reloadWorksheet();
                         },
-                        error: function(jqHXR, status, error) {
+                        error: function (jqHXR, status, error) {
                             self.clearUploading(fileEntryKey);
                             alert(
                                 createAlertText(
@@ -158,7 +158,7 @@ class BundleUploader extends React.Component<Props> {
                 };
                 reader.readAsArrayBuffer(file);
             }.bind(this),
-            error: function(jqHXR, status, error) {
+            error: function (jqHXR, status, error) {
                 alert(createAlertText(this.url, jqHXR.responseText));
             }.bind(this),
         });
@@ -219,7 +219,7 @@ class BundleUploader extends React.Component<Props> {
                 </div>
 
                 <div id='bundle-upload-progress-bars'>
-                    {_.map(this.state.uploading, function(value, key) {
+                    {_.map(this.state.uploading, function (value, key) {
                         var bundleUuid = value.uuid;
                         return (
                             <div

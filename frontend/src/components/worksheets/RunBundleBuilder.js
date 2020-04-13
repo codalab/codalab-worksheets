@@ -66,9 +66,7 @@ class RunBundleBuilder extends React.Component<Props> {
             this.state.dependencyKeyList,
             this.state.command,
         );
-        var response = $('#command_line')
-            .terminal()
-            .exec(clCommand);
+        var response = $('#command_line').terminal().exec(clCommand);
         this.toggleBuilder();
     };
 
@@ -91,7 +89,7 @@ class RunBundleBuilder extends React.Component<Props> {
         } else {
             // remove a dependency
             var removedDepIndex = null;
-            selectedDependencies = selectedDependencies.filter(function(ele, i) {
+            selectedDependencies = selectedDependencies.filter(function (ele, i) {
                 let depEqual =
                     ele.uuid === newDep.uuid &&
                     ele.bundle_name === newDep.bundle_name &&
@@ -268,10 +266,10 @@ class BundleBrowser extends React.Component {
 
         var rows = [];
         worksheet.items.forEach(
-            function(item, itemIndex) {
+            function (item, itemIndex) {
                 if (item.bundles_spec) {
                     item.bundles_spec.bundle_infos.forEach(
-                        function(b, index) {
+                        function (b, index) {
                             var url = '/bundles/' + b.uuid;
                             var short_uuid = shorten_uuid(b.uuid);
                             let key = short_uuid + ' ' + itemIndex + ' ' + index;
@@ -360,7 +358,7 @@ class RunBundleTerminal extends React.Component {
             </div>
         );
         var depedencies = this.props.selectedDependencies.map(
-            function(d, i) {
+            function (d, i) {
                 var short_uuid = shorten_uuid(d.uuid);
                 var target = d.path === '' ? d.bundle_name : d.bundle_name + '/' + d.path;
                 return (

@@ -16,19 +16,19 @@ class WorksheetActionBar extends React.Component {
 
     componentDidMount() {
         var self = this;
-        $('#dragbar_horizontal').mousedown(function(e) {
+        $('#dragbar_horizontal').mousedown(function (e) {
             self.resizePanel(e);
         });
 
         // really hacky way of making it so that the mousemove listener gets removed on mouseup
-        $(document).mouseup(function(e) {
+        $(document).mouseup(function (e) {
             $(document).unbind('mousemove');
         });
 
         // See JQuery Terminal API reference for more info about this plugin:
         // http://terminal.jcubic.pl/api_reference.php
         this.terminal = $('#command_line').terminal(
-            function(command, terminal) {
+            function (command, terminal) {
                 if (command.length === 0) {
                     return;
                 }
@@ -36,7 +36,7 @@ class WorksheetActionBar extends React.Component {
                 var isEnabled = terminal.enabled();
                 terminal.pause();
                 self.executeCommand(command)
-                    .then(function(data) {
+                    .then(function (data) {
                         if (data.output) {
                             terminal.echo(data.output.replace(/\n$/, ''));
                         }
@@ -50,10 +50,10 @@ class WorksheetActionBar extends React.Component {
                             self.renderHyperlinks(data.structured_result.refs);
                         }
                     })
-                    .fail(function(error) {
+                    .fail(function (error) {
                         terminal.error(error.responseText);
                     })
-                    .always(function() {
+                    .always(function () {
                         terminal.resume();
                         if (!isEnabled) {
                             terminal.disable();
@@ -68,7 +68,7 @@ class WorksheetActionBar extends React.Component {
                 height: ACTIONBAR_MINIMIZE_HEIGHT,
                 prompt: 'CodaLab> ',
                 history: true,
-                keydown: function(event, terminal) {
+                keydown: function (event, terminal) {
                     if (event.keyCode === 67 && event.ctrlKey) {
                         // 67 is 'c' keycode
                         terminal.exec('', false);
@@ -81,7 +81,7 @@ class WorksheetActionBar extends React.Component {
                         terminal.focus(false);
                     }
                 },
-                onBlur: function(term) {
+                onBlur: function (term) {
                     if (term.data('resizing')) {
                         self.props.handleFocus();
                         return false;
@@ -91,16 +91,16 @@ class WorksheetActionBar extends React.Component {
                         self.props.handleBlur();
                     }
                 },
-                onFocus: function(term) {
+                onFocus: function (term) {
                     if (!term.data('resizing')) {
                         term.resize(term.width(), ACTIONBAR_DRAGHEIGHT);
                     }
                     self.props.handleFocus();
                 },
-                completion: function(lastToken, callback) {
+                completion: function (lastToken, callback) {
                     var command = this.get_command();
 
-                    self.completeCommand(command).then(function(completions) {
+                    self.completeCommand(command).then(function (completions) {
                         callback(completions);
                     });
                 },
@@ -112,8 +112,8 @@ class WorksheetActionBar extends React.Component {
     }
 
     renderHyperlinks(references) {
-        Object.keys(references).forEach(function(key) {
-            $('.terminal-output div div:contains(' + key + ')').html(function(idx, html) {
+        Object.keys(references).forEach(function (key) {
+            $('.terminal-output div div:contains(' + key + ')').html(function (idx, html) {
                 var hyperlink_info = references[key];
                 if (hyperlink_info.uuid) {
                     if (hyperlink_info.type === 'bundle' || hyperlink_info.type === 'worksheet') {
@@ -144,13 +144,13 @@ class WorksheetActionBar extends React.Component {
         // 'upload', null                   => open upload modal
         var self = this;
         ({
-            openWorksheet: function(uuid) {
+            openWorksheet: function (uuid) {
                 self.props.openWorksheet(uuid);
             },
-            setEditMode: function(editMode) {
+            setEditMode: function (editMode) {
                 self.props.editMode();
             },
-            openBundle: function(uuid) {
+            openBundle: function (uuid) {
                 window.open('/bundles/' + uuid + '/', '_blank');
             },
         }[action](parameter));
@@ -170,7 +170,7 @@ class WorksheetActionBar extends React.Component {
                 command: command,
             }),
         })
-            .done(function(data) {
+            .done(function (data) {
                 // data := {
                 //     structured_result: { ... },
                 //     output: string
@@ -181,12 +181,12 @@ class WorksheetActionBar extends React.Component {
                 // representing the type of action, and the second element parameterizing
                 // that action.
                 if (data.structured_result && data.structured_result.ui_actions) {
-                    _.each(data.structured_result.ui_actions, function(action) {
+                    _.each(data.structured_result.ui_actions, function (action) {
                         self.doUIAction(action[0], action[1]);
                     });
                 }
             })
-            .fail(function(jqXHR, status, error) {
+            .fail(function (jqXHR, status, error) {
                 // Some exception occurred outside of the CLI
                 console.error(jqXHR.responseText);
             });
@@ -204,10 +204,10 @@ class WorksheetActionBar extends React.Component {
                 command: command,
                 autocomplete: true,
             }),
-            success: function(data, status, jqXHR) {
+            success: function (data, status, jqXHR) {
                 deferred.resolve(data.completions);
             },
-            error: function(jqHXR, status, error) {
+            error: function (jqHXR, status, error) {
                 console.error(jqHXR.responseText);
                 deferred.reject();
             },
@@ -221,7 +221,7 @@ class WorksheetActionBar extends React.Component {
         var topOffset = actionbar.offset().top;
         var worksheetHeight = $('#worksheet').height();
         var commandLine = $('#command_line');
-        $(document).mousemove(function(e) {
+        $(document).mousemove(function (e) {
             e.preventDefault();
             $('#command_line').data('resizing', 'true');
             var actionbarHeight = e.pageY - topOffset;

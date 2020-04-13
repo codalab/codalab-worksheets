@@ -49,9 +49,7 @@ export class FileBrowser extends React.Component<
     componentWillReceiveProps(nextProps) {
         if (nextProps.isRunBundleUIVisible === false && this.state.isVisible) {
             this.setState({ isVisible: false });
-            this.getDOMNode()
-                .getElementsByClassName('file-browser-arrow')[0]
-                .click();
+            this.getDOMNode().getElementsByClassName('file-browser-arrow')[0].click();
         }
     }
 
@@ -122,7 +120,7 @@ export class FileBrowser extends React.Component<
 
             // Sort by name
             let entities = this.state.fileBrowserData.contents;
-            entities.sort(function(a, b) {
+            entities.sort(function (a, b) {
                 if (a.name < b.name) return -1;
                 if (a.name > b.name) return +1;
                 return 0;
@@ -130,7 +128,7 @@ export class FileBrowser extends React.Component<
             let self = this;
 
             // Show directories
-            entities.forEach(function(item) {
+            entities.forEach(function (item) {
                 if (item.type === 'directory')
                     items.push(
                         <FileBrowserItem
@@ -148,7 +146,7 @@ export class FileBrowser extends React.Component<
             });
 
             // Show files
-            entities.forEach(function(item) {
+            entities.forEach(function (item) {
                 if (item.type !== 'directory')
                     items.push(
                         <FileBrowserItem
@@ -283,10 +281,7 @@ export class FileBrowserBreadCrumbs extends React.Component<{
 function encodeBundleContentsPath(path) {
     // Encode each segment of the path separately, because we want to escape
     // everything (such as questions marks) EXCEPT slashes in the path.
-    return path
-        .split('/')
-        .map(encodeURIComponent)
-        .join('/');
+    return path.split('/').map(encodeURIComponent).join('/');
 }
 
 export class FileBrowserItem extends React.Component<{
@@ -537,7 +532,7 @@ export class FileBrowserLite extends React.Component<
         if (!entities) {
             return null;
         }
-        entities.sort(function(a, b) {
+        entities.sort(function (a, b) {
             if (a.name < b.name) return -1;
             if (a.name > b.name) return +1;
             return 0;

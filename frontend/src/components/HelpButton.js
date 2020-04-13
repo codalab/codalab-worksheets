@@ -26,11 +26,11 @@ class HelpButton extends React.Component {
             message: message,
         };
 
-        var onSuccess = function(data, status, jqXHR) {
+        var onSuccess = function (data, status, jqXHR) {
             this.messageSentTransition(true);
         }.bind(this);
 
-        var onError = function(jqXHR, status, error) {
+        var onError = function (jqXHR, status, error) {
             console.error(jqXHR.responseText);
             this.messageSentTransition(false);
         }.bind(this);
@@ -58,7 +58,7 @@ class HelpButton extends React.Component {
 
                 this.setState(
                     Immutable({ state: nextState }),
-                    function() {
+                    function () {
                         setTimeout(this.timerTransition, TIMEOUT_TIME);
                     }.bind(this),
                 );
@@ -75,7 +75,7 @@ class HelpButton extends React.Component {
         e.preventDefault();
         switch (this.state.state) {
             case HELP_STATES.INITIAL:
-                this.setState(Immutable({ state: HELP_STATES.OPEN }), function() {
+                this.setState(Immutable({ state: HELP_STATES.OPEN }), function () {
                     ReactDOM.findDOMNode(this.refs.messageBox).focus();
                 });
                 break;
@@ -156,15 +156,15 @@ class HelpButton extends React.Component {
         var messageBoxStyle = {};
         var containerStyle = {};
 
-        var helpTextIsVisible = function() {
+        var helpTextIsVisible = function () {
             return this.state.state !== HELP_STATES.INITIAL;
         }.bind(this);
 
-        var messageBoxIsVisible = function() {
+        var messageBoxIsVisible = function () {
             return this.state.state !== HELP_STATES.INITIAL;
         }.bind(this);
 
-        var containerIsVisible = function() {
+        var containerIsVisible = function () {
             return this.state.state !== HELP_STATES.INITIAL;
         }.bind(this);
 

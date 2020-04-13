@@ -67,9 +67,7 @@ class NewWorksheet extends React.Component {
             return;
         }
         var args = ['new', this.state.newWorksheetName];
-        $('#command_line')
-            .terminal()
-            .exec(buildTerminalCommand(args));
+        $('#command_line').terminal().exec(buildTerminalCommand(args));
         this.toggleNewWorksheet();
     };
 

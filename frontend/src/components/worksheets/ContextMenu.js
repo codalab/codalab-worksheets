@@ -21,19 +21,19 @@ var ContextMenuEnum = {
 
 // not really a mixin
 var ContextMenuMixin = {
-    openContextMenu: function(type, callback) {
+    openContextMenu: function (type, callback) {
         menuEvents.emit('open', {
             type: type,
             callback: callback,
         });
     },
-    closeContextMenu: function() {
+    closeContextMenu: function () {
         menuEvents.emit('close');
     },
 };
 
 var mouse = { x: 0, y: 0 };
-var updateMouse = function(e) {
+var updateMouse = function (e) {
     mouse.x = e.pageX;
     mouse.y = e.pageY;
 };
@@ -120,7 +120,7 @@ class ContextMenu extends React.Component {
 
         return (
             <div className='context-menu' style={style}>
-                {Object.keys(labelMap[this.state.type]).map(function(display, i) {
+                {Object.keys(labelMap[this.state.type]).map(function (display, i) {
                     return (
                         <div
                             className='context-menu-item'
@@ -136,7 +136,7 @@ class ContextMenu extends React.Component {
     }
 
     makeClickHandler = (option) => {
-        return function() {
+        return function () {
             if (this.state.callback) {
                 this.state.callback(option);
                 this.setState(this.getInitialState());

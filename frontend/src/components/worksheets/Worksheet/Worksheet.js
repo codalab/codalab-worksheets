@@ -44,17 +44,17 @@ Information about the current worksheet and its items.
 let ace = window.ace;
 toast.configure();
 
-var WorksheetContent = (function() {
+var WorksheetContent = (function () {
     function WorksheetContent(uuid) {
         this.uuid = uuid;
         this.info = null; // Worksheet info
     }
 
-    WorksheetContent.prototype.fetch = function(props) {
+    WorksheetContent.prototype.fetch = function (props) {
         // Set defaults
         props = props || {};
-        props.success = props.success || function(data) {};
-        props.error = props.error || function(xhr, status, err) {};
+        props.success = props.success || function (data) {};
+        props.error = props.error || function (xhr, status, err) {};
         if (props.async === undefined) {
             props.async = true;
         }
@@ -67,22 +67,22 @@ var WorksheetContent = (function() {
             async: props.async,
             dataType: 'json',
             cache: false,
-            success: function(info) {
+            success: function (info) {
                 this.info = info;
                 props.success(this.info);
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: function (xhr, status, err) {
                 props.error(xhr, status, err);
             },
         });
     };
 
-    WorksheetContent.prototype.saveWorksheet = function(props) {
+    WorksheetContent.prototype.saveWorksheet = function (props) {
         if (this.info === undefined) return;
         $('#update_progress').show();
         props = props || {};
-        props.success = props.success || function(data) {};
-        props.error = props.error || function(xhr, status, err) {};
+        props.success = props.success || function (data) {};
+        props.error = props.error || function (xhr, status, err) {};
         $('#save_error').hide();
         $.ajax({
             type: 'POST',
@@ -90,17 +90,17 @@ var WorksheetContent = (function() {
             url: '/rest/worksheets/' + this.uuid + '/raw',
             dataType: 'json',
             data: this.info.raw.join('\n'),
-            success: function(data) {
+            success: function (data) {
                 console.log('Saved worksheet ' + this.info.uuid);
                 props.success(data);
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: function (xhr, status, err) {
                 props.error(xhr, status, err);
             },
         });
     };
 
-    WorksheetContent.prototype.deleteWorksheet = function(props) {
+    WorksheetContent.prototype.deleteWorksheet = function (props) {
         if (this.info === undefined) return;
         $('#update_progress').show();
         $('#save_error').hide();
@@ -110,11 +110,11 @@ var WorksheetContent = (function() {
             url: '/rest/worksheets?force=1',
             contentType: 'application/json',
             data: JSON.stringify({ data: [{ id: this.info.uuid, type: 'worksheets' }] }),
-            success: function(data) {
+            success: function (data) {
                 console.log('Deleted worksheet ' + this.info.uuid);
                 props.success && props.success(data);
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: function (xhr, status, err) {
                 props.error && props.error(xhr, status, err);
             },
         });
@@ -481,7 +481,7 @@ class Worksheet extends React.Component {
 
     scrollToItem = (index, subIndex) => {
         // scroll the window to keep the focused element in view if needed
-        var __innerScrollToItem = function(index, subIndex) {
+        var __innerScrollToItem = function (index, subIndex) {
             // Compute the current position of the focused item.
             var pos;
             if (index === -1) {
@@ -509,7 +509,7 @@ class Worksheet extends React.Component {
 
     componentWillMount() {
         this.state.ws.fetch({
-            success: function(data) {
+            success: function (data) {
                 $('#worksheet_content').show();
                 this.setState({
                     updating: false,
@@ -519,7 +519,7 @@ class Worksheet extends React.Component {
                 });
                 // Fix out of bounds.
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: function (xhr, status, err) {
                 this.setState({
                     errorMessage: xhr.responseText,
                     isValid: false,
@@ -537,14 +537,14 @@ class Worksheet extends React.Component {
             dataType: 'json',
             cache: false,
             type: 'GET',
-            success: function(data) {
+            success: function (data) {
                 var userInfo = data.data.attributes;
                 userInfo.user_id = data.data.id;
                 this.setState({
                     userInfo: userInfo,
                 });
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: function (xhr, status, err) {
                 console.error(xhr.responseText);
             },
         });
@@ -569,9 +569,7 @@ class Worksheet extends React.Component {
         // just scroll to the top of the page.
         // Add the stop() to keep animation events from building up in the queue
         $('#command_line').data('resizing', null);
-        $('body')
-            .stop(true)
-            .animate({ scrollTop: 0 }, 250);
+        $('body').stop(true).animate({ scrollTop: 0 }, 250);
     };
     handleActionBarBlur = (event) => {
         // explicitly close terminal because we're leaving the action bar
@@ -587,7 +585,7 @@ class Worksheet extends React.Component {
         // Load worksheet from history when back/forward buttons are used.
         let editPermission = this.state.ws.info && this.state.ws.info.edit_permission;
 
-        window.onpopstate = function(event) {
+        window.onpopstate = function (event) {
             if (event.state === null) return;
             this.setState({ ws: new WorksheetContent(event.state.uuid) });
             this.reloadWorksheet();
@@ -614,7 +612,7 @@ class Worksheet extends React.Component {
             // Only enable these shortcuts when no dialog is opened
             Mousetrap.bind(
                 ['shift+r'],
-                function(e) {
+                function (e) {
                     this.reloadWorksheet(undefined, undefined);
                     toast.info('🦄 Worksheet refreshed!', {
                         position: 'top-right',
@@ -630,7 +628,7 @@ class Worksheet extends React.Component {
             // Show/hide web terminal (action bar)
             Mousetrap.bind(
                 ['shift+c'],
-                function(e) {
+                function (e) {
                     this.toggleActionBar();
                 }.bind(this),
             );
@@ -638,7 +636,7 @@ class Worksheet extends React.Component {
             // Focus on web terminal (action bar)
             Mousetrap.bind(
                 ['c'],
-                function(e) {
+                function (e) {
                     this.focusActionBar();
                 }.bind(this),
             );
@@ -646,7 +644,7 @@ class Worksheet extends React.Component {
             // Toggle edit mode
             Mousetrap.bind(
                 ['shift+e'],
-                function(e) {
+                function (e) {
                     this.toggleEditMode();
                     return false;
                 }.bind(this),
@@ -654,7 +652,7 @@ class Worksheet extends React.Component {
 
             Mousetrap.bind(
                 ['up', 'k'],
-                function(e) {
+                function (e) {
                     e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                     var focusIndex = this.state.focusIndex;
                     var subFocusIndex = this.state.subFocusIndex;
@@ -687,7 +685,7 @@ class Worksheet extends React.Component {
 
             Mousetrap.bind(
                 ['down', 'j'],
-                function(e) {
+                function (e) {
                     e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                     var focusIndex = this.state.focusIndex;
                     var subFocusIndex = this.state.subFocusIndex;
@@ -711,7 +709,7 @@ class Worksheet extends React.Component {
                 // insert text after current cell
                 Mousetrap.bind(
                     ['a t'],
-                    function(e) {
+                    function (e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
@@ -724,7 +722,7 @@ class Worksheet extends React.Component {
                 // upload after current cell
                 Mousetrap.bind(
                     ['a u'],
-                    function(e) {
+                    function (e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
@@ -736,7 +734,7 @@ class Worksheet extends React.Component {
                 // run after current cell
                 Mousetrap.bind(
                     ['a r'],
-                    function(e) {
+                    function (e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
@@ -749,7 +747,7 @@ class Worksheet extends React.Component {
                 // edit and rerun current bundle
                 Mousetrap.bind(
                     ['a n'],
-                    function(e) {
+                    function (e) {
                         if (this.state.focusIndex < 0) return;
                         this.setState({ showNewRerun: true });
                     }.bind(this),
@@ -770,7 +768,7 @@ class Worksheet extends React.Component {
         if (this.state.openDeleteItem) {
             Mousetrap.bind(
                 ['enter'],
-                function(e) {
+                function (e) {
                     e.preventDefault();
                     this.state.deleteItemCallback();
                     this.togglePopupNoEvent('deleteItem');
@@ -804,7 +802,7 @@ class Worksheet extends React.Component {
             if (this.state.openDelete || this.state.openKill || this.state.openDetach) {
                 Mousetrap.bind(
                     ['enter'],
-                    function(e) {
+                    function (e) {
                         if (this.state.openDelete) {
                             this.executeBundleCommandNoEvent('rm');
                         } else if (this.state.openKill) {
@@ -818,7 +816,7 @@ class Worksheet extends React.Component {
                 // Select/Deselect to force delete during deletion dialog
                 Mousetrap.bind(
                     ['f'],
-                    function() {
+                    function () {
                         //force deletion through f
                         if (this.state.openDelete) {
                             this.setState({ forceDelete: !this.state.forceDelete });
@@ -880,7 +878,7 @@ class Worksheet extends React.Component {
         var startTime = new Date().getTime();
         var self = this;
         var queryParams = Object.keys(bundleUuids)
-            .map(function(bundle_uuid) {
+            .map(function (bundle_uuid) {
                 return 'uuid=' + bundle_uuid;
             })
             .join('&');
@@ -889,7 +887,7 @@ class Worksheet extends React.Component {
             url: '/rest/interpret/worksheet/' + worksheetUuid + '?' + queryParams,
             dataType: 'json',
             cache: false,
-            success: function(worksheet_content) {
+            success: function (worksheet_content) {
                 if (this.state.isUpdatingBundles && worksheet_content.uuid === this.state.ws.uuid) {
                     if (worksheet_content.items) {
                         self.reloadWorksheet(worksheet_content.items);
@@ -900,13 +898,13 @@ class Worksheet extends React.Component {
                     // guaranteedDelayTime is usually 3 seconds, except that we make the first two delays 1 second and 2 seconds respectively in case of really quick jobs.
                     // delayTime is also at least five times the amount of time it takes for the last request to complete
                     var delayTime = Math.max(guaranteedDelayTime, (endTime - startTime) * 5);
-                    setTimeout(function() {
+                    setTimeout(function () {
                         self.updateRunBundles(worksheetUuid, numTrials + 1);
                     }, delayTime);
                     startTime = endTime;
                 }
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: function (xhr, status, err) {
                 this.setState({ errorMessage: xhr.responseText });
                 $('#worksheet_container').hide();
             },
@@ -955,7 +953,7 @@ class Worksheet extends React.Component {
             editor.$blockScrolling = Infinity;
             editor.session.setUseWrapMode(false);
             editor.setShowPrintMargin(false);
-            editor.session.setMode('ace/mode/markdown', function() {
+            editor.session.setMode('ace/mode/markdown', function () {
                 editor.session.$mode.blockComment = { start: '//', end: '' };
             });
             if (!this.canEdit()) {
@@ -969,7 +967,7 @@ class Worksheet extends React.Component {
                 editor.commands.addCommand({
                     name: 'save',
                     bindKey: { win: 'Ctrl-Enter', mac: 'Ctrl-Enter' },
-                    exec: function() {
+                    exec: function () {
                         this.toggleEditMode();
                     }.bind(this),
                     readOnly: true,
@@ -977,7 +975,7 @@ class Worksheet extends React.Component {
                 editor.commands.addCommand({
                     name: 'exit',
                     bindKey: { win: 'Esc', mac: 'Esc' },
-                    exec: function() {
+                    exec: function () {
                         this.discardChanges();
                     }.bind(this),
                 });
@@ -1031,9 +1029,7 @@ class Worksheet extends React.Component {
     focusActionBar() {
         this.setState({ activeComponent: 'action' });
         this.setState({ showActionBar: true });
-        $('#command_line')
-            .terminal()
-            .focus();
+        $('#command_line').terminal().focus();
     }
 
     ensureIsArray(bundle_info) {
@@ -1071,7 +1067,7 @@ class Worksheet extends React.Component {
             $('#update_progress').show();
             this.setState({ updating: true });
             this.state.ws.fetch({
-                success: function(data) {
+                success: function (data) {
                     if (this.state.ws.uuid !== data.uuid) {
                         this.setState({
                             updating: false,
@@ -1154,7 +1150,7 @@ class Worksheet extends React.Component {
                     });
                     this.checkRunBundle(this.state.ws.info);
                 }.bind(this),
-                error: function(xhr, status, err) {
+                error: function (xhr, status, err) {
                     this.setState({
                         updating: false,
                         errorMessage: xhr.responseText,
@@ -1190,11 +1186,11 @@ class Worksheet extends React.Component {
     saveAndUpdateWorksheet(fromRaw, rawIndex) {
         this.setState({ updating: true, errorMessage: '' });
         this.state.ws.saveWorksheet({
-            success: function(data) {
+            success: function (data) {
                 this.setState({ updating: false });
                 this.reloadWorksheet(undefined, rawIndex);
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: function (xhr, status, err) {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
@@ -1209,11 +1205,11 @@ class Worksheet extends React.Component {
     deteleWorksheetAction = () => {
         this.setState({ updating: true, errorMessage: '' });
         this.state.ws.deleteWorksheet({
-            success: function(data) {
+            success: function (data) {
                 this.setState({ updating: false });
                 window.location = '/rest/worksheets/?name=dashboard';
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: function (xhr, status, err) {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
@@ -1257,7 +1253,7 @@ class Worksheet extends React.Component {
         Mousetrap.pause();
         let form = document.querySelector('#upload-menu');
 
-        Mousetrap(form).bind(['enter'], function(e) {
+        Mousetrap(form).bind(['enter'], function (e) {
             e.stopPropagation();
             document.querySelector('label[for=' + e.target.firstElementChild.htmlFor + ']').click();
         });
@@ -1566,7 +1562,7 @@ const styles = (theme) => ({
     },
 });
 
-Mousetrap.stopCallback = function(e, element, combo) {
+Mousetrap.stopCallback = function (e, element, combo) {
     //if the element is a checkbox, don't stop
     if (element.type === 'checkbox') {
         return false;

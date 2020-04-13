@@ -134,7 +134,7 @@ export function renderPermissions(state) {
     return (
         <div>
             &nbsp;&#91;you({wrapPermissionInColorSpan(state.permission_spec)})
-            {_.map(state.group_permissions || [], function(perm) {
+            {_.map(state.group_permissions || [], function (perm) {
                 return (
                     <span key={perm.group_name}>
                         &nbsp;
@@ -193,7 +193,7 @@ export function worksheetItemPropsChanged(props, nextProps) {
 // given an array of arguments, return a shell-safe command
 export function buildTerminalCommand(args) {
     var ret = [];
-    args.forEach(function(s) {
+    args.forEach(function (s) {
         if (/[^A-Za-z0-9_\/:=-]/.test(s)) {
             s = "'" + s.replace(/'/g, "'\\''") + "'";
             s = s
@@ -293,7 +293,7 @@ export function getDefaultBundleMetadata(name, description = '') {
 }
 
 export function createHandleRedirectFn(worksheetUuid) {
-    return function(e) {
+    return function (e) {
         e.stopPropagation();
         e.preventDefault();
 

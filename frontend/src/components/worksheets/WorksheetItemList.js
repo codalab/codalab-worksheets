@@ -23,7 +23,7 @@ import NewUpload from './NewUpload/NewUpload';
 // - canEdit: whether we're allowed to edit this item
 // - setFocus: call back to select this item
 // - updateWorksheetSubFocusIndex: call back to notify parent of which row is selected (for tables)
-const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) {
+const addWorksheetItems = function (props, worksheet_items, prevItem, afterItem) {
     var item = props.item;
 
     // Determine URL corresponding to item.
@@ -100,10 +100,8 @@ class WorksheetItemList extends React.Component {
         // Move focus to the top
         Mousetrap.bind(
             ['g g'],
-            function() {
-                $('body')
-                    .stop(true)
-                    .animate({ scrollTop: 0 }, 'fast');
+            function () {
+                $('body').stop(true).animate({ scrollTop: 0 }, 'fast');
                 this.props.setFocus(0, 0);
             }.bind(this),
             'keydown',
@@ -112,7 +110,7 @@ class WorksheetItemList extends React.Component {
         // Move focus to the bottom
         Mousetrap.bind(
             ['shift+g'],
-            function() {
+            function () {
                 this.props.setFocus(this.props.ws.info.items.length - 1, 'end');
                 $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
             }.bind(this),
@@ -162,9 +160,7 @@ class WorksheetItemList extends React.Component {
                 args.push('-n', uuidToIndex[uuid].length - i);
             }
         }
-        $('#command_line')
-            .terminal()
-            .exec(buildTerminalCommand(args));
+        $('#command_line').terminal().exec(buildTerminalCommand(args));
     };
 
     handleContextMenu = (uuid, focusIndex, subFocusIndex, isRunBundle, e) => {
@@ -207,7 +203,7 @@ class WorksheetItemList extends React.Component {
         if (info && info.items.length > 0) {
             var worksheet_items = [];
             info.items.forEach(
-                function(item, index) {
+                function (item, index) {
                     const focused = index === this.props.focusIndex;
 
                     // focusedForButtons determines whether clicking on Cell/Upload/Run will

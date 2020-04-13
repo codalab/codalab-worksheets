@@ -92,14 +92,14 @@ class Bundle extends React.Component<
             cache: false,
             context: this, // automatically bind `this` in all callbacks
         })
-            .then(function(response) {
+            .then(function (response) {
                 // Normalize JSON API doc into simpler object
                 const bundleInfo = new JsonApiDataStore().sync(response);
                 bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
                 bundleInfo.metadataType = response.data.meta.metadata_type;
                 this.setState({ bundleInfo: bundleInfo });
             })
-            .fail(function(xhr, status, err) {
+            .fail(function (xhr, status, err) {
                 this.setState({
                     bundleInfo: null,
                     fileContents: null,
@@ -120,11 +120,11 @@ class Bundle extends React.Component<
             cache: false,
             context: this, // automatically bind `this` in all callbacks
         })
-            .then(function(response) {
+            .then(function (response) {
                 const info = response.data;
                 if (!info) return;
                 if (info.type === 'file' || info.type === 'link') {
-                    return this.fetchFileSummary(this.props.uuid, '/').then(function(blob) {
+                    return this.fetchFileSummary(this.props.uuid, '/').then(function (blob) {
                         this.setState({ fileContents: blob, stdout: null, stderr: null });
                     });
                 } else if (info.type === 'directory') {
@@ -134,11 +134,11 @@ class Bundle extends React.Component<
                         fileContents: null,
                     };
                     ['stdout', 'stderr'].forEach(
-                        function(name) {
+                        function (name) {
                             if (info.contents.some((entry) => entry.name === name)) {
                                 fetchRequests.push(
                                     this.fetchFileSummary(this.props.uuid, '/' + name).then(
-                                        function(blob) {
+                                        function (blob) {
                                             stateUpdate[name] = blob;
                                         },
                                     ),
@@ -154,7 +154,7 @@ class Bundle extends React.Component<
                     return $.when(fetchRequests);
                 }
             })
-            .fail(function(xhr, status, err) {
+            .fail(function (xhr, status, err) {
                 // 404 Not Found errors are normal if contents aren't available yet, so ignore them
                 if (xhr.status !== 404) {
                     this.setState({
@@ -247,7 +247,7 @@ function renderDependencies(bundleInfo) {
     let dependencies_table = [];
     if (!bundleInfo.dependencies || bundleInfo.dependencies.length === 0) return <div />;
 
-    bundleInfo.dependencies.forEach(function(dep, i) {
+    bundleInfo.dependencies.forEach(function (dep, i) {
         let dep_bundle_url = '/bundles/' + dep.parent_uuid;
         dependencies_table.push(
             <tr key={dep.parent_uuid + i}>
@@ -444,7 +444,7 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
             {bundleHeader}
             <table className='bundle-meta table'>
                 <tbody>
-                    {rows.map(function(elem) {
+                    {rows.map(function (elem) {
                         return elem;
                     })}
                     <tr>
@@ -537,7 +537,7 @@ function renderHostWorksheets(bundleInfo) {
     if (!bundleInfo.host_worksheets) return <div />;
 
     let hostWorksheetRows = [];
-    bundleInfo.host_worksheets.forEach(function(worksheet) {
+    bundleInfo.host_worksheets.forEach(function (worksheet) {
         let hostWorksheetUrl = '/worksheets/' + worksheet.uuid;
         hostWorksheetRows.push(
             <tr key={worksheet.uuid}>

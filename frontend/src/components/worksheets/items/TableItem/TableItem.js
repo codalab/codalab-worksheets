@@ -155,7 +155,7 @@ class TableItem extends React.Component<{
         });
         var rowItems = item.rows; // Array of {header: value, ...} objects
         var columnWithHyperlinks = [];
-        Object.keys(rowItems[0]).forEach(function(x) {
+        Object.keys(rowItems[0]).forEach(function (x) {
             if (rowItems[0][x] && rowItems[0][x]['path']) columnWithHyperlinks.push(x);
         });
         var bodyRowsHtml = rowItems.map((rowItem, rowIndex) => {

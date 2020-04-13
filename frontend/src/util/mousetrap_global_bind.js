@@ -7,11 +7,11 @@
  * Mousetrap.bindGlobal('ctrl+s', _saveChanges);
  */
 /* global Mousetrap:true */
-(function(Mousetrap) {
+(function (Mousetrap) {
     var _globalCallbacks = {};
     var _originalStopCallback = Mousetrap.prototype.stopCallback;
 
-    Mousetrap.prototype.stopCallback = function(e, element, combo, sequence) {
+    Mousetrap.prototype.stopCallback = function (e, element, combo, sequence) {
         var self = this;
 
         if (self.paused) {
@@ -25,7 +25,7 @@
         return _originalStopCallback.call(self, e, element, combo);
     };
 
-    Mousetrap.prototype.bindGlobal = function(keys, callback, action) {
+    Mousetrap.prototype.bindGlobal = function (keys, callback, action) {
         var self = this;
         self.bind(keys, callback, action);
 
@@ -39,7 +39,7 @@
         _globalCallbacks[keys] = true;
     };
 
-    Mousetrap.prototype.unbindGlobal = function(keys, action) {
+    Mousetrap.prototype.unbindGlobal = function (keys, action) {
         var self = this;
         self.unbind(keys, action);
 

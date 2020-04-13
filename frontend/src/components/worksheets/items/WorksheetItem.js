@@ -15,7 +15,7 @@ class WorksheetItem extends React.Component {
         // Open worksheet in same tab
         Mousetrap.bind(
             ['enter'],
-            function(e) {
+            function (e) {
                 this.props.openWorksheet(this.refs['row' + this.props.subFocusIndex].props.uuid);
             }.bind(this),
             'keydown',
@@ -24,7 +24,7 @@ class WorksheetItem extends React.Component {
         // Open worksheet in new window/tab
         Mousetrap.bind(
             ['shift+enter'],
-            function() {
+            function () {
                 // TODO: Doesn't work for bundle rows right now, should address later
                 window.open(this.refs['row' + this.props.subFocusIndex].props.url, '_blank');
             }.bind(this),
@@ -34,7 +34,7 @@ class WorksheetItem extends React.Component {
         // Paste uuid of focused worksheet into console
         Mousetrap.bind(
             ['i'],
-            function(e) {
+            function (e) {
                 var uuid = this.refs['row' + this.props.subFocusIndex].props.uuid;
                 $('#command_line')
                     .terminal()
@@ -81,7 +81,7 @@ class WorksheetItem extends React.Component {
         var canEdit = this.props.canEdit;
         var items = this._getItems();
 
-        var body_rows_html = items.map(function(row_item, row_index) {
+        var body_rows_html = items.map(function (row_item, row_index) {
             var row_ref = 'row' + row_index;
             var row_focused = self.props.focused && row_index === self.props.subFocusIndex;
             var url = '/worksheets/' + row_item.uuid;

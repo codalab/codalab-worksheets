@@ -52,7 +52,7 @@ class RecordItem extends React.Component {
         var header = item.header;
         var k = header[0];
         var v = header[1];
-        var items = item.rows.map(function(item, index) {
+        var items = item.rows.map(function (item, index) {
             var ref = 'row' + index;
             return (
                 <tr ref={ref} key={index}>
