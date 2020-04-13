@@ -72,8 +72,11 @@ class Worker:
         self.docker = docker.from_env()
         self.cpuset = cpuset
         self.gpuset = gpuset
-        self.max_memory = min(max_memory, psutil.virtual_memory().total) \
-            if max_memory is not None else psutil.virtual_memory().total
+        self.max_memory = (
+            min(max_memory, psutil.virtual_memory().total)
+            if max_memory is not None
+            else psutil.virtual_memory().total
+        )
 
         self.id = worker_id
         self.tag = tag

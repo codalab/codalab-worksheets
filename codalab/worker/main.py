@@ -94,8 +94,7 @@ def parse_args():
         type=parse_size,
         metavar='SIZE',
         default=None,
-        help='Limit the amount of memory to a worker in bytes'
-        '(e.g. 3, 3k, 3m, 3g, 3t).',
+        help='Limit the amount of memory to a worker in bytes' '(e.g. 3, 3k, 3m, 3g, 3t).',
     )
     parser.add_argument(
         '--password-file',
