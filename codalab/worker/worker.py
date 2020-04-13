@@ -50,6 +50,7 @@ class Worker:
         commit_file,  # type: str
         cpuset,  # type: Set[str]
         gpuset,  # type: Set[str]
+        max_memory,  # type:Optinal[int]
         worker_id,  # type: str
         tag,  # type: str
         work_dir,  # type: str
@@ -71,6 +72,8 @@ class Worker:
         self.docker = docker.from_env()
         self.cpuset = cpuset
         self.gpuset = gpuset
+        self.max_memory = min(max_memory, psutil.virtual_memory().total) \
+            if max_memory is not None else psutil.virtual_memory().total
 
         self.id = worker_id
         self.tag = tag
@@ -235,7 +238,7 @@ class Worker:
             'tag': self.tag,
             'cpus': len(self.cpuset),
             'gpus': len(self.gpuset),
-            'memory_bytes': psutil.virtual_memory().total,
+            'memory_bytes': self.max_memory,
             'free_disk_bytes': self.free_disk_bytes,
             'dependencies': self.cached_dependencies,
             'hostname': socket.gethostname(),
