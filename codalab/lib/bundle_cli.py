@@ -25,6 +25,7 @@ import shutil
 import sys
 import time
 import textwrap
+import json
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
@@ -794,6 +795,12 @@ class BundleCLI(object):
             '--worksheet-spec',
             help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
             completer=WorksheetsCompleter,
+        ),
+        Commands.Argument(
+            '-m',
+            '--memoize',
+            help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
+            action='store_true',
         ),
     ) + WAIT_ARGUMENTS
 
@@ -1581,6 +1588,12 @@ class BundleCLI(object):
             Commands.Argument(  # Internal for web FE positioned insert.
                 '-a', '--after_sort_key', help='Insert after this sort_key', completer=NullCompleter
             ),
+            Commands.Argument(
+                '-m',
+                '--memoize',
+                help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
+                action='store_true',
+            ),
         )
         + Commands.metadata_arguments([RunBundle])
         + EDIT_ARGUMENTS
@@ -1593,16 +1606,38 @@ class BundleCLI(object):
 
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
         params = {'worksheet': worksheet_uuid}
+
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
-        new_bundle = client.create(
-            'bundles',
-            self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
-            params=params,
-        )
+        if args.memoize:
+            dependencies = [
+                {'child_path': key, 'parent_uuid': bundle_target.bundle_uuid}
+                for key, bundle_target in targets
+            ]
+            memoized_bundles = client.fetch(
+                'bundles',
+                params={'command': args.command, 'dependencies': json.dumps(dependencies)},
+            )
 
-        print(new_bundle['uuid'], file=self.stdout)
-        self.wait(client, args, new_bundle['uuid'])
+        if args.memoize and len(memoized_bundles) > 0:
+            new_bundle = memoized_bundles[-1]
+            print(new_bundle['uuid'], file=self.stdout)
+            self.copy_bundle(
+                source_client=client,
+                source_bundle_uuid=new_bundle['uuid'],
+                dest_client=client,
+                dest_worksheet_uuid=worksheet_uuid,
+                copy_dependencies=False,
+                add_to_worksheet=True,
+            )
+        else:
+            new_bundle = client.create(
+                'bundles',
+                self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
+                params=params,
+            )
+            print(new_bundle['uuid'], file=self.stdout)
+            self.wait(client, args, new_bundle['uuid'])
 
     @Commands.command(
         'docker',
@@ -2679,6 +2714,7 @@ class BundleCLI(object):
             args.shadow,
             args.dry_run,
             metadata_override=metadata,
+            memoize=args.memoize,
         )
         for (old, new) in plan:
             print(

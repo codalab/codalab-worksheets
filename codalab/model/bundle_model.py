@@ -8,9 +8,9 @@ import os
 import re
 import time
 import logging
+import json
 
 from dateutil import parser
-
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, not_, select, union, desc, func
@@ -698,6 +698,78 @@ class BundleModel(object):
                 query = select([cl_bundle.c.uuid]).where(clause)
                 query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
 
+        return self._execute_query(query)
+
+    def get_memoized_bundles(self, user_id, command, dependencies):
+        '''
+        Get a list of bundles that match with input command and dependencies in the order of they were created.
+        :param user_id: a string that specifies the current user id.
+        :param command: a string that defines the command that is used to search for memoized bundles in the database.
+        :param dependencies: a string in the form of '[{"child_path": key1, "parent_uuid": uuid1},
+                                                    {"child_path" : key2, "parent_uuid": uuid2}]'
+                            to search for matched dependencies in the database.
+        :return: a list of matched uuids.
+        '''
+        # Decode json formatted dependencies string to a list of key value pairs
+        dependencies = json.loads(dependencies)
+        # When there is no dependency to be matched, the target memozied bundle
+        # should only exist in the bundle table but not in the bundle_dependency table.
+        if len(dependencies) == 0:
+            query = (
+                select([cl_bundle.c.uuid])
+                .select_from(cl_bundle)
+                .where(
+                    and_(
+                        cl_bundle.c.command == command,
+                        cl_bundle.c.owner_id == user_id,
+                        cl_bundle.c.uuid.notin_(
+                            select([cl_bundle_dependency.c.child_uuid]).select_from(
+                                cl_bundle_dependency
+                            )
+                        ),
+                    )
+                )
+                .order_by(cl_bundle.c.id)
+            )
+        else:
+            clause = []
+            for dep in dependencies:
+                clause.append(
+                    and_(
+                        cl_bundle_dependency.c.child_path == dep['child_path'],
+                        cl_bundle_dependency.c.parent_uuid == dep['parent_uuid'],
+                    )
+                )
+            join = (
+                select(
+                    [
+                        cl_bundle_dependency.c.id,
+                        cl_bundle_dependency.c.child_uuid,
+                        func.count(cl_bundle_dependency.c.parent_uuid).label("cnt"),
+                    ]
+                )
+                .select_from(
+                    cl_bundle.join(
+                        cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid
+                    )
+                )
+                .where(
+                    and_(
+                        cl_bundle.c.command == command,
+                        cl_bundle.c.owner_id == user_id,
+                        or_(*clause),
+                    )
+                )
+                .group_by(cl_bundle_dependency.c.child_uuid)
+                .alias()
+            )
+            query = (
+                select([join.c.child_uuid])
+                .select_from(join)
+                .where(join.c.cnt == len(dependencies))
+                # Ensure the order of the returning bundles will be in the order of they were created.
+                .order_by(join.c.id)
+            )
         return self._execute_query(query)
 
     def batch_get_bundles(self, **kwargs):

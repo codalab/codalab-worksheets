@@ -1,4 +1,5 @@
 import copy
+import json
 
 from codalab.bundles import get_bundle_subclass
 from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship
@@ -49,6 +50,7 @@ def mimic_bundles(
     dry_run,
     metadata_override=None,
     skip_prelude=False,
+    memoize=False,
 ):
     """
     :param JsonApiClient client: client
@@ -147,7 +149,6 @@ def mimic_bundles(
             }
             for dep in old_info['dependencies']
         ]
-
         # If there are no inputs or if we're downstream of any inputs, we need to make a new bundle.
         lone_output = len(old_inputs) == 0 and old_bundle_uuid == old_output
         downstream_of_inputs = any(
@@ -190,8 +191,25 @@ def mimic_bundles(
             new_info['metadata'] = new_metadata
             new_info['dependencies'] = new_dependencies
 
+            # Fetch the memoized bundle if the memoize option is set to be True
+            if memoize:
+                memoized_bundles = client.fetch(
+                    'bundles',
+                    params={
+                        'command': old_info['command'],
+                        'dependencies': json.dumps(
+                            [
+                                {'child_path': dep['child_path'], 'parent_uuid': dep['parent_uuid']}
+                                for dep in new_dependencies
+                            ]
+                        ),
+                    },
+                )
+
             if dry_run:
                 new_info['uuid'] = None
+            elif memoize and len(memoized_bundles) > 0:
+                new_info = memoized_bundles[-1]
             else:
                 if new_info['bundle_type'] not in ('make', 'run'):
                     raise UsageError(
