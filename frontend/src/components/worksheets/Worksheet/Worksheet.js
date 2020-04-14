@@ -45,94 +45,14 @@ Information about the current worksheet and its items.
 let ace = window.ace;
 toast.configure();
 
-var WorksheetContent = (function() {
-    function WorksheetContent(uuid) {
-        this.uuid = uuid;
-        this.info = null; // Worksheet info
-    }
-
-    WorksheetContent.prototype.fetch = function(props) {
-        // Set defaults
-        props = props || {};
-        props.success = props.success || function(data) {};
-        props.error = props.error || function(xhr, status, err) {};
-        if (props.async === undefined) {
-            props.async = true;
-        }
-        const queryParams = {
-            brief: props.brief ? 1 : 0,
-        };
-
-        $.ajax({
-            type: 'GET',
-            url:
-                '/rest/interpret/worksheet/' + this.uuid + '?' + queryString.stringify(queryParams),
-            // TODO: migrate to using main API
-            // url: '/rest/worksheets/' + ws.uuid,
-            async: props.async,
-            dataType: 'json',
-            cache: false,
-            success: function(info) {
-                this.info = info;
-                props.success(this.info);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error(xhr, status, err);
-            },
-        });
-    };
-
-    WorksheetContent.prototype.saveWorksheet = function(props) {
-        if (this.info === undefined) return;
-        $('#update_progress').show();
-        props = props || {};
-        props.success = props.success || function(data) {};
-        props.error = props.error || function(xhr, status, err) {};
-        $('#save_error').hide();
-        $.ajax({
-            type: 'POST',
-            cache: false,
-            url: '/rest/worksheets/' + this.uuid + '/raw',
-            dataType: 'json',
-            data: this.info.raw.join('\n'),
-            success: function(data) {
-                console.log('Saved worksheet ' + this.info.uuid);
-                props.success(data);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error(xhr, status, err);
-            },
-        });
-    };
-
-    WorksheetContent.prototype.deleteWorksheet = function(props) {
-        if (this.info === undefined) return;
-        $('#update_progress').show();
-        $('#save_error').hide();
-        $.ajax({
-            type: 'DELETE',
-            cache: false,
-            url: '/rest/worksheets?force=1',
-            contentType: 'application/json',
-            data: JSON.stringify({ data: [{ id: this.info.uuid, type: 'worksheets' }] }),
-            success: function(data) {
-                console.log('Deleted worksheet ' + this.info.uuid);
-                props.success && props.success(data);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error && props.error(xhr, status, err);
-            },
-        });
-    };
-
-    return WorksheetContent;
-})();
-
 class Worksheet extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            ws: new WorksheetContent(this.props.match.params['uuid']),
+            ws: {
+                uuid: this.props.match.params['uuid'],
+                info: null,
+            },
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
             activeComponent: 'list', // Where the focus is (action, list, or side_panel)
@@ -166,6 +86,88 @@ class Worksheet extends React.Component {
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
         };
+    }
+
+    fetch(props) {
+        // Set defaults
+        props = props || {};
+        props.success = props.success || function(data) {};
+        props.error = props.error || function(xhr, status, err) {};
+        if (props.async === undefined) {
+            props.async = true;
+        }
+        const queryParams = {
+            brief: props.brief ? 1 : 0,
+        };
+
+        $.ajax({
+            type: 'GET',
+            url:
+                '/rest/interpret/worksheet/' +
+                this.state.ws.uuid +
+                '?' +
+                queryString.stringify(queryParams),
+            // TODO: migrate to using main API
+            // url: '/rest/worksheets/' + ws.uuid,
+            async: props.async,
+            dataType: 'json',
+            cache: false,
+            success: function(info) {
+                this.setState({
+                    ws: {
+                        ...this.state.ws,
+                        info,
+                    },
+                });
+                props.success(info);
+            }.bind(this),
+            error: function(xhr, status, err) {
+                props.error(xhr, status, err);
+            },
+        });
+    }
+
+    saveWorksheet(props) {
+        if (this.state.ws.info === undefined) return;
+        $('#update_progress').show();
+        props = props || {};
+        props.success = props.success || function(data) {};
+        props.error = props.error || function(xhr, status, err) {};
+        $('#save_error').hide();
+        $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/rest/worksheets/' + this.state.ws.uuid + '/raw',
+            dataType: 'json',
+            data: this.state.ws.info.raw.join('\n'),
+            success: function(data) {
+                console.log('Saved worksheet ' + this.state.ws.uuid);
+                props.success(data);
+            }.bind(this),
+            error: function(xhr, status, err) {
+                props.error(xhr, status, err);
+            },
+        });
+    }
+
+    deleteWorksheet(props) {
+        if (this.state.ws.info === undefined) return;
+        $('#update_progress').show();
+        $('#save_error').hide();
+        $.ajax({
+            type: 'DELETE',
+            cache: false,
+            url: '/rest/worksheets?force=1',
+            contentType: 'application/json',
+            data: JSON.stringify({ data: [{ id: this.state.ws.info.uuid, type: 'worksheets' }] }),
+            success: function(data) {
+                console.log('Deleted worksheet ' + this.state.ws.info.uuid);
+                props.success && props.success(data);
+            }.bind(this),
+            error: function(xhr, status, err) {
+                props.error && props.error(xhr, status, err);
+            },
+        });
     }
 
     _setfocusIndex(index) {
@@ -532,7 +534,7 @@ class Worksheet extends React.Component {
     };
 
     componentDidMount() {
-        this.state.ws.fetch({
+        this.fetch({
             brief: true,
             success: function(data) {
                 $('#worksheet_content').show();
@@ -612,7 +614,12 @@ class Worksheet extends React.Component {
 
         window.onpopstate = function(event) {
             if (event.state === null) return;
-            this.setState({ ws: new WorksheetContent(event.state.uuid) });
+            this.setState({
+                ws: {
+                    uuid: event.state.uuid,
+                    info: null,
+                },
+            });
             this.reloadWorksheet();
         }.bind(this);
 
@@ -1093,7 +1100,7 @@ class Worksheet extends React.Component {
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
             this.setState({ updating: true });
-            this.state.ws.fetch({
+            this.fetch({
                 brief: true,
                 success: function(data) {
                     if (this.state.ws.uuid !== data.uuid) {
@@ -1201,7 +1208,12 @@ class Worksheet extends React.Component {
 
     openWorksheet = (uuid) => {
         // Change to a different worksheet. This does not call reloadWorksheet().
-        this.setState({ ws: new WorksheetContent(uuid) });
+        this.setState({
+            ws: {
+                uuid,
+                info: null,
+            },
+        });
 
         // Note: this is redundant if we're doing 'cl work' from the action bar,
         // but is necessary if triggered in other ways.
@@ -1213,7 +1225,7 @@ class Worksheet extends React.Component {
 
     saveAndUpdateWorksheet(fromRaw, rawIndex) {
         this.setState({ updating: true, errorMessage: '' });
-        this.state.ws.saveWorksheet({
+        this.saveWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
                 this.reloadWorksheet(undefined, rawIndex);
@@ -1232,7 +1244,7 @@ class Worksheet extends React.Component {
 
     deteleWorksheetAction = () => {
         this.setState({ updating: true, errorMessage: '' });
-        this.state.ws.deleteWorksheet({
+        this.deleteWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
                 window.location = '/rest/worksheets/?name=dashboard';
