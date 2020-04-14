@@ -705,8 +705,8 @@ class BundleModel(object):
         :param user_id: a string that specifies the current user id.
         :param command: a string that defines the command that is used to search for memoized bundles in the database.
         :param dependencies: a string in the form of '[{"child_path": key1, "parent_uuid": uuid1},
-                                                       {"child_path" : key2, "parent_uuid": uuid2}]'
-                            to search for matched dependencies in the database.
+                                                       {"child_path": key2, "parent_uuid": uuid2}]'
+                             to search for matched dependencies in the database.
         :return: a list of matched uuids in the order they were created.
         '''
         # Decode json formatted dependencies string to a list of key value pairs
