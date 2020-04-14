@@ -1614,6 +1614,7 @@ class BundleCLI(object):
                 {'child_path': key, 'parent_uuid': bundle_target.bundle_uuid}
                 for key, bundle_target in targets
             ]
+            # A list of matched uuids in the order they were created.
             memoized_bundles = client.fetch(
                 'bundles',
                 params={'command': args.command, 'dependencies': json.dumps(dependencies)},
