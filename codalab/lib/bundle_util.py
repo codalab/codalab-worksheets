@@ -193,6 +193,7 @@ def mimic_bundles(
 
             # Fetch the memoized bundle if the memoize option is set to be True
             if memoize:
+                # A list of matched uuids in the order they were created.
                 memoized_bundles = client.fetch(
                     'bundles',
                     params={
