@@ -62,7 +62,8 @@ def _fetch_bundle(uuid):
 @get('/bundles')
 def _fetch_bundles():
     """
-    Fetch bundles by bundle `specs` OR search `keywords`. Behavior is undefined
+    Fetch bundles in the following two ways:
+    1. By bundle `specs` OR search `keywords` . Behavior is undefined
     when both `specs` and `keywords` are provided.
 
     Query parameters:
@@ -99,14 +100,24 @@ def _fetch_bundles():
         }
     }
     ```
+    2. By bundle `command` and/or `dependencies` (for `--memoized` option in cl [run/mimic] command).
+    When `dependencies` is not defined, the searching result will include bundles that match with command only.
 
+    Query parameters:
+     - `command`      : the command of a bundle in string
+     - `dependencies` : the dependencies of a bundle in the format of
+                        '[{"child_path":key1, "parent_uuid":UUID1},
+                        {"child_path":key2, "parent_uuid":UUID2}]'
+        1. a UUID should be in the format of 32 hex characters with a preceding '0x' (partial UUID is not allowed).
+        2. the key should be able to uniquely identify a (child_path, parent_uuid) pair in the list.
+    The returning result will be aggregated in the same way as 1.
     """
     keywords = query_get_list('keywords')
     specs = query_get_list('specs')
     worksheet_uuid = request.query.get('worksheet')
     descendant_depth = query_get_type(int, 'depth', None)
     command = query_get_type(str, 'command', '')
-    dependencies = query_get_list('dependencies')
+    dependencies = query_get_type(str, 'dependencies', '[]')
 
     if keywords:
         # Handle search keywords

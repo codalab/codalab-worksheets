@@ -8,6 +8,7 @@ import os
 import re
 import time
 import logging
+import json
 
 from uuid import uuid4
 
@@ -682,10 +683,13 @@ class BundleModel(object):
         Get a list of bundles that match with input command and dependencies in the order of they were created.
         :param user_id: a string that specifies the current user id.
         :param command: a string that defines the command that is used to search for memoized bundles in the database.
-        :param dependencies: a list of unique strings in the form of ["key1:uuid1","key2:uuid2"] that are used to
-                                search for memoized bundles in the database.
+        :param dependencies: a string in the form of '[{"child_path": key1, "parent_uuid": uuid1},
+                                                    {"child_path" : key2, "parent_uuid": uuid2}]'
+                            to search for matched dependencies in the database.
         :return: a list of matched uuids.
         '''
+        # Decode json formatted dependencies string to a list of key value pairs
+        dependencies = json.loads(dependencies)
         # When there is no dependency to be matched, the target memozied bundle
         # should only exist in the bundle table but not in the bundle_dependency table.
         if len(dependencies) == 0:
@@ -706,16 +710,15 @@ class BundleModel(object):
                 .order_by(cl_bundle.c.id)
             )
         else:
-            dep_clause = []
+            clause = []
             for dep in dependencies:
-                key, uuid = dep.split(':')
-                dep_clause.append(
+                clause.append(
                     and_(
-                        cl_bundle_dependency.c.child_path == key,
-                        cl_bundle_dependency.c.parent_uuid == uuid,
+                        cl_bundle_dependency.c.child_path == dep['child_path'],
+                        cl_bundle_dependency.c.parent_uuid == dep['parent_uuid'],
                     )
                 )
-            filter_on_dependencies = (
+            join = (
                 select(
                     [
                         cl_bundle_dependency.c.id,
@@ -732,18 +735,18 @@ class BundleModel(object):
                     and_(
                         cl_bundle.c.command == command,
                         cl_bundle.c.owner_id == user_id,
-                        or_(*dep_clause),
+                        or_(*clause),
                     )
                 )
                 .group_by(cl_bundle_dependency.c.child_uuid)
                 .alias()
             )
             query = (
-                select([filter_on_dependencies.c.child_uuid])
-                .select_from(filter_on_dependencies)
-                .where(filter_on_dependencies.c.cnt == len(dependencies))
+                select([join.c.child_uuid])
+                .select_from(join)
+                .where(join.c.cnt == len(dependencies))
                 # Ensure the order of the returning bundles will be in the order of they were created.
-                .order_by(filter_on_dependencies.c.id)
+                .order_by(join.c.id)
             )
         return self._execute_query(query)
 

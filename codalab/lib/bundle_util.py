@@ -1,4 +1,5 @@
 import copy
+import json
 
 from codalab.bundles import get_bundle_subclass
 from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship
@@ -196,9 +197,12 @@ def mimic_bundles(
                     'bundles',
                     params={
                         'command': old_info['command'],
-                        'dependencies': [
-                            dep['child_path'] + ':' + dep['parent_uuid'] for dep in new_dependencies
-                        ],
+                        'dependencies': json.dumps(
+                            [
+                                {'child_path': dep['child_path'], 'parent_uuid': dep['parent_uuid']}
+                                for dep in new_dependencies
+                            ]
+                        ),
                     },
                 )
 
@@ -296,6 +300,7 @@ def mimic_bundles(
                                         data=item2,
                                         params={'uuid': worksheet_uuid},
                                     )
+
                             # Add the bundle item
                             client.create(
                                 'worksheet-items',

@@ -25,6 +25,7 @@ import shutil
 import sys
 import time
 import textwrap
+import json
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
@@ -1580,9 +1581,13 @@ class BundleCLI(object):
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
         if args.memoize:
-            dependencies = [key + ':' + bundle_target.bundle_uuid for key, bundle_target in targets]
+            dependencies = [
+                {'child_path': key, 'parent_uuid': bundle_target.bundle_uuid}
+                for key, bundle_target in targets
+            ]
             memoized_bundles = client.fetch(
-                'bundles', params={'command': args.command, 'dependencies': dependencies}
+                'bundles',
+                params={'command': args.command, 'dependencies': json.dumps(dependencies)},
             )
 
         if args.memoize and len(memoized_bundles) > 0:

@@ -1,5 +1,4 @@
 import copy
-from collections import defaultdict
 import datetime
 import logging
 import os
@@ -315,50 +314,21 @@ class BundleManager(object):
     def _schedule_run_bundles_on_workers(self, workers, staged_bundles_to_run, user_info_cache):
         """
         Schedule STAGED bundles to run on available workers based on the following logic:
-        1. For a given user, schedule the highest-priority bundles first, followed by bundles
-           that request to run on a specific worker.
-        2. If the bundle requests to run on a specific worker, schedule the bundle
-           to run on a worker that has a tag that exactly matches the bundle's request_queue.
-        3. If the bundle doesn't request to run on a specific worker,
+        1. If the bundle requests to run on a specific worker, tries to schedule the bundle
+           to run on a worker that has a tag exactly match with request_queue.
+        2. If the bundle doesn't request to run on a specific worker,
           (1) try to schedule the bundle to run on a worker that belongs to the bundle's owner
           (2) if there is no such qualified private worker, uses CodaLab-owned workers, which have user ID root_user_id.
         :param workers: a WorkerInfoAccessor object containing worker related information e.g. running uuid.
         :param staged_bundles_to_run: a list of tuples each contains a valid bundle and its bundle resources.
         :param user_info_cache: a dictionary mapping user id to user information.
         """
-        # Build a dictionary which maps from user id to positions in the queue of the
-        # user's staged bundles. We use this to sort bundles within each user. For example,
-        # Suppose we have 4 staged bundles with the following attributes from 2 users:
-        # Users: [A, B, A, B, A]
-        # Bundle Priorities: [1, 2, 3, 1, 1]
-        # Bundle specified request_queue: [False, False, False, False, True]
-        # Original Bundle Order: [B1, B2, B3, B4, B5]
-        # Sorted bundle order: [B3, B2, B5, B4, B1]
-        user_queue_positions = defaultdict(list)
-        for queue_position, staged_bundle in enumerate(staged_bundles_to_run):
-            user_queue_positions[staged_bundle[0].owner_id].append(queue_position)
-
-        for user, queue_positions in user_queue_positions.items():
-            assert queue_positions == sorted(queue_positions)
-            # Get this user's staged bundles
-            user_staged_bundles = [
-                staged_bundles_to_run[queue_position] for queue_position in queue_positions
-            ]
-            # Sort the staged bundles for this user, according to
-            # (1) their priority (larger values indicate higher priority) and
-            # (2) whether it requested to run on a specific worker (bundles with a specified
-            # worker have higher priority).
-            sorted_user_staged_bundles = sorted(
-                user_staged_bundles,
-                key=lambda b: (
-                    b[0].metadata.request_priority is not None,
-                    b[0].metadata.request_priority,
-                    b[0].metadata.request_queue is not None,
-                ),
-                reverse=True,
-            )
-            for queue_position, bundle in zip(queue_positions, sorted_user_staged_bundles):
-                staged_bundles_to_run[queue_position] = bundle
+        # Reorder the stage_bundles so that bundles which were requested to run on a specific worker
+        # will be scheduled to run first
+        staged_bundles_to_run.sort(
+            key=lambda b: (b[0].metadata.request_queue is not None, b[0].metadata.request_queue),
+            reverse=True,
+        )
 
         # Build a dictionary which maps from uuid to running bundle and bundle_resources
         running_bundles_info = self._get_running_bundles_info(workers, staged_bundles_to_run)
@@ -418,15 +388,6 @@ class BundleManager(object):
         # Filter by tag.
         if bundle.metadata.request_queue:
             workers_list = self._get_matched_workers(bundle.metadata.request_queue, workers_list)
-        else:
-            # The bundle is untagged, so we want to keep workers that are not
-            # tag-exclusive or don't have a tag defined.
-            # (removing workers that are tag_exclusive and have tags defined).
-            workers_list = [
-                worker
-                for worker in workers_list
-                if not worker['tag_exclusive'] or not worker['tag']
-            ]
 
         # Filter by CPUs.
         workers_list = [
@@ -467,14 +428,12 @@ class BundleManager(object):
                 num_available_deps = len(needed_deps & deps)
 
             # Subject to the worker meeting the resource requirements of the bundle, we also want to:
-            # 1. prioritize workers that are tag-exclusive.
-            # 2. prioritize workers with fewer GPUs (including zero).
-            # 3. prioritize workers that have more bundle dependencies.
-            # 4. prioritize workers with fewer CPUs.
-            # 5. prioritize workers with fewer running jobs.
-            # 6. break ties randomly by a random seed.
+            # 1. prioritize workers with fewer GPUs (including zero).
+            # 2. prioritize workers that have more bundle dependencies.
+            # 3. prioritize workers with fewer CPUs.
+            # 4. prioritize workers with fewer running jobs.
+            # 5. break ties randomly by a random seed.
             return (
-                not worker['tag_exclusive'],
                 worker['gpus'],
                 -num_available_deps,
                 worker['cpus'],
