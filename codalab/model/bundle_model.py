@@ -701,13 +701,13 @@ class BundleModel(object):
 
     def get_memoized_bundles(self, user_id, command, dependencies):
         '''
-        Get a list of bundles that match with input command and dependencies in the order they were created.
+        Get a list of bundle UUIDs that match with input command and dependencies in the order they were created.
         :param user_id: a string that specifies the current user id.
         :param command: a string that defines the command that is used to search for memoized bundles in the database.
         :param dependencies: a string in the form of '[{"child_path": key1, "parent_uuid": uuid1},
                                                        {"child_path": key2, "parent_uuid": uuid2}]'
-                             to search for matched dependencies in the database.
-        :return: a list of matched uuids in the order they were created.
+                             to search for memoized bundles in the database.
+        :return: a list of matched UUIDs in the order they were created.
         '''
         # Decode json formatted dependencies string to a list of key value pairs
         dependencies = json.loads(dependencies)
@@ -766,7 +766,7 @@ class BundleModel(object):
                 select([join.c.child_uuid])
                 .select_from(join)
                 .where(join.c.cnt == len(dependencies))
-                # Ensure the order of the returning bundles will be in the order of they were created.
+                # Ensure the order of the returning bundles will be in the order they were created.
                 .order_by(join.c.id)
             )
         return self._execute_query(query)
