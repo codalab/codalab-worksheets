@@ -50,7 +50,11 @@ class Worker:
         commit_file,  # type: str
         cpuset,  # type: Set[str]
         gpuset,  # type: Set[str]
+<<<<<<< HEAD
         max_memory,  # type:Optinal[int]
+=======
+        max_memory,  # type: Optional[int]
+>>>>>>> cada5fee0008cdbc41654daf1ad005ab5440c1d4
         worker_id,  # type: str
         tag,  # type: str
         work_dir,  # type: str
