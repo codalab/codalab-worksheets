@@ -152,6 +152,8 @@ OTHER_COMMANDS = ('help', 'status', 'alias', 'config', 'logout')
 HEADING_LEVEL_2 = '## '
 HEADING_LEVEL_3 = '### '
 
+NO_RESULTS_FOUND = 'No results found'
+
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
@@ -1924,21 +1926,20 @@ class BundleCLI(object):
             params={'worksheet': worksheet_uuid, 'keywords': args.keywords, 'include': ['owner']},
         )
 
-        # Print no results found if nothing returned from searching.
-        if ('meta' in bundles and len(bundles['meta']['result']) == 0) or len(bundles) == 0:
-            print('No results found.')
-            return
-
         print('Note: at most 10 results will be shown.')
 
         # Print direct numeric result
         if 'meta' in bundles:
+            if len(bundles['meta']['result']) == 0:
+                print(NO_RESULTS_FOUND)
             print(bundles['meta']['result'], file=self.stdout)
             return
 
         # Print table
         if len(bundles) > 0:
             self.print_bundle_info_list(bundles, uuid_only=args.uuid_only, print_ref=False)
+        else:
+            print(NO_RESULTS_FOUND)
 
         # Add the bundles to the current worksheet
         if args.append:
