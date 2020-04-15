@@ -225,7 +225,7 @@ def main():
     )
 
     # Register a signal handler to ensure safe shutdown.
-    for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGTSTP]:
+    for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
         signal.signal(sig, lambda signup, frame: worker.signal())
 
     # BEGIN: DO NOT CHANGE THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING
