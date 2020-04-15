@@ -1854,7 +1854,7 @@ def test(ctx):
 
     # target_spec: "a:<uuid_1>, b:<uuid_2>"
     uuid_a_bb = _run_command([cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_bb'])
-    wait(uuid_a_b)
+    wait(uuid_a_bb)
     check_equals("a_bb", _run_command([cl, 'cat', uuid_a_bb + '/stdout']))
 
     # target_spec: "b:<uuid_1>, a:<uuid_2>"
