@@ -50,6 +50,7 @@ class Worker:
         commit_file,  # type: str
         cpuset,  # type: Set[str]
         gpuset,  # type: Set[str]
+        max_memory,  # type: Optional[int]
         worker_id,  # type: str
         tag,  # type: str
         work_dir,  # type: str
@@ -71,6 +72,11 @@ class Worker:
         self.docker = docker.from_env()
         self.cpuset = cpuset
         self.gpuset = gpuset
+        self.max_memory = (
+            min(max_memory, psutil.virtual_memory().total)
+            if max_memory is not None
+            else psutil.virtual_memory().total
+        )
 
         self.id = worker_id
         self.tag = tag
@@ -87,6 +93,8 @@ class Worker:
         self.last_checkin_successful = False
         self.last_time_ran = None  # type: Optional[bool]
 
+        self.containers = set()
+
         self.runs = {}  # type: Dict[str, RunState]
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
@@ -99,6 +107,7 @@ class Worker:
             upload_bundle_callback=self.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             shared_file_system=self.shared_file_system,
+            containers=self.containers,
         )
 
     def init_docker_networks(self, docker_network_prefix):
@@ -203,6 +212,15 @@ class Worker:
         except docker.errors.APIError as e:
             logger.error("Cannot clear docker networks: %s", str(e))
 
+        # filter out existing runs
+        containers = [run.container for run in self.runs.values() if run.container_id is not None]
+        logger.info("Cleaning up bundle containers: {}".format(containers))
+        try:
+            for container in containers:
+                container.kill()
+        except docker.errors.APIError as e:
+            logger.info("Cannot clean up bundle containers: {}".format(str(e)))
+
         logger.info("Stopped Worker. Exiting")
 
     def signal(self):
@@ -235,7 +253,7 @@ class Worker:
             'tag': self.tag,
             'cpus': len(self.cpuset),
             'gpus': len(self.gpuset),
-            'memory_bytes': psutil.virtual_memory().total,
+            'memory_bytes': self.max_memory,
             'free_disk_bytes': self.free_disk_bytes,
             'dependencies': self.cached_dependencies,
             'hostname': socket.gethostname(),
