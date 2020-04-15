@@ -90,6 +90,13 @@ def parse_args():
         'The bundle depends on this image will fail accordingly.',
     )
     parser.add_argument(
+        '--max-memory',
+        type=parse_size,
+        metavar='SIZE',
+        default=None,
+        help='Limit the amount of memory to a worker in bytes' '(e.g. 3, 3k, 3m, 3g, 3t).',
+    )
+    parser.add_argument(
         '--password-file',
         help='Path to the file containing the username and '
         'password for logging into the bundle service, '
@@ -203,6 +210,7 @@ def main():
         os.path.join(args.work_dir, 'worker-state.json'),
         args.cpuset,
         args.gpuset,
+        args.max_memory,
         args.id,
         args.tag,
         args.work_dir,
