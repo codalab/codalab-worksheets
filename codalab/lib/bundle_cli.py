@@ -1932,6 +1932,7 @@ class BundleCLI(object):
         if 'meta' in bundles:
             if len(bundles['meta']['result']) == 0:
                 print(NO_RESULTS_FOUND)
+                return
             print(bundles['meta']['result'], file=self.stdout)
             return
 
