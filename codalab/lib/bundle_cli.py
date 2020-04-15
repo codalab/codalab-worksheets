@@ -1924,6 +1924,13 @@ class BundleCLI(object):
             params={'worksheet': worksheet_uuid, 'keywords': args.keywords, 'include': ['owner']},
         )
 
+        # Print no results found if nothing returned from searching.
+        if ('meta' in bundles and len(bundles['meta']['result']) == 0) or len(bundles) == 0:
+            print('No results found.')
+            return
+
+        print('Note: at most 10 results will be shown.')
+
         # Print direct numeric result
         if 'meta' in bundles:
             print(bundles['meta']['result'], file=self.stdout)
