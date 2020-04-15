@@ -316,6 +316,9 @@ worker = Table(
     Column(
         'shared_file_system', Boolean, nullable=False
     ),  # Whether the worker and the server have a shared filesystem.
+    Column(
+        'tag_exclusive', Boolean, nullable=False
+    ),  # Whether worker runs bundles if and only if they match tags.
 )
 
 # Store information about all sockets currently allocated to each worker.

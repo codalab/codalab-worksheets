@@ -17,7 +17,7 @@ while True:
     if not data:
         conn.close()
         continue
-    if data == b'yo dawg!':
+    if data == b"'yo dawg!'":
         conn.send(b'Hi this is dawg')
     else:
         conn.send(b'No, this is dawg')
