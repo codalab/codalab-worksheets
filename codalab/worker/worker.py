@@ -93,8 +93,6 @@ class Worker:
         self.last_checkin_successful = False
         self.last_time_ran = None  # type: Optional[bool]
 
-        self.containers = set()
-
         self.runs = {}  # type: Dict[str, RunState]
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
@@ -107,7 +105,6 @@ class Worker:
             upload_bundle_callback=self.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             shared_file_system=self.shared_file_system,
-            containers=self.containers,
         )
 
     def init_docker_networks(self, docker_network_prefix):
