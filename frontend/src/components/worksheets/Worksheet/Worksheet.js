@@ -1235,7 +1235,10 @@ class Worksheet extends React.Component {
                     Delete this worksheet permanently?
                 </DialogTitle>
                 <DialogContent>
-                    <DialogContentText id='alert-dialog-description' style={{ color: 'red' }}>
+                    <DialogContentText
+                        id='alert-dialog-description'
+                        style={{ color: 'red', marginBottom: '20px' }}
+                    >
                         {'Warning: Deleted worksheets cannot be recovered.'}
                     </DialogContentText>
                     <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
