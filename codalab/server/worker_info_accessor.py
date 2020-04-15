@@ -33,6 +33,7 @@ class WorkerInfoAccessor(object):
             for uuid in worker['run_uuids']:
                 self._uuid_to_worker[uuid] = worker
             self._user_id_to_workers[worker['user_id']].append(worker)
+            worker['has_gpus'] = True if worker['gpus'] > 0 else False
 
     @refresh_cache
     def workers(self):
