@@ -149,7 +149,7 @@ class WorksheetDialogs extends React.Component {
                         </Button>
                     </DialogActions>
                 </Dialog>
-                <Dialog
+                {/* <Dialog
                     open={this.props.openCopy}
                     onClose={this.props.toggleCmdDialog('copy')}
                     aria-labelledby='copy-title'
@@ -188,44 +188,7 @@ class WorksheetDialogs extends React.Component {
                             </Button>
                         </CopyToClipboard>
                     </DialogActions>
-                </Dialog>
-                <Dialog
-                    open={this.props.openPaste}
-                    onClose={this.props.toggleCmdDialog('paste')}
-                    aria-labelledby='paste-title'
-                    aria-describedby='paste-description'
-                >
-                    <DialogContent className={classes.copyDialog}>
-                        <DialogContentText id='alert-dialog-description'>
-                            {
-                                'Paste the bundle ids (in form of []{uuid}) or other contents to the box below'
-                            }
-                        </DialogContentText>
-                        <TextField
-                            autoFocus
-                            margin='dense'
-                            id='paste-box'
-                            onChange={(e) => {
-                                this.setState({ pasteInputValue: e.target.value });
-                            }}
-                            multiline
-                        />
-                    </DialogContent>
-                    <DialogActions>
-                        <Button color='primary' onClick={this.props.toggleCmdDialog('paste')}>
-                            CANCEL
-                        </Button>
-                        <Button
-                            color='primary'
-                            onClick={() => {
-                                this.props.pasteToWorksheet(this.state.pasteInputValue);
-                                this.props.toggleCmdDialogNoEvent('paste');
-                            }}
-                        >
-                            Paste
-                        </Button>
-                    </DialogActions>
-                </Dialog>
+                </Dialog> */}
                 }
             </div>
         );

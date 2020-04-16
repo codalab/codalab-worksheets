@@ -154,7 +154,6 @@ class Worksheet extends React.Component {
             openDelete: false,
             openDetach: false,
             openKill: false,
-            openCopy: false,
             openPaste: false,
             openDeleteItem: false,
             forceDelete: false,
@@ -364,7 +363,7 @@ class Worksheet extends React.Component {
             // This is used to delete markdown blocks
             this.setState({ openDeleteItem: !this.state.openDeleteItem });
         }
-        const { openKill, openDelete, openDetach, openCopy, openPaste } = this.state;
+        const { openKill, openDelete, openDetach } = this.state;
         if (cmd_type === 'rm') {
             this.setState({ openDelete: !openDelete });
         } else if (cmd_type === 'detach') {
@@ -372,12 +371,6 @@ class Worksheet extends React.Component {
         } else if (cmd_type === 'kill') {
             this.setState({ openKill: !openKill });
         } else if (cmd_type === 'copy') {
-            if (openCopy) {
-                this.setState({ openCopy: false });
-                return;
-            }
-            let copyBundles = {};
-            let displayBundleInfo = '';
             let actualCopyBundleIds = '';
             this.copyCallbacks.forEach((copyBundleCallback) => {
                 let bundlesChecked = copyBundleCallback();
@@ -385,19 +378,15 @@ class Worksheet extends React.Component {
                     if (bundle.name === '<invalid>') {
                         return;
                     }
-                    displayBundleInfo += '[]{' + bundle.uuid + '} (' + bundle.name + ')\n';
                     actualCopyBundleIds += '[]{' + bundle.uuid + '}\n';
                 });
             });
-            copyBundles.display = displayBundleInfo;
-            copyBundles.actualContent = actualCopyBundleIds;
             window.localStorage.setItem(
                 'CopiedBundles',
-                copyBundles.actualContent.substr(0, copyBundles.actualContent.length - 1),
+                actualCopyBundleIds.substr(0, actualCopyBundleIds.length - 1),
             );
-            this.setState({ openCopy: true, copiedBundleIds: copyBundles });
         } else if (cmd_type === 'paste') {
-            this.setState({ openPaste: !openPaste });
+            this.pasteBundlesToWorksheet();
         }
     };
 
@@ -431,10 +420,10 @@ class Worksheet extends React.Component {
         this.setState({ deleteItemCallback: callback, openDeleteItem: true });
     };
 
-    pasteToWorksheet = (pasteText) => {
+    pasteBundlesToWorksheet = (pasteText) => {
         // Unchecks all bundles after pasting
-        // It would be ideal to use navigator.clipboard.readText(); however, firefox does not support this
-        const data = pasteText;
+        const data = window.localStorage.getItem('CopiedBundles');
+        console.log(data);
         if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
             // Insert after the source line
             var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
@@ -841,7 +830,7 @@ class Worksheet extends React.Component {
             Mousetrap.bind(
                 ['a v'],
                 function(e) {
-                    this.pasteToWorksheet();
+                    this.pasteBundlesToWorksheet();
                 }.bind(this),
                 'keyup',
             );
@@ -851,19 +840,19 @@ class Worksheet extends React.Component {
             // Below are allowed shortcut even when a dialog is opened===================
             // The following three are bulk bundle operation shortcuts
             Mousetrap.bind(['backspace', 'del'], () => {
-                if (this.state.openDetach || this.state.openKill || this.state.openCopy) {
+                if (this.state.openDetach || this.state.openKill) {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('rm');
             });
             Mousetrap.bind(['a d'], () => {
-                if (this.state.openDelete || this.state.openKill || this.state.openCopy) {
+                if (this.state.openDelete || this.state.openKill) {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('detach');
             });
             Mousetrap.bind(['a k'], () => {
-                if (this.state.openDetach || this.state.openDelete || this.state.openCopy) {
+                if (this.state.openDetach || this.state.openDelete) {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('kill');
@@ -1499,7 +1488,6 @@ class Worksheet extends React.Component {
 
         var worksheet_dialogs = (
             <WorksheetDialogs
-                openCopy={this.state.openCopy}
                 openPaste={this.state.openPaste}
                 copiedBundleIds={this.state.copiedBundleIds}
                 openKill={this.state.openKill}
@@ -1512,7 +1500,6 @@ class Worksheet extends React.Component {
                 forceDelete={this.state.forceDelete}
                 handleForceDelete={this.handleForceDelete}
                 deleteItemCallback={this.state.deleteItemCallback}
-                pasteToWorksheet={this.pasteToWorksheet}
             />
         );
         if (info && info.title) {
