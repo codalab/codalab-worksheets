@@ -62,6 +62,8 @@ class Worker:
         tag_exclusive,  # type: bool
         docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
+        # A flag indicating if all the existing running bundles will be killed along with the worker.
+        terminate=False,  # type: bool
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -90,6 +92,8 @@ class Worker:
         self.idle_seconds = idle_seconds
 
         self.stop = False
+        self.terminate = terminate
+
         self.last_checkin_successful = False
         self.last_time_ran = None  # type: Optional[bool]
 
@@ -180,6 +184,10 @@ class Worker:
                 self.save_state()
                 self.checkin()
                 self.save_state()
+                # Wait until existing bundles finished uploading their final status
+                if self.terminate:
+                    if self.terminate_containers() == 0:
+                        self.stop = True
                 if self.check_idle_stop():
                     self.stop = True
                     break
@@ -190,6 +198,24 @@ class Worker:
                 logger.error('Sleeping for 1 hour due to exception...please help me!')
                 time.sleep(1 * 60 * 60)
         self.cleanup()
+
+    def terminate_containers(self):
+        """
+        Clean up bundle containers by moving all the existing unfinished bundles to terminal states.
+
+        :returns: the number of unfinished bundles.
+        """
+        unfinished_bundles = []
+        for bundle_uuid in self.runs:
+            run_state = self.runs[bundle_uuid]
+            if run_state.stage != RunStage.FINISHED and run_state.container_id is not None:
+                run_state = run_state._replace(
+                    kill_message='Received termination signal to kill the bundle', is_killed=True
+                )
+                self.runs[bundle_uuid] = self.run_state_manager.transition(run_state)
+                unfinished_bundles.append(bundle_uuid)
+        logger.info("Terminating running bundles {}.".format(','.join(unfinished_bundles)))
+        return len(unfinished_bundles)
 
     def cleanup(self):
         """
@@ -212,7 +238,10 @@ class Worker:
         logger.info("Stopped Worker. Exiting")
 
     def signal(self):
-        self.stop = True
+        # When the terminate flag is False, set the stop flag to stop running
+        # the worker without changing the status of existing running bundles.
+        if not self.terminate:
+            self.stop = True
 
     @property
     def cached_dependencies(self):
