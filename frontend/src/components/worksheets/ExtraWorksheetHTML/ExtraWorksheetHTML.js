@@ -189,7 +189,7 @@ let ExtraWorksheetHTML = ({
                 <i className='glyphicon glyphicon-remove-circle' /> Error: {errorMessage}
             </Alert>
         )}
-        <KeyboardShortCutModal show={showGlossaryModal} toggle={toggleGlossaryModal} />
+        <KeyboardShortcutModal show={showGlossaryModal} toggle={toggleGlossaryModal} />
     </React.Fragment>
 );
 
