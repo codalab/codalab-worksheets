@@ -132,15 +132,9 @@ var WorksheetContent = (function() {
 class Worksheet extends React.Component {
     constructor(props) {
         super(props);
-        let expand = this.props.match.params['mode'] === 'expand';
-        // if the url doesn't have expand but localstorage has, we manually add it
-        if (
-            !expand &&
-            window.localStorage.getItem(LOCAL_STORAGE_WORKSHEET_WIDTH) === EXPANDED_WORKSHEET_WIDTH
-        ) {
-            this.props.history.push('expand');
-            expand = true;
-        }
+        let localWorksheetWidthPreference = window.localStorage.getItem(
+            LOCAL_STORAGE_WORKSHEET_WIDTH,
+        );
         this.state = {
             ws: new WorksheetContent(this.props.match.params['uuid']),
             version: 0, // Increment when we refresh
@@ -175,7 +169,7 @@ class Worksheet extends React.Component {
             errorMessage: '',
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
-            worksheetWidthPercentage: expand ? EXPANDED_WORKSHEET_WIDTH : DEFAULT_WORKSHEET_WIDTH,
+            worksheetWidthPercentage: localWorksheetWidthPreference || DEFAULT_WORKSHEET_WIDTH,
         };
     }
 
@@ -605,11 +599,6 @@ class Worksheet extends React.Component {
                 ? EXPANDED_WORKSHEET_WIDTH
                 : DEFAULT_WORKSHEET_WIDTH;
         window.localStorage.setItem(LOCAL_STORAGE_WORKSHEET_WIDTH, newPercentage);
-        if (newPercentage === EXPANDED_WORKSHEET_WIDTH) {
-            this.props.history.push('expand');
-        } else {
-            this.props.history.push(this.props.match.url.replace('expand', ''));
-        }
         this.setState({ worksheetWidthPercentage: newPercentage });
     };
     setupEventHandlers() {
