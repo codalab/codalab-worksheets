@@ -103,7 +103,7 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
                         <td>
                             <kbd>a v</kbd>
                         </td>
-                        <td>Paste clipboard content to source after focused line</td>
+                        <td>Paste clipboard content to source after the current line</td>
                     </tr>
                     <th>Bundles operation</th>
                     <tr>
