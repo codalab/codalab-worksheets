@@ -370,8 +370,9 @@ class Worksheet extends React.Component {
             this.setState({ openDetach: !openDetach });
         } else if (cmd_type === 'kill') {
             this.setState({ openKill: !openKill });
-        } else if (cmd_type === 'copy') {
+        } else if (cmd_type === 'copy' || cmd_type === 'cut') {
             let validBundles = [];
+            let cutBundleKeys = [];
             let actualCopiedCounts = 0;
             this.copyCallbacks.forEach((copyBundleCallback) => {
                 let bundlesChecked = copyBundleCallback();
@@ -380,6 +381,7 @@ class Worksheet extends React.Component {
                         return;
                     }
                     validBundles.push(bundle);
+                    cutBundleKeys.push(bundle.key);
                     actualCopiedCounts += 1;
                 });
             });
@@ -401,15 +403,17 @@ class Worksheet extends React.Component {
                 pauseOnHover: false,
                 draggable: true,
             });
+            if (cmd_type === 'cut') {
+                // Remove the bundle lines
+                this.removeRawSourceLines(cutBundleKeys);
+            }
         } else if (cmd_type === 'paste') {
             this.pasteBundlesToWorksheet();
         }
     };
 
-    removeRawSourceLines = () => {
-        let keys = this.state.cutBundleKeys;
-        console.log(typeof keys, keys);
-        let all_remove_lines = keys.map((key) => {
+    removeRawSourceLines = (cutBundleKeys) => {
+        let all_remove_lines = cutBundleKeys.map((key) => {
             var item_line = this.state.ws.info.block_to_raw[key];
             return this.state.ws.info.expanded_items_to_raw_lines[item_line];
         });
@@ -447,10 +451,6 @@ class Worksheet extends React.Component {
             this.executeBundleCommandNoEvent('detach');
         } else if (this.state.openKill) {
             this.executeBundleCommandNoEvent('kill');
-        } else if (this.state.openCopy) {
-            document.getElementById('copyBundleIdToClipBoard').click();
-        } else if (this.state.openCut) {
-            document.getElementById('cutBundleIdToClipBoard').click();
         }
         return true;
     };
@@ -1547,7 +1547,6 @@ class Worksheet extends React.Component {
                 forceDelete={this.state.forceDelete}
                 handleForceDelete={this.handleForceDelete}
                 deleteItemCallback={this.state.deleteItemCallback}
-                removeRawSourceLines={this.removeRawSourceLines}
             />
         );
         if (info && info.title) {
