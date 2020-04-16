@@ -133,7 +133,7 @@ const KeyboardShortCutModal = ({ show, toggle }) => (
                     </tr>
                     <tr>
                         <td>
-                            <kbd>c</kbd>
+                            <kbd>c c</kbd>
                         </td>
                         <td>Open full web terminal regardless of show/hide status</td>
                     </tr>
