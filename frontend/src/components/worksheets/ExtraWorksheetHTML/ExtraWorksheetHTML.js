@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Alert, Modal } from 'react-bootstrap';
 import './ExtraWorksheetHTML.scss';
 
-const KeyboardShortCutModal = ({ show, toggle }) => (
+const KeyboardShortcutModal = ({ show, toggle }) => (
     <Modal id='glossaryModal' tabIndex='-1' keyboard show={show} onHide={toggle}>
         <Modal.Header closeButton>
             <h4>Keyboard Shortcuts</h4>
