@@ -9,7 +9,12 @@ import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from '../ExtraWorksheetHTML/ExtraWorksheetHTML';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
-import { NAVBAR_HEIGHT, EXPAND_PERCENTAGE, DEFAULT_PERCENTAGE } from '../../../constants';
+import {
+    NAVBAR_HEIGHT,
+    EXPANDED_WORKSHEET_WIDTH,
+    DEFAULT_WORKSHEET_WIDTH,
+    LOCAL_STORAGE_WORKSHEET_WIDTH,
+} from '../../../constants';
 import WorksheetActionBar from '../WorksheetActionBar';
 import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
@@ -129,7 +134,10 @@ class Worksheet extends React.Component {
         super(props);
         let expand = this.props.match.params['mode'] === 'expand';
         // if the url doesn't have expand but localstorage has, we manually add it
-        if (!expand && window.localStorage.getItem('worksheetSize') === EXPAND_PERCENTAGE) {
+        if (
+            !expand &&
+            window.localStorage.getItem(LOCAL_STORAGE_WORKSHEET_WIDTH) === EXPANDED_WORKSHEET_WIDTH
+        ) {
             this.props.history.push('expand');
             expand = true;
         }
@@ -167,7 +175,7 @@ class Worksheet extends React.Component {
             errorMessage: '',
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
-            worksheetWidthPercentage: expand ? EXPAND_PERCENTAGE : DEFAULT_PERCENTAGE,
+            worksheetWidthPercentage: expand ? EXPANDED_WORKSHEET_WIDTH : DEFAULT_WORKSHEET_WIDTH,
         };
     }
 
@@ -593,11 +601,11 @@ class Worksheet extends React.Component {
     };
     toggleWorksheetSize = () => {
         let newPercentage =
-            this.state.worksheetWidthPercentage === DEFAULT_PERCENTAGE
-                ? EXPAND_PERCENTAGE
-                : DEFAULT_PERCENTAGE;
-        window.localStorage.setItem('worksheetSize', newPercentage);
-        if (newPercentage === EXPAND_PERCENTAGE) {
+            this.state.worksheetWidthPercentage === DEFAULT_WORKSHEET_WIDTH
+                ? EXPANDED_WORKSHEET_WIDTH
+                : DEFAULT_WORKSHEET_WIDTH;
+        window.localStorage.setItem(LOCAL_STORAGE_WORKSHEET_WIDTH, newPercentage);
+        if (newPercentage === EXPANDED_WORKSHEET_WIDTH) {
             this.props.history.push('expand');
         } else {
             this.props.history.push(this.props.match.url.replace('expand', ''));
