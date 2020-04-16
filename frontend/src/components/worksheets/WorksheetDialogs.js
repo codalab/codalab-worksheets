@@ -14,12 +14,6 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import TextField from '@material-ui/core/TextField';
 
 class WorksheetDialogs extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            pasteInputValue: '',
-        };
-    }
     render() {
         const { classes } = this.props;
         return (
@@ -146,114 +140,6 @@ class WorksheetDialogs extends React.Component {
                             }}
                         >
                             DELETE
-                        </Button>
-                    </DialogActions>
-                </Dialog>
-                <Dialog
-                    open={this.props.openCopy}
-                    onClose={this.props.toggleCmdDialog('copy')}
-                    aria-labelledby='copy-title'
-                    aria-describedby='deletion-description'
-                >
-                    <DialogContent className={classes.copyDialog}>
-                        <DialogContentText id='alert-dialog-description'>
-                            The following bundle ids (excluding invalid ones) will be copied to
-                            clipboard:
-                            <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {this.props.copiedBundleIds.display}
-                            </div>
-                            You can use "paste" to move the copied bundles.
-                        </DialogContentText>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button color='primary' onClick={this.props.toggleCmdDialog('copy')}>
-                            CANCEL
-                        </Button>
-                        <CopyToClipboard
-                            color='primary'
-                            text={this.props.copiedBundleIds.actualContent}
-                            id='copyBundleIdToClipBoard'
-                            onCopy={() => {
-                                window.localStorage.setItem(
-                                    'CopiedBundles',
-                                    this.props.copiedBundleIds.actualContent.substr(
-                                        0,
-                                        this.props.copiedBundleIds.actualContent.length - 1,
-                                    ),
-                                );
-                            }}
-                        >
-                            <Button color='primary' onClick={this.props.toggleCmdDialog('copy')}>
-                                Copy
-                            </Button>
-                        </CopyToClipboard>
-                    </DialogActions>
-                </Dialog>
-                <Dialog
-                    open={this.props.openCut}
-                    onClose={this.props.toggleCmdDialog('cut')}
-                    aria-labelledby='copy-title'
-                    aria-describedby='deletion-description'
-                >
-                    <DialogContent className={classes.copyDialog}>
-                        <DialogContentText id='alert-dialog-description'>
-                            The following bundle ids (excluded invalid ones) will be cut to
-                            clipboard:
-                            <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {this.props.copiedBundleIds.display}
-                            </div>
-                            You can use "paste" to move the copied bundles
-                        </DialogContentText>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button color='primary' onClick={this.props.toggleCmdDialog('cut')}>
-                            CANCEL
-                        </Button>
-                        <CopyToClipboard
-                            color='primary'
-                            text={this.props.copiedBundleIds.actualContent}
-                            id='cutBundleIdToClipBoard'
-                        >
-                            <Button color='primary' onClick={this.props.toggleCmdDialog('cut')}>
-                                Cut
-                            </Button>
-                        </CopyToClipboard>
-                    </DialogActions>
-                </Dialog>
-                <Dialog
-                    open={this.props.openPaste}
-                    onClose={this.props.toggleCmdDialog('paste')}
-                    aria-labelledby='paste-title'
-                    aria-describedby='paste-description'
-                >
-                    <DialogContent className={classes.copyDialog}>
-                        <DialogContentText id='alert-dialog-description'>
-                            {
-                                'Paste the bundle ids (in form of []{uuid}) or other contents to the box below'
-                            }
-                        </DialogContentText>
-                        <TextField
-                            autoFocus
-                            margin='dense'
-                            id='paste-box'
-                            onChange={(e) => {
-                                this.setState({ pasteInputValue: e.target.value });
-                            }}
-                            multiline
-                        />
-                    </DialogContent>
-                    <DialogActions>
-                        <Button color='primary' onClick={this.props.toggleCmdDialog('paste')}>
-                            CANCEL
-                        </Button>
-                        <Button
-                            color='primary'
-                            onClick={() => {
-                                this.props.pasteToWorksheet(this.state.pasteInputValue);
-                                this.props.toggleCmdDialogNoEvent('paste');
-                            }}
-                        >
-                            Paste
                         </Button>
                     </DialogActions>
                 </Dialog>

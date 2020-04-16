@@ -140,7 +140,7 @@ class ActionButtons extends React.Component<{
                         toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
                     />
                 ) : null}
-                <Tooltip title='Paste text or uuids to this worksheet'>
+                <Tooltip title='Paste copied bundles to this worksheet'>
                     <Button
                         size='small'
                         color='inherit'
@@ -150,7 +150,7 @@ class ActionButtons extends React.Component<{
                         id='paste-button'
                     >
                         <NoteAddIcon className={classes.buttonIcon} />
-                        PasteBoard
+                        Paste bundles
                     </Button>
                 </Tooltip>
             </div>

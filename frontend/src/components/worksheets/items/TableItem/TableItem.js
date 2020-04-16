@@ -98,19 +98,18 @@ class TableItem extends React.Component<{
     };
 
     copyCheckedBundleRows = () => {
-        let bundleRowsData = this.props.item.rows;
-        let result = [];
-        console.log('TableID: ', this.props.itemID);
-        bundleRowsData.forEach((row, rowIndex) => {
-            if (this.state.childrenCheckState[rowIndex]) {
-                let bundleRowInFo = {};
-                // the bundle is checked
-                bundleRowInFo.uuid = row['uuid[0:8]'];
-                bundleRowInFo.name = row['name'];
-                // used to remove the source lines
-                bundleRowInFo.key = this.props.itemID + ',' + rowIndex;
-                result.push(bundleRowInFo);
-            }
+        let item = this.props.item;
+        let bundleInfos = item.bundles_spec.bundle_infos;
+        let result = bundleInfos.filter((item, index) => {
+            return this.state.childrenCheckState[index];
+        });
+        result = result.map((bundle, rowIndex) => {
+            let bundleInfos = {};
+            bundleInfos.uuid = bundle['uuid'];
+            bundleInfos.name = bundle['name'];
+            // used to remove the source lines
+            bundleInfos.key = this.props.itemID + ',' + rowIndex;
+            return bundleInfos;
         });
         return result;
     };
