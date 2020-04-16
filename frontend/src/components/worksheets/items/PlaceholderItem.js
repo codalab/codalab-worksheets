@@ -46,7 +46,9 @@ export default forwardRef((props, ref) => {
                 setError(e);
             }
         })();
-    }, [directive, worksheetUUID, onAsyncItemLoad]);
+        // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [directive, worksheetUUID]);
     if (error) {
         return <div ref={ref}>Error loading item.</div>;
     }
