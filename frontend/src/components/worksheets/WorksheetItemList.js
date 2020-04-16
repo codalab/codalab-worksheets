@@ -49,6 +49,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
     props.key = props.ref = 'item' + props.focusIndex;
     props.url = url;
     props.prevItem = prevItem;
+    props.itemHeight = (props.itemHeights || {})[props.ref] || 100;
 
     const constructor = BLOCK_TO_COMPONENT[item.mode];
 
@@ -250,6 +251,7 @@ class WorksheetItemList extends React.Component {
                         setDeleteItemCallback: this.props.setDeleteItemCallback,
                         editPermission: info && info.edit_permission,
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
+                        itemHeights: this.props.itemHeights,
                     };
                     addWorksheetItems(
                         props,

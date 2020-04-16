@@ -31,7 +31,7 @@ async function fetchData({ worksheetUUID, directive }) {
 export default forwardRef((props, ref) => {
     const [item, setItem] = useState(undefined);
     const [error, setError] = useState(false);
-    const { worksheetUUID, onAsyncItemLoad } = props;
+    const { worksheetUUID, onAsyncItemLoad, itemHeight } = props;
     const { directive } = props.item;
     useEffect(() => {
         (async function() {
@@ -56,5 +56,11 @@ export default forwardRef((props, ref) => {
         // No items
         return <div ref={ref}>No results found.</div>;
     }
-    return <div ref={ref} className='codalab-item-placeholder'></div>;
+    return (
+        <div
+            ref={ref}
+            className='codalab-item-placeholder'
+            style={{ height: itemHeight || 100 }}
+        ></div>
+    );
 });

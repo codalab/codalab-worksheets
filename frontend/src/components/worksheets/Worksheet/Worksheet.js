@@ -1097,6 +1097,11 @@ class Worksheet extends React.Component {
         rawIndexAfterEditMode,
         { moveIndex = false, textDeleted = false } = {},
     ) => {
+        let itemHeights = {};
+        for (let refName in this.refs.list.refs) {
+            itemHeights[refName] = ReactDOM.findDOMNode(this.refs.list.refs[refName]).clientHeight;
+        }
+        this.setState({ itemHeights });
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
             this.setState({ updating: true });
@@ -1449,6 +1454,7 @@ class Worksheet extends React.Component {
                 confirmBundleRowAction={this.confirmBundleRowAction}
                 setDeleteItemCallback={this.setDeleteItemCallback}
                 onAsyncItemLoad={this.onAsyncItemLoad}
+                itemHeights={this.state.itemHeights}
             />
         );
 
