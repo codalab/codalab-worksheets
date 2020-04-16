@@ -50,6 +50,7 @@ class Worker:
         commit_file,  # type: str
         cpuset,  # type: Set[str]
         gpuset,  # type: Set[str]
+        max_memory,  # type: Optional[int]
         worker_id,  # type: str
         tag,  # type: str
         work_dir,  # type: str
@@ -58,6 +59,7 @@ class Worker:
         idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
         shared_file_system,  # type: bool
+        tag_exclusive,  # type: bool
         docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
     ):
@@ -70,9 +72,15 @@ class Worker:
         self.docker = docker.from_env()
         self.cpuset = cpuset
         self.gpuset = gpuset
+        self.max_memory = (
+            min(max_memory, psutil.virtual_memory().total)
+            if max_memory is not None
+            else psutil.virtual_memory().total
+        )
 
         self.id = worker_id
         self.tag = tag
+        self.tag_exclusive = tag_exclusive
 
         self.work_dir = work_dir
         self.local_bundles_dir = local_bundles_dir
@@ -233,12 +241,13 @@ class Worker:
             'tag': self.tag,
             'cpus': len(self.cpuset),
             'gpus': len(self.gpuset),
-            'memory_bytes': psutil.virtual_memory().total,
+            'memory_bytes': self.max_memory,
             'free_disk_bytes': self.free_disk_bytes,
             'dependencies': self.cached_dependencies,
             'hostname': socket.gethostname(),
             'runs': [run.as_dict for run in self.all_runs],
             'shared_file_system': self.shared_file_system,
+            'tag_exclusive': self.tag_exclusive,
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
