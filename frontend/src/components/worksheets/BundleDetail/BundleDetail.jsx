@@ -63,12 +63,9 @@ class BundleDetail extends React.Component<
                 this.fetchBundleContents();
                 return;
             }
-            if (this.state.bundleInfo.bundle_type === 'run' && (
-                    this.state.bundleInfo.state === 'created' 
-                    || this.state.bundleInfo.state === 'running' 
-                    || this.state.bundleInfo.state === 'preparing' || this.state.bundleInfo.state === 'starting'
-                    || this.state.bundleInfo.state === 'staged')){
-                // If bundle is in a state that is possible to transition to a running or is in a running state, fetch data
+            if (this.state.bundleInfo.state.match("uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline")){
+                // If bundle is in a state that is possible to transition to a different state, fetch data
+                // we have ignored ready|failed|killed states here
                 this.fetchBundleMetaData();
                 this.fetchBundleContents();
             } else{
