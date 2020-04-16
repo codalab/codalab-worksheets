@@ -90,6 +90,13 @@ def parse_args():
         'The bundle depends on this image will fail accordingly.',
     )
     parser.add_argument(
+        '--max-memory',
+        type=parse_size,
+        metavar='SIZE',
+        default=None,
+        help='Limit the amount of memory to a worker in bytes' '(e.g. 3, 3k, 3m, 3g, 3t).',
+    )
+    parser.add_argument(
         '--password-file',
         help='Path to the file containing the username and '
         'password for logging into the bundle service, '
@@ -119,6 +126,11 @@ def parse_args():
         '--shared-file-system',
         action='store_true',
         help='To be used when the server and the worker share the bundle store on their filesystems.',
+    )
+    parser.add_argument(
+        '--tag-exclusive',
+        action='store_true',
+        help='To be used when the worker should only run bundles that match the worker\'s tag.',
     )
     return parser.parse_args()
 
@@ -198,6 +210,7 @@ def main():
         os.path.join(args.work_dir, 'worker-state.json'),
         args.cpuset,
         args.gpuset,
+        args.max_memory,
         args.id,
         args.tag,
         args.work_dir,
@@ -206,6 +219,7 @@ def main():
         args.idle_seconds,
         bundle_service,
         args.shared_file_system,
+        args.tag_exclusive,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
     )

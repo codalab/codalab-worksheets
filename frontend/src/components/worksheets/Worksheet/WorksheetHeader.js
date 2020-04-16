@@ -23,6 +23,9 @@ const styles = {
 export default ({
     onShowNewRun,
     onShowNewText,
+    showUploadMenu,
+    closeUploadMenu,
+    uploadAnchor,
     canEdit,
     info,
     classes,
@@ -126,6 +129,9 @@ export default ({
                                 info={info}
                                 onShowNewRun={onShowNewRun}
                                 onShowNewText={onShowNewText}
+                                showUploadMenu={showUploadMenu}
+                                closeUploadMenu={closeUploadMenu}
+                                uploadAnchor={uploadAnchor}
                                 handleSelectedBundleCommand={handleSelectedBundleCommand}
                                 showBundleOperationButtons={showBundleOperationButtons}
                                 togglePopup={togglePopup}
