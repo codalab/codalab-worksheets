@@ -243,7 +243,7 @@ def fetch_interpreted_worksheet(uuid):
         # If we're only async loading a single table block,
         # return only the last table block back in items.
         last_item = worksheet_info['items'][-1]
-        worksheet_info['items'] = [last_item] if last_item['mode'] == 'table_block' else []
+        worksheet_info['items'] = [last_item] if last_item['mode'] == 'table' else []
 
     for item in worksheet_info['items']:
         if item is None:
