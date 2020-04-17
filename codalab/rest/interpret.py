@@ -191,9 +191,16 @@ def fetch_interpreted_worksheet(uuid):
     elif directive:
         # Only expand the search item corresponding to the given directive.
         # Used in async loading to only load a single table.
-        worksheet_info['items'] = expand_search_items(
-            worksheet_info['items'], filter_directive=directive
-        )
+        item_idx = 0
+        for i, item in enumerate(worksheet_info['items']):
+            (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = raw_item
+            if directive == formatting.tokens_to_string(value_obj):
+                worksheet_info['items'][i] = perform_search_query(value_obj)
+                item_idx = i
+                break
+        # Make sure the search item is at the end of worksheet_info['items'],
+        # so we can isolate it later after interpret_items is called.
+        worksheet_info['items'] = worksheet_info['items'][: item_idx + 1]
 
     # Set permissions
     worksheet_info['edit_permission'] = worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL
@@ -241,10 +248,8 @@ def fetch_interpreted_worksheet(uuid):
 
     if directive and len(worksheet_info['items']):
         # If we're only async loading a single table_block / subworksheets_block,
-        # return only that block.
-        worksheet_info['items'] = [item for item in worksheet_info['items'] if item['mode'] in ('table_block', 'subworksheets_block')]
-        if len(worksheet_info['items']):
-            worksheet_info['items'] = [worksheet_info['items']][-1]
+        # return only that block (which is at the end of worksheet_info['items'])
+        worksheet_info['items'] = [worksheet_info['items'][-1]]
 
     for item in worksheet_info['items']:
         if item is None:
@@ -626,30 +631,21 @@ def perform_search_query(value_obj):
         return []
 
 
-def expand_search_items(raw_items, filter_directive=None):
-    return list(
-        chain.from_iterable(
-            [expand_search_item(raw_item, filter_directive) for raw_item in raw_items]
-        )
-    )
+def expand_search_items(raw_items):
+    return list(chain.from_iterable([expand_search_item(raw_item) for raw_item in raw_items]))
 
 
-def expand_search_item(raw_item, filter_directive=None):
+def expand_search_item(raw_item):
     """
     Raw items that include searches must be expanded into more raw items.
     Input: Raw item.
-    filter_directive - if set, will only expand searches that match the value of the directive string.
     Output: Array of raw items. If raw item does not need expanding,
     this returns an 1-length array that contains original raw item,
     otherwise it contains the search result. You do not need to call
     resolve_items_into_infos on the returned raw_items.
     """
     (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = raw_item
-    if (
-        item_type == TYPE_DIRECTIVE
-        and get_command(value_obj) in ('search', 'wsearch')
-        and (not filter_directive or filter_directive == formatting.tokens_to_string(value_obj))
-    ):
+    if item_type == TYPE_DIRECTIVE and get_command(value_obj) in ('search', 'wsearch'):
         return perform_search_query(value_obj)
     else:
         return [raw_item]
