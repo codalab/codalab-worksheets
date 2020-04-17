@@ -32,7 +32,7 @@ export default forwardRef((props, ref) => {
     const [item, setItem] = useState(undefined);
     const [error, setError] = useState(false);
     const { worksheetUUID, onAsyncItemLoad, itemHeight } = props;
-    const { directive, header } = props.item;
+    const { directive } = props.item;
     useEffect(() => {
         (async function() {
             try {
