@@ -33,6 +33,8 @@ from shlex import quote
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
 
+import codalab.model.bundle_model as bundle_model
+
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
@@ -151,8 +153,6 @@ OTHER_COMMANDS = ('help', 'status', 'alias', 'config', 'logout')
 # Markdown headings
 HEADING_LEVEL_2 = '## '
 HEADING_LEVEL_3 = '### '
-
-NO_RESULTS_FOUND = 'No results found'
 
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
@@ -1926,13 +1926,10 @@ class BundleCLI(object):
             params={'worksheet': worksheet_uuid, 'keywords': args.keywords, 'include': ['owner']},
         )
 
-        print('Note: at most 10 results will be shown.')
+        print('Note: at most {} results will be shown.'.format(bundle_model.SEARCH_RESULTS_LIMIT))
 
         # Print direct numeric result
         if 'meta' in bundles:
-            if len(bundles['meta']['result']) == 0:
-                print(NO_RESULTS_FOUND)
-                return
             print(bundles['meta']['result'], file=self.stdout)
             return
 
@@ -1940,7 +1937,7 @@ class BundleCLI(object):
         if len(bundles) > 0:
             self.print_bundle_info_list(bundles, uuid_only=args.uuid_only, print_ref=False)
         else:
-            print(NO_RESULTS_FOUND)
+            print('No results found')
 
         # Add the bundles to the current worksheet
         if args.append:
