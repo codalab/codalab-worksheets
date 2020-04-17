@@ -240,10 +240,11 @@ def fetch_interpreted_worksheet(uuid):
     worksheet_info['block_to_raw'] = interpreted_blocks['block_to_raw']
 
     if directive and len(worksheet_info['items']):
-        # If we're only async loading a single table block,
-        # return only the last table block back in items.
-        last_item = worksheet_info['items'][-1]
-        worksheet_info['items'] = [last_item] if last_item['mode'] == 'table' else []
+        # If we're only async loading a single table_block / subworksheets_block,
+        # return only that block.
+        worksheet_info['items'] = [item for item in worksheet_info['items'] if item['mode'] in ('table_block', 'subworksheets_block')]
+        if len(worksheet_info['items']):
+            worksheet_info['items'] = [worksheet_info['items']][-1]
 
     for item in worksheet_info['items']:
         if item is None:
