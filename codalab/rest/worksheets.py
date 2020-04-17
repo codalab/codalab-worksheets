@@ -505,3 +505,9 @@ def _set_owner_names(results):
     owners = [local.model.get_user(r['owner_id']) for r in results]
     for r, o in zip(results, owners):
         r['owner_name'] = o.user_name
+
+def keyword_search_ws(keywords):
+    keywords = resolve_owner_in_keywords(keywords)
+    worksheets = local.model.search_worksheets(request.user.user_id, keywords)
+    _set_owner_names(worksheets)
+    return worksheets

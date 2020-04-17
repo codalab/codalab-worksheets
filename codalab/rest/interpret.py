@@ -15,9 +15,10 @@ from contextlib import closing
 from itertools import chain
 import json
 import sys
-
+import requests
+import urllib.request, urllib.parse, urllib.error
 import yaml
-from bottle import get, post, local, request
+from bottle import get, post, local, request, abort, httplib
 
 from codalab.common import UsageError, NotFoundError
 from codalab.lib import formatting, spec_util
@@ -38,10 +39,11 @@ from codalab.lib.worksheet_util import (
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
-from codalab.rest.worksheets import get_worksheet_info, search_worksheets
+from codalab.rest.worksheets import get_worksheet_info, search_worksheets, keyword_search_ws
 from codalab.rest.worksheet_block_schemas import BlockModes, MarkupBlockSchema, FetchStatusCodes
 from codalab.worker.download_util import BundleTarget
-
+# from codalab.client.json_api_client import _unpack_document
+# _pack_params, _unpack_document, _make_request
 
 @post('/interpret/search')
 def _interpret_search():
@@ -75,7 +77,13 @@ def _interpret_wsearch():
     }
     ```
     """
-    return interpret_wsearch(request.json)
+    query = request.json
+    if 'keywords' not in query:
+        abort(httplib.BAD_REQUEST, 'Missing `keywords`')
+
+    return {'response': interpret_wsearch(query['keywords'])}
+
+
 
 
 @post('/interpret/file-genpaths')
@@ -391,6 +399,21 @@ def resolve_interpreted_blocks(interpreted_blocks):
 
     return interpreted_blocks
 
+def interpret_wsearch(keywords):
+
+    """
+    Request to fetch a resource or resources.
+
+    :param resource_type: resource type as string
+    :param resource_id: id of resource to fetch, or None if bulk fetch
+    :param params: dict of query parameters
+    :param include: iterable of related resources to include
+    :return: the fetched objects
+    """
+    params={'keywords': [keywords], 'include': ['owner', 'group_permissions']}
+
+
+    return keyword_search_ws(keywords)
 
 def is_bundle_genpath_triple(value):
     # if called after an RPC call tuples may become lists

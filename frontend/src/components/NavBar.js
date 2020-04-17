@@ -21,7 +21,6 @@ import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import Snackbar from '@material-ui/core/Snackbar';
 import SnackbarContent from '@material-ui/core/SnackbarContent';
-
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
 import GalleryIcon from '@material-ui/icons/Public'; // FindInPage
 import HowToIcon from '@material-ui/icons/Help'; // Info
@@ -32,7 +31,8 @@ import SuccessIcon from '@material-ui/icons/CheckCircle';
 import ErrorIcon from '@material-ui/icons/Error';
 import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
-
+import { Search } from 'semantic-ui-react';
+import _ from 'lodash';
 import { executeCommand } from '../util/cli_utils';
 
 const kDefaultWorksheetName = 'unnamed';
@@ -54,6 +54,10 @@ class NavBar extends React.Component<{
             snackbarShow: false,
             snackbarMessage: '',
             snackbarVariant: '',
+            value: '',
+            searchQuery: null,
+            isLoading: false,
+            results: [],
         };
     }
 
@@ -107,10 +111,69 @@ class NavBar extends React.Component<{
             });
     }
 
+    search(keyword) {
+        const url = '/rest/interpret/wsearch';
+
+        $.ajax({
+            url: url,
+            dataType: 'json',
+            type: 'POST',
+            cache: false,
+            data: JSON.stringify({ keywords: [keyword] }),
+            contentType: 'application/json; charset=utf-8',
+            success: (data) => {
+                console.log(data);
+            },
+            error: (xhr, status, err) => {
+                console.error(xhr.responseText);
+            },
+        });
+    }
+
+    handleChange = (e, { value }) => this.setState({ value });
+
+    handleResultSelect = (e, { result }) => {
+        window.open('/worksheets/' + result.uuid, '_self');
+    };
+
+    initialState = { isLoading: false, results: [], value: '' };
+
+    handleSearchChange = (e, { value }) => {
+        this.setState({ isLoading: true, value });
+
+        setTimeout(() => {
+            if (this.state.value.length < 1) return this.setState(this.initialState);
+
+            const re = new RegExp(_.escapeRegExp(this.state.value), 'i');
+            const isMatch = (result) => re.test(result.name);
+
+            const url = '/rest/interpret/wsearch';
+            console.log(value);
+            $.ajax({
+                url: url,
+                dataType: 'json',
+                type: 'POST',
+                cache: false,
+                data: JSON.stringify({ keywords: [value] }),
+                contentType: 'application/json; charset=utf-8',
+                success: (data) => {
+                    console.log(_.filter(data.response, isMatch));
+                    this.setState({
+                        isLoading: false,
+                        results: data.response,
+                    });
+                },
+                error: (xhr, status, err) => {
+                    console.error(xhr.responseText);
+                },
+            });
+        }, 300);
+    };
+
     /** Renderer. */
     render() {
         const { classes } = this.props;
-        const { accountEl } = this.state;
+        const { accountEl, isLoading, value, results, searchQuery } = this.state;
 
         if (this.props.auth.isAuthenticated && this.state.userInfo === undefined) {
             this.fetchName();
@@ -122,7 +185,7 @@ class NavBar extends React.Component<{
             info: InfoIcon,
             warning: WarningIcon,
         }[this.state.snackbarVariant];
-
+        // this.search("coda");
         return (
             <MuiThemeProvider theme={overrideMedia}>
                 <AppBar id='codalab-app-bar' color='default'>
@@ -148,6 +211,16 @@ class NavBar extends React.Component<{
                         )}
                         {this.props.auth.isAuthenticated && (
                             <React.Fragment>
+                                <Search
+                                    loading={isLoading}
+                                    onResultSelect={this.handleResultSelect}
+                                    onSearchChange={_.debounce(this.handleSearchChange, 500, {
+                                        leading: true,
+                                    })}
+                                    results={results}
+                                    value={value}
+                                    showNoResults={false}
+                                />
                                 <Link to='/worksheets?name=dashboard'>
                                     <Button color='primary'>Dashboard</Button>
                                 </Link>
