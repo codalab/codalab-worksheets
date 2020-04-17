@@ -45,6 +45,7 @@ from codalab.rest.worksheet_block_schemas import (
     RecordsRowSchema,
     RecordsBlockSchema,
     GraphBlockSchema,
+    PlaceholderBlockSchema,
     SubworksheetsBlock,
     BundleUUIDSpecSchema,
 )
@@ -976,6 +977,15 @@ def interpret_items(schemas, raw_items, db_model=None):
                 elif command == 'display':
                     # Set display
                     current_display = value_obj[1:]
+                elif command in ('search', 'wsearch'):
+                    # Show item placeholders in brief mode
+                    blocks.append(
+                        PlaceholderBlockSchema()
+                        .load({'directive': formatting.tokens_to_string(value_obj)})
+                        .data
+                    )
+
+                    raw_to_block.append((len(blocks) - 1, 0))
                 else:
                     raise UsageError("unknown directive `%s`" % command)
 

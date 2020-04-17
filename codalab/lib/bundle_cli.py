@@ -1889,6 +1889,9 @@ class BundleCLI(object):
             '  search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).',
             '  search .offset=<offset>                : Return results starting at <offset>.',
             '',
+            '  search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-3-14).',
+            '  search .after=<datetime>               : Returns bundles created after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).',
+            '',
             '  search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).',
             '  search size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).',
             '  search .last                           : Sort in reverse chronological order (equivalent to id=.sort-).',
@@ -3146,6 +3149,8 @@ class BundleCLI(object):
                         '[Worksheet ' + self.simple_worksheet_str(worksheet_info) + ']',
                         file=self.stdout,
                     )
+            elif mode == BlockModes.placeholder_block:
+                print('[Placeholder]', block['directive'], file=self.stdout)
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
 
