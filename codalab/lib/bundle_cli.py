@@ -1926,8 +1926,6 @@ class BundleCLI(object):
             params={'worksheet': worksheet_uuid, 'keywords': args.keywords, 'include': ['owner']},
         )
 
-        print('Note: at most {} results will be shown.'.format(bundle_model.SEARCH_RESULTS_LIMIT))
-
         # Print direct numeric result
         if 'meta' in bundles:
             print(bundles['meta']['result'], file=self.stdout)
@@ -1935,6 +1933,7 @@ class BundleCLI(object):
 
         # Print table
         if len(bundles) > 0:
+            print('Note: at most {} results will be shown.'.format(bundle_model.SEARCH_RESULTS_LIMIT))
             self.print_bundle_info_list(bundles, uuid_only=args.uuid_only, print_ref=False)
         else:
             print('No results found')
