@@ -32,14 +32,19 @@ export default forwardRef((props, ref) => {
     const [item, setItem] = useState(undefined);
     const [error, setError] = useState(false);
     const { worksheetUUID, onAsyncItemLoad, itemHeight } = props;
-    const { directive } = props.item;
+    const { directive, header } = props.item;
     useEffect(() => {
         (async function() {
             try {
                 const { items } = await fetchData({ directive, worksheetUUID });
                 setItem(items.length === 0 ? null : items[0]);
                 if (items.length > 0) {
-                    onAsyncItemLoad(items[0]);
+                    let actualBundleTableItem = items[0];
+                    // replace with schema header if there is one
+                    if (header) {
+                        actualBundleTableItem['header'] = header;
+                    }
+                    onAsyncItemLoad(actualBundleTableItem);
                 }
             } catch (e) {
                 console.error(e);
@@ -50,6 +55,7 @@ export default forwardRef((props, ref) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [directive, worksheetUUID]);
     if (error) {
+        console.log(error);
         return <div ref={ref}>Error loading item.</div>;
     }
     if (item === null) {

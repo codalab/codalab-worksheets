@@ -188,4 +188,6 @@ class SubworksheetsBlock(WorksheetBlockSchema):
 
 class PlaceholderBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.placeholder_block)
+    # Needed because expanded search tables can also have schemas
+    header = fields.List(fields.String(), required=True)
     directive = fields.String()

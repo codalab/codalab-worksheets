@@ -449,6 +449,9 @@ class Worksheet extends React.Component {
         if (item && (!item.props || !item.props.item)) {
             // Skip "no search results" items and scroll past them.
             const offset = index - this.state.focusIndex;
+            if (offset === 0) {
+                return;
+            }
             this.setFocus(index + offset, subIndex, shouldScroll);
             return;
         }

@@ -850,6 +850,13 @@ Return information about a worksheet. Calls
 In the future, for large worksheets, might want to break this up so
 that we can render something basic.
 
+This endpoint can be called with &brief=1 in order to give an abbreviated version,
+which does not resolve searches or wsearches.
+
+To return an interpreted worksheet that only resolves a particular search/wsearch,
+pass in the search query to the "directive" argument. The value for this argument
+must be a search/wsearch query -- for example, &directive=search 0x .limit=100
+
 
 &uarr; [Back to Top](#table-of-contents)
 ## Worksheet Items API
