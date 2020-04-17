@@ -979,14 +979,9 @@ def interpret_items(schemas, raw_items, db_model=None):
                     current_display = value_obj[1:]
                 elif command in ('search', 'wsearch'):
                     # Show item placeholders in brief mode
-                    args = current_display[1:]
-                    schema = get_schema(args)
-                    header = tuple(name for (name, genpath, post) in schema)
                     blocks.append(
                         PlaceholderBlockSchema()
-                        .load(
-                            {'directive': formatting.tokens_to_string(value_obj), 'header': header}
-                        )
+                        .load({'directive': formatting.tokens_to_string(value_obj)})
                         .data
                     )
 
@@ -1028,7 +1023,8 @@ def interpret_items(schemas, raw_items, db_model=None):
                 MarkupBlockSchema()
                 .load(
                     {
-                        'text': 'Unexpected error while parsing line %d' % (raw_index + 1),
+                        'text': 'Unexpected error while parsing line %d, %s'
+                        % (raw_index + 1, traceback.format_exc()),
                         'error': True,
                     }
                 )

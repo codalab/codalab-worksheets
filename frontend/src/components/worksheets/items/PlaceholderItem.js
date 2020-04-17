@@ -39,12 +39,7 @@ export default forwardRef((props, ref) => {
                 const { items } = await fetchData({ directive, worksheetUUID });
                 setItem(items.length === 0 ? null : items[0]);
                 if (items.length > 0) {
-                    let actualBundleTableItem = items[0];
-                    // replace with schema header if there is one
-                    if (header) {
-                        actualBundleTableItem['header'] = header;
-                    }
-                    onAsyncItemLoad(actualBundleTableItem);
+                    onAsyncItemLoad(items[0]);
                 }
             } catch (e) {
                 console.error(e);
