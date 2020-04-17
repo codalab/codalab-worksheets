@@ -1101,8 +1101,12 @@ class Worksheet extends React.Component {
         { moveIndex = false, textDeleted = false } = {},
     ) => {
         let itemHeights = {};
-        for (let refName in this.refs.list.refs) {
-            itemHeights[refName] = ReactDOM.findDOMNode(this.refs.list.refs[refName]).clientHeight;
+        if (this.refs.list && this.refs.list.refs) {
+            for (let refName in this.refs.list.refs) {
+                itemHeights[refName] = ReactDOM.findDOMNode(
+                    this.refs.list.refs[refName],
+                ).clientHeight;
+            }
         }
         this.setState({ itemHeights });
         if (partialUpdateItems === undefined) {
