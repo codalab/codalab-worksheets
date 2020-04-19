@@ -15,6 +15,7 @@ jobs:
         with:
           python-version: 3.6
       - run: python3 codalab_service.py build services --pull --version master
+      - run: sudo chown -R $(id -u):$(id -g) /var/lib/docker
       - uses: actions/cache@v1
         with:
           path: /var/lib/docker
@@ -36,6 +37,6 @@ jobs:
           path: /var/lib/docker
           key: docker-${{ github.sha }}
       - run: python3 codalab_service.py start --services default monitor --version master
-      - run: python3 codalab_service.py test $TEST
+      - run: python3 codalab_service.py test ${TEST}
         env:
           TEST: ${{ matrix.test }}
