@@ -95,6 +95,8 @@ def run_command(
         return string
 
     # If we don't care about the exit code, set `expected_exit_code` to None.
+    print(">>", *map(str, args), sep=" ")
+    sys.stdout.flush()
 
     try:
         kwargs = dict(env=env)
@@ -133,14 +135,9 @@ def run_command(
     if exitcode != expected_exit_code:
         verbose = True
     if verbose:
-        print(">>", *map(str, args), sep=" ")
-        sys.stdout.flush()
         print(colorize(" (exit code %s, expected %s%s)" % (exitcode, expected_exit_code, extra)))
         sys.stdout.flush()
         print(sanitize(output, max_output_chars))
-        sys.stdout.flush()
-    else:
-        print(">>", *map(str, args), sep=" ")
         sys.stdout.flush()
     if exitcode != expected_exit_code:
         raise AssertionError('Exit codes don\'t match')
