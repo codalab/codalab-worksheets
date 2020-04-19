@@ -26,7 +26,7 @@ jobs:
     needs: [build]
     strategy:
       matrix:
-        test: [unittest, gen-rest-docs, gen-cli-docs, gen-readthedocs, basic, upload1, upload2, upload3, upload4, download, refs, binary, rm, make, worksheet, worksheet_search, worksheet_tags, freeze, detach, perm, search, search_time, run, read, kill, write, mimic, status, batch, resources, groups, netcat, netcurl, anonymous, competition, unicode, workers, rest1, worksheets]
+        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs, basic upload1 upload2 upload3, upload4 download refs binary, rm make worksheet worksheet_search, worksheet_tags freeze detach perm, search search_time run read, kill write mimic status, batch resources groups netcat, netcurl anonymous competition unicode, workers rest1 worksheets]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
