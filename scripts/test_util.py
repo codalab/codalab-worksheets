@@ -140,7 +140,7 @@ def run_command(
         print(sanitize(output, max_output_chars))
         sys.stdout.flush()
     else:
-        print(".", end="")
+        print(">>", *map(str, args), sep=" ")
         sys.stdout.flush()
     if exitcode != expected_exit_code:
         raise AssertionError('Exit codes don\'t match')
