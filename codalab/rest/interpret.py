@@ -299,7 +299,6 @@ def fetch_interpreted_worksheet(uuid):
     worksheet_info['raw_to_block'] = interpreted_blocks['raw_to_block']
     worksheet_info['block_to_raw'] = interpreted_blocks['block_to_raw']
 
-
     if directive:
         # If we're only async loading a single table_block / subworksheets_block,
         # return only that block (which is at the end of worksheet_info['items'])
@@ -688,7 +687,7 @@ def perform_search_query(value_obj):
 
 
 def expand_search_items(raw_items):
-    return 
+    return
 
 
 def expand_search_item(raw_item):
