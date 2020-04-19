@@ -12,9 +12,19 @@ import RecordItem from './items/RecordItem';
 import TableItem from './items/TableItem';
 import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
+import PlaceholderItem from './items/PlaceholderItem';
 import NewUpload from './NewUpload/NewUpload';
 
-////////////////////////////////////////////////////////////
+export const BLOCK_TO_COMPONENT = {
+    markup_block: MarkdownItem,
+    table_block: TableItem,
+    contents_block: ContentsItem,
+    subworksheets_block: WorksheetItem,
+    record_block: RecordItem,
+    image_block: ImageItem,
+    graph_block: GraphItem,
+    placeholder_block: PlaceholderItem,
+};
 
 // Create a worksheet item based on props and add it to worksheet_items.
 // - item: information about the table to display
@@ -39,18 +49,11 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
     props.key = props.ref = 'item' + props.focusIndex;
     props.url = url;
     props.prevItem = prevItem;
+    props.itemHeight = (props.itemHeights || {})[props.ref] || 100;
 
-    var constructor = {
-        markup_block: MarkdownItem,
-        table_block: TableItem,
-        contents_block: ContentsItem,
-        subworksheets_block: WorksheetItem,
-        record_block: RecordItem,
-        image_block: ImageItem,
-        graph_block: GraphItem,
-    }[item.mode];
+    const constructor = BLOCK_TO_COMPONENT[item.mode];
 
-    var elem;
+    let elem;
     if (constructor) {
         elem = React.createElement(constructor, props);
     } else {
@@ -77,6 +80,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             showNewText={props.focusedForButtons && props.showNewText}
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
+            key={props.key}
         >
             {elem}
         </ItemWrapper>,
@@ -251,6 +255,8 @@ class WorksheetItemList extends React.Component {
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
                         setDeleteItemCallback: this.props.setDeleteItemCallback,
                         editPermission: info && info.edit_permission,
+                        onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
+                        itemHeights: this.props.itemHeights,
                     };
                     addWorksheetItems(
                         props,
