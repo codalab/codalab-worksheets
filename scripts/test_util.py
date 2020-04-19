@@ -141,6 +141,7 @@ def run_command(
         sys.stdout.flush()
     else:
         print(".", end="")
+        sys.stdout.flush()
     if exitcode != expected_exit_code:
         raise AssertionError('Exit codes don\'t match')
     return output.rstrip()
