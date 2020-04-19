@@ -57,7 +57,8 @@ jobs:
           path: /var/lib/docker
           key: docker-${{ github.sha }}
       - run: pip install -r requirements.txt
-      - run: python3 codalab_service.py start --services default monitor --version master
-      - run: docker exec -it codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
-      - run: python3 codalab_service.py test ${TEST}
-      - run: python3 tests/ui/ui_tester.py --headless
+      - run: |
+        python3 codalab_service.py start --services default monitor --version master
+        docker exec -it codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
+        python3 codalab_service.py test ${TEST}
+        python3 tests/ui/ui_tester.py --headless
