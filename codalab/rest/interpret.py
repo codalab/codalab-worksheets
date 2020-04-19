@@ -238,8 +238,8 @@ def fetch_interpreted_worksheet(uuid):
             expanded = expand_search_item(raw_item)
             expanded_items.append(expanded)
             # Multiple items can correspond to the same source line (i.e: search directives)
-            raw_items_to_source_index.extend([index] * len(expanded))
-        worksheet_info['blocks'] = list(chain.from_iterable(expanded_items))
+            # raw_items_to_source_index.extend([index] * len(expanded))
+        worksheet_info['items'] = list(chain.from_iterable(expanded_items))
     elif directive:
         # Only expand the search item corresponding to the given directive.
         # Used in async loading to only load a single table.
