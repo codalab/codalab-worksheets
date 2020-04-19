@@ -36,7 +36,28 @@ jobs:
         with:
           path: /var/lib/docker
           key: docker-${{ github.sha }}
-      - run: python3 codalab_service.py start --services default monitor --version master
-      - run: python3 codalab_service.py test ${TEST}
+      - run: |
+          python3 codalab_service.py start --services default monitor --version ${VERSION}
+          python3 codalab_service.py test --version ${VERSION} ${TEST}
+          docker restart codalab_worker_1
+          python3 codalab_service.py test --version ${VERSION} run
+          docker stop codalab_worker_1
+          python3 codalab_service.py start --services worker --version ${VERSION} --shared-file-system
+          python3 codalab_service.py test --version ${VERSION} --shared-file-system ${TEST}
         env:
           TEST: ${{ matrix.test }}
+          VERSION: master
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - uses: actions/cache@v1
+        with:
+          path: /var/lib/docker
+          key: docker-${{ github.sha }}
+      - run: pip install -r requirements.txt
+      - run: python3 codalab_service.py start --services default monitor --version master
+      - run: docker exec -it codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
+      - run: python3 codalab_service.py test ${TEST}
+      - run: python3 tests/ui/ui_tester.py --headless
