@@ -15,10 +15,10 @@ jobs:
         with:
           python-version: 3.6
       - run: python3 codalab_service.py build services --pull --version master
-      - run: sudo chown -R $(id -u):$(id -g) /var/lib/docker
+      - run: sudo mv /var/lib/docker docker
       - uses: actions/cache@v1
         with:
-          path: /var/lib/docker
+          path: docker
           key: docker-${{ github.sha }}
   test:
     name: Test
@@ -32,14 +32,14 @@ jobs:
       - uses: actions/setup-python@v1
         with:
           python-version: 3.6
-      - run: sudo cp -R /var/lib/docker docker-cache
       - uses: actions/cache@v1
         id: cache-docker
         with:
-          path: docker-cache
+          path: docker
           key: docker-${{ github.sha }}
       - if: steps.cache-docker.outputs.cache-hit != 'true'
         run: exit 1
+      - run: sudo mv docker /var/lib/docker
       - run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
           python3 codalab_service.py test --version ${VERSION} ${TEST}
@@ -62,9 +62,11 @@ jobs:
           python-version: 3.6
       - uses: actions/cache@v1
         with:
-          path: docker-cache
+          path: docker
           key: docker-${{ github.sha }}
-      - run: sudo cp -R docker-cache /var/lib/docker
+      - if: steps.cache-docker.outputs.cache-hit != 'true'
+        run: exit 1
+      - run: sudo mv docker /var/lib/docker
       - run: pip install -r requirements.txt
       - run: |
           python3 codalab_service.py start --services default monitor --version master
