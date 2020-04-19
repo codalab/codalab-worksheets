@@ -18,6 +18,8 @@ jobs:
         working-directory: ./frontend
       - run: npm run check-ci
         working-directory: ./frontend
+        env:
+          CI: true
   format_backend:
     name: Format Backend
     runs-on: ubuntu-latest
