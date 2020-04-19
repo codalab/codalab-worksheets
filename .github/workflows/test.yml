@@ -14,7 +14,7 @@ jobs:
       - uses: actions/setup-python@v1
         with:
           python-version: 3.6
-      - run: python3 codalab_service.py build services --pull # --version ${GITHUB_SHA}
+      - run: python3 codalab_service.py build services --pull --version master
       - uses: actions/cache@v1
         with:
           path: /var/lib/docker
@@ -35,7 +35,7 @@ jobs:
         with:
           path: /var/lib/docker
           key: docker-${{ github.sha }}
-      - run: python3 codalab_service.py start --services default monitor
+      - run: python3 codalab_service.py start --services default monitor --version master
       - run: python3 codalab_service.py test $TEST
         env:
           TEST: ${{ matrix.test }}
