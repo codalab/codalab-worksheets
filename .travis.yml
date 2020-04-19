@@ -89,6 +89,7 @@ jobs:
         - export PATH=$PATH:/usr/bin/geckodriver
       script:
         - python3 codalab_service.py start --services default monitor --version ${TRAVIS_BRANCH}
+        - docker exec -it codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
         - python3 tests/ui/ui_tester.py --headless
     - stage: deploy
       script: echo "Deploying"
