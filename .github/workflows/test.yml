@@ -32,10 +32,11 @@ jobs:
       - uses: actions/setup-python@v1
         with:
           python-version: 3.6
+      - run: sudo cp -R /var/lib/docker docker-cache
       - uses: actions/cache@v1
         id: cache-docker
         with:
-          path: /var/lib/docker
+          path: docker-cache
           key: docker-${{ github.sha }}
       - if: steps.cache-docker.outputs.cache-hit != 'true'
         run: exit 1
@@ -61,8 +62,9 @@ jobs:
           python-version: 3.6
       - uses: actions/cache@v1
         with:
-          path: /var/lib/docker
+          path: docker-cache
           key: docker-${{ github.sha }}
+      - run: sudo cp -R docker-cache /var/lib/docker
       - run: pip install -r requirements.txt
       - run: |
           python3 codalab_service.py start --services default monitor --version master
