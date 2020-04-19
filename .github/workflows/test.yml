@@ -33,9 +33,12 @@ jobs:
         with:
           python-version: 3.6
       - uses: actions/cache@v1
+        id: cache-docker
         with:
           path: /var/lib/docker
           key: docker-${{ github.sha }}
+      - if: steps.cache-docker.outputs.cache-hit != 'true'
+        run: exit 1
       - run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
           python3 codalab_service.py test --version ${VERSION} ${TEST}
