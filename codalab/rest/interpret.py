@@ -685,6 +685,7 @@ def perform_search_query(value_obj):
         # Not a search query
         return []
 
+
 def expand_search_item(raw_item):
     """
     Raw items that include searches must be expanded into more raw items.
