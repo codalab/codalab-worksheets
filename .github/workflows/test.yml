@@ -11,8 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Python 3.6
-        uses: actions/setup-python@v1
+      - uses: actions/setup-python@v1
         with:
           python-version: 3.6
       - run: python3 codalab_service.py build services --pull # --version ${GITHUB_SHA}
@@ -29,6 +28,9 @@ jobs:
         test: [unittest, gen-rest-docs, gen-cli-docs, gen-readthedocs, basic, upload1, upload2, upload3, upload4, download, refs, binary, rm, make, worksheet, worksheet_search, worksheet_tags, freeze, detach, perm, search, search_time, run, read, kill, write, mimic, status, batch, resources, groups, netcat, netcurl, anonymous, competition, unicode, workers, rest1, worksheets]
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
       - uses: actions/cache@v1
         with:
           path: /var/lib/docker
