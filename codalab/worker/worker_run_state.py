@@ -184,7 +184,7 @@ class RunStateMachine(StateTransitioner):
             )
             logger.error(message)
             logger.error(traceback.format_exc())
-            return run_state._replace(stage=RunStage.CLEANING_UP, is_reclaimed=True)
+            return run_state._replace(run_status=message)
 
         dependencies_ready = True
         status_messages = []
