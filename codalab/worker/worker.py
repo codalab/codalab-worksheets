@@ -63,7 +63,7 @@ class Worker:
         docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.
-        terminate=False,  # type: bool
+        pass_down_termination=False,  # type: bool
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -92,12 +92,14 @@ class Worker:
         self.idle_seconds = idle_seconds
 
         self.stop = False
-        self.terminate = terminate
+        self.terminate_signal = False
+        self.pass_down_termination = pass_down_termination
 
         self.last_checkin_successful = False
         self.last_time_ran = None  # type: Optional[bool]
 
         self.runs = {}  # type: Dict[str, RunState]
+        self.reclaimed_bundles = {}
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
             docker_image_manager=self.image_manager,
@@ -183,14 +185,11 @@ class Worker:
                 self.process_runs()
                 self.save_state()
                 self.checkin()
+                self.process_terminate_signal()
+                # Save state for one last time: excluded all the bundles in FINISHED and RECLAIMED state
                 self.save_state()
-                # Wait until existing bundles finished uploading their final status
-                if self.terminate:
-                    if self.terminate_containers() == 0:
-                        self.stop = True
                 if self.check_idle_stop():
                     self.stop = True
-                    break
             except Exception:
                 self.last_checkin_successful = False
                 traceback.print_exc()
@@ -198,24 +197,6 @@ class Worker:
                 logger.error('Sleeping for 1 hour due to exception...please help me!')
                 time.sleep(1 * 60 * 60)
         self.cleanup()
-
-    def terminate_containers(self):
-        """
-        Clean up bundle containers by moving all the existing unfinished bundles to terminal states.
-
-        :returns: the number of unfinished bundles.
-        """
-        unfinished_bundles = []
-        for bundle_uuid in self.runs:
-            run_state = self.runs[bundle_uuid]
-            if run_state.stage != RunStage.FINISHED and run_state.container_id is not None:
-                run_state = run_state._replace(
-                    kill_message='Received termination signal to kill the bundle', is_killed=True
-                )
-                self.runs[bundle_uuid] = self.run_state_manager.transition(run_state)
-                unfinished_bundles.append(bundle_uuid)
-        logger.info("Terminating running bundles {}.".format(','.join(unfinished_bundles)))
-        return len(unfinished_bundles)
 
     def cleanup(self):
         """
@@ -242,6 +223,36 @@ class Worker:
         # the worker without changing the status of existing running bundles.
         if not self.terminate:
             self.stop = True
+        else:
+            self.terminate_signal = True
+
+    def process_terminate_signal(self):
+        if self.terminate_signal:
+            if self.pass_down_termination:
+                if self.reclaim_bundles() == 0:
+                    self.stop = True
+            else:
+                self.stop = True
+
+    def reclaim_bundles(self):
+        reclaimed_bundles = []
+        for uuid in self.runs:
+            run_state = self.runs[uuid]
+            if run_state.stage not in [RunStage.FINISHED, RunStage.RECLAIMED]:
+                self.reclaim(uuid)
+                reclaimed_bundles.append(uuid)
+        if len(reclaimed_bundles) == 0:
+            # reset the current runs to exclude bundles in terminal states: RECLAIMED and FINISHED
+            self.runs = {
+                uuid: run_state
+                for uuid, run_state in self.runs.items()
+                if run_state.stage not in [RunStage.RECLAIMED, RunStage.FINISHED]
+            }
+        else:
+            logger.info(
+                "Sending bundles: {} back to staged state.".format(','.join(reclaimed_bundles))
+            )
+        return len(reclaimed_bundles)
 
     @property
     def cached_dependencies(self):
@@ -292,12 +303,13 @@ class Worker:
                 time.sleep(self.CHECKIN_COOLDOWN)
             self.last_checkin_successful = False
             response = None
+
         if not response:
             return
         action_type = response['type']
         logger.debug('Received %s message: %s', action_type, response)
         if action_type == 'run':
-            self.run(response['bundle'], response['resources'])
+            self.initialize_bundle_run(response['bundle'], response['resources'])
         else:
             uuid = response['uuid']
             socket_id = response.get('socket_id', None)
@@ -320,12 +332,12 @@ class Worker:
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
-        # transition all runs
-        for bundle_uuid in self.runs.keys():
-            run_state = self.runs[bundle_uuid]
-            self.runs[bundle_uuid] = self.run_state_manager.transition(run_state)
+        # 2. transition all runs
+        for uuid in self.runs:
+            run_state = self.runs[uuid]
+            self.runs[uuid] = self.run_state_manager.transition(run_state)
 
-        # filter out finished runs
+        # 3. filter out finished runs and clean up containers
         finished_container_ids = [
             run.container
             for run in self.runs.values()
@@ -338,7 +350,14 @@ class Worker:
                 container.remove(force=True)
             except (docker.errors.NotFound, docker.errors.NullResource):
                 pass
-        self.runs = {k: v for k, v in self.runs.items() if v.stage != RunStage.FINISHED}
+
+        # 4. reset runs for the current worker
+        self.runs = {
+            uuid: run_state
+            for uuid, run_state in self.runs.items()
+            if run_state.stage != RunStage.FINISHED
+        }
+        logger.info("runs are = {}".format(self.runs.keys()))
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
@@ -427,7 +446,7 @@ class Worker:
             logger.error("{}: {}".format(error_msg, str(e)))
             return None
 
-    def run(self, bundle, resources):
+    def initialize_bundle_run(self, bundle, resources):
         """
         First, checks in with the bundle service and sees if the bundle
         is still assigned to this worker. If not, returns immediately.
@@ -472,6 +491,7 @@ class Worker:
                 kill_message=None,
                 finished=False,
                 finalized=False,
+                is_reclaimed=False,
             )
         else:
             print(
@@ -484,6 +504,9 @@ class Worker:
         Marks the run as killed so that the next time its state is processed it is terminated.
         """
         self.runs[uuid] = self.runs[uuid]._replace(kill_message='Kill requested', is_killed=True)
+
+    def reclaim(self, uuid):
+        self.runs[uuid] = self.runs[uuid]._replace(is_reclaimed=True)
 
     def mark_finalized(self, uuid):
         """
