@@ -77,7 +77,6 @@ def run_command(
     include_stderr=False,
     binary=False,
     force_subprocess=False,
-    verbose=False,
 ):
     # We import the following imports here because codalab_service.py imports TestModule from
     # this file. If we kept the imports at the top, then anyone who ran codalab_service.py
@@ -132,15 +131,11 @@ def run_command(
     else:
         colorize = Colorizer.cyan
         extra = ''
-    if exitcode != expected_exit_code:
-        verbose = True
-    if verbose:
-        print(colorize(" (exit code %s, expected %s%s)" % (exitcode, expected_exit_code, extra)))
-        sys.stdout.flush()
-        print(sanitize(output, max_output_chars))
-        sys.stdout.flush()
-    if exitcode != expected_exit_code:
-        raise AssertionError('Exit codes don\'t match')
+    print(colorize(" (exit code %s, expected %s%s)" % (exitcode, expected_exit_code, extra)))
+    sys.stdout.flush()
+    print(sanitize(output, max_output_chars))
+    sys.stdout.flush()
+    assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
 
 
