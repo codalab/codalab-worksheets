@@ -111,6 +111,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, build_frontend]
     steps:
+      - name: Clear free space
+        run: |
+            sudo rm -rf /usr/share/dotnet
+            sudo rm -rf /opt/ghc
+            df -h
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
