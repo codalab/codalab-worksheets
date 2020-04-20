@@ -15,7 +15,8 @@ jobs:
         with:
           python-version: 3.6
       - run: python3 codalab_service.py build services --pull --version master
-      - run: sudo cp -r --no-preserve=mode,ownership /var/lib/docker docker
+      - run: sudo mv /var/lib/docker docker
+      - run: sudo chown -R $USER docker
       - uses: actions/cache@v1
         with:
           path: docker
