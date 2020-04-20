@@ -9,17 +9,21 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [rest-server, frontend, worker]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
           python-version: 3.6
       # https://stackoverflow.com/questions/58033366/how-to-get-current-branch-within-github-actions#comment102508135_58034787
-      - run: python3 codalab_service.py build services --pull --version ${VERSION} --push
+      - run: python3 codalab_service.py build --pull --version ${VERSION} --push -s ${SERVICE}
         env:
           CODALAB_DOCKER_USERNAME: ${{ secrets.CODALAB_DOCKER_USERNAME }}
           CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}
           VERSION: ${{ github.head_ref }}
+          SERVICE: ${{ matrix.service }}
   test:
     name: Test
     runs-on: ubuntu-latest
