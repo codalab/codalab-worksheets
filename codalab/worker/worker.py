@@ -303,7 +303,6 @@ class Worker:
                 time.sleep(self.CHECKIN_COOLDOWN)
             self.last_checkin_successful = False
             response = None
-
         if not response:
             return
         action_type = response['type']
@@ -332,12 +331,12 @@ class Worker:
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
-        # 2. transition all runs
+        # 1. transition all runs
         for uuid in self.runs:
             run_state = self.runs[uuid]
             self.runs[uuid] = self.run_state_manager.transition(run_state)
 
-        # 3. filter out finished runs and clean up containers
+        # 2. filter out finished runs and clean up containers
         finished_container_ids = [
             run.container
             for run in self.runs.values()
@@ -351,13 +350,12 @@ class Worker:
             except (docker.errors.NotFound, docker.errors.NullResource):
                 pass
 
-        # 4. reset runs for the current worker
+        # 3. reset runs for the current worker
         self.runs = {
             uuid: run_state
             for uuid, run_state in self.runs.items()
             if run_state.stage != RunStage.FINISHED
         }
-        logger.info("runs are = {}".format(self.runs.keys()))
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
