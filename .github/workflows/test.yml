@@ -6,6 +6,31 @@ on:
     branches: [ master ]
 
 jobs:
+  format_frontend:
+    name: Format Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 10.x
+      - run: npm install
+        working-directory: ./frontend
+      - run: npm run check-ci
+        working-directory: ./frontend
+        env:
+          CI: true
+  format_backend:
+    name: Format Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.6
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - run: pip install --upgrade black==18.9b0
+      - run: black . --check --diff
   build:
     name: Build
     runs-on: ubuntu-latest
