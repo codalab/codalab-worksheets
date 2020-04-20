@@ -68,7 +68,7 @@ jobs:
   test_backend:
     name: Test backend
     runs-on: ubuntu-latest
-    needs: [build_backend]
+    needs: [build_backend, build_frontend]
     strategy:
       matrix:
         test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs, basic upload1 upload2 upload3, upload4 download refs binary, rm make worksheet worksheet_search, worksheet_tags freeze detach perm, search search_time run read, kill write mimic status, batch resources groups netcat, netcurl anonymous competition unicode, workers rest1 worksheets]
@@ -90,7 +90,7 @@ jobs:
         env:
           VERSION: ${{ github.head_ref }}
       - name: Run tests
-          python3 codalab_service.py start --services default monitor no-frontend --version ${VERSION}
+          python3 codalab_service.py start --services default monitor --version ${VERSION}
           python3 codalab_service.py test --version ${VERSION} ${TEST}
           docker restart codalab_worker_1
           python3 codalab_service.py test --version ${VERSION} run
