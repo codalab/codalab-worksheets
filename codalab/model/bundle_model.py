@@ -992,7 +992,7 @@ class BundleModel(object):
                 return False
 
             # Get staged bundle from worker side checkin, move it to staged state
-            if worker_run.state == State.RECLAIMED:
+            if worker_run.state == State.RESTAGED:
                 return self.transition_bundle_staged(bundle)
 
             if worker_run.state == State.FINALIZING:

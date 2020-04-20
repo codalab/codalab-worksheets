@@ -92,7 +92,7 @@ class Worker:
         self.idle_seconds = idle_seconds
 
         self.stop = False
-        self.terminate_and_reclaim = False
+        self.terminate_and_restage = False
         self.pass_down_termination = pass_down_termination
 
         self.last_checkin_successful = False
@@ -185,7 +185,7 @@ class Worker:
                 self.save_state()
                 self.checkin()
                 self.process_terminate_signal()
-                # Save state for one last time: excludes all the bundles in terminal states: FINISHED or RECLAIMED.
+                # Save state for one last time: excludes all the bundles in terminal states: FINISHED or RESTAGED.
                 self.save_state()
                 if self.check_idle_stop():
                     self.stop = True
@@ -220,39 +220,39 @@ class Worker:
     def signal(self):
         # When the pass_down_termination flag is False, set the stop flag to stop running
         # the worker without changing the status of existing running bundles. Otherwise,
-        # restage all bundles that are not in the terminal states [FINISHED, RECLAIMED].
+        # restage all bundles that are not in the terminal states [FINISHED, RESTAGED].
         if not self.pass_down_termination:
             self.stop = True
         else:
-            self.terminate_and_reclaim = True
+            self.terminate_and_restage = True
 
     def process_terminate_signal(self):
-        if self.terminate_and_reclaim:
+        if self.terminate_and_restage:
             if self.pass_down_termination:
-                if self.reclaim_bundles() == 0:
+                if self.restage_bundles() == 0:
                     self.stop = True
             else:
                 self.stop = True
 
-    def reclaim_bundles(self):
-        reclaimed_bundles = []
+    def restage_bundles(self):
+        restaged_bundles = []
         for uuid in self.runs:
             run_state = self.runs[uuid]
-            if run_state.stage not in [RunStage.FINISHED, RunStage.RECLAIMED]:
-                self.reclaim(uuid)
-                reclaimed_bundles.append(uuid)
-        if len(reclaimed_bundles) == 0:
-            # reset the current runs to exclude bundles in terminal states: RECLAIMED and FINISHED
+            if run_state.stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
+                self.restage(uuid)
+                restaged_bundles.append(uuid)
+        if len(restaged_bundles) == 0:
+            # reset the current runs to exclude bundles in terminal states: RESTAGED and FINISHED
             self.runs = {
                 uuid: run_state
                 for uuid, run_state in self.runs.items()
-                if run_state.stage not in [RunStage.RECLAIMED, RunStage.FINISHED]
+                if run_state.stage not in [RunStage.RESTAGED, RunStage.FINISHED]
             }
         else:
             logger.info(
-                "Sending bundles: {} back to staged state.".format(','.join(reclaimed_bundles))
+                "Sending bundles: {} back to staged state.".format(','.join(restaged_bundles))
             )
-        return len(reclaimed_bundles)
+        return len(restaged_bundles)
 
     @property
     def cached_dependencies(self):
@@ -304,7 +304,7 @@ class Worker:
             self.last_checkin_successful = False
             response = None
         # Stop processing any new runs received from server
-        if not response or self.terminate_and_reclaim or self.stop:
+        if not response or self.terminate_and_restage or self.stop:
             return
         action_type = response['type']
         logger.debug('Received %s message: %s', action_type, response)
@@ -490,7 +490,7 @@ class Worker:
                 kill_message=None,
                 finished=False,
                 finalized=False,
-                is_reclaimed=False,
+                is_restaged=False,
             )
         else:
             print(
@@ -504,8 +504,8 @@ class Worker:
         """
         self.runs[uuid] = self.runs[uuid]._replace(kill_message='Kill requested', is_killed=True)
 
-    def reclaim(self, uuid):
-        self.runs[uuid] = self.runs[uuid]._replace(is_reclaimed=True)
+    def restage(self, uuid):
+        self.runs[uuid] = self.runs[uuid]._replace(is_restaged=True)
 
     def mark_finalized(self, uuid):
         """

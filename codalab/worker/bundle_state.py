@@ -31,7 +31,7 @@ class State(object):
     # Assigned worker has gone offline
     WORKER_OFFLINE = 'worker_offline'
     # Reclaimed bundles from worker
-    RECLAIMED = 'reclaimed'
+    RESTAGED = 'restaged'
 
     OPTIONS = {CREATED, STAGED, MAKING, STARTING, RUNNING, READY, FAILED, PREPARING, FINALIZING}
     ACTIVE_STATES = {MAKING, STARTING, RUNNING, FINALIZING, PREPARING}
