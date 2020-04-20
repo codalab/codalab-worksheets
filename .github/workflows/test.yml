@@ -111,6 +111,7 @@ jobs:
         env:
           VERSION: ${{ github.head_ref }}
       - uses: actions/upload-artifact@v1
+        if: failure()
         with:
           name: results
           path: test/ui
