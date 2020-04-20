@@ -102,6 +102,8 @@ jobs:
       - run: |
           sudo service mysql stop
           pip install -r requirements.txt
+          ./scripts/test-setup.sh
+          export PATH=$PATH:/usr/bin/geckodriver
           python3 codalab_service.py pull --version ${VERSION}
           python3 codalab_service.py start --services default monitor --version ${VERSION}
           docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
