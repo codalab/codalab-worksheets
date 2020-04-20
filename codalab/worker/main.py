@@ -133,7 +133,7 @@ def parse_args():
         help='To be used when the worker should only run bundles that match the worker\'s tag.',
     )
     parser.add_argument(
-        '--pass-down-termination',
+        '--terminate',
         action='store_true',
         help='Terminate the worker and kill all the existing running bundles.',
     )
@@ -228,7 +228,7 @@ def main():
         args.tag_exclusive,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
-        pass_down_termination=args.pass_down_termination,
+        terminate=args.terminate,
     )
 
     # Register a signal handler to ensure safe shutdown.

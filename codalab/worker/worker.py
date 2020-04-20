@@ -92,14 +92,13 @@ class Worker:
         self.idle_seconds = idle_seconds
 
         self.stop = False
-        self.terminate_signal = False
+        self.terminate_and_reclaim = False
         self.pass_down_termination = pass_down_termination
 
         self.last_checkin_successful = False
         self.last_time_ran = None  # type: Optional[bool]
 
         self.runs = {}  # type: Dict[str, RunState]
-        self.reclaimed_bundles = {}
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
             docker_image_manager=self.image_manager,
@@ -186,7 +185,7 @@ class Worker:
                 self.save_state()
                 self.checkin()
                 self.process_terminate_signal()
-                # Save state for one last time: excluded all the bundles in FINISHED and RECLAIMED state
+                # Save state for one last time: excludes all the bundles in terminal states: FINISHED or RECLAIMED.
                 self.save_state()
                 if self.check_idle_stop():
                     self.stop = True
@@ -219,15 +218,16 @@ class Worker:
         logger.info("Stopped Worker. Exiting")
 
     def signal(self):
-        # When the terminate flag is False, set the stop flag to stop running
-        # the worker without changing the status of existing running bundles.
-        if not self.terminate:
+        # When the pass_down_termination flag is False, set the stop flag to stop running
+        # the worker without changing the status of existing running bundles. Otherwise,
+        # restage all bundles that are not in the terminal states [FINISHED, RECLAIMED].
+        if not self.pass_down_termination:
             self.stop = True
         else:
-            self.terminate_signal = True
+            self.terminate_and_reclaim = True
 
     def process_terminate_signal(self):
-        if self.terminate_signal:
+        if self.terminate_and_reclaim:
             if self.pass_down_termination:
                 if self.reclaim_bundles() == 0:
                     self.stop = True
@@ -303,7 +303,8 @@ class Worker:
                 time.sleep(self.CHECKIN_COOLDOWN)
             self.last_checkin_successful = False
             response = None
-        if not response:
+        # Stop processing any new runs received from server
+        if not response or self.terminate_and_reclaim or self.stop:
             return
         action_type = response['type']
         logger.debug('Received %s message: %s', action_type, response)
@@ -356,6 +357,8 @@ class Worker:
             for uuid, run_state in self.runs.items()
             if run_state.stage != RunStage.FINISHED
         }
+
+        logger.info("runs = {}".format(self.runs.keys()))
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
