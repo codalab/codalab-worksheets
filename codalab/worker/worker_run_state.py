@@ -27,6 +27,13 @@ class RunStage(object):
     WORKER_STATE_TO_SERVER_STATE = {}
 
     """
+    This stage will collect bundles in [PREPARING, RUNNING] state and sent 
+    them back to STAGED state
+    """
+    RECLAIMED = 'RUN_STAGE.RECLAIMED'
+    WORKER_STATE_TO_SERVER_STATE[RECLAIMED] = State.RECLAIMED
+
+    """
     This stage involves setting up the directory structure for the run
     and preparing to start the container
     """
@@ -92,6 +99,7 @@ RunState = namedtuple(
         'kill_message',  # Optional[str]
         'finished',  # bool
         'finalized',  # bool
+        'is_reclaimed',  # bool
     ],
 )
 
@@ -125,6 +133,7 @@ class RunStateMachine(StateTransitioner):
         self.add_transition(RunStage.UPLOADING_RESULTS, self._transition_from_UPLOADING_RESULTS)
         self.add_transition(RunStage.FINALIZING, self._transition_from_FINALIZING)
         self.add_terminal(RunStage.FINISHED)
+        self.add_terminal(RunStage.RECLAIMED)
 
         self.dependency_manager = dependency_manager
         self.docker_image_manager = docker_image_manager
@@ -161,7 +170,7 @@ class RunStateMachine(StateTransitioner):
             - Start the docker container
         4- If all is successful, move to RUNNING state
         """
-        if run_state.is_killed:
+        if run_state.is_killed or run_state.is_reclaimed:
             return run_state._replace(stage=RunStage.CLEANING_UP)
 
         # Check CPU and GPU availability
@@ -170,10 +179,12 @@ class RunStateMachine(StateTransitioner):
                 run_state.resources.cpus, run_state.resources.gpus
             )
         except Exception as e:
-            message = "Unexpectedly unable to assign enough resources: %s" % str(e)
+            message = "Unexpectedly unable to assign enough resources to bundle {}: {}".format(
+                run_state.bundle.uuid, str(e)
+            )
             logger.error(message)
             logger.error(traceback.format_exc())
-            return run_state._replace(run_status=message)
+            return run_state._replace(stage=RunStage.CLEANING_UP, is_reclaimed=True)
 
         dependencies_ready = True
         status_messages = []
@@ -316,7 +327,6 @@ class RunStateMachine(StateTransitioner):
         2- If run is killed, kill the container
         3- If run is finished, move to CLEANING_UP state
         """
-
         def check_and_report_finished(run_state):
             try:
                 finished, exitcode, failure_msg = docker_utils.check_finished(run_state.container)
@@ -394,7 +404,7 @@ class RunStateMachine(StateTransitioner):
         run_state = check_and_report_finished(run_state)
         run_state = check_resource_utilization(run_state)
 
-        if run_state.is_killed:
+        if run_state.is_killed or run_state.is_reclaimed:
             if docker_utils.container_exists(run_state.container):
                 try:
                     run_state.container.kill()
@@ -456,6 +466,9 @@ class RunStateMachine(StateTransitioner):
             except Exception:
                 logger.error(traceback.format_exc())
 
+        if run_state.is_reclaimed:
+            return run_state._replace(stage=RunStage.RECLAIMED)
+
         if not self.shared_file_system and run_state.has_contents:
             # No need to upload results since results are directly written to bundle store
             return run_state._replace(
@@ -475,6 +488,8 @@ class RunStateMachine(StateTransitioner):
         If uploading and finished:
             Move to FINALIZING state
         """
+        if run_state.is_reclaimed:
+            return run_state._replace(stage=RunStage.RECLAIMED)
 
         def upload_results():
             try:
@@ -527,6 +542,9 @@ class RunStateMachine(StateTransitioner):
         """
         Prepare the finalize message to be sent with the next checkin
         """
+        if run_state.is_reclaimed:
+            return run_state._replace(stage=RunStage.RECLAIMED)
+
         if run_state.is_killed:
             # Append kill_message, which contains more useful info on why a run was killed, to the failure message.
             failure_message = (

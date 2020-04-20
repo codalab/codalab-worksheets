@@ -784,17 +784,28 @@ class BundleModel(object):
             ).fetchone()
             if not row:
                 raise IntegrityError('Missing bundle with UUID %s' % bundle.uuid)
-            if row.state != State.STARTING:
+            if row.state not in [State.STARTING, State.RECLAIMED]:
                 # It is possible that this method is called on a bundle
                 # that has started running.
                 return False
 
-            update_message = {'state': State.STAGED, 'metadata': {'job_handle': None}}
-            self.update_bundle(bundle, update_message, connection)
+            if row.state == State.RECLAIMED:
+                metadata_update = {
+                    'job_handle': None,
+                    'started': None,
+                    'run_status': None,
+                    'last_updated': None,
+                    'time': None,
+                    'time_user': None,
+                    'time_system': None,
+                    'remote': None,
+                }
+            else:
+                metadata_update = {'state': State.STAGED, 'metadata': {'job_handle': None}}
+            self.update_bundle(bundle, metadata_update, connection)
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
-
             return True
 
     def transition_bundle_preparing(self, bundle, user_id, worker_id, start_time, remote):
@@ -979,6 +990,10 @@ class BundleModel(object):
             if not row:
                 return False
 
+            # Get staged bundle from worker side checkin, move it to staged state
+            if worker_run.state == State.RECLAIMED:
+                return self.transition_bundle_staged(bundle)
+
             if worker_run.state == State.FINALIZING:
                 # update bundle metadata using transition_bundle_running one last time before finalizing it
                 self.transition_bundle_running(
@@ -990,6 +1005,7 @@ class BundleModel(object):
                 return self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
+
             # State isn't one we can check in for
             return False
 
