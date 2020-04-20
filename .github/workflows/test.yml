@@ -49,7 +49,7 @@ jobs:
           VERSION: ${{ github.head_ref }}
           SERVICE: ${{ matrix.service }}
   build_frontend:
-    name: Build frontend
+    name: Build Frontend
     runs-on: ubuntu-latest
     strategy:
       matrix:
