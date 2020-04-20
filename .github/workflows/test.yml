@@ -7,7 +7,7 @@ on:
 
 jobs:
   format_frontend:
-    name: Format Frontend
+    name: Format frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -21,7 +21,7 @@ jobs:
         env:
           CI: true
   format_backend:
-    name: Format Backend
+    name: Format backend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -49,7 +49,7 @@ jobs:
           VERSION: ${{ github.head_ref }}
           SERVICE: ${{ matrix.service }}
   build_frontend:
-    name: Build Frontend
+    name: Build frontend
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -66,7 +66,7 @@ jobs:
           VERSION: ${{ github.head_ref }}
           SERVICE: ${{ matrix.service }}
   test_backend:
-    name: Backend Test
+    name: Test backend
     runs-on: ubuntu-latest
     needs: [build]
     strategy:
@@ -83,9 +83,13 @@ jobs:
       - uses: actions/setup-python@v1
         with:
           python-version: 3.6
-      - run: |
+      - name: Setup tests
+        run: |
           sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
+        env:
+          VERSION: ${{ github.head_ref }}
+      - name: Run tests
           python3 codalab_service.py start --services default monitor no-frontend --version ${VERSION}
           python3 codalab_service.py test --version ${VERSION} ${TEST}
           docker restart codalab_worker_1
@@ -96,18 +100,20 @@ jobs:
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref }}
-      - run: |
+      - name: Save logs on failure
+        run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err; done
         if: failure()
-      - uses: actions/upload-artifact@v1
+      - name: Upload logs on failure
+        uses: actions/upload-artifact@v1
         if: failure()
         with:
           name: logs
           path: /tmp/logs
       
   test_frontend:
-    name: Frontend Test
+    name: Test frontend
     runs-on: ubuntu-latest
     needs: [build, build_frontend]
     steps:
@@ -120,18 +126,24 @@ jobs:
       - uses: actions/setup-python@v1
         with:
           python-version: 3.6
-      - run: |
+      - name: Setup tests
+        run: |
           sudo service mysql stop
+          python3 codalab_service.py pull --version ${VERSION}
           pip install -r requirements.txt
           ./scripts/test-setup.sh
           export PATH=$PATH:/usr/bin/geckodriver
-          python3 codalab_service.py pull --version ${VERSION}
+        env:
+          VERSION: ${{ github.head_ref }}
+      - name: Run tests
+        run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
           docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
           python3 tests/ui/ui_tester.py --headless
         env:
           VERSION: ${{ github.head_ref }}
-      - uses: actions/upload-artifact@v1
+      - name: Upload screenshots on failure
+        uses: actions/upload-artifact@v1
         if: failure()
         with:
           name: results
