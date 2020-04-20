@@ -55,7 +55,7 @@ jobs:
       - run: |
           sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
-          python3 codalab_service.py start --services default monitor --version ${VERSION}
+          python3 codalab_service.py start --services default monitor no-frontend --version ${VERSION}
           python3 codalab_service.py test --version ${VERSION} ${TEST}
           docker restart codalab_worker_1
           python3 codalab_service.py test --version ${VERSION} run
