@@ -63,5 +63,9 @@ jobs:
           python3 tests/ui/ui_tester.py --headless
         env:
           VERSION: ${{ github.head_ref }}
+      - uses: actions/upload-artifact@v1
+        with:
+          name: results
+          path: test/ui
   # deploy:
   #   if: github.event_name == 'push' && github.ref == 'refs/heads/master'
