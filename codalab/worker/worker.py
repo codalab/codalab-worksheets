@@ -236,9 +236,10 @@ class Worker:
 
     def restage_bundles(self):
         restaged_bundles = []
+        terminal_stages = [RunStage.FINISHED, RunStage.RESTAGED]
         for uuid in self.runs:
             run_state = self.runs[uuid]
-            if run_state.stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
+            if run_state.stage not in terminal_stages:
                 self.restage(uuid)
                 restaged_bundles.append(uuid)
         if len(restaged_bundles) == 0:
@@ -246,7 +247,7 @@ class Worker:
             self.runs = {
                 uuid: run_state
                 for uuid, run_state in self.runs.items()
-                if run_state.stage not in [RunStage.RESTAGED, RunStage.FINISHED]
+                if run_state.stage not in terminal_stages
             }
         else:
             logger.info(
