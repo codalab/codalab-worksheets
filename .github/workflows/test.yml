@@ -91,6 +91,16 @@ jobs:
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref }}
+      - run: |
+          mkdir /tmp/logs
+          for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err; done
+        if: failure()
+      - uses: actions/upload-artifact@v1
+        if: failure()
+        with:
+          name: logs
+          path: /tmp/logs
+      
   test_frontend:
     name: Frontend Test
     runs-on: ubuntu-latest
