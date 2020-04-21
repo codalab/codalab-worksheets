@@ -1035,6 +1035,11 @@ class Worksheet extends React.Component {
                 }
 
                 if (rawIndex === undefined) {
+                    focusIndexPair = [this.state.focusIndex, 0].join(",");
+                    rawIndex = this.state.ws.info.block_to_raw[focusIndexPair];
+                }
+
+                if (rawIndex === undefined) {
                     console.error(
                         "Can't map %s (focusIndex %d, subFocusIndex %d) to raw index",
                         focusIndexPair,

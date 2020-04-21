@@ -147,12 +147,12 @@ class TableBlockSchema(WorksheetBlockSchema):
 
     header = fields.List(fields.String(), required=True)
     rows = fields.List(fields.Dict(), required=True)
+    sort_keys = fields.List(fields.Integer())
 
 
 class RecordsRowSchema(PlainSchema):
     key = fields.String(required=True)
     value = fields.Raw(required=True)
-
 
 class RecordsBlockSchema(BundleBlockSchema):
     mode = fields.Constant(BlockModes.record_block)
@@ -161,6 +161,7 @@ class RecordsBlockSchema(BundleBlockSchema):
 
     header = fields.Constant(('key', 'value'))
     rows = fields.Nested(RecordsRowSchema, many=True, required=True)
+    sort_keys = fields.List(fields.Integer())
 
 
 class GraphTrajectorySchema(PlainSchema):
@@ -184,8 +185,9 @@ class GraphBlockSchema(BundleBlockSchema):
 class SubworksheetsBlock(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.subworksheets_block)
     subworksheet_infos = fields.List(fields.Dict, required=True)
-
+    sort_keys = fields.List(fields.Integer())
 
 class PlaceholderBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.placeholder_block)
     directive = fields.String()
+    sort_keys = fields.List(fields.Integer())

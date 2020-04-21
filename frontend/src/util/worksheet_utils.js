@@ -308,11 +308,11 @@ export function getMinMaxKeys(item) {
     }
     let minKey = null;
     let maxKey = null;
-    if (item.mode === 'markup_block') {
+    if (item.mode === 'markup_block' || true) {
         if (item.sort_keys && item.sort_keys.length > 0) {
             const { sort_keys, ids } = item;
             const keys = [];
-            sort_keys.forEach((k, idx) => {
+            sort_keys[0] !== null && sort_keys.forEach((k, idx) => {
                 const key = k || ids[idx];
                 if (key !== null && key !== undefined) {
                     keys.push(key);
@@ -321,6 +321,9 @@ export function getMinMaxKeys(item) {
             if (keys.length > 0) {
                 minKey = Math.min(...keys);
                 maxKey = Math.max(...keys);
+            }
+            if (item.mode === 'subworksheets_block') {
+                console.log(sort_keys, keys, "SK");
             }
         }
     } else if (item.mode === 'table_block') {

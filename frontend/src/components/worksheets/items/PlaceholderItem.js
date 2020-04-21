@@ -32,14 +32,19 @@ export default forwardRef((props, ref) => {
     const [item, setItem] = useState(undefined);
     const [error, setError] = useState(false);
     const { worksheetUUID, onAsyncItemLoad, itemHeight } = props;
-    const { directive } = props.item;
+    const { directive, sort_keys } = props.item;
     useEffect(() => {
         (async function() {
             try {
                 const { items } = await fetchData({ directive, worksheetUUID });
                 setItem(items.length === 0 ? null : items[0]);
                 if (items.length > 0) {
-                    onAsyncItemLoad(items[0]);
+                    let actualItem = items[0];
+                    // replace with existing sort keys if there is one
+                    if (sort_keys) {
+                        actualItem['sort_keys'] = sort_keys;
+                    }
+                    onAsyncItemLoad(actualItem);
                 }
             } catch (e) {
                 console.error(e);
