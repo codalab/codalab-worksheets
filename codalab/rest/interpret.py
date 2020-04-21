@@ -170,16 +170,13 @@ def fetch_interpreted_worksheet(uuid):
     brief = request.query.get("brief", "0") == "1"
 
     directive = request.query.get("directive", None)
+    search_results = []
 
     worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
 
-    if directive:
-        # Only perform a single search query.
-        worksheet_info['items'] = perform_search_query(formatting.string_to_tokens(directive))
-    else:
-        # Shim in additional data for the frontend
-        worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
-        worksheet_info['raw'] = get_worksheet_lines(worksheet_info)
+    # Shim in additional data for the frontend
+    worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
+    worksheet_info['raw'] = get_worksheet_lines(worksheet_info)
 
     if worksheet_info['owner_id'] is None:
         worksheet_info['owner_name'] = None
@@ -192,6 +189,20 @@ def fetch_interpreted_worksheet(uuid):
     # user-written raw items.
     if not directive and not brief:
         worksheet_info['items'] = expand_search_items(worksheet_info['items'])
+    elif directive:
+        # Only expand the search item corresponding to the given directive.
+        # Used in async loading to only load a single table.
+        item_idx = 0
+        for i, item in enumerate(worksheet_info['items']):
+            (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = item
+            if directive == formatting.tokens_to_string(value_obj):
+                search_results = perform_search_query(value_obj)
+                item_idx = i
+                break
+        # Make sure the search item is at the end of worksheet_info['items'],
+        # so we can isolate it later after interpret_items is called.
+        worksheet_info['items'] = worksheet_info['items'][:item_idx]
+        worksheet_info['items'].extend(search_results)
 
     # Set permissions
     worksheet_info['edit_permission'] = worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL
@@ -236,6 +247,11 @@ def fetch_interpreted_worksheet(uuid):
     worksheet_info['items'] = resolve_interpreted_blocks(interpreted_blocks['blocks'])
     worksheet_info['raw_to_block'] = interpreted_blocks['raw_to_block']
     worksheet_info['block_to_raw'] = interpreted_blocks['block_to_raw']
+
+    if directive:
+        # If we're only async loading a single table_block / subworksheets_block,
+        # return only that block (which is at the end of worksheet_info['items'])
+        worksheet_info['items'] = [worksheet_info['items'][-1]] if len(search_results) else []
 
     for item in worksheet_info['items']:
         if item is None:
@@ -536,7 +552,7 @@ def resolve_items_into_infos(items):
     """
     Helper function.
     {'bundle_uuid': '...', 'subworksheet_uuid': '...', 'value': '...', 'type': '...')
-        -> (bundle_info, subworksheet_info, value_obj, type)
+        -> (bundle_info, subworksheet_info, value_obj, type, id, sort_key)
     """
     # Database only contains the uuid; need to expand to info.
     # We need to do to convert the bundle_uuids into bundle_info dicts.

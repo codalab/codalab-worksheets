@@ -449,6 +449,9 @@ class Worksheet extends React.Component {
         if (item && (!item.props || !item.props.item)) {
             // Skip "no search results" items and scroll past them.
             const offset = index - this.state.focusIndex;
+            if (offset === 0) {
+                return;
+            }
             this.setFocus(index + offset, subIndex, shouldScroll);
             return;
         }
@@ -1098,8 +1101,12 @@ class Worksheet extends React.Component {
         { moveIndex = false, textDeleted = false } = {},
     ) => {
         let itemHeights = {};
-        for (let refName in this.refs.list.refs) {
-            itemHeights[refName] = ReactDOM.findDOMNode(this.refs.list.refs[refName]).clientHeight;
+        if (this.refs.list && this.refs.list.refs) {
+            for (let refName in this.refs.list.refs) {
+                itemHeights[refName] = ReactDOM.findDOMNode(
+                    this.refs.list.refs[refName],
+                ).clientHeight;
+            }
         }
         this.setState({ itemHeights });
         if (partialUpdateItems === undefined) {
