@@ -154,6 +154,8 @@ OTHER_COMMANDS = ('help', 'status', 'alias', 'config', 'logout')
 HEADING_LEVEL_2 = '## '
 HEADING_LEVEL_3 = '### '
 
+NO_RESULTS_FOUND = 'No results found'
+
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
@@ -1933,10 +1935,9 @@ class BundleCLI(object):
 
         # Print table
         if len(bundles) > 0:
-            print('Note: at most {} results will be shown.'.format(bundle_model.SEARCH_RESULTS_LIMIT))
             self.print_bundle_info_list(bundles, uuid_only=args.uuid_only, print_ref=False)
         else:
-            print('No results found')
+            print(NO_RESULTS_FOUND, file=self.stderr)
 
         # Add the bundles to the current worksheet
         if args.append:
@@ -2044,6 +2045,10 @@ class BundleCLI(object):
                     return '^' + str(len(bundle_info_list) - i)
                 else:
                     return info.get(col, nested_dict_get(info, 'metadata', col))
+
+            
+            if len(bundle_info_list) == bundle_model.SEARCH_RESULTS_LIMIT:
+                print('Only {} results are shown. Use .limit=N to show N.'.format(bundle_model.SEARCH_RESULTS_LIMIT), file=self.stderr)
 
             for bundle_info in bundle_info_list:
                 bundle_info['owner'] = nested_dict_get(bundle_info, 'owner', 'user_name')
@@ -3189,11 +3194,17 @@ class BundleCLI(object):
             'worksheets',
             params={'keywords': args.keywords, 'include': ['owner', 'group_permissions']},
         )
+
+        if not worksheet_dicts:
+            print(NO_RESULTS_FOUND, file=self.stderr)
+
         if args.uuid_only:
             for row in worksheet_dicts:
                 print(row['uuid'], file=self.stdout)
         else:
             if worksheet_dicts:
+                if len(worksheet_dicts) == bundle_model.SEARCH_RESULTS_LIMIT:
+                    print('Only {} results are shown. Use .limit=N to show N.'.format(bundle_model.SEARCH_RESULTS_LIMIT), file=self.stderr)
                 for row in worksheet_dicts:
                     row['owner'] = self.simple_user_str(row['owner'])
                     row['permissions'] = group_permissions_str(row['group_permissions'])
