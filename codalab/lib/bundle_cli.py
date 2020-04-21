@@ -1936,7 +1936,7 @@ class BundleCLI(object):
         # Print table
         if len(bundles) > 0:
             self.print_bundle_info_list(bundles, uuid_only=args.uuid_only, print_ref=False)
-        else:
+        elif not args.uuid_only:
             print(NO_RESULTS_FOUND, file=self.stderr)
 
         # Add the bundles to the current worksheet
@@ -2046,9 +2046,13 @@ class BundleCLI(object):
                 else:
                     return info.get(col, nested_dict_get(info, 'metadata', col))
 
-            
             if len(bundle_info_list) == bundle_model.SEARCH_RESULTS_LIMIT:
-                print('Only {} results are shown. Use .limit=N to show N.'.format(bundle_model.SEARCH_RESULTS_LIMIT), file=self.stderr)
+                print(
+                    'Only {} results are shown. Use .limit=N to show N.'.format(
+                        bundle_model.SEARCH_RESULTS_LIMIT
+                    ),
+                    file=self.stderr,
+                )
 
             for bundle_info in bundle_info_list:
                 bundle_info['owner'] = nested_dict_get(bundle_info, 'owner', 'user_name')
@@ -3195,16 +3199,18 @@ class BundleCLI(object):
             params={'keywords': args.keywords, 'include': ['owner', 'group_permissions']},
         )
 
-        if not worksheet_dicts:
-            print(NO_RESULTS_FOUND, file=self.stderr)
-
         if args.uuid_only:
             for row in worksheet_dicts:
                 print(row['uuid'], file=self.stdout)
         else:
             if worksheet_dicts:
                 if len(worksheet_dicts) == bundle_model.SEARCH_RESULTS_LIMIT:
-                    print('Only {} results are shown. Use .limit=N to show N.'.format(bundle_model.SEARCH_RESULTS_LIMIT), file=self.stderr)
+                    print(
+                        'Only {} results are shown. Use .limit=N to show N.'.format(
+                            bundle_model.SEARCH_RESULTS_LIMIT
+                        ),
+                        file=self.stderr,
+                    )
                 for row in worksheet_dicts:
                     row['owner'] = self.simple_user_str(row['owner'])
                     row['permissions'] = group_permissions_str(row['group_permissions'])
@@ -3212,6 +3218,8 @@ class BundleCLI(object):
                 self.print_table(
                     ('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs
                 )
+            else:
+                print(NO_RESULTS_FOUND, file=self.stderr)
         return {'refs': self.create_reference_map('worksheet', worksheet_dicts)}
 
     @Commands.command(
