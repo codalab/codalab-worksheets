@@ -1034,6 +1034,7 @@ class Worksheet extends React.Component {
                     rawIndex = this.state.ws.info.block_to_raw[focusIndexPair];
                 }
 
+                // When clicking "Edit Source" from one of the rows in a search results block, go to the line of the corresponding search directive.
                 if (rawIndex === undefined) {
                     focusIndexPair = [this.state.focusIndex, 0].join(",");
                     rawIndex = this.state.ws.info.block_to_raw[focusIndexPair];
