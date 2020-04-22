@@ -752,7 +752,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                         .load(
                             {
                                 'key': name + ':',
-                                'value': apply_func(post, interpret_genpath(bundle_info, genpath))
+                                'value': apply_func(post, interpret_genpath(bundle_info, genpath)),
                             }
                         )
                         .data
@@ -767,7 +767,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                             'status': FetchStatusSchema.get_unknown_status(),
                             'header': header,
                             'rows': rows,
-                            'sort_keys': [sort_key]
+                            'sort_keys': [sort_key],
                         }
                     )
                     .data
@@ -821,7 +821,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                         'status': FetchStatusSchema.get_unknown_status(),
                         'header': header,
                         'rows': rows,
-                        'sort_keys': [sort_key]
+                        'sort_keys': [sort_key],
                     }
                 )
                 .data
@@ -880,10 +880,9 @@ def interpret_items(schemas, raw_items, db_model=None):
             return
 
         blocks.append(
-            SubworksheetsBlock().load({
-                'subworksheet_infos': copy.deepcopy(worksheet_infos),
-                'sort_keys': [sort_key]
-            }).data
+            SubworksheetsBlock()
+            .load({'subworksheet_infos': copy.deepcopy(worksheet_infos), 'sort_keys': [sort_key]})
+            .data
         )
 
         worksheet_infos[:] = []
@@ -986,7 +985,12 @@ def interpret_items(schemas, raw_items, db_model=None):
                     # Show item placeholders in brief mode
                     blocks.append(
                         PlaceholderBlockSchema()
-                        .load({'directive': formatting.tokens_to_string(value_obj), 'sort_keys': [sort_key]})
+                        .load(
+                            {
+                                'directive': formatting.tokens_to_string(value_obj),
+                                'sort_keys': [sort_key],
+                            }
+                        )
                         .data
                     )
 

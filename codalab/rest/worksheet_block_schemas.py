@@ -154,6 +154,7 @@ class RecordsRowSchema(PlainSchema):
     key = fields.String(required=True)
     value = fields.Raw(required=True)
 
+
 class RecordsBlockSchema(BundleBlockSchema):
     mode = fields.Constant(BlockModes.record_block)
     bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
@@ -186,6 +187,7 @@ class SubworksheetsBlock(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.subworksheets_block)
     subworksheet_infos = fields.List(fields.Dict, required=True)
     sort_keys = fields.List(fields.Integer())
+
 
 class PlaceholderBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.placeholder_block)

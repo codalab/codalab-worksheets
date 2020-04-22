@@ -312,18 +312,19 @@ export function getMinMaxKeys(item) {
         if (item.sort_keys && item.sort_keys.length > 0) {
             const { sort_keys, ids } = item;
             const keys = [];
-            sort_keys[0] !== null && sort_keys.forEach((k, idx) => {
-                const key = k || ids[idx];
-                if (key !== null && key !== undefined) {
-                    keys.push(key);
-                }
-            });
+            sort_keys[0] !== null &&
+                sort_keys.forEach((k, idx) => {
+                    const key = k || ids[idx];
+                    if (key !== null && key !== undefined) {
+                        keys.push(key);
+                    }
+                });
             if (keys.length > 0) {
                 minKey = Math.min(...keys);
                 maxKey = Math.max(...keys);
             }
             if (item.mode === 'subworksheets_block') {
-                console.log(sort_keys, keys, "SK");
+                console.log(sort_keys, keys, 'SK');
             }
         }
     } else if (item.mode === 'table_block') {
