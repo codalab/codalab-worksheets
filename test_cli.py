@@ -1405,8 +1405,8 @@ def test(ctx):
 
     # Test network access
     wait(_run_command([cl, 'run', 'ping -c 1 google.com']), 1)
-    bundleid = _run_command([cl, 'run', 'ping -c 1 google.com', '--request-network'])
-    wait(bundleid, 1)
+    uuid = _run_command([cl, 'run', 'ping -c 1 google.com', '--request-network'])
+    wait(uuid, 1)
     path = temp_path('')
     _run_command([cl, 'download', uuid, '-o', path])
 
