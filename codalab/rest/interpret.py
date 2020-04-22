@@ -178,12 +178,26 @@ def fetch_interpreted_worksheet(uuid):
                             the first source line that is a search directive,
                             then the first 5 elements in the list will be [0, 0, 0, 0, 0]
                                                 
+
+    This endpoint can be called with &brief=1 in order to give an abbreviated version,
+    which does not resolve searches or wsearches.
+
+    To return an interpreted worksheet that only resolves a particular search/wsearch,
+    pass in the search query to the "directive" argument. The value for this argument
+    must be a search/wsearch query -- for example, &directive=search 0x .limit=100
     """
     bundle_uuids = request.query.getall('bundle_uuid')
+    brief = request.query.get("brief", "0") == "1"
+
+    directive = request.query.get("directive", None)
+    search_results = []
+
     worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
 
     # Shim in additional data for the frontend
     worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
+    worksheet_info['raw'] = get_worksheet_lines(worksheet_info)
+
     if worksheet_info['owner_id'] is None:
         worksheet_info['owner_name'] = None
     else:
@@ -191,22 +205,41 @@ def fetch_interpreted_worksheet(uuid):
         worksheet_info['owner_name'] = owner.user_name
 
     # Fetch items.
-    worksheet_info['raw'] = get_worksheet_lines(worksheet_info)
+    # worksheet_info['raw'] = get_worksheet_lines(worksheet_info)
 
-    # Expand user-written searches (including bundle & worksheet) to raw items.
+    # # Expand user-written searches (including bundle & worksheet) to raw items.
+    # # This needs to be done before get_worksheet_lines because this replaces
+    # # user-written raw items.
+    # # Also stores the mapping from raw items to the source line that produced them.
+    # # This allows us to manipulate the source lines easier on the frontend.
+    # expanded_items_to_raw_lines = []
+    # expanded_items = []
+    # for index, raw_item in enumerate(worksheet_info['items']):
+    #     expanded = expand_raw_item(raw_item)
+    #     expanded_items.append(expanded)
+    #     # Adds len(expanded) times the source line index
+    #     expanded_items_to_raw_lines.extend([index] * len(expanded))
+    # worksheet_info['items'] = list(chain.from_iterable(expanded_items))
+    # worksheet_info["expanded_items_to_raw_lines"] = expanded_items_to_raw_lines
+    # Replace searches with raw items.
     # This needs to be done before get_worksheet_lines because this replaces
     # user-written raw items.
-    # Also stores the mapping from raw items to the source line that produced them.
-    # This allows us to manipulate the source lines easier on the frontend.
-    expanded_items_to_raw_lines = []
-    expanded_items = []
-    for index, raw_item in enumerate(worksheet_info['items']):
-        expanded = expand_raw_item(raw_item)
-        expanded_items.append(expanded)
-        # Adds len(expanded) times the source line index
-        expanded_items_to_raw_lines.extend([index] * len(expanded))
-    worksheet_info['items'] = list(chain.from_iterable(expanded_items))
-    worksheet_info["expanded_items_to_raw_lines"] = expanded_items_to_raw_lines
+    if not directive and not brief:
+        worksheet_info['items'] = expand_search_items(worksheet_info['items'])
+    elif directive:
+        # Only expand the search item corresponding to the given directive.
+        # Used in async loading to only load a single table.
+        item_idx = 0
+        for i, item in enumerate(worksheet_info['items']):
+            (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = item
+            if directive == formatting.tokens_to_string(value_obj):
+                search_results = perform_search_query(value_obj)
+                item_idx = i
+                break
+        # Make sure the search item is at the end of worksheet_info['items'],
+        # so we can isolate it later after interpret_items is called.
+        worksheet_info['items'] = worksheet_info['items'][:item_idx]
+        worksheet_info['items'].extend(search_results)
 
     # Set permissions
     worksheet_info['edit_permission'] = worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL
@@ -251,6 +284,11 @@ def fetch_interpreted_worksheet(uuid):
     worksheet_info['items'] = resolve_interpreted_blocks(interpreted_blocks['blocks'])
     worksheet_info['raw_to_block'] = interpreted_blocks['raw_to_block']
     worksheet_info['block_to_raw'] = interpreted_blocks['block_to_raw']
+
+    if directive:
+        # If we're only async loading a single table_block / subworksheets_block,
+        # return only that block (which is at the end of worksheet_info['items'])
+        worksheet_info['items'] = [worksheet_info['items'][-1]] if len(search_results) else []
 
     for item in worksheet_info['items']:
         if item is None:
@@ -343,7 +381,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
 
         try:
             # Replace data with a resolved version.
-            if mode == BlockModes.markup_block:
+            if mode in (BlockModes.markup_block, BlockModes.placeholder_block):
                 # no need to do anything
                 pass
             elif mode == BlockModes.record_block or mode == BlockModes.table_block:
@@ -551,7 +589,7 @@ def resolve_items_into_infos(items):
     """
     Helper function.
     {'bundle_uuid': '...', 'subworksheet_uuid': '...', 'value': '...', 'type': '...')
-        -> (bundle_info, subworksheet_info, value_obj, type)
+        -> (bundle_info, subworksheet_info, value_obj, type, id, sort_key)
     """
     # Database only contains the uuid; need to expand to info.
     # We need to do to convert the bundle_uuids into bundle_info dicts.
@@ -593,23 +631,16 @@ def resolve_items_into_infos(items):
     return new_items
 
 
-def expand_raw_item(raw_item):
+def perform_search_query(value_obj):
     """
-    Raw items that include searches must be expanded into more raw items.
-    Input: Raw item.
-    Output: Array of raw items. If raw item does not need expanding,
-    this returns an 1-length array that contains original raw item,
-    otherwise it contains the search result. You do not need to call
-    resolve_items_into_infos on the returned raw_items.
+    Perform a search query and return the resulting raw items.
+    Input: directive that is tokenized by formatting.string_to_tokens(),
+        such as formatting.string_to_tokens("search 0x .limit=100")
     """
-
-    (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = raw_item
-
-    is_search = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search'
-    is_wsearch = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'wsearch'
-
+    command = get_command(value_obj)
+    is_search = command == 'search'
+    is_wsearch = command == 'wsearch'
     if is_search or is_wsearch:
-        command = get_command(value_obj)
         keywords = value_obj[1:]
         raw_items = []
 
@@ -634,5 +665,26 @@ def expand_raw_item(raw_item):
                 raw_items.append(subworksheet_item(worksheet_info) + (None, None))
 
         return raw_items
+    else:
+        # Not a search query
+        return []
+
+
+def expand_search_items(raw_items):
+    return list(chain.from_iterable([expand_search_item(raw_item) for raw_item in raw_items]))
+
+
+def expand_search_item(raw_item):
+    """
+    Raw items that include searches must be expanded into more raw items.
+    Input: Raw item.
+    Output: Array of raw items. If raw item does not need expanding,
+    this returns an 1-length array that contains original raw item,
+    otherwise it contains the search result. You do not need to call
+    resolve_items_into_infos on the returned raw_items.
+    """
+    (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = raw_item
+    if item_type == TYPE_DIRECTIVE and get_command(value_obj) in ('search', 'wsearch'):
+        return perform_search_query(value_obj)
     else:
         return [raw_item]

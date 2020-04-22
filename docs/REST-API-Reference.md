@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.11_
+_version 0.5.13_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -869,6 +869,13 @@ return
                         the first source line that is a search directive,
                         then the first 5 elements in the list will be [0, 0, 0, 0, 0]
 
+
+This endpoint can be called with &brief=1 in order to give an abbreviated version,
+which does not resolve searches or wsearches.
+
+To return an interpreted worksheet that only resolves a particular search/wsearch,
+pass in the search query to the "directive" argument. The value for this argument
+must be a search/wsearch query -- for example, &directive=search 0x .limit=100
 
 
 &uarr; [Back to Top](#table-of-contents)
