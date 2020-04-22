@@ -160,8 +160,7 @@ def check_contains(true_value, pred_value):
 def check_num_lines(true_value, pred_value):
     num_lines = len(pred_value.split('\n'))
     assert num_lines == true_value, (
-        "expected %d lines, but got %s. true value is <%s>, expected value is <%s>"
-        % (true_value, num_lines, true_value, pred_value)
+        "expected %d lines, but got %s" % (true_value, num_lines)
     )
     return pred_value
 
