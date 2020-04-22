@@ -1421,7 +1421,7 @@ class BundleCLI(object):
 
         # If bundle contents don't exist, finish after just copying metadata
         try:
-            target_info = source_client.fetch_contents_info((source_bundle_uuid, ''))
+            target_info = source_client.fetch_contents_info(BundleTarget(source_bundle_uuid, ''))
         except NotFoundError:
             return
 
