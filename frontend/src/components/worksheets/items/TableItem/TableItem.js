@@ -105,8 +105,8 @@ class TableItem extends React.Component<{
         });
         result = result.map((bundle) => {
             let bundleIdName = {};
-            bundleIdName.uuid = bundle['uuid'];
-            bundleIdName.name = bundle['name'];
+            bundleIdName.uuid = bundle.uuid;
+            bundleIdName.name = bundle.metadata.name;
             return bundleIdName;
         });
         return result;

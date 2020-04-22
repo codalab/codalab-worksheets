@@ -350,9 +350,7 @@ class Worksheet extends React.Component {
     };
 
     addCopyBundleRowsCallback = (tableID, callback) => {
-        if (this.bundleTableID.has(tableID)) return;
-        this.bundleTableID.add(tableID);
-        this.copyCallbacks.push(callback);
+        this.copyCallbacks[tableID] = callback;
     };
 
     // Helper functions to deal with commands
@@ -379,7 +377,9 @@ class Worksheet extends React.Component {
         } else if (cmd_type === 'copy') {
             let validBundles = [];
             let actualCopiedCounts = 0;
-            this.copyCallbacks.forEach((copyBundleCallback) => {
+            let tableIDs = Object.keys(this.copyCallbacks).sort();
+            tableIDs.forEach((tableID) => {
+                let copyBundleCallback = this.copyCallbacks[tableID];
                 let bundlesChecked = copyBundleCallback();
                 bundlesChecked.forEach((bundle) => {
                     if (bundle.name === '<invalid>') {
@@ -453,10 +453,14 @@ class Worksheet extends React.Component {
         bundleString = bundleString.substr(0, bundleString.length - 1);
         if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
             // Insert after the source line
-            var currentItemKey = this.state.focusIndex + ',' + this.state.subFocusIndex;
+            let currentFocusedItem = this.state.ws.info.items[this.state.focusIndex];
+            let currentItemKey = currentFocusedItem.from_search
+                ? this.state.focusIndex + ',0'
+                : this.state.focusIndex + ',' + this.state.subFocusIndex;
             var item_line = this.state.ws.info.block_to_raw[currentItemKey];
-            var source_line = this.state.ws.info.expanded_items_to_raw_lines[item_line];
-            this.state.ws.info.raw.splice(source_line + 1, 0, bundleString);
+            // var source_line = this.state.ws.info.expanded_items_to_raw_lines[item_line];
+            console.log('Item: ', item_line);
+            this.state.ws.info.raw.splice(item_line + 1, 0, bundleString);
             this.saveAndUpdateWorksheet(false);
         } else {
             // Add to the end of the worksheet if no focus
@@ -492,7 +496,7 @@ class Worksheet extends React.Component {
             clear_callback,
         );
         this.bundleTableID = new Set();
-        this.copyCallbacks = [];
+        this.copyCallbacks = {};
     };
 
     onAsyncItemLoad = (focusIndex, item) => {
