@@ -1407,6 +1407,10 @@ def test(ctx):
     wait(_run_command([cl, 'run', 'ping -c 1 google.com']), 1)
     uuid = _run_command([cl, 'run', 'ping -c 1 google.com', '--request-network'])
     wait(uuid, 1)
+
+    print("info")
+    _run_command([cl, "info", uuid])
+
     path = temp_path('')
     _run_command([cl, 'download', uuid, '-o', path])
 
