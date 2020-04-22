@@ -258,12 +258,6 @@ def temp_instance():
 
     _run_command([cl, 'work', original_worksheet])
 
-def switch_to_clean_worksheet():
-    wname = random_name()
-    wuuid = _run_command([cl, 'new', wname])
-    ctx.collect_worksheet(wuuid)
-    check_contains(['Switched', wname, wuuid], _run_command([cl, 'work', wuuid]))
-
 class ModuleContext(object):
     """ModuleContext objects manage the context of a test module.
 
@@ -887,7 +881,10 @@ def test(ctx):
 @TestModule.register('freeze')
 def test(ctx):
     _run_command([cl, 'work', '-u'])
-    switch_to_clean_worksheet()
+    wname = random_name()
+    wuuid = _run_command([cl, 'new', wname])	
+    ctx.collect_worksheet(wuuid)	
+    check_contains(['Switched', wname, wuuid], _run_command([cl, 'work', wuuid]))
     # Before freezing: can modify everything
     uuid1 = _run_command([cl, 'upload', '-c', 'hello'])
     _run_command([cl, 'add', 'text', 'message'])
@@ -904,7 +901,6 @@ def test(ctx):
 
 @TestModule.register('detach')
 def test(ctx):
-    switch_to_clean_worksheet()
     uuid1 = _run_command([cl, 'upload', test_path('a.txt')])
     uuid2 = _run_command([cl, 'upload', test_path('b.txt')])
     _run_command([cl, 'add', 'bundle', uuid1])
@@ -1194,7 +1190,6 @@ def test(ctx):
 
 @TestModule.register('kill')
 def test(ctx):
-    switch_to_clean_worksheet()
     uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
     wait_until_running(uuid)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
@@ -1205,7 +1200,6 @@ def test(ctx):
 
 @TestModule.register('write')
 def test(ctx):
-    switch_to_clean_worksheet()
     uuid = _run_command([cl, 'run', 'sleep 5'])
     wait_until_running(uuid)
     target = uuid + '/message'
@@ -1495,7 +1489,6 @@ def test(ctx):
 
 @TestModule.register('netcat')
 def test(ctx):
-    switch_to_clean_worksheet()
     script_uuid = _run_command([cl, 'upload', test_path('netcat-test.py')])
     uuid = _run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
     wait_until_running(uuid)
@@ -1512,7 +1505,6 @@ def test(ctx):
 
 @TestModule.register('netcurl')
 def test(ctx):
-    switch_to_clean_worksheet()
     uuid = _run_command([cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'])
     wait_until_running(uuid)
     address = ctx.client.address
@@ -1731,7 +1723,6 @@ def test(ctx):
 
 @TestModule.register('workers')
 def test(ctx):
-    switch_to_clean_worksheet()
     # Run workers command
     result = _run_command([cl, 'workers'])
     lines = result.split("\n")
