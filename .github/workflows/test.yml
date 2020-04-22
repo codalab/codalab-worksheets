@@ -71,8 +71,8 @@ jobs:
     needs: [build_backend, build_frontend]
     strategy:
       matrix:
-        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs, basic upload1 upload2 upload3, upload4 download refs binary, rm make worksheet worksheet_search, worksheet_tags freeze detach perm, search search_time run read, kill write mimic status, batch resources groups netcat, netcurl anonymous competition unicode, workers rest1 worksheets]
-        # test: [netcurl]
+        # test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs, basic upload1 upload2 upload3, upload4 download refs binary, rm make worksheet worksheet_search, worksheet_tags freeze detach perm, search search_time run read, kill write mimic status, batch resources groups netcat, netcurl anonymous competition unicode, workers rest1 worksheets]
+        test: [default]
     steps:
       - name: Clear free space
         run: |
