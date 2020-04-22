@@ -65,7 +65,8 @@
     "test": "react-scripts test",
     "flow": "flow",
     "eject": "react-scripts eject",
-    "check-ci": "eslint src && prettier --config ./.prettierrc --check 'src/**/*.js'"
+    "check-ci": "eslint src && prettier --config ./.prettierrc --check 'src/**/*.js'",
+    "format": "eslint src --fix && prettier --config ./.prettierrc --check 'src/**/*.js' --write"
   },
   "husky": {
     "hooks": {
