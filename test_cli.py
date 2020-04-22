@@ -1332,7 +1332,7 @@ def test(ctx):
 @TestModule.register('resources')
 def test(ctx):
     """Test whether resource constraints are respected"""
-    uuid = _run_command([cl, 'upload', 'scripts/stress-test.pl'])
+    # uuid = _run_command([cl, 'upload', 'scripts/stress-test.pl'])
 
     # def stress(
     #     use_time,
