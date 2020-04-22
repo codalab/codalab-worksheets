@@ -23,7 +23,6 @@ import errno
 import os
 import socket
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
 
 from test_cli import TestModule
 
@@ -769,20 +768,16 @@ class CodalabServiceManager(object):
         )
 
     def pull_images(self):
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(self.pull_image, image) for image in self.SERVICE_IMAGES]
-            for future in futures:
-                print(future.result())
+        for image in self.SERVICE_IMAGES:
+            self.pull_image(image)
 
     def build_images(self):
         images_to_build = [
             image for image in self.ALL_IMAGES if should_build_image(self.args, image)
         ]
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(self.build_image, image) for image in images_to_build]
-            for future in futures:
-                print(future.result())
+        for image in images_to_build:
+            self.build_image(image)
 
         if self.args.push:
             self._run_docker_cmd(
@@ -790,10 +785,8 @@ class CodalabServiceManager(object):
                     self.args.docker_username, self.args.docker_password
                 )
             )
-            with ThreadPoolExecutor(max_workers=10) as executor:
-                futures = [executor.submit(self.push_image, image) for image in images_to_build]
-                for future in futures:
-                    print(future.result())
+            for image in images_to_build:
+                self.push_image(image)
 
 
 if __name__ == '__main__':

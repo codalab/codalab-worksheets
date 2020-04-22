@@ -109,9 +109,9 @@ class ErrorAdapter(object):
                     raise
                 code, message = exception_to_http_error(e)
                 if code == INTERNAL_SERVER_ERROR:
-                    details = self.report_exception(e)
-                    message = "Unexpected Internal Error ({}). The administrators have been notified. {}".format(
-                        message, details
+                    self.report_exception(e)
+                    message = "Unexpected Internal Error ({}). The administrators have been notified.".format(
+                        message
                     )
                 raise HTTPError(code, message)
 
@@ -167,7 +167,6 @@ class ErrorAdapter(object):
         # Both print to console and send email
         logger.error(message)
         self.send_email(exc, message)
-        return message
 
     @server_util.rate_limited(max_calls_per_hour=6)
     def send_email(self, exc, message):

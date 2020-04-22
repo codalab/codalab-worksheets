@@ -159,9 +159,7 @@ def check_contains(true_value, pred_value):
 
 def check_num_lines(true_value, pred_value):
     num_lines = len(pred_value.split('\n'))
-    assert num_lines == true_value, (
-        "expected %d lines, but got %s" % (true_value, num_lines)
-    )
+    assert num_lines == true_value, "expected %d lines, but got %s" % (true_value, num_lines)
     return pred_value
 
 
@@ -257,6 +255,7 @@ def temp_instance():
     )
 
     _run_command([cl, 'work', original_worksheet])
+
 
 class ModuleContext(object):
     """ModuleContext objects manage the context of a test module.
@@ -882,8 +881,8 @@ def test(ctx):
 def test(ctx):
     _run_command([cl, 'work', '-u'])
     wname = random_name()
-    wuuid = _run_command([cl, 'new', wname])	
-    ctx.collect_worksheet(wuuid)	
+    wuuid = _run_command([cl, 'new', wname])
+    ctx.collect_worksheet(wuuid)
     check_contains(['Switched', wname, wuuid], _run_command([cl, 'work', wuuid]))
     # Before freezing: can modify everything
     uuid1 = _run_command([cl, 'upload', '-c', 'hello'])
@@ -1345,7 +1344,6 @@ def test(ctx):
         expected_exit_code,
         expected_failure_message,
     ):
-        return
         run_uuid = _run_command(
             [
                 cl,
