@@ -9,7 +9,7 @@ WORKDIR /opt/frontend
 # Install dependencies
 COPY frontend/package.json ./
 COPY frontend/package-lock.json ./
-RUN npm install
+RUN npm ci
 
 # Overridden in dev mode
 COPY frontend .
