@@ -1407,9 +1407,14 @@ def test(ctx):
     wait(_run_command([cl, 'run', 'ping -c 1 google.com']), 1)
     bundleid = _run_command([cl, 'run', 'ping -c 1 google.com', '--request-network'])
     wait(bundleid, 1)
-    _run_command([cl, 'download', bundleid])
-    _run_command(['cat', 'run-ping/stdout'])
-    _run_command(['cat', 'run-ping/stderr'])
+    path = temp_path('')
+    _run_command([cl, 'download', uuid, '-o', path])
+
+    print("stdout")
+    print(_run_command(['cat', path + '/stdout']))
+
+    print("stderr")
+    print(_run_command(['cat', path + '/stderr']))
 
 
 # TODO: can't do this test until we can pass in another CodaLab instance.
