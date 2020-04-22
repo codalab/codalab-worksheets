@@ -72,7 +72,8 @@ jobs:
     strategy:
       matrix:
         # test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs, basic upload1 upload2 upload3, upload4 download refs binary, rm make worksheet worksheet_search, worksheet_tags freeze detach perm, search search_time run read, kill write mimic status, batch resources groups netcat, netcurl anonymous competition unicode, workers rest1 worksheets]
-        test: [default]
+        test: [unittest,gen-rest-docs,gen-cli-docs,gen-readthedocs,basic,upload1,upload2,upload3,upload4,download,refs,binary,rm,make,worksheet,worksheet_search,worksheet_tags,freeze,detach,perm,search,search_time,run,read,kill,write,mimic,status,batch,resources,groups,netcat,netcurl,anonymous,competition,unicode,workers,rest1,worksheets]
+        # test: [default]
     steps:
       - name: Clear free space
         run: |
@@ -93,11 +94,11 @@ jobs:
         run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
           python3 codalab_service.py test --version ${VERSION} ${TEST}
-          docker restart codalab_worker_1
-          python3 codalab_service.py test --version ${VERSION} run
-          docker stop codalab_worker_1
-          python3 codalab_service.py start --services worker --version ${VERSION} --shared-file-system
-          python3 codalab_service.py test --version ${VERSION} --shared-file-system ${TEST}
+          # docker restart codalab_worker_1
+          # python3 codalab_service.py test --version ${VERSION} run
+          # docker stop codalab_worker_1
+          # python3 codalab_service.py start --services worker --version ${VERSION} --shared-file-system
+          # python3 codalab_service.py test --version ${VERSION} --shared-file-system ${TEST}
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref }}
