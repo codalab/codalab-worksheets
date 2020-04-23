@@ -251,7 +251,7 @@ class Worker:
             }
         else:
             logger.info(
-                "Sending bundles: {} back to staged state.".format(','.join(restaged_bundles))
+                "Sending bundles back to the staged state: {}.".format(','.join(restaged_bundles))
             )
         return len(restaged_bundles)
 
