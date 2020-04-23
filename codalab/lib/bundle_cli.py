@@ -1277,6 +1277,12 @@ class BundleCLI(object):
                 help='Path to download bundle to.  By default, the bundle or subpath name in the current directory is used.',
             ),
             Commands.Argument(
+                '-f',
+                '--force',
+                action='store_true',
+                help='Overwrite the output path if a file already exists.',
+            ),
+            Commands.Argument(
                 '-w',
                 '--worksheet-spec',
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
@@ -1306,8 +1312,11 @@ class BundleCLI(object):
             )
         final_path = os.path.join(os.getcwd(), local_path)
         if os.path.exists(final_path):
-            print('Local file/directory \'%s\' already exists.' % local_path, file=self.stdout)
-            return
+            if args.force:
+                shutil.rmtree(final_path)
+            else:
+                print('Local file/directory \'%s\' already exists.' % local_path, file=self.stdout)
+                return
 
         # Do the download.
         target_info = client.fetch_contents_info(target, 0)
