@@ -310,7 +310,7 @@ class Worker:
         action_type = response['type']
         logger.debug('Received %s message: %s', action_type, response)
         if action_type == 'run':
-            self.initialize_bundle_run(response['bundle'], response['resources'])
+            self.initialize_run(response['bundle'], response['resources'])
         else:
             uuid = response['uuid']
             socket_id = response.get('socket_id', None)
@@ -446,7 +446,7 @@ class Worker:
             logger.error("{}: {}".format(error_msg, str(e)))
             return None
 
-    def initialize_bundle_run(self, bundle, resources):
+    def initialize_run(self, bundle, resources):
         """
         First, checks in with the bundle service and sees if the bundle
         is still assigned to this worker. If not, returns immediately.

@@ -759,10 +759,10 @@ class BundleModel(object):
             if not row:
                 # The user deleted the bundle.
                 return False
-            # Check if designated worker still exists
+            # Check if the designated worker still exists
             worker = connection.execute(
                 cl_worker.select().where(cl_worker.c.worker_id == worker_id)
-            ).fetchclone()
+            ).fetchone()
             if not worker:
                 return False
 
@@ -991,7 +991,7 @@ class BundleModel(object):
             if not row:
                 return False
 
-            # Get staged bundle from worker side checkin, move it to staged state
+            # Get staged bundle from worker side checkin and move it to staged state
             if worker_run.state == State.RESTAGED:
                 return self.transition_bundle_staged(bundle)
 
