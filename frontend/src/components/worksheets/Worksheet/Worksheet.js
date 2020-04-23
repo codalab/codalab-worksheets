@@ -36,6 +36,7 @@ import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import queryString from 'query-string';
+import { setPriority } from 'os';
 
 /*
 Information about the current worksheet and its items.
@@ -446,68 +447,33 @@ class Worksheet extends React.Component {
     pasteBundlesToWorksheet = () => {
         // Unchecks all bundles after pasting
         const data = JSON.parse(window.localStorage.getItem('CopiedBundles'));
-        let uuids = [];
+        let bundleString = '';
         data.forEach((bundle) => {
-            uuids.push(bundle.uuid);
+            bundleString += '[]{' + bundle.uuid + '}\n';
         });
-        // remove the laste new line character
+        // remove the last new line character
+        bundleString = bundleString.substr(0, bundleString.length - 1);
         if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
-            let currentItem = this.state.ws.info.items[this.state.focusIndex];
-            let sort_keys = currentItem.sort_keys;
-            console.log(currentItem);
-            let data = {};
-            let url = `/rest/worksheets/${this.state.ws.info.uuid}/add-items`;
-            data['items'] = uuids;
-            data['after_sort_key'] = sort_keys[0];
-            data['item_type'] = 'bundle';
-
-            $.ajax({
-                url,
-                data: JSON.stringify(data),
-                contentType: 'application/json',
-                type: 'POST',
-                success: (data, status, jqXHR) => {
-                    this.reloadWorksheet(false);
+            let isOnSearchItem = this.state.searchExpandedIndices.has(this.state.focusIndex);
+            let currentItemKey = isOnSearchItem
+                ? this.state.focusIndex + ',0'
+                : this.state.focusIndex + ',' + this.state.subFocusIndex;
+            let item_source_index = this.state.ws.info.block_to_raw[currentItemKey];
+            this.state.ws.info.raw.splice(item_source_index + 1, 0, bundleString);
+            this.setState({
+                ws: {
+                    ...this.state.ws,
+                    info: {
+                        ...this.state.ws.info,
+                        raw: this.state.ws.info.raw,
+                    },
                 },
+                searchExpandedIndices: new Set(),
             });
-            // Insert after the source line
-            // let isOnSearchItem = this.state.searchExpandedIndices.has(this.state.focusIndex);
-            // let currentItemKey = isOnSearchItem
-            //     ? this.state.focusIndex + ',0'
-            //     : this.state.focusIndex + ',' + this.state.subFocusIndex;
-            // let item_line = this.state.ws.info.block_to_raw[currentItemKey];
-            // if (!item_line) {
-            //     item_line = this.state.ws.info.raw.length - 1;
-            //     console.log(item_line)
-            // }
-
-            // this.state.ws.info.raw.splice(item_line + 1, 0, bundleString);
-            // this.setState({
-            //     ws: {
-            //         ...this.state.ws,
-            //         info: {
-            //             ...this.state.ws.info,
-            //             raw: this.state.ws.info.raw,
-            //         },
-            //     },
-            // });
-            // this.saveAndUpdateWorksheet(false);
-        } else {
-            // Add to the end of the worksheet if no focus
-            // this.state.ws.info.raw.push(bundleString);
-            // this.setState({
-            //     ws: {
-            //         ...this.state.ws,
-            //         info: {
-            //             ...this.state.ws.info,
-            //             raw: this.state.ws.info.raw,
-            //         },
-            //     },
-            // });
-            // this.saveAndUpdateWorksheet(false);
+            this.saveAndUpdateWorksheet(false);
+            this.clearCheckedBundles();
         }
-
-        this.clearCheckedBundles();
+        // if no focus, do nothing
     };
 
     clearCheckedBundles = (clear_callback) => {
@@ -1624,6 +1590,8 @@ class Worksheet extends React.Component {
         );
         if (info && info.title) {
             document.title = info.title;
+            console.log(this.state.ws.info.block_to_raw);
+            console.log(this.state.searchExpandedBlock);
         }
 
         return (
