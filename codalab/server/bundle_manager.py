@@ -475,7 +475,7 @@ class BundleManager(object):
             # 6. break ties randomly by a random seed.
             return (
                 not worker['tag_exclusive'],
-                worker['gpus'],
+                worker['gpus'] or worker['has_gpus'],
                 -num_available_deps,
                 worker['cpus'],
                 len(worker['run_uuids']),
