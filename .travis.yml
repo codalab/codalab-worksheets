@@ -6,6 +6,16 @@ jobs:
       install: pip install --upgrade black==18.9b0
       script: black . --check --diff
     - stage: check
+      language: python
+      python: 3.6
+      install: pip install -r requirements-server.txt && pip install -r requirements.docs.txt
+      script: scripts/gen-rest-docs.py && git diff --exit-code
+    - stage: check
+      language: python
+      python: 3.6
+      install: pip install -r requirements-server.txt && pip install -r requirements.docs.txt
+      script: scripts/gen-cli-docs.py && git diff --exit-code
+    - stage: check
       language: node_js
       node_js:
         - 13
