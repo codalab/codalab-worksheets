@@ -86,6 +86,7 @@ class Worksheet extends React.Component {
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
             copiedBundleIds: '',
+            searchExpandedIndices: new Set(),
         };
         this.copyCallbacks = [];
         this.bundleTableID = new Set();
@@ -445,27 +446,65 @@ class Worksheet extends React.Component {
     pasteBundlesToWorksheet = () => {
         // Unchecks all bundles after pasting
         const data = JSON.parse(window.localStorage.getItem('CopiedBundles'));
-        let bundleString = '';
+        let uuids = [];
         data.forEach((bundle) => {
-            bundleString += '[]{' + bundle.uuid + '}\n';
+            uuids.push(bundle.uuid);
         });
         // remove the laste new line character
-        bundleString = bundleString.substr(0, bundleString.length - 1);
         if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
+            let currentItem = this.state.ws.info.items[this.state.focusIndex];
+            let sort_keys = currentItem.sort_keys;
+            console.log(currentItem);
+            let data = {};
+            let url = `/rest/worksheets/${this.state.ws.info.uuid}/add-items`;
+            data['items'] = uuids;
+            data['after_sort_key'] = sort_keys[0];
+            data['item_type'] = 'bundle';
+
+            $.ajax({
+                url,
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                type: 'POST',
+                success: (data, status, jqXHR) => {
+                    this.reloadWorksheet(false);
+                },
+            });
             // Insert after the source line
-            let currentFocusedItem = this.state.ws.info.items[this.state.focusIndex];
-            let currentItemKey = currentFocusedItem.from_search
-                ? this.state.focusIndex + ',0'
-                : this.state.focusIndex + ',' + this.state.subFocusIndex;
-            var item_line = this.state.ws.info.block_to_raw[currentItemKey];
-            // var source_line = this.state.ws.info.expanded_items_to_raw_lines[item_line];
-            console.log('Item: ', item_line);
-            this.state.ws.info.raw.splice(item_line + 1, 0, bundleString);
-            this.saveAndUpdateWorksheet(false);
+            // let isOnSearchItem = this.state.searchExpandedIndices.has(this.state.focusIndex);
+            // let currentItemKey = isOnSearchItem
+            //     ? this.state.focusIndex + ',0'
+            //     : this.state.focusIndex + ',' + this.state.subFocusIndex;
+            // let item_line = this.state.ws.info.block_to_raw[currentItemKey];
+            // if (!item_line) {
+            //     item_line = this.state.ws.info.raw.length - 1;
+            //     console.log(item_line)
+            // }
+
+            // this.state.ws.info.raw.splice(item_line + 1, 0, bundleString);
+            // this.setState({
+            //     ws: {
+            //         ...this.state.ws,
+            //         info: {
+            //             ...this.state.ws.info,
+            //             raw: this.state.ws.info.raw,
+            //         },
+            //     },
+            // });
+            // this.saveAndUpdateWorksheet(false);
         } else {
             // Add to the end of the worksheet if no focus
-            this.state.ws.info.raw.push(bundleString);
-            this.saveAndUpdateWorksheet(false);
+            // this.state.ws.info.raw.push(bundleString);
+            // this.setState({
+            //     ws: {
+            //         ...this.state.ws,
+            //         info: {
+            //             ...this.state.ws.info,
+            //             raw: this.state.ws.info.raw,
+            //         },
+            //     },
+            // });
+            // this.saveAndUpdateWorksheet(false);
         }
 
         this.clearCheckedBundles();
@@ -500,6 +539,8 @@ class Worksheet extends React.Component {
     };
 
     onAsyncItemLoad = (focusIndex, item) => {
+        let searchBlocks = this.state.searchExpandedIndices;
+        searchBlocks.add(focusIndex);
         this.setState({
             ws: {
                 ...this.state.ws,
@@ -509,6 +550,7 @@ class Worksheet extends React.Component {
                     items: Object.assign([], this.state.ws.info.items, { [focusIndex]: item }),
                 },
             },
+            searchExpandedBlock: searchBlocks,
         });
     };
 
@@ -1119,7 +1161,7 @@ class Worksheet extends React.Component {
 
                 // When clicking "Edit Source" from one of the rows in a search results block, go to the line of the corresponding search directive.
                 if (rawIndex === undefined) {
-                    focusIndexPair = [this.state.focusIndex, 0].join(",");
+                    focusIndexPair = [this.state.focusIndex, 0].join(',');
                     rawIndex = this.state.ws.info.block_to_raw[focusIndexPair];
                 }
 

@@ -43,6 +43,7 @@ export default forwardRef((props, ref) => {
                     // replace with existing sort keys if there is one
                     if (sort_keys) {
                         actualItem['sort_keys'] = sort_keys;
+                        actualItem['from_search'] = true;
                     }
                     onAsyncItemLoad(actualItem);
                 }
