@@ -219,9 +219,9 @@ def replace_items(worksheet_uuid):
     item_type = request.json.get('item_type', 'markup')
     after_sort_key = request.json.get('after_sort_key')
     # Default to process only markup items.
-    if (item_type == "markup"):
+    if item_type == "markup":
         items = [worksheet_util.markup_item(item) for item in request.json.get('items', [])]
-    elif (item_type == "bundle"):
+    elif item_type == "bundle":
         items = [worksheet_util.bundle_item(item) for item in request.json.get('items', [])]
     local.model.add_worksheet_items(worksheet_uuid, items, after_sort_key, ids)
 

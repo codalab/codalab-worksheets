@@ -288,10 +288,10 @@ def fetch_interpreted_worksheet(uuid):
     if directive:
         # If we're only async loading a single table_block / subworksheets_block,
         # return only that block (which is at the end of worksheet_info['items'])
-        if (len(search_results)):
+        if len(search_results):
             search_result_item = worksheet_info['items'][-1]
             search_result_item['from_search'] = True
-            worksheet_info['items']  = [search_result_item]
+            worksheet_info['items'] = [search_result_item]
         else:
             worksheet_info['items'] = []
     for item in worksheet_info['items']:
