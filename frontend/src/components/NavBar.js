@@ -145,8 +145,8 @@ class NavBar extends React.Component<{
             const keywords = this.state.value.split(' ');
             const regexKeywords = keywords.join('|');
             const re = new RegExp(_.escapeRegExp(regexKeywords), 'gi');
-            const isMatch = (result) => re.test(result.name);
-            // 'xx'.replace(regexKeywords, '<strong>$&</strong>')
+            // const isMatch = (result) => re.test(result.name);
+
             const url = '/rest/interpret/wsearch';
             console.log(keywords);
             $.ajax({
@@ -157,8 +157,6 @@ class NavBar extends React.Component<{
                 data: JSON.stringify({ keywords: keywords }),
                 contentType: 'application/json; charset=utf-8',
                 success: (data) => {
-                    // console.log(_.filter(data.response, isMatch));
-
                     // build dictionary similar to the following
                     // {
                     //     "name": "codalab",
@@ -172,12 +170,9 @@ class NavBar extends React.Component<{
                     const filteredResults = _.reduce(
                         data.response,
                         (memo, item) => {
-                            item.description = item.name.replace(
-                                regexKeywords,
-                                '<strong>$&</strong>',
-                            );
-                            item.title = item.title.replace(regexKeywords, '<strong>$&</strong>');
-                            // delete item.name;
+                            item.description = item.name.replace(regexKeywords, '<b>$&</b>');
+                            item.title = item.title.replace(regexKeywords, '<b>$&</b>');
+
                             if (!(item.owner_name in memo)) {
                                 memo[item.owner_name] = {
                                     name: item.owner_name,
@@ -211,7 +206,7 @@ class NavBar extends React.Component<{
                         },
                         {},
                     );
-                    console.log(finalResults);
+
                     this.setState({
                         isLoading: false,
                         results: finalResults,
@@ -252,6 +247,23 @@ class NavBar extends React.Component<{
                                 />
                             </Link>
                         </div>
+                        {this.props.auth.isAuthenticated && (
+                            <div className={classes.searchContainer}>
+                                <Search
+                                    category
+                                    loading={isLoading}
+                                    input={{ icon: 'search', iconPosition: 'left', fluid: true }}
+                                    onResultSelect={this.handleResultSelect}
+                                    onSearchChange={_.debounce(this.handleSearchChange, 500, {
+                                        leading: true,
+                                    })}
+                                    placeholder='search worksheets...'
+                                    results={results}
+                                    value={value}
+                                    showNoResults={true}
+                                />
+                            </div>
+                        )}
                         {!this.props.auth.isAuthenticated && (
                             <React.Fragment>
                                 <Link to='/account/signup'>
@@ -264,19 +276,6 @@ class NavBar extends React.Component<{
                         )}
                         {this.props.auth.isAuthenticated && (
                             <React.Fragment>
-                                <Search
-                                    category
-                                    loading={isLoading}
-                                    input={{ icon: 'search', iconPosition: 'left' }}
-                                    onResultSelect={this.handleResultSelect}
-                                    onSearchChange={_.debounce(this.handleSearchChange, 500, {
-                                        leading: true,
-                                    })}
-                                    placeholder='search worksheets...'
-                                    results={results}
-                                    value={value}
-                                    showNoResults={true}
-                                />
                                 <Link to='/worksheets?name=dashboard'>
                                     <Button color='primary'>Dashboard</Button>
                                 </Link>
@@ -453,7 +452,11 @@ const overrideMedia = createMuiTheme({
 
 const styles = (theme) => ({
     logoContainer: {
+        marginRight: 20,
+    },
+    searchContainer: {
         flexGrow: 1,
+        marginRight: 20,
     },
     logo: {
         maxHeight: 40,
