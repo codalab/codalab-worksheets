@@ -88,6 +88,7 @@ class Worksheet extends React.Component {
             deleteItemCallback: null,
             copiedBundleIds: '',
             searchExpandedIndices: new Set(),
+            showPasteButton: window.localStorage.getItem('CopiedBundles') !== '',
         };
         this.copyCallbacks = [];
         this.bundleTableID = new Set();
@@ -393,7 +394,9 @@ class Worksheet extends React.Component {
             });
             // Removes the last new line
             window.localStorage.setItem('CopiedBundles', JSON.stringify(validBundles));
-
+            if (validBundles.length > 0) {
+                this.setState({ showPasteButton: true });
+            }
             let toastString =
                 actualCopiedCounts > 0
                     ? 'Copied ' + actualCopiedCounts + ' bundle'
@@ -472,6 +475,8 @@ class Worksheet extends React.Component {
             });
             this.saveAndUpdateWorksheet(false);
             this.clearCheckedBundles();
+            window.localStorage.setItem('CopiedBundles', '');
+            this.setState({ showPasteButton: false });
         }
         // if no focus, do nothing
     };
@@ -1621,6 +1626,7 @@ class Worksheet extends React.Component {
                     toggleGlossaryModal={this.toggleGlossaryModal}
                     toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
                     copiedBundleIds={this.state.copiedBundleIds}
+                    showPasteButton={this.state.showPasteButton}
                 />
                 {action_bar_display}
                 <ToastContainer
