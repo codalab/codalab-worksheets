@@ -55,7 +55,6 @@ class NavBar extends React.Component<{
             snackbarMessage: '',
             snackbarVariant: '',
             value: '',
-            searchQuery: null,
             isLoading: false,
             results: [],
         };
@@ -143,24 +142,79 @@ class NavBar extends React.Component<{
 
         setTimeout(() => {
             if (this.state.value.length < 1) return this.setState(this.initialState);
-
-            const re = new RegExp(_.escapeRegExp(this.state.value), 'i');
+            const keywords = this.state.value.split(' ');
+            const regexKeywords = keywords.join('|');
+            const re = new RegExp(_.escapeRegExp(regexKeywords), 'gi');
             const isMatch = (result) => re.test(result.name);
-
+            // 'xx'.replace(regexKeywords, '<strong>$&</strong>')
             const url = '/rest/interpret/wsearch';
-            console.log(value);
+            console.log(keywords);
             $.ajax({
                 url: url,
                 dataType: 'json',
                 type: 'POST',
                 cache: false,
-                data: JSON.stringify({ keywords: [value] }),
+                data: JSON.stringify({ keywords: keywords }),
                 contentType: 'application/json; charset=utf-8',
                 success: (data) => {
-                    console.log(_.filter(data.response, isMatch));
+                    // console.log(_.filter(data.response, isMatch));
+
+                    // build dictionary similar to the following
+                    // {
+                    //     "name": "codalab",
+                    //     "results": [
+                    //         {
+                    //             "title": "Brakus Group",
+                    //             "description": "Cloned interactive Graphic Interface",
+                    //         },
+                    //     ]
+                    // }
+                    const filteredResults = _.reduce(
+                        data.response,
+                        (memo, item) => {
+                            item.description = item.name.replace(
+                                regexKeywords,
+                                '<strong>$&</strong>',
+                            );
+                            item.title = item.title.replace(regexKeywords, '<strong>$&</strong>');
+                            // delete item.name;
+                            if (!(item.owner_name in memo)) {
+                                memo[item.owner_name] = {
+                                    name: item.owner_name,
+                                    results: [],
+                                };
+                            }
+                            memo[item.owner_name].results.push(item);
+
+                            return memo;
+                        },
+                        {},
+                    );
+
+                    // build dictionary similar to the following
+                    // {
+                    //     "codalab": {
+                    //         "name": "codalab",
+                    //         "results": [
+                    //             {
+                    //                 "title": "Brakus Group",
+                    //                 "description": "Cloned interactive Graphic Interface",
+                    //             },
+                    //         ]
+                    //     },
+                    // }
+                    const finalResults = _.reduce(
+                        filteredResults,
+                        (memo, data, name) => {
+                            memo[name] = { name, results: data.results };
+                            return memo;
+                        },
+                        {},
+                    );
+                    console.log(finalResults);
                     this.setState({
                         isLoading: false,
-                        results: data.response,
+                        results: finalResults,
                     });
                 },
                 error: (xhr, status, err) => {
@@ -173,7 +227,7 @@ class NavBar extends React.Component<{
     /** Renderer. */
     render() {
         const { classes } = this.props;
-        const { accountEl, isLoading, value, results, searchQuery } = this.state;
+        const { accountEl, isLoading, value, results } = this.state;
 
         if (this.props.auth.isAuthenticated && this.state.userInfo === undefined) {
             this.fetchName();
@@ -185,7 +239,6 @@ class NavBar extends React.Component<{
             info: InfoIcon,
             warning: WarningIcon,
         }[this.state.snackbarVariant];
-        // this.search("coda");
         return (
             <MuiThemeProvider theme={overrideMedia}>
                 <AppBar id='codalab-app-bar' color='default'>
@@ -212,14 +265,17 @@ class NavBar extends React.Component<{
                         {this.props.auth.isAuthenticated && (
                             <React.Fragment>
                                 <Search
+                                    category
                                     loading={isLoading}
+                                    input={{ icon: 'search', iconPosition: 'left' }}
                                     onResultSelect={this.handleResultSelect}
                                     onSearchChange={_.debounce(this.handleSearchChange, 500, {
                                         leading: true,
                                     })}
+                                    placeholder='search worksheets...'
                                     results={results}
                                     value={value}
-                                    showNoResults={false}
+                                    showNoResults={true}
                                 />
                                 <Link to='/worksheets?name=dashboard'>
                                     <Button color='primary'>Dashboard</Button>
