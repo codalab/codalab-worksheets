@@ -11,12 +11,6 @@ import MenuItem from '@material-ui/core/MenuItem';
 
 const StyledMenuItem = withStyles((theme) => ({
     root: {
-        '&:focus': {
-            backgroundColor: theme.palette.primary.main,
-            '& .MuiListItemIcon-root, & .MuiListItemText-primary': {
-                color: theme.palette.common.white,
-            },
-        },
         border: '2px solid #d3d4d5',
     },
 }))(MenuItem);
@@ -76,6 +70,8 @@ class ActionButtons extends React.Component<{
                             color='inherit'
                             id='upload-button'
                             aria-label='Add New Upload'
+                            aria-controls='upload-menu'
+                            aria-haspopup='true'
                             onClick={showUploadMenu}
                             disabled={!editPermission}
                         >
@@ -99,7 +95,7 @@ class ActionButtons extends React.Component<{
                             open={Boolean(uploadAnchor)}
                             onClose={closeUploadMenu}
                         >
-                            <StyledMenuItem onClick={closeUploadMenu}>
+                            <StyledMenuItem key='file-upload-item' onClick={closeUploadMenu}>
                                 <label
                                     className={classes.uploadLabel}
                                     htmlFor='codalab-file-upload-input'
@@ -107,7 +103,7 @@ class ActionButtons extends React.Component<{
                                     File(s) Upload
                                 </label>
                             </StyledMenuItem>
-                            <StyledMenuItem onClick={closeUploadMenu}>
+                            <StyledMenuItem key='folder-upload-item' onClick={closeUploadMenu}>
                                 <label
                                     className={classes.uploadLabel}
                                     htmlFor='codalab-dir-upload-input'
