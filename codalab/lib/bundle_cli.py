@@ -3226,7 +3226,7 @@ class BundleCLI(object):
                 print(row['uuid'], file=self.stdout)
         else:
             if worksheet_dicts:
-                PrintResultLimitInfo(len((worksheet_dictss)), self.stderr)
+                PrintResultLimitInfo(len((worksheet_dicts)), self.stderr)
                 for row in worksheet_dicts:
                     row['owner'] = self.simple_user_str(row['owner'])
                     row['permissions'] = group_permissions_str(row['group_permissions'])
