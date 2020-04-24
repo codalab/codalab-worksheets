@@ -156,25 +156,6 @@ HEADING_LEVEL_3 = '### '
 
 NO_RESULTS_FOUND = 'No results found'
 
-# Print out info that only |SEARCH_RESULTS_LIMIT|, which is currently 10,
-# results are shown by default and it can be overwritten with .limit setting.
-def PrintResultLimitInfo(result_size, output):
-    """
-    Print at most SEARCH_RESULTS_LIMIT (10) results are shown by default.
-    Args:
-        result_size: number of results returned.
-        output: where the info is printed to, can be stdout, stderr, etc.
-    Returns:
-        None
-    """
-    if result_size == bundle_model.SEARCH_RESULTS_LIMIT:
-        print(
-            'Only {} results are shown. Use .limit=N to show the first N results.'.format(
-                bundle_model.SEARCH_RESULTS_LIMIT
-            ),
-            file=output,
-        )
-
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
@@ -897,6 +878,22 @@ class BundleCLI(object):
 
     def print_version(self):
         print('CodaLab CLI version %s' % CODALAB_VERSION, file=self.stdout)
+
+    def PrintResultLimitInfo(self, result_size):
+        """
+        Print at most SEARCH_RESULTS_LIMIT (10) results are shown by default.
+        Args:
+            result_size: number of results returned.
+        Returns:
+            None
+        """
+        if result_size == bundle_model.SEARCH_RESULTS_LIMIT:
+            print(
+                'Only {} results are shown. Use .limit=N to show the first N results.'.format(
+                    bundle_model.SEARCH_RESULTS_LIMIT
+                ),
+                file=self.stderr,
+            )
 
     @Commands.command(
         'help',
@@ -2074,7 +2071,7 @@ class BundleCLI(object):
                 else:
                     return info.get(col, nested_dict_get(info, 'metadata', col))
 
-            PrintResultLimitInfo(len(bundle_info_list), self.stderr)
+            PrintResultLimitInfo(len(bundle_info_list))
 
             for bundle_info in bundle_info_list:
                 bundle_info['owner'] = nested_dict_get(bundle_info, 'owner', 'user_name')
@@ -3226,7 +3223,7 @@ class BundleCLI(object):
                 print(row['uuid'], file=self.stdout)
         else:
             if worksheet_dicts:
-                PrintResultLimitInfo(len((worksheet_dicts)), self.stderr)
+                PrintResultLimitInfo(len((worksheet_dicts)))
                 for row in worksheet_dicts:
                     row['owner'] = self.simple_user_str(row['owner'])
                     row['permissions'] = group_permissions_str(row['group_permissions'])
