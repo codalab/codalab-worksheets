@@ -159,6 +159,14 @@ NO_RESULTS_FOUND = 'No results found'
 # Print out info that only |SEARCH_RESULTS_LIMIT|, which is currently 10,
 # results are shown by default and it can be overwritten with .limit setting.
 def PrintResultLimitInfo(result_size, output):
+    """
+    Print at most SEARCH_RESULTS_LIMIT (10) results are shown by default.
+    Args:
+        result_size: number of results returned.
+        output: where the info is printed to, can be stdout, stderr, etc.
+    Returns:
+        None
+    """
     if result_size == bundle_model.SEARCH_RESULTS_LIMIT:
         print(
             'Only {} results are shown. Use .limit=N to show the first N results.'.format(
