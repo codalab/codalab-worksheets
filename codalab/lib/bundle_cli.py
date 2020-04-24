@@ -881,7 +881,7 @@ class BundleCLI(object):
 
     def print_result_limit_info(self, result_size):
         """
-        Print at most SEARCH_RESULTS_LIMIT (10) results are shown by default.
+        Print at most SEARCH_RESULTS_LIMIT (10) results are shown by default to stderr.
         Args:
             result_size: number of results returned.
         Returns:
