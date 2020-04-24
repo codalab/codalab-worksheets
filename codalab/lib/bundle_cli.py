@@ -879,7 +879,7 @@ class BundleCLI(object):
     def print_version(self):
         print('CodaLab CLI version %s' % CODALAB_VERSION, file=self.stdout)
 
-    def PrintResultLimitInfo(self, result_size):
+    def print_result_limit_info(self, result_size):
         """
         Print at most SEARCH_RESULTS_LIMIT (10) results are shown by default.
         Args:
@@ -2071,7 +2071,7 @@ class BundleCLI(object):
                 else:
                     return info.get(col, nested_dict_get(info, 'metadata', col))
 
-            PrintResultLimitInfo(len(bundle_info_list))
+            self.print_result_limit_info(len(bundle_info_list))
 
             for bundle_info in bundle_info_list:
                 bundle_info['owner'] = nested_dict_get(bundle_info, 'owner', 'user_name')
@@ -3223,7 +3223,7 @@ class BundleCLI(object):
                 print(row['uuid'], file=self.stdout)
         else:
             if worksheet_dicts:
-                PrintResultLimitInfo(len((worksheet_dicts)))
+                self.print_result_limit_info(len((worksheet_dicts)))
                 for row in worksheet_dicts:
                     row['owner'] = self.simple_user_str(row['owner'])
                     row['permissions'] = group_permissions_str(row['group_permissions'])
