@@ -196,6 +196,7 @@ Usage: `cl <command> <arguments>`
     Arguments:
       target_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
       -o, --output-path     Path to download bundle to.  By default, the bundle or subpath name in the current directory is used.
+      -f, --force           Overwrite the output path if a file already exists.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
 ### mimic:
