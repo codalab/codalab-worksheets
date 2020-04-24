@@ -2516,7 +2516,7 @@ class BundleCLI(object):
                     if not result:
                         break
                     subpath_offset[i] += len(result)
-                    self.stdout.write(result)
+                    self.stdout.write(ensure_str(result))
                     if len(result) < READ_LENGTH:
                         # No more to read.
                         break
