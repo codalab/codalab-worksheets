@@ -1814,7 +1814,7 @@ def test(ctx):
     check_equals(
         uuid_deps,
         _run_command(
-            [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid), 'echo hello', '--memoize']
+            [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid1), 'echo hello', '--memoize']
         ),
     )
 
