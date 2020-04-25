@@ -18,4 +18,4 @@ venv/bin/mkdocs build || { rm -rf venv; exit 1; }  # Outputs to `site`
 
 # Fix Python and JavaScript style (mutates code!)
 venv/bin/black codalab scripts *.py || exit
-prettier --config ./frontend/.prettierrc --check 'frontend/src/**/*.js' --write
+npm run --prefix frontend format

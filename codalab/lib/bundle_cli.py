@@ -1284,6 +1284,12 @@ class BundleCLI(object):
                 help='Path to download bundle to.  By default, the bundle or subpath name in the current directory is used.',
             ),
             Commands.Argument(
+                '-f',
+                '--force',
+                action='store_true',
+                help='Overwrite the output path if a file already exists.',
+            ),
+            Commands.Argument(
                 '-w',
                 '--worksheet-spec',
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
@@ -1313,8 +1319,11 @@ class BundleCLI(object):
             )
         final_path = os.path.join(os.getcwd(), local_path)
         if os.path.exists(final_path):
-            print('Local file/directory \'%s\' already exists.' % local_path, file=self.stdout)
-            return
+            if args.force:
+                shutil.rmtree(final_path)
+            else:
+                print('Local file/directory \'%s\' already exists.' % local_path, file=self.stdout)
+                return
 
         # Do the download.
         target_info = client.fetch_contents_info(target, 0)
@@ -1428,7 +1437,7 @@ class BundleCLI(object):
 
         # If bundle contents don't exist, finish after just copying metadata
         try:
-            target_info = source_client.fetch_contents_info((source_bundle_uuid, ''))
+            target_info = source_client.fetch_contents_info(BundleTarget(source_bundle_uuid, ''))
         except NotFoundError:
             return
 
@@ -2543,7 +2552,7 @@ class BundleCLI(object):
                     if not result:
                         break
                     subpath_offset[i] += len(result)
-                    self.stdout.write(result)
+                    self.stdout.write(ensure_str(result))
                     if len(result) < READ_LENGTH:
                         # No more to read.
                         break
@@ -3186,6 +3195,8 @@ class BundleCLI(object):
                         '[Worksheet ' + self.simple_worksheet_str(worksheet_info) + ']',
                         file=self.stdout,
                     )
+            elif mode == BlockModes.placeholder_block:
+                print('[Placeholder]', block['directive'], file=self.stdout)
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
 
