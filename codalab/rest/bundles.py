@@ -135,6 +135,7 @@ def _fetch_bundles():
         )
     elif command:
         import time
+
         s = time.time()
         bundle_uuids = local.model.get_memoized_bundles(request.user.user_id, command, dependencies)
         logger.info("total time={}".format(time.time() - s))
