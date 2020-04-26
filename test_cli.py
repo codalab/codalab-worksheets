@@ -1292,19 +1292,13 @@ def test(ctx):
     check_contains("Commands for bundles", cl_output)
     check_equals(cl_output, help_output)
 
+
 @TestModule.register('executable_file')
 def test(ctx):
     ## add test to make sure "bash executable.sh" works
     script_uuid = _run_command([cl, 'upload', test_path('evaluate.sh')])
     expected_exit_code = 0
-    run_uuid = _run_command(
-        [
-            cl,
-            'run',
-            ':evaluate.sh',
-            'bash evaluate.sh'
-        ]
-    )
+    run_uuid = _run_command([cl, 'run', ':evaluate.sh', 'bash evaluate.sh'])
 
     wait(run_uuid, expected_exit_code)
 
@@ -1312,16 +1306,10 @@ def test(ctx):
 
     script_uuid = _run_command([cl, 'upload', test_path('evaluate.sh')])
     expected_exit_code = 0
-    run_uuid = _run_command(
-        [
-            cl,
-            'run',
-            ':evaluate.sh',
-            './evaluate.sh'
-        ]
-    )
+    run_uuid = _run_command([cl, 'run', ':evaluate.sh', './evaluate.sh'])
 
     wait(run_uuid, expected_exit_code)
+
 
 @TestModule.register('batch')
 def test(ctx):
