@@ -71,7 +71,8 @@ jobs:
     needs: [build_backend]
     strategy:
       matrix:
-        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs, basic upload1 upload2 upload3, upload4 download refs binary, rm make worksheet_search worksheet_tags, freeze perm search search_time, run mimic status batch, groups anonymous competition rest1 worksheets, worksheet, detach, read, kill, write, resources, netcat, netcurl, workers]
+        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs, basic, upload1, upload2, upload3, upload4 download refs binary, rm make worksheet_search worksheet_tags, freeze, perm, search, search_time, run, mimic, status, batch, groups, anonymous, competition, rest1, worksheets, worksheet, detach[
+        # test: [read, kill, write, resources, netcat, netcurl, workers]
       fail-fast: false
     steps:
       - name: Clear free space
@@ -117,6 +118,7 @@ jobs:
     name: Test frontend
     runs-on: ubuntu-latest
     needs: [build_backend, build_frontend]
+    if: false
     steps:
       - name: Clear free space
         run: |
