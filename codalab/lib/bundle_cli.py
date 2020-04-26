@@ -1430,7 +1430,7 @@ class BundleCLI(object):
 
         # If bundle contents don't exist, finish after just copying metadata
         try:
-            target_info = source_client.fetch_contents_info((source_bundle_uuid, ''))
+            target_info = source_client.fetch_contents_info(BundleTarget(source_bundle_uuid, ''))
         except NotFoundError:
             return
 
@@ -2516,7 +2516,7 @@ class BundleCLI(object):
                     if not result:
                         break
                     subpath_offset[i] += len(result)
-                    self.stdout.write(result)
+                    self.stdout.write(ensure_str(result))
                     if len(result) < READ_LENGTH:
                         # No more to read.
                         break
