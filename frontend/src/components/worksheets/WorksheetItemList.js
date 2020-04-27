@@ -60,7 +60,12 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
         elem = React.createElement(
             'div',
             null,
-            React.createElement('strong', null, 'Internal error: ', item.mode),
+            React.createElement(
+                'strong',
+                null,
+                'Internal error unsupported block mode:',
+                item.mode,
+            ),
         );
     }
     worksheet_items.push(
@@ -95,7 +100,7 @@ class WorksheetItemList extends React.Component {
 
     componentDidUpdate() {
         var info = this.props.ws.info;
-        if (!info || !info.items.length) {
+        if (!info || !info.blocks.length) {
             $('.empty-worksheet').fadeIn('fast');
         }
     }
@@ -117,7 +122,7 @@ class WorksheetItemList extends React.Component {
         Mousetrap.bind(
             ['shift+g'],
             function() {
-                this.props.setFocus(this.props.ws.info.items.length - 1, 'end');
+                this.props.setFocus(this.props.ws.info.blocks.length - 1, 'end');
                 $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
             }.bind(this),
             'keydown',
@@ -129,8 +134,8 @@ class WorksheetItemList extends React.Component {
         // E.g. 0x47bda9 -> [[0, 1], [2, 3]], which means bundle 0x47bda9 appears twice in the current worksheet
         var uuidToIndex = {};
         var info = this.props.ws.info;
-        if (info && info.items.length > 0) {
-            var items = info.items;
+        if (info && info.blocks.length > 0) {
+            var items = info.blocks;
             for (var index = 0; index < items.length; index++) {
                 if (items[index].bundles_spec) {
                     for (
@@ -194,9 +199,9 @@ class WorksheetItemList extends React.Component {
         // Create items
         var items_display;
         var info = this.props.ws.info;
-        if (info && info.items.length === 0) {
+        if (info && info.blocks.length === 0) {
             // Create a "dummy" item at the beginning so that only empty text can be added.
-            info.items = [
+            info.blocks = [
                 {
                     isDummyItem: true,
                     text: '',
@@ -208,9 +213,9 @@ class WorksheetItemList extends React.Component {
             ];
         }
         let focusedForButtonsItem;
-        if (info && info.items.length > 0) {
+        if (info && info.blocks.length > 0) {
             var worksheet_items = [];
-            info.items.forEach(
+            info.blocks.forEach(
                 function(item, index) {
                     const focused = index === this.props.focusIndex;
 
@@ -219,7 +224,7 @@ class WorksheetItemList extends React.Component {
                     // append to the end by default.
                     const focusedForButtons =
                         focused ||
-                        (this.props.focusIndex === -1 && index === info.items.length - 1);
+                        (this.props.focusIndex === -1 && index === info.blocks.length - 1);
 
                     if (focusedForButtons) {
                         focusedForButtonsItem = item;
@@ -256,8 +261,8 @@ class WorksheetItemList extends React.Component {
                     addWorksheetItems(
                         props,
                         worksheet_items,
-                        index > 0 ? info.items[index - 1] : null,
-                        index < info.items.length - 1 ? info.items[index + 1] : null,
+                        index > 0 ? info.blocks[index - 1] : null,
+                        index < info.blocks.length - 1 ? info.blocks[index + 1] : null,
                     );
                 }.bind(this),
             );

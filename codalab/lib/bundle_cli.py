@@ -34,6 +34,8 @@ from shlex import quote
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
 
+import codalab.model.bundle_model as bundle_model
+
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
@@ -152,6 +154,8 @@ OTHER_COMMANDS = ('help', 'status', 'alias', 'config', 'logout')
 # Markdown headings
 HEADING_LEVEL_2 = '## '
 HEADING_LEVEL_3 = '### '
+
+NO_RESULTS_FOUND = 'No results found'
 
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
@@ -881,6 +885,22 @@ class BundleCLI(object):
 
     def print_version(self):
         print('CodaLab CLI version %s' % CODALAB_VERSION, file=self.stdout)
+
+    def print_result_limit_info(self, result_size):
+        """
+        Print at most SEARCH_RESULTS_LIMIT (10) results are shown by default to stderr.
+        Args:
+            result_size: number of results returned.
+        Returns:
+            None
+        """
+        if result_size == bundle_model.SEARCH_RESULTS_LIMIT:
+            print(
+                'Only {} results are shown. Use .limit=N to show the first N results.'.format(
+                    bundle_model.SEARCH_RESULTS_LIMIT
+                ),
+                file=self.stderr,
+            )
 
     @Commands.command(
         'help',
@@ -1977,6 +1997,8 @@ class BundleCLI(object):
         # Print table
         if len(bundles) > 0:
             self.print_bundle_info_list(bundles, uuid_only=args.uuid_only, print_ref=False)
+        elif not args.uuid_only:
+            print(NO_RESULTS_FOUND, file=self.stderr)
 
         # Add the bundles to the current worksheet
         if args.append:
@@ -2084,6 +2106,8 @@ class BundleCLI(object):
                     return '^' + str(len(bundle_info_list) - i)
                 else:
                     return info.get(col, nested_dict_get(info, 'metadata', col))
+
+            self.print_result_limit_info(len(bundle_info_list))
 
             for bundle_info in bundle_info_list:
                 bundle_info['owner'] = nested_dict_get(bundle_info, 'owner', 'user_name')
@@ -3153,7 +3177,7 @@ class BundleCLI(object):
                 print(line, file=self.stdout)
         else:
             print(self._worksheet_description(worksheet_info), file=self.stdout)
-            interpreted_blocks = client.fetch_interpreted_worksheet(worksheet_uuid)['items']
+            interpreted_blocks = client.fetch_interpreted_worksheet(worksheet_uuid)['blocks']
             self.display_blocks(client, worksheet_info, interpreted_blocks)
 
     def display_blocks(self, client, worksheet_info, interpreted_blocks):
@@ -3230,11 +3254,13 @@ class BundleCLI(object):
             'worksheets',
             params={'keywords': args.keywords, 'include': ['owner', 'group_permissions']},
         )
+
         if args.uuid_only:
             for row in worksheet_dicts:
                 print(row['uuid'], file=self.stdout)
         else:
             if worksheet_dicts:
+                self.print_result_limit_info(len((worksheet_dicts)))
                 for row in worksheet_dicts:
                     row['owner'] = self.simple_user_str(row['owner'])
                     row['permissions'] = group_permissions_str(row['group_permissions'])
@@ -3242,6 +3268,8 @@ class BundleCLI(object):
                 self.print_table(
                     ('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs
                 )
+            else:
+                print(NO_RESULTS_FOUND, file=self.stderr)
         return {'refs': self.create_reference_map('worksheet', worksheet_dicts)}
 
     @Commands.command(
