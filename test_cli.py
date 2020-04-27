@@ -192,9 +192,6 @@ def _run_command(
     # We skip using the cli directly if force_subprocess is set to true (which forces
     # us to use subprocess even for cl commands).
     force_subprocess = not force_subprocess and args[0] == cl
-    if 'run' in args:
-        args.append("--request-memory")
-        args.append("200m")
     return run_command(
         args, expected_exit_code, max_output_chars, env, include_stderr, binary, force_subprocess
     )
