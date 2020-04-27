@@ -13,7 +13,7 @@ import json
 from dateutil import parser
 from uuid import uuid4
 
-from sqlalchemy import and_, or_, not_, select, union, desc, func, union_all
+from sqlalchemy import and_, or_, not_, select, union, desc, func
 from sqlalchemy.sql.expression import literal, true
 
 from codalab.bundles import get_bundle_subclass
