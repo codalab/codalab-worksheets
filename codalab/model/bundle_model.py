@@ -732,44 +732,11 @@ class BundleModel(object):
                 .order_by(cl_bundle.c.id)
             )
         else:
-            # The following matching logic contains two GROUP BYs. In the first GROUP BY, we select those records
-            # that have the same number of dependencies as specified in input. In the second GROUP BY, we select those
-            # records that match with the (child_path, parent_uuid) dependency pair from input.
-            # For instance, suppose we are trying to match dependencies '[{"child_path": foo, "parent_uuid": x},
-            #                                                             {"child_path": bar, "parent_uuid": y}]',
-            # in the following bundle_dependency table, records have already been filtered based on the input command.
-            # Step 1: in the first GROUP BY:
-            #           The bundle_dependency table
-            #   id, child_uuid, child_path, parent_uuid
-            #    1,     uuid1,        foo,           x
-            #    2,     uuid1,        bar,           y
-            #    3,     uuid3,        foo,           x
-            #    4,     uuid4,        foo,           x
-            #    5,     uuid4,        bar,           y
-            #    6,     uuid4,        baz,           z
-            #    7,     uuid5,        foo,           x
-            #    8,     uuid5,        bar,           u
-            # After the 1st aggregation on child_uuid, we get the following records:
-            #      The bundle_dependency table
-            #      child_uuid, # of child_path
-            #           uuid1,        2 <-- uuid1 matches with the number of input dependencies
-            #           uuid3,        1
-            #           uuid4,        3
-            #           uuid5,        2 <-- uuid5 matches with the number of input dependencies
-            #
-            # Step 2: in the second GROUP BY, we select records that return from the 1st aggregation query:
-            #           The bundle_dependency table
-            #   id, child_uuid, child_path, parent_uuid
-            #    1,     uuid1,        foo,           x  <-- match
-            #    2,     uuid1,        bar,           y  <-- match
-            #    7,     uuid5,        foo,           x  <-- match
-            #    8,     uuid5,        bar,           u  <-- not match
-            # After the 2nd aggregation on child_uuid, we get the following records:
-            #      The bundle_dependency table
-            #      child_uuid, # of unique child_path
-            #           uuid1,        2 <-- uuid1 matches with the number of input
-            #           uuid5,        1     dependencies , will be the final result.
-
+            # The following matching logic contains two aggregations. In the first aggregation, we select those records
+            # that have the same number of dependencies as specified in input. In the second aggregation, we operate on
+            # records that returned from the first aggregation. We first select those records that match with all
+            # (child_path, parent_uuid) dependency pairs from the input. Then, we aggregate on child_uuid and match
+            # the total the number of unique dependencies per child_uuid with input dependencies.
             clause = []
             for dep in dependencies:
                 clause.append(
@@ -792,7 +759,6 @@ class BundleModel(object):
                 # on child_path to get the number of unique dependencies
                 .having(func.count(cl_bundle_dependency.c.child_path) == len(dependencies))
             )
-
             uuids = self._execute_query(command_filter)
 
             # Step 2: filter on each dependency pair (child_path, parent_uuid) in the bundle_dependency table
