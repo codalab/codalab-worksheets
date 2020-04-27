@@ -55,6 +55,19 @@ def tar_gzip_directory(
         raise IOError(e.output)
 
 
+def tar_single_file(file_path):
+    abs_path = os.path.abspath(file_path)
+    base_dir_path = os.path.dirname(abs_path)
+    file_basename = os.path.basename(abs_path)
+    args = ['tar', '--acls', '-pczf', '-', '-C', base_dir_path, '--mode=a+rwX', file_basename]
+
+    try:
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        return proc.stdout
+    except subprocess.CalledProcessError as e:
+        raise IOError(e.output)
+
+
 def un_tar_directory(fileobj, directory_path, compression=''):
     """
     Extracts the given file-like object containing a tar archive into the given

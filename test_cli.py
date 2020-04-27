@@ -1295,18 +1295,20 @@ def test(ctx):
 
 @TestModule.register('executable_file')
 def test(ctx):
+    log_worksheet_uuid = _run_command([cl, 'work', '-u'])
+
     ## add test to make sure "bash executable.sh" works
-    script_uuid = _run_command([cl, 'upload', test_path('evaluate.sh')])
+    script_uuid = _run_command([cl, 'upload', test_path('run.sh')])
     expected_exit_code = 0
-    run_uuid = _run_command([cl, 'run', ':evaluate.sh', 'bash evaluate.sh'])
+    run_uuid = _run_command([cl, 'run', ':run.sh', 'bash run.sh'])
 
     wait(run_uuid, expected_exit_code)
 
     ## add test to make sure "./executable.sh" works
 
-    script_uuid = _run_command([cl, 'upload', test_path('evaluate.sh')])
+    script_uuid = _run_command([cl, 'upload', test_path('run.sh')])
     expected_exit_code = 0
-    run_uuid = _run_command([cl, 'run', ':evaluate.sh', './evaluate.sh'])
+    run_uuid = _run_command([cl, 'run', ':run.sh', './run.sh'])
 
     wait(run_uuid, expected_exit_code)
 
