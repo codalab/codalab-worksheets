@@ -13,7 +13,7 @@ import json
 from dateutil import parser
 from uuid import uuid4
 
-from sqlalchemy import and_, or_, not_, select, union, desc, func
+from sqlalchemy import and_, or_, not_, select, union, desc, func, union_all
 from sqlalchemy.sql.expression import literal, true
 
 from codalab.bundles import get_bundle_subclass
@@ -701,7 +701,7 @@ class BundleModel(object):
         return self._execute_query(query)
 
     def get_memoized_bundles(self, user_id, command, dependencies):
-        '''
+        """
         Get a list of bundle UUIDs that match with input command and dependencies in the order of they were created.
         :param user_id: a string that specifies the current user id.
         :param command: a string that defines the command that is used to search for memoized bundles in the database.
@@ -709,7 +709,7 @@ class BundleModel(object):
                                                        {"child_path": key2, "parent_uuid": uuid2}]'
                             to search for matched dependencies in the database.
         :return: a list of matched UUIDs.
-        '''
+        """
         # Decode json formatted dependencies string to a list of key value pairs
         dependencies = json.loads(dependencies)
         # When there is no dependency to be matched, the target memozied bundle
@@ -732,50 +732,52 @@ class BundleModel(object):
                 .order_by(cl_bundle.c.id)
             )
         else:
-            clause = []
+            # 1. JOIN between the bundle table and bundle_dependency table on each input dependency pair.
+            # 2. UNION all the JOIN records.
+            # 3. GROUP BY child_uuid on the above UNION records and filter out records that don't
+            #    have the same number of dependencies as specified in input.
+            joins = []
             for dep in dependencies:
-                clause.append(
-                    and_(
-                        cl_bundle_dependency.c.child_path == dep['child_path'],
-                        cl_bundle_dependency.c.parent_uuid == dep['parent_uuid'],
+                joins.append(
+                    (
+                        select(
+                            [
+                                cl_bundle_dependency.c.id,
+                                cl_bundle_dependency.c.child_uuid,
+                                cl_bundle_dependency.c.child_path,
+                                cl_bundle_dependency.c.parent_uuid,
+                            ]
+                        )
+                        .select_from(
+                            cl_bundle.join(
+                                cl_bundle_dependency,
+                                cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid,
+                            )
+                        )
+                        .where(
+                            and_(
+                                cl_bundle.c.command == command,
+                                cl_bundle.c.owner_id == user_id,
+                                cl_bundle_dependency.c.child_path == dep['child_path'],
+                                cl_bundle_dependency.c.parent_uuid == dep['parent_uuid'],
+                            )
+                        )
                     )
                 )
-            # Step 1: filter out bundles that don't have the same number of dependencies as specified in input
-            command_filter = (
-                select([cl_bundle_dependency.c.child_uuid])
-                .select_from(
-                    cl_bundle.join(
-                        cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid
-                    )
-                )
-                .where(and_(cl_bundle.c.command == command, cl_bundle.c.owner_id == user_id))
-                .group_by(cl_bundle_dependency.c.child_uuid)
-                # child_path is unique across all dependencies, aggregate
-                # on child_path to get the number of unique dependencies
-                .having(func.count(cl_bundle_dependency.c.child_path) == len(dependencies))
-                .alias()
-            )
 
-            # Step 2: filter out bundles that don't have the same dependencies as specified in input
+            unions = union_all(*joins).alias()
+
             query = (
-                select([cl_bundle_dependency.c.child_uuid])
-                .select_from(cl_bundle_dependency)
-                .where(
-                    and_(
-                        cl_bundle_dependency.c.child_uuid.in_(
-                            select([command_filter.c.child_uuid]).select_from(command_filter)
-                        ),
-                        or_(*clause),
-                    )
-                )
-                .group_by(cl_bundle_dependency.c.child_uuid)
-                # child_path is unique across all dependencies, aggregate
-                # on child_path to get the number of unique dependencies
-                .having(func.count(cl_bundle_dependency.c.child_path) == len(dependencies))
+                select([unions.c.child_uuid])
+                .select_from(unions)
+                .group_by(unions.c.child_uuid)
+                # child_path is unique across all dependencies, aggregate on child_path to get the number of unique
+                # dependencies for each child_uuid as cnt_1, then compare it with the number of elements of input
+                # dependencies as cnt_2 filter out records don't have a match between cnt_1 and cnt_2.
+                .having(func.count(unions.c.child_path) == len(dependencies))
                 # Ensure the order of the returning bundles will be in the order of they were created.
-                .order_by(cl_bundle_dependency.c.id)
+                .order_by(unions.c.id)
             )
-
         return self._execute_query(query)
 
     def batch_get_bundles(self, **kwargs):
