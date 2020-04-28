@@ -745,7 +745,7 @@ class BundleModel(object):
                         cl_bundle_dependency.c.parent_uuid == dep['parent_uuid'],
                     )
                 )
-            # Step 1: filter on input command and the number of dependencies
+            # Step 1: filter by input command and the number of dependencies
             command_filter = (
                 select([cl_bundle_dependency.c.child_uuid])
                 .select_from(
@@ -761,7 +761,7 @@ class BundleModel(object):
             )
             uuids = self._execute_query(command_filter)
 
-            # Step 2: filter on each dependency (child_path, parent_uuid) pair in the bundle_dependency table
+            # Step 2: filter by each dependency (child_path, parent_uuid) pair in the bundle_dependency table
             query = (
                 select([cl_bundle_dependency.c.child_uuid])
                 .select_from(cl_bundle_dependency)
