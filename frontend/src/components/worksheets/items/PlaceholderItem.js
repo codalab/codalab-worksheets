@@ -36,15 +36,15 @@ export default forwardRef((props, ref) => {
     useEffect(() => {
         (async function() {
             try {
-                const { blocks } = await fetchData({ directive, worksheetUUID });
+                const { sort_keys, blocks } = await fetchData({ directive, worksheetUUID });
                 setItem(blocks.length === 0 ? null : blocks[0]);
                 if (blocks.length > 0) {
                     let actualItem = blocks[0];
                     // replace with existing sort keys if there is one
                     if (sort_keys) {
                         actualItem['sort_keys'] = sort_keys;
-                        actualItem['from_search'] = true;
                     }
+                    actualItem['from_search'] = true;
                     onAsyncItemLoad(actualItem);
                 }
             } catch (e) {
