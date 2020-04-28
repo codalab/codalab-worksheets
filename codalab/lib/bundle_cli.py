@@ -1479,7 +1479,7 @@ class BundleCLI(object):
 
         # Send file over
         progress = FileTransferProgress('Copied ', f=self.stderr)
-        source = source_client.fetch_contents_blob((source_bundle_uuid, ''))
+        source = source_client.fetch_contents_blob(BundleTarget(source_bundle_uuid, ''))
         with closing(source), progress:
             dest_client.upload_contents_blob(
                 dest_bundle['id'],
