@@ -462,13 +462,13 @@ class Worksheet extends React.Component {
                 ? this.state.focusIndex + ',0'
                 : this.state.focusIndex + ',' + this.state.subFocusIndex;
             let item_source_index = this.state.ws.info.block_to_raw[currentItemKey];
-            this.state.ws.info.raw.splice(item_source_index + 1, 0, bundleString);
+            this.state.ws.info.source.splice(item_source_index + 1, 0, bundleString);
             this.setState({
                 ws: {
                     ...this.state.ws,
                     info: {
                         ...this.state.ws.info,
-                        raw: this.state.ws.info.raw,
+                        raw: this.state.ws.info.source,
                     },
                 },
                 searchExpandedIndices: new Set(),
