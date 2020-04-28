@@ -227,11 +227,10 @@ class Worker:
             self.terminate_and_restage = True
 
     def process_terminate_signal(self):
+        # If received pass_down_termination signal from CLI to terminate the worker,
+        # wait until all the existing unfinished bundles are restaged, then stop the worker.
         if self.terminate_and_restage:
-            if self.pass_down_termination:
-                if self.restage_bundles() == 0:
-                    self.stop = True
-            else:
+            if self.restage_bundles() == 0:
                 self.stop = True
 
     def restage_bundles(self):
