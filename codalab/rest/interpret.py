@@ -292,7 +292,7 @@ def fetch_interpreted_worksheet(uuid):
             worksheet_info['blocks'] = [search_result_item]
         else:
             worksheet_info['blocks'] = []
-            
+
     for block in worksheet_info['blocks']:
         if block is None:
             continue
