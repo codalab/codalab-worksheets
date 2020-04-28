@@ -10,6 +10,19 @@ import time
 import logging
 import json
 
+"""
+| Tests | 2 AGG in 1 query | 2 AGG in 2 queries | UNIONs on JOINs | 
+| ---- | ---- | ---- | ---- | 
+| 1| 0.0578651428222656| 0.06195163726806640 | 0.060456275939941406 | 
+| 2| 0.5580108165740967| 0.07441258430480957 | 0.06279182434082031 | 
+| 3| 0.6198058128356934| 0.06659507751464844 | 0.11051750183105469 | 
+| 4| 0.6372816562652588| 0.07648229598999023 | 0.10235214233398438 | 
+| 5| 0.6172430515289307| 0.06659984588623047 | 0.06983256340026855 | 
+| 6| 0.5474967956542969| 0.06769084930419922 | 0.10195350646972656 | 
+| 7| 0.3473646640777588| 0.06359648704528809 | 0.09937453269958496 | 
+| 8| 0.3533980846405029| 0.06468772888183594 | 0.10466766357421875 | 
+| 9| 0.3261570930480957| 0.05560111999511719 | 0.10058188438415527 | 
+"""
 from dateutil import parser
 from uuid import uuid4
 
@@ -754,21 +767,21 @@ class BundleModel(object):
                     )
                 )
                 .where(and_(cl_bundle.c.command == command, cl_bundle.c.owner_id == user_id))
+                # child_path is unique across all dependencies, aggregate on child_uuid
+                # and COUNT the total the number of unique dependencies per child_uuid
                 .group_by(cl_bundle_dependency.c.child_uuid)
-                # child_path is unique across all dependencies, aggregate
-                # on child_path to get the number of unique dependencies
                 .having(func.count(cl_bundle_dependency.c.child_path) == len(dependencies))
             )
             uuids = self._execute_query(command_filter)
 
-            # Step 2: filter on each dependency pair (child_path, parent_uuid) in the bundle_dependency table
+            # Step 2: filter on each dependency (child_path, parent_uuid) pair in the bundle_dependency table
             query = (
                 select([cl_bundle_dependency.c.child_uuid])
                 .select_from(cl_bundle_dependency)
                 .where(and_(cl_bundle_dependency.c.child_uuid.in_(uuids), or_(*clause)))
+                # child_path is unique across all dependencies, aggregate on child_uuid
+                # and COUNT the total the number of unique dependencies per child_uuid
                 .group_by(cl_bundle_dependency.c.child_uuid)
-                # child_path is unique across all dependencies, aggregate
-                # on child_uuid and COUNT the total the number of unique dependencies per child_uuid
                 .having(func.count(cl_bundle_dependency.c.child_path) == len(dependencies))
                 # Ensure the order of the returning bundles will be in the order of they were created.
                 .order_by(cl_bundle_dependency.c.id)
