@@ -3,11 +3,13 @@
 """
 The main entry point for bringing up CodaLab services.  This is used for both
 local development and actual deployment.
+
 A full deployment is governed by a set of *arguments*, which can either be
 specified via (later overriding the former):
 - (i) defaults defined in this file,
 - (ii) environment variables (e.g., CODALAB_HOME),
 - (iii) command-line arguments
+
 We then launch a set of services (e.g., `rest-server`), where for each one:
 - We create an environment from a subset of the above arguments.
 - We call `docker-compose` or `docker run`, which might read these environment
@@ -42,6 +44,9 @@ SERVICE_TO_IMAGE = {
     'monitor': 'server',
     'worker': 'worker',
 }
+
+# Max timeout in seconds to wait for request to a service to get through
+SERVICE_REQUEST_TIMEOUT_SECONDS = 600
 
 
 def ensure_directory_exists(path):
@@ -265,6 +270,20 @@ CODALAB_ARGUMENTS = [
         type=int,
         default=2048,
         help='Default memory (in MB) for each worker in the AWS Batch Worker Manager',
+    ),
+    CodalabArg(
+        name='compose_http_timeout',
+        env_var='COMPOSE_HTTP_TIMEOUT',
+        type=int,
+        default=SERVICE_REQUEST_TIMEOUT_SECONDS,
+        help='Docker Compose HTTP timeout (in seconds)',
+    ),
+    CodalabArg(
+        name='docker_client_timeout',
+        env_var='DOCKER_CLIENT_TIMEOUT',
+        type=int,
+        default=SERVICE_REQUEST_TIMEOUT_SECONDS,
+        help='Docker client timeout (in seconds)',
     ),
     ### Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
@@ -581,6 +600,7 @@ class CodalabServiceManager(object):
             compose_files_str,
             cmd,
         )
+
         compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in self.compose_env.items())
         print('(cd {}; {} {})'.format(self.compose_cwd, compose_env_string, command_string))
         if self.args.dry_run:
@@ -639,7 +659,9 @@ class CodalabServiceManager(object):
 
     @staticmethod
     def wait(host, port, cmd):
-        return '/opt/wait-for-it.sh {}:{} -- {}'.format(host, port, cmd)
+        return '/opt/wait-for-it.sh --timeout={} {}:{} -- {}'.format(
+            SERVICE_REQUEST_TIMEOUT_SECONDS, host, port, cmd
+        )
 
     def wait_mysql(self, cmd):
         return self.wait(self.args.mysql_host, self.args.mysql_port, cmd)
@@ -669,6 +691,7 @@ class CodalabServiceManager(object):
                     ('cli/default_address', rest_url),
                     ('server/engine_url', mysql_url),
                     ('server/rest_host', '0.0.0.0'),
+                    ('server/rest_port', self.args.rest_port),
                     ('server/admin_email', self.args.admin_email),
                     ('server/support_email', self.args.support_email),  # Use support_email
                     ('server/default_user_info/disk_quota', self.args.user_disk_quota),
