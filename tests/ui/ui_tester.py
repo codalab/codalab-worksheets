@@ -319,7 +319,7 @@ class WorksheetTest(UITester):
         self.wait_until_worksheet_content_loads()
         # wait for small worksheet to be resolved from place holder item
         by = By.LINK_TEXT
-        selector="Small Worksheet [cl_small_worksheet]"
+        selector = "Small Worksheet [cl_small_worksheet]"
         timeout_message = 'Timed out while waiting for {}: {}.'.format(by, selector)
         WebDriverWait(self.browser, 10).until(
             EC.presence_of_element_located((by, selector)), message=timeout_message
