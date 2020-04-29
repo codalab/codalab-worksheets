@@ -312,9 +312,11 @@ export function getMinMaxKeys(item) {
         const { sort_keys, ids } = item;
         const keys = [];
         sort_keys.forEach((k, idx) => {
-            const key = k || ids & ids[idx];
-            if (key !== null && key !== undefined) {
-                keys.push(key);
+            if (ids) {
+                const key = k || ids & ids[idx];
+                if (key !== null && key !== undefined && ids) {
+                    keys.push(key);
+                }
             }
         });
         if (keys.length > 0) {

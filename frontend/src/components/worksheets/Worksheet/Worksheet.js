@@ -1597,8 +1597,6 @@ class Worksheet extends React.Component {
         );
         if (info && info.title) {
             document.title = info.title;
-            console.log(this.state.ws.info.block_to_raw);
-            console.log(this.state.searchExpandedBlock);
         }
 
         return (
