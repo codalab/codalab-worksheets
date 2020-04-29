@@ -12,6 +12,7 @@
     "@material-ui/icons": "^3.0.2",
     "ace-builds": "^1.4.2",
     "autosuggest-highlight": "^3.1.1",
+    "await-semaphore": "^0.1.3",
     "bootstrap": "^3.4.1",
     "c3": "^0.6.12",
     "classnames": "^2.2.6",
@@ -64,7 +65,8 @@
     "test": "react-scripts test",
     "flow": "flow",
     "eject": "react-scripts eject",
-    "check-ci": "eslint src && prettier --config ./.prettierrc --check 'src/**/*.js'"
+    "check-ci": "eslint src && prettier --config ./.prettierrc --check 'src/**/*.js'",
+    "format": "eslint src --fix && prettier --config ./.prettierrc --check 'src/**/*.js' --write"
   },
   "husky": {
     "hooks": {
