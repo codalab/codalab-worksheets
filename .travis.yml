@@ -9,7 +9,7 @@ jobs:
       language: node_js
       node_js:
         - 13
-      install: cd frontend && npm install
+      install: cd frontend && npm ci
       script:
         - npm run check-ci
     - stage: check
