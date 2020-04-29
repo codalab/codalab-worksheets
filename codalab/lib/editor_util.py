@@ -1,4 +1,3 @@
-
 import os
 import subprocess
 import sys
@@ -6,6 +5,7 @@ import tempfile
 
 from codalab.lib import path_util
 from codalab.lib.codalab_manager import CodaLabManager
+
 
 def find_default_editor():
     manager = CodaLabManager()
@@ -19,6 +19,7 @@ def find_default_editor():
         editor = 'vi'
     return editor
 
+
 def open_and_edit(suffix, template=''):
     editor = find_default_editor()
     tempfile_name = ''
@@ -31,8 +32,6 @@ def open_and_edit(suffix, template=''):
         subprocess.call([editor, tempfile_name])
         with open(tempfile_name, 'r') as form:
             lines = form.readlines()
-            lines = [line.decode('utf-8') for line in lines]
         path_util.remove(tempfile_name)
 
     return lines
-

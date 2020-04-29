@@ -1,0 +1,46 @@
+FROM golang as ecr-login-installation
+# Install the Amazon ECR Docker Credential Helper
+# Use Docker multi-stage builds to get rid of intermediate layers related to installation
+
+ENV GOPATH /root/go
+RUN go get -u github.com/awslabs/amazon-ecr-credential-helper/ecr-login/cli/docker-credential-ecr-login
+WORKDIR /root/go/src/github.com/awslabs/amazon-ecr-credential-helper
+RUN make
+
+FROM ubuntu:16.04
+MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa
+
+RUN apt-get update; apt-get install -y \
+  python3.6 \
+  python3.6-dev \
+  python3-pip;
+
+# Set Python3.6 as the default python3 version
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+
+COPY --from=ecr-login-installation /root/go/src/github.com/awslabs/amazon-ecr-credential-helper/bin/local /usr/local/bin
+RUN mkdir $HOME/.docker
+RUN echo "{\"credsStore\": \"ecr-login\"}" >> ~/.docker/config.json
+
+WORKDIR /opt
+RUN mkdir ${WORKDIR}/codalab
+
+# Install dependencies
+COPY requirements.txt requirements.txt
+RUN python3.6 -m pip install --user --upgrade pip; \
+    python3.6 -m pip install -r requirements.txt;
+
+# Install code
+COPY codalab/lib codalab/lib
+COPY codalab/worker codalab/worker
+COPY codalab/common.py codalab/common.py
+COPY setup.py setup.py
+
+RUN python3 -m pip install -e .
+
+# Allow non-root to read everything
+RUN chmod -R og=u-w .

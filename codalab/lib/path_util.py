@@ -22,10 +22,7 @@ import shutil
 import subprocess
 import sys
 
-from codalab.common import (
-  precondition,
-  UsageError,
-)
+from codalab.common import precondition, UsageError
 from codalab.lib import file_util
 
 
@@ -90,11 +87,12 @@ def check_isfile(path, fn_name):
 
 
 def path_is_url(path):
-    if isinstance(path, basestring):
+    if isinstance(path, str):
         for prefix in ['http', 'https', 'ftp']:
             if path.startswith(prefix + '://'):
                 return True
     return False
+
 
 ################################################################################
 # Functions to list directories and to deal with subpaths of paths.
@@ -107,7 +105,7 @@ def safe_join(*paths):
     Note that os.path.join has this functionality EXCEPT at the end of the list,
     which causes problems when a target subpath is empty.
     """
-    return os.path.join(*filter(None, paths))
+    return os.path.join(*[_f for _f in paths if _f])
 
 
 def get_relative_path(root, path):
@@ -115,7 +113,7 @@ def get_relative_path(root, path):
     Return the relative path from root to path, which should be nested under root.
     """
     precondition(path.startswith(root), '%s is not under %s' % (path, root))
-    return path[len(root):]
+    return path[len(root) :]
 
 
 def ls(path):
@@ -145,7 +143,7 @@ def recursive_ls(path):
     check_isdir(path, 'recursive_ls')
     (directories, files) = ([], [])
     for (root, _, file_names) in os.walk(path):
-        assert(os.path.isabs(root)), 'Got relative root in os.walk: %s' % (root,)
+        assert os.path.isabs(root), 'Got relative root in os.walk: %s' % (root,)
         directories.append(root)
         for file_name in file_names:
             files.append(os.path.join(root, file_name))
@@ -198,17 +196,17 @@ def hash_directory(path, dirs_and_files=None):
     directory_hash = hashlib.sha1()
     for directory in sorted(directories):
         relative_path = get_relative_path(path, directory)
-        directory_hash.update(hashlib.sha1(relative_path).hexdigest())
+        directory_hash.update(hashlib.sha1(relative_path.encode()).hexdigest().encode())
     # Use a similar two-level hashing scheme for all files, but incorporate a
     # hash of both the file name and contents.
     file_hash = hashlib.sha1()
     for file_name in sorted(files):
         relative_path = get_relative_path(path, file_name)
-        file_hash.update(hashlib.sha1(relative_path).hexdigest())
-        file_hash.update(hash_file_contents(file_name))
+        file_hash.update(hashlib.sha1(relative_path.encode()).hexdigest().encode())
+        file_hash.update(hash_file_contents(file_name).encode())
     # Return a hash of the two hashes.
-    overall_hash = hashlib.sha1(directory_hash.hexdigest())
-    overall_hash.update(file_hash.hexdigest())
+    overall_hash = hashlib.sha1(directory_hash.hexdigest().encode())
+    overall_hash.update(file_hash.hexdigest().encode())
     return overall_hash.hexdigest()
 
 
@@ -219,10 +217,10 @@ def hash_file_contents(path):
     message = 'hash_file called with relative path: %s' % (path,)
     precondition(os.path.isabs(path), message)
     if os.path.islink(path):
-        contents_hash = hashlib.sha1(LINK_PREFIX)
-        contents_hash.update(os.readlink(path))
+        contents_hash = hashlib.sha1(LINK_PREFIX.encode())
+        contents_hash.update(os.readlink(path).encode())
     else:
-        contents_hash = hashlib.sha1(FILE_PREFIX)
+        contents_hash = hashlib.sha1(FILE_PREFIX.encode())
         with open(path, 'rb') as file_handle:
             while True:
                 data = file_handle.read(BLOCK_SIZE)
@@ -235,6 +233,7 @@ def hash_file_contents(path):
 ################################################################################
 # Functions that modify that filesystem in controlled ways.
 ################################################################################
+
 
 def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
     """
@@ -249,7 +248,12 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
 
     if source_path == '/dev/stdin':
         with open(dest_path, 'wb') as dest:
-            file_util.copy(sys.stdin, dest, autoflush=False, print_status='Copying %s to %s' % (source_path, dest_path))
+            file_util.copy(
+                sys.stdin,
+                dest,
+                autoflush=False,
+                print_status='Copying %s to %s' % (source_path, dest_path),
+            )
     else:
         if not follow_symlinks and os.path.islink(source_path):
             raise path_error('not following symlinks', source_path)
@@ -258,7 +262,8 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
         command = [
             'rsync',
             '-pr%s' % ('L' if follow_symlinks else 'l'),
-            source_path + ('/' if not os.path.islink(source_path) and os.path.isdir(source_path) else ''),
+            source_path
+            + ('/' if not os.path.islink(source_path) and os.path.isdir(source_path) else ''),
             dest_path,
         ]
         if exclude_patterns is not None:
@@ -274,10 +279,10 @@ def make_directory(path):
     """
     try:
         os.mkdir(path)
-    except OSError, e:
+    except OSError as e:
         if e.errno != errno.EEXIST:
             raise
-    check_isdir(path, 'make_directories')
+    check_isdir(path, 'make_directory')
 
 
 def set_write_permissions(path):
@@ -309,7 +314,8 @@ def remove(path):
     else:
         os.remove(path)
     if os.path.exists(path):
-        print 'Failed to remove %s' % path
+        print('Failed to remove %s' % path)
+
 
 def soft_link(source, path):
     """

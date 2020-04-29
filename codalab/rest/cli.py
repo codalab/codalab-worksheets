@@ -1,18 +1,12 @@
 """
 Web terminal API.
 """
-from cStringIO import StringIO
+from io import StringIO
 from datetime import datetime, timedelta
 from oauthlib.common import generate_token
 import shlex
 
-from bottle import (
-    abort,
-    httplib,
-    local,
-    post,
-    request,
-)
+from bottle import abort, httplib, local, post, request
 
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import UsageError
@@ -49,9 +43,7 @@ def post_worksheets_command():
 
     # If 'autocomplete' field is set, return a list of completions instead
     if query.get('autocomplete', False):
-        return {
-            'completions': complete_command(query['worksheet_uuid'], query['command'])
-        }
+        return {'completions': complete_command(query['worksheet_uuid'], query['command'])}
 
     return general_command(query['worksheet_uuid'], query['command'])
 
@@ -72,9 +64,8 @@ def get_user_token():
 
     # Try to find an existing token that will work.
     token = local.model.find_oauth2_token(
-        CLIENT_ID,
-        request.user.user_id,
-        datetime.utcnow() + timedelta(minutes=5))
+        CLIENT_ID, request.user.user_id, datetime.utcnow() + timedelta(minutes=5)
+    )
     if token is not None:
         return token.access_token
 
@@ -104,13 +95,9 @@ def create_cli(worksheet_uuid):
     requests directly to the appropriate Bottle view functions.
     """
     output_buffer = StringIO()
-    rest_client = JsonApiClient(rest_url(), get_user_token)
-    manager = CodaLabManager(
-        temporary=True,
-        config=local.config,
-        clients={
-            rest_url(): rest_client
-        })
+    rest_extra_headers = local.config['server'].get('extra_headers', {})
+    rest_client = JsonApiClient(rest_url(), get_user_token, rest_extra_headers)
+    manager = CodaLabManager(temporary=True, config=local.config, clients={rest_url(): rest_client})
     manager.set_current_worksheet_uuid(rest_url(), worksheet_uuid)
     cli = bundle_cli.BundleCLI(manager, headless=True, stdout=output_buffer, stderr=output_buffer)
     return cli, output_buffer
@@ -136,19 +123,19 @@ def general_command(worksheet_uuid, command):
     The method currently intercepts stdout/stderr and returns it back to the user.
     """
     # Tokenize
-    if isinstance(command, basestring):
+    if isinstance(command, str):
         # shlex throws ValueError on incorrectly formatted commands
         try:
-    	    # see https://docs.python.org/2/library/shlex.html#shlex.shlex.escapedquotes
+            # see https://docs.python.org/2/library/shlex.html#shlex.shlex.escapedquotes
             # By default, the double quote can be escaped. By setting the
             # escapedquotes property, we are able to escape single quotes as well
-    	    # examples: run '\''
+            # examples: run '\''
             lexer = shlex.shlex(command, posix=True)
             lexer.escapedquotes = '\'"'
             lexer.whitespace_split = True
             args = list(lexer)
         except ValueError as e:
-            raise UsageError(e.message)
+            raise UsageError(str(e))
     else:
         args = list(command)
 
@@ -167,7 +154,4 @@ def general_command(worksheet_uuid, command):
     output_str = output_buffer.getvalue()
     output_buffer.close()
 
-    return {
-        'structured_result': structured_result,
-        'output': output_str,
-    }
+    return {'structured_result': structured_result, 'output': output_str}

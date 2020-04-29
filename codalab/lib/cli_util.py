@@ -1,5 +1,5 @@
 import re
-import datetime
+import os
 
 from codalab.common import precondition, UsageError
 
@@ -8,6 +8,29 @@ WORKSHEET_SEPARATOR = "//"
 
 TARGET_KEY_REGEX = r"(?<=^)(?:([^:]*?)\:(?!:))?(.*(?=$))"
 TARGET_REGEX = r"(?<=^)(?:(.*?)\:\:)?(?:(.*?)\/\/)?(.+?)(?:\/(.*?))?(?=$)"
+
+# Formatting Constants
+ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
+BASIC_SPEC_FORMAT = '(<uuid>|<name>)'
+BASIC_BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
+
+GLOBAL_SPEC_FORMAT = "[%s%s]%s" % (ADDRESS_SPEC_FORMAT, INSTANCE_SEPARATOR, BASIC_SPEC_FORMAT)
+WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
+
+BUNDLE_SPEC_FORMAT = '[%s%s]%s' % (
+    WORKSHEET_SPEC_FORMAT,
+    WORKSHEET_SEPARATOR,
+    BASIC_BUNDLE_SPEC_FORMAT,
+)
+
+WORKSHEETS_URL_SEPARATOR = '/worksheets/'
+
+TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (BUNDLE_SPEC_FORMAT, os.sep)
+RUN_TARGET_SPEC_FORMAT = '[<key>]:' + TARGET_SPEC_FORMAT
+MAKE_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
+GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
+PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
+UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
 
 
 def nested_dict_get(obj, *args, **kwargs):
@@ -28,7 +51,7 @@ def nested_dict_get(obj, *args, **kwargs):
     :return: retrieved value or default if it doesn't exist
     """
     default = kwargs.pop('default', None)
-    precondition(not kwargs, 'unsupported kwargs %s' % kwargs.keys())
+    precondition(not kwargs, 'unsupported kwargs %s' % list(kwargs.keys()))
     try:
         for arg in args:
             obj = obj[arg]
@@ -36,9 +59,11 @@ def nested_dict_get(obj, *args, **kwargs):
     except (KeyError, TypeError):
         return default
 
+
 def parse_key_target(spec):
     """
-    Parses a keyed target spec into its key and the rest of the target spec
+    Parses a keyed target spec into its key and the rest of the target spec.
+    Raise UsageError when the value of the spec is empty.
     :param spec: a target spec in the form of
         [[<key>]:][<instance>::][<worksheet_spec>//]<bundle_spec>[/<subpath>]
     where <bundle_spec> is required and the rest are optional.
@@ -47,11 +72,19 @@ def parse_key_target(spec):
         - <key>: (<key> if present,
                     empty string if ':' in spec but no <key>,
                     None otherwise)
-        - <value> (where value is everyhing after a <key>: (or everything if no key specified)
+        - <value> (where value is everything after a <key>: (or everything if no key specified)
     """
-
     match = re.match(TARGET_KEY_REGEX, spec)
-    return match.groups() if match else (None, None)
+    key, value = match.groups()
+    # This check covers three usage errors:
+    # 1. both key and value are empty, e.g. "cl run : 'echo a'"
+    # 2. key is not empty, value is empty, e.g. "cl run a.txt: 'echo a'"
+    if value == '':
+        raise UsageError(
+            'target_spec (%s) in wrong format. Please provide a valid target_spec in the format of %s.'
+            % (spec, RUN_TARGET_SPEC_FORMAT)
+        )
+    return (key, value)
 
 
 def parse_target_spec(spec):
@@ -70,6 +103,7 @@ def parse_target_spec(spec):
 
     match = re.match(TARGET_REGEX, spec)
     return match.groups() if match else (None, None, None, None)
+
 
 def desugar_command(orig_target_spec, command):
     """
@@ -103,7 +137,9 @@ def desugar_command(orig_target_spec, command):
             val2key[val] = key
         if key in key2val:
             if key2val[key] != val:
-                raise UsageError('key %s exists with multiple values: %s and %s' % (key, key2val[key], val))
+                raise UsageError(
+                    'key %s exists with multiple values: %s and %s' % (key, key2val[key], val)
+                )
         else:
             key2val[key] = val
             target_spec.append(key + ':' + val)

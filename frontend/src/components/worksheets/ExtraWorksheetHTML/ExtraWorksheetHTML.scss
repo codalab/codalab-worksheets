@@ -1,0 +1,46 @@
+.codalab-error-message {
+  position: fixed;
+  bottom: 5px;
+  z-index: 1069;
+}
+
+.progress-message {
+    display: none;
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+    width: 150px;
+    height: 40px;
+    line-height: 40px;
+    background-color: rgba(255, 255, 255, 0.75);
+    text-align: center;
+    z-index: 1020;
+  }
+  .progress-message#update_progress {
+    top: 63px;
+  }
+  .progress-message#save_error i {
+    font-size: 18px;
+    color: red;
+    vertical-align: -3px;
+    margin-right: 2px;
+  }
+  
+
+#glossaryModal .modal-header h4 {
+    margin: 0;
+  }
+  #glossaryModal h5 {
+    margin-top: 0;
+  }
+  #glossaryModal .table > tbody > tr > td {
+    padding: 5px 6px 8px 6px;
+    border-color: #eee;
+    border-bottom: 1px solid #eee;
+  }
+#glossaryModal {
+  kbd {
+    color: #c7254e;
+    background-color: #f9f2f4;
+  }
+}

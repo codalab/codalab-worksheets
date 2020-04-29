@@ -1,0 +1,18 @@
+# Configuration file for using Black for Codalab
+
+[tool.black]
+line-length = 100
+skip-string-normalization = true
+exclude = '''
+/(
+     venv
+   | \.venv
+   | \.git
+   | \.ropeproject
+   | alembic
+   | sdist
+   | dist
+   | build
+   | frontend
+)/
+'''

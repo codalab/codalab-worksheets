@@ -2,6 +2,7 @@
 Mappings for UI action representation on the frontend side.
 """
 
+
 class UIAction(object):
     def __init__(self, parameter=None):
         if getattr(self, 'KEY', None) is None:
@@ -22,6 +23,4 @@ class OpenBundle(UIAction):
 
 
 def serialize(actions):
-    return {
-        'ui_actions': [[a.KEY, a.parameter] for a in actions]
-    }
+    return {'ui_actions': [[a.KEY, a.parameter] for a in actions]}

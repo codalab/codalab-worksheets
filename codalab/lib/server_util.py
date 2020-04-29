@@ -4,11 +4,11 @@ Don't import from non-REST API code, since this file imports bottle.
 """
 from functools import wraps
 import base64
-import httplib
+import http.client
 import sys
 import threading
 import time
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import re
 
 from bottle import abort, request, HTTPResponse, redirect, app
@@ -49,12 +49,10 @@ def rate_limited(max_calls_per_hour):
     A running count of remaining calls allowed is kept for the last hour.
     Every call beyond this limit will raise a RateLimitExceededError.
     """
+
     def decorate(func):
         lock = threading.Lock()
-        state = {
-            'calls_left': max_calls_per_hour,
-            'time_of_last_call': time.time(),
-        }
+        state = {'calls_left': max_calls_per_hour, 'time_of_last_call': time.time()}
 
         @wraps(func)
         def rate_limited_function(*args, **kwargs):
@@ -63,10 +61,10 @@ def rate_limited(max_calls_per_hour):
                 now = time.time()
                 seconds_since_last_call = now - state['time_of_last_call']
                 state['time_of_last_call'] = now
-                
+
                 # Increment the running count of allowed calls for the last
                 # hour at a steady rate
-                state['calls_left'] += seconds_since_last_call * (max_calls_per_hour / 3600)
+                state['calls_left'] += seconds_since_last_call * (max_calls_per_hour // 3600)
 
                 # Cap the count at the defined max
                 if state['calls_left'] > max_calls_per_hour:
@@ -88,19 +86,9 @@ def rate_limited(max_calls_per_hour):
 
 def decoded_body():
     """
-    Return the request body decoded into Unicode string according to the
-    charset specified in the Content-Type header of the request.
+    Return the request body decoded into Unicode string according to UTF-8.
     """
-    # e.g. Content-Type: text/plain; charset=utf-8
-    #        -> content_type = 'text/plain'
-    #        -> charset = 'utf-8'
-    m = re.match(r'([^;]+)(?:;\s*charset=(.+))?', request.content_type)
-    if m is not None:
-        content_type = m.group(1)  # unused
-        charset = m.group(2) or 'iso-8859-1'  # could be None
-    else:
-        charset = 'iso-8859-1'
-    return request.body.read().decode(charset)
+    return request.body.read().decode()
 
 
 def query_get_list(key):
@@ -119,7 +107,7 @@ def query_get_type(type_, key, default=None):
     try:
         return type_(value)
     except ValueError:
-        abort(httplib.BAD_REQUEST, "Invalid %s %r" % (type_.__name__, value))
+        abort(http.client.BAD_REQUEST, "Invalid %s %r" % (type_.__name__, value))
 
 
 def query_get_bool(key, default=False):
@@ -129,7 +117,7 @@ def query_get_bool(key, default=False):
     try:
         return bool(int(value))
     except ValueError:
-        abort(httplib.BAD_REQUEST, '%r parameter must be integer boolean' % key)
+        abort(http.client.BAD_REQUEST, '%r parameter must be integer boolean' % key)
 
 
 def query_get_json_api_include_set(supported):
@@ -144,7 +132,10 @@ def query_get_json_api_include_set(supported):
         return set()
     requested = set(query_str.split(','))
     if not requested <= supported:
-        abort(httplib.BAD_REQUEST, '?include=%s not supported' % ','.join(list(requested - supported)))
+        abort(
+            http.client.BAD_REQUEST,
+            '?include=%s not supported' % ','.join(list(requested - supported)),
+        )
     return requested
 
 
@@ -178,7 +169,7 @@ def redirect_with_query(redirect_uri, params):
     """Return a Bottle redirect to the given target URI with query parameters
     encoded from the params dict.
     """
-    return redirect(redirect_uri + '?' + urllib.urlencode(params))
+    return redirect(redirect_uri + '?' + urllib.parse.urlencode(params))
 
 
 """
@@ -249,6 +240,7 @@ def decode_base64(text, encoding='utf-8'):
 def create_response(headers, body, status):
     """Create response class for Bottle."""
     return HTTPResponse(body or '', status=status, headers=headers)
+
 
 # END ADAPTED FROM flask_oauthlib.utils #
 
@@ -363,5 +355,6 @@ def import_string(import_name, silent=False):
         return getattr(module, obj_name)
     except AttributeError as e:
         raise ImportError(e)
+
 
 # END ADAPTED FROM werkzeug.utils #

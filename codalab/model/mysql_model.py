@@ -2,17 +2,12 @@
 MySQLModel is a subclass of BundleModel that stores metadata on a MySQL
 server that it connects to with the given connect parameters.
 """
-from sqlalchemy import (
-    create_engine,
-    event,
-    exc,
-)
+import array
+from sqlalchemy import create_engine, event, exc
 from sqlalchemy.pool import Pool
 
 from codalab.model.bundle_model import BundleModel
-from codalab.common import (
-    UsageError,
-)
+from codalab.common import UsageError
 
 
 @event.listens_for(Pool, "checkout")
@@ -43,11 +38,18 @@ def ping_connection(dbapi_connection, connection_record, connection_proxy):
 
 
 class MySQLModel(BundleModel):
-    def __init__(self, engine_url, default_user_info):
+    def __init__(self, engine_url, default_user_info, root_user_id, system_user_id):
         if not engine_url.startswith('mysql://'):
             raise UsageError('Engine URL should start with mysql://')
-        engine = create_engine(engine_url, strategy='threadlocal', pool_size=20, max_overflow=100, pool_recycle=3600, encoding='utf-8')
-        super(MySQLModel, self).__init__(engine, default_user_info)
+        engine = create_engine(
+            engine_url,
+            strategy='threadlocal',
+            pool_size=20,
+            max_overflow=100,
+            pool_recycle=3600,
+            encoding='utf-8',
+        )
+        super(MySQLModel, self).__init__(engine, default_user_info, root_user_id, system_user_id)
 
     def do_multirow_insert(self, connection, table, values):
         # MySQL allows for more efficient multi-row insertions.
@@ -57,9 +59,15 @@ class MySQLModel(BundleModel):
     # TODO: Remove these methods below when all appropriate table columns have
     # been converted to the appropriate types that perform automatic encoding.
     # (See tables.py for more details.)
+    # These two methods are currently used for: worksheet title, body
+    # Please update the line above if more fields are using this encoding hack
+    # These two methods are needed right now for unicode support because the
+    # database configuration doesn't support storing unicode directly.
+    # To correctly use it, we should find all codes on the backend side that
+    # actually stores/gets the encoded field
 
     def encode_str(self, value):
-        return value.encode('utf-8')
+        return value.encode()
 
     def decode_str(self, value):
-        return value.decode('utf-8')
+        return array.array('B', [ord(char) for char in value]).tostring().decode()

@@ -1,12 +1,11 @@
-from httplib import INTERNAL_SERVER_ERROR, BAD_REQUEST
+from http.client import INTERNAL_SERVER_ERROR, BAD_REQUEST
 import datetime
 import json
 import os
-import re
 import sys
 import textwrap
-import time
 import traceback
+import logging
 
 import bottle
 from bottle import (
@@ -27,6 +26,12 @@ from bottle import (
 
 from codalab.common import exception_to_http_error
 from codalab.lib import formatting, server_util
+from codalab.server.authenticated_plugin import PublicUserPlugin, UserVerifiedPlugin
+from codalab.server.cookie import CookieAuthenticationPlugin
+from codalab.server.json_api_plugin import JsonApiPlugin
+from codalab.server.oauth2_provider import oauth2_provider
+
+# Don't remove the following imports, as they are used to route the rest service
 import codalab.rest.account
 import codalab.rest.bundle_actions
 import codalab.rest.bundles
@@ -36,28 +41,17 @@ import codalab.rest.groups
 import codalab.rest.help
 import codalab.rest.interpret
 import codalab.rest.oauth2
-import codalab.rest.titlejs
 import codalab.rest.users
 import codalab.rest.workers
 import codalab.rest.worksheets
-from codalab.server.authenticated_plugin import (
-    PublicUserPlugin,
-    UserVerifiedPlugin,
-)
-from codalab.server.cookie import CookieAuthenticationPlugin
-from codalab.server.json_api_plugin import JsonApiPlugin
-from codalab.server.oauth2_provider import oauth2_provider
 
 
-# Don't log requests to routes matching these regexes.
-ROUTES_NOT_LOGGED_REGEXES = [
-    re.compile(r'/oauth2/.*'),
-    re.compile(r'/workers/.*'),
-]
+logger = logging.getLogger(__name__)
 
 
 class SaveEnvironmentPlugin(object):
     """Saves environment objects in the local request variable."""
+
     api = 2
 
     def __init__(self, manager):
@@ -82,7 +76,9 @@ class SaveEnvironmentPlugin(object):
 
 class CheckJsonPlugin(object):
     """Checks that the input JSON data can be parsed."""
+
     api = 2
+
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
             try:
@@ -93,51 +89,13 @@ class CheckJsonPlugin(object):
             except ValueError:
                 abort(BAD_REQUEST, 'Invalid JSON')
             return callback(*args, **kwargs)
-        return wrapper
-
-
-class LoggingPlugin(object):
-    """Logs successful requests to the events log."""
-    api = 2
-
-    def apply(self, callback, route):
-        def wrapper(*args, **kwargs):
-            if not self._should_log(route.rule):
-                return callback(*args, **kwargs)
-
-            start_time = time.time()
-
-            res = callback(*args, **kwargs)
-
-            # Use explicitly defined route name or 'METHOD /rule'
-            command = route.name or (route.method + ' ' + route.rule)
-            query_dict = (
-                dict(map(lambda k: (k, request.query[k]), request.query)))
-            args = [request.path, query_dict]
-            # if (route.method == 'POST'
-            #     and request.content_type == 'application/json'):
-            #     args.append(request.json)
-
-            local.model.update_events_log(
-                start_time=start_time,
-                user_id=getattr(getattr(local, 'user', None), 'user_id', ''),
-                user_name=getattr(getattr(local, 'user', None), 'user_name', ''),
-                command=command,
-                args=args)
-
-            return res
 
         return wrapper
-
-    def _should_log(self, rule):
-        for regex in ROUTES_NOT_LOGGED_REGEXES:
-            if regex.match(rule):
-                return False
-        return True
 
 
 class ErrorAdapter(object):
     """Converts known exceptions to HTTP errors."""
+
     api = 2
 
     MAX_AUX_INFO_LENGTH = 5000
@@ -152,7 +110,9 @@ class ErrorAdapter(object):
                 code, message = exception_to_http_error(e)
                 if code == INTERNAL_SERVER_ERROR:
                     self.report_exception(e)
-                    message = "Unexpected Internal Error (%s). The administrators have been notified." % message
+                    message = "Unexpected Internal Error ({}). The administrators have been notified.".format(
+                        message
+                    )
                 raise HTTPError(code, message)
 
         return wrapper
@@ -165,11 +125,14 @@ class ErrorAdapter(object):
     def report_exception(self, exc):
         query = formatting.key_value_list(request.query.allitems())
         forms = formatting.key_value_list(
-            self._censor_passwords(request.forms.allitems()) if request.json is None else [])
+            self._censor_passwords(request.forms.allitems()) if request.json is None else []
+        )
         body = formatting.verbose_pretty_json(request.json)
         local_vars = formatting.key_value_list(
-            self._censor_passwords(server_util.exc_frame_locals().items()))
-        aux_info = textwrap.dedent("""\
+            self._censor_passwords(server_util.exc_frame_locals().items())
+        )
+        aux_info = textwrap.dedent(
+            """\
                     Query params:
                     {0}
 
@@ -180,47 +143,53 @@ class ErrorAdapter(object):
                     {2}
 
                     Local variables:
-                    {3}""").format(query, forms, body, local_vars)
+                    {3}"""
+        ).format(query, forms, body, local_vars)
 
         if len(aux_info) > self.MAX_AUX_INFO_LENGTH:
-            aux_info = aux_info[:(self.MAX_AUX_INFO_LENGTH / 2)] + \
-                       "(...truncated...)" + \
-                       aux_info[-(self.MAX_AUX_INFO_LENGTH / 2):]
+            aux_info = (
+                aux_info[: (self.MAX_AUX_INFO_LENGTH // 2)]
+                + "(...truncated...)"
+                + aux_info[-(self.MAX_AUX_INFO_LENGTH // 2) :]
+            )
 
-        message = textwrap.dedent("""\
+        message = textwrap.dedent(
+            """\
              Error on request by {0.user}:
 
              {0.method} {0.path}
 
              {1}
 
-             {2}""").format(request, aux_info, traceback.format_exc())
+             {2}"""
+        ).format(request, aux_info, traceback.format_exc())
 
         # Both print to console and send email
-        print >>sys.stderr, message
+        logger.error(message)
         self.send_email(exc, message)
 
     @server_util.rate_limited(max_calls_per_hour=6)
     def send_email(self, exc, message):
         # Caller is responsible for logging message anyway if desired
         if 'admin_email' not in local.config['server']:
-            print >>sys.stderr, 'Warning: No admin_email configured, so no email sent.'
+            logger.warn('Warning: No admin_email configured, so no email sent.')
             return
 
         # Subject should be "ExceptionType: message"
-        subject = '%s: %s' % (type(exc).__name__, exc.message)
+        subject = '%s: %s' % (type(exc).__name__, str(exc))
 
         # Prepend server name to subject if available
         if 'instance_name' in local.config['server']:
             subject = "[%s] %s" % (local.config['server']['instance_name'], subject)
 
-        local.emailer.send_email(subject=subject,
-                                 body=message,
-                                 recipient=local.config['server']['admin_email'])
+        local.emailer.send_email(
+            subject=subject, body=message, recipient=local.config['server']['admin_email']
+        )
 
 
 class DatetimeEncoder(json.JSONEncoder):
     """Extend JSON encoder to handle datetime objects."""
+
     def default(self, obj):
         if isinstance(obj, datetime.datetime):
             return obj.isoformat()
@@ -248,12 +217,13 @@ def dummy_xmlrpc_app():
 
 def run_rest_server(manager, debug, num_processes, num_threads):
     """Runs the REST server."""
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+
     host = manager.config['server']['rest_host']
     port = manager.config['server']['rest_port']
 
     install(SaveEnvironmentPlugin(manager))
     install(CheckJsonPlugin())
-    install(LoggingPlugin())
     install(oauth2_provider.check_oauth())
     install(CookieAuthenticationPlugin())
     install(UserVerifiedPlugin())
@@ -269,14 +239,18 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     # dicts before they are serialized into JSON
     install(JsonApiPlugin())
 
-    for code in xrange(100, 600):
+    for code in range(100, 600):
         default_app().error(code)(error_handler)
 
     root_app = Bottle()
     root_app.mount('/rest', default_app())
 
-    # Look for templates in codalab-cli/views
-    bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views')]
+    # Look for templates in codalab-worksheets/views
+    bottle.TEMPLATE_PATH = [
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views'
+        )
+    ]
 
     # Increase the request body size limit to 8 MiB
     bottle.BaseRequest.MEMFILE_MAX = 8 * 1024 * 1024
@@ -284,10 +258,18 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     # We use gunicorn to create a server with multiple processes, since in
     # Python a single process uses at most 1 CPU due to the Global Interpreter
     # Lock.
-    sys.argv = sys.argv[:1] # Small hack to work around a Gunicorn arg parsing
-                            # bug. None of the arguments to cl should go to
-                            # Gunicorn.
-    run(app=root_app, host=host, port=port, debug=debug, server='gunicorn',
-        workers=num_processes, worker_class='gthread', threads=num_threads,
+    sys.argv = sys.argv[:1]  # Small hack to work around a Gunicorn arg parsing
+    # bug. None of the arguments to cl should go to
+    # Gunicorn.
+    run(
+        app=root_app,
+        host=host,
+        port=port,
+        debug=debug,
+        server='gunicorn',
+        workers=num_processes,
+        worker_class='gthread',
+        threads=num_threads,
         worker_tmp_dir='/tmp',  # don't use globally set tempdir
-        timeout=5 * 60)
+        timeout=5 * 60,
+    )

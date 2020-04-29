@@ -1,6 +1,7 @@
 from contextlib import closing
 import datetime
 import json
+import logging
 import os
 import socket
 import time
@@ -9,11 +10,13 @@ from sqlalchemy import and_, select
 
 from codalab.common import precondition
 from codalab.model.tables import (
-  worker as cl_worker,
-  worker_socket as cl_worker_socket,
-  worker_run as cl_worker_run,
-  worker_dependency as cl_worker_dependency,
+    worker as cl_worker,
+    worker_socket as cl_worker_socket,
+    worker_run as cl_worker_run,
+    worker_dependency as cl_worker_dependency,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class WorkerModel(object):
@@ -28,12 +31,24 @@ class WorkerModel(object):
        socket directory), clean up sockets (i.e. delete the socket files),
        listen on these sockets for messages and send messages to these sockets.
     """
-    def __init__(self, engine, socket_dir, shared_file_system):
+
+    def __init__(self, engine, socket_dir):
         self._engine = engine
         self._socket_dir = socket_dir
-        self.shared_file_system = shared_file_system
 
-    def worker_checkin(self, user_id, worker_id, tag, cpus, gpus, memory_bytes, dependencies):
+    def worker_checkin(
+        self,
+        user_id,
+        worker_id,
+        tag,
+        cpus,
+        gpus,
+        memory_bytes,
+        free_disk_bytes,
+        dependencies,
+        shared_file_system,
+        tag_exclusive,
+    ):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
         that the worker should listen for messages on.
@@ -44,44 +59,49 @@ class WorkerModel(object):
                 'cpus': cpus,
                 'gpus': gpus,
                 'memory_bytes': memory_bytes,
-                'checkin_time': datetime.datetime.now(),
+                'free_disk_bytes': free_disk_bytes,
+                'checkin_time': datetime.datetime.utcnow(),
+                'shared_file_system': shared_file_system,
+                'tag_exclusive': tag_exclusive,
             }
             existing_row = conn.execute(
-                cl_worker.select()
-                    .where(and_(cl_worker.c.user_id == user_id,
-                                cl_worker.c.worker_id == worker_id))
+                cl_worker.select().where(
+                    and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
+                )
             ).fetchone()
             if existing_row:
                 socket_id = existing_row.socket_id
                 conn.execute(
                     cl_worker.update()
-                        .where(and_(cl_worker.c.user_id == user_id,
-                                    cl_worker.c.worker_id == worker_id))
-                        .values(worker_row))
+                    .where(and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id))
+                    .values(worker_row)
+                )
             else:
                 socket_id = self.allocate_socket(user_id, worker_id, conn)
-                worker_row.update({
-                    'user_id': user_id,
-                    'worker_id': worker_id,
-                    'socket_id': socket_id,
-                })
+                worker_row.update(
+                    {'user_id': user_id, 'worker_id': worker_id, 'socket_id': socket_id}
+                )
                 conn.execute(cl_worker.insert().values(worker_row))
 
             # Update dependencies
-            blob = self._serialize_dependencies(dependencies)
+            blob = self._serialize_dependencies(dependencies).encode()
             if existing_row:
                 conn.execute(
                     cl_worker_dependency.update()
-                        .where(and_(cl_worker_dependency.c.user_id == user_id,
-                                    cl_worker_dependency.c.worker_id == worker_id))
-                        .values(dependencies=blob)
+                    .where(
+                        and_(
+                            cl_worker_dependency.c.user_id == user_id,
+                            cl_worker_dependency.c.worker_id == worker_id,
+                        )
+                    )
+                    .values(dependencies=blob)
                 )
             else:
                 conn.execute(
-                    cl_worker_dependency.insert()
-                        .values(user_id=user_id, worker_id=worker_id, dependencies=blob)
+                    cl_worker_dependency.insert().values(
+                        user_id=user_id, worker_id=worker_id, dependencies=blob
+                    )
                 )
-
         return socket_id
 
     @staticmethod
@@ -90,7 +110,7 @@ class WorkerModel(object):
 
     @staticmethod
     def _deserialize_dependencies(blob):
-        return map(tuple, json.loads(blob))
+        return list(map(tuple, json.loads(blob)))
 
     def worker_cleanup(self, user_id, worker_id):
         """
@@ -99,24 +119,41 @@ class WorkerModel(object):
         """
         with self._engine.begin() as conn:
             socket_rows = conn.execute(
-                cl_worker_socket.select()
-                    .where(and_(cl_worker_socket.c.user_id == user_id,
-                                cl_worker_socket.c.worker_id == worker_id))
+                cl_worker_socket.select().where(
+                    and_(
+                        cl_worker_socket.c.user_id == user_id,
+                        cl_worker_socket.c.worker_id == worker_id,
+                    )
+                )
             ).fetchall()
             for socket_row in socket_rows:
                 self._cleanup_socket(socket_row.socket_id)
-            conn.execute(cl_worker_socket.delete()
-                         .where(and_(cl_worker_socket.c.user_id == user_id,
-                                     cl_worker_socket.c.worker_id == worker_id)))
-            conn.execute(cl_worker_run.delete()
-                         .where(and_(cl_worker_run.c.user_id == user_id,
-                                     cl_worker_run.c.worker_id == worker_id)))
-            conn.execute(cl_worker_dependency.delete()
-                         .where(and_(cl_worker_dependency.c.user_id == user_id,
-                                     cl_worker_dependency.c.worker_id == worker_id)))
-            conn.execute(cl_worker.delete()
-                         .where(and_(cl_worker.c.user_id == user_id,
-                                     cl_worker.c.worker_id == worker_id)))
+            conn.execute(
+                cl_worker_socket.delete().where(
+                    and_(
+                        cl_worker_socket.c.user_id == user_id,
+                        cl_worker_socket.c.worker_id == worker_id,
+                    )
+                )
+            )
+            conn.execute(
+                cl_worker_run.delete().where(
+                    and_(cl_worker_run.c.user_id == user_id, cl_worker_run.c.worker_id == worker_id)
+                )
+            )
+            conn.execute(
+                cl_worker_dependency.delete().where(
+                    and_(
+                        cl_worker_dependency.c.user_id == user_id,
+                        cl_worker_dependency.c.worker_id == worker_id,
+                    )
+                )
+            )
+            conn.execute(
+                cl_worker.delete().where(
+                    and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
+                )
+            )
 
     def get_workers(self):
         """
@@ -125,57 +162,50 @@ class WorkerModel(object):
         """
         with self._engine.begin() as conn:
             worker_rows = conn.execute(
-                select([cl_worker, cl_worker_dependency.c.dependencies])
-                .select_from(cl_worker.outerjoin(cl_worker_dependency))
+                select([cl_worker, cl_worker_dependency.c.dependencies]).select_from(
+                    cl_worker.outerjoin(
+                        cl_worker_dependency,
+                        cl_worker.c.worker_id == cl_worker_dependency.c.worker_id,
+                    )
+                )
             ).fetchall()
             worker_run_rows = conn.execute(cl_worker_run.select()).fetchall()
 
-        worker_dict = {(row.user_id, row.worker_id): {
-            'user_id': row.user_id,
-            'worker_id': row.worker_id,
-            'tag': row.tag,
-            'cpus': row.cpus,
-            'gpus': row.gpus,
-            'memory_bytes': row.memory_bytes,
-            'checkin_time': row.checkin_time,
-            'socket_id': row.socket_id,
-            'run_uuids': [],
-            'dependencies': row.dependencies and self._deserialize_dependencies(row.dependencies),
-        } for row in worker_rows}
+        worker_dict = {
+            (row.user_id, row.worker_id): {
+                'user_id': row.user_id,
+                'worker_id': row.worker_id,
+                'tag': row.tag,
+                'cpus': row.cpus,
+                'gpus': row.gpus,
+                'memory_bytes': row.memory_bytes,
+                'free_disk_bytes': row.free_disk_bytes,
+                'checkin_time': row.checkin_time,
+                'socket_id': row.socket_id,
+                # run_uuids will be set later
+                'run_uuids': [],
+                'dependencies': row.dependencies
+                and self._deserialize_dependencies(row.dependencies),
+                'shared_file_system': row.shared_file_system,
+                'tag_exclusive': row.tag_exclusive,
+            }
+            for row in worker_rows
+        }
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
-        return worker_dict.values()
-
-    def get_bundle_worker(self, uuid):
-        """
-        Returns information about the worker that the given bundle is running
-        on. This method should be called only for bundles that are running.
-        """
-        with self._engine.begin() as connection:
-            row = connection.execute(cl_worker_run.select()
-                                     .where(cl_worker_run.c.run_uuid == uuid)).fetchone()
-            precondition(row, 'Trying to find worker for bundle that is not running.')
-            worker_row = connection.execute(cl_worker.select()
-                                            .where(and_(cl_worker.c.user_id == row.user_id,
-                                                        cl_worker.c.worker_id == row.worker_id))).fetchone()
-            return {
-                'user_id': worker_row.user_id,
-                'worker_id': worker_row.worker_id,
-                'socket_id': worker_row.socket_id,
-            }
+        return list(worker_dict.values())
 
     def allocate_socket(self, user_id, worker_id, conn=None):
         """
         Allocates a unique socket ID.
         """
+
         def do(conn):
-            socket_row = {
-               'user_id': user_id,
-               'worker_id': worker_id,
-            }
-            return conn.execute(
-                cl_worker_socket.insert().values(socket_row)
-            ).inserted_primary_key[0]
+            socket_row = {'user_id': user_id, 'worker_id': worker_id}
+            return conn.execute(cl_worker_socket.insert().values(socket_row)).inserted_primary_key[
+                0
+            ]
+
         if conn is None:
             with self._engine.begin() as conn:
                 return do(conn)
@@ -189,8 +219,7 @@ class WorkerModel(object):
         """
         self._cleanup_socket(socket_id)
         with self._engine.begin() as conn:
-            conn.execute(cl_worker_socket.delete()
-                         .where(cl_worker_socket.c.socket_id == socket_id))
+            conn.execute(cl_worker_socket.delete().where(cl_worker_socket.c.socket_id == socket_id))
 
     def _socket_path(self, socket_id):
         return os.path.join(self._socket_dir, str(socket_id))
@@ -216,7 +245,7 @@ class WorkerModel(object):
         sock.listen(0)
         return sock
 
-    ACK = 'a'
+    ACK = b'a'
 
     def get_stream(self, sock, timeout_secs):
         """
@@ -252,7 +281,7 @@ class WorkerModel(object):
             return None
 
         with closing(fileobj):
-            return json.loads(fileobj.read())
+            return json.loads(fileobj.read().decode())
 
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """
@@ -324,7 +353,9 @@ class WorkerModel(object):
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
                     # TODO: maybe exponential backoff
-                    time.sleep(0.3) # changed from 0.003 to keep from rate-limiting due to dead workers
+                    time.sleep(
+                        0.3
+                    )  # changed from 0.003 to keep from rate-limiting due to dead workers
                     continue
 
                 if not autoretry:
@@ -332,10 +363,12 @@ class WorkerModel(object):
                     # have the problem with "Broken pipe" as above, since
                     # code waiting for a reply shouldn't just abruptly stop
                     # listening.
-                    precondition(sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK,
-                                 'Received invalid ack on socket.')
+                    precondition(
+                        sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK,
+                        'Received invalid ack on socket.',
+                    )
 
-                sock.sendall(json.dumps(message))
+                sock.sendall(json.dumps(message).encode())
                 return True
 
         return False
@@ -348,10 +381,13 @@ class WorkerModel(object):
         """
         with self._engine.begin() as conn:
             row = conn.execute(
-                cl_worker_socket.select()
-                    .where(and_(cl_worker_socket.c.user_id == user_id,
-                                cl_worker_socket.c.worker_id == worker_id,
-                                cl_worker_socket.c.socket_id == socket_id))
+                cl_worker_socket.select().where(
+                    and_(
+                        cl_worker_socket.c.user_id == user_id,
+                        cl_worker_socket.c.worker_id == worker_id,
+                        cl_worker_socket.c.socket_id == socket_id,
+                    )
+                )
             ).fetchone()
             if row:
                 return True

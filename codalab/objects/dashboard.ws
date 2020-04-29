@@ -1,7 +1,7 @@
 Welcome to your **CodaLab Dashboard**, which shows worksheets and bundles 
 (programs and datasets) owned by you.  Read the 
-[documentation](https://github.com/codalab/codalab-worksheets/wiki) to 
-learn more. See [this page](https://github.com/codalab/codalab-worksheets/wiki/Worksheet-Markdown)
+[documentation](https://codalab-worksheets.readthedocs.io/en/latest) to 
+learn more. See [this page](https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown)
 to learn more about CodaLab's markdown syntax. 
 
 ## **My worksheets**

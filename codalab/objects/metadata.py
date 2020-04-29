@@ -12,7 +12,7 @@ class Metadata(object):
         if isinstance(metadata_dict, (list, tuple)):
             metadata_dict = self.collapse_dicts(metadata_specs, metadata_dict)
         self._metadata_keys = set()
-        for (key, value) in metadata_dict.iteritems():
+        for (key, value) in metadata_dict.items():
             self.set_metadata_key(key, value)
 
     def validate(self, metadata_specs):
@@ -31,7 +31,7 @@ class Metadata(object):
                     # cast int to float
                     value = float(value)
                 # Validate formatted string fields
-                if issubclass(spec.type, basestring) and spec.formatting is not None and value:
+                if issubclass(spec.type, str) and spec.formatting is not None and value:
                     try:
                         if spec.formatting == 'duration':
                             formatting.parse_duration(value)
@@ -40,11 +40,11 @@ class Metadata(object):
                         elif spec.formatting == 'date':
                             formatting.parse_datetime(value)
                     except ValueError as e:
-                        raise UsageError(e.message)
+                        raise UsageError(str(e))
                 if value is not None and not isinstance(value, spec.type):
                     raise UsageError(
-                      'Metadata value for %s should be of type %s, was %s (type %s)' %
-                      (spec.key, spec.type.__name__, value, type(value).__name__)
+                        'Metadata value for %s should be of type %s, was %s (type %s)'
+                        % (spec.key, spec.type.__name__, value, type(value).__name__)
                     )
             elif not spec.generated:
                 raise UsageError('Missing metadata key: %s' % (spec.key,))
@@ -55,6 +55,11 @@ class Metadata(object):
         '''
         self._metadata_keys.add(key)
         setattr(self, key, value)
+
+    def remove_metadata_key(self, key):
+        if key in self._metadata_keys:
+            self._metadata_keys.remove(key)
+            delattr(self, key)
 
     @classmethod
     def collapse_dicts(cls, metadata_specs, rows):
@@ -73,7 +78,7 @@ class Metadata(object):
             # database), cast it to a string. This operation encodes it with UTF-8.
             key = str(maybe_unicode_key)
             if key not in metadata_spec_dict:
-                #print 'Warning: %s not in %s, skipping value %s!' % (key, metadata_spec_dict.keys(), value)
+                # print 'Warning: %s not in %s, skipping value %s!' % (key, metadata_spec_dict.keys(), value)
                 continue  # Somewhat dangerous since we might lose information
 
             spec = metadata_spec_dict[key]
@@ -82,8 +87,9 @@ class Metadata(object):
             else:
                 if metadata_dict.get(key):
                     raise UsageError(
-                      'Got duplicate values %s and %s for key %s' %
-                      (metadata_dict[key], value, key)
+                        'Got duplicate values {} and {} for key {}. metadata dict is {}, rows are {}'.format(
+                            metadata_dict[key], value, key, metadata_dict, rows
+                        )
                     )
                 # Convert string to the right type (e.g., string to int)
                 metadata_dict[key] = spec.get_constructor()(value)
@@ -100,13 +106,11 @@ class Metadata(object):
         for spec in metadata_specs:
             if spec.key in self._metadata_keys:
                 value = getattr(self, spec.key)
-                if value == None: continue
+                if value == None:
+                    continue
                 values = value if spec.type == list else (value,)
                 for value in values:
-                    result.append({
-                      'metadata_key': unicode(spec.key),
-                      'metadata_value': unicode(value),
-                    })
+                    result.append({'metadata_key': str(spec.key), 'metadata_value': str(value)})
         return result
 
     def to_dict(self):
@@ -115,7 +119,4 @@ class Metadata(object):
         an appropriate one to save to a database.
         '''
         items = [(key, getattr(self, key)) for key in self._metadata_keys]
-        return {
-          key: value
-          for (key, value) in items
-        }
+        return {key: value for (key, value) in items}

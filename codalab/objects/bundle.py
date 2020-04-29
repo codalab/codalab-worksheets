@@ -47,10 +47,7 @@ class Bundle(ORMObject):
             dep.validate()
 
     def __repr__(self):
-        return '%s(uuid=%r)' % (
-          self.__class__.__name__,
-          str(self.uuid),
-        )
+        return '%s(uuid=%r)' % (self.__class__.__name__, str(self.uuid))
 
     def update_in_memory(self, row, strict=False):
         metadata = row.pop('metadata', None)

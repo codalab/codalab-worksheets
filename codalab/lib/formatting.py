@@ -7,11 +7,8 @@ import json
 import shlex
 import pipes
 
-from codalabworker import formatting as worker_formatting
 
-
-NONE_PLACEHOLDER = u'<none>'
-BINARY_PLACEHOLDER = u'<binary>'
+NONE_PLACEHOLDER = '<none>'
 
 
 def contents_str(input_string, verbose=False):
@@ -22,17 +19,8 @@ def contents_str(input_string, verbose=False):
     Return a printable unicode string.
     """
     if input_string is None:
-        return NONE_PLACEHOLDER if verbose else u''
-
-    # Unicode is always printable
-    if isinstance(input_string, unicode):
-        return input_string
-
-    # Assume string is UTF-8 or else it contains arbitrary binary data that should not be rendered
-    try:
-        return input_string.decode('utf-8')
-    except UnicodeDecodeError:
-        return BINARY_PLACEHOLDER if verbose else u''
+        return NONE_PLACEHOLDER if verbose else ''
+    return str(input_string)
 
 
 def verbose_contents_str(input_string):
@@ -43,7 +31,20 @@ def verbose_contents_str(input_string):
     return contents_str(input_string, verbose=True)
 
 
-size_str = worker_formatting.size_str
+def size_str(size):
+    """
+    size: number of bytes
+    Return a human-readable string.
+    """
+    if size is None:
+        return None
+
+    for unit in ('', 'k', 'm', 'g', 't'):
+        if size < 100 and size != int(size):
+            return '%.1f%s' % (size, unit)
+        if size < 1024:
+            return '%d%s' % (size, unit)
+        size /= 1024.0
 
 
 def date_str(ts):
@@ -58,7 +59,36 @@ def parse_datetime(s):
     return datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
 
 
-duration_str = worker_formatting.duration_str
+def duration_str(s):
+    """
+    s: number of seconds
+    Return a human-readable string.
+    Example: 100 => "1m40s", 10000 => "2h46m"
+    """
+    if s is None:
+        return None
+
+    m = int(s // 60)
+    if m == 0:
+        return "%.1fs" % s
+
+    s -= m * 60
+    h = int(m // 60)
+    if h == 0:
+        return "%dm%ds" % (m, s)
+
+    m -= h * 60
+    d = int(h // 24)
+    if d == 0:
+        return "%dh%dm" % (h, m)
+
+    h -= d * 24
+    y = int(d // 365)
+    if y == 0:
+        return "%dd%dh" % (d, h)
+
+    d -= y * 365
+    return "%dy%dd" % (y, d)
 
 
 def ratio_str(to_str, a, b):
@@ -68,7 +98,26 @@ def ratio_str(to_str, a, b):
     return '%s / %s (%.1f%%)' % (to_str(a), to_str(b), 100.0 * a / b)
 
 
-parse_size = worker_formatting.parse_size
+def parse_size(s):
+    """
+    s: <number>[<k|m|g|t>]
+    Returns the number of bytes.
+    """
+    try:
+        if s[-1].isdigit():
+            return int(s)
+        n, unit = float(s[0:-1]), s[-1].lower()
+        if unit == 'k':
+            return int(n * 1024)
+        if unit == 'm':
+            return int(n * 1024 * 1024)
+        if unit == 'g':
+            return int(n * 1024 * 1024 * 1024)
+        if unit == 't':
+            return int(n * 1024 * 1024 * 1024 * 1024)
+    except (IndexError, ValueError):
+        pass  # continue to next line and throw error
+    raise ValueError('Invalid size: %s, expected <number>[<k|m|g|t>]' % s)
 
 
 def parse_duration(s):
@@ -93,6 +142,7 @@ def parse_duration(s):
     except (IndexError, ValueError):
         pass  # continue to next line and throw error
     raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % s)
+
 
 ############################################################
 

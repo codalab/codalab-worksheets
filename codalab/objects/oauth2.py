@@ -21,7 +21,9 @@ class OAuth2Client(object):
             self.user_id = kwargs['user_id']
             self.grant_type = kwargs['grant_type']
             self.response_type = kwargs['response_type']
-            self.redirect_uris = kwargs['redirect_uris'].split(',') if kwargs['redirect_uris'] else []
+            self.redirect_uris = (
+                kwargs['redirect_uris'].split(',') if kwargs['redirect_uris'] else []
+            )
             self.default_scopes = kwargs['scopes'].split(',') if kwargs['scopes'] else []
         except KeyError as e:
             raise UsageError("Missing column %r" % e.args[0])
@@ -63,6 +65,7 @@ class OAuth2AuthCode(object):
     """
     This does not have to be stored in the database, and can be stored in some ephemeral cache in the future.
     """
+
     def __init__(self, model, **kwargs):
         self.model = model
         self.id = kwargs['id'] if 'id' in kwargs else None

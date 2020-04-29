@@ -11,7 +11,7 @@ import tempfile
 
 from codalab.common import UsageError
 from codalab.lib import path_util
-from codalabworker.file_util import (
+from codalab.worker.file_util import (
     gzip_file,
     tar_gzip_directory,
     un_bz2_file,
@@ -25,7 +25,7 @@ ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip', '.gz', '.bz2']
 
 
 def path_is_archive(path):
-    if isinstance(path, basestring):
+    if isinstance(path, str):
         for ext in ARCHIVE_EXTS:
             if path.endswith(ext):
                 return True
@@ -43,7 +43,7 @@ def get_archive_ext(fname):
 def strip_archive_ext(path):
     for ext in ARCHIVE_EXTS:
         if path.endswith(ext):
-            return path[:-len(ext)]
+            return path[: -len(ext)]
     raise UsageError('Not an archive: %s' % path)
 
 
@@ -56,7 +56,7 @@ def unpack(ext, source, dest_path):
     if ext != '.zip':
         close_source = False
         try:
-            if isinstance(source, basestring):
+            if isinstance(source, str):
                 source = open(source, 'rb')
                 close_source = True
 
@@ -81,7 +81,7 @@ def unpack(ext, source, dest_path):
         try:
             # unzip doesn't accept input from standard input, so we have to save
             # to a temporary file.
-            if not isinstance(source, basestring):
+            if not isinstance(source, str):
                 temp_path = dest_path + '.zip'
                 with open(temp_path, 'wb') as f:
                     shutil.copyfileobj(source, f)
@@ -96,8 +96,14 @@ def unpack(ext, source, dest_path):
                 path_util.remove(source)
 
 
-def pack_files_for_upload(sources, should_unpack, follow_symlinks,
-                          exclude_patterns=None, force_compression=False):
+def pack_files_for_upload(
+    sources,
+    should_unpack,
+    follow_symlinks,
+    exclude_patterns=None,
+    force_compression=False,
+    ignore_file=None,
+):
     """
     Create a single flat tarfile containing all the sources.
     Caller is responsible for closing the returned fileobj.
@@ -112,6 +118,8 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
     :param exclude_patterns: list of glob patterns for files to ignore, or
                              None to include all files
     :param force_compression: True to always use compression
+    :param ignore_file: Name of the file where exclusion patterns are read from
+                        when archiving
     :return: dict with {
         'fileobj': <file object of archive>,
         'filename': <name of archive file>,
@@ -133,7 +141,7 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
             raise UsageError('Not following symlinks.')
         return resolved_source
 
-    sources = map(resolve_source, sources)
+    sources = list(map(resolve_source, sources))
 
     # For efficiency, return single files and directories directly
     if len(sources) == 1:
@@ -141,8 +149,11 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
         filename = os.path.basename(source)
         if os.path.isdir(sources[0]):
             archived = tar_gzip_directory(
-                source, follow_symlinks=follow_symlinks,
-                exclude_patterns=exclude_patterns)
+                source,
+                follow_symlinks=follow_symlinks,
+                exclude_patterns=exclude_patterns,
+                ignore_file=ignore_file,
+            )
             return {
                 'fileobj': archived,
                 'filename': filename + '.tar.gz',
@@ -152,7 +163,7 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
             }
         elif path_is_archive(source):
             return {
-                'fileobj': open(source),
+                'fileobj': open(source, mode='rb'),
                 'filename': filename,
                 'filesize': os.path.getsize(source),
                 'should_unpack': should_unpack,
@@ -168,7 +179,7 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
             }
         else:
             return {
-                'fileobj': open(source),
+                'fileobj': open(source, mode='rb'),
                 'filename': filename,
                 'filesize': os.path.getsize(source),
                 'should_unpack': False,
@@ -189,6 +200,9 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
         basefn = os.path.basename(fn)
         return any(fnmatch(basefn, p) for p in exclude_patterns)
 
+    def filter(tarinfo):
+        return None if should_exclude(tarinfo.name) else tarinfo
+
     for source in sources:
         if should_unpack and path_is_archive(source):
             # Unpack archive into scratch space
@@ -200,8 +214,7 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
             archive.add(dest_path, arcname=dest_basename, recursive=True)
         else:
             # Add file to archive, or add files recursively if directory
-            archive.add(source, arcname=os.path.basename(source),
-                        recursive=True, exclude=should_exclude)
+            archive.add(source, arcname=os.path.basename(source), recursive=True, filter=filter)
 
     # Clean up, rewind archive file, and return it
     archive.close()

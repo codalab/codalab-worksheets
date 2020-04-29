@@ -1,0 +1,222 @@
+version: '3.5'
+
+x-non-blocking-logging: &non-blocking-logging
+  driver: json-file
+  options:
+    mode: non-blocking
+
+# Synchronize with codalab_service.py
+x-codalab-env: &codalab-env
+  - HOSTNAME=${HOSTNAME}
+  - CODALAB_VERSION=${CODALAB_VERSION}
+  - CODALAB_USERNAME=${CODALAB_USERNAME}
+  - CODALAB_PASSWORD=${CODALAB_PASSWORD}
+  - CODALAB_MYSQL_HOST=${CODALAB_MYSQL_HOST}
+  - CODALAB_MYSQL_PORT=${CODALAB_MYSQL_PORT}
+  - CODALAB_MYSQL_DATABASE=${CODALAB_MYSQL_DATABASE}
+  - CODALAB_MYSQL_USERNAME=${CODALAB_MYSQL_USERNAME}
+  - CODALAB_MYSQL_PASSWORD=${CODALAB_MYSQL_PASSWORD}
+  - CODALAB_HOME=${CODALAB_HOME}
+  - CODALAB_BUNDLE_MOUNT=${CODALAB_BUNDLE_MOUNT}
+  - CODALAB_USER_DISK_QUOTA=${CODALAB_USER_DISK_QUOTA}
+  - CODALAB_USER_TIME_QUOTA=${CODALAB_USER_TIME_QUOTA}
+  - CODALAB_USER_PARALLEL_RUN_QUOTA=${CODALAB_USER_PARALLEL_RUN_QUOTA}
+  - CODALAB_ADMIN_EMAIL=${CODALAB_ADMIN_EMAIL}
+  - CODALAB_SUPPORT_EMAIL=${CODALAB_SUPPORT_EMAIL}
+  - CODALAB_EMAIL_HOST=${CODALAB_EMAIL_HOST}
+  - CODALAB_EMAIL_USERNAME=${CODALAB_EMAIL_USERNAME}
+  - CODALAB_EMAIL_PASSWORD=${CODALAB_EMAIL_PASSWORD}
+  - CODALAB_SERVER=${CODALAB_SERVER}
+  - CODALAB_SHARED_FILE_SYSTEM=${CODALAB_SHARED_FILE_SYSTEM}
+  - CODALAB_WORKER_MANAGER_TYPE=${CODALAB_WORKER_MANAGER_TYPE}
+  - CODALAB_WORKER_MANAGER_IDLE_SECONDS=${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
+  - CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS=${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
+  - CODALAB_WORKER_MANAGER_AWS_REGION=${CODALAB_WORKER_MANAGER_AWS_REGION}
+  - CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME=${CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME}
+  - CODALAB_WORKER_MANAGER_AWS_DEFAULT_CPUS=${CODALAB_WORKER_MANAGER_AWS_DEFAULT_CPUS}
+  - CODALAB_WORKER_MANAGER_AWS_DEFAULT_MEMORY_MB=${CODALAB_WORKER_MANAGER_AWS_DEFAULT_MEMORY_MB}
+  - CODALAB_WORKER_MANAGER_CPU_QUEUE=${CODALAB_WORKER_MANAGER_CPU_QUEUE}
+  - CODALAB_WORKER_MANAGER_GPU_QUEUE=${CODALAB_WORKER_MANAGER_GPU_QUEUE}
+  - CODALAB_WORKER_MANAGER_CPU_TAG=${CODALAB_WORKER_MANAGER_CPU_TAG}
+  - CODALAB_WORKER_MANAGER_GPU_TAG=${CODALAB_WORKER_MANAGER_GPU_TAG}
+  - CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
+  - CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS=${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
+  - CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
+  - CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS=${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
+  - CODALAB_PUBLIC_WORKERS=${CODALAB_PUBLIC_WORKERS}
+
+# Properties that every service inherits.
+x-codalab-base: &codalab-base
+  environment:
+    *codalab-env
+  logging:
+    *non-blocking-logging
+  user: ${CODALAB_UID}
+  networks:
+    - service
+
+# We mostly want to run in user mode when we need to save files to disk.
+# But if we don't, easier to run as root.
+x-codalab-root: &codalab-root
+  user: 0:0
+
+# Services that need direct access to disk.
+x-codalab-server: &codalab-server
+  volumes:
+  - "${CODALAB_HOME}:${CODALAB_HOME}"
+  - "${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}"
+  - "${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}"
+
+############################################################
+
+services:
+  rest-server:
+    image: codalab/server:${CODALAB_VERSION}
+    command: cl-server
+    <<: *codalab-base
+    <<: *codalab-server
+    depends_on:
+      - mysql
+
+  bundle-manager:
+    image: codalab/server:${CODALAB_VERSION}
+    command: cl-bundle-manager
+    <<: *codalab-base
+    <<: *codalab-server
+    depends_on:
+      - mysql
+
+  worker-manager-cpu:
+    image: codalab/server:${CODALAB_VERSION}
+    command: |
+      cl-worker-manager
+      --server ${CODALAB_SERVER}
+      --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
+      --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
+      --search request_gpus=0
+      --worker-tag ${CODALAB_WORKER_MANAGER_CPU_TAG}
+      --sleep-time ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
+      --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
+      ${CODALAB_WORKER_MANAGER_TYPE}
+      --job-queue ${CODALAB_WORKER_MANAGER_CPU_QUEUE}
+      --region ${CODALAB_WORKER_MANAGER_AWS_REGION}
+      --job-definition-name ${CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME}
+      --cpus ${CODALAB_WORKER_MANAGER_AWS_DEFAULT_CPUS}
+      --memory-mb ${CODALAB_WORKER_MANAGER_AWS_DEFAULT_MEMORY_MB}
+    <<: *codalab-base
+    <<: *codalab-server
+
+  worker-manager-gpu:
+    image: codalab/server:${CODALAB_VERSION}
+    command: |
+      cl-worker-manager
+      --server ${CODALAB_SERVER}
+      --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
+      --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
+      --search request_gpus=1
+      --worker-tag ${CODALAB_WORKER_MANAGER_GPU_TAG}
+      --sleep-time ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
+      --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
+      ${CODALAB_WORKER_MANAGER_TYPE}
+      --job-queue ${CODALAB_WORKER_MANAGER_GPU_QUEUE}
+      --region ${CODALAB_WORKER_MANAGER_AWS_REGION}
+      --job-definition-name ${CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME}
+      --cpus ${CODALAB_WORKER_MANAGER_AWS_DEFAULT_CPUS}
+      --memory-mb ${CODALAB_WORKER_MANAGER_AWS_DEFAULT_MEMORY_MB}
+    <<: *codalab-base
+    <<: *codalab-server
+
+  frontend:
+    image: codalab/frontend:${CODALAB_VERSION}
+    command: serve -s build -l ${CODALAB_FRONTEND_PORT}
+    <<: *codalab-base
+    <<: *codalab-root
+    depends_on:
+      - rest-server
+
+  nginx:
+    image: nginx:1.12.0
+    command: nginx
+    <<: *codalab-base
+    <<: *codalab-root
+    depends_on:
+      - frontend
+      - rest-server
+    ports:
+      - ${CODALAB_HTTP_PORT}:80
+    volumes:
+      - ./files/nginx.conf:/etc/nginx/nginx.conf:ro
+
+  mysql:
+    # https://hub.docker.com/_/mysql
+    image: mysql:5.5.53
+    <<: *codalab-base
+    environment:
+      - MYSQL_ROOT_PASSWORD=${CODALAB_MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${CODALAB_MYSQL_DATABASE}
+      - MYSQL_USER=${CODALAB_MYSQL_USERNAME}
+      - MYSQL_PASSWORD=${CODALAB_MYSQL_PASSWORD}
+    volumes:
+      - ${CODALAB_MYSQL_MOUNT}:/var/lib/mysql
+
+  worker:
+    image: codalab/worker:${CODALAB_VERSION}
+    command: |
+      cl-worker
+      --server http://rest-server:${CODALAB_REST_PORT}
+      --work-dir ${CODALAB_WORKER_DIR}
+      --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
+      --id ${HOSTNAME}
+      --verbose
+    <<: *codalab-base
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
+    depends_on:
+      - rest-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
+    networks:
+      - service
+      - worker
+    shm_size: '500mb'
+
+  worker-shared-file-system:
+    image: codalab/worker:${CODALAB_VERSION}
+    command: |
+      cl-worker
+      --server http://rest-server:${CODALAB_REST_PORT}
+      --work-dir ${CODALAB_WORKER_DIR}
+      --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
+      --id ${HOSTNAME}
+      --shared-file-system
+      --verbose
+    <<: *codalab-base
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
+    depends_on:
+      - rest-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
+      - ${CODALAB_HOME}:${CODALAB_HOME}
+      - ${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}
+    networks:
+      - service
+      - worker
+
+  monitor:
+    image: codalab/server:${CODALAB_VERSION}
+    command: python3.6 monitor.py --log-path ${CODALAB_MONITOR_DIR}/monitor.log --backup-path ${CODALAB_MONITOR_DIR}
+    <<: *codalab-base
+    depends_on:
+      - rest-server
+    volumes:
+      - /var/lib/docker:/var/lib/docker
+      - ${CODALAB_HOME}:${CODALAB_HOME}
+      - ${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}
+      - ${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}
+
+networks:
+  worker:
+    name: ${CODALAB_WORKER_NETWORK_PREFIX}_general # Make sure this is synced with the suffix set in worker/worker.py in network initialization.
+    internal: True
+  service:

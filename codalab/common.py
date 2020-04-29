@@ -4,11 +4,13 @@ This module exports some simple names used throughout the CodaLab bundle system:
   - The State class, an enumeration of all legal bundle states.
   - precondition, a utility method that check's a function's input preconditions.
 """
-import httplib
+import http.client
 
-# Increment this on the develop branch when develop is merged into master.
+# Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '0.2.26'
+CODALAB_VERSION = '0.5.13'
+BINARY_PLACEHOLDER = '<binary>'
+
 
 class IntegrityError(ValueError):
     """
@@ -57,12 +59,13 @@ class PermissionError(UsageError):
     necessary permissions. Similar to HTTP status 403.
     """
 
+
 # Listed in order of most specific to least specific.
 http_codes_and_exceptions = [
-    (httplib.FORBIDDEN, PermissionError),
-    (httplib.UNAUTHORIZED, AuthorizationError),
-    (httplib.NOT_FOUND, NotFoundError),
-    (httplib.BAD_REQUEST, UsageError),
+    (http.client.FORBIDDEN, PermissionError),
+    (http.client.UNAUTHORIZED, AuthorizationError),
+    (http.client.NOT_FOUND, NotFoundError),
+    (http.client.BAD_REQUEST, UsageError),
 ]
 
 
@@ -72,8 +75,8 @@ def exception_to_http_error(e):
     """
     for known_code, exception_type in http_codes_and_exceptions:
         if isinstance(e, exception_type):
-            return known_code, e.message
-    return httplib.INTERNAL_SERVER_ERROR, e.message
+            return known_code, str(e)
+    return http.client.INTERNAL_SERVER_ERROR, str(e)
 
 
 def http_error_to_exception(code, message):
@@ -88,27 +91,20 @@ def http_error_to_exception(code, message):
     return Exception(message)
 
 
-class State(object):
-    """
-    An enumeration of states that a bundle can be in.
-    """
-    UPLOADING = 'uploading'  # Waiting for contents to be uploaded
-    CREATED = 'created'   # Just created
-    STAGED = 'staged'     # All the dependencies are met
-    MAKING = 'making'  # Creating a make bundle.
-    WAITING_FOR_WORKER_STARTUP = 'waiting_for_worker_startup'  # Waiting for the worker to start up.
-    STARTING = 'starting'  # Wait for the worker to start running the bundle.
-    RUNNING = 'running'   # Actually running
-    READY = 'ready'       # Done running and succeeded
-    FAILED = 'failed'     # Done running and failed
-    KILLED = 'killed'     # Killed by user
-    WORKER_OFFLINE = 'worker_offline' # Assigned worker has gone offline
-
-    OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED}
-    ACTIVE_STATES = {MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING}
-    FINAL_STATES = {READY, FAILED, KILLED}
-
-
 def precondition(condition, message):
     if not condition:
         raise PreconditionViolation(message)
+
+
+def ensure_str(response):
+    """
+    Ensure the data type of input response to be string
+    :param response: a response in bytes or string
+    :return: the input response in string
+    """
+    if isinstance(response, str):
+        return response
+    try:
+        return response.decode()
+    except UnicodeDecodeError:
+        return BINARY_PLACEHOLDER
