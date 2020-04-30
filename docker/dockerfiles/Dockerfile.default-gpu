@@ -1,4 +1,4 @@
-FROM nvidia/cuda:9.0-cudnn7-runtime
+FROM nvidia/cuda:9.2-cudnn7-devel
 MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 
 ############################################################
@@ -72,7 +72,6 @@ RUN pip2 install -U \
       pandas \
       sympy \
       nose \
-      spacy \
       tqdm \
       wheel \
       scikit-learn \
@@ -92,6 +91,7 @@ RUN python3 -m pip install -U \
       scikit-image \
       nltk
 
+RUN pip2 install spacy
 RUN python -m spacy download en
 RUN python3 -m spacy download en
 
@@ -107,6 +107,15 @@ RUN python3 -m pip install -U \
 RUN pip2 install -U \
       torch==1.1.0 \
       torchvision
-RUN python3 -m pip install -U \
-      torch==1.1.0 \
-      torchvision
+RUN python3 -m pip install \
+      torch==1.5.0+cu92 \
+      torchvision==0.6.0+cu92 \
+      -f https://download.pytorch.org/whl/torch_stable.html
+
+# Install apex
+WORKDIR /tmp/apex_install
+RUN git clone https://github.com/NVIDIA/apex.git
+WORKDIR /tmp/apex_install/apex
+RUN git checkout 4a8c4ac088b6f84a10569ee89db3a938b48922b4
+RUN TORCH_CUDA_ARCH_LIST="6.0;6.1;6.2;7.0" python3 -m pip install --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" .
+WORKDIR /
