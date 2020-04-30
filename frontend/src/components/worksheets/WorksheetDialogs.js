@@ -10,6 +10,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import IconButton from '@material-ui/core/IconButton';
 import InfoIcon from '@material-ui/icons/InfoOutlined';
 import Button from '@material-ui/core/Button';
+import { red } from '@material-ui/core/colors';
 
 class WorksheetDialogs extends React.Component {
     render() {
@@ -26,7 +27,10 @@ class WorksheetDialogs extends React.Component {
                         {'Delect selected bundles permanently?'}
                     </DialogTitle>
                     <DialogContent className={classes.dialog}>
-                        <DialogContentText id='alert-dialog-description'>
+                        <DialogContentText
+                            id='alert-dialog-description'
+                            className={classes.warning}
+                        >
                             Deletion cannot be undone.
                         </DialogContentText>
                         <DialogContentText id='alert-dialog-description'>
@@ -52,7 +56,7 @@ class WorksheetDialogs extends React.Component {
                         {this.props.forceDelete ? (
                             <DialogContentText
                                 id='alert-dialog-description'
-                                style={{ color: 'red' }}
+                                className={classes.warning}
                             >
                                 The deletion will ignore all bundle dependencies
                             </DialogContentText>
@@ -62,7 +66,11 @@ class WorksheetDialogs extends React.Component {
                         <Button color='primary' onClick={this.props.togglePopup('rm')}>
                             CANCEL
                         </Button>
-                        <Button color='primary' onClick={this.props.executeBundleCommand('rm')}>
+                        <Button
+                            color='primary'
+                            variant='contained'
+                            onClick={this.props.executeBundleCommand('rm')}
+                        >
                             DELETE
                         </Button>
                     </DialogActions>
@@ -119,11 +127,11 @@ class WorksheetDialogs extends React.Component {
                         {'Delect selected markdown block?'}
                     </DialogTitle>
                     <DialogContent className={classes.dialog}>
-                        <DialogContentText id='alert-dialog-description' style={{ color: 'red' }}>
+                        <DialogContentText
+                            id='alert-dialog-description'
+                            className={classes.warning}
+                        >
                             Deletion cannot be undone.
-                        </DialogContentText>
-                        <DialogContentText id='alert-dialog-description'>
-                            You can modify the source to delete multiple blocks at once.
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
@@ -132,6 +140,7 @@ class WorksheetDialogs extends React.Component {
                         </Button>
                         <Button
                             color='primary'
+                            variant='contained'
                             onClick={() => {
                                 this.props.deleteItemCallback();
                                 this.props.togglePopupNoEvent('deleteItem');
@@ -154,7 +163,11 @@ const styles = () => ({
     },
     dialog: {
         width: 400,
-        height: 120,
+        minHeight: 50,
+    },
+    warning: {
+        color: 'red',
+        marginBottom: 20,
     },
 });
 
