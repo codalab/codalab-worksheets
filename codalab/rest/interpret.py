@@ -39,11 +39,9 @@ from codalab.lib.worksheet_util import (
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
-from codalab.rest.worksheets import get_worksheet_info, search_worksheets, keyword_search_ws
+from codalab.rest.worksheets import get_worksheet_info, search_worksheets
 from codalab.rest.worksheet_block_schemas import BlockModes, MarkupBlockSchema, FetchStatusCodes
 from codalab.worker.download_util import BundleTarget
-# from codalab.client.json_api_client import _unpack_document
-# _pack_params, _unpack_document, _make_request
 
 @post('/interpret/search')
 def _interpret_search():
@@ -82,8 +80,6 @@ def _interpret_wsearch():
         abort(httplib.BAD_REQUEST, 'Missing `keywords`')
 
     return {'response': interpret_wsearch(query['keywords'])}
-
-
 
 
 @post('/interpret/file-genpaths')
@@ -467,6 +463,7 @@ def resolve_interpreted_blocks(interpreted_blocks):
 
     return interpreted_blocks
 
+
 def interpret_wsearch(keywords):
 
     """
@@ -478,10 +475,11 @@ def interpret_wsearch(keywords):
     :param include: iterable of related resources to include
     :return: the fetched objects
     """
-    params={'keywords': [keywords], 'include': ['owner', 'group_permissions']}
+    params = {'keywords': [keywords], 'include': ['owner', 'group_permissions']}
 
 
-    return keyword_search_ws(keywords)
+    return search_worksheets(keywords)
+
 
 def is_bundle_genpath_triple(value):
     # if called after an RPC call tuples may become lists
