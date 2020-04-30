@@ -475,7 +475,7 @@ class BundleManager(object):
             # 6. break ties randomly by a random seed.
             return (
                 not worker['tag_exclusive'],
-                worker['gpus'],
+                worker['gpus'] or worker['has_gpus'],
                 -num_available_deps,
                 worker['cpus'],
                 len(worker['run_uuids']),
@@ -501,7 +501,7 @@ class BundleManager(object):
                 os.mkdir(path)
             if self._worker_model.send_json_message(
                 worker['socket_id'],
-                self._construct_run_message(worker, bundle, bundle_resources),
+                self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
                 0.2,
             ):
                 logger.info(
@@ -519,7 +519,7 @@ class BundleManager(object):
     def _compute_request_cpus(bundle):
         """
         Compute the CPU limit used for scheduling the run.
-        The default of 1 is for backwards compatibilty for
+        The default of 1 is for backwards compatibility for
         runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_cpus:
@@ -541,7 +541,7 @@ class BundleManager(object):
     def _compute_request_memory(bundle):
         """
         Compute the memory limit used for scheduling the run.
-        The default of 2g is for backwards compatibilty for
+        The default of 2g is for backwards compatibility for
         runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_memory:
@@ -591,7 +591,7 @@ class BundleManager(object):
             docker_image += ':latest'
         return docker_image
 
-    def _construct_run_message(self, worker, bundle, bundle_resources):
+    def _construct_run_message(self, shared_file_system, bundle, bundle_resources):
         """
         Constructs the run message that is sent to the given worker to tell it
         to run the given bundle.
@@ -599,7 +599,7 @@ class BundleManager(object):
         message = {}
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
-        if worker['shared_file_system']:
+        if shared_file_system:
             message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
             for dependency in message['bundle']['dependencies']:
                 dependency['location'] = self._bundle_store.get_bundle_location(

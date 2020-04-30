@@ -145,6 +145,9 @@ Usage: `cl <command> <arguments>`
       search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
       search .offset=<offset>                : Return results starting at <offset>.
     
+      search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-3-14).
+      search .after=<datetime>               : Returns bundles created after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
+    
       search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
       search size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).
       search .last                           : Sort in reverse chronological order (equivalent to id=.sort-).
@@ -193,6 +196,7 @@ Usage: `cl <command> <arguments>`
     Arguments:
       target_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
       -o, --output-path     Path to download bundle to.  By default, the bundle or subpath name in the current directory is used.
+      -f, --force           Overwrite the output path if a file already exists.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
 ### mimic:

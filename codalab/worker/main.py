@@ -11,8 +11,7 @@ import signal
 import socket
 import stat
 import sys
-import multiprocessing
-
+import psutil
 
 from codalab.lib.formatting import parse_size
 from .bundle_service_client import BundleServiceClient, BundleAuthException
@@ -90,6 +89,13 @@ def parse_args():
         'The bundle depends on this image will fail accordingly.',
     )
     parser.add_argument(
+        '--max-memory',
+        type=parse_size,
+        metavar='SIZE',
+        default=None,
+        help='Limit the amount of memory to a worker in bytes' '(e.g. 3, 3k, 3m, 3g, 3t).',
+    )
+    parser.add_argument(
         '--password-file',
         help='Path to the file containing the username and '
         'password for logging into the bundle service, '
@@ -125,6 +131,12 @@ def parse_args():
         action='store_true',
         help='To be used when the worker should only run bundles that match the worker\'s tag.',
     )
+    parser.add_argument(
+        '--terminate',
+        action='store_true',
+        help='Terminate the worker and kill all the existing running bundles.',
+    )
+
     return parser.parse_args()
 
 
@@ -203,6 +215,7 @@ def main():
         os.path.join(args.work_dir, 'worker-state.json'),
         args.cpuset,
         args.gpuset,
+        args.max_memory,
         args.id,
         args.tag,
         args.work_dir,
@@ -214,6 +227,7 @@ def main():
         args.tag_exclusive,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
+        terminate=args.terminate,
     )
 
     # Register a signal handler to ensure safe shutdown.
@@ -242,7 +256,7 @@ def parse_cpuset_args(arg):
     except AttributeError:
         # os.sched_getaffinity() isn't available on all platforms,
         # so fallback to using the number of physical cores.
-        cpu_count = multiprocessing.cpu_count()
+        cpu_count = psutil.cpu_count(logical=False)
 
     if arg == 'ALL':
         cpuset = list(range(cpu_count))
