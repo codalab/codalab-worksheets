@@ -9,10 +9,16 @@ import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from '../ExtraWorksheetHTML/ExtraWorksheetHTML';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
-import { NAVBAR_HEIGHT } from '../../../constants';
+import {
+    NAVBAR_HEIGHT,
+    EXPANDED_WORKSHEET_WIDTH,
+    DEFAULT_WORKSHEET_WIDTH,
+    LOCAL_STORAGE_WORKSHEET_WIDTH,
+} from '../../../constants';
 import WorksheetActionBar from '../WorksheetActionBar';
 import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
+import Icon from '@material-ui/core/Icon';
 import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
 import DeleteIcon from '@material-ui/icons/DeleteOutline';
@@ -48,6 +54,9 @@ toast.configure();
 class Worksheet extends React.Component {
     constructor(props) {
         super(props);
+        let localWorksheetWidthPreference = window.localStorage.getItem(
+            LOCAL_STORAGE_WORKSHEET_WIDTH,
+        );
         this.state = {
             ws: {
                 uuid: this.props.match.params['uuid'],
@@ -85,6 +94,7 @@ class Worksheet extends React.Component {
             errorMessage: '',
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
+            worksheetWidthPercentage: localWorksheetWidthPreference || DEFAULT_WORKSHEET_WIDTH,
         };
     }
 
@@ -613,6 +623,14 @@ class Worksheet extends React.Component {
     toggleGlossaryModal = () => {
         this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
     };
+    toggleWorksheetSize = () => {
+        let newPercentage =
+            this.state.worksheetWidthPercentage === DEFAULT_WORKSHEET_WIDTH
+                ? EXPANDED_WORKSHEET_WIDTH
+                : DEFAULT_WORKSHEET_WIDTH;
+        window.localStorage.setItem(LOCAL_STORAGE_WORKSHEET_WIDTH, newPercentage);
+        this.setState({ worksheetWidthPercentage: newPercentage });
+    };
     setupEventHandlers() {
         // Load worksheet from history when back/forward buttons are used.
         let editPermission = this.state.ws.info && this.state.ws.info.edit_permission;
@@ -796,6 +814,9 @@ class Worksheet extends React.Component {
             this.setState({
                 showGlossaryModal: true,
             });
+        });
+        Mousetrap.bind(['+'], (e) => {
+            this.toggleWorksheetSize();
         });
 
         Mousetrap.bind(['esc'], (e) => {
@@ -1536,6 +1557,7 @@ class Worksheet extends React.Component {
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
                     togglePopup={this.togglePopup}
                     toggleGlossaryModal={this.toggleGlossaryModal}
+                    toggleWorksheetSize={this.toggleWorksheetSize}
                 />
                 {action_bar_display}
                 <ToastContainer
@@ -1553,6 +1575,7 @@ class Worksheet extends React.Component {
                             <div
                                 className={classes.worksheetOuter}
                                 onClick={this.handleClickForDeselect}
+                                style={{ width: this.state.worksheetWidthPercentage }}
                             >
                                 <div
                                     className={classes.worksheetInner}
@@ -1597,7 +1620,6 @@ const styles = (theme) => ({
         marginTop: NAVBAR_HEIGHT,
     },
     worksheetOuter: {
-        maxWidth: 1200, // Worksheet width
         minHeight: 600, // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
