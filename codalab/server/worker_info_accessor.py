@@ -33,6 +33,9 @@ class WorkerInfoAccessor(object):
             for uuid in worker['run_uuids']:
                 self._uuid_to_worker[uuid] = worker
             self._user_id_to_workers[worker['user_id']].append(worker)
+            # 'gpus' field contains the number of free GPUs that comes with each worker. Adding an additional
+            # 'has_gpus' flag here to indicate if the current worker has GPUs or not.
+            worker['has_gpus'] = True if worker['gpus'] > 0 else False
 
     @refresh_cache
     def workers(self):
