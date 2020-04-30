@@ -2,7 +2,13 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
-import { keepPosInView, renderPermissions } from '../../../util/worksheet_utils';
+import {
+    keepPosInView,
+    renderPermissions,
+    getAfterSortKey,
+    createAlertText,
+    getIds,
+} from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
@@ -404,13 +410,15 @@ class Worksheet extends React.Component {
             if (actualCopiedCounts > 1) {
                 toastString += 's';
             }
-            toast.info(toastString, {
-                position: 'top-right',
-                autoClose: 1300,
-                hideProgressBar: true,
-                closeOnClick: true,
-                pauseOnHover: false,
-                draggable: true,
+            this.clearCheckedBundles(() => {
+                toast.info(toastString, {
+                    position: 'top-right',
+                    autoClose: 1300,
+                    hideProgressBar: true,
+                    closeOnClick: true,
+                    pauseOnHover: false,
+                    draggable: true,
+                });
             });
         } else if (cmd_type === 'paste') {
             this.pasteBundlesToWorksheet();
@@ -451,34 +459,40 @@ class Worksheet extends React.Component {
         // Unchecks all bundles after pasting
         const data = JSON.parse(window.localStorage.getItem('CopiedBundles'));
         let bundleString = '';
+        let items = [];
         data.forEach((bundle) => {
             bundleString += '[]{' + bundle.uuid + '}\n';
+            items.push(bundle.uuid);
         });
         // remove the last new line character
         bundleString = bundleString.substr(0, bundleString.length - 1);
+        let worksheetuuid = this.state.ws.uuid;
+        let after_sort_key;
         if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
-            let isOnSearchItem = this.state.searchExpandedIndices.has(this.state.focusIndex);
-            let currentItemKey = isOnSearchItem
-                ? this.state.focusIndex + ',0'
-                : this.state.focusIndex + ',' + this.state.subFocusIndex;
-            let item_source_index = this.state.ws.info.block_to_raw[currentItemKey];
-            this.state.ws.info.source.splice(item_source_index + 1, 0, bundleString);
-            this.setState({
-                ws: {
-                    ...this.state.ws,
-                    info: {
-                        ...this.state.ws.info,
-                        raw: this.state.ws.info.source,
-                    },
-                },
-                searchExpandedIndices: new Set(),
-            });
-            this.saveAndUpdateWorksheet(false);
-            this.clearCheckedBundles();
-            window.localStorage.setItem('CopiedBundles', '');
-            this.setState({ showPasteButton: false });
+            let currentFocusedBlock = this.state.ws.info.blocks[this.state.focusIndex];
+            console.log(this.state.subFocusIndex, currentFocusedBlock);
+            after_sort_key = getAfterSortKey(currentFocusedBlock, this.state.subFocusIndex);
         }
-        // if no focus, do nothing
+        let url = `/rest/worksheets/${worksheetuuid}/add-items`;
+        let actualData = { items };
+        if (after_sort_key) {
+            actualData['after_sort_key'] = after_sort_key;
+        }
+        actualData['item_type'] = 'bundle';
+        $.ajax({
+            url,
+            data: JSON.stringify(actualData),
+            contentType: 'application/json',
+            type: 'POST',
+            success: () => {
+                const moveIndex = true;
+                const param = { moveIndex };
+                this.reloadWorksheet(undefined, undefined, param);
+            },
+            error: (jqHXR) => {
+                alert(createAlertText(this.url, jqHXR.responseText));
+            },
+        });
     };
 
     clearCheckedBundles = (clear_callback) => {

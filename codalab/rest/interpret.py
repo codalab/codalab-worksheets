@@ -288,7 +288,6 @@ def fetch_interpreted_worksheet(uuid):
         # return only that block (which is at the end of worksheet_info['items'])
         if len(search_results):
             search_result_item = worksheet_info['blocks'][-1]
-            search_result_item['from_search'] = True
             worksheet_info['blocks'] = [search_result_item]
         else:
             worksheet_info['blocks'] = []
