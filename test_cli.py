@@ -1381,7 +1381,7 @@ def test(ctx):
 
     with remote_instance(ctx.second_instance) as remote:
 
-        def compare_output(command):
+        def compare_output_across_instances(command):
             check_equals(
                 _run_command(command + ['-w', source_worksheet]),
                 _run_command(command + ['-w', remote_worksheet]),
@@ -1395,16 +1395,16 @@ def test(ctx):
         _run_command([cl, 'work', source_worksheet])
         uuid = _run_command([cl, 'upload', test_path('')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
-        compare_output([cl, 'info', '-f', 'data_hash,name', uuid])
+        compare_output_across_instances([cl, 'info', '-f', 'data_hash,name', uuid])
         # TODO: `cl cat` is not working even with the bundle available
-        # compare_output([cl, 'cat', uuid])
+        # compare_output_across_instances([cl, 'cat', uuid])
 
         # Upload to remote, transfer to local
         _run_command([cl, 'work', remote_worksheet])
         uuid = _run_command([cl, 'upload', test_path('')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', source_worksheet])
-        compare_output([cl, 'info', '-f', 'data_hash,name', uuid])
-        # compare_output([cl, 'cat', uuid])
+        compare_output_across_instances([cl, 'info', '-f', 'data_hash,name', uuid])
+        # compare_output_across_instances([cl, 'cat', uuid])
 
         # Upload to remote, transfer to local (metadata only)
         _run_command([cl, 'work', remote_worksheet])
