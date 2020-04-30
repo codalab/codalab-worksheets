@@ -74,7 +74,6 @@ RUN pip2 install -U \
       pandas \
       sympy \
       nose \
-      spacy \
       tqdm \
       wheel \
       scikit-learn \
@@ -94,6 +93,7 @@ RUN python3 -m pip install -U \
       scikit-image \
       nltk
 
+RUN pip2 install spacy
 RUN python -m spacy download en
 RUN python3 -m spacy download en
 
