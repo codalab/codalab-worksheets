@@ -767,7 +767,6 @@ def interpret_items(schemas, raw_items, db_model=None):
                             'status': FetchStatusSchema.get_unknown_status(),
                             'header': header,
                             'rows': rows,
-                            'sort_keys': [sort_key],
                         }
                     )
                     .data
