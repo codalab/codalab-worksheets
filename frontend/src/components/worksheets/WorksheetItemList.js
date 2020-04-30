@@ -2,7 +2,7 @@ import * as React from 'react';
 import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
-import { buildTerminalCommand, getMinMaxKeys } from '../../util/worksheet_utils';
+import { buildTerminalCommand, getAfterSortKey } from '../../util/worksheet_utils';
 import { ContextMenuEnum, ContextMenuMixin } from './ContextMenu';
 import ContentsItem from './items/ContentsItem';
 import GraphItem from './items/GraphItem';
@@ -81,6 +81,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
             key={props.key}
+            subFocusIndex={props.subFocusIndex}
         >
             {elem}
         </ItemWrapper>,
@@ -238,7 +239,7 @@ class WorksheetItemList extends React.Component {
                         focusedForButtons,
                         canEdit: this.props.canEdit,
                         focusIndex: index,
-                        subFocusIndex: focused ? this.props.subFocusIndex : null,
+                        subFocusIndex: this.props.subFocusIndex,
                         setFocus: this.props.setFocus,
                         focusActionBar: this.props.focusActionBar,
                         openWorksheet: this.props.openWorksheet,
@@ -271,7 +272,10 @@ class WorksheetItemList extends React.Component {
                     {worksheet_items}
                     <NewUpload
                         key={this.state.newUploadKey}
-                        after_sort_key={(getMinMaxKeys(focusedForButtonsItem) || {}).maxKey}
+                        after_sort_key={getAfterSortKey(
+                            focusedForButtonsItem,
+                            this.props.subFocusIndex,
+                        )}
                         worksheetUUID={info.uuid}
                         reloadWorksheet={this.props.reloadWorksheet}
                         // Reset newUploadKey so that NewUpload gets re-rendered. This way,

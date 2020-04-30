@@ -678,7 +678,7 @@ def interpret_items(schemas, raw_items, db_model=None):
         # strip off the leading / from genpath to create a subpath in the target.
         return (bundle_info['uuid'], genpath[1:])
 
-    def flush_bundles(sort_key):
+    def flush_bundles():
         """
         Having collected bundles in |bundle_infos|, flush them into |blocks|,
         potentially as a single table depending on the mode.
@@ -821,7 +821,10 @@ def interpret_items(schemas, raw_items, db_model=None):
                         'status': FetchStatusSchema.get_unknown_status(),
                         'header': header,
                         'rows': rows,
-                        'sort_keys': [sort_key],
+                        'sort_keys': [
+                            processed_bundle_info["sort_key"]
+                            for processed_bundle_info in processed_bundle_infos
+                        ],
                     }
                 )
                 .data
@@ -875,13 +878,18 @@ def interpret_items(schemas, raw_items, db_model=None):
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
 
-    def flush_worksheets(sort_key):
+    def flush_worksheets():
         if len(worksheet_infos) == 0:
             return
 
         blocks.append(
             SubworksheetsBlock()
-            .load({'subworksheet_infos': copy.deepcopy(worksheet_infos), 'sort_keys': [sort_key]})
+            .load(
+                {
+                    'subworksheet_infos': copy.deepcopy(worksheet_infos),
+                    'sort_keys': [worksheet_info["sort_key"] for worksheet_info in worksheet_infos],
+                }
+            )
             .data
         )
 
@@ -900,10 +908,10 @@ def interpret_items(schemas, raw_items, db_model=None):
             is_worksheet = item_type == TYPE_WORKSHEET
 
             if not is_bundle:
-                flush_bundles(sort_key)
+                flush_bundles()
 
             if not is_worksheet:
-                flush_worksheets(sort_key)
+                flush_worksheets()
 
             # Reset display to minimize long distance dependencies of directives
             if not (is_bundle or is_search):
@@ -914,9 +922,12 @@ def interpret_items(schemas, raw_items, db_model=None):
                 current_schema = None
 
             if item_type == TYPE_BUNDLE:
+                assert type(sort_key) is int, (sort_key, item)
+                bundle_info["sort_key"] = sort_key
                 raw_to_block.append((len(blocks), len(bundle_infos)))
                 bundle_infos.append((raw_index, bundle_info))
             elif item_type == TYPE_WORKSHEET:
+                subworksheet_info["sort_key"] = sort_key
                 raw_to_block.append((len(blocks), len(worksheet_infos)))
                 worksheet_infos.append(subworksheet_info)
             elif item_type == TYPE_MARKUP:
@@ -1004,8 +1015,8 @@ def interpret_items(schemas, raw_items, db_model=None):
 
             # Flush bundles once more at the end
             if raw_index == len(raw_items) - 1:
-                flush_bundles(sort_key)
-                flush_worksheets(sort_key)
+                flush_bundles()
+                flush_worksheets()
 
         except UsageError as e:
             current_schema = None

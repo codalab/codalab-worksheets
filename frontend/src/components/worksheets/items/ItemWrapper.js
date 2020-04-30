@@ -3,7 +3,7 @@ import * as React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import NewRun from '../NewRun';
 import TextEditorItem from './TextEditorItem';
-import { getMinMaxKeys } from '../../../util/worksheet_utils';
+import { getAfterSortKey } from '../../../util/worksheet_utils';
 
 function getIds(item) {
     if (item.mode === 'markup_block') {
@@ -39,23 +39,16 @@ class ItemWrapper extends React.Component {
         }
 
         const ids = getIds(item);
-        const itemKeys = getMinMaxKeys(item);
-
-        let isWorkSheetItem = true;
-        if (itemKeys.minKey === null && itemKeys.maxKey === null) {
-            // This item isn't really a worksheet item.
-            isWorkSheetItem = false;
-        }
+        const after_sort_key = getAfterSortKey(item, this.props.subFocusIndex);
 
         const { isDummyItem } = item;
-
         return (
             <div className={isDummyItem ? '' : classes.container}>
                 {!isDummyItem && <div className={classes.main}>{children}</div>}
                 {showNewRun && (
                     <div className={classes.insertBox}>
                         <NewRun
-                            after_sort_key={itemKeys.maxKey}
+                            after_sort_key={after_sort_key}
                             ws={this.props.ws}
                             onSubmit={() => this.props.onHideNewRun()}
                             reloadWorksheet={reloadWorksheet}
@@ -66,7 +59,7 @@ class ItemWrapper extends React.Component {
                     <TextEditorItem
                         ids={ids}
                         mode='create'
-                        after_sort_key={itemKeys.maxKey}
+                        after_sort_key={after_sort_key}
                         worksheetUUID={worksheetUUID}
                         reloadWorksheet={reloadWorksheet}
                         closeEditor={() => {

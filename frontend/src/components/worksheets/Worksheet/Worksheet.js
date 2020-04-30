@@ -2,7 +2,7 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
-import { keepPosInView, renderPermissions, getMinMaxKeys } from '../../../util/worksheet_utils';
+import { keepPosInView, renderPermissions } from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
@@ -1409,10 +1409,8 @@ class Worksheet extends React.Component {
             </div>
         );
 
-        let last_key = null;
         if (info && info.blocks.length) {
             // Non-empty worksheet
-            last_key = getMinMaxKeys(info.blocks[info.blocks.length - 1]).maxKey;
         } else {
             $('.empty-worksheet').fadeIn();
         }
