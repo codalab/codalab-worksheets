@@ -146,6 +146,13 @@ def check_equals(true_value, pred_value):
     return pred_value
 
 
+def check_not_equals(true_value, pred_value):
+    assert (
+        true_value != pred_value
+    ), "expected something that doesn't equal to '%s', but got '%s'" % (true_value, pred_value)
+    return pred_value
+
+
 def check_contains(true_value, pred_value):
     if isinstance(true_value, list):
         for v in true_value:
@@ -1332,93 +1339,80 @@ def test(ctx):
 @TestModule.register('resources')
 def test(ctx):
     """Test whether resource constraints are respected"""
-    # uuid = _run_command([cl, 'upload', 'scripts/stress-test.pl'])
+    uuid = _run_command([cl, 'upload', 'scripts/stress-test.pl'])
 
-    # def stress(
-    #     use_time,
-    #     request_time,
-    #     use_memory,
-    #     request_memory,
-    #     use_disk,
-    #     request_disk,
-    #     expected_exit_code,
-    #     expected_failure_message,
-    # ):
-    #     run_uuid = _run_command(
-    #         [
-    #             cl,
-    #             'run',
-    #             'main.pl:' + uuid,
-    #             'perl main.pl %s %s %s' % (use_time, use_memory, use_disk),
-    #             '--request-time',
-    #             str(request_time),
-    #             '--request-memory',
-    #             str(request_memory) + 'm',
-    #             '--request-disk',
-    #             str(request_disk) + 'm',
-    #         ]
-    #     )
-    #     wait(run_uuid, expected_exit_code)
-    #     if expected_failure_message:
-    #         check_contains(expected_failure_message, get_info(run_uuid, 'failure_message'))
+    def stress(
+        use_time,
+        request_time,
+        use_memory,
+        request_memory,
+        use_disk,
+        request_disk,
+        expected_exit_code,
+        expected_failure_message,
+    ):
+        run_uuid = _run_command(
+            [
+                cl,
+                'run',
+                'main.pl:' + uuid,
+                'perl main.pl %s %s %s' % (use_time, use_memory, use_disk),
+                '--request-time',
+                str(request_time),
+                '--request-memory',
+                str(request_memory) + 'm',
+                '--request-disk',
+                str(request_disk) + 'm',
+            ]
+        )
+        wait(run_uuid, expected_exit_code)
+        if expected_failure_message:
+            check_contains(expected_failure_message, get_info(run_uuid, 'failure_message'))
 
-    # # Good
-    # stress(
-    #     use_time=1,
-    #     request_time=10,
-    #     use_memory=50,
-    #     request_memory=1000,
-    #     use_disk=10,
-    #     request_disk=100,
-    #     expected_exit_code=0,
-    #     expected_failure_message=None,
-    # )
+    # Good
+    stress(
+        use_time=1,
+        request_time=10,
+        use_memory=50,
+        request_memory=1000,
+        use_disk=10,
+        request_disk=100,
+        expected_exit_code=0,
+        expected_failure_message=None,
+    )
 
-    # # Too much time
-    # stress(
-    #     use_time=10,
-    #     request_time=1,
-    #     use_memory=50,
-    #     request_memory=1000,
-    #     use_disk=10,
-    #     request_disk=100,
-    #     expected_exit_code=1,
-    #     expected_failure_message='Time limit exceeded.',
-    # )
+    # Too much time
+    stress(
+        use_time=10,
+        request_time=1,
+        use_memory=50,
+        request_memory=1000,
+        use_disk=10,
+        request_disk=100,
+        expected_exit_code=1,
+        expected_failure_message='Time limit exceeded.',
+    )
 
-    # # Too much memory
-    # # TODO(klopyrev): CircleCI doesn't seem to support cgroups, so we can't get
-    # # the memory usage of a Docker container.
-    # # stress(use_time=2, request_time=10, use_memory=1000, request_memory=50, use_disk=10, request_disk=100, expected_exit_code=1, expected_failure_message='Memory limit 50mb exceeded.')
+    # Too much memory
+    # TODO(klopyrev): CircleCI doesn't seem to support cgroups, so we can't get
+    # the memory usage of a Docker container.
+    # stress(use_time=2, request_time=10, use_memory=1000, request_memory=50, use_disk=10, request_disk=100, expected_exit_code=1, expected_failure_message='Memory limit 50mb exceeded.')
 
-    # # Too much disk
-    # stress(
-    #     use_time=2,
-    #     request_time=10,
-    #     use_memory=50,
-    #     request_memory=1000,
-    #     use_disk=10,
-    #     request_disk=2,
-    #     expected_exit_code=1,
-    #     expected_failure_message='Disk limit 2mb exceeded.',
-    # )
+    # Too much disk
+    stress(
+        use_time=2,
+        request_time=10,
+        use_memory=50,
+        request_memory=1000,
+        use_disk=10,
+        request_disk=2,
+        expected_exit_code=1,
+        expected_failure_message='Disk limit 2mb exceeded.',
+    )
 
     # Test network access
     wait(_run_command([cl, 'run', 'ping -c 1 google.com']), 1)
-    uuid = _run_command([cl, 'run', 'ping -c 1 google.com', '--request-network'])
-    wait(uuid, 1)
-
-    print("info")
-    _run_command([cl, "info", uuid])
-
-    path = temp_path('')
-    _run_command([cl, 'download', uuid, '-o', path])
-
-    print("stdout")
-    print(_run_command(['cat', path + '/stdout']))
-
-    print("stderr")
-    print(_run_command(['cat', path + '/stderr']))
+    wait(_run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)
 
 
 # TODO: can't do this test until we can pass in another CodaLab instance.
@@ -1796,6 +1790,156 @@ def test(ctx):
     test_worksheet = SampleWorksheet(cl)
     test_worksheet.create()
     test_worksheet.test_print()
+
+
+@TestModule.register('memoize')
+def test(ctx):
+    # Case 1: no dependency
+    uuid = _run_command([cl, 'run', 'echo hello'])
+    wait(uuid)
+    check_equals('hello', _run_command([cl, 'cat', uuid + '/stdout']))
+    uuid1 = _run_command([cl, 'run', 'echo hello2'])
+    wait(uuid1)
+    check_equals('hello2', _run_command([cl, 'cat', uuid1 + '/stdout']))
+    # memo tests
+    check_equals(uuid, _run_command([cl, 'run', 'echo hello', '--memoize']))
+
+    # Case 2: single dependency
+    # target_spec: ':<uuid>'
+    uuid_dep = _run_command([cl, 'run', ':{}'.format(uuid), 'echo hello'])
+    wait(uuid_dep)
+    check_equals('hello', _run_command([cl, 'cat', uuid_dep + '/stdout']))
+    # memo tests
+    check_equals(uuid_dep, _run_command([cl, 'run', ':{}'.format(uuid), 'echo hello', '--memoize']))
+
+    # Case 3: multiple dependencies without key
+    # target_spec: ':<uuid_1> :<uuid_2>'
+    uuid_deps = _run_command(
+        [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid1), 'echo multi_deps']
+    )
+    wait(uuid_deps)
+    check_equals('multi_deps', _run_command([cl, 'cat', uuid_deps + '/stdout']))
+    # memo tests
+    check_equals(
+        uuid_deps,
+        _run_command(
+            [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid1), 'echo multi_deps', '--memoize']
+        ),
+    )
+
+    # Case 4: multiple key points to the same bundle
+    # target_spec: 'foo:<uuid> foo1:<uuid>'
+    uuid_multi_alias = _run_command(
+        [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello']
+    )
+    wait(uuid_multi_alias)
+    check_equals('hello', _run_command([cl, 'cat', uuid_multi_alias + '/stdout']))
+    # memo tests
+    check_equals(
+        uuid_multi_alias,
+        _run_command(
+            [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello', '--memoize']
+        ),
+    )
+
+    # Case 5: duplicate dependencies
+    # target_spec: ':<uuid> :<uuid>'
+    check_equals(
+        uuid_dep,
+        _run_command(
+            [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid), 'echo hello', '--memoize']
+        ),
+    )
+
+    # Case 6: multiple dependencies
+    # target_spec: 'a:<uuid_1> b:<uuid_2>'
+    uuid_a_b = _run_command([cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_b'])
+    wait(uuid_a_b)
+    check_equals('a_b', _run_command([cl, 'cat', uuid_a_b + '/stdout']))
+
+    # target_spec: 'a:<uuid_1> b:<uuid_2>'
+    uuid_a_bb = _run_command([cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_bb'])
+    wait(uuid_a_bb)
+    check_equals('a_bb', _run_command([cl, 'cat', uuid_a_bb + '/stdout']))
+
+    # target_spec: 'b:<uuid_1> a:<uuid_2>'
+    uuid_b_a = _run_command([cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid1), 'echo b_a'])
+    wait(uuid_b_a)
+    check_equals('b_a', _run_command([cl, 'cat', uuid_b_a + '/stdout']))
+
+    # target_spec: 'a:<uuid_1> b:<uuid_2> c:<uuid_3>'
+    uuid_a_b_c = _run_command(
+        [
+            cl,
+            'run',
+            'a:{}'.format(uuid),
+            'b:{}'.format(uuid1),
+            'c:{}'.format(uuid_dep),
+            'echo a_b_c',
+        ]
+    )
+    wait(uuid_a_b_c)
+    check_equals('a_b_c', _run_command([cl, 'cat', uuid_a_b_c + '/stdout']))
+
+    # memo tests
+    check_equals(
+        uuid_a_b,
+        _run_command(
+            [cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_b', '--memoize']
+        ),
+    )
+
+    check_equals(
+        uuid_a_bb,
+        _run_command(
+            [cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_bb', '--memoize']
+        ),
+    )
+
+    check_equals(
+        uuid_b_a,
+        _run_command(
+            [cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid1), 'echo b_a', '--memoize']
+        ),
+    )
+
+    check_equals(
+        uuid_a_b_c,
+        _run_command(
+            [
+                cl,
+                'run',
+                'a:{}'.format(uuid),
+                'b:{}'.format(uuid1),
+                'c:{}'.format(uuid_dep),
+                'echo a_b_c',
+                '--memoize',
+            ]
+        ),
+    )
+
+    check_not_equals(
+        uuid_a_b_c,
+        _run_command(
+            [
+                cl,
+                'run',
+                'b:{}'.format(uuid),
+                'a:{}'.format(uuid1),
+                'd:{}'.format(uuid_dep),
+                'echo a_b_d',
+                '--memoize',
+            ]
+        ),
+    )
+
+    # test different dependency order in target_spec: 'a:<uuid_2> b:<uuid_1>'
+    check_equals(
+        uuid_b_a,
+        _run_command(
+            [cl, 'run', 'a:{}'.format(uuid1), 'b:{}'.format(uuid), 'echo b_a', '--memoize']
+        ),
+    )
 
 
 if __name__ == '__main__':
