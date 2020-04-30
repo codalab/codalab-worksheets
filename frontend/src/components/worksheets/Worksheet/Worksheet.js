@@ -139,7 +139,7 @@ class Worksheet extends React.Component {
             cache: false,
             url: '/rest/worksheets/' + this.state.ws.uuid + '/raw',
             dataType: 'json',
-            data: this.state.ws.info.raw.join('\n'),
+            data: this.state.ws.info.source.join('\n'),
             success: function(data) {
                 console.log('Saved worksheet ' + this.state.ws.uuid);
                 props.success(data);
@@ -433,7 +433,7 @@ class Worksheet extends React.Component {
                 info: {
                     ...this.state.ws.info,
                     // immutably change item at index *focusIndex*
-                    items: Object.assign([], this.state.ws.info.items, { [focusIndex]: item }),
+                    blocks: Object.assign([], this.state.ws.info.blocks, { [focusIndex]: item }),
                 },
             },
         });
@@ -458,8 +458,8 @@ class Worksheet extends React.Component {
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
             index = -1;
-            for (var i = info.items.length - 1; i >= 0; i--) {
-                if (info.items[i].bundles_spec) {
+            for (var i = info.blocks.length - 1; i >= 0; i--) {
+                if (info.blocks[i].bundles_spec) {
                     index = i;
                     break;
                 }
@@ -467,13 +467,13 @@ class Worksheet extends React.Component {
         }
         // resolve to the last row of the selected item
         if (subIndex === 'end') {
-            subIndex = (this._numTableRows(info.items[index]) || 1) - 1;
+            subIndex = (this._numTableRows(info.blocks[index]) || 1) - 1;
         }
         if (
             index < -1 ||
-            index >= info.items.length ||
+            index >= info.blocks.length ||
             subIndex < -1 ||
-            subIndex >= (this._numTableRows(info.items[index]) || 1)
+            subIndex >= (this._numTableRows(info.blocks[index]) || 1)
         ) {
             console.log('Out of bounds');
             return; // Out of bounds (note index = -1 is okay)
@@ -484,11 +484,13 @@ class Worksheet extends React.Component {
             // focusedBundleUuidList is a list of uuids of all bundles after the selected bundle (itself included)
             // Say the selected bundle has focusIndex 1 and subFocusIndex 2, then focusedBundleUuidList will include the uuids of
             // all the bundles that have focusIndex 1 and subFocusIndex >= 2, and also all the bundles that have focusIndex > 1
-            for (var i = index; i < info.items.length; i++) {
-                if (info.items[i].bundles_spec) {
+            for (var i = index; i < info.blocks.length; i++) {
+                if (info.blocks[i].bundles_spec) {
                     var j = i === index ? subIndex : 0;
-                    for (; j < (this._numTableRows(info.items[i]) || 1); j++) {
-                        focusedBundleUuidList.push(info.items[i].bundles_spec.bundle_infos[j].uuid);
+                    for (; j < (this._numTableRows(info.blocks[i]) || 1); j++) {
+                        focusedBundleUuidList.push(
+                            info.blocks[i].bundles_spec.bundle_infos[j].uuid,
+                        );
                     }
                 }
             }
@@ -691,7 +693,7 @@ class Worksheet extends React.Component {
                     e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                     var focusIndex = this.state.focusIndex;
                     var subFocusIndex = this.state.subFocusIndex;
-                    var wsItems = this.state.ws.info.items;
+                    var wsItems = this.state.ws.info.blocks;
 
                     if (focusIndex === 0 && subFocusIndex === 0) {
                         // Deselect all item when selecting up above the first item.
@@ -724,7 +726,7 @@ class Worksheet extends React.Component {
                     e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                     var focusIndex = this.state.focusIndex;
                     var subFocusIndex = this.state.subFocusIndex;
-                    var wsItems = this.state.ws.info.items;
+                    var wsItems = this.state.ws.info.blocks;
                     if (
                         focusIndex >= 0 &&
                         (wsItems[focusIndex].mode === 'table_block' ||
@@ -873,7 +875,7 @@ class Worksheet extends React.Component {
             if (this.canEdit()) {
                 var editor = ace.edit('worksheet-editor');
                 if (saveChanges) {
-                    this.state.ws.info.raw = editor.getValue().split('\n');
+                    this.state.ws.info.source = editor.getValue().split('\n');
                 }
                 var rawIndex = editor.getCursorPosition().row;
                 this.setState({
@@ -906,7 +908,7 @@ class Worksheet extends React.Component {
     }
 
     // updateRunBundles fetch all the "unfinished" bundles in the worksheet, and recursively call itself until all the bundles in the worksheet are finished.
-    updateRunBundles(worksheetUuid, numTrials, updatingBundleUuids) {
+    updateRunBundles = (worksheetUuid, numTrials, updatingBundleUuids) => {
         var bundleUuids = updatingBundleUuids
             ? updatingBundleUuids
             : this.state.updatingBundleUuids;
@@ -944,15 +946,15 @@ class Worksheet extends React.Component {
                 $('#worksheet_container').hide();
             },
         });
-    }
+    };
 
     // Everytime the worksheet is updated, checkRunBundle will loop through all the bundles and find the "unfinished" ones (not ready or failed).
     // If there are unfinished bundles and we are not updating bundles now, call updateRunBundles, which will recursively call itself until all the bundles in the worksheet are finished.
     // this.state.updatingBundleUuids keeps track of the "unfinished" bundles in the worksheet at every moment.
     checkRunBundle(info) {
         var updatingBundleUuids = _.clone(this.state.updatingBundleUuids);
-        if (info && info.items.length > 0) {
-            var items = info.items;
+        if (info && info.blocks.length > 0) {
+            var items = info.blocks;
             for (var i = 0; i < items.length; i++) {
                 if (items[i].bundles_spec) {
                     for (var j = 0; j < items[i].bundles_spec.bundle_infos.length; j++) {
@@ -1023,7 +1025,7 @@ class Worksheet extends React.Component {
                     rawIndex = 0;
                     cursorColumnPosition = 0;
                 } else {
-                    var item = this.state.ws.info.items[this.state.focusIndex];
+                    var item = this.state.ws.info.blocks[this.state.focusIndex];
                     // For non-tables such as search and wsearch, we have subFocusIndex, but not backed by raw items, so use 0.
                     var focusIndexPair =
                         this.state.focusIndex +
@@ -1078,7 +1080,7 @@ class Worksheet extends React.Component {
     }
 
     getNumOfBundles() {
-        var items = this.state.ws.info && this.state.ws.info.items;
+        var items = this.state.ws.info && this.state.ws.info.blocks;
         if (!items) return 0;
         var count = 0;
         for (var i = 0; i < items.length; i++) {
@@ -1090,7 +1092,7 @@ class Worksheet extends React.Component {
     }
 
     // If partialUpdateItems is undefined, we will fetch the whole worksheet.
-    // Otherwise, partialUpdateItems is a list of item parallel to ws.info.items that contain only items that need updating.
+    // Otherwise, partialUpdateItems is a list of item parallel to ws.info.blocks that contain only items that need updating.
     // More spefically, all items that don't contain run bundles that need updating are null.
     // Also, a non-null item could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
     // The bundle_infos for bundles that don't need updating are also null.
@@ -1125,7 +1127,7 @@ class Worksheet extends React.Component {
                     this.setState({ errorMessage: '' });
                     $('#update_progress').hide();
                     $('#worksheet_content').show();
-                    var items = this.state.ws.info.items;
+                    var items = this.state.ws.info.blocks;
                     var numOfBundles = this.getNumOfBundles();
                     var focus = this.state.focusIndex;
                     if (rawIndexAfterEditMode !== undefined) {
@@ -1211,7 +1213,7 @@ class Worksheet extends React.Component {
             for (var i = 0; i < partialUpdateItems.length; i++) {
                 if (!partialUpdateItems[i]) continue;
                 // update interpreted items
-                ws.info.items[i] = partialUpdateItems[i];
+                ws.info.blocks[i] = partialUpdateItems[i];
             }
             this.setState({ ws: ws, version: this.state.version + 1 });
             this.checkRunBundle(ws.info);
@@ -1279,18 +1281,28 @@ class Worksheet extends React.Component {
                 aria-labelledby='delete-worksheet-confirmation-title'
                 aria-describedby='delete-worksheet-confirmation-description'
             >
-                <DialogTitle id='delete-worksheet-confirmation-title'>
-                    {'Warning: Deleted worksheets cannot be recovered'}
+                <DialogTitle id='delete-worksheet-confirmation-title' style={{ color: 'red' }}>
+                    Delete this worksheet permanently?
                 </DialogTitle>
                 <DialogContent>
+                    <DialogContentText
+                        id='alert-dialog-description'
+                        style={{ color: 'red', marginBottom: '20px' }}
+                    >
+                        {'Warning: Deleted worksheets cannot be recovered.'}
+                    </DialogContentText>
                     <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
-                        {'Note: deleting worksheets does not delete the bundles inside it.'}
+                        {'Note: Deleting worksheets does not delete the bundles inside it.'}
                     </DialogContentText>
                     <DialogActions>
                         <Button color='primary' onClick={this.toggleBundleBulkMessageDialog}>
                             CANCEL
                         </Button>
-                        <Button color='primary' onClick={this.deteleWorksheetAction}>
+                        <Button
+                            color='primary'
+                            variant='contained'
+                            onClick={this.deteleWorksheetAction}
+                        >
                             DELETE
                         </Button>
                     </DialogActions>
@@ -1319,7 +1331,7 @@ class Worksheet extends React.Component {
 
         this.setupEventHandlers();
         var info = this.state.ws.info;
-        var rawWorksheet = info && info.raw.join('\n');
+        var rawWorksheet = info && info.source.join('\n');
         var editPermission = info && info.edit_permission;
         var canEdit = this.canEdit() && this.state.editMode;
 
@@ -1402,9 +1414,9 @@ class Worksheet extends React.Component {
         );
 
         let last_key = null;
-        if (info && info.items.length) {
+        if (info && info.blocks.length) {
             // Non-empty worksheet
-            last_key = getMinMaxKeys(info.items[info.items.length - 1]).maxKey;
+            last_key = getMinMaxKeys(info.blocks[info.blocks.length - 1]).maxKey;
         } else {
             $('.empty-worksheet').fadeIn();
         }
