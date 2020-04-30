@@ -28,7 +28,7 @@ from test_cli import TestModule
 
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
 
-ALL_SERVICES = DEFAULT_SERVICES + ['test', 'monitor', 'worker-manager-cpu', 'worker-manager-gpu']
+ALL_SERVICES = DEFAULT_SERVICES + ['monitor', 'worker-manager-cpu', 'worker-manager-gpu']
 
 ALL_NO_SERVICES = [
     'no-' + service for service in ALL_SERVICES
@@ -751,9 +751,6 @@ class CodalabServiceManager(object):
             self.bring_up_service('worker-shared-file-system')
         else:
             self.bring_up_service('worker')
-
-        if should_run_service(self.args, 'test'):
-            self.run_tests()
 
         self.bring_up_service('monitor')
 
