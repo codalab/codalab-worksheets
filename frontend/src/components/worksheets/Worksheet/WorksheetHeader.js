@@ -39,7 +39,7 @@ export default ({
     toggleCmdDialogNoEvent,
     toggleGlossaryModal,
     copiedBundleIds,
-    pasteToWorksheet,
+    showPasteButton,
 }) => (
     <Sticky top={6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
@@ -138,7 +138,7 @@ export default ({
                                 toggleCmdDialog={toggleCmdDialog}
                                 toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
                                 copiedBundleIds={copiedBundleIds}
-                                pasteToWorksheet={pasteToWorksheet}
+                                showPasteButton={showPasteButton}
                             />
                         </Grid>
                         <Grid item>

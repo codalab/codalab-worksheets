@@ -50,7 +50,7 @@ class ActionButtons extends React.Component<{
             toggleCmdDialog,
             toggleCmdDialogNoEvent,
             info,
-            pasteToWorksheet,
+            showPasteButton,
         } = this.props;
         let editPermission = info && info.edit_permission;
         return (
@@ -146,7 +146,7 @@ class ActionButtons extends React.Component<{
                         color='inherit'
                         aria-label='Paste'
                         onClick={toggleCmdDialog('paste')}
-                        disabled={!editPermission}
+                        disabled={!editPermission || !showPasteButton}
                         id='paste-button'
                     >
                         <NoteAddIcon className={classes.buttonIcon} />

@@ -18,6 +18,7 @@ class BlockModes:
     image_block = 'image_block'
     graph_block = 'graph_block'
     subworksheets_block = 'subworksheets_block'
+    placeholder_block = 'placeholder_block'
 
     values = (
         markup_block,
@@ -27,6 +28,7 @@ class BlockModes:
         image_block,
         graph_block,
         subworksheets_block,
+        placeholder_block,
     )
 
 
@@ -51,6 +53,10 @@ class FetchStatusSchema(PlainSchema):
     @staticmethod
     def get_unknown_status():
         return {'code': FetchStatusCodes.unknown, 'error_message': ''}
+
+    @staticmethod
+    def get_pending_status():
+        return {'code': FetchStatusCodes.pending, 'error_message': ''}
 
     @staticmethod
     def get_ready_status():
@@ -141,6 +147,7 @@ class TableBlockSchema(WorksheetBlockSchema):
 
     header = fields.List(fields.String(), required=True)
     rows = fields.List(fields.Dict(), required=True)
+    sort_keys = fields.List(fields.Integer())
 
 
 class RecordsRowSchema(PlainSchema):
@@ -155,6 +162,7 @@ class RecordsBlockSchema(BundleBlockSchema):
 
     header = fields.Constant(('key', 'value'))
     rows = fields.Nested(RecordsRowSchema, many=True, required=True)
+    sort_keys = fields.List(fields.Integer())
 
 
 class GraphTrajectorySchema(PlainSchema):
@@ -178,3 +186,10 @@ class GraphBlockSchema(BundleBlockSchema):
 class SubworksheetsBlock(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.subworksheets_block)
     subworksheet_infos = fields.List(fields.Dict, required=True)
+    sort_keys = fields.List(fields.Integer())
+
+
+class PlaceholderBlockSchema(WorksheetBlockSchema):
+    mode = fields.Constant(BlockModes.placeholder_block)
+    directive = fields.String()
+    sort_keys = fields.List(fields.Integer())
