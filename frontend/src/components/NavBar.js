@@ -137,6 +137,18 @@ class NavBar extends React.Component<{
 
     initialState = { isLoading: false, results: [], value: '' };
 
+    resultRenderer = ({ title, description }) => [
+        <div key='content' className='content'>
+            {title && <div dangerouslySetInnerHTML={{ __html: title }} className='title'></div>}
+            {description && (
+                <div
+                    dangerouslySetInnerHTML={{ __html: description }}
+                    className='description'
+                ></div>
+            )}
+        </div>,
+    ];
+
     handleSearchChange = (e, { value }) => {
         this.setState({ isLoading: true, value });
 
@@ -144,7 +156,7 @@ class NavBar extends React.Component<{
             if (this.state.value.length < 1) return this.setState(this.initialState);
             const keywords = this.state.value.split(' ');
             const regexKeywords = keywords.join('|');
-            const re = new RegExp(_.escapeRegExp(regexKeywords), 'gi');
+            const re = new RegExp(regexKeywords, 'gi');
             // const isMatch = (result) => re.test(result.name);
 
             const url = '/rest/interpret/wsearch';
@@ -170,8 +182,8 @@ class NavBar extends React.Component<{
                     const filteredResults = _.reduce(
                         data.response,
                         (memo, item) => {
-                            item.description = item.name.replace(regexKeywords, '<b>$&</b>');
-                            item.title = item.title.replace(regexKeywords, '<b>$&</b>');
+                            item.description = item.name.replace(re, '<mark>$&</mark>');
+                            item.title = item.title.replace(re, '<mark>$&</mark>');
 
                             if (!(item.owner_name in memo)) {
                                 memo[item.owner_name] = {
@@ -258,14 +270,17 @@ class NavBar extends React.Component<{
                                         leading: true,
                                     })}
                                     placeholder='search worksheets...'
+                                    resultRenderer={this.resultRenderer}
                                     results={results}
                                     value={value}
                                     showNoResults={true}
+                                    id='search-bar'
                                 />
                             </div>
                         )}
                         {!this.props.auth.isAuthenticated && (
                             <React.Fragment>
+                                <div className={classes.searchContainer}></div>
                                 <Link to='/account/signup'>
                                     <Button color='inherit'>Sign Up</Button>
                                 </Link>
@@ -452,7 +467,7 @@ const overrideMedia = createMuiTheme({
 
 const styles = (theme) => ({
     logoContainer: {
-        marginRight: 20,
+        marginRight: 40,
     },
     searchContainer: {
         flexGrow: 1,
