@@ -36,10 +36,10 @@ export default forwardRef((props, ref) => {
     useEffect(() => {
         (async function() {
             try {
-                const { items } = await fetchData({ directive, worksheetUUID });
-                setItem(items.length === 0 ? null : items[0]);
-                if (items.length > 0) {
-                    onAsyncItemLoad(items[0]);
+                const { blocks } = await fetchData({ directive, worksheetUUID });
+                setItem(blocks.length === 0 ? null : blocks[0]);
+                if (blocks.length > 0) {
+                    onAsyncItemLoad(blocks[0]);
                 }
             } catch (e) {
                 console.error(e);
