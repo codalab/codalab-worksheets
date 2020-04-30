@@ -157,10 +157,9 @@ class NavBar extends React.Component<{
             const keywords = this.state.value.split(' ');
             const regexKeywords = keywords.join('|');
             const re = new RegExp(regexKeywords, 'gi');
-            // const isMatch = (result) => re.test(result.name);
 
             const url = '/rest/interpret/wsearch';
-            console.log(keywords);
+
             $.ajax({
                 url: url,
                 dataType: 'json',
