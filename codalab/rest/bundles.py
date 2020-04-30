@@ -242,6 +242,12 @@ def _create_bundles():
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     worksheet_util.check_worksheet_not_frozen(worksheet)
     request.user.check_quota(need_time=True, need_disk=True)
+    final_state = request.query.get('predetermined_state', default=None)
+    if final_state and final_state not in State.FINAL_STATES:
+        abort(
+            http.client.BAD_REQUEST,
+            'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES),
+        )
 
     created_uuids = []
     for bundle in bundles:
@@ -253,7 +259,9 @@ def _create_bundles():
         created_uuids.append(bundle_uuid)
         bundle_class = get_bundle_subclass(bundle['bundle_type'])
         bundle['owner_id'] = request.user.user_id
-        if issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
+        if final_state:
+            bundle['state'] = final_state
+        elif issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
             bundle['state'] = State.UPLOADING
         else:
             bundle['state'] = State.CREATED
@@ -324,7 +332,6 @@ def _update_bundles():
 
     # Get updated bundles
     bundles_dict = get_bundle_infos(bundle_uuids)
-
     # Create list of bundles in original order
     # Need to check if the UUID is in the dict, since there is a chance that a bundle is deleted
     # right after being updated.
