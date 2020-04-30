@@ -324,5 +324,5 @@ export function getMinMaxKeys(item) {
             maxKey = Math.max(...keys);
         }
     }
-    return { minKey, maxKey };
+    return [];
 }
