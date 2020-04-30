@@ -302,26 +302,19 @@ export function createHandleRedirectFn(worksheetUuid) {
     };
 }
 
-export function getMinMaxKeys(item) {
-    if (!item) {
-        return { minKey: null, maxKey: null };
-    }
-    let minKey = null;
-    let maxKey = null;
-    if (item.sort_keys && item.sort_keys.length > 0) {
-        const { sort_keys, ids } = item;
-        const keys = [];
-        sort_keys.forEach((k, idx) => {
-            if (ids) {
-                const key = k || ids & ids[idx];
-                if (key !== null && key !== undefined && ids) {
-                    keys.push(key);
-                }
-            }
-        });
-        if (keys.length > 0) {
-            minKey = Math.min(...keys);
-            maxKey = Math.max(...keys);
+// Return the sort key at index subFocusIndex, if subFocusIndex is defined.
+// Otherwise, return the largest sort_key.
+export function getAfterSortKey(item, subFocusIndex) {
+    const sort_keys = item.sort_keys || [];
+    return sort_keys[subFocusIndex] || Math.max(...sort_keys);
+}
+
+export function getIds(item) {
+    if (item.mode === 'markup_block') {
+        return item.ids;
+    } else if (item.mode === 'table_block') {
+        if (item.bundles_spec && item.bundles_spec.bundle_infos) {
+            return item.bundles_spec.bundle_infos.map((info) => info.id);
         }
     }
     return [];
