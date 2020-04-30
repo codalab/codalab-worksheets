@@ -922,7 +922,6 @@ def interpret_items(schemas, raw_items, db_model=None):
                 current_schema = None
 
             if item_type == TYPE_BUNDLE:
-                assert type(sort_key) is int, (sort_key, item)
                 bundle_info["sort_key"] = sort_key
                 raw_to_block.append((len(blocks), len(bundle_infos)))
                 bundle_infos.append((raw_index, bundle_info))

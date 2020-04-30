@@ -192,6 +192,20 @@ class TableItem extends React.Component<{
                     worksheetName={worksheetName}
                     worksheetUrl={worksheetUrl}
                     editPermission={editPermission}
+                    after_sort_key={this.props.after_sort_key}
+                    showNewRun={
+                        this.props.showNewButtonsAfterEachBundleRow &&
+                        this.props.showNewRun &&
+                        rowFocused
+                    }
+                    showNewText={
+                        this.props.showNewButtonsAfterEachBundleRow &&
+                        this.props.showNewText &&
+                        rowFocused
+                    }
+                    onHideNewRun={this.props.onHideNewRun}
+                    onHideNewText={this.props.onHideNewText}
+                    ids={this.props.ids}
                 />
             );
         });

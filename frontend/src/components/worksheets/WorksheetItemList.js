@@ -2,7 +2,7 @@ import * as React from 'react';
 import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
-import { buildTerminalCommand, getAfterSortKey } from '../../util/worksheet_utils';
+import { buildTerminalCommand, getAfterSortKey, getIds } from '../../util/worksheet_utils';
 import { ContextMenuEnum, ContextMenuMixin } from './ContextMenu';
 import ContentsItem from './items/ContentsItem';
 import GraphItem from './items/GraphItem';
@@ -51,6 +51,14 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
     props.prevItem = prevItem;
     props.itemHeight = (props.itemHeights || {})[props.ref] || 100;
 
+    props.after_sort_key = getAfterSortKey(props.item, props.subFocusIndex);
+    props.ids = getIds(item);
+    // showNewButtonsAfterEachBundleRow is set to true when we have a bundle table, because in this case,
+    // we must show the new upload / new run buttons after each row in the table (in the BundleRow component)
+    // as opposed to at the end of the table (in ItemWrapper).
+    props.showNewButtonsAfterEachBundleRow =
+        props.subFocusIndex !== undefined && !props.item.loadedFromPlaceholder;
+
     const constructor = BLOCK_TO_COMPONENT[item.mode];
 
     let elem;
@@ -82,6 +90,9 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             onHideNewText={props.onHideNewText}
             key={props.key}
             subFocusIndex={props.subFocusIndex}
+            after_sort_key={props.after_sort_key}
+            showNewButtonsAfterEachBundleRow={props.showNewButtonsAfterEachBundleRow}
+            ids={props.ids}
         >
             {elem}
         </ItemWrapper>,

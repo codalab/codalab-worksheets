@@ -44,6 +44,7 @@ export default forwardRef((props, ref) => {
                     if (sort_keys) {
                         actualBlock['sort_keys'] = sort_keys;
                     }
+                    actualBlock.loadedFromPlaceholder = true;
                     onAsyncItemLoad(actualBlock);
                 }
             } catch (e) {

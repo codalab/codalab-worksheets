@@ -302,6 +302,20 @@ export function createHandleRedirectFn(worksheetUuid) {
     };
 }
 
+// Return the sort key at index subFocusIndex, if subFocusIndex is defined.
+// Otherwise, return the largest sort_key.
 export function getAfterSortKey(item, subFocusIndex) {
-    return item.sort_keys && item.sort_keys[subFocusIndex || 0];
+    const sort_keys = item.sort_keys || [];
+    return sort_keys[subFocusIndex] || Math.max(...sort_keys);
+}
+
+export function getIds(item) {
+    if (item.mode === 'markup_block') {
+        return item.ids;
+    } else if (item.mode === 'table_block') {
+        if (item.bundles_spec && item.bundles_spec.bundle_infos) {
+            return item.bundles_spec.bundle_infos.map((info) => info.id);
+        }
+    }
+    return [];
 }

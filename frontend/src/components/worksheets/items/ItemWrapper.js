@@ -3,18 +3,6 @@ import * as React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import NewRun from '../NewRun';
 import TextEditorItem from './TextEditorItem';
-import { getAfterSortKey } from '../../../util/worksheet_utils';
-
-function getIds(item) {
-    if (item.mode === 'markup_block') {
-        return item.ids;
-    } else if (item.mode === 'table_block') {
-        if (item.bundles_spec && item.bundles_spec.bundle_infos) {
-            return item.bundles_spec.bundle_infos.map((info) => info.id);
-        }
-    }
-    return [];
-}
 
 class ItemWrapper extends React.Component {
     state = {
@@ -26,9 +14,9 @@ class ItemWrapper extends React.Component {
         const {
             children,
             classes,
-            prevItem,
             item,
-            afterItem,
+            after_sort_key,
+            showNewButtonsAfterEachBundleRow,
             worksheetUUID,
             reloadWorksheet,
         } = this.props;
@@ -38,14 +26,12 @@ class ItemWrapper extends React.Component {
             return null;
         }
 
-        const ids = getIds(item);
-        const after_sort_key = getAfterSortKey(item, this.props.subFocusIndex);
-
         const { isDummyItem } = item;
+        console.log(showNewButtonsAfterEachBundleRow);
         return (
             <div className={isDummyItem ? '' : classes.container}>
                 {!isDummyItem && <div className={classes.main}>{children}</div>}
-                {showNewRun && (
+                {!showNewButtonsAfterEachBundleRow && showNewRun && (
                     <div className={classes.insertBox}>
                         <NewRun
                             after_sort_key={after_sort_key}
@@ -55,9 +41,9 @@ class ItemWrapper extends React.Component {
                         />
                     </div>
                 )}
-                {showNewText && (
+                {!showNewButtonsAfterEachBundleRow && showNewText && (
                     <TextEditorItem
-                        ids={ids}
+                        ids={this.props.ids}
                         mode='create'
                         after_sort_key={after_sort_key}
                         worksheetUUID={worksheetUUID}
