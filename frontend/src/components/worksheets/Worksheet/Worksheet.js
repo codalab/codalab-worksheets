@@ -1165,6 +1165,9 @@ class Worksheet extends React.Component {
                             items[focus].mode !== 'table_block'
                         ) {
                             this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
+                        } else if (this.state.subFocusIndex !== undefined) {
+                            // Focus on the next bundle row
+                            this.setFocus(focus >= 0 ? focus : 'end', this.state.subFocusIndex + 1);
                         } else {
                             this.setFocus(focus >= 0 ? focus : 'end', 'end');
                         }
