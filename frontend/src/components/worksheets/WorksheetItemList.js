@@ -57,8 +57,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
     // we must show the new upload / new run buttons after each row in the table (in the BundleRow component)
     // as opposed to at the end of the table (in ItemWrapper).
     props.showNewButtonsAfterEachBundleRow =
-        props.subFocusIndex !== undefined && !props.item.loadedFromPlaceholder;
-
+        props.item.mode === 'table_block' && !props.item.loadedFromPlaceholder;
     const constructor = BLOCK_TO_COMPONENT[item.mode];
 
     let elem;
@@ -84,14 +83,21 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             ws={props.ws}
             worksheetUUID={props.worksheetUUID}
             reloadWorksheet={props.reloadWorksheet}
-            showNewRun={props.focusedForButtons && props.showNewRun}
-            showNewText={props.focusedForButtons && props.showNewText}
+            showNewRun={
+                !props.showNewButtonsAfterEachBundleRow &&
+                props.focusedForButtons &&
+                props.showNewRun
+            }
+            showNewText={
+                !props.showNewButtonsAfterEachBundleRow &&
+                props.focusedForButtons &&
+                props.showNewText
+            }
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
             key={props.key}
             subFocusIndex={props.subFocusIndex}
             after_sort_key={props.after_sort_key}
-            showNewButtonsAfterEachBundleRow={props.showNewButtonsAfterEachBundleRow}
             ids={props.ids}
         >
             {elem}

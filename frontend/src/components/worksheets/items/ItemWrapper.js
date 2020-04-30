@@ -16,7 +16,6 @@ class ItemWrapper extends React.Component {
             classes,
             item,
             after_sort_key,
-            showNewButtonsAfterEachBundleRow,
             worksheetUUID,
             reloadWorksheet,
         } = this.props;
@@ -27,11 +26,10 @@ class ItemWrapper extends React.Component {
         }
 
         const { isDummyItem } = item;
-        console.log(showNewButtonsAfterEachBundleRow);
         return (
             <div className={isDummyItem ? '' : classes.container}>
                 {!isDummyItem && <div className={classes.main}>{children}</div>}
-                {!showNewButtonsAfterEachBundleRow && showNewRun && (
+                {showNewRun && (
                     <div className={classes.insertBox}>
                         <NewRun
                             after_sort_key={after_sort_key}
@@ -41,7 +39,7 @@ class ItemWrapper extends React.Component {
                         />
                     </div>
                 )}
-                {!showNewButtonsAfterEachBundleRow && showNewText && (
+                {showNewText && (
                     <TextEditorItem
                         ids={this.props.ids}
                         mode='create'
