@@ -184,7 +184,7 @@ export function worksheetItemPropsChanged(props, nextProps) {
         props.active !== nextProps.active ||
         props.focused !== nextProps.focused ||
         props.focusIndex !== nextProps.focusIndex ||
-        props.ws.info.items.length !== nextProps.ws.info.items.length ||
+        props.ws.info.blocks.length !== nextProps.ws.info.blocks.length ||
         (nextProps.focused && props.subFocusIndex !== nextProps.subFocusIndex) ||
         props.version !== nextProps.version
     );

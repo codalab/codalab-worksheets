@@ -158,6 +158,35 @@ def fetch_interpreted_worksheet(uuid):
     - resolve_interpreted_items: get more information about a worksheet.
     In the future, for large worksheets, might want to break this up so
     that we can render something basic.
+    Return: 
+        worksheet_info dict{}:
+            key:[value_type] <description>
+            blocks:[list] 
+                    Resolved worksheet blocks from raw_items.
+                        Bundles will be grouped into table block items, 
+                        text items might be grouped into one markdown block etc.
+            source:[list] source lines
+            raw_to_block:[list] 
+                            Raw_items to its block index pair.
+                                For example, assume the first resolved block item is a bundle table that has 2 rows,
+                                then the 2nd element in the list would be [0, 1]
+                                [0, 1]: 0 means the item belongs to the first block,
+                                        1 means the item is the second item of the block (2nd bundle in our example)
+                                NOTE: Used for setting focus on frontend
+            block_to_raw:[dict] 
+                            Maps the blocks (table, markdown, records) to their corresponding source line indices,
+                            it's mostly a reverse mapping of raw_to_block, by mostly: raw_to_block has some bug,
+                            please refer to worksheet_utils flush_bundles function.
+                            This can be used to index the source on the frontend
+                            Example:
+                            [0, 0]: 0
+                            [0, 1]: 1
+                            [1, 0]: 9
+                            This means the first blocks' first item corresponds to the first line in source,
+                            the second item corresponds to the second line in source
+                            The second block corresponds the 10th line in source. 
+                            2-8 can be skipped for multiple reasons: blank lines, comments, schema lines etc.
+                                NOTE: Used for setting focus on frontend                                      
 
     This endpoint can be called with &brief=1 in order to give an abbreviated version,
     which does not resolve searches or wsearches.
@@ -170,13 +199,13 @@ def fetch_interpreted_worksheet(uuid):
     brief = request.query.get("brief", "0") == "1"
 
     directive = request.query.get("directive", None)
+    print(directive)
     search_results = []
 
     worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
 
     # Shim in additional data for the frontend
     worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
-    worksheet_info['raw'] = get_worksheet_lines(worksheet_info)
 
     if worksheet_info['owner_id'] is None:
         worksheet_info['owner_name'] = None
@@ -184,11 +213,17 @@ def fetch_interpreted_worksheet(uuid):
         owner = local.model.get_user(user_id=worksheet_info['owner_id'])
         worksheet_info['owner_name'] = owner.user_name
 
-    # Replace searches with raw items.
-    # This needs to be done before get_worksheet_lines because this replaces
-    # user-written raw items.
+    # Fetch items.
+    worksheet_info['source'] = get_worksheet_lines(worksheet_info)
+
     if not directive and not brief:
-        worksheet_info['items'] = expand_search_items(worksheet_info['items'])
+        expanded_items = []
+        for index, raw_item in enumerate(worksheet_info['items']):
+            expanded = expand_search_item(raw_item)
+            expanded_items.append(expanded)
+            # Multiple items can correspond to the same source line (i.e: search directives)
+            # raw_items_to_source_index.extend([index] * len(expanded))
+        worksheet_info['items'] = list(chain.from_iterable(expanded_items))
     elif directive:
         # Only expand the search item corresponding to the given directive.
         # Used in async loading to only load a single table.
@@ -243,30 +278,30 @@ def fetch_interpreted_worksheet(uuid):
                         block['bundle_info'][j] = None
                 if not is_relevant_block:
                     interpreted_blocks['blocks'][i] = None
-
-    worksheet_info['items'] = resolve_interpreted_blocks(interpreted_blocks['blocks'])
+    # Grouped individual items into blocks
+    worksheet_info['blocks'] = resolve_interpreted_blocks(interpreted_blocks['blocks'])
     worksheet_info['raw_to_block'] = interpreted_blocks['raw_to_block']
     worksheet_info['block_to_raw'] = interpreted_blocks['block_to_raw']
 
     if directive:
         # If we're only async loading a single table_block / subworksheets_block,
         # return only that block (which is at the end of worksheet_info['items'])
-        worksheet_info['items'] = [worksheet_info['items'][-1]] if len(search_results) else []
+        worksheet_info['blocks'] = [worksheet_info['blocks'][-1]] if len(search_results) else []
 
-    for item in worksheet_info['items']:
-        if item is None:
+    for block in worksheet_info['blocks']:
+        if block is None:
             continue
-        if item['mode'] == 'table':
-            for row_map in item['rows']:
+        if block['mode'] == 'table':
+            for row_map in block['rows']:
                 for k, v in row_map.items():
                     if v is None:
                         row_map[k] = formatting.contents_str(v)
-        if 'bundle_info' in item:
+        if 'bundle_info' in block:
             infos = []
-            if isinstance(item['bundle_info'], list):
-                infos = item['bundle_info']
-            elif isinstance(item['bundle_info'], dict):
-                infos = [item['bundle_info']]
+            if isinstance(block['bundle_info'], list):
+                infos = block['bundle_info']
+            elif isinstance(block['bundle_info'], dict):
+                infos = [block['bundle_info']]
             for bundle_info in infos:
                 if bundle_info is None:
                     continue
@@ -274,8 +309,10 @@ def fetch_interpreted_worksheet(uuid):
                     continue  # empty info: invalid bundle reference
                 if isinstance(bundle_info, dict):
                     format_metadata(bundle_info.get('metadata'))
+    # Frontend doesn't use individual 'items' for now
+    del worksheet_info['items']
     if bundle_uuids:
-        return {'items': worksheet_info['items']}
+        return {'blocks': worksheet_info['blocks']}
     return worksheet_info
 
 
@@ -631,10 +668,6 @@ def perform_search_query(value_obj):
     else:
         # Not a search query
         return []
-
-
-def expand_search_items(raw_items):
-    return list(chain.from_iterable([expand_search_item(raw_item) for raw_item in raw_items]))
 
 
 def expand_search_item(raw_item):
