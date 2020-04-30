@@ -11,7 +11,9 @@ import bz2
 from codalab.common import BINARY_PLACEHOLDER
 
 NONE_PLACEHOLDER = '<none>'
-GIT_PATTERN = '.git'
+
+# Patterns to always ignore when zipping up directories
+ALWAYS_IGNORE_PATTERNS = ['.git', '^\._.*']
 
 
 def tar_gzip_directory(
@@ -28,19 +30,19 @@ def tar_gzip_directory(
                       the directory structure are excluded.
     ignore_file: Name of the file where exclusion patterns are read from.
     """
-    # Always ignore entries specified by the ignore file (e.g. .gitignore)
     args = ['tar', 'czf', '-', '-C', directory_path]
     if ignore_file:
+        # Ignore entries specified by the ignore file (e.g. .gitignore)
         args.append('--exclude-ignore=' + ignore_file)
     if follow_symlinks:
         args.append('-h')
     if not exclude_patterns:
         exclude_patterns = []
 
-    # Always exclude .git
-    exclude_patterns.append(GIT_PATTERN)
+    exclude_patterns.extend(ALWAYS_IGNORE_PATTERNS)
     for pattern in exclude_patterns:
         args.append('--exclude=' + pattern)
+
     if exclude_names:
         for name in exclude_names:
             # Exclude top-level entries provided by exclude_names
