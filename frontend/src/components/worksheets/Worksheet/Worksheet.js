@@ -2,7 +2,7 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
-import { keepPosInView, renderPermissions, getMinMaxKeys } from '../../../util/worksheet_utils';
+import { keepPosInView, renderPermissions } from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
@@ -1057,6 +1057,12 @@ class Worksheet extends React.Component {
                     rawIndex = this.state.ws.info.block_to_raw[focusIndexPair];
                 }
 
+                // When clicking "Edit Source" from one of the rows in a search results block, go to the line of the corresponding search directive.
+                if (rawIndex === undefined) {
+                    focusIndexPair = [this.state.focusIndex, 0].join(',');
+                    rawIndex = this.state.ws.info.block_to_raw[focusIndexPair];
+                }
+
                 if (rawIndex === undefined) {
                     console.error(
                         "Can't map %s (focusIndex %d, subFocusIndex %d) to raw index",
@@ -1180,6 +1186,9 @@ class Worksheet extends React.Component {
                             items[focus].mode !== 'table_block'
                         ) {
                             this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
+                        } else if (this.state.subFocusIndex !== undefined) {
+                            // Focus on the next bundle row
+                            this.setFocus(focus >= 0 ? focus : 'end', this.state.subFocusIndex + 1);
                         } else {
                             this.setFocus(focus >= 0 ? focus : 'end', 'end');
                         }
@@ -1434,10 +1443,8 @@ class Worksheet extends React.Component {
             </div>
         );
 
-        let last_key = null;
         if (info && info.blocks.length) {
             // Non-empty worksheet
-            last_key = getMinMaxKeys(info.blocks[info.blocks.length - 1]).maxKey;
         } else {
             $('.empty-worksheet').fadeIn();
         }
