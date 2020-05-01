@@ -121,11 +121,6 @@ class TableItem extends React.Component<{
         const { worksheetUUID, setFocus, editPermission } = this.props;
         // Provide copy data callback
         this.props.addCopyBundleRowsCallback(this.props.itemID, this.copyCheckedBundleRows);
-        // let prevItemProcessed = null;
-        // if (prevItem) {
-        //     const { maxKey } = getMinMaxKeys(prevItem);
-        //     prevItemProcessed = { sort_key: maxKey };
-        // }
         var tableClassName = this.props.focused ? 'table focused' : 'table';
         var item = this.props.item;
         var canEdit = this.props.canEdit;
