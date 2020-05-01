@@ -984,10 +984,6 @@ class BundleModel(object):
         bundle_update = {'state': State.FINALIZING, 'metadata': metadata}
 
         self.update_bundle(bundle, bundle_update, connection)
-
-        if user_id == self.root_user_id:
-            self.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
-
         return True
 
     def transition_bundle_finished(self, bundle, bundle_location):
@@ -1002,6 +998,9 @@ class BundleModel(object):
         state = State.FAILED if failure_message or exitcode else State.READY
         if failure_message == 'Kill requested':
             state = State.KILLED
+
+        # Increment the amount of time used for the current user
+        self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
 
         worker = self.get_bundle_worker(bundle.uuid)
         if worker['shared_file_system']:
