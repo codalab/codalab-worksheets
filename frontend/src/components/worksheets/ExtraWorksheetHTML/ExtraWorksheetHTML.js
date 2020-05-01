@@ -149,6 +149,12 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Show keyboard shortcut help</td>
                     </tr>
+                    <tr>
+                        <td>
+                            <kbd>+</kbd>
+                        </td>
+                        <td>Expand/shrink worksheet size</td>
+                    </tr>
                 </tbody>
             </table>
             <div>
