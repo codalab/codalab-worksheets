@@ -13,7 +13,18 @@ from codalab.common import BINARY_PLACEHOLDER
 NONE_PLACEHOLDER = '<none>'
 
 # Patterns to always ignore when zipping up directories
-ALWAYS_IGNORE_PATTERNS = ['.git', '^\._.*']
+ALWAYS_IGNORE_PATTERNS = ['.git', '._*']
+
+
+def get_tar_version_output():
+    """
+    Gets the current tar library's version information by returning the stdout
+    of running `tar --version`.
+    """
+    try:
+        return subprocess.getoutput('tar --version')
+    except subprocess.CalledProcessError as e:
+        raise IOError(e.output)
 
 
 def tar_gzip_directory(
@@ -31,6 +42,11 @@ def tar_gzip_directory(
     ignore_file: Name of the file where exclusion patterns are read from.
     """
     args = ['tar', 'czf', '-', '-C', directory_path]
+
+    # If the BSD tar library is being used, prepend COPYFILE_DISABLE=1 to prevent creating ._* files
+    if 'bsdtar' in get_tar_version_output():
+        args.insert(0, 'COPYFILE_DISABLE=1')
+
     if ignore_file:
         # Ignore entries specified by the ignore file (e.g. .gitignore)
         args.append('--exclude-ignore=' + ignore_file)
