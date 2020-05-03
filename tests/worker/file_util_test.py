@@ -91,4 +91,6 @@ class FileUtilTest(unittest.TestCase):
         output_dir_entries = os.listdir(output_dir)
         self.assertNotIn('._ignored', output_dir_entries)
         self.assertIn('dir', output_dir_entries)
+        self.assertNotIn('__MACOSX', output_dir_entries)
+        self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', '__MACOSX')))
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', '._ignored2')))

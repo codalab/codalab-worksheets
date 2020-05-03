@@ -13,7 +13,7 @@ from codalab.common import BINARY_PLACEHOLDER
 NONE_PLACEHOLDER = '<none>'
 
 # Patterns to always ignore when zipping up directories
-ALWAYS_IGNORE_PATTERNS = ['.git', '._*']
+ALWAYS_IGNORE_PATTERNS = ['.git', '._*', '__MACOSX']
 
 
 def get_tar_version_output():
