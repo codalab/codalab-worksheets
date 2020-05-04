@@ -58,7 +58,7 @@ export default forwardRef((props, ref) => {
     if (error) {
         return <div ref={ref}>Error loading item.</div>;
     }
-    if (!item) {
+    if (item === null) {
         // No items
         return <div ref={ref}>No results found.</div>;
     }
