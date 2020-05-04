@@ -102,7 +102,6 @@ class Worksheet extends React.Component {
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
             copiedBundleIds: '',
-            searchExpandedIndices: new Set(),
             showPasteButton: window.localStorage.getItem('CopiedBundles') !== '',
             worksheetWidthPercentage: localWorksheetWidthPreference || DEFAULT_WORKSHEET_WIDTH,
         };
@@ -476,14 +475,14 @@ class Worksheet extends React.Component {
         });
         // remove the last new line character
         bundleString = bundleString.substr(0, bundleString.length - 1);
-        let worksheetuuid = this.state.ws.uuid;
+        let worksheetUUID = this.state.ws.uuid;
         let after_sort_key;
         if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
             let currentFocusedBlock = this.state.ws.info.blocks[this.state.focusIndex];
             console.log(this.state.subFocusIndex, currentFocusedBlock);
             after_sort_key = getAfterSortKey(currentFocusedBlock, this.state.subFocusIndex);
         }
-        let url = `/rest/worksheets/${worksheetuuid}/add-items`;
+        let url = `/rest/worksheets/${worksheetUUID}/add-items`;
         let actualData = { items };
         if (after_sort_key) {
             actualData['after_sort_key'] = after_sort_key;
@@ -534,8 +533,6 @@ class Worksheet extends React.Component {
     };
 
     onAsyncItemLoad = (focusIndex, item) => {
-        let searchBlocks = this.state.searchExpandedIndices;
-        searchBlocks.add(focusIndex);
         this.setState({
             ws: {
                 ...this.state.ws,
@@ -545,7 +542,6 @@ class Worksheet extends React.Component {
                     blocks: Object.assign([], this.state.ws.info.blocks, { [focusIndex]: item }),
                 },
             },
-            searchExpandedBlock: searchBlocks,
         });
     };
 
