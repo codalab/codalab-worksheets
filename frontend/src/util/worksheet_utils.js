@@ -302,41 +302,20 @@ export function createHandleRedirectFn(worksheetUuid) {
     };
 }
 
-export function getMinMaxKeys(item) {
-    if (!item) {
-        return { minKey: null, maxKey: null };
-    }
-    let minKey = null;
-    let maxKey = null;
+// Return the sort key at index subFocusIndex, if subFocusIndex is defined.
+// Otherwise, return the largest sort_key.
+export function getAfterSortKey(item, subFocusIndex) {
+    const sort_keys = item.sort_keys || [];
+    return sort_keys[subFocusIndex] || Math.max(...sort_keys);
+}
+
+export function getIds(item) {
     if (item.mode === 'markup_block') {
-        if (item.sort_keys && item.sort_keys.length > 0) {
-            const { sort_keys, ids } = item;
-            const keys = [];
-            sort_keys.forEach((k, idx) => {
-                const key = k || ids[idx];
-                if (key !== null && key !== undefined) {
-                    keys.push(key);
-                }
-            });
-            if (keys.length > 0) {
-                minKey = Math.min(...keys);
-                maxKey = Math.max(...keys);
-            }
-        }
+        return item.ids;
     } else if (item.mode === 'table_block') {
         if (item.bundles_spec && item.bundles_spec.bundle_infos) {
-            const keys = [];
-            item.bundles_spec.bundle_infos.forEach((info) => {
-                const key = info.sort_key || info.id;
-                if (key !== null && key !== undefined) {
-                    keys.push(key);
-                }
-            });
-            if (keys.length > 0) {
-                minKey = Math.min(...keys);
-                maxKey = Math.max(...keys);
-            }
+            return item.bundles_spec.bundle_infos.map((info) => info.id);
         }
     }
-    return { minKey, maxKey };
+    return [];
 }
