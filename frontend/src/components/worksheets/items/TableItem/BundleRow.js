@@ -385,7 +385,7 @@ const styles = (theme) => ({
     rootNoPad: {
         verticalAlign: 'middle !important',
         border: 'none !important',
-        padding: '0px !important',
+        padding: '0px 4px !important',
         wordWrap: 'break-word',
     },
     noCheckBox: {
