@@ -999,10 +999,12 @@ class BundleModel(object):
         if failure_message == 'Kill requested':
             state = State.KILLED
 
-        # Increment the amount of time used for the current user
-        self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
-
         worker = self.get_bundle_worker(bundle.uuid)
+
+        # Increment the amount of time used for the user whose bundles run on CodaLab's public instances
+        if worker['user_id'] == self.root_user_id:
+            self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
+
         if worker['shared_file_system']:
             self.update_disk_metadata(bundle, bundle_location)
 
