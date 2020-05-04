@@ -189,7 +189,7 @@ let ExtraWorksheetHTML = ({
         <div id='update_progress' className='progress-message'>
             <img src='/img/Preloader_Small.gif' /> Updating...
         </div>
-        {/*TODO: Move all error message to worksheet dialog */}
+        {/* TODO: Move all error messages to worksheet dialog */}
         {errorMessage && (
             <Alert className='codalab-error-message' bsStyle='danger' onDismiss={clearErrorMessage}>
                 <i className='glyphicon glyphicon-remove-circle' /> Error: {errorMessage}
