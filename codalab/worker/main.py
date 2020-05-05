@@ -11,8 +11,7 @@ import signal
 import socket
 import stat
 import sys
-import multiprocessing
-
+import psutil
 
 from codalab.lib.formatting import parse_size
 from .bundle_service_client import BundleServiceClient, BundleAuthException
@@ -257,7 +256,7 @@ def parse_cpuset_args(arg):
     except AttributeError:
         # os.sched_getaffinity() isn't available on all platforms,
         # so fallback to using the number of physical cores.
-        cpu_count = multiprocessing.cpu_count()
+        cpu_count = psutil.cpu_count(logical=False)
 
     if arg == 'ALL':
         cpuset = list(range(cpu_count))
