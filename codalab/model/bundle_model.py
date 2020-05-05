@@ -991,8 +991,8 @@ class BundleModel(object):
             if not row:
                 return False
 
-            # Get staged bundle from worker side checkin and move it to staged state
-            if worker_run.state == State.RESTAGED:
+            # Get staged bundle from worker checkin and move it to staged state
+            if worker_run.state == State.STAGED:
                 return self.transition_bundle_staged(bundle)
 
             if worker_run.state == State.FINALIZING:

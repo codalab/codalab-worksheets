@@ -30,8 +30,6 @@ class State(object):
     KILLED = 'killed'
     # Assigned worker has gone offline
     WORKER_OFFLINE = 'worker_offline'
-    # Restaged bundles from worker side
-    RESTAGED = 'restaged'
 
     OPTIONS = {CREATED, STAGED, MAKING, STARTING, RUNNING, READY, FAILED, PREPARING, FINALIZING}
     ACTIVE_STATES = {MAKING, STARTING, RUNNING, FINALIZING, PREPARING}

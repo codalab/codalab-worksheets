@@ -27,13 +27,6 @@ class RunStage(object):
     WORKER_STATE_TO_SERVER_STATE = {}
 
     """
-    This stage will collect bundles in [PREPARING, RUNNING] state and sent 
-    them back to STAGED state
-    """
-    RESTAGED = 'RUN_STAGE.RESTAGED'
-    WORKER_STATE_TO_SERVER_STATE[RESTAGED] = State.RESTAGED
-
-    """
     This stage involves setting up the directory structure for the run
     and preparing to start the container
     """
@@ -70,6 +63,13 @@ class RunStage(object):
     """
     FINISHED = 'RUN_STAGE.FINISHED'
     WORKER_STATE_TO_SERVER_STATE[FINISHED] = State.READY
+
+    """
+    This stage will collect bundles in terminal states and 
+    sent them back to the server with STAGED state
+    """
+    STAGED = 'RUN_STAGE.STAGED'
+    WORKER_STATE_TO_SERVER_STATE[STAGED] = State.STAGED
 
 
 RunState = namedtuple(
@@ -133,7 +133,7 @@ class RunStateMachine(StateTransitioner):
         self.add_transition(RunStage.UPLOADING_RESULTS, self._transition_from_UPLOADING_RESULTS)
         self.add_transition(RunStage.FINALIZING, self._transition_from_FINALIZING)
         self.add_terminal(RunStage.FINISHED)
-        self.add_terminal(RunStage.RESTAGED)
+        self.add_terminal(RunStage.STAGED)
 
         self.dependency_manager = dependency_manager
         self.docker_image_manager = docker_image_manager
@@ -468,7 +468,7 @@ class RunStateMachine(StateTransitioner):
                 logger.error(traceback.format_exc())
 
         if run_state.is_restaged:
-            return run_state._replace(stage=RunStage.RESTAGED)
+            return run_state._replace(stage=RunStage.STAGED)
 
         if not self.shared_file_system and run_state.has_contents:
             # No need to upload results since results are directly written to bundle store
@@ -490,7 +490,7 @@ class RunStateMachine(StateTransitioner):
             Move to FINALIZING state
         """
         if run_state.is_restaged:
-            return run_state._replace(stage=RunStage.RESTAGED)
+            return run_state._replace(stage=RunStage.STAGED)
 
         def upload_results():
             try:
@@ -544,7 +544,7 @@ class RunStateMachine(StateTransitioner):
         Prepare the finalize message to be sent with the next checkin
         """
         if run_state.is_restaged:
-            return run_state._replace(stage=RunStage.RESTAGED)
+            return run_state._replace(stage=RunStage.STAGED)
 
         if run_state.is_killed:
             # Append kill_message, which contains more useful info on why a run was killed, to the failure message.

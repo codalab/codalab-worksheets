@@ -185,7 +185,7 @@ class Worker:
                 self.save_state()
                 self.checkin()
                 self.process_terminate_signal()
-                # Save state for one last time: excludes all the bundles in terminal states: FINISHED or RESTAGED.
+                # Save state for one last time: excludes all the bundles in terminal states: FINISHED or STAGED.
                 self.save_state()
                 if self.check_idle_stop():
                     self.stop = True
@@ -220,7 +220,7 @@ class Worker:
     def signal(self):
         # When the pass_down_termination flag is False, set the stop flag to stop running
         # the worker without changing the status of existing running bundles. Otherwise,
-        # restage all bundles that are not in the terminal states [FINISHED, RESTAGED].
+        # restage all bundles that are not in the terminal states [FINISHED, STAGED].
         if not self.pass_down_termination:
             self.stop = True
         else:
@@ -235,14 +235,14 @@ class Worker:
 
     def restage_bundles(self):
         restaged_bundles = []
-        terminal_stages = [RunStage.FINISHED, RunStage.RESTAGED]
+        terminal_stages = [RunStage.FINISHED, RunStage.STAGED]
         for uuid in self.runs:
             run_state = self.runs[uuid]
             if run_state.stage not in terminal_stages:
                 self.restage(uuid)
                 restaged_bundles.append(uuid)
         if len(restaged_bundles) == 0:
-            # reset the current runs to exclude bundles in terminal states: RESTAGED and FINISHED
+            # reset the current runs to exclude bundles in terminal states: STAGED and FINISHED
             self.runs = {
                 uuid: run_state
                 for uuid, run_state in self.runs.items()
