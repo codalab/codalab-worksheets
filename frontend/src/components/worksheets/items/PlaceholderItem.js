@@ -2,11 +2,7 @@ import React, { useState, useEffect, forwardRef } from 'react';
 import $ from 'jquery';
 import queryString from 'query-string';
 import './PlaceholderItem.scss';
-import { Semaphore } from 'await-semaphore';
-
-// Limit concurrent requests for resolving placeholder items
-const MAX_CONCURRENT_REQUESTS = 3;
-const semaphore = new Semaphore(MAX_CONCURRENT_REQUESTS);
+import { semaphore } from '../../../util/async_loading_utils';
 
 async function fetchData({ worksheetUUID, directive }) {
     return semaphore.use(async () => {
