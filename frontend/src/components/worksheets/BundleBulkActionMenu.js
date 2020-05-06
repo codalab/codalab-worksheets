@@ -32,6 +32,7 @@ class BundleBulkActionMenu extends React.Component {
                     color='inherit'
                     aria-label='Delete'
                     onClick={this.props.toggleCmdDialog('rm')}
+                    disabled={!this.props.editPermission}
                 >
                     <DeleteForeverIcon fontSize='small' />
                     <Typography variant='inherit'>Delete</Typography>
@@ -41,6 +42,7 @@ class BundleBulkActionMenu extends React.Component {
                     color='inherit'
                     aria-label='Detach'
                     onClick={this.props.toggleCmdDialog('detach')}
+                    disabled={!this.props.editPermission}
                 >
                     <ExitToAppIcon fontSize='small' />
                     <Typography variant='inherit'>Detach</Typography>
@@ -50,6 +52,7 @@ class BundleBulkActionMenu extends React.Component {
                     color='inherit'
                     aria-label='Kill'
                     onClick={this.props.toggleCmdDialog('kill')}
+                    disabled={!this.props.editPermission}
                 >
                     <HighlightOffIcon fontSize='small' />
                     <Typography variant='inherit'>Kill</Typography>

@@ -193,7 +193,7 @@ class BundleRow extends Component {
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                 >
-                    {editPermission && checkBox}
+                    {checkBox}
                     {showDetailButton}
                     {rowContent}
                 </TableCell>
@@ -221,9 +221,6 @@ class BundleRow extends Component {
             );
             Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
             Mousetrap.bind(['x'], (e) => {
-                if (!editPermission) {
-                    return;
-                }
                 if (!this.props.confirmBundleRowAction(e.code)) {
                     this.props.handleCheckBundle(
                         uuid,
