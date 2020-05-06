@@ -10,7 +10,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import IconButton from '@material-ui/core/IconButton';
 import InfoIcon from '@material-ui/icons/InfoOutlined';
 import Button from '@material-ui/core/Button';
-import { red } from '@material-ui/core/colors';
+import { OPEN_DELETE_BUNDLE, OPEN_DETACH, OPEN_KILL, OPEN_DELETE_MARKDOWN } from '../../constants';
 
 class WorksheetDialogs extends React.Component {
     render() {
@@ -18,7 +18,7 @@ class WorksheetDialogs extends React.Component {
         return (
             <div>
                 <Dialog
-                    open={this.props.openDelete}
+                    open={this.props.openDialog === OPEN_DELETE_BUNDLE}
                     onClose={this.props.togglePopup('rm')} //{this.props.toggleDeletePopup}
                     aria-labelledby='deletion-confirmation-title'
                     aria-describedby='deletion-confirmation-description'
@@ -76,7 +76,7 @@ class WorksheetDialogs extends React.Component {
                     </DialogActions>
                 </Dialog>
                 <Dialog
-                    open={this.props.openDetach}
+                    open={this.props.openDialog === OPEN_DETACH}
                     onClose={this.props.togglePopup('detach')}
                     aria-labelledby='detach-confirmation-title'
                     aria-describedby='detach-confirmation-description'
@@ -94,7 +94,7 @@ class WorksheetDialogs extends React.Component {
                     </DialogActions>
                 </Dialog>
                 <Dialog
-                    open={this.props.openKill}
+                    open={this.props.openDialog === OPEN_KILL}
                     onClose={this.props.togglePopup('kill')}
                     aria-labelledby='kill-confirmation-title'
                     aria-describedby='kill-confirmation-description'
@@ -118,7 +118,7 @@ class WorksheetDialogs extends React.Component {
                     </DialogActions>
                 </Dialog>
                 <Dialog
-                    open={this.props.openDeleteItem}
+                    open={this.props.openDialog === OPEN_DELETE_MARKDOWN}
                     onClose={this.props.togglePopup('deleteItem')} //{this.props.toggleDeletePopup}
                     aria-labelledby='deletion-confirmation-title'
                     aria-describedby='deletion-confirmation-description'

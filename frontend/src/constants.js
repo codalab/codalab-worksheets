@@ -9,3 +9,9 @@ export const DEFAULT_WORKSHEET_WIDTH = '65%';
 export const FILE_SIZE_LIMIT_GB = 2;
 export const FILE_SIZE_LIMIT_B = FILE_SIZE_LIMIT_GB * 1024 * 1024 * 1024;
 export const LOCAL_STORAGE_WORKSHEET_WIDTH = 'worksheetWidth';
+
+// Dialog constants
+export const OPEN_DELETE_BUNDLE = 1;
+export const OPEN_DETACH = 2;
+export const OPEN_KILL = 3;
+export const OPEN_DELETE_MARKDOWN = 4;

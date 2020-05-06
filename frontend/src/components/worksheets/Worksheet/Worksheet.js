@@ -14,6 +14,10 @@ import {
     EXPANDED_WORKSHEET_WIDTH,
     DEFAULT_WORKSHEET_WIDTH,
     LOCAL_STORAGE_WORKSHEET_WIDTH,
+    OPEN_DELETE_BUNDLE,
+    OPEN_DETACH,
+    OPEN_KILL,
+    OPEN_DELETE_MARKDOWN,
 } from '../../../constants';
 import WorksheetActionBar from '../WorksheetActionBar';
 import Loading from '../../Loading';
@@ -89,6 +93,7 @@ class Worksheet extends React.Component {
             openDetach: false,
             openKill: false,
             openDeleteItem: false,
+            openDialog: null,
             forceDelete: false,
             showGlossaryModal: false,
             errorMessage: '',
@@ -376,64 +381,65 @@ class Worksheet extends React.Component {
     };
 
     togglePopup = (cmd_type) => () => {
+        if (this.state.openDialog) {
+            this.setState({ openDialog: null });
+            Mousetrap.unbind('enter');
+            return;
+        }
         if (cmd_type === 'deleteItem') {
-            this.setState({ openDeleteItem: !this.state.openDeleteItem });
+            this.setState({ openDialog: OPEN_DELETE_MARKDOWN });
         }
         if (!this.state.showBundleOperationButtons) {
             return;
         }
-        const { openKill, openDelete, openDetach, openUpload } = this.state;
         if (cmd_type === 'rm') {
-            this.setState({ openDelete: !openDelete });
+            this.setState({ openDialog: OPEN_DELETE_BUNDLE });
         } else if (cmd_type === 'detach') {
-            this.setState({ openDetach: !openDetach });
+            this.setState({ openDialog: OPEN_DETACH });
         } else if (cmd_type === 'kill') {
-            this.setState({ openKill: !openKill });
+            this.setState({ openDialog: OPEN_KILL });
         }
     };
 
     togglePopupNoEvent = (cmd_type) => {
+        if (this.state.openDialog) {
+            this.setState({ openDialog: null });
+            Mousetrap.unbind('enter');
+            return;
+        }
         if (cmd_type === 'deleteItem') {
-            this.setState({ openDeleteItem: !this.state.openDeleteItem });
+            this.setState({ openDialog: OPEN_DELETE_MARKDOWN });
         }
         if (!this.state.showBundleOperationButtons) {
             return;
         }
-        const { openKill, openDelete, openDetach } = this.state;
         if (cmd_type === 'rm') {
-            this.setState({ openDelete: !openDelete });
+            this.setState({ openDialog: OPEN_DELETE_BUNDLE });
         } else if (cmd_type === 'detach') {
-            this.setState({ openDetach: !openDetach });
+            this.setState({ openDialog: OPEN_DETACH });
         } else if (cmd_type === 'kill') {
-            this.setState({ openKill: !openKill });
+            this.setState({ openDialog: OPEN_KILL });
         }
     };
 
     confirmBundleRowAction = (code) => {
-        if (
-            !(
-                this.state.openDelete ||
-                this.state.openDetach ||
-                this.state.openKill ||
-                this.state.BulkBundleDialog
-            )
-        ) {
+        if (!(this.state.openDialog || this.state.BulkBundleDialog)) {
             // no dialog is opened, open bundle row detail
             return false;
         } else if (code === 'KeyX' || code === 'Space') {
             return true;
-        } else if (this.state.openDelete) {
+        } else if (this.state.openDialog === OPEN_DELETE_BUNDLE) {
             this.executeBundleCommandNoEvent('rm');
-        } else if (this.state.openDetach) {
+        } else if (this.state.openDialog === OPEN_DETACH) {
             this.executeBundleCommandNoEvent('detach');
-        } else if (this.state.openKill) {
+        } else if (this.state.openDialog === OPEN_KILL) {
             this.executeBundleCommandNoEvent('kill');
         }
         return true;
     };
     // BULK OPERATION RELATED CODE ABOVE======================================
     setDeleteItemCallback = (callback) => {
-        this.setState({ deleteItemCallback: callback, openDeleteItem: true });
+        this.setState({ deleteItemCallback: callback, openDialog: OPEN_DELETE_MARKDOWN });
     };
 
     onAsyncItemLoad = (focusIndex, item) => {
@@ -655,15 +661,7 @@ class Worksheet extends React.Component {
             // disable all keyboard shortcuts when loading worksheet
             return;
         }
-
-        if (
-            !(
-                this.state.openDelete ||
-                this.state.openDetach ||
-                this.state.openKill ||
-                this.state.BulkBundleDialog
-            )
-        ) {
+        if (!(this.openDialog || this.state.BulkBundleDialog)) {
             // Only enable these shortcuts when no dialog is opened
             Mousetrap.bind(
                 ['shift+r'],
@@ -823,7 +821,8 @@ class Worksheet extends React.Component {
             ContextMenuMixin.closeContextMenu();
         });
 
-        if (this.state.openDeleteItem) {
+        // if (this.state.openDeleteItem) {
+        if (this.state.openDialog === OPEN_DELETE_MARKDOWN) {
             Mousetrap.bind(
                 ['enter'],
                 function(e) {
@@ -857,15 +856,15 @@ class Worksheet extends React.Component {
             });
 
             // Confirm bulk bundle operation
-            if (this.state.openDelete || this.state.openKill || this.state.openDetach) {
+            if (this.state.openDialog) {
                 Mousetrap.bind(
                     ['enter'],
                     function(e) {
-                        if (this.state.openDelete) {
+                        if (this.state.openDialog === OPEN_DELETE_BUNDLE) {
                             this.executeBundleCommandNoEvent('rm');
-                        } else if (this.state.openKill) {
+                        } else if (this.state.openDialog === OPEN_KILL) {
                             this.executeBundleCommandNoEvent('kill');
-                        } else if (this.state.openDetach) {
+                        } else if (this.state.openDialog === OPEN_DETACH) {
                             this.executeBundleCommandNoEvent('detach');
                         }
                     }.bind(this),
@@ -1517,10 +1516,7 @@ class Worksheet extends React.Component {
 
         var worksheet_dialogs = (
             <WorksheetDialogs
-                openKill={this.state.openKill}
-                openDelete={this.state.openDelete}
-                openDetach={this.state.openDetach}
-                openDeleteItem={this.state.openDeleteItem}
+                openDialog={this.state.openDialog}
                 togglePopup={this.togglePopup}
                 togglePopupNoEvent={this.togglePopupNoEvent}
                 executeBundleCommand={this.executeBundleCommand}
