@@ -286,11 +286,7 @@ def fetch_interpreted_worksheet(uuid):
     if directive:
         # If we're only async loading a single table_block / subworksheets_block,
         # return only that block (which is at the end of worksheet_info['items'])
-        if len(search_results):
-            search_result_item = worksheet_info['blocks'][-1]
-            worksheet_info['blocks'] = [search_result_item]
-        else:
-            worksheet_info['blocks'] = []
+        worksheet_info['blocks'] = [worksheet_info['blocks'][-1]] if len(search_results) else []
 
     for block in worksheet_info['blocks']:
         if block is None:
@@ -662,14 +658,11 @@ def perform_search_query(value_obj):
                     # Since bundle UUID's are queried first, we can't assume a UUID exists in
                     # the subsequent bundle info query.
                     if bundle_uuid in bundle_infos:
-                        bundle_block = bundle_item(bundle_infos[bundle_uuid])
-                        raw_items.append(bundle_block + (None, None))
+                        raw_items.append(bundle_item(bundle_infos[bundle_uuid]) + (None, None))
         elif is_wsearch:
             worksheet_infos = search_worksheets(keywords)
             for worksheet_info in worksheet_infos:
-                subworksheet_block = subworksheet_item(worksheet_info)
-                raw_items.append(subworksheet_block + (None, None))
-
+                raw_items.append(subworksheet_item(worksheet_info) + (None, None))
         return raw_items
     else:
         # Not a search query
