@@ -39,7 +39,12 @@ from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
 from codalab.rest.worksheets import get_worksheet_info, search_worksheets
-from codalab.rest.worksheet_block_schemas import BlockModes, MarkupBlockSchema, FetchStatusCodes
+from codalab.rest.worksheet_block_schemas import (
+    BlockModes,
+    MarkupBlockSchema,
+    FetchStatusCodes,
+    FetchStatusSchema,
+)
 from codalab.worker.download_util import BundleTarget
 
 
@@ -279,7 +284,7 @@ def fetch_interpreted_worksheet(uuid):
                 if not is_relevant_block:
                     interpreted_blocks['blocks'][i] = None
     # Grouped individual items into blocks
-    worksheet_info['blocks'] = resolve_interpreted_blocks(interpreted_blocks['blocks'])
+    worksheet_info['blocks'] = resolve_interpreted_blocks(interpreted_blocks['blocks'], brief=brief)
     worksheet_info['raw_to_block'] = interpreted_blocks['raw_to_block']
     worksheet_info['block_to_raw'] = interpreted_blocks['block_to_raw']
 
@@ -361,7 +366,7 @@ def head_target(target, max_num_lines):
 DEFAULT_GRAPH_MAX_LINES = 100
 
 
-def resolve_interpreted_blocks(interpreted_blocks):
+def resolve_interpreted_blocks(interpreted_blocks, brief):
     """
     Called by the web interface.  Takes a list of interpreted worksheet
     items (returned by worksheet_util.interpret_items) and fetches the
@@ -386,11 +391,20 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 pass
             elif mode == BlockModes.record_block or mode == BlockModes.table_block:
                 # header_name_posts is a list of (name, post-processing) pairs.
-                contents = block['rows']
                 # Request information
-                contents = interpret_genpath_table_contents(contents)
-
-                block['rows'] = contents
+                if brief:
+                    # In brief mode, only calculate whether we should interpret genpaths, and if so, set status to briefly_loaded.
+                    should_interpret_genpaths = (
+                        len(get_genpaths_table_contents_requests(block['rows'])) > 0
+                    )
+                    block['status'] = (
+                        FetchStatusSchema.get_briefly_loaded_status()
+                        if should_interpret_genpaths
+                        else FetchStatusSchema.get_ready_status()
+                    )
+                else:
+                    block['rows'] = interpret_genpath_table_contents(block['rows'])
+                    block['status'] = FetchStatusSchema.get_ready_status()
             elif mode == BlockModes.contents_block or mode == BlockModes.image_block:
                 bundle_uuid = block['bundles_spec']['bundle_infos'][0]['uuid']
                 target_path = block['target_genpath']
@@ -467,6 +481,24 @@ def is_bundle_genpath_triple(value):
     return isinstance(value, need_gen_types) and len(value) == 3
 
 
+def get_genpaths_table_contents_requests(contents):
+    """
+    Get genpath requests to fill in values for a table.
+
+    contents represents a table, but some of the elements might not be
+    interpreted yet, so fill them in.
+    
+    Returns requests: list of (bundle_uuid, genpath, post-processing-func)
+    """
+    requests = []
+    for r, row in enumerate(contents):
+        for key, value in row.items():
+            # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
+            if is_bundle_genpath_triple(value):
+                requests.append(value)
+    return requests
+
+
 def interpret_genpath_table_contents(contents):
     """
     contents represents a table, but some of the elements might not be
@@ -474,12 +506,7 @@ def interpret_genpath_table_contents(contents):
     """
 
     # Request information
-    requests = []
-    for r, row in enumerate(contents):
-        for key, value in row.items():
-            # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
-            if is_bundle_genpath_triple(value):
-                requests.append(value)
+    requests = get_genpaths_table_contents_requests(contents)
     responses = interpret_file_genpaths(requests)
 
     # Put it in a table
