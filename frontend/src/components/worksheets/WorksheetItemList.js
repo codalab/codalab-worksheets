@@ -95,6 +95,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             }
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
+            saveAndUpdateWorksheet={props.saveAndUpdateWorksheet}
             key={props.key}
             subFocusIndex={props.subFocusIndex}
             after_sort_key={props.after_sort_key}
@@ -273,6 +274,9 @@ class WorksheetItemList extends React.Component {
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
                         setDeleteItemCallback: this.props.setDeleteItemCallback,
                         editPermission: info && info.edit_permission,
+                        addCopyBundleRowsCallback: this.props.addCopyBundleRowsCallback,
+                        itemID: index,
+                        saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         itemHeights: this.props.itemHeights,
                     };

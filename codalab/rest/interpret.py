@@ -663,7 +663,6 @@ def perform_search_query(value_obj):
             worksheet_infos = search_worksheets(keywords)
             for worksheet_info in worksheet_infos:
                 raw_items.append(subworksheet_item(worksheet_info) + (None, None))
-
         return raw_items
     else:
         # Not a search query
