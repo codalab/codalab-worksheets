@@ -395,7 +395,7 @@ def resolve_interpreted_blocks(interpreted_blocks, brief):
                 if brief:
                     # In brief mode, only calculate whether we should interpret genpaths, and if so, set status to briefly_loaded.
                     should_interpret_genpaths = (
-                        len(interpret_genpath_table_contents(block['rows'], dry_run=True)) > 0
+                        len(get_genpaths_table_contents_requests(block['rows'])) > 0
                     )
                     block['status'] = (
                         FetchStatusSchema.get_briefly_loaded_status()
@@ -481,24 +481,32 @@ def is_bundle_genpath_triple(value):
     return isinstance(value, need_gen_types) and len(value) == 3
 
 
-def interpret_genpath_table_contents(contents, dry_run=False):
+def get_genpaths_table_contents_requests(contents):
     """
+    Get genpath requests to fill in values for a table.
+
     contents represents a table, but some of the elements might not be
     interpreted yet, so fill them in.
-
-    If dry_run is true, doesn't actually fill in the table, but instead
-    returns the list of requests (list of rows that need to be interpreted).
+    
+    Returns requests: list of (bundle_uuid, genpath, post-processing-func)
     """
-
-    # Request information
     requests = []
     for r, row in enumerate(contents):
         for key, value in row.items():
             # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
             if is_bundle_genpath_triple(value):
                 requests.append(value)
-    if dry_run:
-        return requests
+    return requests
+
+
+def interpret_genpath_table_contents(contents):
+    """
+    contents represents a table, but some of the elements might not be
+    interpreted yet, so fill them in.
+    """
+
+    # Request information
+    requests = get_genpaths_table_contents_requests(contents)
     responses = interpret_file_genpaths(requests)
 
     # Put it in a table
