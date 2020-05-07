@@ -558,8 +558,6 @@ class Worksheet extends React.Component {
     };
 
     onAsyncItemLoad = (focusIndex, item) => {
-        let searchBlocks = this.state.searchExpandedIndices;
-        searchBlocks.add(focusIndex);
         this.setState({
             ws: {
                 ...this.state.ws,
@@ -569,7 +567,6 @@ class Worksheet extends React.Component {
                     blocks: Object.assign([], this.state.ws.info.blocks, { [focusIndex]: item }),
                 },
             },
-            searchExpandedBlock: searchBlocks,
         });
     };
 

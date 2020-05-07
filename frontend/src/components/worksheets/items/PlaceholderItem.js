@@ -56,6 +56,7 @@ export default forwardRef((props, ref) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [directive, worksheetUUID]);
     if (error) {
+        console.log(error);
         return <div ref={ref}>Error loading item.</div>;
     }
     if (!item) {
