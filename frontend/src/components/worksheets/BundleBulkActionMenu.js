@@ -5,7 +5,6 @@ import ExitToAppIcon from '@material-ui/icons/ExitToApp';
 import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
 import HighlightOffIcon from '@material-ui/icons/HighlightOff';
 import FileCopyOutlinedIcon from '@material-ui/icons/FileCopyOutlined';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
 import Button from '@material-ui/core/Button';
 
 class BundleBulkActionMenu extends React.Component {

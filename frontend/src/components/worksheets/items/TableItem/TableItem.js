@@ -102,13 +102,18 @@ class TableItem extends React.Component<{
         let result = bundleInfos.filter((item, index) => {
             return this.state.childrenCheckState[index];
         });
-        result = result.map((bundle, rowIndex) => {
-            let bundleInfos = {};
-            bundleInfos.uuid = bundle['uuid'];
-            bundleInfos.name = bundle.metadata.name;
-            // used to remove the source lines
-            bundleInfos.key = this.props.itemID + ',' + rowIndex;
-            return bundleInfos;
+        // result = result.map((bundle, rowIndex) => {
+        //     let bundleInfos = {};
+        //     bundleInfos.uuid = bundle['uuid'];
+        //     bundleInfos.name = bundle.metadata.name;
+        //     // used to remove the source lines
+        //     bundleInfos.key = this.props.itemID + ',' + rowIndex;
+        //     return bundleInfos;
+        result = result.map((bundle) => {
+            let bundleIdName = {};
+            bundleIdName.uuid = bundle.uuid;
+            bundleIdName.name = bundle.metadata.name;
+            return bundleIdName;
         });
         return result;
     };
@@ -123,11 +128,6 @@ class TableItem extends React.Component<{
         const { worksheetUUID, setFocus, editPermission } = this.props;
         // Provide copy data callback
         this.props.addCopyBundleRowsCallback(this.props.itemID, this.copyCheckedBundleRows);
-        // let prevItemProcessed = null;
-        // if (prevItem) {
-        //     const { maxKey } = getMinMaxKeys(prevItem);
-        //     prevItemProcessed = { sort_key: maxKey };
-        // }
         var tableClassName = this.props.focused ? 'table focused' : 'table';
         var item = this.props.item;
         var canEdit = this.props.canEdit;

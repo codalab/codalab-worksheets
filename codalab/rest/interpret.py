@@ -667,9 +667,7 @@ def perform_search_query(value_obj):
         elif is_wsearch:
             worksheet_infos = search_worksheets(keywords)
             for worksheet_info in worksheet_infos:
-                subworksheet_block = subworksheet_item(worksheet_info)
-                raw_items.append(subworksheet_block + (None, None))
-
+                raw_items.append(subworksheet_item(worksheet_info) + (None, None))
         return raw_items
     else:
         # Not a search query

@@ -15,10 +15,16 @@ import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from '../ExtraWorksheetHTML/ExtraWorksheetHTML';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
-import { NAVBAR_HEIGHT } from '../../../constants';
+import {
+    NAVBAR_HEIGHT,
+    EXPANDED_WORKSHEET_WIDTH,
+    DEFAULT_WORKSHEET_WIDTH,
+    LOCAL_STORAGE_WORKSHEET_WIDTH,
+} from '../../../constants';
 import WorksheetActionBar from '../WorksheetActionBar';
 import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
+import Icon from '@material-ui/core/Icon';
 import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
 import DeleteIcon from '@material-ui/icons/DeleteOutline';
@@ -55,6 +61,9 @@ toast.configure();
 class Worksheet extends React.Component {
     constructor(props) {
         super(props);
+        let localWorksheetWidthPreference = window.localStorage.getItem(
+            LOCAL_STORAGE_WORKSHEET_WIDTH,
+        );
         this.state = {
             ws: {
                 uuid: this.props.match.params['uuid'],
@@ -93,9 +102,8 @@ class Worksheet extends React.Component {
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
             copiedBundleIds: '',
-            searchExpandedIndices: new Set(),
             showPasteButton: window.localStorage.getItem('CopiedBundles') !== '',
-            cutBundleKeys: [],
+            worksheetWidthPercentage: localWorksheetWidthPreference || DEFAULT_WORKSHEET_WIDTH,
         };
         this.copyCallbacks = [];
         this.bundleTableID = new Set();
@@ -471,6 +479,8 @@ class Worksheet extends React.Component {
             this.executeBundleCommandNoEvent('detach');
         } else if (this.state.openKill) {
             this.executeBundleCommandNoEvent('kill');
+        } else if (this.state.openCopy) {
+            document.getElementById('copyBundleIdToClipBoard').click();
         }
         return true;
     };
@@ -490,14 +500,14 @@ class Worksheet extends React.Component {
         });
         // remove the last new line character
         bundleString = bundleString.substr(0, bundleString.length - 1);
-        let worksheetuuid = this.state.ws.uuid;
+        let worksheetUUID = this.state.ws.uuid;
         let after_sort_key;
         if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
             let currentFocusedBlock = this.state.ws.info.blocks[this.state.focusIndex];
             console.log(this.state.subFocusIndex, currentFocusedBlock);
             after_sort_key = getAfterSortKey(currentFocusedBlock, this.state.subFocusIndex);
         }
-        let url = `/rest/worksheets/${worksheetuuid}/add-items`;
+        let url = `/rest/worksheets/${worksheetUUID}/add-items`;
         let actualData = { items };
         if (after_sort_key) {
             actualData['after_sort_key'] = after_sort_key;
@@ -737,6 +747,14 @@ class Worksheet extends React.Component {
     toggleGlossaryModal = () => {
         this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
     };
+    toggleWorksheetSize = () => {
+        let newPercentage =
+            this.state.worksheetWidthPercentage === DEFAULT_WORKSHEET_WIDTH
+                ? EXPANDED_WORKSHEET_WIDTH
+                : DEFAULT_WORKSHEET_WIDTH;
+        window.localStorage.setItem(LOCAL_STORAGE_WORKSHEET_WIDTH, newPercentage);
+        this.setState({ worksheetWidthPercentage: newPercentage });
+    };
     setupEventHandlers() {
         // Load worksheet from history when back/forward buttons are used.
         let editPermission = this.state.ws.info && this.state.ws.info.edit_permission;
@@ -920,6 +938,9 @@ class Worksheet extends React.Component {
                 showGlossaryModal: true,
             });
         });
+        Mousetrap.bind(['+'], (e) => {
+            this.toggleWorksheetSize();
+        });
 
         Mousetrap.bind(['esc'], (e) => {
             ContextMenuMixin.closeContextMenu();
@@ -933,6 +954,16 @@ class Worksheet extends React.Component {
                     this.state.deleteItemCallback();
                     this.toggleCmdDialogNoEvent('deleteItem');
                 }.bind(this),
+            );
+        }
+        // paste after current focused cell
+        if (this.state.ws.info.edit_permission) {
+            Mousetrap.bind(
+                ['a v'],
+                function(e) {
+                    this.pasteBundlesToWorksheet();
+                }.bind(this),
+                'keyup',
             );
         }
         // paste after current focused cell
@@ -1429,18 +1460,28 @@ class Worksheet extends React.Component {
                 aria-labelledby='delete-worksheet-confirmation-title'
                 aria-describedby='delete-worksheet-confirmation-description'
             >
-                <DialogTitle id='delete-worksheet-confirmation-title'>
-                    {'Warning: Deleted worksheets cannot be recovered'}
+                <DialogTitle id='delete-worksheet-confirmation-title' style={{ color: 'red' }}>
+                    Delete this worksheet permanently?
                 </DialogTitle>
                 <DialogContent>
+                    <DialogContentText
+                        id='alert-dialog-description'
+                        style={{ color: 'red', marginBottom: '20px' }}
+                    >
+                        {'Warning: Deleted worksheets cannot be recovered.'}
+                    </DialogContentText>
                     <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
-                        {'Note: deleting worksheets does not delete the bundles inside it.'}
+                        {'Note: Deleting worksheets does not delete the bundles inside it.'}
                     </DialogContentText>
                     <DialogActions>
                         <Button color='primary' onClick={this.toggleBundleBulkMessageDialog}>
                             CANCEL
                         </Button>
-                        <Button color='primary' onClick={this.deteleWorksheetAction}>
+                        <Button
+                            color='primary'
+                            variant='contained'
+                            onClick={this.deteleWorksheetAction}
+                        >
                             DELETE
                         </Button>
                     </DialogActions>
@@ -1671,6 +1712,7 @@ class Worksheet extends React.Component {
                     toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
                     copiedBundleIds={this.state.copiedBundleIds}
                     showPasteButton={this.state.showPasteButton}
+                    toggleWorksheetSize={this.toggleWorksheetSize}
                 />
                 {action_bar_display}
                 <ToastContainer
@@ -1688,6 +1730,7 @@ class Worksheet extends React.Component {
                             <div
                                 className={classes.worksheetOuter}
                                 onClick={this.handleClickForDeselect}
+                                style={{ width: this.state.worksheetWidthPercentage }}
                             >
                                 <div
                                     className={classes.worksheetInner}
@@ -1732,7 +1775,6 @@ const styles = (theme) => ({
         marginTop: NAVBAR_HEIGHT,
     },
     worksheetOuter: {
-        maxWidth: 1200, // Worksheet width
         minHeight: 600, // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
