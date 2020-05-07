@@ -14,6 +14,7 @@ import NewRun from '../../NewRun';
 
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleDetail from '../../BundleDetail';
+import TextEditorItem from '../TextEditorItem';
 
 // The approach taken in this design is to hack the HTML `Table` element by using one `TableBody` for each `BundleRow`.
 // We need the various columns to be aligned for all `BundleRow` within a `Table`, therefore using `div` is not an
@@ -330,6 +331,38 @@ class BundleRow extends Component {
                         </TableCell>
                     </TableRow>
                 )}
+                {this.props.showNewRun && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                            <div className={classes.insertBox}>
+                                <NewRun
+                                    after_sort_key={this.props.after_sort_key}
+                                    ws={this.props.ws}
+                                    onSubmit={() => this.props.onHideNewRun()}
+                                    reloadWorksheet={reloadWorksheet}
+                                />
+                            </div>
+                        </TableCell>
+                    </TableRow>
+                )}
+                {this.props.showNewText && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                            <div className={classes.insertBox}>
+                                <TextEditorItem
+                                    ids={this.props.ids}
+                                    mode='create'
+                                    after_sort_key={this.props.after_sort_key}
+                                    worksheetUUID={this.props.worksheetUUID}
+                                    reloadWorksheet={reloadWorksheet}
+                                    closeEditor={() => {
+                                        this.props.onHideNewText();
+                                    }}
+                                />
+                            </div>
+                        </TableCell>
+                    </TableRow>
+                )}
             </TableBody>
         );
     }
@@ -352,7 +385,7 @@ const styles = (theme) => ({
     rootNoPad: {
         verticalAlign: 'middle !important',
         border: 'none !important',
-        padding: '0px !important',
+        padding: '0px 4px !important',
         wordWrap: 'break-word',
     },
     noCheckBox: {
