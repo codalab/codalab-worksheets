@@ -43,9 +43,9 @@ def tar_gzip_directory(
     """
     args = ['tar', 'czf', '-', '-C', directory_path]
 
-    # If the BSD tar library is being used, prepend COPYFILE_DISABLE=1 to prevent creating ._* files
+    # If the BSD tar library is being used, append --disable-copy to prevent creating ._* files
     if 'bsdtar' in get_tar_version_output():
-        args.insert(0, 'COPYFILE_DISABLE=1')
+        args.append('--disable-copyfile')
 
     if ignore_file:
         # Ignore entries specified by the ignore file (e.g. .gitignore)
