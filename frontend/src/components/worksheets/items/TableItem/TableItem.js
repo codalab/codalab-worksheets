@@ -272,7 +272,7 @@ const styles = (theme) => ({
 
 const TableContainer = withStyles(styles)(_TableContainer);
 
-async function fetchAsyncData({ contents }) {
+async function fetchAsyncTableContents({ contents }) {
     return semaphore.use(async () => {
         const response = await $.ajax({
             type: 'POST',
@@ -293,7 +293,7 @@ const TableWrapper = (props) => {
         (async function() {
             if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
                 try {
-                    const { contents } = await fetchAsyncData({ contents: item.rows });
+                    const { contents } = await fetchAsyncTableContents({ contents: item.rows });
                     onAsyncItemLoad({
                         ...item,
                         rows: contents,
