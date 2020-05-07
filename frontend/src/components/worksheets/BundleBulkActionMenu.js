@@ -4,6 +4,7 @@ import Typography from '@material-ui/core/Typography';
 import ExitToAppIcon from '@material-ui/icons/ExitToApp';
 import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
 import HighlightOffIcon from '@material-ui/icons/HighlightOff';
+import FileCopyOutlinedIcon from '@material-ui/icons/FileCopyOutlined';
 import Button from '@material-ui/core/Button';
 
 class BundleBulkActionMenu extends React.Component {
@@ -14,6 +15,7 @@ class BundleBulkActionMenu extends React.Component {
             openDetach: false,
             openKill: false,
             forceDelete: false,
+            copyValue: '',
         };
     }
 
@@ -29,7 +31,7 @@ class BundleBulkActionMenu extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Delete'
-                    onClick={this.props.togglePopup('rm')}
+                    onClick={this.props.toggleCmdDialog('rm')}
                 >
                     <DeleteForeverIcon fontSize='small' />
                     <Typography variant='inherit'>Delete</Typography>
@@ -38,7 +40,7 @@ class BundleBulkActionMenu extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Detach'
-                    onClick={this.props.togglePopup('detach')}
+                    onClick={this.props.toggleCmdDialog('detach')}
                 >
                     <ExitToAppIcon fontSize='small' />
                     <Typography variant='inherit'>Detach</Typography>
@@ -47,10 +49,20 @@ class BundleBulkActionMenu extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Kill'
-                    onClick={this.props.togglePopup('kill')}
+                    onClick={this.props.toggleCmdDialog('kill')}
                 >
                     <HighlightOffIcon fontSize='small' />
                     <Typography variant='inherit'>Kill</Typography>
+                </Button>
+                <Button
+                    size='small'
+                    color='inherit'
+                    aria-label='Copy'
+                    onClick={this.props.toggleCmdDialog('copy')}
+                    id='copy-button'
+                >
+                    <FileCopyOutlinedIcon className={classes.buttonIcon} />
+                    <Typography variant='inherit'>Copy</Typography>
                 </Button>
             </div>
         );

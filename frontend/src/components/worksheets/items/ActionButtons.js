@@ -5,9 +5,11 @@ import { withStyles } from '@material-ui/core/styles';
 import RunIcon from '@material-ui/icons/PlayCircleOutline';
 import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
 import AddIcon from '@material-ui/icons/AddBoxOutlined';
+import NoteAddIcon from '@material-ui/icons/NoteAdd';
 import BundleBulkActionMenu from '../BundleBulkActionMenu';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
+import Tooltip from '@material-ui/core/Tooltip';
 
 const StyledMenuItem = withStyles((theme) => ({
     root: {
@@ -39,11 +41,12 @@ class ActionButtons extends React.Component<{
             uploadAnchor,
             handleSelectedBundleCommand,
             showBundleOperationButtons,
-            togglePopup,
+            toggleCmdDialog,
+            toggleCmdDialogNoEvent,
             info,
+            showPasteButton,
         } = this.props;
         let editPermission = info && info.edit_permission;
-
         return (
             <div
                 onMouseMove={(ev) => {
@@ -146,9 +149,23 @@ class ActionButtons extends React.Component<{
                 {showBundleOperationButtons ? (
                     <BundleBulkActionMenu
                         handleSelectedBundleCommand={handleSelectedBundleCommand}
-                        togglePopup={togglePopup}
+                        toggleCmdDialog={toggleCmdDialog}
+                        toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
                     />
                 ) : null}
+                <Tooltip title='Paste copied bundles to this worksheet'>
+                    <Button
+                        size='small'
+                        color='inherit'
+                        aria-label='Paste'
+                        onClick={toggleCmdDialog('paste')}
+                        disabled={!editPermission || !showPasteButton}
+                        id='paste-button'
+                    >
+                        <NoteAddIcon className={classes.buttonIcon} />
+                        Paste bundles
+                    </Button>
+                </Tooltip>
             </div>
         );
     }
