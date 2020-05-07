@@ -33,13 +33,18 @@ class BlockModes:
 
 
 class FetchStatusCodes:
+    """
+    The values here correspond with FETCH_STATUS_SCHEMA in the frontend.
+    """
+
     unknown = 'unknown'
     pending = 'pending'
+    briefly_loaded = 'briefly_loaded'
     ready = 'ready'
     not_found = 'not_found'
     no_permission = 'no_permission'
 
-    values = (unknown, pending, ready, not_found, no_permission)
+    values = (unknown, pending, briefly_loaded, ready, not_found, no_permission)
 
 
 class FetchStatusSchema(PlainSchema):
@@ -57,6 +62,10 @@ class FetchStatusSchema(PlainSchema):
     @staticmethod
     def get_pending_status():
         return {'code': FetchStatusCodes.pending, 'error_message': ''}
+
+    @staticmethod
+    def get_briefly_loaded_status():
+        return {'code': FetchStatusCodes.briefly_loaded, 'error_message': ''}
 
     @staticmethod
     def get_ready_status():
