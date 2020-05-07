@@ -162,6 +162,11 @@ class BundleRow extends Component {
                     rowContent = rowContent['path'].split('/')[1];
                 }
             }
+            if (Array.isArray(rowContent) && rowContent.length === 3) {
+                // Cell is a bundle genpath triple -- see is_bundle_genpath_triple() in backend.
+                // This means that the cell is only briefly loaded.
+                rowContent = <span style={{ color: 'grey' }}>Loading...</span>;
+            }
             if (url)
                 rowContent = (
                     <a
