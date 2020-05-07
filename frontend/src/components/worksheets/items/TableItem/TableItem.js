@@ -1,5 +1,6 @@
 // @flow
-import * as React from 'react';
+import React, { useEffect } from 'react';
+import $ from 'jquery';
 import { withStyles } from '@material-ui/core';
 import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
@@ -10,6 +11,8 @@ import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import SvgIcon from '@material-ui/core/SvgIcon';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
+import { semaphore } from '../../../../util/async_loading_utils';
+import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -269,4 +272,46 @@ const styles = (theme) => ({
 
 const TableContainer = withStyles(styles)(_TableContainer);
 
-export default TableItem;
+async function fetchAsyncTableContents({ contents }) {
+    return semaphore.use(async () => {
+        const response = await $.ajax({
+            type: 'POST',
+            contentType: 'application/json',
+            url: '/rest/interpret/genpath-table-contents',
+            async: true,
+            data: JSON.stringify({ contents }),
+            dataType: 'json',
+            cache: false,
+        });
+        return response;
+    });
+}
+
+const TableWrapper = (props) => {
+    const { item, onAsyncItemLoad } = props;
+    useEffect(() => {
+        (async function() {
+            if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
+                try {
+                    const { contents } = await fetchAsyncTableContents({ contents: item.rows });
+                    onAsyncItemLoad({
+                        ...item,
+                        rows: contents,
+                        status: {
+                            code: FETCH_STATUS_SCHEMA.READY,
+                            error_message: '',
+                        },
+                    });
+                } catch (e) {
+                    console.error(e);
+                    // TODO: better error message handling here.
+                }
+            }
+        })();
+        // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [item.rows, item.status]);
+    return <TableItem {...props} />;
+};
+
+export default TableWrapper;
