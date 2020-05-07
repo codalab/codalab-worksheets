@@ -10,6 +10,7 @@ import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import SvgIcon from '@material-ui/core/SvgIcon';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
+import { getIds } from '../../../../util/worksheet_utils';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -98,7 +99,9 @@ class TableItem extends React.Component<{
 
     copyCheckedBundleRows = () => {
         let item = this.props.item;
+        console.log(item, getIds(item));
         let bundleInfos = item.bundles_spec.bundle_infos;
+        let ids = getIds(item);
         let result = bundleInfos.filter((item, index) => {
             return this.state.childrenCheckState[index];
         });
@@ -109,10 +112,11 @@ class TableItem extends React.Component<{
         //     // used to remove the source lines
         //     bundleInfos.key = this.props.itemID + ',' + rowIndex;
         //     return bundleInfos;
-        result = result.map((bundle) => {
+        result = result.map((bundle, index) => {
             let bundleIdName = {};
             bundleIdName.uuid = bundle.uuid;
             bundleIdName.name = bundle.metadata.name;
+            bundleIdName.id = ids[index];
             return bundleIdName;
         });
         return result;

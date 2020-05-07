@@ -405,7 +405,7 @@ class Worksheet extends React.Component {
                         return;
                     }
                     validBundles.push(bundle);
-                    cutBundleKeys.push(bundle.key);
+                    cutBundleKeys.push(bundle.id);
                     actualCopiedCounts += 1;
                 });
             });
@@ -441,21 +441,26 @@ class Worksheet extends React.Component {
     };
 
     removeRawSourceLines = (cutBundleKeys) => {
-        let all_remove_lines = cutBundleKeys.map((key) => {
-            var item_line = this.state.ws.info.block_to_raw[key];
-            return this.state.ws.info.expanded_items_to_raw_lines[item_line];
+        let worksheetUUID = this.state.ws.uuid;
+        // let after_sort_key;
+        const url = `/rest/worksheets/${worksheetUUID}/add-items`;
+        $.ajax({
+            url,
+            data: JSON.stringify({ ids: cutBundleKeys }),
+            contentType: 'application/json',
+            type: 'POST',
+            success: (data, status, jqXHR) => {
+                const textDeleted = true;
+                const param = { textDeleted };
+                this.setState({ deleting: false });
+                this.reloadWorksheet(undefined, undefined, param);
+                // Mousetrap.unbind(['backspace', 'del']);
+            },
+            error: (jqHXR, status, error) => {
+                this.setState({ deleting: false });
+                alert(createAlertText(this.url, jqHXR.responseText));
+            },
         });
-        all_remove_lines.sort(function(a, b) {
-            return b - a;
-        });
-        console.log(this.state.ws.info.raw.length);
-        all_remove_lines.forEach((line_index) => {
-            console.log('Removing line index: ', line_index);
-            if (this.state.ws.info.raw[line_index][0] !== '%')
-                // don't delete directive lines
-                this.state.ws.info.raw.splice(line_index, 1);
-        });
-        this.saveAndUpdateWorksheet(false);
     };
 
     confirmBundleRowAction = (code) => {
