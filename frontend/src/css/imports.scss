@@ -813,4 +813,12 @@ textarea {
 b, strong {
   font-weight: 500;
 }
+#highlight {
+  color: #0091bd;
+  text-decoration: none;
+  background-color: rgba(140,207,228,0.2);
+  -webkit-transition: all .1s ease-in-out;
+  transition: all .1s ease-in-out;
+  border-radius: 2px;
+}
 @import "./overrides.scss";

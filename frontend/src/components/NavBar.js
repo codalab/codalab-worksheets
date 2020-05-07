@@ -31,9 +31,10 @@ import SuccessIcon from '@material-ui/icons/CheckCircle';
 import ErrorIcon from '@material-ui/icons/Error';
 import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
-import { Search } from 'semantic-ui-react';
+import Search from 'semantic-ui-react/dist/commonjs/modules/Search';
 import _ from 'lodash';
 import { executeCommand } from '../util/cli_utils';
+import DOMPurify from 'dompurify';
 
 const kDefaultWorksheetName = 'unnamed';
 
@@ -168,47 +169,75 @@ class NavBar extends React.Component<{
                 data: JSON.stringify({ keywords: keywords }),
                 contentType: 'application/json; charset=utf-8',
                 success: (data) => {
-                    // build dictionary similar to the following
-                    // {
-                    //     "name": "codalab",
-                    //     "results": [
-                    //         {
-                    //             "title": "Brakus Group",
-                    //             "description": "Cloned interactive Graphic Interface",
-                    //         },
-                    //     ]
-                    // }
-                    const filteredResults = _.reduce(
-                        data.response,
-                        (memo, item) => {
-                            item.description = item.name.replace(re, '<mark>$&</mark>');
-                            item.title = item.title.replace(re, '<mark>$&</mark>');
-
-                            if (!(item.owner_name in memo)) {
-                                memo[item.owner_name] = {
-                                    name: item.owner_name,
-                                    results: [],
-                                };
+                    /*
+                    Response body:
+                    ```
+                    {
+                        "response": [
+                            {id: 6,
+                            uuid: "0x5505f540936f4d0d919f3186141192b0",
+                            name: "codalab-a",
+                            title: "CodaLab Dashboard",
+                            frozen: null,
+                            owner_id: "0"
+                            owner_name: "codalab"
+                            group_permissions: {
+                                id: 8,
+                                group_uuid: "0x41e95d8592de417cbb726085d6986137",
+                                group_name: "public",
+                                permission: 1}
                             }
-                            memo[item.owner_name].results.push(item);
+                            ...
+                        ]
+                    }
+                    ```
 
-                            return memo;
+                    turn the above response into the following dict
+                    ```
+                    {
+                        "name": "codalab",
+                        "results": [
+                            {
+                                "title": "Brakus Group",
+                                "description": "Cloned interactive Graphic Interface",
+                            },
+                        ]
+                    }
+                    ```
+                    */
+                    let filteredResults = {};
+                    for (let item of data.response) {
+                        // use DOMPurify to get rid of the XSS security risk
+                        item.description = DOMPurify.sanitize(
+                            item.name.replace(re, "<span id='highlight'>$&</span>"),
+                        );
+                        item.title = DOMPurify.sanitize(
+                            (item.title || '').replace(re, "<span id='highlight'>$&</span>"),
+                        );
+
+                        if (!(item.owner_name in filteredResults)) {
+                            filteredResults[item.owner_name] = {
+                                name: item.owner_name,
+                                results: [],
+                            };
+                        }
+                        filteredResults[item.owner_name].results.push(item);
+                    }
+
+                    /*
+                    turn the above dict into a a dict with a key of category name,
+                    e.g., codalab
+                    {
+                        "codalab": {
+                            "name": "codalab",
+                            "results": [
+                                {
+                                    "title": "Brakus Group",
+                                    "description": "Cloned interactive Graphic Interface",
+                                },
+                            ]
                         },
-                        {},
-                    );
-
-                    // build dictionary similar to the following
-                    // {
-                    //     "codalab": {
-                    //         "name": "codalab",
-                    //         "results": [
-                    //             {
-                    //                 "title": "Brakus Group",
-                    //                 "description": "Cloned interactive Graphic Interface",
-                    //             },
-                    //         ]
-                    //     },
-                    // }
+                    */
                     const finalResults = _.reduce(
                         filteredResults,
                         (memo, data, name) => {
@@ -245,6 +274,7 @@ class NavBar extends React.Component<{
             info: InfoIcon,
             warning: WarningIcon,
         }[this.state.snackbarVariant];
+
         return (
             <MuiThemeProvider theme={overrideMedia}>
                 <AppBar id='codalab-app-bar' color='default'>
@@ -279,7 +309,7 @@ class NavBar extends React.Component<{
                         )}
                         {!this.props.auth.isAuthenticated && (
                             <React.Fragment>
-                                <div className={classes.searchContainer}></div>
+                                <div className={classes.searchContainer} />
                                 <Link to='/account/signup'>
                                     <Button color='inherit'>Sign Up</Button>
                                 </Link>
