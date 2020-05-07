@@ -18,7 +18,7 @@
     "classnames": "^2.2.6",
     "dompurify": "^2.0.11",
     "husky": "^2.7.0",
-    "jquery": "^3.4.1",
+    "jquery": "^3.5.0",
     "jquery-ui": "^1.12.1",
     "jquery-ui-bundle": "^1.12.1-migrate",
     "jquery.terminal": "^2.1.2",
