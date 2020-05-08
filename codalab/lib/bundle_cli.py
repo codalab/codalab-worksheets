@@ -1455,15 +1455,15 @@ class BundleCLI(object):
             },
         )
 
-        # Collect information about how server should unpack
-        filename = nested_dict_get(source_info, 'metadata', 'name')
         # Fetch bundle contents from source client
         try:
             target_info = source_client.fetch_contents_info(BundleTarget(source_bundle_uuid, ''))
         except NotFoundError:
             target_info = None
 
-        # Zip directories
+        # Collect information about how server should unpack
+        filename = nested_dict_get(source_info, 'metadata', 'name')
+        # Zip bundle directory if there is any
         if target_info and target_info['type'] == 'directory':
             filename += '.tar.gz'
             unpack = True
