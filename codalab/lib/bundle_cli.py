@@ -1444,13 +1444,6 @@ class BundleCLI(object):
 
         print("Copying %s..." % source_desc, file=self.stdout)
 
-        # Fetch bundle contents from source client
-        try:
-            target_info = source_client.fetch_contents_info(BundleTarget(source_bundle_uuid, ''))
-            has_contents = True
-        except NotFoundError:
-            has_contents = False
-
         # Create the bundle, copying over metadata from the source bundle
         dest_bundle = dest_client.create(
             'bundles',
@@ -1459,37 +1452,53 @@ class BundleCLI(object):
                 'worksheet': dest_worksheet_uuid,
                 'detached': not add_to_worksheet,
                 'wait_for_upload': True,
-                'predetermined_state': None if has_contents else source_info['state'],
             },
         )
 
-        # If bundle contents don't exist, finish after just copying metadata
-        if not has_contents:
-            return
-
         # Collect information about how server should unpack
         filename = nested_dict_get(source_info, 'metadata', 'name')
-        if target_info['type'] == 'directory':
+        # Fetch bundle contents from source client
+        try:
+            target_info = source_client.fetch_contents_info(BundleTarget(source_bundle_uuid, ''))
+        except NotFoundError:
+            target_info = None
+
+        # Zip directories
+        if target_info and target_info['type'] == 'directory':
             filename += '.tar.gz'
             unpack = True
         else:
             unpack = False
 
-        # Send file over
-        progress = FileTransferProgress('Copied ', f=self.stderr)
-        source = source_client.fetch_contents_blob(BundleTarget(source_bundle_uuid, ''))
-        with closing(source), progress:
+        try:
+            source_file = source_client.fetch_contents_blob(BundleTarget(source_bundle_uuid, ''))
+        except NotFoundError:
+            source_file = None
+
+        if source_file:
+            # Send file over
+            progress = FileTransferProgress('Copied ', f=self.stderr)
+            with closing(source_file), progress:
+                dest_client.upload_contents_blob(
+                    dest_bundle['id'],
+                    fileobj=source_file,
+                    params={
+                        'filename': filename,
+                        'unpack': unpack,
+                        'simplify': False,  # retain original bundle verbatim
+                        'state_on_success': source_info['state'],  # copy bundle state
+                        'finalize_on_success': True,
+                    },
+                    progress_callback=progress.update,
+                )
+        else:
+            # Update the bundle state with final states
             dest_client.upload_contents_blob(
                 dest_bundle['id'],
-                fileobj=source,
                 params={
-                    'filename': filename,
-                    'unpack': unpack,
-                    'simplify': False,  # retain original bundle verbatim
                     'state_on_success': source_info['state'],  # copy bundle state
                     'finalize_on_success': True,
                 },
-                progress_callback=progress.update,
             )
 
     @Commands.command(

@@ -242,12 +242,6 @@ def _create_bundles():
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     worksheet_util.check_worksheet_not_frozen(worksheet)
     request.user.check_quota(need_time=True, need_disk=True)
-    final_state = request.query.get('predetermined_state', default=None)
-    if final_state and final_state not in State.FINAL_STATES:
-        abort(
-            http.client.BAD_REQUEST,
-            'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES),
-        )
 
     created_uuids = []
     for bundle in bundles:
@@ -259,9 +253,8 @@ def _create_bundles():
         created_uuids.append(bundle_uuid)
         bundle_class = get_bundle_subclass(bundle['bundle_type'])
         bundle['owner_id'] = request.user.user_id
-        if final_state:
-            bundle['state'] = final_state
-        elif issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
+
+        if issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
             bundle['state'] = State.UPLOADING
         else:
             bundle['state'] = State.CREATED
@@ -701,25 +694,26 @@ def _update_bundle_contents_blob(uuid):
 
     # Store the data.
     try:
+        sources = None
         if request.query.urls:
             sources = query_get_list('urls')
-        else:
+        # request without "filename" doesn't need to upload to bundle store
+        if request.query.filename:
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
-
-        local.upload_manager.upload_to_bundle_store(
-            bundle,
-            sources=sources,
-            follow_symlinks=False,
-            exclude_patterns=None,
-            remove_sources=False,
-            git=query_get_bool('git', default=False),
-            unpack=query_get_bool('unpack', default=True),
-            simplify_archives=query_get_bool('simplify', default=True),
-        )  # See UploadManager for full explanation of 'simplify'
-
-        bundle_location = local.bundle_store.get_bundle_location(uuid)
-        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
+        if sources:
+            local.upload_manager.upload_to_bundle_store(
+                bundle,
+                sources=sources,
+                follow_symlinks=False,
+                exclude_patterns=None,
+                remove_sources=False,
+                git=query_get_bool('git', default=False),
+                unpack=query_get_bool('unpack', default=True),
+                simplify_archives=query_get_bool('simplify', default=True),
+            )  # See UploadManager for full explanation of 'simplify'
+            bundle_location = local.bundle_store.get_bundle_location(uuid)
+            local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error
