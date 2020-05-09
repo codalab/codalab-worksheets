@@ -80,3 +80,17 @@ class FileUtilTest(unittest.TestCase):
         self.assertNotIn('ignored_dir', output_dir_entries)
         self.assertTrue(os.path.exists(os.path.join(output_dir, 'dir', 'not_ignored2.txt')))
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', 'ignored2.txt')))
+
+    def test_tar_always_ignore(self):
+        dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'files/ignore_test')
+        temp_dir = tempfile.mkdtemp()
+        self.addCleanup(lambda: remove_path(temp_dir))
+        output_dir = os.path.join(temp_dir, 'output')
+
+        un_tar_directory(tar_gzip_directory(dir), output_dir, 'gz')
+        output_dir_entries = os.listdir(output_dir)
+        self.assertNotIn('._ignored', output_dir_entries)
+        self.assertIn('dir', output_dir_entries)
+        self.assertNotIn('__MACOSX', output_dir_entries)
+        self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', '__MACOSX')))
+        self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', '._ignored2')))
