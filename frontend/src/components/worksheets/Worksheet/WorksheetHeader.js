@@ -36,8 +36,11 @@ export default ({
     setAnchorEl,
     handleSelectedBundleCommand,
     showBundleOperationButtons,
-    togglePopup,
+    toggleCmdDialog,
+    toggleCmdDialogNoEvent,
     toggleGlossaryModal,
+    copiedBundleIds,
+    showPasteButton,
     toggleWorksheetSize,
 }) => (
     <Sticky top={6} innerZ={1059}>
@@ -134,7 +137,10 @@ export default ({
                                 uploadAnchor={uploadAnchor}
                                 handleSelectedBundleCommand={handleSelectedBundleCommand}
                                 showBundleOperationButtons={showBundleOperationButtons}
-                                togglePopup={togglePopup}
+                                toggleCmdDialog={toggleCmdDialog}
+                                toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
+                                copiedBundleIds={copiedBundleIds}
+                                showPasteButton={showPasteButton}
                             />
                         </Grid>
                         <Grid item>
