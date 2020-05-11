@@ -24,8 +24,6 @@ import os
 import socket
 import subprocess
 
-from test_cli import TestModule
-
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
 
 ALL_SERVICES = DEFAULT_SERVICES + ['monitor', 'worker-manager-cpu', 'worker-manager-gpu']
@@ -46,6 +44,9 @@ SERVICE_TO_IMAGE = {
     'monitor': 'server',
     'worker': 'worker',
 }
+
+# Max timeout in seconds to wait for request to a service to get through
+SERVICE_REQUEST_TIMEOUT_SECONDS = 600
 
 
 def ensure_directory_exists(path):
@@ -270,6 +271,20 @@ CODALAB_ARGUMENTS = [
         default=2048,
         help='Default memory (in MB) for each worker in the AWS Batch Worker Manager',
     ),
+    CodalabArg(
+        name='compose_http_timeout',
+        env_var='COMPOSE_HTTP_TIMEOUT',
+        type=int,
+        default=SERVICE_REQUEST_TIMEOUT_SECONDS,
+        help='Docker Compose HTTP timeout (in seconds)',
+    ),
+    CodalabArg(
+        name='docker_client_timeout',
+        env_var='DOCKER_CLIENT_TIMEOUT',
+        type=int,
+        default=SERVICE_REQUEST_TIMEOUT_SECONDS,
+        help='Docker client timeout (in seconds)',
+    ),
     ### Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
 ]
@@ -322,21 +337,9 @@ class CodalabArgs(object):
             'delete',
             help='Bring down any existing CodaLab service instances (and delete all non-external data!)',
         )
-        test_cmd = subparsers.add_parser(
-            'test', help='Run the test suite and optionally pick which tests to run'
-        )
 
         # Arguments for every subcommand
-        for cmd in [
-            start_cmd,
-            logs_cmd,
-            pull_cmd,
-            build_cmd,
-            run_cmd,
-            stop_cmd,
-            delete_cmd,
-            test_cmd,
-        ]:
+        for cmd in [start_cmd, logs_cmd, pull_cmd, build_cmd, run_cmd, stop_cmd, delete_cmd]:
             cmd.add_argument(
                 '--dry-run',
                 action='store_true',
@@ -388,16 +391,6 @@ class CodalabArgs(object):
                         \'all\' to include default execution images',
                 choices=CodalabServiceManager.ALL_IMAGES + ['all', 'services'],
                 nargs='*',
-            )
-            cmd.add_argument(
-                (
-                    'tests' if cmd == test_cmd else '--tests'
-                ),  # For the explicit test command make this argument positional
-                metavar='TEST',
-                nargs='+',
-                type=str,
-                choices=list(TestModule.modules.keys()) + ['all', 'default'],
-                help='Tests to run. One of: {%(choices)s}',
             )
             cmd.add_argument(
                 '--dev',
@@ -552,8 +545,6 @@ class CodalabServiceManager(object):
             self._run_compose_cmd('stop')
         elif command == 'delete':
             self._run_compose_cmd('down --remove-orphans -v')
-        elif command == 'test':
-            self.run_tests()
         else:
             raise Exception('Bad command: ' + command)
 
@@ -609,6 +600,7 @@ class CodalabServiceManager(object):
             compose_files_str,
             cmd,
         )
+
         compose_env_string = ' '.join('{}={}'.format(k, v) for k, v in self.compose_env.items())
         print('(cd {}; {} {})'.format(self.compose_cwd, compose_env_string, command_string))
         if self.args.dry_run:
@@ -667,7 +659,9 @@ class CodalabServiceManager(object):
 
     @staticmethod
     def wait(host, port, cmd):
-        return '/opt/wait-for-it.sh {}:{} -- {}'.format(host, port, cmd)
+        return '/opt/wait-for-it.sh --timeout={} {}:{} -- {}'.format(
+            SERVICE_REQUEST_TIMEOUT_SECONDS, host, port, cmd
+        )
 
     def wait_mysql(self, cmd):
         return self.wait(self.args.mysql_host, self.args.mysql_port, cmd)
@@ -697,6 +691,7 @@ class CodalabServiceManager(object):
                     ('cli/default_address', rest_url),
                     ('server/engine_url', mysql_url),
                     ('server/rest_host', '0.0.0.0'),
+                    ('server/rest_port', self.args.rest_port),
                     ('server/admin_email', self.args.admin_email),
                     ('server/support_email', self.args.support_email),  # Use support_email
                     ('server/default_user_info/disk_quota', self.args.user_disk_quota),
@@ -753,16 +748,6 @@ class CodalabServiceManager(object):
             self.bring_up_service('worker')
 
         self.bring_up_service('monitor')
-
-    def run_tests(self):
-        print_header('Running tests')
-        self.run_service_cmd(
-            self.wait_rest_server(
-                'python3 test_cli.py --instance http://rest-server:{} {}'.format(
-                    self.args.rest_port, ' '.join(self.args.tests)
-                )
-            )
-        )
 
     def pull_images(self):
         for image in self.SERVICE_IMAGES:
