@@ -1455,21 +1455,23 @@ class BundleCLI(object):
             },
         )
 
-        # Fetch bundle contents from source client
+        # Fetch bundle metadata from source client
         try:
             target_info = source_client.fetch_contents_info(BundleTarget(source_bundle_uuid, ''))
         except NotFoundError:
-            target_info = None
+            print("Cannot find metadata for bundle {}".format(source_bundle_uuid))
+            return
 
         # Collect information about how server should unpack
         filename = nested_dict_get(source_info, 'metadata', 'name')
         # Zip bundle directory if there is any
-        if target_info and target_info['type'] == 'directory':
+        if target_info['type'] == 'directory':
             filename += '.tar.gz'
             unpack = True
         else:
             unpack = False
 
+        # Fetch bundle content from source client
         try:
             source_file = source_client.fetch_contents_blob(BundleTarget(source_bundle_uuid, ''))
         except NotFoundError:
