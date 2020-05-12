@@ -18,6 +18,7 @@ class ItemWrapper extends React.Component {
             after_sort_key,
             worksheetUUID,
             reloadWorksheet,
+            saveAndUpdateWorksheet,
         } = this.props;
         const { showNewRun, showNewText } = this.props;
 
