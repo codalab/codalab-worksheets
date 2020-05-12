@@ -26,3 +26,13 @@ class BundleCliTest(unittest.TestCase):
         expected_result = ['cl', 'run', "echo 'hello world!'"]
         actual_result = self.bundle_cli.collapse_bare_command(argv)
         self.assertEqual(actual_result, expected_result)
+
+    def test_collapse_bare_command_punctuation_char_semicolon(self):
+        argv = ['cl', 'run', '---', 'date', ';', 'sleep', '10']
+        expected_result = ['cl', 'run', 'date ; sleep 10']
+        actual_result = self.bundle_cli.collapse_bare_command(argv)
+        self.assertEqual(actual_result, expected_result)
+
+
+if __name__ == '__main__':
+    unittest.main()

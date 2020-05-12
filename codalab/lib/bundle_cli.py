@@ -29,7 +29,6 @@ import json
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
-from shlex import quote
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -156,6 +155,7 @@ HEADING_LEVEL_2 = '## '
 HEADING_LEVEL_3 = '### '
 
 NO_RESULTS_FOUND = 'No results found'
+COMMAND_PLACEHOLDER = '<cmd>'
 
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
@@ -815,8 +815,15 @@ class BundleCLI(object):
         """
         try:
             i = argv.index('---')
-            # Convert the command after '---' to a shell-escaped version of the string.
-            shell_escaped_command = [quote(x) for x in argv[i + 1 :]]
+            # This is to get the default list of punctuation chars from shlex. When punctuation_chars = True,
+            # the class property punctuation_chars is set as '();<>|&'. Otherwise, an empty string will be returned.
+            punctuation_chars = list(
+                shlex.shlex(COMMAND_PLACEHOLDER, punctuation_chars=True).punctuation_chars
+            )
+            # Convert string that is not a punctuation char after '---' to a shell-escaped version of the string.
+            shell_escaped_command = [
+                shlex.quote(x) if x not in punctuation_chars else x for x in argv[i + 1 :]
+            ]
             argv = argv[0:i] + [' '.join(shell_escaped_command)]
         except:
             pass
