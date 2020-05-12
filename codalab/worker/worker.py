@@ -234,6 +234,10 @@ class Worker:
                 self.stop = True
 
     def restage_bundles(self):
+        """
+        Restage bundles not in the final states [FINISHED and STAGED] from worker to server.
+        :return: the number of restaged bundles
+        """
         restaged_bundles = []
         terminal_stages = [RunStage.FINISHED, RunStage.STAGED]
         for uuid in self.runs:
