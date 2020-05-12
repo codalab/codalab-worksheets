@@ -32,7 +32,3 @@ class BundleCliTest(unittest.TestCase):
         expected_result = ['cl', 'run', 'date ; sleep 10']
         actual_result = self.bundle_cli.collapse_bare_command(argv)
         self.assertEqual(actual_result, expected_result)
-
-
-if __name__ == '__main__':
-    unittest.main()
