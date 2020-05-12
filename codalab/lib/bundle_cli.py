@@ -29,7 +29,6 @@ import json
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
-from shlex import quote
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -816,7 +815,7 @@ class BundleCLI(object):
         try:
             i = argv.index('---')
             # Convert empty string after '---' to a shell-escaped version of the string.
-            shell_escaped_command = [quote(x) if not x else x for x in argv[i + 1 :]]
+            shell_escaped_command = [shlex.quote(x) if not x else x for x in argv[i + 1 :]]
             argv = argv[0:i] + [' '.join(shell_escaped_command)]
         except:
             pass
