@@ -109,15 +109,17 @@ def get_info(uuid, key):
     return _run_command([cl, 'info', '-f', key, uuid])
 
 
-def wait_until_running(uuid, timeout_seconds=100):
+def wait_until_state(uuid, expected_state='running', timeout_seconds=100):
     start_time = time.time()
     while True:
-        if time.time() - start_time > 100:
+        if time.time() - start_time > timeout_seconds:
             raise AssertionError('timeout while waiting for %s to run' % uuid)
         state = get_info(uuid, 'state')
-        # Break when running or one of the final states
-        if state in {'running', 'ready', 'failed'}:
-            assert state == 'running', "waiting for 'running' state, but got '%s'" % state
+        # Break when running or one of the final states or expected_state
+        if state in {'running', 'ready', 'failed', expected_state}:
+            assert state == expected_state, "waiting for '()' state, but got '{}'".format(
+                expected_state, state
+            )
             return
         time.sleep(0.5)
 
@@ -125,7 +127,7 @@ def wait_until_running(uuid, timeout_seconds=100):
 def wait_for_contents(uuid, substring, timeout_seconds=100):
     start_time = time.time()
     while True:
-        if time.time() - start_time > 100:
+        if time.time() - start_time > timeout_seconds:
             raise AssertionError('timeout while waiting for %s to run' % uuid)
         try:
             out = _run_command([cl, 'cat', uuid])
@@ -1102,7 +1104,7 @@ def test(ctx):
             'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done',
         ]
     )
-    wait_until_running(uuid)
+    wait_until_state(uuid)
 
     # Tests reading first while the bundle is running and then after it is
     # killed.
@@ -1156,7 +1158,7 @@ def test(ctx):
 @TestModule.register('kill')
 def test(ctx):
     uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
-    wait_until_running(uuid)
+    wait_until_state(uuid)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
     _run_command([cl, 'wait', uuid], 1)
     _run_command([cl, 'wait', uuid], 1)
@@ -1166,7 +1168,7 @@ def test(ctx):
 @TestModule.register('write')
 def test(ctx):
     uuid = _run_command([cl, 'run', 'sleep 5'])
-    wait_until_running(uuid)
+    wait_until_state(uuid)
     target = uuid + '/message'
     _run_command([cl, 'write', 'file with space', 'hello world'], 1)  # Not allowed
     check_equals(uuid, _run_command([cl, 'write', target, 'hello world']))
@@ -1376,6 +1378,14 @@ def test(ctx):
 
 @TestModule.register('copy')
 def test(ctx):
+    def assert_bundles_ready(worksheet):
+        _run_command([cl, 'work', worksheet])
+        bundles = _run_command([cl, 'ls', '--uuid-only'])
+        # TODO: remove this -tony
+        print('Tony - worksheet: {}, bundles: {}'.format(worksheet, bundles))
+        for uuid in bundles.split('\n'):
+            wait_until_state(uuid, 'ready')
+
     """Test copying between instances."""
     source_worksheet = current_worksheet()
 
@@ -1421,6 +1431,8 @@ def test(ctx):
         # Test adding worksheet items
         _run_command([cl, 'wadd', source_worksheet, remote_worksheet])
         _run_command([cl, 'wadd', remote_worksheet, source_worksheet])
+        assert_bundles_ready(source_worksheet)
+        assert_bundles_ready(remote_worksheet)
 
 
 @TestModule.register('groups')
@@ -1457,13 +1469,13 @@ def test(ctx):
 def test(ctx):
     script_uuid = _run_command([cl, 'upload', test_path('netcat-test.py')])
     uuid = _run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
-    wait_until_running(uuid)
+    wait_until_state(uuid)
     time.sleep(5)
     output = _run_command([cl, 'netcat', uuid, '5005', '---', 'hi patrick'])
     check_equals('No, this is dawg', output)
 
     uuid = _run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
-    wait_until_running(uuid)
+    wait_until_state(uuid)
     time.sleep(5)
     output = _run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
     check_equals('Hi this is dawg', output)
@@ -1472,7 +1484,7 @@ def test(ctx):
 @TestModule.register('netcurl')
 def test(ctx):
     uuid = _run_command([cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'])
-    wait_until_running(uuid)
+    wait_until_state(uuid)
     address = ctx.client.address
     check_equals(
         'hello',
