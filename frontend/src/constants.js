@@ -11,10 +11,15 @@ export const FILE_SIZE_LIMIT_B = FILE_SIZE_LIMIT_GB * 1024 * 1024 * 1024;
 export const LOCAL_STORAGE_WORKSHEET_WIDTH = 'worksheetWidth';
 
 // Dialog constants
-export const OPEN_DELETE_BUNDLE = 1;
-export const OPEN_DETACH = 2;
-export const OPEN_KILL = 3;
-export const OPEN_DELETE_MARKDOWN = 4;
+export const DIALOG_TYPES = {
+    OPEN_DELETE_BUNDLE: 'delete_bundle',
+    OPEN_DETACH: 'detach_bundle',
+    OPEN_KILL: 'kill_bundle',
+    OPEN_DELETE_MARKDOWN: 'delete_markdown_block',
+    OPEN_DELETE_WORKSHEET: 'delete_whole_worksheet',
+    OPEN_ERROR_DIALOG: 'error_dialog',
+};
+
 // Bundle fetch status values; corresponds with FetchStatusCodes in backend
 export const FETCH_STATUS_SCHEMA = {
     UNKNOWN: 'unknown',
