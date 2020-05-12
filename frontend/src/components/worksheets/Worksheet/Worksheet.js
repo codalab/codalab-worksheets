@@ -386,6 +386,10 @@ class Worksheet extends React.Component {
     };
 
     handleCommand = (cmd_type) => {
+        if (this.state.openDialog) {
+            this.setState({ openDialog: null });
+            return;
+        }
         if (cmd_type === 'deleteItem') {
             // This is used to delete markdown blocks
             this.setState({ openDialog: OPEN_DELETE_MARKDOWN });
