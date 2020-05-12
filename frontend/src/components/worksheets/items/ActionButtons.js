@@ -5,18 +5,14 @@ import { withStyles } from '@material-ui/core/styles';
 import RunIcon from '@material-ui/icons/PlayCircleOutline';
 import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
 import AddIcon from '@material-ui/icons/AddBoxOutlined';
+import NoteAddIcon from '@material-ui/icons/NoteAdd';
 import BundleBulkActionMenu from '../BundleBulkActionMenu';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
+import Tooltip from '@material-ui/core/Tooltip';
 
 const StyledMenuItem = withStyles((theme) => ({
     root: {
-        '&:focus': {
-            backgroundColor: theme.palette.primary.main,
-            '& .MuiListItemIcon-root, & .MuiListItemText-primary': {
-                color: theme.palette.common.white,
-            },
-        },
         border: '2px solid #d3d4d5',
     },
 }))(MenuItem);
@@ -45,11 +41,12 @@ class ActionButtons extends React.Component<{
             uploadAnchor,
             handleSelectedBundleCommand,
             showBundleOperationButtons,
-            togglePopup,
+            toggleCmdDialog,
+            toggleCmdDialogNoEvent,
             info,
+            showPasteButton,
         } = this.props;
         let editPermission = info && info.edit_permission;
-
         return (
             <div
                 onMouseMove={(ev) => {
@@ -76,6 +73,8 @@ class ActionButtons extends React.Component<{
                             color='inherit'
                             id='upload-button'
                             aria-label='Add New Upload'
+                            aria-controls='upload-menu'
+                            aria-haspopup='true'
                             onClick={showUploadMenu}
                             disabled={!editPermission}
                         >
@@ -99,7 +98,24 @@ class ActionButtons extends React.Component<{
                             open={Boolean(uploadAnchor)}
                             onClose={closeUploadMenu}
                         >
-                            <StyledMenuItem onClick={closeUploadMenu}>
+                            {/* we need to hide the first menuItem
+                            but make it available for accessibility
+                            reference: https://snook.ca/archives/
+                            html_and_css/hiding-content-for-accessibility */}
+                            <StyledMenuItem
+                                key='placeholder'
+                                style={{
+                                    position: 'absolute',
+                                    overflow: 'hidden',
+                                    clip: 'rect(0 0 0 0)',
+                                    height: '1px',
+                                    width: '1px',
+                                    margin: '-1px',
+                                    padding: 0,
+                                    border: 0,
+                                }}
+                            />
+                            <StyledMenuItem key='file-upload-item' onClick={closeUploadMenu}>
                                 <label
                                     className={classes.uploadLabel}
                                     htmlFor='codalab-file-upload-input'
@@ -107,7 +123,7 @@ class ActionButtons extends React.Component<{
                                     File(s) Upload
                                 </label>
                             </StyledMenuItem>
-                            <StyledMenuItem onClick={closeUploadMenu}>
+                            <StyledMenuItem key='folder-upload-item' onClick={closeUploadMenu}>
                                 <label
                                     className={classes.uploadLabel}
                                     htmlFor='codalab-dir-upload-input'
@@ -133,9 +149,23 @@ class ActionButtons extends React.Component<{
                 {showBundleOperationButtons ? (
                     <BundleBulkActionMenu
                         handleSelectedBundleCommand={handleSelectedBundleCommand}
-                        togglePopup={togglePopup}
+                        toggleCmdDialog={toggleCmdDialog}
+                        toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
                     />
                 ) : null}
+                <Tooltip title='Paste copied bundles to this worksheet'>
+                    <Button
+                        size='small'
+                        color='inherit'
+                        aria-label='Paste'
+                        onClick={toggleCmdDialog('paste')}
+                        disabled={!editPermission || !showPasteButton}
+                        id='paste-button'
+                    >
+                        <NoteAddIcon className={classes.buttonIcon} />
+                        Paste bundles
+                    </Button>
+                </Tooltip>
             </div>
         );
     }

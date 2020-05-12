@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Alert, Modal } from 'react-bootstrap';
 import './ExtraWorksheetHTML.scss';
 
-const GlossaryModal = ({ show, toggle }) => (
+const KeyboardShortcutModal = ({ show, toggle }) => (
     <Modal id='glossaryModal' tabIndex='-1' keyboard show={show} onHide={toggle}>
         <Modal.Header closeButton>
             <h4>Keyboard Shortcuts</h4>
@@ -99,6 +99,12 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Edit and add a rerun in bundle details</td>
                     </tr>
+                    <tr>
+                        <td>
+                            <kbd>a v</kbd>
+                        </td>
+                        <td>Paste clipboard content to source after the current line</td>
+                    </tr>
                     <th>Bundles operation</th>
                     <tr>
                         <td>
@@ -112,6 +118,12 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Kill all selected bundles</td>
                     </tr>
+                    <tr>
+                        <td>
+                            <kbd>a c</kbd>
+                        </td>
+                        <td>Copy all selected bundles' ids</td>
+                    </tr>
                     <th>Other</th>
                     <tr>
                         <td>
@@ -121,7 +133,7 @@ const GlossaryModal = ({ show, toggle }) => (
                     </tr>
                     <tr>
                         <td>
-                            <kbd>c</kbd>
+                            <kbd>c c</kbd>
                         </td>
                         <td>Open full web terminal regardless of show/hide status</td>
                     </tr>
@@ -149,6 +161,12 @@ const GlossaryModal = ({ show, toggle }) => (
                         </td>
                         <td>Show keyboard shortcut help</td>
                     </tr>
+                    <tr>
+                        <td>
+                            <kbd>+</kbd>
+                        </td>
+                        <td>Expand/shrink worksheet size</td>
+                    </tr>
                 </tbody>
             </table>
             <div>
@@ -171,12 +189,13 @@ let ExtraWorksheetHTML = ({
         <div id='update_progress' className='progress-message'>
             <img src='/img/Preloader_Small.gif' /> Updating...
         </div>
+        {/* TODO: Move all error messages to worksheet dialog */}
         {errorMessage && (
             <Alert className='codalab-error-message' bsStyle='danger' onDismiss={clearErrorMessage}>
                 <i className='glyphicon glyphicon-remove-circle' /> Error: {errorMessage}
             </Alert>
         )}
-        <GlossaryModal show={showGlossaryModal} toggle={toggleGlossaryModal} />
+        <KeyboardShortcutModal show={showGlossaryModal} toggle={toggleGlossaryModal} />
     </React.Fragment>
 );
 
