@@ -159,6 +159,8 @@ class SchemaBlockSchema(WorksheetBlockSchema):
     schema_name = fields.String(required=True)
     header = fields.List(fields.String(), required=True)
     field_rows = fields.List(fields.Dict(), required=True)
+    start_index = fields.Integer()
+    end_index = fields.Integer()
 
 class TableBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.table_block)

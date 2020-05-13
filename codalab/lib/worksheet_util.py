@@ -898,6 +898,7 @@ def interpret_items(schemas, raw_items, db_model=None):
     # Go through all the raw items...
     last_was_empty_line = False
     current_schema_name = None
+    start_schema_index = None
     for raw_index, item in enumerate(raw_items):
         new_last_was_empty_line = True
         try:
@@ -931,6 +932,8 @@ def interpret_items(schemas, raw_items, db_model=None):
                                 'schema_name': current_schema_name,
                                 'field_rows': [{"field": field, "generated-path": path, "post-processing": post} 
                                                     for field, path, post in current_schema],
+                                'start_index': start_schema_index,
+                                'end_index:': raw_index,
                             }
                         )
                         .data
@@ -986,6 +989,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                     pass
                 elif command == 'schema':
                     # Start defining new schema
+                    start_schema_index = raw_index
                     if len(value_obj) < 2:
                         raise UsageError("`schema` missing name")
                     name = value_obj[1]

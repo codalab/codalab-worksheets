@@ -545,6 +545,8 @@ class Worksheet extends React.Component {
         });
     };
 
+    updateDisplaySchema = (rows, original_source_indices) => {};
+
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
         // prevent multiple clicking from resetting the index
@@ -1645,7 +1647,6 @@ class Worksheet extends React.Component {
         );
         if (info && info.title) {
             document.title = info.title;
-            console.log('Info: ', info);
         }
 
         return (

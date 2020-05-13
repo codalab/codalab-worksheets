@@ -3,6 +3,7 @@ import * as React from 'react';
 import * as $ from 'jquery';
 import { withStyles } from '@material-ui/core/styles';
 import { renderFormat, serializeFormat } from '../util/worksheet_utils';
+import TextField from '@material-ui/core/TextField';
 
 const KEYCODE_ESC = 27;
 
