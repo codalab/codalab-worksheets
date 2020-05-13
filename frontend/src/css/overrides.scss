@@ -28,3 +28,9 @@ iframe {
     top: 64px;
     z-index: 1070;
 }
+
+.ui.search > .results .result .title,
+.ui.search > .results > .message .header,
+.ui.category.search > .results .category > .name {
+    font-family: 'Roboto', 'Helvetica Neue', sans-serif !important;
+}
