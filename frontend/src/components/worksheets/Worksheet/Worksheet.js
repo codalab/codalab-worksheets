@@ -801,6 +801,12 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
 
+            // Focus on search
+            Mousetrap.bind(['a+f'], function(e) {
+                document.getElementById('search-bar').focus();
+                return false; //prevent keypress to bubble
+            });
+
             Mousetrap.bind(
                 ['up', 'k'],
                 function(e) {
