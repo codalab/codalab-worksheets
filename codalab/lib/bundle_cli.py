@@ -1455,43 +1455,52 @@ class BundleCLI(object):
             },
         )
 
-        # If bundle contents don't exist, finish after just copying metadata
+        # Fetch bundle metadata from source client
         try:
             target_info = source_client.fetch_contents_info(BundleTarget(source_bundle_uuid, ''))
         except NotFoundError:
+            print("Cannot find metadata for bundle {}".format(source_bundle_uuid))
             return
 
         # Collect information about how server should unpack
         filename = nested_dict_get(source_info, 'metadata', 'name')
+        # Zip bundle directory if there is any
         if target_info['type'] == 'directory':
             filename += '.tar.gz'
             unpack = True
         else:
             unpack = False
 
-        # Bundles stuck in non-final states such as 'running' should not keep
-        # that state at the destination server, and should instead just fallback
-        # to 'failed'
-        if source_info['state'] == State.READY:
-            source_state = State.READY
-        else:
-            source_state = State.FAILED
+        # Fetch bundle content from source client
+        try:
+            source_file = source_client.fetch_contents_blob(BundleTarget(source_bundle_uuid, ''))
+        except NotFoundError:
+            source_file = None
 
-        # Send file over
-        progress = FileTransferProgress('Copied ', f=self.stderr)
-        source = source_client.fetch_contents_blob(BundleTarget(source_bundle_uuid, ''))
-        with closing(source), progress:
+        if source_file:
+            # Send file over
+            progress = FileTransferProgress('Copied ', f=self.stderr)
+            with closing(source_file), progress:
+                dest_client.upload_contents_blob(
+                    dest_bundle['id'],
+                    fileobj=source_file,
+                    params={
+                        'filename': filename,
+                        'unpack': unpack,
+                        'simplify': False,  # retain original bundle verbatim
+                        'state_on_success': source_info['state'],  # copy bundle state
+                        'finalize_on_success': True,
+                    },
+                    progress_callback=progress.update,
+                )
+        else:
+            # Update the bundle state with final states
             dest_client.upload_contents_blob(
                 dest_bundle['id'],
-                fileobj=source,
                 params={
-                    'filename': filename,
-                    'unpack': unpack,
-                    'simplify': False,  # retain original bundle verbatim
-                    'state_on_success': source_state,  # copy bundle state
+                    'state_on_success': source_info['state'],  # copy bundle state
                     'finalize_on_success': True,
                 },
-                progress_callback=progress.update,
             )
 
     @Commands.command(
