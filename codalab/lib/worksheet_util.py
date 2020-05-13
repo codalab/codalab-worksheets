@@ -921,7 +921,7 @@ def interpret_items(schemas, raw_items, db_model=None):
 
             # Reset schema to minimize long distance dependencies of directives
             if not is_directive:
-                if (current_schema is not None):
+                if current_schema is not None:
                     print(current_schema, flush=True)
                     blocks.append(
                         SchemaBlockSchema()
@@ -930,8 +930,14 @@ def interpret_items(schemas, raw_items, db_model=None):
                                 'status': FetchStatusSchema.get_unknown_status(),
                                 'header': ["field", "generated-path", "post-processing"],
                                 'schema_name': current_schema_name,
-                                'field_rows': [{"field": field, "generated-path": path, "post-processing": post} 
-                                                    for field, path, post in current_schema],
+                                'field_rows': [
+                                    {
+                                        "field": field,
+                                        "generated-path": path,
+                                        "post-processing": post,
+                                    }
+                                    for field, path, post in current_schema
+                                ],
                                 'start_index': start_schema_index,
                                 'end_index:': raw_index,
                             }

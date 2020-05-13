@@ -150,6 +150,7 @@ class BundleImageBlockSchema(BundleBlockSchema):
     height = fields.Integer()
     width = fields.Integer()
 
+
 class SchemaBlockSchema(WorksheetBlockSchema):
     """
     Schema for user defined schemas in worksheets
@@ -161,6 +162,7 @@ class SchemaBlockSchema(WorksheetBlockSchema):
     field_rows = fields.List(fields.Dict(), required=True)
     start_index = fields.Integer()
     end_index = fields.Integer()
+
 
 class TableBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.table_block)
