@@ -1381,8 +1381,6 @@ def test(ctx):
     def assert_bundles_ready(worksheet):
         _run_command([cl, 'work', worksheet])
         bundles = _run_command([cl, 'ls', '--uuid-only'])
-        # TODO: remove this -tony
-        print('Tony - worksheet: {}, bundles: {}'.format(worksheet, bundles))
         for uuid in bundles.split('\n'):
             wait_until_state(uuid, 'ready')
 
