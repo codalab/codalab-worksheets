@@ -6,6 +6,9 @@ services:
     command: npm start
     volumes:
       - ./../../frontend/src:/opt/frontend/src
+    # Fix for https://github.com/facebook/create-react-app/issues/8688
+    stdin_open: true
+    tty: true
   # 2) Hot load the alembic version files so that we can create new database migrations (which need to written out
   # of Docker into the `alembic` source directory)
   rest-server:

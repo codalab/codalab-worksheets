@@ -49,6 +49,7 @@ Usage: `cl <command> <arguments>`
       command                      Arbitrary Linux command to execute.
       -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
       -a, --after_sort_key         Insert after this sort_key
+      -m, --memoize                If a bundle with the same command and dependencies already exists, return it instead of creating a new one.
       -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description            Full description of the bundle.
       --tags                       Space-separated list of tags used for search (e.g., machine-learning).
@@ -145,6 +146,9 @@ Usage: `cl <command> <arguments>`
       search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
       search .offset=<offset>                : Return results starting at <offset>.
     
+      search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-3-14).
+      search .after=<datetime>               : Returns bundles created after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
+    
       search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
       search size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).
       search .last                           : Sort in reverse chronological order (equivalent to id=.sort-).
@@ -193,6 +197,7 @@ Usage: `cl <command> <arguments>`
     Arguments:
       target_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
       -o, --output-path     Path to download bundle to.  By default, the bundle or subpath name in the current directory is used.
+      -f, --force           Overwrite the output path if a file already exists.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
 ### mimic:
@@ -220,6 +225,7 @@ Usage: `cl <command> <arguments>`
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
       -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+      -m, --memoize                If a bundle with the same command and dependencies already exists, return it instead of creating a new one.
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
       -v, --verbose                Display verbose output.
@@ -247,6 +253,7 @@ Usage: `cl <command> <arguments>`
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
       -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+      -m, --memoize                If a bundle with the same command and dependencies already exists, return it instead of creating a new one.
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
       -v, --verbose                Display verbose output.

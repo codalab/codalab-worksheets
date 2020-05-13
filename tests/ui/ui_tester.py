@@ -198,6 +198,13 @@ class UITester(ABC):
 
     def wait_until_worksheet_content_loads(self):
         self.wait_until_page_loads('ws-item')
+        # Wait until placeholder items have been resolved.
+        by = By.CLASS_NAME
+        selector = "codalab-item-placeholder"
+        timeout_message = 'Timed out while waiting for {}: {} to be hidden.'.format(by, selector)
+        WebDriverWait(self.browser, 300).until(
+            EC.invisibility_of_element_located((by, selector)), message=timeout_message
+        )
 
     def wait_until_page_loads(self, selector, by=By.CLASS_NAME):
         timeout_message = 'Timed out while waiting for {}: {}.'.format(by, selector)
@@ -310,6 +317,13 @@ class WorksheetTest(UITester):
     def test(self):
         self.login()
         self.wait_until_worksheet_content_loads()
+        # wait for small worksheet to be resolved from place holder item
+        by = By.LINK_TEXT
+        selector = "Small Worksheet [cl_small_worksheet]"
+        timeout_message = 'Timed out while waiting for {}: {}.'.format(by, selector)
+        WebDriverWait(self.browser, 10).until(
+            EC.presence_of_element_located((by, selector)), message=timeout_message
+        )
         self.click(By.LINK_TEXT, 'Small Worksheet [cl_small_worksheet]')
         self.switch_to_new_tab()
         self.wait_until_worksheet_content_loads()

@@ -21,7 +21,6 @@ import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import Snackbar from '@material-ui/core/Snackbar';
 import SnackbarContent from '@material-ui/core/SnackbarContent';
-
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
 import GalleryIcon from '@material-ui/icons/Public'; // FindInPage
 import HowToIcon from '@material-ui/icons/Help'; // Info
@@ -32,8 +31,10 @@ import SuccessIcon from '@material-ui/icons/CheckCircle';
 import ErrorIcon from '@material-ui/icons/Error';
 import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
-
+import Search from 'semantic-ui-react/dist/commonjs/modules/Search';
+import _ from 'lodash';
 import { executeCommand } from '../util/cli_utils';
+import DOMPurify from 'dompurify';
 
 const kDefaultWorksheetName = 'unnamed';
 
@@ -54,6 +55,9 @@ class NavBar extends React.Component<{
             snackbarShow: false,
             snackbarMessage: '',
             snackbarVariant: '',
+            value: '',
+            isLoading: false,
+            results: [],
         };
     }
 
@@ -107,10 +111,158 @@ class NavBar extends React.Component<{
             });
     }
 
+    search(keyword) {
+        const url = '/rest/interpret/wsearch';
+
+        $.ajax({
+            url: url,
+            dataType: 'json',
+            type: 'POST',
+            cache: false,
+            data: JSON.stringify({ keywords: [keyword] }),
+            contentType: 'application/json; charset=utf-8',
+            success: (data) => {
+                console.log(data);
+            },
+            error: (xhr, status, err) => {
+                console.error(xhr.responseText);
+            },
+        });
+    }
+
+    handleChange = (e, { value }) => this.setState({ value });
+
+    handleResultSelect = (e, { result }) => {
+        window.open('/worksheets/' + result.uuid, '_self');
+    };
+
+    initialState = { isLoading: false, results: [], value: '' };
+
+    resultRenderer = ({ title, description }) => [
+        <div key='content' className='content'>
+            {title && <div dangerouslySetInnerHTML={{ __html: title }} className='title'></div>}
+            {description && (
+                <div
+                    dangerouslySetInnerHTML={{ __html: description }}
+                    className='description'
+                ></div>
+            )}
+        </div>,
+    ];
+
+    handleSearchChange = (e, { value }) => {
+        this.setState({ isLoading: true, value });
+
+        setTimeout(() => {
+            if (this.state.value.length < 1) return this.setState(this.initialState);
+            const keywords = this.state.value.split(' ');
+            const regexKeywords = keywords.join('|');
+            const re = new RegExp(regexKeywords, 'gi');
+
+            const url = '/rest/interpret/wsearch';
+
+            $.ajax({
+                url: url,
+                dataType: 'json',
+                type: 'POST',
+                cache: false,
+                data: JSON.stringify({ keywords: keywords }),
+                contentType: 'application/json; charset=utf-8',
+                success: (data) => {
+                    /*
+                    Response body:
+                    ```
+                    {
+                        "response": [
+                            {id: 6,
+                            uuid: "0x5505f540936f4d0d919f3186141192b0",
+                            name: "codalab-a",
+                            title: "CodaLab Dashboard",
+                            frozen: null,
+                            owner_id: "0"
+                            owner_name: "codalab"
+                            group_permissions: {
+                                id: 8,
+                                group_uuid: "0x41e95d8592de417cbb726085d6986137",
+                                group_name: "public",
+                                permission: 1}
+                            }
+                            ...
+                        ]
+                    }
+                    ```
+
+                    turn the above response into the following dict
+                    ```
+                    {
+                        "name": "codalab",
+                        "results": [
+                            {
+                                "title": "Brakus Group",
+                                "description": "Cloned interactive Graphic Interface",
+                            },
+                        ]
+                    }
+                    ```
+                    */
+                    let filteredResults = {};
+                    for (let item of data.response) {
+                        // use DOMPurify to get rid of the XSS security risk
+                        item.description = DOMPurify.sanitize(
+                            item.name.replace(re, "<span id='highlight'>$&</span>"),
+                        );
+                        item.title = DOMPurify.sanitize(
+                            (item.title || '').replace(re, "<span id='highlight'>$&</span>"),
+                        );
+
+                        if (!(item.owner_name in filteredResults)) {
+                            filteredResults[item.owner_name] = {
+                                name: item.owner_name,
+                                results: [],
+                            };
+                        }
+                        filteredResults[item.owner_name].results.push(item);
+                    }
+
+                    /*
+                    turn the above dict into a a dict with a key of category name,
+                    e.g., codalab
+                    {
+                        "codalab": {
+                            "name": "codalab",
+                            "results": [
+                                {
+                                    "title": "Brakus Group",
+                                    "description": "Cloned interactive Graphic Interface",
+                                },
+                            ]
+                        },
+                    */
+                    const finalResults = _.reduce(
+                        filteredResults,
+                        (memo, data, name) => {
+                            memo[name] = { name, results: data.results };
+                            return memo;
+                        },
+                        {},
+                    );
+
+                    this.setState({
+                        isLoading: false,
+                        results: finalResults,
+                    });
+                },
+                error: (xhr, status, err) => {
+                    console.error(xhr.responseText);
+                },
+            });
+        }, 300);
+    };
+
     /** Renderer. */
     render() {
         const { classes } = this.props;
-        const { accountEl } = this.state;
+        const { accountEl, isLoading, value, results } = this.state;
 
         if (this.props.auth.isAuthenticated && this.state.userInfo === undefined) {
             this.fetchName();
@@ -136,8 +288,28 @@ class NavBar extends React.Component<{
                                 />
                             </Link>
                         </div>
+                        {this.props.auth.isAuthenticated && (
+                            <div className={classes.searchContainer}>
+                                <Search
+                                    category
+                                    loading={isLoading}
+                                    input={{ icon: 'search', iconPosition: 'left', fluid: true }}
+                                    onResultSelect={this.handleResultSelect}
+                                    onSearchChange={_.debounce(this.handleSearchChange, 500, {
+                                        leading: true,
+                                    })}
+                                    placeholder='search worksheets...'
+                                    resultRenderer={this.resultRenderer}
+                                    results={results}
+                                    value={value}
+                                    showNoResults={true}
+                                    id='search-bar'
+                                />
+                            </div>
+                        )}
                         {!this.props.auth.isAuthenticated && (
                             <React.Fragment>
+                                <div className={classes.searchContainer} />
                                 <Link to='/account/signup'>
                                     <Button color='inherit'>Sign Up</Button>
                                 </Link>
@@ -324,7 +496,11 @@ const overrideMedia = createMuiTheme({
 
 const styles = (theme) => ({
     logoContainer: {
+        marginRight: 40,
+    },
+    searchContainer: {
         flexGrow: 1,
+        marginRight: 20,
     },
     logo: {
         maxHeight: 40,

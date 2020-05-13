@@ -46,6 +46,7 @@ from codalab.rest.worksheet_block_schemas import (
     RecordsBlockSchema,
     GraphBlockSchema,
     SchemaBlockSchema,
+    PlaceholderBlockSchema,
     SubworksheetsBlock,
     BundleUUIDSpecSchema,
 )
@@ -820,6 +821,10 @@ def interpret_items(schemas, raw_items, db_model=None):
                         'status': FetchStatusSchema.get_unknown_status(),
                         'header': header,
                         'rows': rows,
+                        'sort_keys': [
+                            processed_bundle_info["sort_key"]
+                            for processed_bundle_info in processed_bundle_infos
+                        ],
                     }
                 )
                 .data
@@ -878,7 +883,14 @@ def interpret_items(schemas, raw_items, db_model=None):
             return
 
         blocks.append(
-            SubworksheetsBlock().load({'subworksheet_infos': copy.deepcopy(worksheet_infos)}).data
+            SubworksheetsBlock()
+            .load(
+                {
+                    'subworksheet_infos': copy.deepcopy(worksheet_infos),
+                    'sort_keys': [worksheet_info["sort_key"] for worksheet_info in worksheet_infos],
+                }
+            )
+            .data
         )
 
         worksheet_infos[:] = []
@@ -926,9 +938,11 @@ def interpret_items(schemas, raw_items, db_model=None):
                 current_schema = None
 
             if item_type == TYPE_BUNDLE:
+                bundle_info["sort_key"] = sort_key
                 raw_to_block.append((len(blocks), len(bundle_infos)))
                 bundle_infos.append((raw_index, bundle_info))
             elif item_type == TYPE_WORKSHEET:
+                subworksheet_info["sort_key"] = sort_key
                 raw_to_block.append((len(blocks), len(worksheet_infos)))
                 worksheet_infos.append(subworksheet_info)
             elif item_type == TYPE_MARKUP:
@@ -995,6 +1009,20 @@ def interpret_items(schemas, raw_items, db_model=None):
                 elif command == 'display':
                     # Set display
                     current_display = value_obj[1:]
+                elif command in ('search', 'wsearch'):
+                    # Show item placeholders in brief mode
+                    blocks.append(
+                        PlaceholderBlockSchema()
+                        .load(
+                            {
+                                'directive': formatting.tokens_to_string(value_obj),
+                                'sort_keys': [sort_key],
+                            }
+                        )
+                        .data
+                    )
+
+                    raw_to_block.append((len(blocks) - 1, 0))
                 else:
                     raise UsageError("unknown directive `%s`" % command)
 

@@ -2,17 +2,29 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
-import { keepPosInView, renderPermissions, getMinMaxKeys } from '../../../util/worksheet_utils';
+import {
+    keepPosInView,
+    renderPermissions,
+    getAfterSortKey,
+    createAlertText,
+    getIds,
+} from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
 import ExtraWorksheetHTML from '../ExtraWorksheetHTML/ExtraWorksheetHTML';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
-import { NAVBAR_HEIGHT } from '../../../constants';
+import {
+    NAVBAR_HEIGHT,
+    EXPANDED_WORKSHEET_WIDTH,
+    DEFAULT_WORKSHEET_WIDTH,
+    LOCAL_STORAGE_WORKSHEET_WIDTH,
+} from '../../../constants';
 import WorksheetActionBar from '../WorksheetActionBar';
 import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
+import Icon from '@material-ui/core/Icon';
 import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
 import DeleteIcon from '@material-ui/icons/DeleteOutline';
@@ -35,6 +47,8 @@ import Grid from '@material-ui/core/Grid';
 import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import queryString from 'query-string';
+import { setPriority } from 'os';
 
 /*
 Information about the current worksheet and its items.
@@ -44,90 +58,17 @@ Information about the current worksheet and its items.
 let ace = window.ace;
 toast.configure();
 
-var WorksheetContent = (function() {
-    function WorksheetContent(uuid) {
-        this.uuid = uuid;
-        this.info = null; // Worksheet info
-    }
-
-    WorksheetContent.prototype.fetch = function(props) {
-        // Set defaults
-        props = props || {};
-        props.success = props.success || function(data) {};
-        props.error = props.error || function(xhr, status, err) {};
-        if (props.async === undefined) {
-            props.async = true;
-        }
-
-        $.ajax({
-            type: 'GET',
-            url: '/rest/interpret/worksheet/' + this.uuid,
-            // TODO: migrate to using main API
-            // url: '/rest/worksheets/' + ws.uuid,
-            async: props.async,
-            dataType: 'json',
-            cache: false,
-            success: function(info) {
-                this.info = info;
-                props.success(this.info);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error(xhr, status, err);
-            },
-        });
-    };
-
-    WorksheetContent.prototype.saveWorksheet = function(props) {
-        if (this.info === undefined) return;
-        $('#update_progress').show();
-        props = props || {};
-        props.success = props.success || function(data) {};
-        props.error = props.error || function(xhr, status, err) {};
-        $('#save_error').hide();
-        $.ajax({
-            type: 'POST',
-            cache: false,
-            url: '/rest/worksheets/' + this.uuid + '/raw',
-            dataType: 'json',
-            data: this.info.raw.join('\n'),
-            success: function(data) {
-                console.log('Saved worksheet ' + this.info.uuid);
-                props.success(data);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error(xhr, status, err);
-            },
-        });
-    };
-
-    WorksheetContent.prototype.deleteWorksheet = function(props) {
-        if (this.info === undefined) return;
-        $('#update_progress').show();
-        $('#save_error').hide();
-        $.ajax({
-            type: 'DELETE',
-            cache: false,
-            url: '/rest/worksheets?force=1',
-            contentType: 'application/json',
-            data: JSON.stringify({ data: [{ id: this.info.uuid, type: 'worksheets' }] }),
-            success: function(data) {
-                console.log('Deleted worksheet ' + this.info.uuid);
-                props.success && props.success(data);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error && props.error(xhr, status, err);
-            },
-        });
-    };
-
-    return WorksheetContent;
-})();
-
 class Worksheet extends React.Component {
     constructor(props) {
         super(props);
+        let localWorksheetWidthPreference = window.localStorage.getItem(
+            LOCAL_STORAGE_WORKSHEET_WIDTH,
+        );
         this.state = {
-            ws: new WorksheetContent(this.props.match.params['uuid']),
+            ws: {
+                uuid: this.props.match.params['uuid'],
+                info: null,
+            },
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
             activeComponent: 'list', // Where the focus is (action, list, or side_panel)
@@ -144,6 +85,7 @@ class Worksheet extends React.Component {
             anchorEl: null,
             showNewRun: false,
             showNewText: false,
+            uploadAnchor: null,
             showRerun: false,
             isValid: true,
             checkedBundles: {},
@@ -159,7 +101,94 @@ class Worksheet extends React.Component {
             errorMessage: '',
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
+            copiedBundleIds: '',
+            showPasteButton: window.localStorage.getItem('CopiedBundles') !== '',
+            worksheetWidthPercentage: localWorksheetWidthPreference || DEFAULT_WORKSHEET_WIDTH,
         };
+        this.copyCallbacks = [];
+        this.bundleTableID = new Set();
+    }
+
+    fetch(props) {
+        // Set defaults
+        props = props || {};
+        props.success = props.success || function(data) {};
+        props.error = props.error || function(xhr, status, err) {};
+        if (props.async === undefined) {
+            props.async = true;
+        }
+        const queryParams = {
+            brief: props.brief ? 1 : 0,
+        };
+
+        $.ajax({
+            type: 'GET',
+            url:
+                '/rest/interpret/worksheet/' +
+                this.state.ws.uuid +
+                '?' +
+                queryString.stringify(queryParams),
+            // TODO: migrate to using main API
+            // url: '/rest/worksheets/' + ws.uuid,
+            async: props.async,
+            dataType: 'json',
+            cache: false,
+            success: function(info) {
+                this.setState({
+                    ws: {
+                        ...this.state.ws,
+                        info,
+                    },
+                });
+                props.success(info);
+            }.bind(this),
+            error: function(xhr, status, err) {
+                props.error(xhr, status, err);
+            },
+        });
+    }
+
+    saveWorksheet(props) {
+        if (this.state.ws.info === undefined) return;
+        $('#update_progress').show();
+        props = props || {};
+        props.success = props.success || function(data) {};
+        props.error = props.error || function(xhr, status, err) {};
+        $('#save_error').hide();
+        $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/rest/worksheets/' + this.state.ws.uuid + '/raw',
+            dataType: 'json',
+            data: this.state.ws.info.source.join('\n'),
+            success: function(data) {
+                console.log('Saved worksheet ' + this.state.ws.uuid);
+                props.success(data);
+            }.bind(this),
+            error: function(xhr, status, err) {
+                props.error(xhr, status, err);
+            },
+        });
+    }
+
+    deleteWorksheet(props) {
+        if (this.state.ws.info === undefined) return;
+        $('#update_progress').show();
+        $('#save_error').hide();
+        $.ajax({
+            type: 'DELETE',
+            cache: false,
+            url: '/rest/worksheets?force=1',
+            contentType: 'application/json',
+            data: JSON.stringify({ data: [{ id: this.state.ws.info.uuid, type: 'worksheets' }] }),
+            success: function(data) {
+                console.log('Deleted worksheet ' + this.state.ws.info.uuid);
+                props.success && props.success(data);
+            }.bind(this),
+            error: function(xhr, status, err) {
+                props.error && props.error(xhr, status, err);
+            },
+        });
     }
 
     _setfocusIndex(index) {
@@ -268,35 +297,16 @@ class Worksheet extends React.Component {
             worksheet_uuid,
         )
             .done(() => {
-                Object.keys(this.state.checkedBundles).forEach((uuid) => {
-                    if (this.state.checkedBundles[uuid] !== undefined) {
-                        Object.keys(this.state.checkedBundles[uuid]).forEach((identifier) => {
-                            if (this.state.checkedBundles[uuid][identifier] !== undefined) {
-                                this.state.checkedBundles[uuid][identifier]();
-                            }
-                        });
-                    }
+                this.clearCheckedBundles(() => {
+                    toast.info('Executing ' + cmd + ' command', {
+                        position: 'top-right',
+                        autoClose: 2000,
+                        hideProgressBar: true,
+                        closeOnClick: true,
+                        pauseOnHover: false,
+                        draggable: true,
+                    });
                 });
-
-                this.setState(
-                    {
-                        uuidBundlesCheckedCount: {},
-                        checkedBundles: {},
-                        showBundleOperationButtons: false,
-                        updating: false,
-                    },
-                    () => {
-                        toast.info('Executing ' + cmd + ' command', {
-                            position: 'top-right',
-                            autoClose: 2000,
-                            hideProgressBar: true,
-                            closeOnClick: true,
-                            pauseOnHover: false,
-                            draggable: true,
-                        });
-                    },
-                );
-
                 this.reloadWorksheet();
             })
             .fail((e) => {
@@ -349,20 +359,31 @@ class Worksheet extends React.Component {
 
     executeBundleCommand = (cmd_type) => () => {
         this.handleSelectedBundleCommand(cmd_type);
-        this.togglePopupNoEvent(cmd_type);
+        this.toggleCmdDialogNoEvent(cmd_type);
     };
 
     executeBundleCommandNoEvent = (cmd_type) => {
         this.handleSelectedBundleCommand(cmd_type);
-        this.togglePopupNoEvent(cmd_type);
+        this.toggleCmdDialogNoEvent(cmd_type);
     };
 
-    togglePopup = (cmd_type) => () => {
+    addCopyBundleRowsCallback = (tableID, callback) => {
+        this.copyCallbacks[tableID] = callback;
+    };
+
+    // Helper functions to deal with commands
+    toggleCmdDialog = (cmd_type) => () => {
+        this.handleCommand(cmd_type);
+    };
+
+    toggleCmdDialogNoEvent = (cmd_type) => {
+        this.handleCommand(cmd_type);
+    };
+
+    handleCommand = (cmd_type) => {
         if (cmd_type === 'deleteItem') {
+            // This is used to delete markdown blocks
             this.setState({ openDeleteItem: !this.state.openDeleteItem });
-        }
-        if (!this.state.showBundleOperationButtons) {
-            return;
         }
         const { openKill, openDelete, openDetach } = this.state;
         if (cmd_type === 'rm') {
@@ -371,23 +392,45 @@ class Worksheet extends React.Component {
             this.setState({ openDetach: !openDetach });
         } else if (cmd_type === 'kill') {
             this.setState({ openKill: !openKill });
-        }
-    };
-
-    togglePopupNoEvent = (cmd_type) => {
-        if (cmd_type === 'deleteItem') {
-            this.setState({ openDeleteItem: !this.state.openDeleteItem });
-        }
-        if (!this.state.showBundleOperationButtons) {
-            return;
-        }
-        const { openKill, openDelete, openDetach } = this.state;
-        if (cmd_type === 'rm') {
-            this.setState({ openDelete: !openDelete });
-        } else if (cmd_type === 'detach') {
-            this.setState({ openDetach: !openDetach });
-        } else if (cmd_type === 'kill') {
-            this.setState({ openKill: !openKill });
+        } else if (cmd_type === 'copy') {
+            let validBundles = [];
+            let actualCopiedCounts = 0;
+            let tableIDs = Object.keys(this.copyCallbacks).sort();
+            tableIDs.forEach((tableID) => {
+                let copyBundleCallback = this.copyCallbacks[tableID];
+                let bundlesChecked = copyBundleCallback();
+                bundlesChecked.forEach((bundle) => {
+                    if (bundle.name === '<invalid>') {
+                        return;
+                    }
+                    validBundles.push(bundle);
+                    actualCopiedCounts += 1;
+                });
+            });
+            // Removes the last new line
+            window.localStorage.setItem('CopiedBundles', JSON.stringify(validBundles));
+            if (validBundles.length > 0) {
+                this.setState({ showPasteButton: true });
+            }
+            let toastString =
+                actualCopiedCounts > 0
+                    ? 'Copied ' + actualCopiedCounts + ' bundle'
+                    : 'No valid bundle to copy';
+            if (actualCopiedCounts > 1) {
+                toastString += 's';
+            }
+            this.clearCheckedBundles(() => {
+                toast.info(toastString, {
+                    position: 'top-right',
+                    autoClose: 1300,
+                    hideProgressBar: true,
+                    closeOnClick: true,
+                    pauseOnHover: false,
+                    draggable: true,
+                });
+            });
+        } else if (cmd_type === 'paste') {
+            this.pasteBundlesToWorksheet();
         }
     };
 
@@ -397,6 +440,7 @@ class Worksheet extends React.Component {
                 this.state.openDelete ||
                 this.state.openDetach ||
                 this.state.openKill ||
+                this.state.openCopy ||
                 this.state.BulkBundleDialog
             )
         ) {
@@ -410,6 +454,8 @@ class Worksheet extends React.Component {
             this.executeBundleCommandNoEvent('detach');
         } else if (this.state.openKill) {
             this.executeBundleCommandNoEvent('kill');
+        } else if (this.state.openCopy) {
+            document.getElementById('copyBundleIdToClipBoard').click();
         }
         return true;
     };
@@ -418,18 +464,108 @@ class Worksheet extends React.Component {
         this.setState({ deleteItemCallback: callback, openDeleteItem: true });
     };
 
+    pasteBundlesToWorksheet = () => {
+        // Unchecks all bundles after pasting
+        const data = JSON.parse(window.localStorage.getItem('CopiedBundles'));
+        let bundleString = '';
+        let items = [];
+        data.forEach((bundle) => {
+            bundleString += '[]{' + bundle.uuid + '}\n';
+            items.push(bundle.uuid);
+        });
+        // remove the last new line character
+        bundleString = bundleString.substr(0, bundleString.length - 1);
+        let worksheetUUID = this.state.ws.uuid;
+        let after_sort_key;
+        if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
+            let currentFocusedBlock = this.state.ws.info.blocks[this.state.focusIndex];
+            console.log(this.state.subFocusIndex, currentFocusedBlock);
+            after_sort_key = getAfterSortKey(currentFocusedBlock, this.state.subFocusIndex);
+        }
+        let url = `/rest/worksheets/${worksheetUUID}/add-items`;
+        let actualData = { items };
+        if (after_sort_key) {
+            actualData['after_sort_key'] = after_sort_key;
+        }
+        actualData['item_type'] = 'bundle';
+        $.ajax({
+            url,
+            data: JSON.stringify(actualData),
+            contentType: 'application/json',
+            type: 'POST',
+            success: () => {
+                const moveIndex = true;
+                const param = { moveIndex };
+                this.reloadWorksheet(undefined, undefined, param);
+            },
+            error: (jqHXR) => {
+                alert(createAlertText(this.url, jqHXR.responseText));
+            },
+        });
+    };
+
+    clearCheckedBundles = (clear_callback) => {
+        // Clear the checks
+        Object.keys(this.state.checkedBundles).forEach((uuid) => {
+            if (this.state.checkedBundles[uuid] !== undefined) {
+                Object.keys(this.state.checkedBundles[uuid]).forEach((identifier) => {
+                    if (
+                        this.state.checkedBundles[uuid] &&
+                        this.state.checkedBundles[uuid][identifier] !== undefined
+                    ) {
+                        this.state.checkedBundles[uuid][identifier]();
+                    }
+                });
+            }
+        });
+
+        this.setState(
+            {
+                uuidBundlesCheckedCount: {},
+                checkedBundles: {},
+                showBundleOperationButtons: false,
+                updating: false,
+            },
+            clear_callback,
+        );
+        this.bundleTableID = new Set();
+        this.copyCallbacks = {};
+    };
+
+    onAsyncItemLoad = (focusIndex, item) => {
+        this.setState({
+            ws: {
+                ...this.state.ws,
+                info: {
+                    ...this.state.ws.info,
+                    // immutably change item at index *focusIndex*
+                    blocks: Object.assign([], this.state.ws.info.blocks, { [focusIndex]: item }),
+                },
+            },
+        });
+    };
+
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
         // prevent multiple clicking from resetting the index
         if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex) {
             return;
         }
-
+        const item = this.refs.list.refs['item' + index];
+        if (item && (!item.props || !item.props.item)) {
+            // Skip "no search results" items and scroll past them.
+            const offset = index - this.state.focusIndex;
+            if (offset === 0) {
+                return;
+            }
+            this.setFocus(index + offset, subIndex, shouldScroll);
+            return;
+        }
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
             index = -1;
-            for (var i = info.items.length - 1; i >= 0; i--) {
-                if (info.items[i].bundles_spec) {
+            for (var i = info.blocks.length - 1; i >= 0; i--) {
+                if (info.blocks[i].bundles_spec) {
                     index = i;
                     break;
                 }
@@ -437,13 +573,13 @@ class Worksheet extends React.Component {
         }
         // resolve to the last row of the selected item
         if (subIndex === 'end') {
-            subIndex = (this._numTableRows(info.items[index]) || 1) - 1;
+            subIndex = (this._numTableRows(info.blocks[index]) || 1) - 1;
         }
         if (
             index < -1 ||
-            index >= info.items.length ||
+            index >= info.blocks.length ||
             subIndex < -1 ||
-            subIndex >= (this._numTableRows(info.items[index]) || 1)
+            subIndex >= (this._numTableRows(info.blocks[index]) || 1)
         ) {
             console.log('Out of bounds');
             return; // Out of bounds (note index = -1 is okay)
@@ -454,11 +590,13 @@ class Worksheet extends React.Component {
             // focusedBundleUuidList is a list of uuids of all bundles after the selected bundle (itself included)
             // Say the selected bundle has focusIndex 1 and subFocusIndex 2, then focusedBundleUuidList will include the uuids of
             // all the bundles that have focusIndex 1 and subFocusIndex >= 2, and also all the bundles that have focusIndex > 1
-            for (var i = index; i < info.items.length; i++) {
-                if (info.items[i].bundles_spec) {
+            for (var i = index; i < info.blocks.length; i++) {
+                if (info.blocks[i].bundles_spec) {
                     var j = i === index ? subIndex : 0;
-                    for (; j < (this._numTableRows(info.items[i]) || 1); j++) {
-                        focusedBundleUuidList.push(info.items[i].bundles_spec.bundle_infos[j].uuid);
+                    for (; j < (this._numTableRows(info.blocks[i]) || 1); j++) {
+                        focusedBundleUuidList.push(
+                            info.blocks[i].bundles_spec.bundle_infos[j].uuid,
+                        );
                     }
                 }
             }
@@ -470,6 +608,7 @@ class Worksheet extends React.Component {
             focusedBundleUuidList: focusedBundleUuidList,
             showNewRun: false,
             showNewText: false,
+            uploadAnchor: null,
             showNewRerun: false,
         });
         if (shouldScroll) {
@@ -505,8 +644,9 @@ class Worksheet extends React.Component {
         this.throttledScrollToItem(index, subIndex);
     };
 
-    componentWillMount() {
-        this.state.ws.fetch({
+    componentDidMount() {
+        this.fetch({
+            brief: true,
             success: function(data) {
                 $('#worksheet_content').show();
                 this.setState({
@@ -524,9 +664,7 @@ class Worksheet extends React.Component {
                 });
             }.bind(this),
         });
-    }
 
-    componentDidMount() {
         // Initialize history stack
         window.history.replaceState({ uuid: this.state.ws.uuid }, '', window.location.pathname);
         $('body').addClass('ws-interface');
@@ -581,14 +719,26 @@ class Worksheet extends React.Component {
     toggleGlossaryModal = () => {
         this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
     };
+    toggleWorksheetSize = () => {
+        let newPercentage =
+            this.state.worksheetWidthPercentage === DEFAULT_WORKSHEET_WIDTH
+                ? EXPANDED_WORKSHEET_WIDTH
+                : DEFAULT_WORKSHEET_WIDTH;
+        window.localStorage.setItem(LOCAL_STORAGE_WORKSHEET_WIDTH, newPercentage);
+        this.setState({ worksheetWidthPercentage: newPercentage });
+    };
     setupEventHandlers() {
-        var self = this;
         // Load worksheet from history when back/forward buttons are used.
         let editPermission = this.state.ws.info && this.state.ws.info.edit_permission;
 
         window.onpopstate = function(event) {
             if (event.state === null) return;
-            this.setState({ ws: new WorksheetContent(event.state.uuid) });
+            this.setState({
+                ws: {
+                    uuid: event.state.uuid,
+                    info: null,
+                },
+            });
             this.reloadWorksheet();
         }.bind(this);
 
@@ -611,8 +761,6 @@ class Worksheet extends React.Component {
             )
         ) {
             // Only enable these shortcuts when no dialog is opened
-
-            //
             Mousetrap.bind(
                 ['shift+r'],
                 function(e) {
@@ -638,7 +786,7 @@ class Worksheet extends React.Component {
 
             // Focus on web terminal (action bar)
             Mousetrap.bind(
-                ['c'],
+                ['c c'],
                 function(e) {
                     this.focusActionBar();
                 }.bind(this),
@@ -653,13 +801,19 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
 
+            // Focus on search
+            Mousetrap.bind(['a+f'], function(e) {
+                document.getElementById('search-bar').focus();
+                return false; //prevent keypress to bubble
+            });
+
             Mousetrap.bind(
                 ['up', 'k'],
                 function(e) {
                     e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                     var focusIndex = this.state.focusIndex;
                     var subFocusIndex = this.state.subFocusIndex;
-                    var wsItems = this.state.ws.info.items;
+                    var wsItems = this.state.ws.info.blocks;
 
                     if (focusIndex === 0 && subFocusIndex === 0) {
                         // Deselect all item when selecting up above the first item.
@@ -692,7 +846,7 @@ class Worksheet extends React.Component {
                     e.preventDefault(); // Prevent automatic scrolling from up/down arrow keys
                     var focusIndex = this.state.focusIndex;
                     var subFocusIndex = this.state.subFocusIndex;
-                    var wsItems = this.state.ws.info.items;
+                    var wsItems = this.state.ws.info.blocks;
                     if (
                         focusIndex >= 0 &&
                         (wsItems[focusIndex].mode === 'table_block' ||
@@ -730,7 +884,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
                         }
-                        document.querySelector('label[for=codalab-file-upload-input]').click();
+                        document.querySelector('#upload-button').click();
                     }.bind(this),
                     'keyup',
                 );
@@ -746,7 +900,6 @@ class Worksheet extends React.Component {
                     }.bind(this),
                     'keyup',
                 );
-
                 // edit and rerun current bundle
                 Mousetrap.bind(
                     ['a n'],
@@ -763,6 +916,9 @@ class Worksheet extends React.Component {
                 showGlossaryModal: true,
             });
         });
+        Mousetrap.bind(['+'], (e) => {
+            this.toggleWorksheetSize();
+        });
 
         Mousetrap.bind(['esc'], (e) => {
             ContextMenuMixin.closeContextMenu();
@@ -774,8 +930,18 @@ class Worksheet extends React.Component {
                 function(e) {
                     e.preventDefault();
                     this.state.deleteItemCallback();
-                    this.togglePopupNoEvent('deleteItem');
+                    this.toggleCmdDialogNoEvent('deleteItem');
                 }.bind(this),
+            );
+        }
+        // paste after current focused cell
+        if (this.state.ws.info.edit_permission) {
+            Mousetrap.bind(
+                ['a v'],
+                function(e) {
+                    this.pasteBundlesToWorksheet();
+                }.bind(this),
+                'keyup',
             );
         }
 
@@ -786,19 +952,25 @@ class Worksheet extends React.Component {
                 if (this.state.openDetach || this.state.openKill) {
                     return;
                 }
-                this.togglePopupNoEvent('rm');
+                this.toggleCmdDialogNoEvent('rm');
             });
             Mousetrap.bind(['a d'], () => {
                 if (this.state.openDelete || this.state.openKill) {
                     return;
                 }
-                this.togglePopupNoEvent('detach');
+                this.toggleCmdDialogNoEvent('detach');
             });
             Mousetrap.bind(['a k'], () => {
                 if (this.state.openDetach || this.state.openDelete) {
                     return;
                 }
-                this.togglePopupNoEvent('kill');
+                this.toggleCmdDialogNoEvent('kill');
+            });
+            Mousetrap.bind(['a c'], () => {
+                if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
+                    return;
+                }
+                this.toggleCmdDialogNoEvent('copy');
             });
 
             // Confirm bulk bundle operation
@@ -841,7 +1013,7 @@ class Worksheet extends React.Component {
             if (this.canEdit()) {
                 var editor = ace.edit('worksheet-editor');
                 if (saveChanges) {
-                    this.state.ws.info.raw = editor.getValue().split('\n');
+                    this.state.ws.info.source = editor.getValue().split('\n');
                 }
                 var rawIndex = editor.getCursorPosition().row;
                 this.setState({
@@ -862,19 +1034,14 @@ class Worksheet extends React.Component {
             }
         } else {
             // Go into edit mode.
-            this.setState({
-                editMode: editMode,
-                uuidBundlesCheckedCount: {},
-                checkedBundles: {},
-                showBundleOperationButtons: false,
-                updating: false,
-            });
+            this.setState({ editMode: editMode });
+            this.clearCheckedBundles();
             $('#worksheet-editor').focus(); // Needs to be before focusing
         }
     }
 
     // updateRunBundles fetch all the "unfinished" bundles in the worksheet, and recursively call itself until all the bundles in the worksheet are finished.
-    updateRunBundles(worksheetUuid, numTrials, updatingBundleUuids) {
+    updateRunBundles = (worksheetUuid, numTrials, updatingBundleUuids) => {
         var bundleUuids = updatingBundleUuids
             ? updatingBundleUuids
             : this.state.updatingBundleUuids;
@@ -912,15 +1079,15 @@ class Worksheet extends React.Component {
                 $('#worksheet_container').hide();
             },
         });
-    }
+    };
 
     // Everytime the worksheet is updated, checkRunBundle will loop through all the bundles and find the "unfinished" ones (not ready or failed).
     // If there are unfinished bundles and we are not updating bundles now, call updateRunBundles, which will recursively call itself until all the bundles in the worksheet are finished.
     // this.state.updatingBundleUuids keeps track of the "unfinished" bundles in the worksheet at every moment.
     checkRunBundle(info) {
         var updatingBundleUuids = _.clone(this.state.updatingBundleUuids);
-        if (info && info.items.length > 0) {
-            var items = info.items;
+        if (info && info.blocks.length > 0) {
+            var items = info.blocks;
             for (var i = 0; i < items.length; i++) {
                 if (items[i].bundles_spec) {
                     for (var j = 0; j < items[i].bundles_spec.bundle_infos.length; j++) {
@@ -991,7 +1158,7 @@ class Worksheet extends React.Component {
                     rawIndex = 0;
                     cursorColumnPosition = 0;
                 } else {
-                    var item = this.state.ws.info.items[this.state.focusIndex];
+                    var item = this.state.ws.info.blocks[this.state.focusIndex];
                     // For non-tables such as search and wsearch, we have subFocusIndex, but not backed by raw items, so use 0.
                     var focusIndexPair =
                         this.state.focusIndex +
@@ -999,6 +1166,12 @@ class Worksheet extends React.Component {
                         (item.mode === 'table_block' || item.mode === 'subworksheets_block'
                             ? this.state.subFocusIndex
                             : 0);
+                    rawIndex = this.state.ws.info.block_to_raw[focusIndexPair];
+                }
+
+                // When clicking "Edit Source" from one of the rows in a search results block, go to the line of the corresponding search directive.
+                if (rawIndex === undefined) {
+                    focusIndexPair = [this.state.focusIndex, 0].join(',');
                     rawIndex = this.state.ws.info.block_to_raw[focusIndexPair];
                 }
 
@@ -1046,7 +1219,7 @@ class Worksheet extends React.Component {
     }
 
     getNumOfBundles() {
-        var items = this.state.ws.info && this.state.ws.info.items;
+        var items = this.state.ws.info && this.state.ws.info.blocks;
         if (!items) return 0;
         var count = 0;
         for (var i = 0; i < items.length; i++) {
@@ -1058,7 +1231,7 @@ class Worksheet extends React.Component {
     }
 
     // If partialUpdateItems is undefined, we will fetch the whole worksheet.
-    // Otherwise, partialUpdateItems is a list of item parallel to ws.info.items that contain only items that need updating.
+    // Otherwise, partialUpdateItems is a list of item parallel to ws.info.blocks that contain only items that need updating.
     // More spefically, all items that don't contain run bundles that need updating are null.
     // Also, a non-null item could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
     // The bundle_infos for bundles that don't need updating are also null.
@@ -1068,10 +1241,20 @@ class Worksheet extends React.Component {
         rawIndexAfterEditMode,
         { moveIndex = false, textDeleted = false } = {},
     ) => {
+        let itemHeights = {};
+        if (this.refs.list && this.refs.list.refs) {
+            for (let refName in this.refs.list.refs) {
+                itemHeights[refName] = ReactDOM.findDOMNode(
+                    this.refs.list.refs[refName],
+                ).clientHeight;
+            }
+        }
+        this.setState({ itemHeights });
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
             this.setState({ updating: true });
-            this.state.ws.fetch({
+            this.fetch({
+                brief: true,
                 success: function(data) {
                     if (this.state.ws.uuid !== data.uuid) {
                         this.setState({
@@ -1083,7 +1266,7 @@ class Worksheet extends React.Component {
                     this.setState({ errorMessage: '' });
                     $('#update_progress').hide();
                     $('#worksheet_content').show();
-                    var items = this.state.ws.info.items;
+                    var items = this.state.ws.info.blocks;
                     var numOfBundles = this.getNumOfBundles();
                     var focus = this.state.focusIndex;
                     if (rawIndexAfterEditMode !== undefined) {
@@ -1115,6 +1298,9 @@ class Worksheet extends React.Component {
                             items[focus].mode !== 'table_block'
                         ) {
                             this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
+                        } else if (this.state.subFocusIndex !== undefined) {
+                            // Focus on the next bundle row
+                            this.setFocus(focus >= 0 ? focus : 'end', this.state.subFocusIndex + 1);
                         } else {
                             this.setFocus(focus >= 0 ? focus : 'end', 'end');
                         }
@@ -1169,7 +1355,7 @@ class Worksheet extends React.Component {
             for (var i = 0; i < partialUpdateItems.length; i++) {
                 if (!partialUpdateItems[i]) continue;
                 // update interpreted items
-                ws.info.items[i] = partialUpdateItems[i];
+                ws.info.blocks[i] = partialUpdateItems[i];
             }
             this.setState({ ws: ws, version: this.state.version + 1 });
             this.checkRunBundle(ws.info);
@@ -1178,7 +1364,12 @@ class Worksheet extends React.Component {
 
     openWorksheet = (uuid) => {
         // Change to a different worksheet. This does not call reloadWorksheet().
-        this.setState({ ws: new WorksheetContent(uuid) });
+        this.setState({
+            ws: {
+                uuid,
+                info: null,
+            },
+        });
 
         // Note: this is redundant if we're doing 'cl work' from the action bar,
         // but is necessary if triggered in other ways.
@@ -1188,9 +1379,9 @@ class Worksheet extends React.Component {
         window.history.pushState({ uuid: this.state.ws.uuid }, '', '/worksheets/' + uuid + '/');
     };
 
-    saveAndUpdateWorksheet(fromRaw, rawIndex) {
+    saveAndUpdateWorksheet = (fromRaw, rawIndex) => {
         this.setState({ updating: true, errorMessage: '' });
-        this.state.ws.saveWorksheet({
+        this.saveWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
                 this.reloadWorksheet(undefined, rawIndex);
@@ -1205,11 +1396,11 @@ class Worksheet extends React.Component {
                 }
             }.bind(this),
         });
-    }
+    };
 
     deteleWorksheetAction = () => {
         this.setState({ updating: true, errorMessage: '' });
-        this.state.ws.deleteWorksheet({
+        this.deleteWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
                 window.location = '/rest/worksheets/?name=dashboard';
@@ -1232,18 +1423,28 @@ class Worksheet extends React.Component {
                 aria-labelledby='delete-worksheet-confirmation-title'
                 aria-describedby='delete-worksheet-confirmation-description'
             >
-                <DialogTitle id='delete-worksheet-confirmation-title'>
-                    {'Warning: Deleted worksheets cannot be recovered'}
+                <DialogTitle id='delete-worksheet-confirmation-title' style={{ color: 'red' }}>
+                    Delete this worksheet permanently?
                 </DialogTitle>
                 <DialogContent>
+                    <DialogContentText
+                        id='alert-dialog-description'
+                        style={{ color: 'red', marginBottom: '20px' }}
+                    >
+                        {'Warning: Deleted worksheets cannot be recovered.'}
+                    </DialogContentText>
                     <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
-                        {'Note: deleting worksheets does not delete the bundles inside it.'}
+                        {'Note: Deleting worksheets does not delete the bundles inside it.'}
                     </DialogContentText>
                     <DialogActions>
                         <Button color='primary' onClick={this.toggleBundleBulkMessageDialog}>
                             CANCEL
                         </Button>
-                        <Button color='primary' onClick={this.deteleWorksheetAction}>
+                        <Button
+                            color='primary'
+                            variant='contained'
+                            onClick={this.deteleWorksheetAction}
+                        >
                             DELETE
                         </Button>
                     </DialogActions>
@@ -1253,13 +1454,26 @@ class Worksheet extends React.Component {
         this.setState({ BulkBundleDialog: deleteWorksheetDialog });
     }
 
+    showUploadMenu = (e) => {
+        // pause mousetrap events such as up, down, and enter
+        Mousetrap.pause();
+        let form = document.querySelector('#upload-menu');
+
+        Mousetrap(form).bind(['enter'], function(e) {
+            e.stopPropagation();
+            document.querySelector('label[for=' + e.target.firstElementChild.htmlFor + ']').click();
+        });
+
+        this.setState({ uploadAnchor: e.currentTarget });
+    };
+
     render() {
         const { classes } = this.props;
-        const { anchorEl } = this.state;
+        const { anchorEl, uploadAnchor } = this.state;
 
         this.setupEventHandlers();
         var info = this.state.ws.info;
-        var rawWorksheet = info && info.raw.join('\n');
+        var rawWorksheet = info && info.source.join('\n');
         var editPermission = info && info.edit_permission;
         var canEdit = this.canEdit() && this.state.editMode;
 
@@ -1341,10 +1555,8 @@ class Worksheet extends React.Component {
             </div>
         );
 
-        let last_key = null;
-        if (info && info.items.length) {
+        if (info && info.blocks.length) {
             // Non-empty worksheet
-            last_key = getMinMaxKeys(info.items[info.items.length - 1]).maxKey;
         } else {
             $('.empty-worksheet').fadeIn();
         }
@@ -1388,6 +1600,7 @@ class Worksheet extends React.Component {
                 subFocusIndex={this.state.subFocusIndex}
                 setFocus={this.setFocus}
                 reloadWorksheet={this.reloadWorksheet}
+                saveAndUpdateWorksheet={this.saveAndUpdateWorksheet}
                 openWorksheet={this.openWorksheet}
                 focusActionBar={this.focusActionBar}
                 ensureIsArray={this.ensureIsArray}
@@ -1400,6 +1613,9 @@ class Worksheet extends React.Component {
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
                 setDeleteItemCallback={this.setDeleteItemCallback}
+                addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
+                onAsyncItemLoad={this.onAsyncItemLoad}
+                itemHeights={this.state.itemHeights}
             />
         );
 
@@ -1419,8 +1635,8 @@ class Worksheet extends React.Component {
                 openDelete={this.state.openDelete}
                 openDetach={this.state.openDetach}
                 openDeleteItem={this.state.openDeleteItem}
-                togglePopup={this.togglePopup}
-                togglePopupNoEvent={this.togglePopupNoEvent}
+                toggleCmdDialog={this.toggleCmdDialog}
+                toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
                 executeBundleCommand={this.executeBundleCommand}
                 forceDelete={this.state.forceDelete}
                 handleForceDelete={this.handleForceDelete}
@@ -1447,10 +1663,20 @@ class Worksheet extends React.Component {
                     setAnchorEl={(e) => this.setState({ anchorEl: e })}
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
+                    uploadAnchor={uploadAnchor}
+                    showUploadMenu={this.showUploadMenu}
+                    closeUploadMenu={() => {
+                        this.setState({ uploadAnchor: null });
+                        Mousetrap.unpause();
+                    }}
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
-                    togglePopup={this.togglePopup}
+                    toggleCmdDialog={this.toggleCmdDialog}
                     toggleGlossaryModal={this.toggleGlossaryModal}
+                    toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
+                    copiedBundleIds={this.state.copiedBundleIds}
+                    showPasteButton={this.state.showPasteButton}
+                    toggleWorksheetSize={this.toggleWorksheetSize}
                 />
                 {action_bar_display}
                 <ToastContainer
@@ -1468,6 +1694,7 @@ class Worksheet extends React.Component {
                             <div
                                 className={classes.worksheetOuter}
                                 onClick={this.handleClickForDeselect}
+                                style={{ width: this.state.worksheetWidthPercentage }}
                             >
                                 <div
                                     className={classes.worksheetInner}
@@ -1512,7 +1739,6 @@ const styles = (theme) => ({
         marginTop: NAVBAR_HEIGHT,
     },
     worksheetOuter: {
-        maxWidth: 1200, // Worksheet width
         minHeight: 600, // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color

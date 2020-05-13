@@ -32,6 +32,7 @@ import subprocess
 import sys
 import time
 import traceback
+from datetime import datetime
 
 
 global cl
@@ -145,6 +146,13 @@ def check_equals(true_value, pred_value):
     return pred_value
 
 
+def check_not_equals(true_value, pred_value):
+    assert (
+        true_value != pred_value
+    ), "expected something that doesn't equal to '%s', but got '%s'" % (true_value, pred_value)
+    return pred_value
+
+
 def check_contains(true_value, pred_value):
     if isinstance(true_value, list):
         for v in true_value:
@@ -175,7 +183,7 @@ def wait_until_substring(fp, substr):
 def _run_command(
     args,
     expected_exit_code=0,
-    max_output_chars=1024,
+    max_output_chars=4096,
     env=None,
     include_stderr=False,
     binary=False,
@@ -189,55 +197,18 @@ def _run_command(
     )
 
 
-# TODO: get rid of this and set up the rest-servers outside test_cli.py and
-# pass them as parameters into here.  Otherwise, there are circular
-# dependencies with calling codalab_service.py.
 @contextmanager
-def temp_instance():
+def remote_instance(remote_host):
     """
     Usage:
-        with temp_instance() as remote:
+        with remote_instance(host) as remote:
             run_command([cl, 'work', remote.home])
             ... do more stuff with new temp instance ...
     """
-    print('Setting up a temporary CodaLab instance')
     # Dockerized instance
     original_worksheet = current_worksheet()
 
-    def get_free_ports(num_ports):
-        import socket
-
-        socks = [socket.socket(socket.AF_INET, socket.SOCK_STREAM) for i in range(num_ports)]
-        ports = []
-        for s in socks:
-            s.bind(("", 0))
-        ports = [str(s.getsockname()[1]) for s in socks]
-        for s in socks:
-            s.close()
-        return ports
-
-    rest_port, http_port, mysql_port = get_free_ports(3)
-    temp_instance_name = random_name()
-    try:
-        subprocess.check_output(
-            ' '.join(
-                [
-                    './codalab_service.py',
-                    'start',
-                    '--instance-name %s' % temp_instance_name,
-                    '--rest-port %s' % rest_port,
-                    '--http-port %s' % http_port,
-                    '--mysql-port %s' % mysql_port,
-                    '--version %s' % cl_version,
-                ]
-            ),
-            shell=True,
-        )
-    except subprocess.CalledProcessError as ex:
-        print("Temp instance exception: %s" % ex.output)
-        raise
     # Switch to new host and log in to cache auth token
-    remote_host = 'http://localhost:%s' % rest_port
     remote_worksheet = '%s::' % remote_host
     _run_command([cl, 'logout', remote_worksheet[:-2]])
 
@@ -246,11 +217,6 @@ def temp_instance():
 
     yield CodaLabInstance(
         remote_host, remote_worksheet, env['CODALAB_USERNAME'], env['CODALAB_PASSWORD']
-    )
-
-    subprocess.check_call(
-        ' '.join(['./codalab_service.py', 'down', '--instance-name temp-%s' % temp_instance_name]),
-        shell=True,
     )
 
     _run_command([cl, 'work', original_worksheet])
@@ -266,10 +232,11 @@ class ModuleContext(object):
     https://docs.python.org/2/reference/datamodel.html#with-statement-context-managers
     """
 
-    def __init__(self, instance):
+    def __init__(self, instance, second_instance):
         # These are the temporary worksheets and bundles that need to be
         # cleaned up at the end of the test.
         self.instance = instance
+        self.second_instance = second_instance
         self.worksheets = []
         self.bundles = []
         self.groups = []
@@ -400,13 +367,13 @@ class TestModule(object):
         return [m for m in cls.modules.values() if m.default]
 
     @classmethod
-    def run(cls, tests, instance):
-        """Run the modules named in tests againts instance.
+    def run(cls, tests, instance, second_instance):
+        """Run the modules named in tests against instances.
 
         tests should be a list of strings, each of which is either 'all',
         'default', or the name of an existing test module.
 
-        instance should be a codalab instance to connect to like:
+        instance should be a CodaLab instance to connect. The following are some examples:
             - main
             - localhost
             - http://server-domain:2900
@@ -444,7 +411,7 @@ class TestModule(object):
             if module.description is not None:
                 print(Colorizer.yellow("[*][*] DESCRIPTION: %s" % module.description))
 
-            with ModuleContext(instance) as ctx:
+            with ModuleContext(instance, second_instance) as ctx:
                 module.func(ctx)
 
             if ctx.error:
@@ -974,6 +941,60 @@ def test(ctx):
     check_contains(group_buuid[:8], _run_command([cl, 'search', 'group={}'.format(group_name)]))
 
 
+@TestModule.register('search_time')
+def test(ctx):
+    name = random_name()
+    time1 = datetime.now().isoformat()
+    # These sleeps are required to ensure that there is sufficient time that passes between tests
+    # If there is not enough time, all bundles might appear to have the same time
+    time.sleep(1)
+    uuid1 = run_command([cl, 'run', 'date', '-n', name])
+    time.sleep(1)
+    time2 = datetime.now().isoformat()
+    time.sleep(1)
+    uuid2 = run_command([cl, 'run', 'date', '-n', name])
+    uuid3 = run_command([cl, 'run', 'date', '-n', name])
+    time.sleep(1)
+    time3 = datetime.now().isoformat()
+
+    # No results
+    check_equals('', run_command([cl, 'search', 'name=' + name, '.before=' + time1, '-u']))
+    check_equals('', run_command([cl, 'search', 'name=' + name, '.after=' + time3, '-u']))
+
+    # Before
+    check_equals(
+        uuid1, run_command([cl, 'search', 'name=' + name, '.before=' + time2, 'id=.sort', '-u'])
+    )
+    check_equals(
+        uuid1 + '\n' + uuid2 + '\n' + uuid3,
+        run_command([cl, 'search', 'name=' + name, '.before=' + time3, 'id=.sort', '-u']),
+    )
+
+    # After
+    check_equals(
+        uuid1 + '\n' + uuid2 + '\n' + uuid3,
+        run_command([cl, 'search', 'name=' + name, '.after=' + time1, 'id=.sort', '-u']),
+    )
+    check_equals(
+        uuid2 + '\n' + uuid3,
+        run_command([cl, 'search', 'name=' + name, '.after=' + time2, 'id=.sort', '-u']),
+    )
+
+    # Before And After
+    check_equals(
+        uuid1,
+        run_command(
+            [cl, 'search', 'name=' + name, '.after=' + time1, '.before=' + time2, 'id=.sort', '-u']
+        ),
+    )
+    check_equals(
+        uuid2 + '\n' + uuid3,
+        run_command(
+            [cl, 'search', 'name=' + name, '.after=' + time2, '.before=' + time3, 'id=.sort', '-u']
+        ),
+    )
+
+
 @TestModule.register('run')
 def test(ctx):
     name = random_name()
@@ -1353,35 +1374,37 @@ def test(ctx):
     wait(_run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)
 
 
-# TODO: can't do this test until we can pass in another CodaLab instance.
-@TestModule.register('copy', default=False)
+@TestModule.register('copy')
 def test(ctx):
     """Test copying between instances."""
     source_worksheet = current_worksheet()
 
-    with temp_instance() as remote:
-        remote_worksheet = remote.home
-        _run_command([cl, 'work', remote_worksheet])
+    with remote_instance(ctx.second_instance) as remote:
 
-        def check_agree(command):
+        def compare_output_across_instances(command):
             check_equals(
-                _run_command(command + ['-w', remote_worksheet]),
                 _run_command(command + ['-w', source_worksheet]),
+                _run_command(command + ['-w', remote_worksheet]),
             )
+
+        remote_worksheet = remote.home
+        print('Source worksheet: %s' % source_worksheet)
+        print('Remote_worksheet: %s' % remote_worksheet)
 
         # Upload to original worksheet, transfer to remote
         _run_command([cl, 'work', source_worksheet])
         uuid = _run_command([cl, 'upload', test_path('')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
-        check_agree([cl, 'info', '-f', 'data_hash,name', uuid])
-        check_agree([cl, 'cat', uuid])
+        compare_output_across_instances([cl, 'info', '-f', 'data_hash,name', uuid])
+        # TODO: `cl cat` is not working even with the bundle available
+        # compare_output_across_instances([cl, 'cat', uuid])
 
         # Upload to remote, transfer to local
         _run_command([cl, 'work', remote_worksheet])
         uuid = _run_command([cl, 'upload', test_path('')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', source_worksheet])
-        check_agree([cl, 'info', '-f', 'data_hash,name', uuid])
-        check_agree([cl, 'cat', uuid])
+        compare_output_across_instances([cl, 'info', '-f', 'data_hash,name', uuid])
+        # compare_output_across_instances([cl, 'cat', uuid])
 
         # Upload to remote, transfer to local (metadata only)
         _run_command([cl, 'work', remote_worksheet])
@@ -1689,13 +1712,14 @@ def test(ctx):
             'tag',
             'runs',
             'shared_file_system',
+            'tag_exclusive',
         ],
         header,
     )
 
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
-    check_equals(True, len(worker_info) >= 7)
+    check_equals(True, len(worker_info) >= 8)
 
 
 @TestModule.register('rest1')
@@ -1729,6 +1753,156 @@ def test(ctx):
     test_worksheet.test_print()
 
 
+@TestModule.register('memoize')
+def test(ctx):
+    # Case 1: no dependency
+    uuid = _run_command([cl, 'run', 'echo hello'])
+    wait(uuid)
+    check_equals('hello', _run_command([cl, 'cat', uuid + '/stdout']))
+    uuid1 = _run_command([cl, 'run', 'echo hello2'])
+    wait(uuid1)
+    check_equals('hello2', _run_command([cl, 'cat', uuid1 + '/stdout']))
+    # memo tests
+    check_equals(uuid, _run_command([cl, 'run', 'echo hello', '--memoize']))
+
+    # Case 2: single dependency
+    # target_spec: ':<uuid>'
+    uuid_dep = _run_command([cl, 'run', ':{}'.format(uuid), 'echo hello'])
+    wait(uuid_dep)
+    check_equals('hello', _run_command([cl, 'cat', uuid_dep + '/stdout']))
+    # memo tests
+    check_equals(uuid_dep, _run_command([cl, 'run', ':{}'.format(uuid), 'echo hello', '--memoize']))
+
+    # Case 3: multiple dependencies without key
+    # target_spec: ':<uuid_1> :<uuid_2>'
+    uuid_deps = _run_command(
+        [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid1), 'echo multi_deps']
+    )
+    wait(uuid_deps)
+    check_equals('multi_deps', _run_command([cl, 'cat', uuid_deps + '/stdout']))
+    # memo tests
+    check_equals(
+        uuid_deps,
+        _run_command(
+            [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid1), 'echo multi_deps', '--memoize']
+        ),
+    )
+
+    # Case 4: multiple key points to the same bundle
+    # target_spec: 'foo:<uuid> foo1:<uuid>'
+    uuid_multi_alias = _run_command(
+        [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello']
+    )
+    wait(uuid_multi_alias)
+    check_equals('hello', _run_command([cl, 'cat', uuid_multi_alias + '/stdout']))
+    # memo tests
+    check_equals(
+        uuid_multi_alias,
+        _run_command(
+            [cl, 'run', 'foo:{}'.format(uuid), 'foo1:{}'.format(uuid), 'echo hello', '--memoize']
+        ),
+    )
+
+    # Case 5: duplicate dependencies
+    # target_spec: ':<uuid> :<uuid>'
+    check_equals(
+        uuid_dep,
+        _run_command(
+            [cl, 'run', ':{}'.format(uuid), ':{}'.format(uuid), 'echo hello', '--memoize']
+        ),
+    )
+
+    # Case 6: multiple dependencies
+    # target_spec: 'a:<uuid_1> b:<uuid_2>'
+    uuid_a_b = _run_command([cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_b'])
+    wait(uuid_a_b)
+    check_equals('a_b', _run_command([cl, 'cat', uuid_a_b + '/stdout']))
+
+    # target_spec: 'a:<uuid_1> b:<uuid_2>'
+    uuid_a_bb = _run_command([cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_bb'])
+    wait(uuid_a_bb)
+    check_equals('a_bb', _run_command([cl, 'cat', uuid_a_bb + '/stdout']))
+
+    # target_spec: 'b:<uuid_1> a:<uuid_2>'
+    uuid_b_a = _run_command([cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid1), 'echo b_a'])
+    wait(uuid_b_a)
+    check_equals('b_a', _run_command([cl, 'cat', uuid_b_a + '/stdout']))
+
+    # target_spec: 'a:<uuid_1> b:<uuid_2> c:<uuid_3>'
+    uuid_a_b_c = _run_command(
+        [
+            cl,
+            'run',
+            'a:{}'.format(uuid),
+            'b:{}'.format(uuid1),
+            'c:{}'.format(uuid_dep),
+            'echo a_b_c',
+        ]
+    )
+    wait(uuid_a_b_c)
+    check_equals('a_b_c', _run_command([cl, 'cat', uuid_a_b_c + '/stdout']))
+
+    # memo tests
+    check_equals(
+        uuid_a_b,
+        _run_command(
+            [cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_b', '--memoize']
+        ),
+    )
+
+    check_equals(
+        uuid_a_bb,
+        _run_command(
+            [cl, 'run', 'a:{}'.format(uuid), 'b:{}'.format(uuid1), 'echo a_bb', '--memoize']
+        ),
+    )
+
+    check_equals(
+        uuid_b_a,
+        _run_command(
+            [cl, 'run', 'b:{}'.format(uuid), 'a:{}'.format(uuid1), 'echo b_a', '--memoize']
+        ),
+    )
+
+    check_equals(
+        uuid_a_b_c,
+        _run_command(
+            [
+                cl,
+                'run',
+                'a:{}'.format(uuid),
+                'b:{}'.format(uuid1),
+                'c:{}'.format(uuid_dep),
+                'echo a_b_c',
+                '--memoize',
+            ]
+        ),
+    )
+
+    check_not_equals(
+        uuid_a_b_c,
+        _run_command(
+            [
+                cl,
+                'run',
+                'b:{}'.format(uuid),
+                'a:{}'.format(uuid1),
+                'd:{}'.format(uuid_dep),
+                'echo a_b_d',
+                '--memoize',
+            ]
+        ),
+    )
+
+    # test different dependency order in target_spec: 'a:<uuid_2> b:<uuid_1>'
+    check_equals(
+        uuid_b_a,
+        _run_command(
+            [cl, 'run', 'a:{}'.format(uuid1), 'b:{}'.format(uuid), 'echo b_a', '--memoize']
+        ),
+    )
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
@@ -1746,9 +1920,15 @@ if __name__ == '__main__':
         default='localhost',
     )
     parser.add_argument(
+        '--second-instance',
+        type=str,
+        help='Another CodaLab instance used for tests that require a second instance, defaults to "localhost"',
+        default='localhost',
+    )
+    parser.add_argument(
         '--cl-version',
         type=str,
-        help='Codalab version to use for multi-instance tests, defaults to "latest"',
+        help='CodaLab version to use for multi-instance tests, defaults to "latest"',
         default='latest',
     )
     parser.add_argument(
@@ -1759,9 +1939,10 @@ if __name__ == '__main__':
         choices=list(TestModule.modules.keys()) + ['all', 'default'],
         help='Tests to run from: {%(choices)s}',
     )
+
     args = parser.parse_args()
     cl = args.cl_executable
     cl_version = args.cl_version
-    success = TestModule.run(args.tests, args.instance)
+    success = TestModule.run(args.tests, args.instance, args.second_instance)
     if not success:
         sys.exit(1)
