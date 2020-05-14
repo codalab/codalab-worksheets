@@ -888,9 +888,9 @@ def test(ctx):
     _run_command([cl, 'detach', uuid1], 1)  # multiple indices
     _run_command([cl, 'detach', uuid1, '-n', '3'], 1)  # index out of range
     _run_command([cl, 'detach', uuid2, '-n', '2'])  # State: 1 1 2
-    check_equals(get_info('^', 'uuid'), uuid2)
+    check_equals(uuid2, get_info('^', 'uuid'))
     _run_command([cl, 'detach', uuid2])  # State: 1 1
-    check_equals(get_info('^', 'uuid'), uuid1)
+    check_equals(uuid1, get_info('^', 'uuid'))
     _run_command([cl, 'detach', uuid1, '-n', '2'])  # State: 1
     _run_command([cl, 'detach', uuid1])  # Worksheet becomes empty
     check_equals(
