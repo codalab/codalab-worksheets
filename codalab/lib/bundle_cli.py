@@ -3231,7 +3231,7 @@ class BundleCLI(object):
             elif mode == BlockModes.placeholder_block:
                 print('[Placeholder]', block['directive'], file=self.stdout)
             elif mode == BlockModes.schema_block:
-                print('[SchemaBlock]', block['directive'], file=self.stdout)
+                print('[SchemaBlock]', file=self.stdout)
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
 
