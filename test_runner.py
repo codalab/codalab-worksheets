@@ -20,7 +20,7 @@ class TestRunner(object):
 
     @staticmethod
     def _docker_exec(command):
-        return 'docker exec -it codalab_rest-server_1 /bin/bash -c "{}"'.format(command)
+        return 'docker exec -iT codalab_rest-server_1 /bin/bash -c "{}"'.format(command)
 
     @staticmethod
     def _create_temp_instance(name, version):
