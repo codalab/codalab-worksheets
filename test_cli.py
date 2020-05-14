@@ -1411,8 +1411,8 @@ def test(ctx):
     )
 
     # Test network access
-    wait(_run_command([cl, 'run', 'ping -c 1 google.com']), 1)
-    wait(_run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)
+    wait(_run_command([cl, 'run', 'curl google.com']), 1)
+    wait(_run_command([cl, 'run', 'curl google.com', '--request-network']), 0)
 
 
 # TODO: can't do this test until we can pass in another CodaLab instance.
