@@ -79,15 +79,17 @@ export default ({
                                     />
                                     &nbsp;by&nbsp;
                                     {info.owner_name ? info.owner_name : '<anonymous>'}
+                                    &nbsp;
                                     <div
                                         onClick={(ev) => {
                                             setAnchorEl(ev.currentTarget);
                                         }}
                                         className={classes.permissions}
-                                        style={{ float: 'right' }}
+                                        style={{ display: 'inline-block' }}
                                     >
                                         {renderPermissions(info)}
                                     </div>
+                                    &nbsp;
                                     <Popover
                                         open={Boolean(anchorEl)}
                                         anchorEl={anchorEl}
@@ -114,6 +116,17 @@ export default ({
                                             />
                                         </div>
                                     </Popover>
+                                    &nbsp;tags:&nbsp;
+                                    <div style={{ display: 'inline-block' }}>
+                                        <WorksheetEditableField
+                                            canEdit={canEdit}
+                                            dataType='list'
+                                            fieldName='tags'
+                                            value={info.tags.join(' | ')}
+                                            uuid={info && info.uuid}
+                                            onChange={() => reloadWorksheet()}
+                                        />
+                                    </div>
                                 </React.Fragment>
                             )}
                         </Grid>
