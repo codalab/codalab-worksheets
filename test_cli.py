@@ -19,6 +19,7 @@ Things not tested:
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
 from codalab.worker.download_util import BundleTarget
+from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
 
@@ -119,7 +120,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=100):
         # Return when the bundle is in the expected state or one of the final states
         if current_state == expected_state:
             return
-        elif current_state in {'running', 'ready', 'failed', 'killed'}:
+        elif current_state in State.FINAL_STATES:
             assert current_state == expected_state, "waiting for '()' state, but got '{}'".format(
                 expected_state, current_state
             )
