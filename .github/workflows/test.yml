@@ -93,12 +93,13 @@ jobs:
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
-          python3 codalab_service.py test --version ${VERSION} ${TEST}
+          python3 test_runner.py --version ${VERSION} ${TEST}
           # docker restart codalab_worker_1
-          # python3 codalab_service.py test --version ${VERSION} run
+          # python3 test_runner.py --version ${VERSION} run
           # docker stop codalab_worker_1
-          # python3 codalab_service.py start --services worker --version ${VERSION} --shared-file-system
-          # python3 codalab_service.py test --version ${VERSION} --shared-file-system ${TEST}
+          # python3 codalab_service.py start --services init worker --version ${VERSION} --shared-file-system
+          # Run frontend tests + backend test modules that test shared file systems code paths
+          # python3 test_runner.py --version ${TRAVIS_BRANCH} frontend basic run read write kill resources netcat netcurl workers
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref }}
