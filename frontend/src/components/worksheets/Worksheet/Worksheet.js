@@ -550,9 +550,9 @@ class Worksheet extends React.Component {
         //      % schema example
         //      % add uuid uuid [0:8]
         // start_index: the index in source corresponding to % schema example
-        // original_length: how many lines the original schema occupied, two for the example
+        // original_length: how many fields the original schema occupied, one for the example (starting from add)
         let source = this.state.ws.info.source;
-        source.splice(start_index, original_length, ...rows);
+        source.splice(start_index + 1, original_length, ...rows);
         this.saveAndUpdateWorksheet();
     };
 

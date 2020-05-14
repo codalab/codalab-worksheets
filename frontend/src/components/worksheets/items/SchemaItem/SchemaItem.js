@@ -46,7 +46,7 @@ class SchemaItem extends React.Component<{
         }
         this.setState({ editing: !this.state.editing });
         if (save) {
-            let updatedSchema = ['% schema ' + this.props.item.schema_name];
+            let updatedSchema = [];
             this.state.rows.forEach((fields) => {
                 if (!fields.field) {
                     return;
@@ -106,8 +106,10 @@ class SchemaItem extends React.Component<{
     };
 
     removeFieldRow = (idx) => () => {
+        console.log(1, this.state.rows);
         this.state.rows.splice(idx, 1);
-        this.setState({ rows: this.state.rows });
+        console.log(2, this.state.rows);
+        this.setState({ rows: this.state.rows }, console.log('Removed', this.state.rows));
     };
 
     render() {
@@ -115,7 +117,7 @@ class SchemaItem extends React.Component<{
         const { editing } = this.state;
         var className = 'type-markup ' + (this.props.focused ? 'focused' : '');
         const schemaItem = this.props.item;
-        console.log('ITEM: ', schemaItem);
+        // console.log('ITEM: ', schemaItem);
         const schemaHeaders = schemaItem.header;
         let headerHtml, bodyRowsHtml;
         headerHtml =
