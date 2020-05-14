@@ -119,7 +119,6 @@ jobs:
     name: Test frontend
     runs-on: ubuntu-latest
     needs: [build_backend, build_frontend]
-    if: false
     steps:
       - name: Clear free space
         run: |
