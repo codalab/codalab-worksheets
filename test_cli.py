@@ -294,6 +294,7 @@ class ModuleContext(object):
             print(Colorizer.green("[*] TEST PASSED"))
 
         # Clean up and restore original worksheet
+        time.sleep(5)
         print("[*][*] CLEANING UP")
         os.environ.clear()
         os.environ.update(self.original_environ)
