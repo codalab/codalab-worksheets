@@ -249,19 +249,22 @@ class NavBar extends React.Component<{
 
                     // the results are displayed using the map function, which remembers
                     // order of insertion. We therefore put the owner's worksheets on top
-                    let finalResults = {};
                     const currName = this.state.userInfo.user_name;
                     if (currName in preRanking) {
                         let ownerResults = {};
                         ownerResults[currName] = preRanking[currName];
                         delete preRanking[currName];
-                        finalResults = { ...ownerResults, ...preRanking };
+                        let finalResults = { ...ownerResults, ...preRanking };
+                        this.setState({
+                            isLoading: false,
+                            results: finalResults,
+                        });
+                    } else {
+                        this.setState({
+                            isLoading: false,
+                            results: preRanking,
+                        });
                     }
-
-                    this.setState({
-                        isLoading: false,
-                        results: finalResults || preRanking,
-                    });
                 },
                 error: (xhr, status, err) => {
                     console.error(xhr.responseText);
