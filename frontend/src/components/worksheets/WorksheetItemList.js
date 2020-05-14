@@ -102,6 +102,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             subFocusIndex={props.subFocusIndex}
             after_sort_key={props.after_sort_key}
             ids={props.ids}
+            updateSchemaItem={props.updateSchemaItem}
         >
             {elem}
         </ItemWrapper>,
@@ -281,6 +282,7 @@ class WorksheetItemList extends React.Component {
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         itemHeights: this.props.itemHeights,
+                        updateSchemaItem: this.props.updateSchemaItem,
                     };
                     addWorksheetItems(
                         props,

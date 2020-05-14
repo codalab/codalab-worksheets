@@ -39,12 +39,38 @@ class SchemaItem extends React.Component<{
         };
     }
 
-    toggleEdit = (clear) => () => {
+    toggleEdit = (clear, save) => () => {
         if (clear) {
             this.setState({ rows: this.props.item.field_rows, editing: !this.state.editing });
             return;
         }
         this.setState({ editing: !this.state.editing });
+        if (save) {
+            let updatedSchema = ['% schema ' + this.props.item.schema_name];
+            this.state.rows.forEach((fields) => {
+                if (!fields.field) {
+                    return;
+                }
+                let curRow = '% add ' + fields.field;
+                if (!fields['generated-path']) {
+                    updatedSchema.push(curRow);
+                    return;
+                }
+                curRow = curRow + ' ' + fields['generated-path'];
+                if (!fields['post-processing']) {
+                    updatedSchema.push(curRow);
+                    return;
+                }
+                curRow = curRow + ' ' + fields['post-processing'];
+                updatedSchema.push(curRow);
+            });
+            console.log(updatedSchema);
+            this.props.updateSchemaItem(
+                updatedSchema,
+                this.props.item.start_index,
+                this.props.item.field_rows.length,
+            );
+        }
     };
 
     updateRowIndex = (rowIndex) => {
@@ -89,6 +115,7 @@ class SchemaItem extends React.Component<{
         const { editing } = this.state;
         var className = 'type-markup ' + (this.props.focused ? 'focused' : '');
         const schemaItem = this.props.item;
+        console.log('ITEM: ', schemaItem);
         const schemaHeaders = schemaItem.header;
         let headerHtml, bodyRowsHtml;
         headerHtml =
@@ -120,16 +147,16 @@ class SchemaItem extends React.Component<{
                         <AddCircleIcon />
                     </IconButton>
                     {!editing ? (
-                        <IconButton onClick={this.toggleEdit(false)}>
+                        <IconButton onClick={this.toggleEdit(false, false)}>
                             <EditIcon />
                         </IconButton>
                     ) : (
-                        <IconButton onClick={this.toggleEdit(false)}>
+                        <IconButton onClick={this.toggleEdit(false, true)}>
                             <CheckIcon />
                         </IconButton>
                     )}
                     {editing && (
-                        <IconButton onClick={this.toggleEdit(true)}>
+                        <IconButton onClick={this.toggleEdit(true, false)}>
                             <ClearIcon />
                         </IconButton>
                     )}

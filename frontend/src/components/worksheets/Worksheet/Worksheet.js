@@ -545,7 +545,16 @@ class Worksheet extends React.Component {
         });
     };
 
-    updateDisplaySchema = (rows, original_source_indices) => {};
+    updateSchemaItem = (rows, start_index, original_length) => {
+        // rows: list of string representing the new schema:
+        //      % schema example
+        //      % add uuid uuid [0:8]
+        // start_index: the index in source corresponding to % schema example
+        // original_length: how many lines the original schema occupied, two for the example
+        let source = this.state.ws.info.source;
+        source.splice(start_index, original_length, ...rows);
+        this.saveAndUpdateWorksheet();
+    };
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
@@ -1618,6 +1627,7 @@ class Worksheet extends React.Component {
                 addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
                 onAsyncItemLoad={this.onAsyncItemLoad}
                 itemHeights={this.state.itemHeights}
+                updateSchemaItem={this.updateSchemaItem}
             />
         );
 
