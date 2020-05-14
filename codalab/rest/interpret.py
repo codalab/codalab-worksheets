@@ -15,9 +15,10 @@ from contextlib import closing
 from itertools import chain
 import json
 import sys
-
+import requests
+import urllib.request, urllib.parse, urllib.error
 import yaml
-from bottle import get, post, local, request
+from bottle import get, post, local, request, abort, httplib
 
 from codalab.common import UsageError, NotFoundError
 from codalab.lib import formatting, spec_util
@@ -71,7 +72,7 @@ def _interpret_search():
 @post('/interpret/wsearch')
 def _interpret_wsearch():
     """
-    Returns worksheet items given a search query for worksheets.
+    Returns worksheets information given a search query for worksheets.
 
     JSON request body:
     ```
@@ -79,8 +80,34 @@ def _interpret_wsearch():
         "keywords": [ list of search keywords ]
     }
     ```
+
+    Response body:
+    ```
+    {
+        "response": [
+            {id: 6,
+            uuid: "0x5505f540936f4d0d919f3186141192b0",
+            name: "codalab-a",
+            title: "CodaLab Dashboard",
+            frozen: null,
+            owner_id: "0"
+            owner_name: "codalab"
+            group_permissions: {
+                id: 8,
+                group_uuid: "0x41e95d8592de417cbb726085d6986137",
+                group_name: "public",
+                permission: 1}
+            }
+            ...
+        ]
+    }
+    ```
     """
-    return interpret_wsearch(request.json)
+    query = request.json
+    if 'keywords' not in query:
+        abort(httplib.BAD_REQUEST, 'Missing `keywords`')
+
+    return {'response': interpret_wsearch(query['keywords'])}
 
 
 @post('/interpret/file-genpaths')
@@ -472,6 +499,36 @@ def resolve_interpreted_blocks(interpreted_blocks, brief):
         block['is_refined'] = True
 
     return interpreted_blocks
+
+
+def interpret_wsearch(keywords):
+    """
+    Return a list of row dicts, one per worksheet. These dicts do NOT contain
+    ALL worksheet items; this method is meant to make it easy for a user to see
+    their existing worksheets.
+
+    Each keyword is either:
+    - <key>=<value>
+    - .floating: return bundles not in any worksheet
+    - .offset=<int>: return bundles starting at this offset
+    - .limit=<int>: maximum number of bundles to return
+    - .count: just return the number of bundles
+    - .shared: shared with me through a group
+    - .mine: sugar for owner_id=user_id
+    - .last: sugar for id=.sort-
+    Keys are one of the following:
+    - Bundle fields (e.g., uuid)
+    - Metadata fields (e.g., time)
+    - Special fields (e.g., dependencies)
+    Values can be one of the following:
+    - .sort: sort in increasing order
+    - .sort-: sort by decreasing order
+    - .sum: add up the numbers
+    Bare keywords: sugar for uuid_name=.*<word>.*
+    Search only bundles which are readable by user_id.
+    """
+
+    return search_worksheets(keywords)
 
 
 def is_bundle_genpath_triple(value):
