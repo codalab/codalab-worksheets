@@ -150,7 +150,6 @@ class TableItem extends React.Component<{
                                 <path d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z' />
                             </SvgIcon>
                         }
-                        style={{ marginRight: 30, borderLeft: '3px solid transparent' }}
                     />
                 );
             }
@@ -160,9 +159,8 @@ class TableItem extends React.Component<{
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
-                    style={editPermission || index !== 0 ? { paddingLeft: 0 } : { paddingLeft: 30 }}
                 >
-                    {editPermission && checkbox}
+                    {checkbox}
                     {item}
                 </TableCell>
             );

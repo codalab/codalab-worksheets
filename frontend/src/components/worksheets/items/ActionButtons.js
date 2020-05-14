@@ -148,6 +148,7 @@ class ActionButtons extends React.Component<{
                 ) : null}
                 {showBundleOperationButtons ? (
                     <BundleBulkActionMenu
+                        editPermission={editPermission}
                         handleSelectedBundleCommand={handleSelectedBundleCommand}
                         toggleCmdDialog={toggleCmdDialog}
                         toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
