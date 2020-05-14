@@ -768,7 +768,6 @@ def test(ctx):
     check_equals(uuid, _run_command([cl, 'ls', '-u']))
     # create worksheet
     check_contains(uuid[0:5], _run_command([cl, 'ls']))
-    _run_command([cl, 'ls', '-u']) #
     _run_command([cl, 'add', 'text', 'testing'])
     _run_command([cl, 'add', 'text', '你好世界😊'])
     _run_command([cl, 'add', 'text', '% display contents / maxlines=10'])
@@ -779,21 +778,21 @@ def test(ctx):
     _run_command([cl, 'add', 'text', '% add data_hash data_hash s/0x/HEAD'])
     _run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"'])
     _run_command([cl, 'add', 'text', '% display table foo'])
-    _run_command([cl, 'ls', '-u']) #
     _run_command([cl, 'add', 'bundle', uuid])
-    _run_command([cl, 'ls', '-u']) #
     _run_command(
         [cl, 'add', 'bundle', uuid, '--dest-worksheet', wuuid]
     )  # not testing real copying ability
-    _run_command([cl, 'ls', '-u']) #
+    time.sleep(5)
     _run_command([cl, 'add', 'worksheet', wuuid])
-    _run_command([cl, 'ls', '-u']) #
+    time.sleep(5)
     check_contains(
         ['Worksheet', 'testing', '你好世界😊', test_path_contents('a.txt'), uuid, 'HEAD', 'CREATE'],
         _run_command([cl, 'print']),
     )
-    _run_command([cl, 'ls', '-u']) #
+    # Sleep so that wadd happens properly
+    time.sleep(5)
     _run_command([cl, 'wadd', wuuid, wuuid])
+    time.sleep(5)
     check_num_lines(8, _run_command([cl, 'ls', '-u']))
     _run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
 
