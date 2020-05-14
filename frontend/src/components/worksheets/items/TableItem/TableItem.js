@@ -1,5 +1,6 @@
 // @flow
-import * as React from 'react';
+import React, { useEffect } from 'react';
+import $ from 'jquery';
 import { withStyles } from '@material-ui/core';
 import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
@@ -10,6 +11,8 @@ import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import SvgIcon from '@material-ui/core/SvgIcon';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
+import { semaphore } from '../../../../util/async_loading_utils';
+import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -147,7 +150,6 @@ class TableItem extends React.Component<{
                                 <path d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z' />
                             </SvgIcon>
                         }
-                        style={{ marginRight: 30, borderLeft: '3px solid transparent' }}
                     />
                 );
             }
@@ -157,9 +159,8 @@ class TableItem extends React.Component<{
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
-                    style={editPermission || index !== 0 ? { paddingLeft: 0 } : { paddingLeft: 30 }}
                 >
-                    {editPermission && checkbox}
+                    {checkbox}
                     {item}
                 </TableCell>
             );
@@ -269,4 +270,46 @@ const styles = (theme) => ({
 
 const TableContainer = withStyles(styles)(_TableContainer);
 
-export default TableItem;
+async function fetchAsyncTableContents({ contents }) {
+    return semaphore.use(async () => {
+        const response = await $.ajax({
+            type: 'POST',
+            contentType: 'application/json',
+            url: '/rest/interpret/genpath-table-contents',
+            async: true,
+            data: JSON.stringify({ contents }),
+            dataType: 'json',
+            cache: false,
+        });
+        return response;
+    });
+}
+
+const TableWrapper = (props) => {
+    const { item, onAsyncItemLoad } = props;
+    useEffect(() => {
+        (async function() {
+            if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
+                try {
+                    const { contents } = await fetchAsyncTableContents({ contents: item.rows });
+                    onAsyncItemLoad({
+                        ...item,
+                        rows: contents,
+                        status: {
+                            code: FETCH_STATUS_SCHEMA.READY,
+                            error_message: '',
+                        },
+                    });
+                } catch (e) {
+                    console.error(e);
+                    // TODO: better error message handling here.
+                }
+            }
+        })();
+        // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [item.rows, item.status]);
+    return <TableItem {...props} />;
+};
+
+export default TableWrapper;

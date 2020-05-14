@@ -238,6 +238,7 @@ class NavBar extends React.Component<{
                             ]
                         },
                     */
+
                     const preRanking = _.reduce(
                         filteredResults,
                         (memo, data, name) => {

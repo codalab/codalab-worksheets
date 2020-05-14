@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import BundleDetail from '../BundleDetail';
+import NewRun from '../NewRun';
 import { worksheetItemPropsChanged } from '../../../util/worksheet_utils';
 
 class RecordItem extends React.Component {
@@ -9,6 +10,8 @@ class RecordItem extends React.Component {
         super(props);
         this.state = {
             showDetail: false,
+            showNewRun: 0,
+            runProp: {},
             bundleInfoUpdates: {},
         };
     }
@@ -32,8 +35,26 @@ class RecordItem extends React.Component {
         );
     }
 
+    rerunItem = (runProp) => {
+        this.setState({
+            showDetail: false,
+            showNewRun: 1,
+            runProp: runProp,
+        });
+    };
+
     render() {
-        if (this.props.focused) {
+        const {
+            item,
+            reloadWorksheet,
+            showNewRerun,
+            onHideNewRerun,
+            editPermission,
+            focusIndex,
+            focused,
+            ws,
+        } = this.props;
+        if (focused) {
             // Use e.preventDefault to avoid openning selected link
             Mousetrap.bind(
                 ['enter'],
@@ -46,9 +67,8 @@ class RecordItem extends React.Component {
                 'keydown',
             );
         }
-        var item = this.props.item;
-        var className = 'table table-record' + (this.props.focused ? ' focused' : '');
-        var bundleInfo = this.props.item.bundles_spec.bundle_infos[0];
+        var className = 'table table-record' + (focused ? ' focused' : '');
+        var bundleInfo = item.bundles_spec.bundle_infos[0];
         var header = item.header;
         var k = header[0];
         var v = header[1];
@@ -75,17 +95,34 @@ class RecordItem extends React.Component {
                     <BundleDetail
                         uuid={bundleInfo.uuid}
                         ref='bundleDetail'
-                        bundleMetadataChanged={this.props.reloadWorksheet}
+                        bundleMetadataChanged={reloadWorksheet}
                         onUpdate={this.receiveBundleInfoUpdates}
                         onClose={() => {
                             this.setState({
                                 showDetail: false,
                             });
                         }}
-                        isFocused={this.props.focused}
-                        focusIndex={this.props.focusIndex}
+                        rerunItem={this.rerunItem}
+                        isFocused={focused}
+                        focusIndex={focusIndex}
+                        showNewRerun={showNewRerun}
                         showDetail={this.state.showDetail}
-                        editPermission={this.props.editPermission}
+                        editPermission={editPermission}
+                    />
+                )}
+                {/** ---------------------------------------------------------------------------------------------------
+                 *  Rerun
+                 */}
+                {this.state.showNewRun === 1 && (
+                    <NewRun
+                        ws={ws}
+                        onSubmit={() => {
+                            this.setState({ showNewRun: 0, showDetail: false });
+                            onHideNewRerun();
+                        }}
+                        after_sort_key={bundleInfo.sort_key}
+                        reloadWorksheet={reloadWorksheet}
+                        defaultRun={this.state.runProp}
                     />
                 )}
             </div>

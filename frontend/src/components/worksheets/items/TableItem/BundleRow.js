@@ -162,6 +162,11 @@ class BundleRow extends Component {
                     rowContent = rowContent['path'].split('/')[1];
                 }
             }
+            if (Array.isArray(rowContent) && rowContent.length === 3) {
+                // Cell is a bundle genpath triple -- see is_bundle_genpath_triple() in backend.
+                // This means that the cell is only briefly loaded.
+                rowContent = <span style={{ color: 'grey' }}>Loading...</span>;
+            }
             if (url)
                 rowContent = (
                     <a
@@ -186,14 +191,14 @@ class BundleRow extends Component {
                     classes={{
                         root: classNames({
                             [classes.rootNoPad]: true,
-                            [classes.noCheckBox]: !(editPermission && checkBox),
-                            [classes.withCheckBox]: editPermission && checkBox,
+                            [classes.noCheckBox]: !checkBox,
+                            [classes.withCheckBox]: checkBox,
                         }),
                     }}
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                 >
-                    {editPermission && checkBox}
+                    {checkBox}
                     {showDetailButton}
                     {rowContent}
                 </TableCell>
@@ -221,9 +226,6 @@ class BundleRow extends Component {
             );
             Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
             Mousetrap.bind(['x'], (e) => {
-                if (!editPermission) {
-                    return;
-                }
                 if (!this.props.confirmBundleRowAction(e.code)) {
                     this.props.handleCheckBundle(
                         uuid,

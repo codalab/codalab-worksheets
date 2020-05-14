@@ -948,24 +948,6 @@ class Worksheet extends React.Component {
         if (this.state.showBundleOperationButtons) {
             // Below are allowed shortcut even when a dialog is opened===================
             // The following three are bulk bundle operation shortcuts
-            Mousetrap.bind(['backspace', 'del'], () => {
-                if (this.state.openDetach || this.state.openKill) {
-                    return;
-                }
-                this.toggleCmdDialogNoEvent('rm');
-            });
-            Mousetrap.bind(['a d'], () => {
-                if (this.state.openDelete || this.state.openKill) {
-                    return;
-                }
-                this.toggleCmdDialogNoEvent('detach');
-            });
-            Mousetrap.bind(['a k'], () => {
-                if (this.state.openDetach || this.state.openDelete) {
-                    return;
-                }
-                this.toggleCmdDialogNoEvent('kill');
-            });
             Mousetrap.bind(['a c'], () => {
                 if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
                     return;
@@ -973,31 +955,52 @@ class Worksheet extends React.Component {
                 this.toggleCmdDialogNoEvent('copy');
             });
 
-            // Confirm bulk bundle operation
-            if (this.state.openDelete || this.state.openKill || this.state.openDetach) {
-                Mousetrap.bind(
-                    ['enter'],
-                    function(e) {
-                        if (this.state.openDelete) {
-                            this.executeBundleCommandNoEvent('rm');
-                        } else if (this.state.openKill) {
-                            this.executeBundleCommandNoEvent('kill');
-                        } else if (this.state.openDetach) {
-                            this.executeBundleCommandNoEvent('detach');
-                        }
-                    }.bind(this),
-                );
+            if (this.state.ws.info.editPermission) {
+                Mousetrap.bind(['backspace', 'del'], () => {
+                    if (this.state.openDetach || this.state.openKill) {
+                        return;
+                    }
+                    this.toggleCmdDialogNoEvent('rm');
+                });
+                Mousetrap.bind(['a d'], () => {
+                    if (this.state.openDelete || this.state.openKill) {
+                        return;
+                    }
+                    this.toggleCmdDialogNoEvent('detach');
+                });
+                Mousetrap.bind(['a k'], () => {
+                    if (this.state.openDetach || this.state.openDelete) {
+                        return;
+                    }
+                    this.toggleCmdDialogNoEvent('kill');
+                });
 
-                // Select/Deselect to force delete during deletion dialog
-                Mousetrap.bind(
-                    ['f'],
-                    function() {
-                        //force deletion through f
-                        if (this.state.openDelete) {
-                            this.setState({ forceDelete: !this.state.forceDelete });
-                        }
-                    }.bind(this),
-                );
+                // Confirm bulk bundle operation
+                if (this.state.openDelete || this.state.openKill || this.state.openDetach) {
+                    Mousetrap.bind(
+                        ['enter'],
+                        function(e) {
+                            if (this.state.openDelete) {
+                                this.executeBundleCommandNoEvent('rm');
+                            } else if (this.state.openKill) {
+                                this.executeBundleCommandNoEvent('kill');
+                            } else if (this.state.openDetach) {
+                                this.executeBundleCommandNoEvent('detach');
+                            }
+                        }.bind(this),
+                    );
+
+                    // Select/Deselect to force delete during deletion dialog
+                    Mousetrap.bind(
+                        ['f'],
+                        function() {
+                            //force deletion through f
+                            if (this.state.openDelete) {
+                                this.setState({ forceDelete: !this.state.forceDelete });
+                            }
+                        }.bind(this),
+                    );
+                }
             }
         }
         //====================Bulk bundle operations===================
