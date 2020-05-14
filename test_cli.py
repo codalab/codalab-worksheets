@@ -294,37 +294,38 @@ class ModuleContext(object):
             print(Colorizer.green("[*] TEST PASSED"))
 
         # Clean up and restore original worksheet
-        time.sleep(5)
+        # time.sleep(5)
         print("[*][*] CLEANING UP")
-        os.environ.clear()
-        os.environ.update(self.original_environ)
+        return True
+        # os.environ.clear()
+        # os.environ.update(self.original_environ)
 
-        _run_command([cl, 'work', self.original_worksheet])
-        for worksheet in self.worksheets:
-            self.bundles.extend(_run_command([cl, 'ls', '-w', worksheet, '-u']).split())
-            _run_command([cl, 'wrm', '--force', worksheet])
+        # _run_command([cl, 'work', self.original_worksheet])
+        # for worksheet in self.worksheets:
+        #     self.bundles.extend(_run_command([cl, 'ls', '-w', worksheet, '-u']).split())
+        #     _run_command([cl, 'wrm', '--force', worksheet])
 
-        # Delete all bundles (kill and dedup first)
-        if len(self.bundles) > 0:
-            for bundle in set(self.bundles):
-                try:
-                    if _run_command([cl, 'info', '-f', 'state', bundle]) not in State.FINAL_STATES:
-                        _run_command([cl, 'kill', bundle])
-                        _run_command([cl, 'wait', bundle], expected_exit_code=1)
-                except AssertionError:
-                    print('CAUGHT')
-                    pass
-                _run_command([cl, 'rm', '--force', bundle])
+        # # Delete all bundles (kill and dedup first)
+        # if len(self.bundles) > 0:
+        #     for bundle in set(self.bundles):
+        #         try:
+        #             if _run_command([cl, 'info', '-f', 'state', bundle]) not in State.FINAL_STATES:
+        #                 _run_command([cl, 'kill', bundle])
+        #                 _run_command([cl, 'wait', bundle], expected_exit_code=1)
+        #         except AssertionError:
+        #             print('CAUGHT')
+        #             pass
+        #         _run_command([cl, 'rm', '--force', bundle])
 
-        # Delete all groups (dedup first)
-        if len(self.groups) > 0:
-            _run_command([cl, 'grm'] + list(set(self.groups)))
+        # # Delete all groups (dedup first)
+        # if len(self.groups) > 0:
+        #     _run_command([cl, 'grm'] + list(set(self.groups)))
 
-        # Reraise only KeyboardInterrupt
-        if exc_type is KeyboardInterrupt:
-            return False
-        else:
-            return True
+        # # Reraise only KeyboardInterrupt
+        # if exc_type is KeyboardInterrupt:
+        #     return False
+        # else:
+        #     return True
 
     def collect_worksheet(self, uuid):
         """Mark a worksheet for cleanup on exit."""
