@@ -73,10 +73,6 @@ class SchemaItem extends React.Component<{
         }
     };
 
-    updateRowIndex = (rowIndex) => {
-        this.props.setFocus(this.props.focusIndex, rowIndex);
-    };
-
     addFieldRowAfter = (idx) => (e) => {
         let newRow = {};
         const schemaItem = this.props.item;
@@ -106,10 +102,8 @@ class SchemaItem extends React.Component<{
     };
 
     removeFieldRow = (idx) => () => {
-        console.log(1, this.state.rows);
         this.state.rows.splice(idx, 1);
-        console.log(2, this.state.rows);
-        this.setState({ rows: this.state.rows }, console.log('Removed', this.state.rows));
+        this.setState({ rows: this.state.rows });
     };
 
     render() {
