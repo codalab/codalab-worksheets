@@ -1,3 +1,5 @@
+# This file is also used for .dockerignore
+
 *.pyc
 *.sw*
 *.log
@@ -33,7 +35,7 @@ venv*/
 /tags
 
 /var
-/frontend/node_modules
+node_modules
 pip-wheel-metadata
 site
 

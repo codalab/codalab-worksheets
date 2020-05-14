@@ -6,6 +6,7 @@ services:
     command: npm start
     volumes:
       - ./../../frontend/src:/opt/frontend/src
+      - ./../../frontend/node_modules:/opt/frontend/node_modules
     # Fix for https://github.com/facebook/create-react-app/issues/8688
     stdin_open: true
     tty: true
