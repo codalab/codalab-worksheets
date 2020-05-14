@@ -1,7 +1,7 @@
 import * as React from 'react';
 import $ from 'jquery';
 import Immutable from 'seamless-immutable';
-import { worksheetItemPropsChanged } from '../../../util/worksheet_utils';
+import { worksheetItemPropsChanged, getAfterSortKey } from '../../../util/worksheet_utils';
 import marked from 'marked';
 import ReactDOM from 'react-dom';
 import { withStyles } from '@material-ui/core/styles';
@@ -127,33 +127,14 @@ class MarkdownItem extends React.Component {
         // Order is important!
         contents = this.processMarkdown(contents);
 
-        // create a string of html for innerHTML rendering
-        // more info about dangerouslySetInnerHTML
-        // http://facebook.github.io/react/docs/special-non-dom-attributes.html
-        // http://facebook.github.io/react/docs/tags-and-attributes.html#html-attributes
         var className = 'type-markup ' + (this.props.focused ? 'focused' : '');
-
-        let after_sort_key = null;
-        if (item.sort_keys && item.sort_keys.length > 0) {
-            const { sort_keys, ids } = item;
-            const keys = [];
-            sort_keys.forEach((k, idx) => {
-                const key = k || ids[idx];
-                if (key !== null && key !== undefined) {
-                    keys.push(key);
-                }
-            });
-            if (keys.length > 0) {
-                after_sort_key = Math.min(...keys);
-            }
-        }
 
         return showEdit ? (
             <TextEditorItem
                 ids={item.ids}
                 mode='edit'
                 defaultValue={item.text}
-                after_sort_key={after_sort_key}
+                after_sort_key={getAfterSortKey(item)}
                 reloadWorksheet={this.props.reloadWorksheet}
                 worksheetUUID={this.props.worksheetUUID}
                 closeEditor={() => {

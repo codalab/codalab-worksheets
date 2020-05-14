@@ -3,18 +3,6 @@ import * as React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import NewRun from '../NewRun';
 import TextEditorItem from './TextEditorItem';
-import { getMinMaxKeys } from '../../../util/worksheet_utils';
-
-function getIds(item) {
-    if (item.mode === 'markup_block') {
-        return item.ids;
-    } else if (item.mode === 'table_block') {
-        if (item.bundles_spec && item.bundles_spec.bundle_infos) {
-            return item.bundles_spec.bundle_infos.map((info) => info.id);
-        }
-    }
-    return [];
-}
 
 class ItemWrapper extends React.Component {
     state = {
@@ -26,11 +14,11 @@ class ItemWrapper extends React.Component {
         const {
             children,
             classes,
-            prevItem,
             item,
-            afterItem,
+            after_sort_key,
             worksheetUUID,
             reloadWorksheet,
+            saveAndUpdateWorksheet,
         } = this.props;
         const { showNewRun, showNewText } = this.props;
 
@@ -38,24 +26,14 @@ class ItemWrapper extends React.Component {
             return null;
         }
 
-        const ids = getIds(item);
-        const itemKeys = getMinMaxKeys(item);
-
-        let isWorkSheetItem = true;
-        if (itemKeys.minKey === null && itemKeys.maxKey === null) {
-            // This item isn't really a worksheet item.
-            isWorkSheetItem = false;
-        }
-
         const { isDummyItem } = item;
-
         return (
             <div className={isDummyItem ? '' : classes.container}>
                 {!isDummyItem && <div className={classes.main}>{children}</div>}
                 {showNewRun && (
                     <div className={classes.insertBox}>
                         <NewRun
-                            after_sort_key={itemKeys.maxKey}
+                            after_sort_key={after_sort_key}
                             ws={this.props.ws}
                             onSubmit={() => this.props.onHideNewRun()}
                             reloadWorksheet={reloadWorksheet}
@@ -64,9 +42,9 @@ class ItemWrapper extends React.Component {
                 )}
                 {showNewText && (
                     <TextEditorItem
-                        ids={ids}
+                        ids={this.props.ids}
                         mode='create'
-                        after_sort_key={itemKeys.maxKey}
+                        after_sort_key={after_sort_key}
                         worksheetUUID={worksheetUUID}
                         reloadWorksheet={reloadWorksheet}
                         closeEditor={() => {

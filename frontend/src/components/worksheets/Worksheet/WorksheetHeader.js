@@ -8,6 +8,7 @@ import ActionButtons from '../items/ActionButtons';
 import Tooltip from '@material-ui/core/Tooltip';
 import IconButton from '@material-ui/core/IconButton';
 import InfoIcon from '@material-ui/icons/InfoOutlined';
+import OpenWithIcon from '@material-ui/icons/OpenWith';
 import './Worksheet.scss';
 
 const styles = {
@@ -35,8 +36,12 @@ export default ({
     setAnchorEl,
     handleSelectedBundleCommand,
     showBundleOperationButtons,
-    togglePopup,
+    toggleCmdDialog,
+    toggleCmdDialogNoEvent,
     toggleGlossaryModal,
+    copiedBundleIds,
+    showPasteButton,
+    toggleWorksheetSize,
 }) => (
     <Sticky top={6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
@@ -132,7 +137,10 @@ export default ({
                                 uploadAnchor={uploadAnchor}
                                 handleSelectedBundleCommand={handleSelectedBundleCommand}
                                 showBundleOperationButtons={showBundleOperationButtons}
-                                togglePopup={togglePopup}
+                                toggleCmdDialog={toggleCmdDialog}
+                                toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
+                                copiedBundleIds={copiedBundleIds}
+                                showPasteButton={showPasteButton}
                             />
                         </Grid>
                         <Grid item>
@@ -145,6 +153,16 @@ export default ({
                             >
                                 <IconButton color='inherit' href='#' onClick={toggleGlossaryModal}>
                                     <InfoIcon fontSize='small' />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip
+                                disableFocusListener
+                                disableTouchListener
+                                title='Expand/Shrink'
+                                aria-label='toggle worksheet width'
+                            >
+                                <IconButton color='inherit' href='#' onClick={toggleWorksheetSize}>
+                                    <OpenWithIcon fontSize='small' />
                                 </IconButton>
                             </Tooltip>
                         </Grid>

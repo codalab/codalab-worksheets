@@ -8,9 +8,9 @@ import os
 import re
 import time
 import logging
+import json
 
 from dateutil import parser
-
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, not_, select, union, desc, func
@@ -57,6 +57,7 @@ from codalab.worker.bundle_state import State
 logger = logging.getLogger(__name__)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
+SEARCH_RESULTS_LIMIT = 10
 
 
 def str_key_dict(row):
@@ -362,7 +363,7 @@ class BundleModel(object):
         """
         clauses = []
         offset = 0
-        limit = 10
+        limit = SEARCH_RESULTS_LIMIT
         format_func = None
         count = False
         sort_key = [None]
@@ -699,6 +700,82 @@ class BundleModel(object):
 
         return self._execute_query(query)
 
+    def get_memoized_bundles(self, user_id, command, dependencies):
+        """
+        Get a list of bundle UUIDs that match with input command and dependencies in the order of they were created.
+        :param user_id: a string that specifies the current user id.
+        :param command: a string that defines the command that is used to search for memoized bundles in the database.
+        :param dependencies: a string in the form of '[{"child_path": key1, "parent_uuid": uuid1},
+                                                       {"child_path": key2, "parent_uuid": uuid2}]'
+                            to search for matched dependencies in the database.
+        :return: a list of matched UUIDs.
+        """
+        # Decode json formatted dependencies string to a list of key value pairs
+        dependencies = json.loads(dependencies)
+        # When there is no dependency to be matched, the target memozied bundle
+        # should only exist in the bundle table but not in the bundle_dependency table.
+        if len(dependencies) == 0:
+            query = (
+                select([cl_bundle.c.uuid])
+                .select_from(cl_bundle)
+                .where(
+                    and_(
+                        cl_bundle.c.command == command,
+                        cl_bundle.c.owner_id == user_id,
+                        cl_bundle.c.uuid.notin_(
+                            select([cl_bundle_dependency.c.child_uuid]).select_from(
+                                cl_bundle_dependency
+                            )
+                        ),
+                    )
+                )
+                .order_by(cl_bundle.c.id)
+            )
+        else:
+            # The following matching logic contains two aggregations. In the first aggregation, we select those records
+            # that have the same number of dependencies as specified in input. In the second aggregation, we operate on
+            # records that returned from the first aggregation. We first select those records that match with all
+            # (child_path, parent_uuid) dependency pairs from the input. Then, we aggregate on child_uuid and match
+            # the total the number of unique dependencies per child_uuid with input dependencies.
+            clause = []
+            for dep in dependencies:
+                clause.append(
+                    and_(
+                        cl_bundle_dependency.c.child_path == dep['child_path'],
+                        cl_bundle_dependency.c.parent_uuid == dep['parent_uuid'],
+                    )
+                )
+            # Step 1: filter by input command and the number of dependencies
+            command_filter = (
+                select([cl_bundle_dependency.c.child_uuid])
+                .select_from(
+                    cl_bundle.join(
+                        cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid
+                    )
+                )
+                .where(and_(cl_bundle.c.command == command, cl_bundle.c.owner_id == user_id))
+                # child_path is unique across all dependencies, aggregate on child_uuid
+                # and COUNT the total the number of unique dependencies per child_uuid
+                .group_by(cl_bundle_dependency.c.child_uuid)
+                .having(func.count(cl_bundle_dependency.c.child_path) == len(dependencies))
+            )
+            uuids = self._execute_query(command_filter)
+
+            # Step 2: filter by each dependency (child_path, parent_uuid) pair in the bundle_dependency table
+            query = (
+                select([cl_bundle_dependency.c.child_uuid])
+                .select_from(cl_bundle_dependency)
+                .where(and_(cl_bundle_dependency.c.child_uuid.in_(uuids), or_(*clause)))
+                # child_path is unique across all dependencies, aggregate on child_uuid
+                # and COUNT the total the number of unique dependencies per child_uuid
+                .group_by(cl_bundle_dependency.c.child_uuid)
+                .having(func.count(cl_bundle_dependency.c.child_path) == len(dependencies))
+                # Ensure the order of the returning bundles will be in the order of they were created.
+                .order_by(cl_bundle_dependency.c.id)
+            )
+
+        return self._execute_query(query)
+
     def batch_get_bundles(self, **kwargs):
         """
         Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.
@@ -887,7 +964,7 @@ class BundleModel(object):
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finalizing(self, bundle, user_id, worker_run, connection):
+    def transition_bundle_finalizing(self, bundle, worker_run, connection):
         """
         Transitions bundle to FINALIZING state:
             Saves the failure message and exit code from the worker
@@ -907,10 +984,6 @@ class BundleModel(object):
         bundle_update = {'state': State.FINALIZING, 'metadata': metadata}
 
         self.update_bundle(bundle, bundle_update, connection)
-
-        if user_id == self.root_user_id:
-            self.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
-
         return True
 
     def transition_bundle_finished(self, bundle, bundle_location):
@@ -927,6 +1000,11 @@ class BundleModel(object):
             state = State.KILLED
 
         worker = self.get_bundle_worker(bundle.uuid)
+
+        # Increment the amount of time used for the user whose bundles run on CodaLab's public instances
+        if worker['user_id'] == self.root_user_id:
+            self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
+
         if worker['shared_file_system']:
             self.update_disk_metadata(bundle, bundle_location)
 
@@ -984,7 +1062,7 @@ class BundleModel(object):
                 self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
-                return self.transition_bundle_finalizing(bundle, user_id, worker_run, connection)
+                return self.transition_bundle_finalizing(bundle, worker_run, connection)
 
             if worker_run.state in [State.PREPARING, State.RUNNING]:
                 return self.transition_bundle_running(
@@ -1214,7 +1292,7 @@ class BundleModel(object):
         """
         clauses = []
         offset = 0
-        limit = 10
+        limit = SEARCH_RESULTS_LIMIT
         sort_key = [cl_worksheet.c.name]
 
         # Number nested subqueries

@@ -62,7 +62,8 @@ def _fetch_bundle(uuid):
 @get('/bundles')
 def _fetch_bundles():
     """
-    Fetch bundles by bundle `specs` OR search `keywords`. Behavior is undefined
+    Fetch bundles in the following two ways:
+    1. By bundle `specs` OR search `keywords` . Behavior is undefined
     when both `specs` and `keywords` are provided.
 
     Query parameters:
@@ -99,12 +100,24 @@ def _fetch_bundles():
         }
     }
     ```
+    2. By bundle `command` and/or `dependencies` (for `--memoized` option in cl [run/mimic] command).
+    When `dependencies` is not defined, the searching result will include bundles that match with command only.
 
+    Query parameters:
+     - `command`      : the command of a bundle in string
+     - `dependencies` : the dependencies of a bundle in the format of
+                        '[{"child_path":key1, "parent_uuid":UUID1},
+                        {"child_path":key2, "parent_uuid":UUID2}]'
+        1. a UUID should be in the format of 32 hex characters with a preceding '0x' (partial UUID is not allowed).
+        2. the key should be able to uniquely identify a (child_path, parent_uuid) pair in the list.
+    The returning result will be aggregated in the same way as 1.
     """
     keywords = query_get_list('keywords')
     specs = query_get_list('specs')
     worksheet_uuid = request.query.get('worksheet')
     descendant_depth = query_get_type(int, 'depth', None)
+    command = query_get_type(str, 'command', '')
+    dependencies = query_get_type(str, 'dependencies', '[]')
 
     if keywords:
         # Handle search keywords
@@ -120,6 +133,8 @@ def _fetch_bundles():
         bundle_uuids = canonicalize.get_bundle_uuids(
             local.model, request.user, worksheet_uuid, specs
         )
+    elif command:
+        bundle_uuids = local.model.get_memoized_bundles(request.user.user_id, command, dependencies)
     else:
         abort(
             http.client.BAD_REQUEST,
@@ -238,6 +253,7 @@ def _create_bundles():
         created_uuids.append(bundle_uuid)
         bundle_class = get_bundle_subclass(bundle['bundle_type'])
         bundle['owner_id'] = request.user.user_id
+
         if issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
             bundle['state'] = State.UPLOADING
         else:
@@ -309,7 +325,6 @@ def _update_bundles():
 
     # Get updated bundles
     bundles_dict = get_bundle_infos(bundle_uuids)
-
     # Create list of bundles in original order
     # Need to check if the UUID is in the dict, since there is a chance that a bundle is deleted
     # right after being updated.
@@ -679,25 +694,26 @@ def _update_bundle_contents_blob(uuid):
 
     # Store the data.
     try:
+        sources = None
         if request.query.urls:
             sources = query_get_list('urls')
-        else:
+        # request without "filename" doesn't need to upload to bundle store
+        if request.query.filename:
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
-
-        local.upload_manager.upload_to_bundle_store(
-            bundle,
-            sources=sources,
-            follow_symlinks=False,
-            exclude_patterns=None,
-            remove_sources=False,
-            git=query_get_bool('git', default=False),
-            unpack=query_get_bool('unpack', default=True),
-            simplify_archives=query_get_bool('simplify', default=True),
-        )  # See UploadManager for full explanation of 'simplify'
-
-        bundle_location = local.bundle_store.get_bundle_location(uuid)
-        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
+        if sources:
+            local.upload_manager.upload_to_bundle_store(
+                bundle,
+                sources=sources,
+                follow_symlinks=False,
+                exclude_patterns=None,
+                remove_sources=False,
+                git=query_get_bool('git', default=False),
+                unpack=query_get_bool('unpack', default=True),
+                simplify_archives=query_get_bool('simplify', default=True),
+            )  # See UploadManager for full explanation of 'simplify'
+            bundle_location = local.bundle_store.get_bundle_location(uuid)
+            local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error

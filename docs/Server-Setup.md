@@ -124,15 +124,16 @@ Since tests run against an existing instance, make sure you update your instance
 
 To run the tests against an instance that you've already set up:
 
-    ./codalab_service.py start -bd -s test
+    ./codalab_service.py test default
 
 Or to run a specific test (e.g., basic):
 
     docker exec codalab_rest-server_1 python3 test_cli.py basic
 
-You can also start an instance and run tests on it:
+In sum, to start an instance and run tests on it:
 
-    ./codalab_service.py start -bd -s default test
+    ./codalab_service.py start -bd
+    ./codalab_service.py test default
 
 These must pass before you submit a PR.
 
