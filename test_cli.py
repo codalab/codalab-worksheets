@@ -111,20 +111,30 @@ def get_info(uuid, key):
 
 
 def wait_until_state(uuid, expected_state, timeout_seconds=100):
+    """
+    Waits until a bundle in in the expected state or one of the final states. If a bundle is
+    in one of the final states that is not the expected_state, fail earlier than the timeout.
+
+    Parameters:
+        uuid: UUID of bundle to check state for
+        expected_state: Expected state of bundle
+        timeout_seconds: Maximum timeout to wait for the bundle. Default is 100 seconds.
+    """
     start_time = time.time()
     while True:
         if time.time() - start_time > timeout_seconds:
             raise AssertionError('timeout while waiting for %s to run' % uuid)
         current_state = get_info(uuid, 'state')
 
-        # Return when the bundle is in the expected state or one of the final states
+        # Stop waiting when the bundle is in the expected state or one of the final states
         if current_state == expected_state:
             return
         elif current_state in State.FINAL_STATES:
-            assert current_state == expected_state, "waiting for '()' state, but got '{}'".format(
-                expected_state, current_state
+            raise AssertionError(
+                "For bundle with uuid {}, waited for '{}' state, but got '{}'.".format(
+                    uuid, expected_state, current_state
+                )
             )
-            return
         time.sleep(0.5)
 
 
@@ -297,11 +307,7 @@ class ModuleContext(object):
         if len(self.bundles) > 0:
             for bundle in set(self.bundles):
                 try:
-                    if _run_command([cl, 'info', '-f', 'state', bundle]) not in (
-                        'ready',
-                        'failed',
-                        'killed',
-                    ):
+                    if _run_command([cl, 'info', '-f', 'state', bundle]) not in State.FINAL_STATES:
                         _run_command([cl, 'kill', bundle])
                         _run_command([cl, 'wait', bundle], expected_exit_code=1)
                 except AssertionError:
@@ -471,7 +477,7 @@ def test(ctx):
     check_equals('a.txt', get_info(uuid, 'name'))
     check_equals('hello', get_info(uuid, 'description'))
     check_contains(['a', 'b'], get_info(uuid, 'tags'))
-    check_equals('ready', get_info(uuid, 'state'))
+    check_equals(State.READY, get_info(uuid, 'state'))
     check_equals('ready\thello', get_info(uuid, 'state,description'))
 
     # edit
@@ -1016,7 +1022,7 @@ def test(ctx):
     _run_command([cl, 'download', uuid + '/stdout', '-o', path])
     check_equals('hello', path_contents(path))
     # get info
-    check_equals('ready', _run_command([cl, 'info', '-f', 'state', uuid]))
+    check_equals(State.READY, _run_command([cl, 'info', '-f', 'state', uuid]))
     check_contains(['run "echo hello"'], _run_command([cl, 'info', '-f', 'args', uuid]))
     check_equals('hello', _run_command([cl, 'cat', uuid + '/stdout']))
     # block
@@ -1108,7 +1114,7 @@ def test(ctx):
             'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done',
         ]
     )
-    wait_until_state(uuid, 'running')
+    wait_until_state(uuid, State.RUNNING)
 
     # Tests reading first while the bundle is running and then after it is
     # killed.
@@ -1162,7 +1168,7 @@ def test(ctx):
 @TestModule.register('kill')
 def test(ctx):
     uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
-    wait_until_state(uuid, 'running')
+    wait_until_state(uuid, State.RUNNING)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
     _run_command([cl, 'wait', uuid], 1)
     _run_command([cl, 'wait', uuid], 1)
@@ -1172,7 +1178,7 @@ def test(ctx):
 @TestModule.register('write')
 def test(ctx):
     uuid = _run_command([cl, 'run', 'sleep 5'])
-    wait_until_state(uuid, 'running')
+    wait_until_state(uuid, State.RUNNING)
     target = uuid + '/message'
     _run_command([cl, 'write', 'file with space', 'hello world'], 1)  # Not allowed
     check_equals(uuid, _run_command([cl, 'write', target, 'hello world']))
@@ -1386,7 +1392,7 @@ def test(ctx):
         _run_command([cl, 'work', worksheet])
         bundles = _run_command([cl, 'ls', '--uuid-only'])
         for uuid in bundles.split('\n'):
-            wait_until_state(uuid, 'ready')
+            wait_until_state(uuid, State.READY)
 
     """Test copying between instances."""
     source_worksheet = current_worksheet()
@@ -1471,13 +1477,13 @@ def test(ctx):
 def test(ctx):
     script_uuid = _run_command([cl, 'upload', test_path('netcat-test.py')])
     uuid = _run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
-    wait_until_state(uuid, 'running')
+    wait_until_state(uuid, State.RUNNING)
     time.sleep(5)
     output = _run_command([cl, 'netcat', uuid, '5005', '---', 'hi patrick'])
     check_equals('No, this is dawg', output)
 
     uuid = _run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
-    wait_until_state(uuid, 'running')
+    wait_until_state(uuid, State.RUNNING)
     time.sleep(5)
     output = _run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
     check_equals('Hi this is dawg', output)
@@ -1486,7 +1492,7 @@ def test(ctx):
 @TestModule.register('netcurl')
 def test(ctx):
     uuid = _run_command([cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'])
-    wait_until_state(uuid, 'running')
+    wait_until_state(uuid, State.RUNNING)
     address = ctx.client.address
     check_equals(
         'hello',
