@@ -399,6 +399,12 @@ class BundleManager(object):
                     # decrement the parallel run quota left.
                     if worker["user_id"] == self._model.root_user_id:
                         user_parallel_run_quota_left[bundle.owner_id] -= 1
+                    # Update available worker resoures (this is an upper-bound),
+                    # since resources released by jobs that finish are not used until
+                    # the next call to _schedule_run_bundles_on_workers.
+                    worker['cpus'] -= bundle_resources.cpus
+                    worker['gpus'] -= bundle_resources.gpus
+                    worker['memory_bytes'] -= bundle_resources.memory
                     break
 
     def _deduct_worker_resources(self, workers_list, running_bundles_info):
