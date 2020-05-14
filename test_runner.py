@@ -83,14 +83,18 @@ class TestRunner(object):
     def run(self):
         success = True
         try:
-            # Run backend tests using test_cli
-            test_command = 'python3 test_cli.py --instance %s ' % self.instance
-            if self.temp_instance_required:
-                test_command += '--second-instance %s ' % self.temp_instance
-            test_command += ' '.join(list(filter(lambda test: test != 'frontend', self.tests)))
 
-            print('Running backend tests with command: %s' % test_command)
-            subprocess.check_call(TestRunner._docker_exec(test_command), shell=True)
+            non_frontend_tests = list(filter(lambda test: test != 'frontend', self.tests))
+
+            if len(non_frontend_tests):
+                # Run backend tests using test_cli
+                test_command = 'python3 test_cli.py --instance %s ' % self.instance
+                if self.temp_instance_required:
+                    test_command += '--second-instance %s ' % self.temp_instance
+
+                test_command += ' '.join(non_frontend_tests)
+                print('Running backend tests with command: %s' % test_command)
+                subprocess.check_call(TestRunner._docker_exec(test_command), shell=True)
 
             # Run frontend tests
             self._run_frontend_tests()
