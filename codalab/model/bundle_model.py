@@ -873,7 +873,7 @@ class BundleModel(object):
             metadata_update = {
                 spec.key: None
                 for spec in RunBundle.METADATA_SPECS
-                if not spec.generated and spec.key != 'action'
+                if not spec.generated or spec.key != 'action'
             }
             bundle_update = {'state': State.STAGED, 'metadata': metadata_update}
             self.update_bundle(bundle, bundle_update, connection)
