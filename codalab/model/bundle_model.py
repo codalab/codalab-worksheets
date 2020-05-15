@@ -52,7 +52,7 @@ from codalab.objects.user import User
 from codalab.objects.dependency import Dependency
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
-
+from codalab.bundles.run_bundle import RunBundle
 
 logger = logging.getLogger(__name__)
 
@@ -868,16 +868,12 @@ class BundleModel(object):
             if not row:
                 raise IntegrityError('Missing bundle with UUID %s' % bundle.uuid)
 
-            # Reset all metadata fields to be None
+            # Reset all metadata fields that aren't input by user from RunBundle class to be None.
+            # Excluding the "action" filed here as a staged bundle can be KILLED or REMOVED.
             metadata_update = {
-                'job_handle': None,
-                'started': None,
-                'run_status': None,
-                'last_updated': None,
-                'time': None,
-                'time_user': None,
-                'time_system': None,
-                'remote': None,
+                spec.key: None
+                for spec in RunBundle.METADATA_SPECS
+                if not spec.generated and spec.key != 'action'
             }
             bundle_update = {'state': State.STAGED, 'metadata': metadata_update}
             self.update_bundle(bundle, bundle_update, connection)
