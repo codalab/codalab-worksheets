@@ -17,6 +17,7 @@ from sqlalchemy import and_, or_, not_, select, union, desc, func
 from sqlalchemy.sql.expression import literal, true
 
 from codalab.bundles import get_bundle_subclass
+from codalab.bundles.run_bundle import RunBundle
 from codalab.common import IntegrityError, NotFoundError, precondition, UsageError
 from codalab.lib import crypt_util, spec_util, worksheet_util, path_util
 from codalab.model.util import LikeQuery
@@ -52,7 +53,6 @@ from codalab.objects.user import User
 from codalab.objects.dependency import Dependency
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
-from codalab.bundles.run_bundle import RunBundle
 
 logger = logging.getLogger(__name__)
 
