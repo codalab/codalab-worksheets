@@ -184,7 +184,7 @@ class Worker:
                 self.process_runs()
                 self.save_state()
                 self.checkin()
-                self.process_terminate_signal()
+                self.check_terminate_signal()
                 # Save state for one last time: excludes all the bundles in terminal states: FINISHED or RESTAGED.
                 self.save_state()
                 if self.check_idle_stop():
@@ -226,7 +226,7 @@ class Worker:
         else:
             self.terminate_and_restage = True
 
-    def process_terminate_signal(self):
+    def check_terminate_signal(self):
         # If received pass_down_termination signal from CLI to terminate the worker,
         # wait until all the existing unfinished bundles are restaged, then stop the worker.
         if self.terminate_and_restage:
