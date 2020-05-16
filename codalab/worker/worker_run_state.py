@@ -66,10 +66,10 @@ class RunStage(object):
 
     """
     This stage will collect bundles in terminal states and 
-    sent them back to the server with STAGED state
+    sent them back to the server with RESTAGED state
     """
-    STAGED = 'RUN_STAGE.STAGED'
-    WORKER_STATE_TO_SERVER_STATE[STAGED] = State.STAGED
+    RESTAGED = 'RUN_STAGE.RESTAGED'
+    WORKER_STATE_TO_SERVER_STATE[RESTAGED] = State.STAGED
 
 
 RunState = namedtuple(
@@ -133,7 +133,7 @@ class RunStateMachine(StateTransitioner):
         self.add_transition(RunStage.UPLOADING_RESULTS, self._transition_from_UPLOADING_RESULTS)
         self.add_transition(RunStage.FINALIZING, self._transition_from_FINALIZING)
         self.add_terminal(RunStage.FINISHED)
-        self.add_terminal(RunStage.STAGED)
+        self.add_terminal(RunStage.RESTAGED)
 
         self.dependency_manager = dependency_manager
         self.docker_image_manager = docker_image_manager
@@ -468,7 +468,7 @@ class RunStateMachine(StateTransitioner):
                 logger.error(traceback.format_exc())
 
         if run_state.is_restaged:
-            return run_state._replace(stage=RunStage.STAGED)
+            return run_state._replace(stage=RunStage.RESTAGED)
 
         if not self.shared_file_system and run_state.has_contents:
             # No need to upload results since results are directly written to bundle store
@@ -490,7 +490,7 @@ class RunStateMachine(StateTransitioner):
             Move to FINALIZING state
         """
         if run_state.is_restaged:
-            return run_state._replace(stage=RunStage.STAGED)
+            return run_state._replace(stage=RunStage.RESTAGED)
 
         def upload_results():
             try:
@@ -544,7 +544,7 @@ class RunStateMachine(StateTransitioner):
         Prepare the finalize message to be sent with the next checkin
         """
         if run_state.is_restaged:
-            return run_state._replace(stage=RunStage.STAGED)
+            return run_state._replace(stage=RunStage.RESTAGED)
 
         if run_state.is_killed:
             # Append kill_message, which contains more useful info on why a run was killed, to the failure message.

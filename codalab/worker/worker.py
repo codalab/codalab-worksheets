@@ -185,7 +185,7 @@ class Worker:
                 self.save_state()
                 self.checkin()
                 self.process_terminate_signal()
-                # Save state for one last time: excludes all the bundles in terminal states: FINISHED or STAGED.
+                # Save state for one last time: excludes all the bundles in terminal states: FINISHED or RESTAGED.
                 self.save_state()
                 if self.check_idle_stop():
                     self.stop = True
@@ -220,7 +220,7 @@ class Worker:
     def signal(self):
         # When the pass_down_termination flag is False, set the stop flag to stop running
         # the worker without changing the status of existing running bundles. Otherwise,
-        # restage all bundles that are not in the terminal states [FINISHED, STAGED].
+        # restage all bundles that are not in the terminal states [FINISHED, RESTAGED].
         if not self.pass_down_termination:
             self.stop = True
         else:
@@ -235,18 +235,18 @@ class Worker:
 
     def restage_bundles(self):
         """
-        Restage bundles not in the final states [FINISHED and STAGED] from worker to server.
+        Restage bundles not in the final states [FINISHED and RESTAGED] from worker to server.
         :return: the number of restaged bundles
         """
         restaged_bundles = []
-        terminal_stages = [RunStage.FINISHED, RunStage.STAGED]
+        terminal_stages = [RunStage.FINISHED, RunStage.RESTAGED]
         for uuid in self.runs:
             run_state = self.runs[uuid]
             if run_state.stage not in terminal_stages:
-                self.restage(uuid)
+                self.restage_bundle(uuid)
                 restaged_bundles.append(uuid)
         if len(restaged_bundles) == 0:
-            # reset the current runs to exclude bundles in terminal states: STAGED and FINISHED
+            # reset the current runs to exclude bundles in terminal states: RESTAGED and FINISHED
             self.runs = {
                 uuid: run_state
                 for uuid, run_state in self.runs.items()
@@ -508,7 +508,7 @@ class Worker:
         """
         self.runs[uuid] = self.runs[uuid]._replace(kill_message='Kill requested', is_killed=True)
 
-    def restage(self, uuid):
+    def restage_bundle(self, uuid):
         self.runs[uuid] = self.runs[uuid]._replace(is_restaged=True)
 
     def mark_finalized(self, uuid):

@@ -869,7 +869,7 @@ class BundleModel(object):
                 raise IntegrityError('Missing bundle with UUID %s' % bundle.uuid)
 
             # Reset all metadata fields that aren't input by user from RunBundle class to be None.
-            # Excluding the "action" field here as a staged bundle can be KILLED or REMOVED.
+            # Excluding all the fields that can be set by users, e.g. the "action" field.
             metadata_update = {
                 spec.key: None
                 for spec in RunBundle.METADATA_SPECS
