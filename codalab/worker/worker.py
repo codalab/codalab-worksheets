@@ -184,8 +184,7 @@ class Worker:
                 self.process_runs()
                 self.save_state()
                 self.checkin()
-                self.check_terminate_signal()
-                # Save state for one last time: excludes all the bundles in terminal states: FINISHED or RESTAGED.
+                self.check_termination()
                 self.save_state()
                 if self.check_idle_stop():
                     self.stop = True
@@ -226,12 +225,20 @@ class Worker:
         else:
             self.terminate_and_restage = True
 
-    def check_terminate_signal(self):
+    def check_termination(self):
         # If received pass_down_termination signal from CLI to terminate the worker,
-        # wait until all the existing unfinished bundles are restaged, then stop the worker.
+        # wait until all the existing unfinished bundles are restaged, reset runs, then stop the worker.
         if self.terminate_and_restage:
             if self.restage_bundles() == 0:
+                # Stop the worker
                 self.stop = True
+                # Reset the current runs to exclude bundles in terminal states
+                # before save state one last time to worker-state.json
+                self.runs = {
+                    uuid: run_state
+                    for uuid, run_state in self.runs.items()
+                    if run_state.stage not in [RunStage.FINISHED, RunStage.RESTAGED]
+                }
 
     def restage_bundles(self):
         """
@@ -245,17 +252,9 @@ class Worker:
             if run_state.stage not in terminal_stages:
                 self.restage_bundle(uuid)
                 restaged_bundles.append(uuid)
-        if len(restaged_bundles) == 0:
-            # reset the current runs to exclude bundles in terminal states: RESTAGED and FINISHED
-            self.runs = {
-                uuid: run_state
-                for uuid, run_state in self.runs.items()
-                if run_state.stage not in terminal_stages
-            }
-        else:
-            logger.info(
-                "Sending bundles back to the staged state: {}.".format(','.join(restaged_bundles))
-            )
+        logger.info(
+            "Sending bundles back to the staged state: {}.".format(','.join(restaged_bundles))
+        )
         return len(restaged_bundles)
 
     @property
@@ -509,6 +508,9 @@ class Worker:
         self.runs[uuid] = self.runs[uuid]._replace(kill_message='Kill requested', is_killed=True)
 
     def restage_bundle(self, uuid):
+        """
+        Marks the run as restaged so that it can be sent back to the STAGED state before the worker is terminated.
+        """
         self.runs[uuid] = self.runs[uuid]._replace(is_restaged=True)
 
     def mark_finalized(self, uuid):
