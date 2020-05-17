@@ -217,17 +217,21 @@ class Worker:
         logger.info("Stopped Worker. Exiting")
 
     def signal(self):
-        # When the pass_down_termination flag is False, set the stop flag to stop running
-        # the worker without changing the status of existing running bundles. Otherwise,
-        # restage all bundles that are not in the terminal states [FINISHED, RESTAGED].
+        """
+        When the pass_down_termination flag is False, set the stop flag to stop running
+        the worker without changing the status of existing running bundles. Otherwise,
+        restage all bundles that are not in the terminal states [FINISHED, RESTAGED].
+        """
         if not self.pass_down_termination:
             self.stop = True
         else:
             self.terminate_and_restage = True
 
     def check_termination(self):
-        # If received pass_down_termination signal from CLI to terminate the worker,
-        # wait until all the existing unfinished bundles are restaged, reset runs, then stop the worker.
+        """
+        If received pass_down_termination signal from CLI to terminate the worker, wait until
+        all the existing unfinished bundles are restaged, reset runs, then stop the worker.
+        """
         if self.terminate_and_restage:
             if self.restage_bundles() == 0:
                 # Stop the worker
@@ -252,9 +256,10 @@ class Worker:
             if run_state.stage not in terminal_stages:
                 self.restage_bundle(uuid)
                 restaged_bundles.append(uuid)
-        logger.info(
-            "Sending bundles back to the staged state: {}.".format(','.join(restaged_bundles))
-        )
+        if len(restaged_bundles) > 0:
+            logger.info(
+                "Sending bundles back to the staged state: {}.".format(','.join(restaged_bundles))
+            )
         return len(restaged_bundles)
 
     @property
