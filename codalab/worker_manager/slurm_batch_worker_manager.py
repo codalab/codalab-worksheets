@@ -112,6 +112,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         ]
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])
+
         slurm_args = self.map_codalab_args_to_slurm_args(self.args)
         sbatch_script = self.create_job_definition(slurm_args=slurm_args, command=command)
 
@@ -137,16 +138,16 @@ class SlurmBatchWorkerManager(WorkerManager):
         :return: 
         """
         with open(job_file, 'w') as f:
-            f.write('Slurm CodaLab Worker Job Definition:')
+            f.write('Slurm CodaLab Worker Job Definition:\n')
             f.write(sbatch_script_contents)
-        logger.info("Saved Slurm Batch Worker config file to {}".format(job_file))
+        logger.info("Saved the Slurm Batch Job config to {}".format(job_file))
 
     def create_job_definition(self, slurm_args, command):
         """
-        Create a Slurm sbatch job definition structured as a list of sbatch arguments and a srun command
+        Create a Slurm batch job definition structured as a list of sbatch arguments and a srun command
         :param slurm_args: arguments for launching a Slurm batch job
         :param command: arguments for starting a CodaLab worker
-        :return:
+        :return: a string containing the Slurm batch job definition
         """
         sbatch_args = [
             '{} --{}={}'.format(self.SBATCH_PREFIX, key, slurm_args[key])
@@ -159,6 +160,11 @@ class SlurmBatchWorkerManager(WorkerManager):
         return sbatch_script
 
     def create_random_job_name(self, job_definition_name):
+        """
+        Generate a random Slurm job name
+        :param job_definition_name:
+        :return: slurm job name
+        """
         return getpass.getuser() + "-" + job_definition_name + str(random.randint(0, 5000000))
 
     def map_codalab_args_to_slurm_args(self, args):
