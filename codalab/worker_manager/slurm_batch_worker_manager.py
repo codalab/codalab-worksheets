@@ -85,11 +85,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         """
         Start a Slurm worker job
         """
-        image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         worker_id = uuid.uuid4().hex
-        # user's local home directory for easy acccess
+        # user's local home directory for easy access
         work_dir = os.path.join(str(Path.home()), "slurm-worker-scratch/{}".format(worker_id))
-        logger.debug('Starting worker %s with image %s', worker_id, image)
 
         # This needs to be a unique directory since Batch jobs may share a host
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
@@ -114,14 +112,14 @@ class SlurmBatchWorkerManager(WorkerManager):
             command.extend(['--tag', self.args.worker_tag])
 
         slurm_args = self.map_codalab_args_to_slurm_args(self.args)
-        sbatch_script = self.create_job_definition(slurm_args=slurm_args, command=command)
+        batch_script = self.create_job_definition(slurm_args=slurm_args, command=command)
 
         # Not submit job to Slurm if dry run
         if self.dry_run:
             return
 
         job_definition_file = os.path.join(work_dir, slurm_args['job-name'] + '.slurm')
-        self.save_job_definition(job_definition_file, sbatch_script)
+        self.save_job_definition(job_definition_file, batch_script)
         p = subprocess.Popen(
             [self.SBATCH_COMMAND, job_definition_file],
             stdout=subprocess.PIPE,
@@ -130,21 +128,21 @@ class SlurmBatchWorkerManager(WorkerManager):
         output, errors = p.communicate(timeout=60)
         logger.info(output.decode())
 
-    def save_job_definition(self, job_file, sbatch_script_contents):
+    def save_job_definition(self, job_file, batch_script_contents):
         """
-        Save sbatch job definition to file.
-        :param job_file: a file storing sbatch job configuration
-        :param sbatch_script_contents: the contents of a sbatch job
-        :return: 
+        Save the batch job definition to file.
+        :param job_file: a file storing the Slurm batch job configuration
+        :param batch_script_contents: the contents of a Slurm batch job
+        :return:
         """
         with open(job_file, 'w') as f:
             f.write('Slurm Batch Job Definition:\n')
-            f.write(sbatch_script_contents)
+            f.write(batch_script_contents)
         logger.info("Saved the Slurm Batch Job Definition to {}".format(job_file))
 
     def create_job_definition(self, slurm_args, command):
         """
-        Create a Slurm batch job definition structured as a list of sbatch arguments and a srun command
+        Create a Slurm batch job definition structured as a list of Slurm batch arguments and a srun command
         :param slurm_args: arguments for launching a Slurm batch job
         :param command: arguments for starting a CodaLab worker
         :return: a string containing the Slurm batch job definition
