@@ -87,7 +87,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         """
         worker_id = uuid.uuid4().hex
         # user's local home directory for easy access
-        work_dir = os.path.join(str(Path.home()), "slurm-worker-scratch/{}".format(worker_id))
+        work_dir = os.path.join(str(Path.home()), "slurm-batch-scratch/{}".format(worker_id))
 
         # This needs to be a unique directory since Batch jobs may share a host
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
@@ -110,34 +110,33 @@ class SlurmBatchWorkerManager(WorkerManager):
         ]
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])
-
+        else:
+            command.extend(['--tag'])
         slurm_args = self.map_codalab_args_to_slurm_args(self.args)
-        batch_script = self.create_job_definition(slurm_args=slurm_args, command=command)
+        job_definition = self.create_job_definition(slurm_args=slurm_args, command=command)
 
         # Not submit job to Slurm if dry run
         if self.dry_run:
             return
 
-        job_definition_file = os.path.join(work_dir, slurm_args['job-name'] + '.slurm')
-        self.save_job_definition(job_definition_file, batch_script)
+        batch_script = os.path.join(work_dir, slurm_args['job-name'] + '.slurm')
+        self.save_job_definition(batch_script, job_definition)
         p = subprocess.Popen(
-            [self.SBATCH_COMMAND, job_definition_file],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            [self.SBATCH_COMMAND, batch_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
         output, errors = p.communicate(timeout=60)
         logger.info(output.decode())
 
-    def save_job_definition(self, job_file, batch_script_contents):
+    def save_job_definition(self, job_file, job_definition):
         """
         Save the batch job definition to file.
         :param job_file: a file storing the Slurm batch job configuration
-        :param batch_script_contents: the contents of a Slurm batch job
+        :param job_definition: the job definition of a Slurm batch job
         :return:
         """
         with open(job_file, 'w') as f:
             f.write('Slurm Batch Job Definition:\n')
-            f.write(batch_script_contents)
+            f.write(job_definition)
         logger.info("Saved the Slurm Batch Job Definition to {}".format(job_file))
 
     def create_job_definition(self, slurm_args, command):
@@ -153,9 +152,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         ]
         srun_args = [self.SRUN_COMMAND, '--unbuffered'] + command
         # job definition contains two sections: sbatch arguments and srun command
-        sbatch_script = '#!/bin/bash\n\n' + '\n'.join(sbatch_args) + '\n' + ' '.join(srun_args)
-        print(sbatch_script)
-        return sbatch_script
+        job_definition = '#!/bin/bash\n\n' + '\n'.join(sbatch_args) + '\n' + ' '.join(srun_args)
+        print(job_definition)
+        return job_definition
 
     def create_random_job_name(self, job_definition_name):
         """
