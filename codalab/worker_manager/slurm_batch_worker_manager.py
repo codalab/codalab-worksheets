@@ -14,9 +14,9 @@ class SlurmBatchWorkerManager(WorkerManager):
     NAME = 'slurm-batch'
     DESCRIPTION = 'Worker manager for submitting jobs using Slurm Batch'
 
+    SRUN_COMMAND = 'srun'
     SBATCH_COMMAND = 'sbatch'
     SBATCH_PREFIX = '#SBATCH'
-    SRUN_COMMAND_UNBUFFERED = 'srun --unbuffered'
 
     @staticmethod
     def add_arguments_to_subparser(subparser):
@@ -78,19 +78,22 @@ class SlurmBatchWorkerManager(WorkerManager):
         ]
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])
-
-        sbatch_script = self.create_job_definition(
-            slurm_args=self.map_codalab_args_to_slurm_args(self.args), command=command
+        slurm_args = self.map_codalab_args_to_slurm_args(self.args)
+        sbatch_script = self.create_job_definition(slurm_args=slurm_args, command=command)
+        self.save_job_definition(
+            os.path.join(work_dir, self.args.job_definition_name), sbatch_script
         )
-        self.save_job_definition(os.path.join(work_dir, self.args.job_definition_name), sbatch_script)
-        ret = subprocess.call([self.SBATCH_COMMAND, sbatch_script])
+        proc = subprocess.Popen(
+            [self.SBATCH_COMMAND, sbatch_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        output, errors = proc.communicate(timeout=60)
+        logger.info(output.decode())
 
-
-
-    def save_job_definition(self, filename, sbatch_script_contents):
-        with open(filename, 'a') as f:
+    def save_job_definition(self, log_file, sbatch_script_contents):
+        with open(log_file, 'w') as f:
+            f.write('Slurm CodaLab Worker Config:')
             f.write(sbatch_script_contents)
-        logger.info("Saved config file to {}".format(filename))
+        logger.info("Saved Slurm Batch Worker config file to {}".format(log_file))
 
     def create_job_definition(self, slurm_args, command):
         sbatch_args = [
@@ -101,8 +104,9 @@ class SlurmBatchWorkerManager(WorkerManager):
             '#!/bin/bash\n\n'
             + '\n'.join(sbatch_args)
             + '\n'
-            + self.SRUN_COMMAND_UNBUFFERED
-            + ' '.join(command)
+            + self.SRUN_COMMAND
+            + '  --unbuffered '
+            + +' '.join(command)
         )
         print(sbatch_script)
         return sbatch_script
