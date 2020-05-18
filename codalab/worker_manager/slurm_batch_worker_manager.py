@@ -117,30 +117,30 @@ class SlurmBatchWorkerManager(WorkerManager):
             return
 
         self.save_job_definition(
-            os.path.join(work_dir, self.args.job_definition_name + worker_id), sbatch_script
+            os.path.join(work_dir, self.args.job_definition_name + '.' + worker_id), sbatch_script
         )
-        proc = subprocess.Popen(
+        p = subprocess.Popen(
             [self.SBATCH_COMMAND, sbatch_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        output, errors = proc.communicate(timeout=60)
+        output, errors = p.communicate(timeout=60)
         logger.info(output.decode())
 
     def save_job_definition(self, job_file, sbatch_script_contents):
         """
         Save sbatch job definition to file.
-        :param job_file: 
-        :param sbatch_script_contents: 
+        :param job_file: a file storing sbatch job configuration
+        :param sbatch_script_contents: the contents of a sbatch job
         :return: 
         """
         with open(job_file, 'w') as f:
-            f.write('Slurm CodaLab Worker Config:')
+            f.write('Slurm CodaLab Worker Job Definition:')
             f.write(sbatch_script_contents)
         logger.info("Saved Slurm Batch Worker config file to {}".format(job_file))
 
     def create_job_definition(self, slurm_args, command):
         """
-        Create Slurm sbatch job definition
-        :param slurm_args: arguments for launching a Slurm job
+        Create a Slurm sbatch job definition structured as a list of sbatch arguments and a srun command
+        :param slurm_args: arguments for launching a Slurm batch job
         :param command: arguments for starting a CodaLab worker
         :return:
         """
@@ -155,6 +155,11 @@ class SlurmBatchWorkerManager(WorkerManager):
         return sbatch_script
 
     def map_codalab_args_to_slurm_args(self, args):
+        """
+        Convert command line arguments to Slurm
+        :param args: command line arguments
+        :return: a dictionary of Slurm arguments
+        """
         slurm_args = {}
         slurm_args['nodelist'] = args.nodelist
         slurm_args['mem-per-cpu'] = args.memory_mb
