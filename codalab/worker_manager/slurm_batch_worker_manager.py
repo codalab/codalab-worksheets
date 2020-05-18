@@ -138,9 +138,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         :return: 
         """
         with open(job_file, 'w') as f:
-            f.write('Slurm CodaLab Worker Job Definition:\n')
+            f.write('Slurm Batch Job Definition:\n')
             f.write(sbatch_script_contents)
-        logger.info("Saved the Slurm Batch Job config to {}".format(job_file))
+        logger.info("Saved the Slurm Batch Job Definition to {}".format(job_file))
 
     def create_job_definition(self, slurm_args, command):
         """
