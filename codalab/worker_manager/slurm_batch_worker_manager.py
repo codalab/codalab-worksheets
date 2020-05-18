@@ -1,11 +1,11 @@
 import argparse
-import boto3
 import logging
 import os
 import uuid
 from .worker_manager import WorkerManager, WorkerJob
 from pathlib import Path
 import subprocess
+from codalab.worker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 
@@ -41,19 +41,45 @@ class SlurmBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--memory-mb', type=int, default=2048, help='Default memory (in MB) for each worker'
         )
+        subparser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Whether to print out Slurm batch job definition without submitting to Slurm',
+        )
+        subparser.add_argument(
+            '--user',
+            type=str,
+            default='root',
+            help='User to run the Slurm Batch CodaLab Worker jobs as',
+        )
 
-    def __init__(self, args):
-        super().__init__(args)
-        self.batch_client = boto3.client('batch', region_name=self.args.region)
+    def __init__(self, args, codalab_client):
+        super().__init__(args, codalab_client)
 
     def get_worker_jobs(self):
         """Return list of workers."""
-        return NotImplemented
+        # Get staged bundles
+        jobs = []
+        for state in State.ACTIVE_STATES + State.FINAL_STATES:
+            keywords = ["state=" + state]
+            if self.args.worker_tag:
+                keywords.append('request_queue=' + self.args.worker_tag)
+            bundles = self.codalab_client.fetch(
+                'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
+            )
+            jobs.extend(bundles)
+
+        logger.info(
+            'Workers: {}'.format(
+                ' '.join(job['uuid'] + ':' + job['state'] for job in jobs) or '(none)'
+            )
+        )
+        return [WorkerJob(job['state'] == 'RUNNING') for job in jobs]
 
     def start_worker_job(self):
         image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         worker_id = uuid.uuid4().hex
-        # user's home directory
+        # user's local home directory for easy acccess
         work_dir = os.path.join(str(Path.home()), "slurm-worker-scratch/{}".format(worker_id))
         logger.debug('Starting worker %s with image %s', worker_id, image)
 
@@ -80,8 +106,13 @@ class SlurmBatchWorkerManager(WorkerManager):
             command.extend(['--tag', self.args.worker_tag])
         slurm_args = self.map_codalab_args_to_slurm_args(self.args)
         sbatch_script = self.create_job_definition(slurm_args=slurm_args, command=command)
+
+        # Not submit job to Slurm if dry run
+        if self.dry_run:
+            return
+
         self.save_job_definition(
-            os.path.join(work_dir, self.args.job_definition_name), sbatch_script
+            os.path.join(work_dir, self.args.job_definition_name + worker_id), sbatch_script
         )
         proc = subprocess.Popen(
             [self.SBATCH_COMMAND, sbatch_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -96,18 +127,19 @@ class SlurmBatchWorkerManager(WorkerManager):
         logger.info("Saved Slurm Batch Worker config file to {}".format(log_file))
 
     def create_job_definition(self, slurm_args, command):
+        """
+        Create Slurm sbatch job definition
+        :param slurm_args: arguments for Slurm
+        :param command: arguments for CodaLab worker
+        :return:
+        """
         sbatch_args = [
             '{} --{}={}'.format(self.SBATCH_PREFIX, key, slurm_args[key])
             for key in sorted(slurm_args.keys())
         ]
-        sbatch_script = (
-            '#!/bin/bash\n\n'
-            + '\n'.join(sbatch_args)
-            + '\n'
-            + self.SRUN_COMMAND
-            + '  --unbuffered '
-            + +' '.join(command)
-        )
+        srun_args = [self.SRUN_COMMAND, '--unbuffered'] + command
+        # job definition contains two sections: sbatch arguments and srun command
+        sbatch_script = '#!/bin/bash\n\n' + '\n'.join(sbatch_args) + '\n' + ' '.join(srun_args)
         print(sbatch_script)
         return sbatch_script
 
@@ -122,5 +154,4 @@ class SlurmBatchWorkerManager(WorkerManager):
         slurm_args['ntasks-per-node'] = 1
         slurm_args['time'] = '10-0'
         slurm_args["open-mode"] = 'append'
-        slurm_args['export'] = 'ANACONDA_ENV=py-3.6.8,ALL'
         return slurm_args
