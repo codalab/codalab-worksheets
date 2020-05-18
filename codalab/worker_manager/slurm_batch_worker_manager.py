@@ -76,7 +76,7 @@ class SlurmBatchWorkerManager(WorkerManager):
                 ' '.join(job['uuid'] + ':' + job['state'] for job in jobs) or '(none)'
             )
         )
-        return [WorkerJob(job['state'] == 'RUNNING') for job in jobs]
+        return [WorkerJob(job['state'] in State.ACTIVE_STATES) for job in jobs]
 
     def start_worker_job(self):
         """
