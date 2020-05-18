@@ -5,6 +5,7 @@ Main entry point for the worker managers.
 import argparse
 import logging
 from .aws_batch_worker_manager import AWSBatchWorkerManager
+from .slurm_batch_worker_manager import SlurmBatchWorkerManager
 
 
 def main():
