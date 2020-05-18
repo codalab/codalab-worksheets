@@ -2,10 +2,13 @@ import argparse
 import logging
 import os
 import uuid
-from .worker_manager import WorkerManager, WorkerJob
-from pathlib import Path
 import subprocess
+import getpass
+from pathlib import Path
+import random
+
 from codalab.worker.bundle_state import State
+from .worker_manager import WorkerManager, WorkerJob
 
 logger = logging.getLogger(__name__)
 
@@ -116,11 +119,12 @@ class SlurmBatchWorkerManager(WorkerManager):
         if self.dry_run:
             return
 
-        self.save_job_definition(
-            os.path.join(work_dir, self.args.job_definition_name + '.' + worker_id), sbatch_script
-        )
+        job_definition_file = os.path.join(work_dir, slurm_args['job-name'] + '.slurm')
+        self.save_job_definition(job_definition_file, sbatch_script)
         p = subprocess.Popen(
-            [self.SBATCH_COMMAND, sbatch_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            [self.SBATCH_COMMAND, job_definition_file],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
         output, errors = p.communicate(timeout=60)
         logger.info(output.decode())
@@ -154,6 +158,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         print(sbatch_script)
         return sbatch_script
 
+    def create_random_job_name(self, job_definition_name):
+        return getpass.getuser() + "-" + job_definition_name + str(random.randint(0, 5000000))
+
     def map_codalab_args_to_slurm_args(self, args):
         """
         Convert command line arguments to Slurm
@@ -165,9 +172,10 @@ class SlurmBatchWorkerManager(WorkerManager):
         slurm_args['mem-per-cpu'] = args.memory_mb
         slurm_args['partition'] = args.partition
         slurm_args['gres'] = "gpu:" + str(args.gpus)
-        slurm_args['job-name'] = args.job_definition_name
+        slurm_args['job-name'] = self.create_random_job_name(args.job_definition_name)
         slurm_args['cpus-per-task'] = 3
         slurm_args['ntasks-per-node'] = 1
         slurm_args['time'] = '10-0'
-        slurm_args["open-mode"] = 'append'
+        slurm_args['open-mode'] = 'append'
+        slurm_args['output'] = slurm_args['job-name'] + '.out'
         return slurm_args
