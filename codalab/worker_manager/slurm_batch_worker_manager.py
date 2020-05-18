@@ -57,7 +57,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         super().__init__(args, codalab_client)
 
     def get_worker_jobs(self):
-        """Return list of workers."""
+        """
+        Return a list of jobs.
+        """
         # Get staged bundles
         jobs = []
         for state in State.ACTIVE_STATES + State.FINAL_STATES:
@@ -77,6 +79,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         return [WorkerJob(job['state'] == 'RUNNING') for job in jobs]
 
     def start_worker_job(self):
+        """
+        Start a Slurm worker job
+        """
         image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         worker_id = uuid.uuid4().hex
         # user's local home directory for easy acccess
@@ -120,17 +125,23 @@ class SlurmBatchWorkerManager(WorkerManager):
         output, errors = proc.communicate(timeout=60)
         logger.info(output.decode())
 
-    def save_job_definition(self, log_file, sbatch_script_contents):
-        with open(log_file, 'w') as f:
+    def save_job_definition(self, job_file, sbatch_script_contents):
+        """
+        Save sbatch job definition to file.
+        :param job_file: 
+        :param sbatch_script_contents: 
+        :return: 
+        """
+        with open(job_file, 'w') as f:
             f.write('Slurm CodaLab Worker Config:')
             f.write(sbatch_script_contents)
-        logger.info("Saved Slurm Batch Worker config file to {}".format(log_file))
+        logger.info("Saved Slurm Batch Worker config file to {}".format(job_file))
 
     def create_job_definition(self, slurm_args, command):
         """
         Create Slurm sbatch job definition
-        :param slurm_args: arguments for Slurm
-        :param command: arguments for CodaLab worker
+        :param slurm_args: arguments for launching a Slurm job
+        :param command: arguments for starting a CodaLab worker
         :return:
         """
         sbatch_args = [
