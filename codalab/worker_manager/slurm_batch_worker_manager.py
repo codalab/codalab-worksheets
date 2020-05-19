@@ -107,7 +107,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             worker_id,
             '--network-prefix',
             worker_network_prefix,
-            # always tag Slurm worker
+            # enforce tagging Slurm batch worker
             '--tag',
             self.args.worker_tag if self.args.worker_tag else self.args.job_definition_name,
             # always set in Slurm worker manager to ensure safe shut down
@@ -123,11 +123,20 @@ class SlurmBatchWorkerManager(WorkerManager):
 
         batch_script = os.path.join(work_dir, slurm_args['job-name'] + '.slurm')
         self.save_job_definition(batch_script, job_definition)
-        p = subprocess.Popen(
+        proc = subprocess.Popen(
             [self.SBATCH_COMMAND, batch_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        output, errors = p.communicate(timeout=60)
-        logger.info(output.decode())
+        output, errors = proc.communicate()
+        if output:
+            print(output)
+            logger.info(output)
+        if errors:
+            print(
+                "Failed to submit batch script {} to Slurm: return code {}: ".format(
+                    batch_script, proc.returncode, errors
+                )
+            )
+            logger.error(errors)
 
     def save_job_definition(self, job_file, job_definition):
         """
