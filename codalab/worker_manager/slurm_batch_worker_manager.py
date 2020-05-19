@@ -67,8 +67,10 @@ class SlurmBatchWorkerManager(WorkerManager):
         jobs = []
         for state in State.ACTIVE_STATES + State.FINAL_STATES:
             keywords = ["state=" + state]
-            if self.args.worker_tag:
-                keywords.append('request_queue=' + self.args.worker_tag)
+            worker_tag = (
+                self.args.worker_tag if self.args.worker_tag else self.args.job_definition_name
+            )
+            keywords.append('request_queue=' + worker_tag)
             bundles = self.codalab_client.fetch(
                 'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
             )
@@ -83,7 +85,7 @@ class SlurmBatchWorkerManager(WorkerManager):
 
     def start_worker_job(self):
         """
-        Start a Slurm worker job
+        Start a CodaLab Slurm worker that submits batch job to Slurm
         """
         worker_id = uuid.uuid4().hex
         # user's local home directory for easy access
@@ -105,14 +107,14 @@ class SlurmBatchWorkerManager(WorkerManager):
             worker_id,
             '--network-prefix',
             worker_network_prefix,
+            # always tag Slurm worker
+            '--tag',
+            self.args.worker_tag if self.args.worker_tag else self.args.job_definition_name,
             # always set in Slurm worker manager to ensure safe shut down
             '--pass-down-termination',
         ]
-        if self.args.worker_tag:
-            command.extend(['--tag', self.args.worker_tag])
-        else:
-            command.extend(['--tag'])
-        slurm_args = self.map_codalab_args_to_slurm_args(self.args)
+
+        slurm_args = self.create_slurm_args(self.args)
         job_definition = self.create_job_definition(slurm_args=slurm_args, command=command)
 
         # Not submit job to Slurm if dry run
@@ -164,18 +166,19 @@ class SlurmBatchWorkerManager(WorkerManager):
         """
         return getpass.getuser() + "-" + job_definition_name + str(random.randint(0, 5000000))
 
-    def map_codalab_args_to_slurm_args(self, args):
+    def create_slurm_args(self, args):
         """
         Convert command line arguments to Slurm
         :param args: command line arguments
         :return: a dictionary of Slurm arguments
         """
         slurm_args = {}
-        slurm_args['nodelist'] = args.nodelist
-        slurm_args['mem-per-cpu'] = args.memory_mb
-        slurm_args['partition'] = args.partition
-        slurm_args['gres'] = "gpu:" + str(args.gpus)
-        slurm_args['job-name'] = self.create_random_job_name(args.job_definition_name)
+        slurm_args['nodelist'] = self.args.nodelist
+        slurm_args['mem-per-cpu'] = self.args.memory_mb
+        slurm_args['partition'] = self.args.partition
+        slurm_args['gres'] = "gpu:" + str(self.args.gpus)
+        # job-name is unique
+        slurm_args['job-name'] = self.create_random_job_name(self.args.job_definition_name)
         slurm_args['cpus-per-task'] = 3
         slurm_args['ntasks-per-node'] = 1
         slurm_args['time'] = '10-0'
