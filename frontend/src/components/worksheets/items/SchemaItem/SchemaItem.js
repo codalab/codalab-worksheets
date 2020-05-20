@@ -41,7 +41,10 @@ class SchemaItem extends React.Component<{
 
     toggleEdit = (clear, save) => () => {
         if (clear) {
-            this.setState({ rows: this.props.item.field_rows, editing: !this.state.editing });
+            this.setState(
+                { rows: [...this.props.item.field_rows], editing: !this.state.editing },
+                () => {},
+            );
             return;
         }
         this.setState({ editing: !this.state.editing });
