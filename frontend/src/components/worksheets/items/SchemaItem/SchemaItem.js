@@ -45,11 +45,27 @@ class SchemaItem extends React.Component<{
         }
         this.setState({ editing: !this.state.editing });
         if (save) {
+            const { schema_name, field_rows } = this.props.item;
             let updatedSchema = [];
+            let fromAddSchema = false;
+            let schemaBlockSourceLength = field_rows.length;
             this.state.rows.forEach((fields) => {
                 if (!fields.field) {
                     return;
                 }
+                if (!fromAddSchema && fields.owned_schema !== schema_name) {
+                    // these rows correspond to addschema
+                    fromAddSchema = true;
+                    updatedSchema.push('% addschema ' + fields.owned_schema);
+                    return;
+                } else if (fromAddSchema && fields.owned_schema !== schema_name) {
+                    // These rows doesn't occupy any source lines
+                    schemaBlockSourceLength -= 1;
+                    return;
+                } else {
+                    fromAddSchema = false;
+                }
+
                 let curRow = '% add ' + fields.field;
                 if (!fields['generated-path']) {
                     updatedSchema.push(curRow);
@@ -63,11 +79,10 @@ class SchemaItem extends React.Component<{
                 curRow = curRow + ' ' + fields['post-processing'];
                 updatedSchema.push(curRow);
             });
-            console.log(updatedSchema);
             this.props.updateSchemaItem(
                 updatedSchema,
                 this.props.item.start_index,
-                this.props.item.field_rows.length,
+                schemaBlockSourceLength,
             );
         }
     };
@@ -91,7 +106,18 @@ class SchemaItem extends React.Component<{
 
     moveFieldRow = (idx, direction) => () => {
         // -1 for moving up, 1 for moving down
+        const { rows } = this.state;
         let newIndex = idx + direction;
+        while (
+            newIndex >= 0 &&
+            newIndex < rows.length &&
+            rows[newIndex].owned_schema !== this.props.item.schema_name
+        ) {
+            newIndex += direction;
+        }
+        if (newIndex < 0 || newIndex === rows.length) {
+            return;
+        }
         [this.state.rows[newIndex], this.state.rows[idx]] = [
             this.state.rows[idx],
             this.state.rows[newIndex],
@@ -110,6 +136,7 @@ class SchemaItem extends React.Component<{
         const { editing, showSchemaDetail, rows } = this.state;
         const schemaItem = item;
         const schemaHeaders = schemaItem.header;
+        const schema_name = schemaItem.schema_name;
         let headerHtml, bodyRowsHtml;
         headerHtml =
             showSchemaDetail &&
@@ -163,39 +190,45 @@ class SchemaItem extends React.Component<{
                                 multiline
                                 placeholder={'<none>'}
                                 value={rowItem[headerKey] || ''}
-                                disabled={!editing}
+                                disabled={!editing || rowItem.owned_schema !== schema_name}
                                 onChange={this.changeFieldValue(ind, headerKey)}
                             />
                         </TableCell>
                     );
                 });
-                rowCells.push(
-                    <TableCell
-                        key={rowCells.length}
-                        style={{ padding: '5' }}
-                        component='th'
-                        scope='row'
-                    >
-                        <IconButton disabled={!editing} onClick={this.addFieldRowAfter(ind)}>
-                            <AddCircleIcon />
-                        </IconButton>
-                        <IconButton disabled={!editing} onClick={this.removeFieldRow(ind)}>
-                            <DeleteSweepIcon />
-                        </IconButton>
-                        <IconButton
-                            disabled={!editing || ind === 0}
-                            onClick={this.moveFieldRow(ind, -1)}
+                if (rowItem.owned_schema === schema_name) {
+                    rowCells.push(
+                        <TableCell
+                            key={rowCells.length}
+                            style={{ padding: '5' }}
+                            component='th'
+                            scope='row'
                         >
-                            <ArrowDropUpIcon />
-                        </IconButton>
-                        <IconButton
-                            disabled={!editing || ind === rows.length - 1}
-                            onClick={this.moveFieldRow(ind, 1)}
-                        >
-                            <ArrowDropDownIcon />
-                        </IconButton>
-                    </TableCell>,
-                );
+                            <IconButton disabled={!editing} onClick={this.addFieldRowAfter(ind)}>
+                                <AddCircleIcon />
+                            </IconButton>
+                            <IconButton disabled={!editing} onClick={this.removeFieldRow(ind)}>
+                                <DeleteSweepIcon />
+                            </IconButton>
+                            <IconButton
+                                disabled={!editing || ind === 0}
+                                onClick={this.moveFieldRow(ind, -1)}
+                            >
+                                <ArrowDropUpIcon />
+                            </IconButton>
+                            <IconButton
+                                disabled={!editing || ind === rows.length - 1}
+                                onClick={this.moveFieldRow(ind, 1)}
+                            >
+                                <ArrowDropDownIcon />
+                            </IconButton>
+                        </TableCell>,
+                    );
+                } else {
+                    rowCells.push(
+                        <TableCell>Generated by another schema:{rowItem.owned_schema}</TableCell>,
+                    );
+                }
                 return (
                     <TableBody>
                         <TableRow>{rowCells}</TableRow>
