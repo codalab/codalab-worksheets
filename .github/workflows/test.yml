@@ -71,7 +71,7 @@ jobs:
     needs: [build_backend]
     strategy:
       matrix:
-        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs, basic, upload1, upload2, upload3, upload4 download refs binary, rm make worksheet_search worksheet_tags, freeze perm, search, run, mimic, batch groups, anonymous competition, status search_time, rest1, worksheets, worksheet, detach]
+        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs, upload1, rest1 upload2 upload3 upload4 download refs binary, rm make worksheet_search worksheet_tags, freeze perm, search, run, mimic, batch groups, basic anonymous competition status search_time, worksheets, worksheet detach]
       fail-fast: false
     steps:
       # This step is only needed for tests that use "cl run" to run jobs on workers.
