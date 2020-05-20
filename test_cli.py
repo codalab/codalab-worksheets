@@ -210,7 +210,7 @@ def _run_command(
     if args[0] == cl:
         force_subprocess = force_subprocess if args[0] == cl else True
         # Request only 10m of memory so that runs are faster.
-        if args[1] == 'run' and '--request-memory' not in args:
+        if len(args) > 1 and args[1] == 'run' and '--request-memory' not in args:
             args.extend(['--request-memory', '10m'])
     else:
         force_subprocess = True
