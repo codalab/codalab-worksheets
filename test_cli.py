@@ -17,15 +17,13 @@ Things not tested:
 """
 
 from collections import namedtuple, OrderedDict
-import concurrent.futures
-from contextlib import contextmanager, redirect_stdout
+from contextlib import contextmanager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
 
 import argparse
-import io
 import json
 import os
 import random
