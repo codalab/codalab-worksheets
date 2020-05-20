@@ -482,17 +482,18 @@ def format_metadata(metadata):
                 metadata[name] = apply_func(func, metadata[name])
 
 
-def canonicalize_schema_item(args):
+def canonicalize_schema_item(args, owned_schema_name = None):
     """
     Users who type in schema items can specify a partial argument list.
     Return the canonicalize version (a triple).
+    owned_schema_name: which schema this item belongs to, used to identify items added from addschema
     """
     if len(args) == 1:  # genpath
-        return (os.path.basename(args[0]).split(":")[-1], args[0], None)
+        return (os.path.basename(args[0]).split(":")[-1], args[0], None, owned_schema_name)
     elif len(args) == 2:  # name genpath
-        return (args[0], args[1], None)
+        return (args[0], args[1], None, owned_schema_name)
     elif len(args) == 3:  # name genpath post-processing
-        return (args[0], args[1], args[2])
+        return (args[0], args[1], args[2], owned_schema_name)
     else:
         raise UsageError('Invalid number of arguments: %s' % (args,))
 
@@ -747,7 +748,7 @@ def interpret_items(schemas, raw_items, db_model=None):
             for item_index, bundle_info in bundle_infos:
                 header = ('key', 'value')
                 rows = []
-                for (name, genpath, post) in schema:
+                for (name, genpath, post, _) in schema:
                     rows.append(
                         RecordsRowSchema()
                         .load(
@@ -778,7 +779,7 @@ def interpret_items(schemas, raw_items, db_model=None):
             # b1_value1  b1_value2
             # b2_value1  b2_value2
             schema = get_schema(args)
-            header = tuple(name for (name, genpath, post) in schema)
+            header = tuple(name for (name, genpath, post, _) in schema)
             rows = []
             processed_bundle_infos = []
             # Cache the mapping between owner_id to owner on current worksheet
@@ -793,7 +794,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                                     bundle_info, genpath, db_model=db_model, owner_cache=owner_cache
                                 ),
                             )
-                            for (name, genpath, post) in schema
+                            for (name, genpath, post, _) in schema
                         }
                     )
                     processed_bundle_infos.append(copy.deepcopy(bundle_info))
@@ -806,7 +807,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                             name: apply_func(
                                 post, interpret_genpath(processed_bundle_info, genpath)
                             )
-                            for (name, genpath, post) in schema
+                            for (name, genpath, post, _) in schema
                         }
                     )
                     processed_bundle_infos.append(processed_bundle_info)
@@ -922,7 +923,7 @@ def interpret_items(schemas, raw_items, db_model=None):
             # Reset schema to minimize long distance dependencies of directives
             if not is_directive:
                 if current_schema is not None:
-                    print(current_schema, flush=True)
+                    # print(current_schema, flush=True)
                     blocks.append(
                         SchemaBlockSchema()
                         .load(
@@ -935,8 +936,9 @@ def interpret_items(schemas, raw_items, db_model=None):
                                         "field": field,
                                         "generated-path": path,
                                         "post-processing": post,
+                                        "owned_schema": owned_schema,
                                     }
-                                    for field, path, post in current_schema
+                                    for field, path, post, owned_schema in current_schema
                                 ],
                                 'start_index': start_schema_index,
                                 'end_index:': raw_index,
@@ -1013,7 +1015,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                     # Add to schema
                     if current_schema is None:
                         raise UsageError("`add` must be preceded by `schema` directive")
-                    schema_item = canonicalize_schema_item(value_obj[1:])
+                    schema_item = canonicalize_schema_item(value_obj[1:], current_schema_name)
                     print(schema_item, type(schema_item))
                     current_schema.append(schema_item)
                 elif command == 'display':
@@ -1059,7 +1061,7 @@ def interpret_items(schemas, raw_items, db_model=None):
 
             raw_to_block.append((len(blocks) - 1, 0))
 
-        except Exception:
+        except Exception as e:
             current_schema = None
             bundle_infos[:] = []
             worksheet_infos[:] = []

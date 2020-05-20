@@ -122,7 +122,7 @@ class MarkdownItem extends React.Component {
         var { showEdit } = this.state;
         var contents = item.text;
         if (item.error) {
-            contents += ', please fix the line in source';
+            contents += ', please fix the line in source: ';
         }
         // Order is important!
         contents = this.processMarkdown(contents);
