@@ -941,7 +941,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                                     for field, path, post, owned_schema in current_schema
                                 ],
                                 'start_index': start_schema_index,
-                                'end_index:': raw_index,
+                                'sort_keys': [sort_key],
                             }
                         )
                         .data

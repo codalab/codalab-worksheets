@@ -161,7 +161,7 @@ class SchemaBlockSchema(WorksheetBlockSchema):
     header = fields.List(fields.String(), required=True)
     field_rows = fields.List(fields.Dict(), required=True)
     start_index = fields.Integer()
-    end_index = fields.Integer()
+    sort_keys = fields.List(fields.Integer())
 
 
 class TableBlockSchema(WorksheetBlockSchema):
