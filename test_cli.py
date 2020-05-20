@@ -1484,13 +1484,13 @@ def test(ctx):
 @TestModule.register('netcat')
 def test(ctx):
     script_uuid = _run_command([cl, 'upload', test_path('netcat-test.py')])
-    uuid = _run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    uuid = _run_command([cl, 'run', '--request-memory', '10m', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
     wait_until_state(uuid, State.RUNNING)
     time.sleep(5)
     output = _run_command([cl, 'netcat', uuid, '5005', '---', 'hi patrick'])
     check_equals('No, this is dawg', output)
 
-    uuid = _run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    uuid = _run_command([cl, 'run', '--request-memory', '10m', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
     wait_until_state(uuid, State.RUNNING)
     time.sleep(5)
     output = _run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
@@ -1499,7 +1499,7 @@ def test(ctx):
 
 @TestModule.register('netcurl')
 def test(ctx):
-    uuid = _run_command([cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'])
+    uuid = _run_command([cl, 'run', 'echo hello > hello.txt --request-memory 10m; python -m SimpleHTTPServer'])
     wait_until_state(uuid, State.RUNNING)
     address = ctx.client.address
     check_equals(
