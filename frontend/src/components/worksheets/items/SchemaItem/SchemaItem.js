@@ -131,6 +131,12 @@ class SchemaItem extends React.Component<{
         this.setState({ rows: this.state.rows });
     };
 
+    componentDidUpdate(prevProps) {
+        if (prevProps.item.field_rows !== this.props.item.field_rows) {
+            this.setState({ rows: this.props.item.field_rows });
+        }
+    }
+
     render() {
         const { classes, editPermission, focused, item } = this.props;
         const { editing, showSchemaDetail, rows } = this.state;
