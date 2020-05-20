@@ -770,6 +770,8 @@ def test(ctx):
     # ls
     check_equals('', _run_command([cl, 'ls', '-u']))
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
+    _run_command([cl, 'print'])
+    _run_command([cl, 'ls'])
     check_equals(uuid, _run_command([cl, 'ls', '-u']))
     # create worksheet
     check_contains(uuid[0:5], _run_command([cl, 'ls']))
