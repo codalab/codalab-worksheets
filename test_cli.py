@@ -943,7 +943,9 @@ def test(ctx):
     )
     # Check search by group
     group_bname = random_name()
-    group_buuid = _run_command([cl, 'run', 'echo hello', '-n', group_bname])
+    group_buuid = _run_command(
+        [cl, 'run', 'echo hello', '-n', group_bname, '--request-memory', '10m']
+    )
     wait(group_buuid)
     ctx.collect_bundle(group_buuid)
     user_id, user_name = current_user()
@@ -1018,7 +1020,7 @@ def test(ctx):
 def test(ctx):
     def test_run_basic():
         name = random_name()
-        uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
+        uuid = _run_command([cl, 'run', 'echo hello', '-n', name, '--request-memory', '10m'])
         print('Waiting echo hello with uuid %s' % uuid)
         wait(uuid)
 
@@ -1056,6 +1058,8 @@ def test(ctx):
                 "cat source/stdout",
                 '-n',
                 remote_name,
+                '--request-memory',
+                '10m',
             ]
         )
         wait(remote_uuid)
@@ -1065,7 +1069,8 @@ def test(ctx):
 
         # Explicitly fail when a remote instance name with : in it is supplied
         _run_command(
-            [cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1
+            [cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)],
+            expected_exit_code=1,
         )
 
     def test_run_special_name():
@@ -1075,11 +1080,19 @@ def test(ctx):
         # make sure special characters in the name of a bundle don't break
         special_name = random_name() + '-dashed.dotted'
         _run_command([cl, 'run', 'echo hello', '-n', special_name])
-        dependent = _run_command([cl, 'run', ':%s' % special_name, 'cat %s/stdout' % special_name])
+        dependent = _run_command(
+            [
+                cl,
+                'run',
+                ':%s' % special_name,
+                'cat %s/stdout' % special_name,
+                '--request-memory',
+                '10m',
+            ]
+        )
         wait(dependent)
         check_equals('hello', _run_command([cl, 'cat', dependent + '/stdout']))
 
-    
     def test_run_sugared():
         sugared_remote_name = random_name()
         sugared_remote_uuid = _run_command(
@@ -1089,6 +1102,8 @@ def test(ctx):
                 'cat %{}//{}%/stdout'.format(source_worksheet_name, name),
                 '-n',
                 sugared_remote_name,
+                '--request-memory',
+                '10m',
             ]
         )
         wait(sugared_remote_uuid)
@@ -1106,6 +1121,8 @@ def test(ctx):
                 'foo1:{}'.format(uuid),
                 'foo2:{}'.format(uuid),
                 'echo "three aliases"',
+                '--request-memory',
+                '10m',
             ]
         )
         wait(multi_alias_uuid)
@@ -1114,17 +1131,21 @@ def test(ctx):
         check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
         check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
 
-    run_commands = [test_run_basic, test_run_worksheet_ref, test_run_sugared, test_run_multiple_keys]
+    run_commands = [
+        test_run_basic,
+        test_run_special_name,
+        test_run_sugared,
+        test_run_multiple_keys,
+    ]
+
     def run_run_command(func):
         f = io.StringIO()
         with redirect_stdout(f):
             func()
         return f.getvalue()
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [
-            executor.submit(run_run_command, run_command)
-            for run_command in run_commands
-        ]
+        futures = [executor.submit(run_run_command, run_command) for run_command in run_commands]
     for future in futures:
         print(future.result())
 
@@ -1139,6 +1160,8 @@ def test(ctx):
             'dir:' + dep_uuid,
             'file:' + dep_uuid + '/a.txt',
             'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done',
+            '--request-memory',
+            '10m',
         ]
     )
     wait_until_state(uuid, State.RUNNING)
@@ -1278,8 +1301,10 @@ def test(ctx):
     # Another basic test
     uuidA = _run_command([cl, 'upload', test_path('a.txt')])
     uuidB = _run_command([cl, 'upload', test_path('b.txt')])
-    uuidCountA = _run_command([cl, 'run', 'input:' + uuidA, 'wc -l input'])
-    uuidCountB = _run_command([cl, 'mimic', uuidA, uuidB])
+    uuidCountA = _run_command(
+        [cl, 'run', 'input:' + uuidA, 'wc -l input', '--request-memory', '10m']
+    )
+    uuidCountB = _run_command([cl, 'mimic', uuidA, uuidB, '--request-memory', '10m'])
     wait(uuidCountA)
     wait(uuidCountB)
     # Check that the line counts for a.txt and b.txt are correct

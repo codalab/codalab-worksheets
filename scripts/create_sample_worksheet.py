@@ -141,7 +141,14 @@ class SampleWorksheet:
             self._valid_worksheets.append(self._create_tagged_worksheet(name, title))
             self._valid_bundles.append(
                 run_command(
-                    [self._cl, 'run', 'echo codalab rules!', '--tags=%s' % SampleWorksheet.TAG]
+                    [
+                        self._cl,
+                        'run',
+                        'echo codalab rules!',
+                        '--tags=%s' % SampleWorksheet.TAG,
+                        '--request-memory',
+                        '10m',
+                    ]
                 )
             )
             # Create a valid private worksheet and a bundle each
@@ -151,7 +158,14 @@ class SampleWorksheet:
             run_command([self._cl, 'wperm', uuid, 'public', 'none'])
             self._private_worksheets.append(uuid)
             uuid = run_command(
-                [self._cl, 'run', 'echo private run', '--tags=%s' % SampleWorksheet.TAG]
+                [
+                    self._cl,
+                    'run',
+                    'echo private run',
+                    '--tags=%s' % SampleWorksheet.TAG,
+                    '--request-memory',
+                    '10m',
+                ]
             )
             run_command([self._cl, 'perm', uuid, 'public', 'none'])
             self._private_bundles.append(uuid)
