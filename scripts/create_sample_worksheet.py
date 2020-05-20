@@ -75,7 +75,7 @@ class SampleWorksheet:
             self._private_worksheets = []
             self._valid_bundles = []
             self._private_bundles = []
-            # return
+            return
 
         print('Creating a {} worksheet...'.format(self._description))
         self._create_dependencies()
