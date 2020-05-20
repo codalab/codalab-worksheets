@@ -121,6 +121,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build_backend, build_frontend]
     steps:
+      - name: Clear free space
+        if: ${{ matrix.test == 'run' || matrix.test == 'search' || matrix.test == 'mimic' || matrix.test == 'worksheets' }}
+        run: |
+            sudo rm -rf /usr/share/dotnet
+            sudo rm -rf /opt/ghc
+            df -h
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
