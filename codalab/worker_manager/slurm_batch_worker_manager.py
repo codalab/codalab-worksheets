@@ -20,6 +20,7 @@ class SlurmBatchWorkerManager(WorkerManager):
     SRUN_COMMAND = 'srun'
     SBATCH_COMMAND = 'sbatch'
     SBATCH_PREFIX = '#SBATCH'
+    SQUEUE_COMMAND = 'squeue'
 
     @staticmethod
     def add_arguments_to_subparser(subparser):
@@ -47,41 +48,27 @@ class SlurmBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--dry-run',
             action='store_true',
-            help='Whether to print out Slurm batch job definition without submitting to Slurm',
-        )
-        subparser.add_argument(
-            '--user',
-            type=str,
-            default='root',
-            help='User to run the Slurm Batch CodaLab Worker jobs as',
+            help='Print out Slurm batch job definition without submitting to Slurm',
         )
 
     def __init__(self, args, codalab_client):
         super().__init__(args, codalab_client)
+        self.username = getpass.getuser()
 
     def get_worker_jobs(self):
         """
         Return a list of jobs.
         """
-        # Get staged bundles
-        jobs = []
-        for state in State.ACTIVE_STATES + State.FINAL_STATES:
-            keywords = ["state=" + state]
-            worker_tag = (
-                self.args.worker_tag if self.args.worker_tag else self.args.job_definition_name
-            )
-            keywords.append('request_queue=' + worker_tag)
-            bundles = self.codalab_client.fetch(
-                'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
-            )
-            jobs.extend(bundles)
-
-        logger.info(
-            'Workers: {}'.format(
-                ' '.join(job['uuid'] + ':' + job['state'] for job in jobs) or '(none)'
-            )
+        # Get all the Slurm workers that are owned by the current user
+        jobs = self.run_command(['squeue', '-u', self.username, '-o', '%i:%T'])
+        jobs = jobs.strip().split()[1:]
+        logger.info('Workers: {}'.format(' '.join(job for job in jobs) or '(none)'))
+        running_jobs = self.run_command(
+            ['squeue', '-u', self.username, '-t', 'RUNNING', '-o', '%i']
         )
-        return [WorkerJob(job['state'] in State.ACTIVE_STATES) for job in jobs]
+        running_jobs = running_jobs.strip().split()[1:]
+
+        return [WorkerJob(job) for job in running_jobs]
 
     def start_worker_job(self):
         """
@@ -110,7 +97,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             # enforce tagging Slurm batch worker
             '--tag',
             self.args.worker_tag if self.args.worker_tag else self.args.job_definition_name,
-            # always set in Slurm worker manager to ensure safe shut down
+            # always set in Slurm worker manager to ensure safe shutdown
             '--pass-down-termination',
         ]
 
@@ -123,18 +110,17 @@ class SlurmBatchWorkerManager(WorkerManager):
 
         batch_script = os.path.join(work_dir, slurm_args['job-name'] + '.slurm')
         self.save_job_definition(batch_script, job_definition)
-        proc = subprocess.Popen(
-            [self.SBATCH_COMMAND, batch_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        self.run_command([self.SBATCH_COMMAND, batch_script])
+
+    def run_command(self, command):
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, errors = proc.communicate()
         if output:
-            print(output)
             logger.info(output)
+            return output.decode()
         if errors:
             print(
-                "Failed to submit batch script {} to Slurm: return code {}: ".format(
-                    batch_script, proc.returncode, errors
-                )
+                "Failed to executing {}: {}: {}".format(' '.join(command), errors, proc.returncode)
             )
             logger.error(errors)
 
@@ -161,6 +147,8 @@ class SlurmBatchWorkerManager(WorkerManager):
             '{} --{}={}'.format(self.SBATCH_PREFIX, key, slurm_args[key])
             for key in sorted(slurm_args.keys())
         ]
+        # Using the --unbuffered option with srun command will allow output
+        # appear in the output file as soon as it is produced.
         srun_args = [self.SRUN_COMMAND, '--unbuffered'] + command
         # job definition contains two sections: sbatch arguments and srun command
         job_definition = '#!/bin/bash\n\n' + '\n'.join(sbatch_args) + '\n' + ' '.join(srun_args)
@@ -173,7 +161,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         :param job_definition_name:
         :return: slurm job name
         """
-        return getpass.getuser() + "-" + job_definition_name + str(random.randint(0, 5000000))
+        return self.username + "-" + job_definition_name + str(random.randint(0, 5000000))
 
     def create_slurm_args(self, args):
         """
