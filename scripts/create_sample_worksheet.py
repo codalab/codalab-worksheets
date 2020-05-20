@@ -143,9 +143,9 @@ class SampleWorksheet:
                 [
                     self._cl,
                     'run',
+                    '--request-memory=10m',
                     'echo codalab rules!',
                     '--tags=%s' % SampleWorksheet.TAG,
-                    '--request-memory=10m',
                 ]
             )
             self._valid_bundles.append(uuid)
@@ -161,9 +161,9 @@ class SampleWorksheet:
                 [
                     self._cl,
                     'run',
-                    'echo private run',
-                    '--tags=%s' % SampleWorksheet.TAG,
                     '--request-memory=10m',
+                    'echo private run',
+                    '--tags=%s' % SampleWorksheet.TAG
                 ]
             )
             # Test

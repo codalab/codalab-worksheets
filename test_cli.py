@@ -211,7 +211,8 @@ def _run_command(
         force_subprocess = force_subprocess if args[0] == cl else True
         # Request only 10m of memory so that runs are faster.
         if len(args) > 1 and args[1] == 'run' and '--request-memory' not in args:
-            args.extend(['--request-memory', '10m'])
+            args.insert(2, '10m')
+            args.insert(2, '--request-memory')
     else:
         force_subprocess = True
     return run_command(
@@ -1499,7 +1500,7 @@ def test(ctx):
 
 @TestModule.register('netcurl')
 def test(ctx):
-    uuid = _run_command([cl, 'run', 'echo hello > hello.txt --request-memory 10m; python -m SimpleHTTPServer'])
+    uuid = _run_command([cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'])
     wait_until_state(uuid, State.RUNNING)
     address = ctx.client.address
     check_equals(
