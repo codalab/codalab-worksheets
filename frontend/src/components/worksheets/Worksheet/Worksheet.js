@@ -1088,7 +1088,7 @@ class Worksheet extends React.Component {
                     startTime = endTime;
                 }
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: (xhr, status, err) => {
                 this.setState({ errorMessage: xhr.responseText });
                 $('#worksheet_container').hide();
             },

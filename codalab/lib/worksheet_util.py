@@ -482,18 +482,18 @@ def format_metadata(metadata):
                 metadata[name] = apply_func(func, metadata[name])
 
 
-def canonicalize_schema_item(args, owned_schema_name = None):
+def canonicalize_schema_item(args, from_schema_name = None):
     """
     Users who type in schema items can specify a partial argument list.
     Return the canonicalize version (a triple).
-    owned_schema_name: which schema this item belongs to, used to identify items added from addschema
+    from_schema_name: which schema this item belongs to, used to identify items added from addschema
     """
     if len(args) == 1:  # genpath
-        return (os.path.basename(args[0]).split(":")[-1], args[0], None, owned_schema_name)
+        return (os.path.basename(args[0]).split(":")[-1], args[0], None, from_schema_name)
     elif len(args) == 2:  # name genpath
-        return (args[0], args[1], None, owned_schema_name)
+        return (args[0], args[1], None, from_schema_name)
     elif len(args) == 3:  # name genpath post-processing
-        return (args[0], args[1], args[2], owned_schema_name)
+        return (args[0], args[1], args[2], from_schema_name)
     else:
         raise UsageError('Invalid number of arguments: %s' % (args,))
 
@@ -936,9 +936,9 @@ def interpret_items(schemas, raw_items, db_model=None):
                                         "field": field,
                                         "generated-path": path,
                                         "post-processing": post,
-                                        "owned_schema": owned_schema,
+                                        "from_schema_name": from_schema_name,
                                     }
-                                    for field, path, post, owned_schema in current_schema
+                                    for field, path, post, from_schema_name in current_schema
                                 ],
                                 'start_index': start_schema_index,
                                 'sort_keys': [sort_key],
