@@ -1043,19 +1043,6 @@ def test(ctx):
         # invalid child path
         _run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
 
-    def test_run_special_name():
-        # block
-        # TODO: Uncomment this when the tail bug is figured out
-        # check_contains('hello', _run_command([cl, 'run', 'echo hello', '--tail']))
-        # make sure special characters in the name of a bundle don't break
-        special_name = random_name() + '-dashed.dotted'
-        _run_command([cl, 'run', 'echo hello', '-n', special_name])
-        dependent = _run_command([cl, 'run', ':%s' % special_name, 'cat %s/stdout' % special_name])
-        wait(dependent)
-        check_equals('hello', _run_command([cl, 'cat', dependent + '/stdout']))
-
-    
-    def test_run_worksheet_ref():
         # test running with a reference to this worksheet
         source_worksheet_full = current_worksheet()
         source_worksheet_name = source_worksheet_full.split("::")[1]
@@ -1081,6 +1068,18 @@ def test(ctx):
             [cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1
         )
 
+    def test_run_special_name():
+        # block
+        # TODO: Uncomment this when the tail bug is figured out
+        # check_contains('hello', _run_command([cl, 'run', 'echo hello', '--tail']))
+        # make sure special characters in the name of a bundle don't break
+        special_name = random_name() + '-dashed.dotted'
+        _run_command([cl, 'run', 'echo hello', '-n', special_name])
+        dependent = _run_command([cl, 'run', ':%s' % special_name, 'cat %s/stdout' % special_name])
+        wait(dependent)
+        check_equals('hello', _run_command([cl, 'cat', dependent + '/stdout']))
+
+    
     def test_run_sugared():
         sugared_remote_name = random_name()
         sugared_remote_uuid = _run_command(
@@ -1115,7 +1114,7 @@ def test(ctx):
         check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
         check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
 
-    run_commands = [test_run_basic, test_run_special_name, test_run_worksheet_ref, test_run_sugared, test_run_multiple_keys]
+    run_commands = [test_run_basic, test_run_worksheet_ref, test_run_sugared, test_run_multiple_keys]
     def run_run_command(func):
         f = io.StringIO()
         with redirect_stdout(f):
