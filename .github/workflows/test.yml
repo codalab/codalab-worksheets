@@ -76,7 +76,7 @@ jobs:
     steps:
       # This step is only needed for tests that use "cl run" to run jobs on workers.
       - name: Clear free space
-      if: ${{ contains(matrix.test, 'run') || contains(matrix.test, 'read') || contains(matrix.test, 'mimic') || contains(matrix.test, 'resources') || contains(matrix.test, 'worksheets') || contains(matrix.test, 'memoize') }}
+        if: ${{ contains(matrix.test, 'run') || contains(matrix.test, 'read') || contains(matrix.test, 'mimic') || contains(matrix.test, 'resources') || contains(matrix.test, 'worksheets') || contains(matrix.test, 'memoize') }}
         run: |
             sudo rm -rf /usr/share/dotnet
             sudo rm -rf /opt/ghc
