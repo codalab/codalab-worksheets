@@ -482,7 +482,7 @@ def format_metadata(metadata):
                 metadata[name] = apply_func(func, metadata[name])
 
 
-def canonicalize_schema_item(args, from_schema_name = None):
+def canonicalize_schema_item(args, from_schema_name=None):
     """
     Users who type in schema items can specify a partial argument list.
     Return the canonicalize version (a triple).
