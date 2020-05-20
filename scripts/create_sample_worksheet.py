@@ -54,7 +54,7 @@ class SampleWorksheet:
             self._entities_count = 3
         self._cl = cl
         self._preview_mode = preview_mode
-        self._worksheet_name = 'cl_{}_worksheet_1'.format(self._description)
+        self._worksheet_name = 'cl_{}_worksheet'.format(self._description)
         self._content = []
 
         # For testing, _expected_line holds the expected regex pattern for each line of the worksheet
