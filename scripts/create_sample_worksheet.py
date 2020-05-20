@@ -139,16 +139,23 @@ class SampleWorksheet:
             name = 'valid_worksheet_%s' % id
             title = 'Other Worksheet %s' % id
             self._valid_worksheets.append(self._create_tagged_worksheet(name, title))
-            self._valid_bundles.append(
-                run_command(
-                    [
-                        self._cl,
-                        'run',
-                        'echo codalab rules!',
-                        '--tags=%s' % SampleWorksheet.TAG,
-                        '--request-memory=10m',
-                    ]
-                )
+            uuid = run_command(
+                [
+                    self._cl,
+                    'run',
+                    'echo codalab rules!',
+                    '--tags=%s' % SampleWorksheet.TAG,
+                    '--request-memory=10m',
+                ]
+            )
+            self._valid_bundles.append(uuid)
+            # Test
+            run_command(
+                [
+                    self._cl,
+                    'info',
+                    uuid
+                ]
             )
             # Create a valid private worksheet and a bundle each
             name = 'valid_private_worksheet_%s' % id
