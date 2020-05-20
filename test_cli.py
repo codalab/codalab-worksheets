@@ -1021,130 +1021,98 @@ def test(ctx):
 
 @TestModule.register('run')
 def test(ctx):
-    def test_run_basic():
-        name = random_name()
-        uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
-        print('Waiting echo hello with uuid %s' % uuid)
-        wait(uuid)
+    name = random_name()
+    uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
+    wait(uuid)
+    check_contains('0x', get_info(uuid, 'data_hash'))
+    
+    # test search
+    check_contains(name, _run_command([cl, 'search', name]))
+    check_equals(uuid, _run_command([cl, 'search', name, '-u']))
+    _run_command([cl, 'search', name, '--append'])
+    # test download stdout
+    path = temp_path('')
+    _run_command([cl, 'download', uuid + '/stdout', '-o', path])
+    check_equals('hello', path_contents(path))
+    # get info
+    check_equals(State.READY, _run_command([cl, 'info', '-f', 'state', uuid]))
+    check_contains(['run "echo hello"'], _run_command([cl, 'info', '-f', 'args', uuid]))
+    check_equals('hello', _run_command([cl, 'cat', uuid + '/stdout']))
+    # block
+    # TODO: Uncomment this when the tail bug is figured out
+    # check_contains('hello', _run_command([cl, 'run', 'echo hello', '--tail']))
+    # invalid child path
+    _run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
+    # make sure special characters in the name of a bundle don't break
+    special_name = random_name() + '-dashed.dotted'
+    _run_command([cl, 'run', 'echo hello', '-n', special_name])
+    dependent = _run_command([cl, 'run', ':%s' % special_name, 'cat %s/stdout' % special_name])
+    wait(dependent)
+    check_equals('hello', _run_command([cl, 'cat', dependent + '/stdout']))
 
-        # run and check the data_hash
-        check_contains('0x', get_info(uuid, 'data_hash'))
+    # test running with a reference to this worksheet
+    source_worksheet_full = current_worksheet()
+    source_worksheet_name = source_worksheet_full.split("::")[1]
 
-        # test search
-        check_contains(name, _run_command([cl, 'search', name]))
-        check_equals(uuid, _run_command([cl, 'search', name, '-u']))
-        _run_command([cl, 'search', name, '--append'])
+    # Create new worksheet
+    new_wname = random_name()
+    new_wuuid = _run_command([cl, 'new', new_wname])
+    ctx.collect_worksheet(new_wuuid)
+    check_contains(['Switched', new_wname, new_wuuid], _run_command([cl, 'work', new_wuuid]))
 
-        # test download stdout
-        path = temp_path('')
-        _run_command([cl, 'download', uuid + '/stdout', '-o', path])
-        check_equals('hello', path_contents(path))
+    remote_name = random_name()
+    remote_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'source:{}//{}'.format(source_worksheet_name, name),
+            "cat source/stdout",
+            '-n',
+            remote_name,
+        ]
+    )
+    wait(remote_uuid)
+    check_contains(remote_name, _run_command([cl, 'search', remote_name]))
+    check_equals(remote_uuid, _run_command([cl, 'search', remote_name, '-u']))
+    check_equals('hello', _run_command([cl, 'cat', remote_uuid + '/stdout']))
 
-        # get info
-        check_equals(State.READY, _run_command([cl, 'info', '-f', 'state', uuid]))
-        check_contains(['run "echo hello"'], _run_command([cl, 'info', '-f', 'args', uuid]))
-        check_equals('hello', _run_command([cl, 'cat', uuid + '/stdout']))
+    sugared_remote_name = random_name()
+    sugared_remote_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'cat %{}//{}%/stdout'.format(source_worksheet_name, name),
+            '-n',
+            sugared_remote_name,
+        ]
+    )
+    wait(sugared_remote_uuid)
+    check_contains(sugared_remote_name, _run_command([cl, 'search', sugared_remote_name]))
+    check_equals(sugared_remote_uuid, _run_command([cl, 'search', sugared_remote_name, '-u']))
+    check_equals('hello', _run_command([cl, 'cat', sugared_remote_uuid + '/stdout']))
 
-        # invalid child path
-        _run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
+    # Explicitly fail when a remote instance name with : in it is supplied
+    _run_command(
+        [cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1
+    )
 
-        # test running with a reference to this worksheet
-        source_worksheet_full = current_worksheet()
-        source_worksheet_name = source_worksheet_full.split("::")[1]
 
-        remote_name = random_name()
-        remote_uuid = _run_command(
-            [
-                cl,
-                'run',
-                'source:{}//{}'.format(source_worksheet_name, name),
-                "cat source/stdout",
-                '-n',
-                remote_name
-            ]
-        )
-        wait(remote_uuid)
-        check_contains(remote_name, _run_command([cl, 'search', remote_name]))
-        check_equals(remote_uuid, _run_command([cl, 'search', remote_name, '-u']))
-        check_equals('hello', _run_command([cl, 'cat', remote_uuid + '/stdout']))
-
-        # Explicitly fail when a remote instance name with : in it is supplied
-        _run_command(
-            [cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)],
-            expected_exit_code=1,
-        )
-
-    def test_run_special_name():
-        # block
-        # TODO: Uncomment this when the tail bug is figured out
-        # check_contains('hello', _run_command([cl, 'run', 'echo hello', '--tail']))
-        # make sure special characters in the name of a bundle don't break
-        special_name = random_name() + '-dashed.dotted'
-        _run_command([cl, 'run', 'echo hello', '-n', special_name])
-        dependent = _run_command(
-            [
-                cl,
-                'run',
-                ':%s' % special_name,
-                'cat %s/stdout' % special_name
-            ]
-        )
-        wait(dependent)
-        check_equals('hello', _run_command([cl, 'cat', dependent + '/stdout']))
-
-    def test_run_sugared():
-        sugared_remote_name = random_name()
-        sugared_remote_uuid = _run_command(
-            [
-                cl,
-                'run',
-                'cat %{}//{}%/stdout'.format(source_worksheet_name, name),
-                '-n',
-                sugared_remote_name
-            ]
-        )
-        wait(sugared_remote_uuid)
-        check_contains(sugared_remote_name, _run_command([cl, 'search', sugared_remote_name]))
-        check_equals(sugared_remote_uuid, _run_command([cl, 'search', sugared_remote_name, '-u']))
-        check_equals('hello', _run_command([cl, 'cat', sugared_remote_uuid + '/stdout']))
-
-    def test_run_multiple_keys():
-        # Test multiple keys pointing to the same bundle
-        multi_alias_uuid = _run_command(
-            [
-                cl,
-                'run',
-                'foo:{}'.format(uuid),
-                'foo1:{}'.format(uuid),
-                'foo2:{}'.format(uuid),
-                'echo "three aliases"'
-            ]
-        )
-        wait(multi_alias_uuid)
-        check_equals('three aliases', _run_command([cl, 'cat', multi_alias_uuid + '/stdout']))
-        check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo/stdout']))
-        check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
-        check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
-
-    run_commands = [
-        test_run_basic,
-        test_run_special_name,
-        test_run_sugared,
-        test_run_multiple_keys,
-    ]
-
-    # def run_run_command(func):
-    #     f = io.StringIO()
-    #     with redirect_stdout(f):
-    #         func()
-    #     return f.getvalue()
-
-    # with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-    #     futures = [executor.submit(run_run_command, run_command) for run_command in run_commands]
-    # for future in futures:
-    #     print(future.result())
-    for run_command in run_commands:
-        run_command()
+    # Test multiple keys pointing to the same bundle
+    multi_alias_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'foo:{}'.format(uuid),
+            'foo1:{}'.format(uuid),
+            'foo2:{}'.format(uuid),
+            'echo "three aliases"',
+        ]
+    )
+    wait(multi_alias_uuid)
+    check_equals('three aliases', _run_command([cl, 'cat', multi_alias_uuid + '/stdout']))
+    check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo/stdout']))
+    check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
+    check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
 
 
 @TestModule.register('read')
