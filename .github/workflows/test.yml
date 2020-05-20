@@ -132,7 +132,6 @@ jobs:
     needs: [build_backend, build_frontend]
     steps:
       - name: Clear free space
-        if: ${{ matrix.test == 'run' || matrix.test == 'search' || matrix.test == 'mimic' || matrix.test == 'worksheets' }}
         run: |
             sudo rm -rf /usr/share/dotnet
             sudo rm -rf /opt/ghc
