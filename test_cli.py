@@ -209,6 +209,8 @@ def _run_command(
     # us to use subprocess even for cl commands).
     if args[0] == cl:
         force_subprocess = force_subprocess if args[0] == cl else True
+    else:
+        force_subprocess = True
     return run_command(
         args, expected_exit_code, max_output_chars, env, include_stderr, binary, force_subprocess
     )
