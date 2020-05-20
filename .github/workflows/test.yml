@@ -75,11 +75,11 @@ jobs:
         # test: [read, kill, write, resources, netcat, netcurl, workers]
       fail-fast: false
     steps:
-      - name: Clear free space
-        run: |
-            sudo rm -rf /usr/share/dotnet
-            sudo rm -rf /opt/ghc
-            df -h
+      # - name: Clear free space
+      #   run: |
+      #       sudo rm -rf /usr/share/dotnet
+      #       sudo rm -rf /opt/ghc
+      #       df -h
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
