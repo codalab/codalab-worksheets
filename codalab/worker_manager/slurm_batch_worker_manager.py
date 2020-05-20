@@ -52,17 +52,27 @@ class SlurmBatchWorkerManager(WorkerManager):
         )
 
     def __init__(self, args, codalab_client):
-        super().__init__(args, codalab_client)
+        super().__init__(args)
         self.username = getpass.getuser()
 
     def get_worker_jobs(self):
         """
         Return a list of jobs.
         """
-        # Get all the Slurm workers that are owned by the current user
+        # Get all the Slurm workers that are owned by the current user.
+        # Returning result will be in the following format:
+        # JOBID:STATE
+        # 1478828:PENDING
+        # 1478830:PENDING
         jobs = self.run_command(['squeue', '-u', self.username, '-o', '%i:%T'])
         jobs = jobs.strip().split()[1:]
         logger.info('Workers: {}'.format(' '.join(job for job in jobs) or '(none)'))
+
+        # Get all the RUNNING jobs that are owned by the current user.
+        # Returning result will be in the following format:
+        # JOBID
+        # 1478828
+        # 1478830
         running_jobs = self.run_command(
             ['squeue', '-u', self.username, '-t', 'RUNNING', '-o', '%i']
         )
