@@ -72,9 +72,15 @@ jobs:
     strategy:
       matrix:
         test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs, basic, upload1, upload2, upload3, upload4 download refs binary, rm make worksheet_search worksheet_tags, freeze perm, search, run, mimic, batch groups, anonymous competition, status search_time, rest1, worksheets, worksheet, detach]
-        # test: [read, kill, write, resources, netcat, netcurl, workers]
       fail-fast: false
     steps:
+      # This step is only needed 
+      - name: Clear free space
+        if: ${{ matrix.test == 'run' }}
+        run: |
+            sudo rm -rf /usr/share/dotnet
+            sudo rm -rf /opt/ghc
+            df -h
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
