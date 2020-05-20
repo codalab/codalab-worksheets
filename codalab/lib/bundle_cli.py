@@ -1455,11 +1455,18 @@ class BundleCLI(object):
             },
         )
 
-        # Fetch bundle metadata from source client
+        # Fetch bundle metadata of bundle contents from source client
         try:
             target_info = source_client.fetch_contents_info(BundleTarget(source_bundle_uuid, ''))
         except NotFoundError:
-            print("Cannot find metadata for bundle {}".format(source_bundle_uuid))
+            # When bundle content doesn't exist, update the bundle state with final states and return
+            dest_client.upload_contents_blob(
+                dest_bundle['id'],
+                params={
+                    'state_on_success': source_info['state'],  # copy bundle state
+                    'finalize_on_success': True,
+                },
+            )
             return
 
         # Collect information about how server should unpack
@@ -1470,37 +1477,22 @@ class BundleCLI(object):
             unpack = True
         else:
             unpack = False
-
         # Fetch bundle content from source client
-        try:
-            source_file = source_client.fetch_contents_blob(BundleTarget(source_bundle_uuid, ''))
-        except NotFoundError:
-            source_file = None
-
-        if source_file:
-            # Send file over
-            progress = FileTransferProgress('Copied ', f=self.stderr)
-            with closing(source_file), progress:
-                dest_client.upload_contents_blob(
-                    dest_bundle['id'],
-                    fileobj=source_file,
-                    params={
-                        'filename': filename,
-                        'unpack': unpack,
-                        'simplify': False,  # retain original bundle verbatim
-                        'state_on_success': source_info['state'],  # copy bundle state
-                        'finalize_on_success': True,
-                    },
-                    progress_callback=progress.update,
-                )
-        else:
-            # Update the bundle state with final states
+        source_file = source_client.fetch_contents_blob(BundleTarget(source_bundle_uuid, ''))
+        # Send file over
+        progress = FileTransferProgress('Copied ', f=self.stderr)
+        with closing(source_file), progress:
             dest_client.upload_contents_blob(
                 dest_bundle['id'],
+                fileobj=source_file,
                 params={
+                    'filename': filename,
+                    'unpack': unpack,
+                    'simplify': False,  # retain original bundle verbatim
                     'state_on_success': source_info['state'],  # copy bundle state
                     'finalize_on_success': True,
                 },
+                progress_callback=progress.update,
             )
 
     @Commands.command(
