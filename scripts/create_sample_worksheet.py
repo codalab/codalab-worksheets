@@ -54,7 +54,7 @@ class SampleWorksheet:
             self._entities_count = 3
         self._cl = cl
         self._preview_mode = preview_mode
-        self._worksheet_name = 'cl_{}_worksheet'.format(self._description)
+        self._worksheet_name = 'cl_{}_worksheet_1'.format(self._description)
         self._content = []
 
         # For testing, _expected_line holds the expected regex pattern for each line of the worksheet
@@ -75,7 +75,7 @@ class SampleWorksheet:
             self._private_worksheets = []
             self._valid_bundles = []
             self._private_bundles = []
-            return
+            # return
 
         print('Creating a {} worksheet...'.format(self._description))
         self._create_dependencies()
@@ -146,8 +146,7 @@ class SampleWorksheet:
                         'run',
                         'echo codalab rules!',
                         '--tags=%s' % SampleWorksheet.TAG,
-                        '--request-memory',
-                        '10m',
+                        '--request-memory=10m',
                     ]
                 )
             )
@@ -163,8 +162,15 @@ class SampleWorksheet:
                     'run',
                     'echo private run',
                     '--tags=%s' % SampleWorksheet.TAG,
-                    '--request-memory',
-                    '10m',
+                    '--request-memory=10m',
+                ]
+            )
+            # Test
+            run_command(
+                [
+                    self._cl,
+                    'info',
+                    uuid
                 ]
             )
             run_command([self._cl, 'perm', uuid, 'public', 'none'])
