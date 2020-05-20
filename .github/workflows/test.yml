@@ -134,8 +134,8 @@ jobs:
           sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
           pip install -r requirements.txt
-          # ./scripts/test-setup.sh
-          # export PATH=$PATH:/usr/bin/geckodriver
+          ./scripts/test-setup.sh
+          export PATH=$PATH:/usr/bin/geckodriver
         env:
           VERSION: ${{ github.head_ref }}
       - name: Run tests
