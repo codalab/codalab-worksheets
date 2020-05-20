@@ -88,9 +88,9 @@ class SchemaItem extends React.Component<{
     };
 
     addFieldRowAfter = (idx) => (e) => {
-        let newRow = {};
         const schemaItem = this.props.item;
         const schemaHeaders = schemaItem.header;
+        let newRow = { owned_schema: schemaItem.schema_name };
         schemaHeaders.forEach((header) => {
             newRow[header] = '';
         });
