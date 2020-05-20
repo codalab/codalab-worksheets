@@ -71,6 +71,10 @@ class SampleWorksheet:
                     self._worksheet_name, worksheet_uuids[0]
                 )
             )
+            self._valid_worksheets = []
+            self._private_worksheets = []
+            self._valid_bundles = []
+            self._private_bundles = []
             return
 
         print('Creating a {} worksheet...'.format(self._description))
