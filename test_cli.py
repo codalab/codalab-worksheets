@@ -211,6 +211,9 @@ def _run_command(
     # us to use subprocess even for cl commands).
     if args[0] == cl:
         force_subprocess = force_subprocess if args[0] == cl else True
+        # Request only 10m of memory so that runs are faster.
+        if args[1] == 'run' and '--request-memory' not in args:
+            args.extend(['--request-memory', '10m'])
     else:
         force_subprocess = True
     return run_command(
@@ -944,7 +947,7 @@ def test(ctx):
     # Check search by group
     group_bname = random_name()
     group_buuid = _run_command(
-        [cl, 'run', 'echo hello', '-n', group_bname, '--request-memory', '10m']
+        [cl, 'run', 'echo hello', '-n', group_bname]
     )
     wait(group_buuid)
     ctx.collect_bundle(group_buuid)
@@ -1020,7 +1023,7 @@ def test(ctx):
 def test(ctx):
     def test_run_basic():
         name = random_name()
-        uuid = _run_command([cl, 'run', 'echo hello', '-n', name, '--request-memory', '10m'])
+        uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
         print('Waiting echo hello with uuid %s' % uuid)
         wait(uuid)
 
@@ -1057,9 +1060,7 @@ def test(ctx):
                 'source:{}//{}'.format(source_worksheet_name, name),
                 "cat source/stdout",
                 '-n',
-                remote_name,
-                '--request-memory',
-                '10m',
+                remote_name
             ]
         )
         wait(remote_uuid)
@@ -1085,9 +1086,7 @@ def test(ctx):
                 cl,
                 'run',
                 ':%s' % special_name,
-                'cat %s/stdout' % special_name,
-                '--request-memory',
-                '10m',
+                'cat %s/stdout' % special_name
             ]
         )
         wait(dependent)
@@ -1101,9 +1100,7 @@ def test(ctx):
                 'run',
                 'cat %{}//{}%/stdout'.format(source_worksheet_name, name),
                 '-n',
-                sugared_remote_name,
-                '--request-memory',
-                '10m',
+                sugared_remote_name
             ]
         )
         wait(sugared_remote_uuid)
@@ -1120,9 +1117,7 @@ def test(ctx):
                 'foo:{}'.format(uuid),
                 'foo1:{}'.format(uuid),
                 'foo2:{}'.format(uuid),
-                'echo "three aliases"',
-                '--request-memory',
-                '10m',
+                'echo "three aliases"'
             ]
         )
         wait(multi_alias_uuid)
@@ -1138,16 +1133,18 @@ def test(ctx):
         test_run_multiple_keys,
     ]
 
-    def run_run_command(func):
-        f = io.StringIO()
-        with redirect_stdout(f):
-            func()
-        return f.getvalue()
+    # def run_run_command(func):
+    #     f = io.StringIO()
+    #     with redirect_stdout(f):
+    #         func()
+    #     return f.getvalue()
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [executor.submit(run_run_command, run_command) for run_command in run_commands]
-    for future in futures:
-        print(future.result())
+    # with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    #     futures = [executor.submit(run_run_command, run_command) for run_command in run_commands]
+    # for future in futures:
+    #     print(future.result())
+    for run_command in run_commands:
+        run_command()
 
 
 @TestModule.register('read')
@@ -1159,9 +1156,7 @@ def test(ctx):
             'run',
             'dir:' + dep_uuid,
             'file:' + dep_uuid + '/a.txt',
-            'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done',
-            '--request-memory',
-            '10m',
+            'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done'
         ]
     )
     wait_until_state(uuid, State.RUNNING)
@@ -1302,9 +1297,9 @@ def test(ctx):
     uuidA = _run_command([cl, 'upload', test_path('a.txt')])
     uuidB = _run_command([cl, 'upload', test_path('b.txt')])
     uuidCountA = _run_command(
-        [cl, 'run', 'input:' + uuidA, 'wc -l input', '--request-memory', '10m']
+        [cl, 'run', 'input:' + uuidA, 'wc -l input']
     )
-    uuidCountB = _run_command([cl, 'mimic', uuidA, uuidB, '--request-memory', '10m'])
+    uuidCountB = _run_command([cl, 'mimic', uuidA, uuidB])
     wait(uuidCountA)
     wait(uuidCountB)
     # Check that the line counts for a.txt and b.txt are correct
