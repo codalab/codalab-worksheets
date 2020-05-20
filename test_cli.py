@@ -946,9 +946,7 @@ def test(ctx):
     )
     # Check search by group
     group_bname = random_name()
-    group_buuid = _run_command(
-        [cl, 'run', 'echo hello', '-n', group_bname]
-    )
+    group_buuid = _run_command([cl, 'run', 'echo hello', '-n', group_bname])
     wait(group_buuid)
     ctx.collect_bundle(group_buuid)
     user_id, user_name = current_user()
@@ -1025,7 +1023,7 @@ def test(ctx):
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
     check_contains('0x', get_info(uuid, 'data_hash'))
-    
+
     # test search
     check_contains(name, _run_command([cl, 'search', name]))
     check_equals(uuid, _run_command([cl, 'search', name, '-u']))
@@ -1096,7 +1094,6 @@ def test(ctx):
         [cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1
     )
 
-
     # Test multiple keys pointing to the same bundle
     multi_alias_uuid = _run_command(
         [
@@ -1124,7 +1121,7 @@ def test(ctx):
             'run',
             'dir:' + dep_uuid,
             'file:' + dep_uuid + '/a.txt',
-            'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done'
+            'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done',
         ]
     )
     wait_until_state(uuid, State.RUNNING)
@@ -1264,9 +1261,7 @@ def test(ctx):
     # Another basic test
     uuidA = _run_command([cl, 'upload', test_path('a.txt')])
     uuidB = _run_command([cl, 'upload', test_path('b.txt')])
-    uuidCountA = _run_command(
-        [cl, 'run', 'input:' + uuidA, 'wc -l input']
-    )
+    uuidCountA = _run_command([cl, 'run', 'input:' + uuidA, 'wc -l input'])
     uuidCountB = _run_command([cl, 'mimic', uuidA, uuidB])
     wait(uuidCountA)
     wait(uuidCountB)
