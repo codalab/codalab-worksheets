@@ -18,6 +18,7 @@ import DeleteSweepIcon from '@material-ui/icons/DeleteSweep';
 import AddCircleIcon from '@material-ui/icons/AddCircle';
 import EditIcon from '@material-ui/icons/Edit';
 import ClearIcon from '@material-ui/icons/Clear';
+import classNames from 'classnames';
 
 class SchemaItem extends React.Component<{
     worksheetUUID: string,
@@ -28,11 +29,6 @@ class SchemaItem extends React.Component<{
     constructor(props) {
         super(props);
         this.state = {
-            yposition: -1,
-            rowcenter: -1,
-            rowIdx: -1,
-            insertBefore: -1,
-            hovered: false,
             showSchemaDetail: false,
             rows: [...this.props.item.field_rows],
             editing: false,
@@ -110,20 +106,16 @@ class SchemaItem extends React.Component<{
     };
 
     render() {
-        const { classes, worksheetUUID, setFocus, prevItem, editPermission } = this.props;
-        const { editing } = this.state;
-        var className = 'type-markup ' + (this.props.focused ? 'focused' : '');
-        const schemaItem = this.props.item;
-        // console.log('ITEM: ', schemaItem);
+        const { classes, editPermission, focused, item } = this.props;
+        const { editing, showSchemaDetail, rows } = this.state;
+        const schemaItem = item;
         const schemaHeaders = schemaItem.header;
         let headerHtml, bodyRowsHtml;
         headerHtml =
-            this.state.showSchemaDetail &&
+            showSchemaDetail &&
             schemaHeaders.map((item, index) => {
                 return (
                     <TableCell
-                        onMouseEnter={(e) => this.setState({ hovered: true })}
-                        onMouseLeave={(e) => this.setState({ hovered: false })}
                         component='th'
                         key={index}
                         style={{ padding: '5', fontSize: '16px', maxWidth: '100' }}
@@ -136,8 +128,6 @@ class SchemaItem extends React.Component<{
             headerHtml.push(
                 <TableCell
                     key={headerHtml.length}
-                    onMouseEnter={(e) => this.setState({ hovered: true })}
-                    onMouseLeave={(e) => this.setState({ hovered: false })}
                     style={{ padding: '5' }}
                     component='th'
                     scope='row'
@@ -163,23 +153,16 @@ class SchemaItem extends React.Component<{
             );
         }
         bodyRowsHtml =
-            this.state.showSchemaDetail &&
-            this.state.rows.map((rowItem, ind) => {
+            showSchemaDetail &&
+            rows.map((rowItem, ind) => {
                 let rowCells = schemaHeaders.map((headerKey, col) => {
                     return (
-                        <TableCell
-                            key={col}
-                            onMouseEnter={(e) => this.setState({ hovered: true })}
-                            onMouseLeave={(e) => this.setState({ hovered: false })}
-                            style={{ padding: '5' }}
-                            component='th'
-                            scope='row'
-                        >
+                        <TableCell key={col} style={{ padding: '5' }} component='th' scope='row'>
                             <TextField
                                 id='standard-multiline-static'
                                 multiline
                                 placeholder={'<none>'}
-                                value={this.state.rows[ind][headerKey] || ''}
+                                value={rowItem[headerKey] || ''}
                                 disabled={!editing}
                                 onChange={this.changeFieldValue(ind, headerKey)}
                             />
@@ -189,8 +172,6 @@ class SchemaItem extends React.Component<{
                 rowCells.push(
                     <TableCell
                         key={rowCells.length}
-                        onMouseEnter={(e) => this.setState({ hovered: true })}
-                        onMouseLeave={(e) => this.setState({ hovered: false })}
                         style={{ padding: '5' }}
                         component='th'
                         scope='row'
@@ -208,7 +189,7 @@ class SchemaItem extends React.Component<{
                             <ArrowDropUpIcon />
                         </IconButton>
                         <IconButton
-                            disabled={!editing || ind === this.state.rows.length - 1}
+                            disabled={!editing || ind === rows.length - 1}
                             onClick={this.moveFieldRow(ind, 1)}
                         >
                             <ArrowDropDownIcon />
@@ -221,46 +202,56 @@ class SchemaItem extends React.Component<{
                     </TableBody>
                 );
             });
-        if (this.props.focused) {
-            // Use e.preventDefault to avoid openning selected link
+        let showSchemasButton = (
+            <IconButton
+                onClick={() => this.setState({ showSchemaDetail: !showSchemaDetail })}
+                style={{ padding: 2 }}
+            >
+                {showSchemaDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+        );
+        let schemaTable = null;
+        if (showSchemaDetail) {
+            schemaTable = (
+                <Table className={classNames(classes.fullTable)}>
+                    <TableHead>
+                        <TableRow>{headerHtml}</TableRow>
+                    </TableHead>
+                    {bodyRowsHtml}
+                </Table>
+            );
+        }
+        if (focused) {
             Mousetrap.bind(
                 ['enter'],
                 (e) => {
                     e.preventDefault();
-                    this.setState((state) => ({ showSchemaDetail: !state.showSchemaDetail }));
+                    this.setState({ showSchemaDetail: !showSchemaDetail });
+                },
+                'keydown',
+            );
+            Mousetrap.bind(
+                ['a+e'],
+                (e) => {
+                    e.preventDefault();
+                    this.setState({ editing: !editing });
                 },
                 'keydown',
             );
         }
-        let showSchemasButton = (
-            <IconButton
-                onClick={() => this.setState({ showSchemaDetail: !this.state.showSchemaDetail })}
-                style={{ padding: 2 }}
-            >
-                {this.state.showSchemaDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            </IconButton>
-        );
 
-        var className = 'type-markup ' + (this.props.focused ? 'focused' : '');
-        console.log('ROWS:', this.state.rows, this.props.item.field_rows);
         return (
             editPermission && (
                 <div
-                    className='ws-item'
                     onClick={() => {
                         this.props.setFocus(this.props.focusIndex, 0);
                     }}
                 >
-                    <div className={`${className}`}>
+                    <div className={classNames(classes.item, focused ? classes.highlight : '')}>
                         {showSchemasButton}
                         {'Schema: ' + schemaItem.schema_name}
                     </div>
-                    <Table>
-                        <TableHead>
-                            <TableRow>{headerHtml}</TableRow>
-                        </TableHead>
-                        {bodyRowsHtml}
-                    </Table>
+                    {schemaTable}
                 </div>
             )
         );
@@ -268,10 +259,14 @@ class SchemaItem extends React.Component<{
 }
 
 const styles = (theme) => ({
-    tableContainer: {
-        position: 'relative',
-        backgroundColor: 'white',
-        borderColor: '3px solid black',
+    item: {
+        borderTop: '2px solid #ddd',
+    },
+    fullTable: {
+        borderTop: '2px solid #ddd',
+    },
+    highlight: {
+        backgroundColor: `${theme.color.primary.lightest} !important`,
     },
 });
 
