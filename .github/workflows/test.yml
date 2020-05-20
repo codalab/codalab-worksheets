@@ -103,6 +103,8 @@ jobs:
         run: |
           docker restart codalab_worker_1
           python3 test_runner.py --version ${VERSION} run
+        env:
+          VERSION: ${{ github.head_ref }}
       - name: Run shared filesystem tests
       if: $${{ contains(matrix.test, 'basic') || contains(matrix.test, 'run') || contains(matrix.test, 'read') || contains(matrix.test, 'write') || contains(matrix.test, 'kill') || contains(matrix.test, 'resources') || contains(matrix.test, 'netcat') || contains(matrix.test, 'netcurl') || contains(matrix.test, 'workers') }}
         run: |
