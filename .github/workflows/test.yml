@@ -126,7 +126,6 @@ jobs:
       - name: Run shared filesystem tests
         if: ${{ matrix.sharedfs }}
         run: |
-          docker stop codalab_worker_1
           python3 codalab_service.py start --services init worker --version ${VERSION} --shared-file-system
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
