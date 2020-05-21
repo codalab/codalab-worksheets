@@ -93,6 +93,7 @@ jobs:
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
+          sleep 20
           python3 test_runner.py --version ${VERSION} ${TEST} || python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
@@ -142,6 +143,7 @@ jobs:
       - name: Run shared filesystem tests
         run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION} --shared-file-system
+          sleep 20
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
