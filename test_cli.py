@@ -126,10 +126,6 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000):
             raise AssertionError('timeout while waiting for %s to run' % uuid)
         current_state = get_info(uuid, 'state')
 
-        _run_command([cl, 'info', uuid])
-
-        _run_command([cl, 'workers'])
-
         # Stop waiting when the bundle is in the expected state or one of the final states
         if current_state == expected_state:
             return
@@ -213,7 +209,7 @@ def _run_command(
     # us to use subprocess even for cl commands).
     if args[0] == cl:
         force_subprocess = force_subprocess if args[0] == cl else True
-        # Request only 10m of memory so that runs are faster.
+        # By default, request only 10m of memory and 1m of disk so that runs are faster.
         if len(args) > 1 and args[1] == 'run' and '--request-memory' not in args:
             args.insert(2, '10m')
             args.insert(2, '--request-memory')
@@ -775,8 +771,6 @@ def test(ctx):
     # ls
     check_equals('', _run_command([cl, 'ls', '-u']))
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
-    _run_command([cl, 'print'])
-    _run_command([cl, 'ls'])
     check_equals(uuid, _run_command([cl, 'ls', '-u']))
     # create worksheet
     check_contains(uuid[0:5], _run_command([cl, 'ls']))
@@ -794,17 +788,12 @@ def test(ctx):
     _run_command(
         [cl, 'add', 'bundle', uuid, '--dest-worksheet', wuuid]
     )  # not testing real copying ability
-    time.sleep(5)
     _run_command([cl, 'add', 'worksheet', wuuid])
-    time.sleep(5)
     check_contains(
         ['Worksheet', 'testing', '你好世界😊', test_path_contents('a.txt'), uuid, 'HEAD', 'CREATE'],
         _run_command([cl, 'print']),
     )
-    # Sleep so that wadd happens properly
-    time.sleep(5)
     _run_command([cl, 'wadd', wuuid, wuuid])
-    time.sleep(5)
     check_num_lines(8, _run_command([cl, 'ls', '-u']))
     _run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
 
@@ -1116,100 +1105,6 @@ def test(ctx):
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo/stdout']))
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
-
-    result = _run_command([cl, 'workers'])
-    lines = result.split("\n")
-
-    # Output should contain at least 3 lines as following:
-    # worker_id        cpus  gpus  memory  free_disk  last_checkin  tag  runs
-    # -----------------------------------------------------------------------
-    # 7a343e1015c7(1)  0/2   0/0   2.0g    32.9g      2.0s ago
-    check_equals(True, len(lines) >= 3)
-
-    # Check header which includes 8 columns in total from output.
-    header = lines[0]
-    check_contains(
-        [
-            'worker_id',
-            'cpus',
-            'gpus',
-            'memory',
-            'free_disk',
-            'last_checkin',
-            'tag',
-            'runs',
-            'shared_file_system',
-            'tag_exclusive',
-        ],
-        header,
-    )
-
-    # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
-    worker_info = lines[2].split()
-    check_equals(True, len(worker_info) >= 8)
-
-
-@TestModule.register('read')
-def test(ctx):
-    dep_uuid = _run_command([cl, 'upload', test_path('')])
-    uuid = _run_command(
-        [
-            cl,
-            'run',
-            'dir:' + dep_uuid,
-            'file:' + dep_uuid + '/a.txt',
-            'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done',
-        ]
-    )
-    wait_until_state(uuid, State.RUNNING)
-
-    # Tests reading first while the bundle is running and then after it is
-    # killed.
-    for running in [True, False]:
-        # Wait for the output to appear. Also, tests cat on a directory.
-        wait_for_contents(uuid, substring='done', timeout_seconds=60)
-
-        # Info has only the first 10 lines
-        info_output = _run_command([cl, 'info', uuid, '--verbose'])
-        print(info_output)
-        check_contains('a.txt', info_output)
-        assert '5\n6\n7' not in info_output, 'info output should contain only first 10 lines'
-
-        # Cat has everything.
-        cat_output = _run_command([cl, 'cat', uuid + '/stdout'])
-        check_contains('5\n6\n7', cat_output)
-        check_contains('This is a simple text file for CodaLab.', cat_output)
-
-        # Read a non-existant file.
-        _run_command([cl, 'cat', uuid + '/unknown'], 1)
-
-        # Dependencies should not be visible.
-        dir_cat = _run_command([cl, 'cat', uuid])
-        assert 'dir' not in dir_cat, '"dir" should not be in bundle'
-        assert 'file' not in dir_cat, '"file" should not be in bundle'
-
-        # You should be able to cat dependencies if specified directly
-        dep_cat_output = _run_command([cl, 'cat', uuid + '/dir'])
-        check_contains('-AmMDnVl4s8', dep_cat_output)
-        dep_cat_output = _run_command([cl, 'cat', uuid + '/file'])
-        check_contains('This is a simple text file for CodaLab.', dep_cat_output)
-
-        # Download the whole bundle.
-        path = temp_path('')
-        _run_command([cl, 'download', uuid, '-o', path])
-        assert not os.path.exists(
-            os.path.join(path, 'dir')
-        ), '"dir" should not be in downloaded bundle'
-        assert not os.path.exists(
-            os.path.join(path, 'file')
-        ), '"file" should not be in downloaded bundle'
-        with open(os.path.join(path, 'stdout')) as fileobj:
-            check_contains('5\n6\n7', fileobj.read())
-        shutil.rmtree(path)
-
-        if running:
-            _run_command([cl, 'kill', uuid])
-            wait(uuid, 1)
 
 
 @TestModule.register('kill')
@@ -1771,6 +1666,103 @@ def test(ctx):
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
     _run_command([cl, 'edit', uuid, '-d', '你好世界😊'], 1)
     # check_equals('你好世界😊', get_info(uuid, 'description'))
+
+
+@TestModule.register('workers')
+def test(ctx):
+    result = _run_command([cl, 'workers'])
+    lines = result.split("\n")
+
+    # Output should contain at least 3 lines as following:
+    # worker_id        cpus  gpus  memory  free_disk  last_checkin  tag  runs
+    # -----------------------------------------------------------------------
+    # 7a343e1015c7(1)  0/2   0/0   2.0g    32.9g      2.0s ago
+    check_equals(True, len(lines) >= 3)
+
+    # Check header which includes 8 columns in total from output.
+    header = lines[0]
+    check_contains(
+        [
+            'worker_id',
+            'cpus',
+            'gpus',
+            'memory',
+            'free_disk',
+            'last_checkin',
+            'tag',
+            'runs',
+            'shared_file_system',
+            'tag_exclusive',
+        ],
+        header,
+    )
+
+    # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
+    worker_info = lines[2].split()
+    check_equals(True, len(worker_info) >= 8)
+
+
+@TestModule.register('read')
+def test(ctx):
+    dep_uuid = _run_command([cl, 'upload', test_path('')])
+    uuid = _run_command(
+        [
+            cl,
+            'run',
+            'dir:' + dep_uuid,
+            'file:' + dep_uuid + '/a.txt',
+            'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done',
+        ]
+    )
+    wait_until_state(uuid, State.RUNNING)
+
+    # Tests reading first while the bundle is running and then after it is
+    # killed.
+    for running in [True, False]:
+        # Wait for the output to appear. Also, tests cat on a directory.
+        wait_for_contents(uuid, substring='done', timeout_seconds=60)
+
+        # Info has only the first 10 lines
+        info_output = _run_command([cl, 'info', uuid, '--verbose'])
+        print(info_output)
+        check_contains('a.txt', info_output)
+        assert '5\n6\n7' not in info_output, 'info output should contain only first 10 lines'
+
+        # Cat has everything.
+        cat_output = _run_command([cl, 'cat', uuid + '/stdout'])
+        check_contains('5\n6\n7', cat_output)
+        check_contains('This is a simple text file for CodaLab.', cat_output)
+
+        # Read a non-existant file.
+        _run_command([cl, 'cat', uuid + '/unknown'], 1)
+
+        # Dependencies should not be visible.
+        dir_cat = _run_command([cl, 'cat', uuid])
+        assert 'dir' not in dir_cat, '"dir" should not be in bundle'
+        assert 'file' not in dir_cat, '"file" should not be in bundle'
+
+        # You should be able to cat dependencies if specified directly
+        dep_cat_output = _run_command([cl, 'cat', uuid + '/dir'])
+        check_contains('-AmMDnVl4s8', dep_cat_output)
+        dep_cat_output = _run_command([cl, 'cat', uuid + '/file'])
+        check_contains('This is a simple text file for CodaLab.', dep_cat_output)
+
+        # Download the whole bundle.
+        path = temp_path('')
+        _run_command([cl, 'download', uuid, '-o', path])
+        assert not os.path.exists(
+            os.path.join(path, 'dir')
+        ), '"dir" should not be in downloaded bundle'
+        assert not os.path.exists(
+            os.path.join(path, 'file')
+        ), '"file" should not be in downloaded bundle'
+        with open(os.path.join(path, 'stdout')) as fileobj:
+            check_contains('5\n6\n7', fileobj.read())
+        shutil.rmtree(path)
+
+        if running:
+            _run_command([cl, 'kill', uuid])
+            wait(uuid, 1)
 
 
 @TestModule.register('rest1')

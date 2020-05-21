@@ -71,7 +71,7 @@ jobs:
     needs: [build_backend, build_frontend]
     strategy:
       matrix:
-        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic,upload1 upload2 upload3 upload4 download refs binary,rm make worksheet_search worksheet_tags freeze detach perm,search search_time,run,read kill write mimic,resources,copy groups,netcat netcurl,status batch anonymous competition unicode rest1 memoize,worksheets]
+        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic,upload1 upload2 upload3 upload4 download refs binary,rm make worksheet_search worksheet_tags freeze detach perm,search search_time,run,read kill write mimic workers,resources,copy groups,netcat netcurl,status batch anonymous competition unicode rest1 memoize,worksheets]
     steps:
       # This step is only needed for tests that use "cl run" to run jobs on workers.
       - name: Clear free space

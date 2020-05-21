@@ -149,8 +149,6 @@ class SampleWorksheet:
                 ]
             )
             self._valid_bundles.append(uuid)
-            # Test
-            run_command([self._cl, 'info', uuid])
             # Create a valid private worksheet and a bundle each
             name = 'valid_private_worksheet_%s' % id
             title = 'Other Private Worksheet %s' % id
@@ -166,8 +164,6 @@ class SampleWorksheet:
                     '--tags=%s' % SampleWorksheet.TAG,
                 ]
             )
-            # Test
-            run_command([self._cl, 'info', uuid])
             run_command([self._cl, 'perm', uuid, 'public', 'none'])
             self._private_bundles.append(uuid)
 
