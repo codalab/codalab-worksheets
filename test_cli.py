@@ -1422,8 +1422,8 @@ def test(ctx):
         request_time=10,
         use_memory=1,
         request_memory=10,
-        use_disk=20,
-        request_disk=10,
+        use_disk=10,
+        request_disk=2,
         expected_exit_code=1,
         expected_failure_message='Disk limit 2mb exceeded.',
     )
