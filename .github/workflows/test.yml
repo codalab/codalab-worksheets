@@ -79,7 +79,6 @@ jobs:
           python-version: 3.6
       - name: Setup tests
         run: |
-          sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
         env:
           VERSION: ${{ github.head_ref }}
@@ -123,7 +122,6 @@ jobs:
           python-version: 3.6
       - name: Setup tests
         run: |
-          sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
         env:
           VERSION: ${{ github.head_ref }}
@@ -157,7 +155,6 @@ jobs:
           python-version: 3.6
       - name: Setup tests
         run: |
-          sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
           pip install -r requirements.txt
           sudo ./scripts/test-setup.sh
