@@ -63,6 +63,10 @@ def main():
         worker_manager_type.add_arguments_to_subparser(worker_manager_subparser)
     args = parser.parse_args()
 
+    if args.worker_manager_name == SlurmBatchWorkerManager.NAME:
+        args.once = True
+
+    print(args)
     # Set up logging.
     if args.verbose:
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
