@@ -180,7 +180,7 @@ jobs:
           python3 codalab_service.py start --services default --version ${VERSION}
           docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
           sleep 60
-          python3 test_runner.py --version ${VERSION} ${TEST}
+          python3 test_runner.py --version ${VERSION} ${TEST} || python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref }}
@@ -190,7 +190,7 @@ jobs:
           python3 codalab_service.py start --services default --version ${VERSION} --shared-file-system
           docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
           sleep 60
-          python3 test_runner.py --version ${VERSION} ${TEST}
+          python3 test_runner.py --version ${VERSION} ${TEST} || python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref }}
