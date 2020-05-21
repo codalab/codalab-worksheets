@@ -209,9 +209,9 @@ def _run_command(
     # us to use subprocess even for cl commands).
     if args[0] == cl:
         force_subprocess = force_subprocess if args[0] == cl else True
-        # By default, request only 10m of memory and 1m of disk so that runs are faster.
+        # By default, request only 4m of memory and 1m of disk so that runs are faster.
         if len(args) > 1 and args[1] == 'run' and '--request-memory' not in args:
-            args.insert(2, '10m')
+            args.insert(2, '4m')
             args.insert(2, '--request-memory')
         if len(args) > 1 and args[1] == 'run' and '--request-disk' not in args:
             args.insert(2, '1m')
