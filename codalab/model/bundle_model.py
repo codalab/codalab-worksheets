@@ -1089,7 +1089,7 @@ class BundleModel(object):
             self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
             bundle.id = result.lastrowid
 
-    def update_bundle(self, bundle, update, connection=None):
+    def update_bundle(self, bundle, update, connection=None, delete=False):
         """
         For each key-value pair in the update dictionary, add or update key-value pair. Note
         that metadata keys not in the update dictionary are not affected in the update operation.
@@ -1106,7 +1106,10 @@ class BundleModel(object):
         # Generate a list of metadata keys that will be deleted and udpate metadata key-value pair
         metadata_delete_keys = []
         for key, value in metadata_update.items():
-            if value is None:
+            # Delete the key,value pair when the following two conditions are met:
+            # 1. the delete flag is True
+            # 2. the value is None
+            if delete and value is None:
                 bundle.metadata.remove_metadata_key(key)
                 metadata_delete_keys.append(key)
             else:
