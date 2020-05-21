@@ -135,7 +135,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000):
                     uuid, expected_state, current_state
                 )
             )
-        time.sleep(0.5)
+        time.sleep(5)
 
 
 def wait_for_contents(uuid, substring, timeout_seconds=1000):
