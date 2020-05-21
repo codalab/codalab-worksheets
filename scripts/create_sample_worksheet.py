@@ -163,7 +163,7 @@ class SampleWorksheet:
                     'run',
                     '--request-memory=10m',
                     'echo private run',
-                    '--tags=%s' % SampleWorksheet.TAG
+                    '--tags=%s' % SampleWorksheet.TAG,
                 ]
             )
             # Test

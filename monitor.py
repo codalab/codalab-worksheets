@@ -329,7 +329,16 @@ while True:
                     'Uploaded file should contain the string BYTES_IN_MB, contents:\n' + cat_result,
                 )
             uuid = run_command(
-                ['cl', 'run', '--request-memory', '10m', '--request-disk', '10m', 'stress-test.pl:' + upload_uuid, 'perl stress-test.pl 5 5 5']
+                [
+                    'cl',
+                    'run',
+                    '--request-memory',
+                    '10m',
+                    '--request-disk',
+                    '10m',
+                    'stress-test.pl:' + upload_uuid,
+                    'perl stress-test.pl 5 5 5',
+                ]
             )
             run_command(
                 ['cl', 'wait', uuid], 600, 3600

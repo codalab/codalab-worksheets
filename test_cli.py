@@ -1524,13 +1524,31 @@ def test(ctx):
 def test(ctx):
     script_uuid = _run_command([cl, 'upload', test_path('netcat-test.py')])
     _run_command([cl, 'info', script_uuid])
-    uuid = _run_command([cl, 'run', '--request-memory', '10m', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    uuid = _run_command(
+        [
+            cl,
+            'run',
+            '--request-memory',
+            '10m',
+            'netcat-test.py:' + script_uuid,
+            'python netcat-test.py',
+        ]
+    )
     wait_until_state(uuid, State.RUNNING)
     time.sleep(5)
     output = _run_command([cl, 'netcat', uuid, '5005', '---', 'hi patrick'])
     check_equals('No, this is dawg', output)
 
-    uuid = _run_command([cl, 'run', '--request-memory', '10m', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    uuid = _run_command(
+        [
+            cl,
+            'run',
+            '--request-memory',
+            '10m',
+            'netcat-test.py:' + script_uuid,
+            'python netcat-test.py',
+        ]
+    )
     wait_until_state(uuid, State.RUNNING)
     time.sleep(5)
     output = _run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
