@@ -1523,6 +1523,7 @@ def test(ctx):
 @TestModule.register('netcat')
 def test(ctx):
     script_uuid = _run_command([cl, 'upload', test_path('netcat-test.py')])
+    _run_command([cl, 'info', script_uuid])
     uuid = _run_command([cl, 'run', '--request-memory', '10m', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
     wait_until_state(uuid, State.RUNNING)
     time.sleep(5)
