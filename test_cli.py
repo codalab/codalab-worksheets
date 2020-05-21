@@ -1104,6 +1104,7 @@ def test(ctx):
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
 
+
 @TestModule.register('read')
 def test(ctx):
     dep_uuid = _run_command([cl, 'upload', test_path('')])
@@ -1165,6 +1166,7 @@ def test(ctx):
         if running:
             _run_command([cl, 'kill', uuid])
             wait(uuid, 1)
+
 
 @TestModule.register('kill')
 def test(ctx):
