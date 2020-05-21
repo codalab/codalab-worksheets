@@ -92,16 +92,10 @@ jobs:
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
+          docker restart codalab_worker_1
           python3 test_runner.py --version ${VERSION} ${TEST} || python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.head_ref }}
-      - name: Run "Run" test when restarting worker
-        if: ${{ contains(matrix.test, 'run') }}
-        run: |
-          docker restart codalab_worker_1
-          python3 test_runner.py --version ${VERSION} run
-        env:
           VERSION: ${{ github.head_ref }}
       - name: Save logs on failure
         run: |
