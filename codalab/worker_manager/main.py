@@ -5,7 +5,6 @@ Main entry point for the worker managers.
 import argparse
 import logging
 from .aws_batch_worker_manager import AWSBatchWorkerManager
-from .slurm_batch_worker_manager import SlurmBatchWorkerManager
 
 
 def main():
@@ -51,10 +50,7 @@ def main():
     # Each worker manager class defines its NAME, which is the subcommand the users use
     # to invoke that type of Worker Manager. We map those to their respective classes
     # so we can automatically initialize the correct worker manager class from the argument
-    worker_manager_types = {
-        AWSBatchWorkerManager.NAME: AWSBatchWorkerManager,
-        SlurmBatchWorkerManager.NAME: SlurmBatchWorkerManager,
-    }
+    worker_manager_types = {AWSBatchWorkerManager.NAME: AWSBatchWorkerManager}
     for worker_manager_name, worker_manager_type in worker_manager_types.items():
         # This lets each worker manager class to define its own arguments
         worker_manager_subparser = subparsers.add_parser(
@@ -63,8 +59,6 @@ def main():
         worker_manager_type.add_arguments_to_subparser(worker_manager_subparser)
     args = parser.parse_args()
 
-    if args.worker_manager_name == SlurmBatchWorkerManager.NAME:
-        args.once = True
     # Set up logging.
     if args.verbose:
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)

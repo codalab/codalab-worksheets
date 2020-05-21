@@ -58,7 +58,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         Return a list of workers.
         The current Slurm version on NLP cluster is 17.11.13-2, which doesn't have rest api provided.
         """
-        # Detailed documentation can be found at https://slurm.schedmd.com/squeue.html.
+        # Documentation can be found at https://slurm.schedmd.com/squeue.html.
         # Get all the Slurm workers that are owned by the current user.
         # Returning result will be in the following format:
         # JOBID:STATE (header won't be included with "-h" option)
@@ -77,7 +77,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             ['squeue', '-u', self.username, '-t', 'RUNNING', '-o', '%i', '-h']
         )
         running_jobs = running_jobs.strip().split()
-        
+
         return [WorkerJob(job) for job in running_jobs]
 
     def start_worker_job(self):
