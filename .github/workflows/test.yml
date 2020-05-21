@@ -73,9 +73,23 @@ jobs:
       matrix:
         test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic, upload1 upload2 upload3 upload4 download refs binary, rm make worksheet_search worksheet_tags freeze detach perm, search search_time, run, read kill write mimic, resources, copy groups, netcat netcurl, status batch anonymous competition unicode rest1 memoize, workers, worksheets]
         sharedfs: [true, false]
+        # Only run shared file system tests for specific tests (run, read, write, kill, resources, netcat, netcurl, workers).
+        exclude:
+          - test: unittest gen-rest-docs gen-cli-docs gen-readthedocs basic
+            sharedfs: true
+          - test: upload1 upload2 upload3 upload4 download refs binary
+          sharedfs: true
+          - test: rm make worksheet_search worksheet_tags freeze detach perm
+          sharedfs: true
+          - test: search search_time
+          sharedfs: true
+          - test: copy groups
+          sharedfs: true
+          - test: status batch anonymous competition unicode rest1 memoize
+          sharedfs: true
+          - test: worksheets
+          sharedfs: true
       fail-fast: false
-    # Only run shared file system tests on specific workers.
-    if: ${{ !matrix.sharedfs || (contains(matrix.test, 'run') || contains(matrix.test, 'read') || contains(matrix.test, 'write') || contains(matrix.test, 'kill') || contains(matrix.test, 'resources') || contains(matrix.test, 'netcat') || contains(matrix.test, 'netcurl') || contains(matrix.test, 'workers')) }}
     steps:
       # This step is only needed for tests that use "cl run" to run jobs on workers.
       - name: Clear free space
