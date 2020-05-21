@@ -38,6 +38,7 @@ class UITester(ABC):
 
         # Test Firefox
         options = FirefoxOptions()
+        options.log.level = "trace"
         add_headless(options)
         self.browser = webdriver.Firefox(log_path='', firefox_options=options)
         self.test()
