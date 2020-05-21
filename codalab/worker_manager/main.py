@@ -65,8 +65,6 @@ def main():
 
     if args.worker_manager_name == SlurmBatchWorkerManager.NAME:
         args.once = True
-
-    print(args)
     # Set up logging.
     if args.verbose:
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)

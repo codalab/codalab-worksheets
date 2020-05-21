@@ -64,7 +64,6 @@ class SlurmBatchWorkerManager(WorkerManager):
         # JOBID:STATE (header won't be included with "-h" option)
         # 1478828:PENDING
         # 1478830:PENDING
-        '''
         jobs = self.run_command(['squeue', '-u', self.username, '-o', '%i:%T', '-h'])
         jobs = jobs.strip().split()
         logger.info('Workers: {}'.format(' '.join(job for job in jobs) or '(none)'))
@@ -80,9 +79,6 @@ class SlurmBatchWorkerManager(WorkerManager):
         running_jobs = running_jobs.strip().split()
         
         return [WorkerJob(job) for job in running_jobs]
-        '''
-        print("Get slurm jobs")
-        return []
 
     def start_worker_job(self):
         """
