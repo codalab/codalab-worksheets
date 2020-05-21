@@ -178,7 +178,7 @@ jobs:
           python3 codalab_service.py pull --version ${VERSION}
           pip install -r requirements.txt
           sudo ./scripts/test-setup.sh
-          export PATH=$PATH:$PWD/geckodriver/geckodriver
+          export PATH=$PATH:$PWD/geckodriver
         env:
           VERSION: ${{ github.head_ref }}
       - name: Run tests
