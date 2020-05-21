@@ -113,7 +113,7 @@ jobs:
         uses: actions/upload-artifact@v1
         if: failure()
         with:
-          name: logs
+          name: logs-test-backend-${{ matrix.test }}
           path: /tmp/logs
     
   test_backend_sharedfs:
@@ -155,7 +155,7 @@ jobs:
         uses: actions/upload-artifact@v1
         if: failure()
         with:
-          name: logs
+          name: logs-test-backend-sharedfs-${{ matrix.test }}
           path: /tmp/logs
     
   test_frontend:
