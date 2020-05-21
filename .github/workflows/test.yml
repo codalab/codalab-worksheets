@@ -157,6 +157,7 @@ jobs:
     strategy:
       matrix:
         test: [frontend]
+        sharedfs: [true, false]
     steps:
       - name: Clear free space
         run: |
@@ -176,6 +177,7 @@ jobs:
         env:
           VERSION: ${{ github.head_ref }}
       - name: Run tests
+        if: ${{ !matrix.sharedfs }}
         run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
           docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
@@ -185,9 +187,11 @@ jobs:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref }}
       - name: Run shared filesystem tests
+        if: ${{ matrix.sharedfs }}
         run: |
-          docker stop codalab_worker_1
-          python3 codalab_service.py start --services init worker --version ${VERSION} --shared-file-system
+          python3 codalab_service.py start --services default monitor --version ${VERSION} --shared-file-system
+          docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
+          sleep 60
           python3 test_runner.py --version ${VERSION} ${TEST} || python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
@@ -196,7 +200,7 @@ jobs:
         uses: actions/upload-artifact@v1
         if: failure()
         with:
-          name: screenshots-test-${{ matrix.test }}
+          name: screenshots-test-${{ matrix.test }}-sharedfs-${{ matrix.sharedfs }}
           path: tests/ui
       - name: Save logs on failure
         run: |
@@ -207,5 +211,5 @@ jobs:
         uses: actions/upload-artifact@v1
         if: failure()
         with:
-          name: logs-test-${{ matrix.test }}
+          name: logs-test-${{ matrix.test }}-sharedfs-${{ matrix.sharedfs }}
           path: /tmp/logs
