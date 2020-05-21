@@ -78,17 +78,17 @@ jobs:
           - test: unittest gen-rest-docs gen-cli-docs gen-readthedocs basic
             sharedfs: true
           - test: upload1 upload2 upload3 upload4 download refs binary
-          sharedfs: true
+            sharedfs: true
           - test: rm make worksheet_search worksheet_tags freeze detach perm
-          sharedfs: true
+            sharedfs: true
           - test: search search_time
-          sharedfs: true
+            sharedfs: true
           - test: copy groups
-          sharedfs: true
+            sharedfs: true
           - test: status batch anonymous competition unicode rest1 memoize
-          sharedfs: true
+            sharedfs: true
           - test: worksheets
-          sharedfs: true
+            sharedfs: true
       fail-fast: false
     steps:
       # This step is only needed for tests that use "cl run" to run jobs on workers.
