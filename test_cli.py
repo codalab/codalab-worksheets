@@ -304,38 +304,36 @@ class ModuleContext(object):
             print(Colorizer.green("[*] TEST PASSED"))
 
         # Clean up and restore original worksheet
-        # time.sleep(5)
         print("[*][*] CLEANING UP")
-        return True
-        # os.environ.clear()
-        # os.environ.update(self.original_environ)
+        os.environ.clear()
+        os.environ.update(self.original_environ)
 
-        # _run_command([cl, 'work', self.original_worksheet])
-        # for worksheet in self.worksheets:
-        #     self.bundles.extend(_run_command([cl, 'ls', '-w', worksheet, '-u']).split())
-        #     _run_command([cl, 'wrm', '--force', worksheet])
+        _run_command([cl, 'work', self.original_worksheet])
+        for worksheet in self.worksheets:
+            self.bundles.extend(_run_command([cl, 'ls', '-w', worksheet, '-u']).split())
+            _run_command([cl, 'wrm', '--force', worksheet])
 
-        # # Delete all bundles (kill and dedup first)
-        # if len(self.bundles) > 0:
-        #     for bundle in set(self.bundles):
-        #         try:
-        #             if _run_command([cl, 'info', '-f', 'state', bundle]) not in State.FINAL_STATES:
-        #                 _run_command([cl, 'kill', bundle])
-        #                 _run_command([cl, 'wait', bundle], expected_exit_code=1)
-        #         except AssertionError:
-        #             print('CAUGHT')
-        #             pass
-        #         _run_command([cl, 'rm', '--force', bundle])
+        # Delete all bundles (kill and dedup first)
+        if len(self.bundles) > 0:
+            for bundle in set(self.bundles):
+                try:
+                    if _run_command([cl, 'info', '-f', 'state', bundle]) not in State.FINAL_STATES:
+                        _run_command([cl, 'kill', bundle])
+                        _run_command([cl, 'wait', bundle], expected_exit_code=1)
+                except AssertionError:
+                    print('CAUGHT')
+                    pass
+                _run_command([cl, 'rm', '--force', bundle])
 
-        # # Delete all groups (dedup first)
-        # if len(self.groups) > 0:
-        #     _run_command([cl, 'grm'] + list(set(self.groups)))
+        # Delete all groups (dedup first)
+        if len(self.groups) > 0:
+            _run_command([cl, 'grm'] + list(set(self.groups)))
 
-        # # Reraise only KeyboardInterrupt
-        # if exc_type is KeyboardInterrupt:
-        #     return False
-        # else:
-        #     return True
+        # Reraise only KeyboardInterrupt
+        if exc_type is KeyboardInterrupt:
+            return False
+        else:
+            return True
 
     def collect_worksheet(self, uuid):
         """Mark a worksheet for cleanup on exit."""
@@ -1106,6 +1104,67 @@ def test(ctx):
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
 
+@TestModule.register('read')
+def test(ctx):
+    dep_uuid = _run_command([cl, 'upload', test_path('')])
+    uuid = _run_command(
+        [
+            cl,
+            'run',
+            'dir:' + dep_uuid,
+            'file:' + dep_uuid + '/a.txt',
+            'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done',
+        ]
+    )
+    wait_until_state(uuid, State.RUNNING)
+
+    # Tests reading first while the bundle is running and then after it is
+    # killed.
+    for running in [True, False]:
+        # Wait for the output to appear. Also, tests cat on a directory.
+        wait_for_contents(uuid, substring='done', timeout_seconds=60)
+
+        # Info has only the first 10 lines
+        info_output = _run_command([cl, 'info', uuid, '--verbose'])
+        print(info_output)
+        check_contains('a.txt', info_output)
+        assert '5\n6\n7' not in info_output, 'info output should contain only first 10 lines'
+
+        # Cat has everything.
+        cat_output = _run_command([cl, 'cat', uuid + '/stdout'])
+        check_contains('5\n6\n7', cat_output)
+        check_contains('This is a simple text file for CodaLab.', cat_output)
+
+        # Read a non-existant file.
+        _run_command([cl, 'cat', uuid + '/unknown'], 1)
+
+        # Dependencies should not be visible.
+        dir_cat = _run_command([cl, 'cat', uuid])
+        assert 'dir' not in dir_cat, '"dir" should not be in bundle'
+        assert 'file' not in dir_cat, '"file" should not be in bundle'
+
+        # You should be able to cat dependencies if specified directly
+        dep_cat_output = _run_command([cl, 'cat', uuid + '/dir'])
+        check_contains('-AmMDnVl4s8', dep_cat_output)
+        dep_cat_output = _run_command([cl, 'cat', uuid + '/file'])
+        check_contains('This is a simple text file for CodaLab.', dep_cat_output)
+
+        # Download the whole bundle.
+        path = temp_path('')
+        _run_command([cl, 'download', uuid, '-o', path])
+        assert not os.path.exists(
+            os.path.join(path, 'dir')
+        ), '"dir" should not be in downloaded bundle'
+        assert not os.path.exists(
+            os.path.join(path, 'file')
+        ), '"file" should not be in downloaded bundle'
+        with open(os.path.join(path, 'stdout')) as fileobj:
+            check_contains('5\n6\n7', fileobj.read())
+        shutil.rmtree(path)
+
+        if running:
+            _run_command([cl, 'kill', uuid])
+            wait(uuid, 1)
 
 @TestModule.register('kill')
 def test(ctx):
@@ -1702,69 +1761,6 @@ def test(ctx):
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
     check_equals(True, len(worker_info) >= 8)
-
-
-@TestModule.register('read')
-def test(ctx):
-    dep_uuid = _run_command([cl, 'upload', test_path('')])
-    uuid = _run_command(
-        [
-            cl,
-            'run',
-            'dir:' + dep_uuid,
-            'file:' + dep_uuid + '/a.txt',
-            'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done',
-        ]
-    )
-    wait_until_state(uuid, State.RUNNING)
-
-    # Tests reading first while the bundle is running and then after it is
-    # killed.
-    for running in [True, False]:
-        # Wait for the output to appear. Also, tests cat on a directory.
-        wait_for_contents(uuid, substring='done', timeout_seconds=60)
-
-        # Info has only the first 10 lines
-        info_output = _run_command([cl, 'info', uuid, '--verbose'])
-        print(info_output)
-        check_contains('a.txt', info_output)
-        assert '5\n6\n7' not in info_output, 'info output should contain only first 10 lines'
-
-        # Cat has everything.
-        cat_output = _run_command([cl, 'cat', uuid + '/stdout'])
-        check_contains('5\n6\n7', cat_output)
-        check_contains('This is a simple text file for CodaLab.', cat_output)
-
-        # Read a non-existant file.
-        _run_command([cl, 'cat', uuid + '/unknown'], 1)
-
-        # Dependencies should not be visible.
-        dir_cat = _run_command([cl, 'cat', uuid])
-        assert 'dir' not in dir_cat, '"dir" should not be in bundle'
-        assert 'file' not in dir_cat, '"file" should not be in bundle'
-
-        # You should be able to cat dependencies if specified directly
-        dep_cat_output = _run_command([cl, 'cat', uuid + '/dir'])
-        check_contains('-AmMDnVl4s8', dep_cat_output)
-        dep_cat_output = _run_command([cl, 'cat', uuid + '/file'])
-        check_contains('This is a simple text file for CodaLab.', dep_cat_output)
-
-        # Download the whole bundle.
-        path = temp_path('')
-        _run_command([cl, 'download', uuid, '-o', path])
-        assert not os.path.exists(
-            os.path.join(path, 'dir')
-        ), '"dir" should not be in downloaded bundle'
-        assert not os.path.exists(
-            os.path.join(path, 'file')
-        ), '"file" should not be in downloaded bundle'
-        with open(os.path.join(path, 'stdout')) as fileobj:
-            check_contains('5\n6\n7', fileobj.read())
-        shutil.rmtree(path)
-
-        if running:
-            _run_command([cl, 'kill', uuid])
-            wait(uuid, 1)
 
 
 @TestModule.register('rest1')
