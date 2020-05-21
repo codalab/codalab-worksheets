@@ -126,6 +126,8 @@ def wait_until_state(uuid, expected_state, timeout_seconds=100):
             raise AssertionError('timeout while waiting for %s to run' % uuid)
         current_state = get_info(uuid, 'state')
 
+        _run_command([cl, 'info', uuid])
+
         # Stop waiting when the bundle is in the expected state or one of the final states
         if current_state == expected_state:
             return
