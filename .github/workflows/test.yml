@@ -89,7 +89,7 @@ jobs:
           VERSION: ${{ github.head_ref }}
       - name: Run tests
         run: |
-          python3 codalab_service.py start --services default --version ${VERSION}
+          python3 codalab_service.py start --parallel --services default no-frontend --version ${VERSION}
           docker restart codalab_worker_1
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
@@ -131,7 +131,7 @@ jobs:
           VERSION: ${{ github.head_ref }}
       - name: Run shared filesystem tests
         run: |
-          python3 codalab_service.py start --services default --version ${VERSION} --shared-file-system
+          python3 codalab_service.py start --parallel --services default no-frontend --version ${VERSION} --shared-file-system
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
@@ -177,7 +177,7 @@ jobs:
       - name: Run tests
         if: ${{ !matrix.sharedfs }}
         run: |
-          python3 codalab_service.py start --services default --version ${VERSION}
+          python3 codalab_service.py start --parallel --services default --version ${VERSION}
           docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
           sleep 60
           python3 test_runner.py --version ${VERSION} ${TEST}
@@ -187,7 +187,7 @@ jobs:
       - name: Run shared filesystem tests
         if: ${{ matrix.sharedfs }}
         run: |
-          python3 codalab_service.py start --services default --version ${VERSION} --shared-file-system
+          python3 codalab_service.py start --parallel --services default --version ${VERSION} --shared-file-system
           docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
           sleep 60
           python3 test_runner.py --version ${VERSION} ${TEST}
