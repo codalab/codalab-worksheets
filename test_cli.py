@@ -1391,10 +1391,10 @@ def test(ctx):
     stress(
         use_time=1,
         request_time=10,
-        use_memory=50,
-        request_memory=1000,
-        use_disk=10,
-        request_disk=100,
+        use_memory=1,
+        request_memory=2,
+        use_disk=5,
+        request_disk=10,
         expected_exit_code=0,
         expected_failure_message=None,
     )
@@ -1403,10 +1403,10 @@ def test(ctx):
     stress(
         use_time=10,
         request_time=1,
-        use_memory=50,
-        request_memory=1000,
-        use_disk=10,
-        request_disk=100,
+        use_memory=3,
+        request_memory=2,
+        use_disk=5,
+        request_disk=10,
         expected_exit_code=1,
         expected_failure_message='Time limit exceeded.',
     )
@@ -1418,10 +1418,10 @@ def test(ctx):
 
     # Too much disk
     stress(
-        use_time=2,
+        use_time=1,
         request_time=10,
-        use_memory=50,
-        request_memory=1000,
+        use_memory=1,
+        request_memory=2,
         use_disk=10,
         request_disk=2,
         expected_exit_code=1,
