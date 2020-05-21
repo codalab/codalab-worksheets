@@ -72,7 +72,10 @@ jobs:
     strategy:
       matrix:
         test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic, upload1 upload2 upload3 upload4 download refs binary, rm make worksheet_search worksheet_tags freeze detach perm, search search_time, run, read kill write mimic, resources, copy groups, netcat netcurl, status batch anonymous competition unicode rest1 memoize, workers, worksheets]
+        sharedfs: [true, false]
       fail-fast: false
+    # Only run shared file system tests on specific workers.
+    if: ${{ !matrix.sharedfs || (contains(matrix.test, 'run') || contains(matrix.test, 'read') || contains(matrix.test, 'write') || contains(matrix.test, 'kill') || contains(matrix.test, 'resources') || contains(matrix.test, 'netcat') || contains(matrix.test, 'netcurl') || contains(matrix.test, 'workers')) }}
     steps:
       # This step is only needed for tests that use "cl run" to run jobs on workers.
       - name: Clear free space
@@ -92,6 +95,7 @@ jobs:
         env:
           VERSION: ${{ github.head_ref }}
       - name: Run tests
+        if: ${{ !matrix.sharedfs }}
         run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST} || python3 test_runner.py --version ${VERSION} ${TEST}
@@ -99,14 +103,14 @@ jobs:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref }}
       - name: Run "Run" test when restarting worker
-        if: ${{ contains(matrix.test, 'run') }}
+        if: ${{ !matrix.sharedfs && contains(matrix.test, 'run') }}
         run: |
           docker restart codalab_worker_1
           python3 test_runner.py --version ${VERSION} run
         env:
           VERSION: ${{ github.head_ref }}
       - name: Run shared filesystem tests
-        if: ${{ contains(matrix.test, 'basic') || contains(matrix.test, 'run') || contains(matrix.test, 'read') || contains(matrix.test, 'write') || contains(matrix.test, 'kill') || contains(matrix.test, 'resources') || contains(matrix.test, 'netcat') || contains(matrix.test, 'netcurl') || contains(matrix.test, 'workers') }}
+        if: ${{ matrix.sharedfs }}
         run: |
           docker stop codalab_worker_1
           python3 codalab_service.py start --services init worker --version ${VERSION} --shared-file-system
