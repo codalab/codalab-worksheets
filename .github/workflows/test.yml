@@ -72,24 +72,6 @@ jobs:
     strategy:
       matrix:
         test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic,upload1 upload2 upload3 upload4 download refs binary,rm make worksheet_search worksheet_tags freeze detach perm,search search_time,run,read kill write mimic,resources,copy groups,netcat netcurl,status batch anonymous competition unicode rest1 memoize,workers,worksheets]
-        sharedfs: [true, false]
-        # Only run shared file system tests for specific tests (run, read, write, kill, resources, netcat, netcurl, workers).
-        exclude:
-          - test: unittest gen-rest-docs gen-cli-docs gen-readthedocs basic
-            sharedfs: true
-          - test: upload1 upload2 upload3 upload4 download refs binary
-            sharedfs: true
-          - test: rm make worksheet_search worksheet_tags freeze detach perm
-            sharedfs: true
-          - test: search search_time
-            sharedfs: true
-          - test: copy groups
-            sharedfs: true
-          - test: status batch anonymous competition unicode rest1 memoize
-            sharedfs: true
-          - test: worksheets
-            sharedfs: true
-      fail-fast: false
     steps:
       # This step is only needed for tests that use "cl run" to run jobs on workers.
       - name: Clear free space
@@ -109,7 +91,6 @@ jobs:
         env:
           VERSION: ${{ github.head_ref }}
       - name: Run tests
-        if: ${{ !matrix.sharedfs }}
         run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST} || python3 test_runner.py --version ${VERSION} ${TEST}
@@ -117,14 +98,48 @@ jobs:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref }}
       - name: Run "Run" test when restarting worker
-        if: ${{ !matrix.sharedfs && contains(matrix.test, 'run') }}
+        if: ${{ contains(matrix.test, 'run') }}
         run: |
           docker restart codalab_worker_1
           python3 test_runner.py --version ${VERSION} run
         env:
           VERSION: ${{ github.head_ref }}
+      - name: Save logs on failure
+        run: |
+          mkdir /tmp/logs
+          for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err; done
+        if: failure()
+      - name: Upload logs on failure
+        uses: actions/upload-artifact@v1
+        if: failure()
+        with:
+          name: logs
+          path: /tmp/logs
+    
+  test_backend_sharedfs:
+    name: Test backend with sharedfs
+    runs-on: ubuntu-latest
+    needs: [build_backend]
+    strategy:
+      matrix:
+        test: [run, read write kill, resources, netcat netcurl, workers]
+    steps:
+      - name: Clear free space
+        run: |
+            sudo rm -rf /usr/share/dotnet
+            sudo rm -rf /opt/ghc
+            df -h
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - name: Setup tests
+        run: |
+          sudo service mysql stop
+          python3 codalab_service.py pull --version ${VERSION}
+        env:
+          VERSION: ${{ github.head_ref }}
       - name: Run shared filesystem tests
-        if: ${{ matrix.sharedfs }}
         run: |
           python3 codalab_service.py start --services init worker --version ${VERSION} --shared-file-system
           python3 test_runner.py --version ${VERSION} ${TEST}
@@ -142,7 +157,7 @@ jobs:
         with:
           name: logs
           path: /tmp/logs
-      
+    
   test_frontend:
     name: Test frontend
     runs-on: ubuntu-latest
