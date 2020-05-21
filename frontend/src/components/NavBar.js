@@ -133,12 +133,13 @@ class NavBar extends React.Component<{
     handleChange = (e, { value }) => this.setState({ value });
 
     handleResultSelect = (e, { result }) => {
+        this.setState({ value: result.plaintextTitle || result.plaintextDescription });
         window.open('/worksheets/' + result.uuid, '_self');
     };
 
     initialState = { isLoading: false, results: [], value: '' };
 
-    resultRenderer = ({ title, description }) => [
+    resultRenderer = ({ title, description }) => (
         <div key='content' className='content'>
             {title && <div dangerouslySetInnerHTML={{ __html: title }} className='title'></div>}
             {description && (
@@ -147,8 +148,8 @@ class NavBar extends React.Component<{
                     className='description'
                 ></div>
             )}
-        </div>,
-    ];
+        </div>
+    );
 
     handleSearchChange = (e, { value }) => {
         this.setState({ isLoading: true, value });
@@ -208,9 +209,11 @@ class NavBar extends React.Component<{
                     let filteredResults = {};
                     for (let item of data.response) {
                         // use DOMPurify to get rid of the XSS security risk
+                        item.plaintextDescription = item.name;
                         item.description = DOMPurify.sanitize(
                             item.name.replace(re, "<span id='highlight'>$&</span>"),
                         );
+                        item.plaintextTitle = item.title;
                         item.title = DOMPurify.sanitize(
                             (item.title || '').replace(re, "<span id='highlight'>$&</span>"),
                         );
@@ -306,6 +309,7 @@ class NavBar extends React.Component<{
                         {this.props.auth.isAuthenticated && (
                             <div className={classes.searchContainer}>
                                 <Search
+                                    fluid
                                     category
                                     loading={isLoading}
                                     input={{ icon: 'search', iconPosition: 'left', fluid: true }}
@@ -318,7 +322,7 @@ class NavBar extends React.Component<{
                                     results={results}
                                     value={value}
                                     showNoResults={true}
-                                    id='search-bar'
+                                    id='codalab-search-bar'
                                 />
                             </div>
                         )}
