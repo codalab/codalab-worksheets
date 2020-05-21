@@ -85,10 +85,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         Start a CodaLab Slurm worker that submits batch job to Slurm
         """
         worker_id = uuid.uuid4().hex
-        # user's local home directory for easy access
+        # Set user's local home directory as worker directory
         work_dir = Path(str(Path.home()), "slurm-batch-scratch/{}".format(worker_id))
-
-        # Set up worker directories
+        # Set up worker directory
         work_dir.mkdir(parents=True, exist_ok=True)
 
         # This needs to be a unique directory since Batch jobs may share a host
