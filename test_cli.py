@@ -1452,7 +1452,7 @@ def test(ctx):
 
 @TestModule.register('netcurl')
 def test(ctx):
-    uuid = _run_command([cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'])
+    uuid = _run_command([cl, 'run', '--request-memory', '10m', 'echo hello > hello.txt; python -m SimpleHTTPServer'])
     wait_until_state(uuid, State.RUNNING)
     address = ctx.client.address
     check_equals(
