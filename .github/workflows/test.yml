@@ -67,18 +67,25 @@ jobs:
           SERVICE: ${{ matrix.service }}
   test_backend:
     name: Test backend
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     needs: [build_backend, build_frontend]
     strategy:
       matrix:
         test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic status batch anonymous competition unicode rest1,upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm,search search_time,run,read kill write mimic workers,resources,copy groups,netcat netcurl,memoize,worksheets]
     steps:
+      # This step is only needed for tests that use "cl run" to run jobs on workers.
+      - name: Clear free space
+        if: ${{ contains(matrix.test, 'run') || contains(matrix.test, 'read') || contains(matrix.test, 'mimic') || contains(matrix.test, 'resources') || contains(matrix.test, 'worksheets') || contains(matrix.test, 'memoize') || contains(matrix.test, 'netcat') || contains(matrix.test, 'netcurl') || contains(matrix.test, 'copy') || contains(matrix.test, 'search') }}
+        run: |
+            sudo rm -rf /opt/ghc
+            df -h
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
           python-version: 3.6
       - name: Setup tests
         run: |
+          sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
         env:
           VERSION: ${{ github.head_ref }}
@@ -110,18 +117,23 @@ jobs:
     
   test_backend_sharedfs:
     name: Test backend with sharedfs
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     needs: [build_backend, build_frontend]
     strategy:
       matrix:
         test: [run, read write kill, resources, netcat netcurl]
     steps:
+      - name: Clear free space
+        run: |
+            sudo rm -rf /opt/ghc
+            df -h
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
           python-version: 3.6
       - name: Setup tests
         run: |
+          sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
         env:
           VERSION: ${{ github.head_ref }}
@@ -146,15 +158,20 @@ jobs:
     
   test_frontend:
     name: Test frontend
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     needs: [build_backend, build_frontend]
     steps:
+      - name: Clear free space
+        run: |
+            sudo rm -rf /opt/ghc
+            df -h
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
           python-version: 3.6
       - name: Setup tests
         run: |
+          sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
           pip install -r requirements.txt
           sudo ./scripts/test-setup.sh
