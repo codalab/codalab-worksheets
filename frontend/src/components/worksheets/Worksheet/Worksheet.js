@@ -712,7 +712,7 @@ class Worksheet extends React.Component {
             // disable all keyboard shortcuts when loading worksheet
             return;
         }
-        if (!(this.openDialog || this.state.BulkBundleDialog)) {
+        if (!(this.state.openDialog || this.state.BulkBundleDialog)) {
             // Only enable these shortcuts when no dialog is opened
             Mousetrap.bind(
                 ['shift+r'],
