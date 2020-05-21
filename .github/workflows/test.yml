@@ -71,11 +71,11 @@ jobs:
     needs: [build_backend]
     strategy:
       matrix:
-        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic,upload1 upload2 upload3 upload4 download refs binary,rm make worksheet_search worksheet_tags freeze detach perm,search search_time,run,read kill write mimic,resources,copy groups,netcat netcurl,status batch anonymous competition unicode rest1 memoize,workers,worksheets]
+        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic,upload1 upload2 upload3 upload4 download refs binary,rm make worksheet_search worksheet_tags freeze detach perm,search search_time,run,read kill write mimic,resources,copy groups,netcat netcurl,status batch anonymous competition unicode rest1 memoize,worksheets]
     steps:
       # This step is only needed for tests that use "cl run" to run jobs on workers.
       - name: Clear free space
-        if: ${{ contains(matrix.test, 'run') || contains(matrix.test, 'read') || contains(matrix.test, 'mimic') || contains(matrix.test, 'resources') || contains(matrix.test, 'worksheets') || contains(matrix.test, 'memoize') || contains(matrix.test, 'workers') || contains(matrix.test, 'netcat') || contains(matrix.test, 'netcurl') || contains(matrix.test, 'copy') }}
+        if: ${{ contains(matrix.test, 'run') || contains(matrix.test, 'read') || contains(matrix.test, 'mimic') || contains(matrix.test, 'resources') || contains(matrix.test, 'worksheets') || contains(matrix.test, 'memoize') || contains(matrix.test, 'netcat') || contains(matrix.test, 'netcurl') || contains(matrix.test, 'copy') }}
         run: |
             sudo rm -rf /usr/share/dotnet
             sudo rm -rf /opt/ghc
@@ -123,7 +123,7 @@ jobs:
     needs: [build_backend]
     strategy:
       matrix:
-        test: [run, read write kill, resources, netcat netcurl, workers]
+        test: [run, read write kill, resources, netcat netcurl]
     steps:
       - name: Clear free space
         run: |
