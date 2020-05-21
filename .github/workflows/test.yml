@@ -201,4 +201,4 @@ jobs:
         if: failure()
         with:
           name: results
-          path: test/ui
+          path: tests/ui
