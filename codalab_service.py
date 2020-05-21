@@ -19,7 +19,6 @@ We then launch a set of services (e.g., `rest-server`), where for each one:
 from __future__ import print_function
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor
 import errno
 import os
 import socket
@@ -384,12 +383,6 @@ class CodalabArgs(object):
                 default=False,
             )
             cmd.add_argument(
-                '--parallel',
-                action='store_true',
-                help='Start Docker images in parallel threads',
-                default=False,
-            )
-            cmd.add_argument(
                 (
                     'images' if cmd == build_cmd else '--images'
                 ),  # For the explicit build command make this argument positional
@@ -687,87 +680,74 @@ class CodalabServiceManager(object):
         )
         rest_url = 'http://rest-server:{}'.format(self.args.rest_port)
 
-        def start_mysql():
-            if self.args.mysql_host == 'mysql':
-                self.bring_up_service('mysql')
+        if self.args.mysql_host == 'mysql':
+            self.bring_up_service('mysql')
 
-            if should_run_service(self.args, 'init'):
-                print_header('Populating config.json')
-                commands = [
-                    'cl config {} {}'.format(config_prop, value)
-                    for config_prop, value in [
-                        ('cli/default_address', rest_url),
-                        ('server/engine_url', mysql_url),
-                        ('server/rest_host', '0.0.0.0'),
-                        ('server/rest_port', self.args.rest_port),
-                        ('server/admin_email', self.args.admin_email),
-                        ('server/support_email', self.args.support_email),  # Use support_email
-                        ('server/default_user_info/disk_quota', self.args.user_disk_quota),
-                        ('server/default_user_info/time_quota', self.args.user_time_quota),
-                        (
-                            'server/default_user_info/parallel_run_quota',
-                            self.args.user_parallel_run_quota,
-                        ),
-                        ('email/host', self.args.email_host),
-                        ('email/username', self.args.email_username),
-                        ('email/password', self.args.email_password),
-                    ]
-                    if value
+        if should_run_service(self.args, 'init'):
+            print_header('Populating config.json')
+            commands = [
+                'cl config {} {}'.format(config_prop, value)
+                for config_prop, value in [
+                    ('cli/default_address', rest_url),
+                    ('server/engine_url', mysql_url),
+                    ('server/rest_host', '0.0.0.0'),
+                    ('server/rest_port', self.args.rest_port),
+                    ('server/admin_email', self.args.admin_email),
+                    ('server/support_email', self.args.support_email),  # Use support_email
+                    ('server/default_user_info/disk_quota', self.args.user_disk_quota),
+                    ('server/default_user_info/time_quota', self.args.user_time_quota),
+                    (
+                        'server/default_user_info/parallel_run_quota',
+                        self.args.user_parallel_run_quota,
+                    ),
+                    ('email/host', self.args.email_host),
+                    ('email/username', self.args.email_username),
+                    ('email/password', self.args.email_password),
                 ]
-                self.run_service_cmd(' && '.join(commands))
+                if value
+            ]
+            self.run_service_cmd(' && '.join(commands))
 
-                print_header('Initializing the database with alembic')
-                # We need to upgrade the current database revision to the most recent revision before any other database operations.
-                self.run_service_cmd(
-                    'if [ $(alembic current | wc -l) -gt 0 ]; then echo upgrade; alembic upgrade head; fi'
+            print_header('Initializing the database with alembic')
+            # We need to upgrade the current database revision to the most recent revision before any other database operations.
+            self.run_service_cmd(
+                'if [ $(alembic current | wc -l) -gt 0 ]; then echo upgrade; alembic upgrade head; fi'
+            )
+
+            print_header('Creating root user')
+            self.run_service_cmd(
+                self.wait_mysql(
+                    'python3 scripts/create-root-user.py {}'.format(self.args.codalab_password)
                 )
+            )
 
-                print_header('Creating root user')
-                self.run_service_cmd(
-                    self.wait_mysql(
-                        'python3 scripts/create-root-user.py {}'.format(self.args.codalab_password)
-                    )
+            print_header('Stamping the database with alembic')
+            # We stamp the revision table with the given revision.
+            self.run_service_cmd(
+                'if [ $(alembic current | wc -l) -eq 0 ]; then echo stamp; alembic stamp head; fi'
+            )
+
+        self.bring_up_service('rest-server')
+
+        if should_run_service(self.args, 'init'):
+            print_header('Creating home and dashboard worksheets')
+            self.run_service_cmd(
+                self.wait_rest_server(
+                    'cl logout && cl status && ((cl new home && cl new dashboard) || exit 0)'
                 )
+            )
 
-                print_header('Stamping the database with alembic')
-                # We stamp the revision table with the given revision.
-                self.run_service_cmd(
-                    'if [ $(alembic current | wc -l) -eq 0 ]; then echo stamp; alembic stamp head; fi'
-                )
-
-        def start_rest_server():
-            self.bring_up_service('rest-server')
-            if should_run_service(self.args, 'init'):
-                print_header('Creating home and dashboard worksheets')
-                self.run_service_cmd(
-                    self.wait_rest_server(
-                        'cl logout && cl status && ((cl new home && cl new dashboard) || exit 0)'
-                    )
-                )
-
-        start_commands = [
-            start_mysql,
-            start_rest_server,
-            lambda: self.bring_up_service('bundle-manager'),
-            lambda: self.bring_up_service('worker-manager-cpu'),
-            lambda: self.bring_up_service('worker-manager-gpu'),
-            lambda: self.bring_up_service('frontend'),
-            lambda: self.bring_up_service('nginx'),
-            lambda: (
-                self.bring_up_service('worker-shared-file-system')
-                if self.args.shared_file_system
-                else self.bring_up_service('worker')
-            ),
-            lambda: self.bring_up_service('monitor'),
-        ]
-
-        if self.args.parallel:
-            with ThreadPoolExecutor(max_workers=10) as executor:
-                for command in start_commands:
-                    executor.submit(command)
+        self.bring_up_service('bundle-manager')
+        self.bring_up_service('worker-manager-cpu')
+        self.bring_up_service('worker-manager-gpu')
+        self.bring_up_service('frontend')
+        self.bring_up_service('nginx')
+        if self.args.shared_file_system:
+            self.bring_up_service('worker-shared-file-system')
         else:
-            for command in start_commands:
-                command()
+            self.bring_up_service('worker')
+
+        self.bring_up_service('monitor')
 
     def pull_images(self):
         for image in self.SERVICE_IMAGES:
