@@ -1269,13 +1269,13 @@ def test(ctx):
                 cl,
                 'run',
                 'main.pl:' + uuid,
-                'perl main.pl %s %s %s' % (use_time, use_memory, use_disk),
                 '--request-time',
                 str(request_time),
                 '--request-memory',
                 str(request_memory) + 'm',
                 '--request-disk',
                 str(request_disk) + 'm',
+                'perl main.pl %s %s %s' % (use_time, use_memory, use_disk),
             ]
         )
         wait(run_uuid, expected_exit_code)
