@@ -294,6 +294,7 @@ class NavBar extends React.Component<{
                         {this.props.auth.isAuthenticated && (
                             <div className={classes.searchContainer}>
                                 <Search
+                                    fluid
                                     category
                                     loading={isLoading}
                                     input={{ icon: 'search', iconPosition: 'left', fluid: true }}
