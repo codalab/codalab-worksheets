@@ -93,7 +93,6 @@ jobs:
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
-          sleep 20
           python3 test_runner.py --version ${VERSION} ${TEST} || python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
@@ -143,7 +142,6 @@ jobs:
       - name: Run shared filesystem tests
         run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION} --shared-file-system
-          sleep 20
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
@@ -187,14 +185,14 @@ jobs:
         run: |
           python3 codalab_service.py start --services default monitor --version ${VERSION}
           docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
-          python3 test_runner.py --version ${VERSION} frontend
+          python3 test_runner.py --version ${VERSION} frontend || python3 test_runner.py --version ${VERSION} frontend
         env:
           VERSION: ${{ github.head_ref }}
       - name: Run shared filesystem tests
         run: |
           docker stop codalab_worker_1
           python3 codalab_service.py start --services init worker --version ${VERSION} --shared-file-system
-          python3 test_runner.py --version ${VERSION} frontend
+          python3 test_runner.py --version ${VERSION} frontend || python3 test_runner.py --version ${VERSION} frontend
         env:
           VERSION: ${{ github.head_ref }}
       - name: Upload screenshots on failure
