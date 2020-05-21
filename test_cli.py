@@ -215,6 +215,9 @@ def _run_command(
         if len(args) > 1 and args[1] == 'run' and '--request-memory' not in args:
             args.insert(2, '10m')
             args.insert(2, '--request-memory')
+        if len(args) > 1 and args[1] == 'run' and '--request-disk' not in args:
+            args.insert(2, '1m')
+            args.insert(2, '--request-disk')
     else:
         force_subprocess = True
     return run_command(
