@@ -172,7 +172,6 @@ export class WorksheetEditableField extends React.Component<{
     dataType: string,
 }> {
     buildPayload(value) {
-        console.log(this.props.dataType);
         return {
             data: [
                 {

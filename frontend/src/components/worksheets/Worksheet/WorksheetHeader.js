@@ -79,17 +79,15 @@ export default ({
                                     />
                                     &nbsp;by&nbsp;
                                     {info.owner_name ? info.owner_name : '<anonymous>'}
-                                    &nbsp;
                                     <div
                                         onClick={(ev) => {
                                             setAnchorEl(ev.currentTarget);
                                         }}
                                         className={classes.permissions}
-                                        style={{ display: 'inline-block' }}
+                                        style={{ display: 'inline-block', margin: '0px 5px' }}
                                     >
                                         {renderPermissions(info)}
                                     </div>
-                                    &nbsp;
                                     <Popover
                                         open={Boolean(anchorEl)}
                                         anchorEl={anchorEl}
