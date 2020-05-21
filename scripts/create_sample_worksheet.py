@@ -143,7 +143,8 @@ class SampleWorksheet:
                 [
                     self._cl,
                     'run',
-                    '--request-memory=10m',
+                    '--request-memory',
+                    '10m',
                     'echo codalab rules!',
                     '--tags=%s' % SampleWorksheet.TAG,
                 ]
@@ -159,7 +160,8 @@ class SampleWorksheet:
                 [
                     self._cl,
                     'run',
-                    '--request-memory=10m',
+                    '--request-memory',
+                    '10m',
                     'echo private run',
                     '--tags=%s' % SampleWorksheet.TAG,
                 ]
