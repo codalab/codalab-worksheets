@@ -71,7 +71,7 @@ jobs:
     needs: [build_backend]
     strategy:
       matrix:
-        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic, upload1 upload2 upload3 upload4 download refs binary, rm make worksheet_search worksheet_tags freeze detach perm, search search_time, run, read kill write mimic, resources, copy groups, netcat netcurl, status batch anonymous competition unicode rest1 memoize, workers, worksheets]
+        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic,upload1 upload2 upload3 upload4 download refs binary,rm make worksheet_search worksheet_tags freeze detach perm,search search_time,run,read kill write mimic,resources,copy groups,netcat netcurl,status batch anonymous competition unicode rest1 memoize,workers,worksheets]
         sharedfs: [true, false]
         # Only run shared file system tests for specific tests (run, read, write, kill, resources, netcat, netcurl, workers).
         exclude:
