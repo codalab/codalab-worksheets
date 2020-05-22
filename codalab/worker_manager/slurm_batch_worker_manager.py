@@ -48,10 +48,19 @@ class SlurmBatchWorkerManager(WorkerManager):
             action='store_true',
             help='Print out Slurm batch job definition without submitting to Slurm',
         )
+        subparser.add_argument(
+            '--user', type=str, default=getpass.getuser(), help='User to run the Slurm Batch jobs as'
+        )
+        subparser.add_argument(
+            '--password-file', type=str, help='Path to the file containing the username and '
+                                            'password for logging into the CodaLab worker '
+                                            'each on a separate line. If not specified, the '
+                                            'the worker will fail to start.'
+        )
 
     def __init__(self, args):
         super().__init__(args)
-        self.username = getpass.getuser()
+        self.username = self.args.user if self.args.user else getpass.getuser()
 
     def get_worker_jobs(self):
         """
@@ -108,6 +117,8 @@ class SlurmBatchWorkerManager(WorkerManager):
             worker_network_prefix,
             # always set in Slurm worker manager to ensure safe shutdown
             '--pass-down-termination',
+            'password-file',
+            self.args.password_file,
         ]
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])
@@ -127,7 +138,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, errors = proc.communicate()
         if output:
-            logger.info("Submitted job: {}".format(' '.join(command)))
+            logger.info("Ran command: {}".format(' '.join(command)))
             return output.decode()
         if errors:
             print(
