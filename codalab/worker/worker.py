@@ -444,8 +444,6 @@ class Worker:
         is still assigned to this worker. If not, returns immediately.
         Otherwise, tell RunManager to create the run.
         """
-        now = time.time()
-        start_message = {'hostname': socket.gethostname(), 'start_time': int(now)}
         if self.exit_number_jobs == 0:
             print(
                 'Worker has finished starting the number of jobs allowed to run on: {}. '
@@ -454,6 +452,7 @@ class Worker:
             )
             return
 
+        start_message = {'hostname': socket.gethostname(), 'start_time': int(time.time())}
         if self.bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
             bundle = BundleInfo.from_dict(bundle)
             resources = RunResources.from_dict(resources)
