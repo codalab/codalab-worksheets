@@ -111,6 +111,12 @@ def parse_args():
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
     )
     parser.add_argument(
+        '--exit-number-jobs',
+        help='The worker will exit after this many jobs assigned and finished on this worker',
+        type=int,
+        default=10000,
+    )
+    parser.add_argument(
         '--idle-seconds',
         help='Not running anything for this many seconds constitutes idle',
         type=int,
@@ -136,12 +142,7 @@ def parse_args():
         action='store_true',
         help='Terminate the worker and kill all the existing running bundles.',
     )
-    parser.add_argument(
-        '--exit-number-jobs',
-        help='Not running anything for this many jobs assigned to this worker',
-        type=int,
-        default=10000,
-    )
+
     return parser.parse_args()
 
 
