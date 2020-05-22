@@ -68,7 +68,7 @@ class UITester(ABC):
         self.scroll_to_bottom('worksheet_container')
         active_textbox = self.browser.switch_to.active_element
         active_textbox.send_keys(command)
-        self.pause()
+        self.longer_pause()
         if use_keyboard_shortcut:
             self.save_edit_keyboard_shortcut(active_textbox)
         else:
