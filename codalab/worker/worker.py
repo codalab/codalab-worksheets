@@ -179,7 +179,7 @@ class Worker:
         Checks whether the worker has finished the number of job allowed to run.
 
         :return: True if the number of jobs allowed to run is 0 and all those runs are finished.
-                 False if any of the above conditions does not meet.
+                 False if neither of the two conditions are met.
         """
         return self.exit_number_jobs == 0 and len(self.runs) == 0
 
