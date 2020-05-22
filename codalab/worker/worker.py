@@ -448,7 +448,7 @@ class Worker:
         start_message = {'hostname': socket.gethostname(), 'start_time': int(now)}
         if self.exit_number_jobs == 0:
             print(
-                'Worker has finished assigning the number of jobs allowed to run on: {}. '
+                'Worker has finished starting the number of jobs allowed to run on: {}. '
                 'Stop starting further runs.'.format(self.exit_number_jobs),
                 file=sys.stdout,
             )
