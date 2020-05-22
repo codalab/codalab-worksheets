@@ -119,7 +119,7 @@ def parse_args():
     parser.add_argument(
         '--idle-seconds',
         help='Not running anything for this many seconds constitutes idle',
-        type=check_positive_int,
+        type=int,
         default=0,
     )
     parser.add_argument(
@@ -150,7 +150,7 @@ def check_positive_int(value):
     """
     Check if the CLI argument is a positive integer.
     :param value: input value from CLI
-    :return:
+    :return: a positive integer value
     """
     value = int(value)
     if value <= 0:
