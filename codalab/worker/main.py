@@ -141,6 +141,12 @@ def parse_args():
         action='store_true',
         help="Delete the worker's working directory when the worker process exits.",
     )
+    parser.add_argument(
+        '--exit-number-jobs',
+        help='The worker quits after this many jobs assigned to this worker',
+        type=int,
+        default=10000,
+    )
     return parser.parse_args()
 
 
@@ -225,6 +231,7 @@ def main():
         args.work_dir,
         local_bundles_dir,
         args.exit_when_idle,
+        args.exit_number_jobs,
         args.idle_seconds,
         bundle_service,
         args.shared_file_system,

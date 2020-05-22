@@ -57,6 +57,7 @@ class Worker:
         work_dir,  # type: str
         local_bundles_dir,  # type: Optional[str]
         exit_when_idle,  # type: str
+        exit_number_jobs,  # type: int
         idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
         shared_file_system,  # type: bool
@@ -93,6 +94,7 @@ class Worker:
         self.delete_work_dir_on_exit = delete_work_dir_on_exit
 
         self.exit_when_idle = exit_when_idle
+        self.exit_number_jobs = exit_number_jobs
         self.idle_seconds = idle_seconds
 
         self.terminate = False
@@ -298,6 +300,7 @@ class Worker:
             'gpus': len(self.gpuset),
             'memory_bytes': self.max_memory,
             'free_disk_bytes': self.free_disk_bytes,
+            'exit_number_jobs': self.exit_number_jobs,
             'dependencies': self.cached_dependencies,
             'hostname': socket.gethostname(),
             'runs': [run.as_dict for run in self.all_runs],

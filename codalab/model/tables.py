@@ -319,6 +319,7 @@ worker = Table(
     Column(
         'tag_exclusive', Boolean, nullable=False
     ),  # Whether worker runs bundles if and only if they match tags.
+    Column('exit_number_jobs', Integer, nullable=False),  # Number of jobs allowed to run on worker.
 )
 
 # Store information about all sockets currently allocated to each worker.
