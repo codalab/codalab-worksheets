@@ -56,6 +56,7 @@ class Worker:
         work_dir,  # type: str
         local_bundles_dir,  # type: Optional[str]
         exit_when_idle,  # type: str
+        exit_number_jobs,  # type: int
         idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
         shared_file_system,  # type: bool
@@ -89,6 +90,7 @@ class Worker:
         self.shared_file_system = shared_file_system
 
         self.exit_when_idle = exit_when_idle
+        self.exit_number_jobs = exit_number_jobs
         self.idle_seconds = idle_seconds
 
         self.stop = False
@@ -172,6 +174,15 @@ class Worker:
         is_idle = now - self.last_time_ran > self.idle_seconds
         return self.exit_when_idle and is_idle and self.last_checkin_successful
 
+    def check_job_number_stop(self):
+        """
+        Checks whether the worker has finished the number of job allowed to run.
+
+        :return: True if the number of jobs allowed to run is 0 and all those runs are finished.
+                 False if any of the above conditions does not meet.
+        """
+        return self.exit_number_jobs == 0 and len(self.runs) == 0
+
     def start(self):
         """Return whether we ran anything."""
         self.load_state()
@@ -188,9 +199,8 @@ class Worker:
                 if self.terminate:
                     if self.terminate_containers() == 0:
                         self.stop = True
-                if self.check_idle_stop():
+                if self.check_idle_stop() or self.check_job_number_stop():
                     self.stop = True
-                    break
             except Exception:
                 self.last_checkin_successful = False
                 traceback.print_exc()
@@ -292,6 +302,8 @@ class Worker:
                 time.sleep(self.CHECKIN_COOLDOWN)
             self.last_checkin_successful = False
             response = None
+
+        print("##### exit_number_jobs = {}".format(self.exit_number_jobs))
         if not response:
             return
         action_type = response['type']
@@ -435,6 +447,11 @@ class Worker:
         """
         now = time.time()
         start_message = {'hostname': socket.gethostname(), 'start_time': int(now)}
+        if self.exit_number_jobs <= 0:
+            print(
+                'exit_number_jobs is not enough {}'.format(self.exit_number_jobs), file=sys.stdout
+            )
+            return
 
         if self.bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
             bundle = BundleInfo.from_dict(bundle)
@@ -473,6 +490,7 @@ class Worker:
                 finished=False,
                 finalized=False,
             )
+            self.exit_number_jobs -= 1
         else:
             print(
                 'Bundle {} no longer assigned to this worker'.format(bundle['uuid']),

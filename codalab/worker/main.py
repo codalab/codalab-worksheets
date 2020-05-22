@@ -136,7 +136,12 @@ def parse_args():
         action='store_true',
         help='Terminate the worker and kill all the existing running bundles.',
     )
-
+    parser.add_argument(
+        '--exit-number-jobs',
+        help='Not running anything for this many jobs assigned to this worker',
+        type=int,
+        default=10000,
+    )
     return parser.parse_args()
 
 
@@ -221,6 +226,7 @@ def main():
         args.work_dir,
         local_bundles_dir,
         args.exit_when_idle,
+        args.exit_number_jobs,
         args.idle_seconds,
         bundle_service,
         args.shared_file_system,
