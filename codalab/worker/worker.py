@@ -454,7 +454,8 @@ class Worker:
             )
             return
 
-        start_message = {'hostname': socket.gethostname(), 'start_time': int(time.time())}
+        now = time.time()
+        start_message = {'hostname': socket.gethostname(), 'start_time': int(now)}
         if self.bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
             bundle = BundleInfo.from_dict(bundle)
             resources = RunResources.from_dict(resources)
