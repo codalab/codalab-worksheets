@@ -113,13 +113,13 @@ def parse_args():
     parser.add_argument(
         '--exit-number-jobs',
         help='The worker will exit after this many jobs assigned and finished on this worker',
-        type=int,
+        type=check_positive_int,
         default=10000,
     )
     parser.add_argument(
         '--idle-seconds',
         help='Not running anything for this many seconds constitutes idle',
-        type=int,
+        type=check_positive_int,
         default=0,
     )
     parser.add_argument(
@@ -144,6 +144,18 @@ def parse_args():
     )
 
     return parser.parse_args()
+
+
+def check_positive_int(value):
+    """
+    Check if the CLI argument is a positive integer.
+    :param value: input value from CLI
+    :return:
+    """
+    value = int(value)
+    if value <= 0:
+        raise argparse.ArgumentTypeError('{} is an invalid positive int value'.format(value))
+    return value
 
 
 def connect_to_codalab_server(server, password_file):
