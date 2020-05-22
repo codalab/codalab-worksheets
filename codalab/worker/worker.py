@@ -440,8 +440,10 @@ class Worker:
 
     def run(self, bundle, resources):
         """
-        First, checks in with the bundle service and sees if the bundle
-        is still assigned to this worker. If not, returns immediately.
+        First, checks if the worker has already finished receiving/starting the number of jobs allowed to run.
+        If not, returns immediately.
+        Then, checks in with the bundle service and sees if the bundle is still assigned to this worker.
+        If not, returns immediately.
         Otherwise, tell RunManager to create the run.
         """
         if self.exit_number_jobs == 0:
