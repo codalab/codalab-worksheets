@@ -302,7 +302,6 @@ class Worker:
                 time.sleep(self.CHECKIN_COOLDOWN)
             self.last_checkin_successful = False
             response = None
-        print("exit_number_jobs = {}".format(self.exit_number_jobs))
         if not response:
             return
         action_type = response['type']
