@@ -302,7 +302,7 @@ class Worker:
                 time.sleep(self.CHECKIN_COOLDOWN)
             self.last_checkin_successful = False
             response = None
-
+        print("exit_number_jobs = {}".format(self.exit_number_jobs))
         if not response:
             return
         action_type = response['type']
@@ -446,9 +446,11 @@ class Worker:
         """
         now = time.time()
         start_message = {'hostname': socket.gethostname(), 'start_time': int(now)}
-        if self.exit_number_jobs <= 0:
+        if self.exit_number_jobs == 0:
             print(
-                'exit_number_jobs is not enough {}'.format(self.exit_number_jobs), file=sys.stdout
+                'Worker has finished assigning the number of jobs allowed to run on: {}. '
+                'Stop starting further runs.'.format(self.exit_number_jobs),
+                file=sys.stdout,
             )
             return
 
