@@ -116,7 +116,7 @@ class UITester(ABC):
         self.scroll_to_bottom('worksheet_container')
         self.pause()
         self.browser.find_elements_by_tag_name('svg')[-1].click()
-        self.pause()
+        self.longer_pause()
         select_boxes = self.browser.find_elements_by_tag_name('select')
         self.select_option(select_boxes[-1], permission)
         self.longer_pause()
