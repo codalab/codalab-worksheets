@@ -145,11 +145,11 @@ jobs:
           python-version: 3.6
       - name: Setup tests
         run: |
+          sudo ./scripts/test-setup.sh
+          export PATH=$PATH:$PWD/geckodriver
           sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
           pip install -r requirements.txt
-          sudo ./scripts/test-setup.sh
-          export PATH=$PATH:$PWD/geckodriver
         env:
           VERSION: ${{ github.head_ref }}
       - name: Run tests
