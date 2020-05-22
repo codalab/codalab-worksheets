@@ -40,7 +40,7 @@ class UITester(ABC):
         options = ChromeOptions()
         add_headless(options)
         self.browser = webdriver.Chrome(chrome_options=options)
-        self.browser.implicitly_wait(10) # 10 seconds
+        self.browser.implicitly_wait(10)  # 10 seconds
         self.test()
         self.browser.close()
 
@@ -107,13 +107,16 @@ class UITester(ABC):
 
         # Edit name and description
         self.expand_last_bundle()
+        self.pause()
         editable_fields = self.browser.find_elements(By.CLASS_NAME, 'editable-field')
         edit_field(editable_fields[-2], name)
         edit_field(editable_fields[-1], description)
 
         # Edit bundle permission
         self.scroll_to_bottom('worksheet_container')
+        self.pause()
         self.browser.find_elements_by_tag_name('svg')[-1].click()
+        self.pause()
         select_boxes = self.browser.find_elements_by_tag_name('select')
         self.select_option(select_boxes[-1], permission)
         self.longer_pause()
@@ -144,6 +147,7 @@ class UITester(ABC):
 
     def expand_last_bundle(self):
         self.scroll_to_bottom('worksheet_container')
+        self.pause()
         self.browser.find_elements_by_tag_name('button')[-1].click()
         self.pause()
 
@@ -155,6 +159,7 @@ class UITester(ABC):
             self.click(By.CSS_SELECTOR, '[aria-label="Add Text"]')
         self.pause()
         self.scroll_to_bottom('worksheet_container')
+        self.pause()
         last_text_box = self.browser.find_elements_by_tag_name('textarea')[-1]
         self.focus_and_send_keys(last_text_box, text)
         if use_keyboard_shortcut:
@@ -381,6 +386,7 @@ class EditWorksheetTest(UITester):
         self.send_keyboard_shortcut('x')
         # Backspace = Attempt to delete the selected bundles
         self.send_keyboard_shortcut(Keys.BACKSPACE)
+        self.pause()
         self.browser.find_elements_by_tag_name('button')[-1].click()
         # Wait for bundles to be deleted before proceeding
         self.longer_pause()
