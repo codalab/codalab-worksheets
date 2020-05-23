@@ -81,7 +81,7 @@ def parse_metadata_form(bundle_subclass, form_result):
     metadata_types = {spec.key: spec.type for spec in metadata_specs}
     result = {}
     for line in form_result:
-        line = line.strip().encode('UTF-8')
+        line = line.strip()
         if line != '' and not line.startswith('//'):
             if ':' not in line:
                 # TODO: don't delete everything; go back to the editor and show the error message
@@ -94,13 +94,14 @@ def parse_metadata_form(bundle_subclass, form_result):
             if metadata_key not in metadata_types:
                 raise UsageError('Unexpected metadata key: %s' % (metadata_key,))
             metadata_type = metadata_types[metadata_key]
+
             if metadata_type == list:
-                if any(unicode_util.contains_unicode(v) for v in result[metadata_key]):
+                remainders = remainder.split() if remainder else []
+                if any(unicode_util.contains_unicode(r) for r in remainders):
                     raise UsageError(
-                        'Metadata cannot contain unicode: %s = %s'
-                        % (metadata_key, result[metadata_key])
+                        'Metadata cannot contain unicode: %s = %s' % (metadata_key, remainder)
                     )
-                result[metadata_key] = remainder.split() if remainder else []
+                result[metadata_key] = remainders
             elif metadata_type == str:
                 if remainder is not None and unicode_util.contains_unicode(remainder):
                     raise UsageError(

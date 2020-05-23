@@ -18,7 +18,7 @@ These are bundles that are currently running or queued to be run.
 % add state
 % display table r
 % search state=running created=.sort- .limit=10000 .mine
-% search state=queued created=.sort- .limit=10000 .mine
+% search state=staged created=.sort- .limit=10000 .mine
 
 ## **My recent bundles**
 % search id=.sort- .limit=5 .mine
