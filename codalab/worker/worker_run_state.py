@@ -1,12 +1,16 @@
-from collections import namedtuple
+import docker
+import errno
 import logging
 import os
+import shutil
 import threading
 import time
 import traceback
 
-import docker
 import codalab.worker.docker_utils as docker_utils
+
+from collections import namedtuple
+from pathlib import Path
 
 from codalab.lib.formatting import size_str, duration_str
 from codalab.worker.file_util import remove_path, get_path_size
@@ -161,6 +165,25 @@ class RunStateMachine(StateTransitioner):
             - Start the docker container
         4- If all is successful, move to RUNNING state
         """
+
+        def symlink(target, source):
+            try:
+                os.symlink(target, source)
+            except OSError as e:
+                # Override the existing symlink if one already exists
+                if e.errno == errno.EEXIST:
+                    if os.path.isdir(source):
+                        shutil.rmtree(source)
+                    else:
+                        os.remove(source)
+                    os.symlink(target, source)
+                else:
+                    error_message = 'Failed to create a symlink between target: {} and source: {}. Error: {}'.format(
+                        target, source, str(e)
+                    )
+                    logger.error(error_message)
+                    raise OSError(error_message)
+
         if run_state.is_killed:
             return run_state._replace(stage=RunStage.CLEANING_UP)
 
@@ -245,6 +268,7 @@ class RunStateMachine(StateTransitioner):
         docker_dependencies_path = (
             '/' + run_state.bundle.uuid + ('_dependencies' if not self.shared_file_system else '')
         )
+
         for dep in run_state.bundle.dependencies:
             dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
             full_child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
@@ -254,6 +278,7 @@ class RunStateMachine(StateTransitioner):
                 message = 'Invalid key for dependency: %s' % (dep.child_path)
                 logger.error(message)
                 return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
+
             docker_dependency_path = os.path.join(docker_dependencies_path, dep.child_path)
             if self.shared_file_system:
                 # On a shared FS, we know where the dep is stored and can get the contents directly
@@ -264,10 +289,41 @@ class RunStateMachine(StateTransitioner):
                     self.dependency_manager.dependencies_dir,
                     self.dependency_manager.get(run_state.bundle.uuid, dep_key).path,
                 )
-                os.symlink(docker_dependency_path, full_child_path)
-            # These are turned into docker volume bindings like:
-            #   dependency_path:docker_dependency_path:ro
-            docker_dependencies.append((dependency_path, docker_dependency_path))
+
+                if dep.child_path != '.':
+                    # A child path can be a nested path which we need to create directories for
+                    Path(full_child_path).mkdir(parents=True, exist_ok=True)
+                    try:
+                        symlink(docker_dependency_path, full_child_path)
+                    except OSError as e:
+                        return run_state._replace(
+                            stage=RunStage.CLEANING_UP, failure_message=str(e)
+                        )
+
+            if dep.child_path == '.':
+                # Process top-level content for the current dependency path
+                for content in os.listdir(dependency_path):
+                    content_child_path = os.path.normpath(
+                        os.path.join(run_state.bundle_path, content)
+                    )
+                    content_dependency_path = os.path.join(dependency_path, content)
+                    docker_dependency_path = os.path.join(docker_dependencies_path, content)
+
+                    # Set up a symlink from the content child path to the container mount location
+                    try:
+                        symlink(docker_dependency_path, content_child_path)
+                    except OSError as e:
+                        return run_state._replace(
+                            stage=RunStage.CLEANING_UP, failure_message=str(e)
+                        )
+
+                    # The following will be converted into a Docker volume binding like:
+                    #   dependency_path/content:docker_dependency_path/content:ro
+                    docker_dependencies.append((content_dependency_path, docker_dependency_path))
+            else:
+                # These are turned into docker volume bindings like:
+                #   dependency_path:docker_dependency_path:ro
+                docker_dependencies.append((dependency_path, docker_dependency_path))
 
         if run_state.resources.network:
             docker_network = self.docker_network_external.name
@@ -446,6 +502,9 @@ class RunStateMachine(StateTransitioner):
                     time.sleep(1)
 
         for dep in run_state.bundle.dependencies:
+            if dep.child_path == '.':
+                continue
+
             dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
             if not self.shared_file_system:  # No dependencies if shared fs worker
                 self.dependency_manager.release(run_state.bundle.uuid, dep_key)

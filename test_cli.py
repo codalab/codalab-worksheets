@@ -1102,6 +1102,47 @@ def test(ctx):
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
 
 
+@TestModule.register('run2')
+def test(ctx):
+    # Test that content of dependency is mounted at the top when . is specified as the dependency key
+    dir3 = _run_command([cl, 'upload', test_path('dir3')])
+    uuid = _run_command([cl, 'run', '.:%s' % dir3, 'cat f1'])
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    uuid = _run_command([cl, 'run', '.:%s' % dir3, 'cat dir1/f1'])
+    wait(uuid)
+    check_equals('first nested file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    nested_dir = _run_command([cl, 'upload', test_path('dir3/dir1')])
+    uuid = _run_command([cl, 'run', '.:%s' % nested_dir, 'cat f1'])
+    wait(uuid)
+    check_equals('first nested file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # Specify a path for the dependency key
+    dir1 = _run_command([cl, 'upload', test_path('dir1')])
+    uuid = _run_command([cl, 'run', 'foo/bar:%s' % dir1, 'foo/bar2:%s' % dir3, 'cat foo/bar/f1'])
+    wait(uuid)
+    check_equals('first file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    uuid = _run_command([cl, 'run', 'foo/bar:%s' % dir1, 'foo/bar2:%s' % dir3, 'cat foo/bar2/f1'])
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # Test that backwards compatibility is maintained
+    uuid = _run_command([cl, 'run', 'f1:%s/f1' % dir1, 'foo/bar:%s' % dir1, 'cat f1'])
+    wait(uuid)
+    output = _run_command([cl, 'cat', uuid + '/stdout'])
+    uuid = _run_command([cl, 'run', 'f1:%s/f1' % dir1, 'foo/bar:%s' % dir1, 'cat foo/bar/f1'])
+    wait(uuid)
+    check_equals(output, _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # We currently don't support the case where a dependency key is an ancestor of another. Expect an error.
+    _run_command(
+        [cl, 'run', 'foo:%s' % dir3, 'foo/bar:%s' % dir1, 'cat foo/bar/f1'], expected_exit_code=1
+    )
+
+
 @TestModule.register('read')
 def test(ctx):
     dep_uuid = _run_command([cl, 'upload', test_path('')])
