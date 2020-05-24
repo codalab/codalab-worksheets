@@ -135,6 +135,7 @@ class UITester(ABC):
             self.send_keyboard_shortcut(Keys.SHIFT + 'e')
         else:
             self.click(By.CSS_SELECTOR, '[aria-label="Edit Source"]')
+        self.pause()
         source_field = self.browser.switch_to.active_element
         source_field.send_keys(Keys.ENTER + Keys.ENTER)
         source_field.send_keys(text)
