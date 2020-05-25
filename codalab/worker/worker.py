@@ -96,6 +96,7 @@ class Worker:
 
         self.stop = False
         self.terminate = terminate
+        self.terminate_cli_signal = False
 
         self.last_checkin_successful = False
         self.last_time_ran = None  # type: Optional[bool]
@@ -197,7 +198,7 @@ class Worker:
                 self.checkin()
                 self.save_state()
                 # Wait until existing bundles finished uploading their final status
-                if self.terminate:
+                if self.terminate_cli_signal:
                     if self.terminate_containers() == 0:
                         self.stop = True
                 if self.check_idle_stop() or self.check_num_runs_stop():
@@ -253,6 +254,8 @@ class Worker:
         # the worker without changing the status of existing running bundles.
         if not self.terminate:
             self.stop = True
+        else:
+            self.terminate_cli_signal = True
 
     @property
     def cached_dependencies(self):
