@@ -836,12 +836,6 @@ class BundleModel(object):
             if not row:
                 # The user deleted the bundle.
                 return False
-            # Check if the designated worker still exists
-            worker = connection.execute(
-                cl_worker.select().where(cl_worker.c.worker_id == worker_id)
-            ).fetchone()
-            if not worker:
-                return False
 
             bundle_update = {
                 'state': State.STARTING,
