@@ -56,7 +56,7 @@ class Worker:
         work_dir,  # type: str
         local_bundles_dir,  # type: Optional[str]
         exit_when_idle,  # type: str
-        exit_number_jobs,  # type: int
+        exit_after_num_runs,  # type: int
         idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
         shared_file_system,  # type: bool
@@ -90,7 +90,8 @@ class Worker:
         self.shared_file_system = shared_file_system
 
         self.exit_when_idle = exit_when_idle
-        self.exit_number_jobs = exit_number_jobs
+        self.exit_after_num_runs = exit_after_num_runs
+        self.num_runs = 0
         self.idle_seconds = idle_seconds
 
         self.stop = False
@@ -174,14 +175,14 @@ class Worker:
         is_idle = now - self.last_time_ran > self.idle_seconds
         return self.exit_when_idle and is_idle and self.last_checkin_successful
 
-    def check_job_number_stop(self):
+    def check_num_runs_stop(self):
         """
         Checks whether the worker has finished the number of job allowed to run.
 
         :return: True if the number of jobs allowed to run is 0 and all those runs are finished.
                  False if neither of the two conditions are met.
         """
-        return self.exit_number_jobs == 0 and len(self.runs) == 0
+        return self.exit_after_num_runs == self.num_runs and len(self.runs) == 0
 
     def start(self):
         """Return whether we ran anything."""
@@ -199,7 +200,7 @@ class Worker:
                 if self.terminate:
                     if self.terminate_containers() == 0:
                         self.stop = True
-                if self.check_idle_stop() or self.check_job_number_stop():
+                if self.check_idle_stop() or self.check_num_runs_stop():
                     self.stop = True
             except Exception:
                 self.last_checkin_successful = False
@@ -445,10 +446,10 @@ class Worker:
         If not, returns immediately.
         Otherwise, tell RunManager to create the run.
         """
-        if self.exit_number_jobs == 0:
+        if self.exit_after_num_runs == self.num_runs:
             print(
                 'Worker has finished starting the number of jobs allowed to run on: {}. '
-                'Stop starting further runs.'.format(self.exit_number_jobs),
+                'Stop starting further runs.'.format(self.exit_after_num_runs),
                 file=sys.stdout,
             )
             return
@@ -492,7 +493,8 @@ class Worker:
                 finished=False,
                 finalized=False,
             )
-            self.exit_number_jobs -= 1
+            # Increment the number of runs that have been successfully started on this worker
+            self.num_runs += 1
         else:
             print(
                 'Bundle {} no longer assigned to this worker'.format(bundle['uuid']),

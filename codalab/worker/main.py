@@ -111,10 +111,10 @@ def parse_args():
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
     )
     parser.add_argument(
-        '--exit-number-jobs',
+        '--exit-after-num-runs',
         help='The worker will exit after this many jobs assigned and finished on this worker',
-        type=check_positive_int,
-        default=10000,
+        type=int,
+        default=sys.maxsize,
     )
     parser.add_argument(
         '--idle-seconds',
@@ -144,18 +144,6 @@ def parse_args():
     )
 
     return parser.parse_args()
-
-
-def check_positive_int(value):
-    """
-    Check if the CLI argument is a positive integer.
-    :param value: input value from CLI
-    :return: a positive integer value
-    """
-    value = int(value)
-    if value <= 0:
-        raise argparse.ArgumentTypeError('{} is an invalid positive int value'.format(value))
-    return value
 
 
 def connect_to_codalab_server(server, password_file):
@@ -239,7 +227,7 @@ def main():
         args.work_dir,
         local_bundles_dir,
         args.exit_when_idle,
-        args.exit_number_jobs,
+        args.exit_after_num_runs,
         args.idle_seconds,
         bundle_service,
         args.shared_file_system,
