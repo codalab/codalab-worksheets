@@ -91,7 +91,7 @@ class Worker:
         self.exit_when_idle = exit_when_idle
         self.idle_seconds = idle_seconds
 
-        self.stop = False
+        self.terminate = False
         self.terminate_and_restage = False
         self.pass_down_termination = pass_down_termination
 
@@ -179,7 +179,7 @@ class Worker:
         self.image_manager.start()
         if not self.shared_file_system:
             self.dependency_manager.start()
-        while not self.stop:
+        while not self.terminate:
             try:
                 self.process_runs()
                 self.save_state()
@@ -187,7 +187,7 @@ class Worker:
                 self.check_termination()
                 self.save_state()
                 if self.check_idle_stop():
-                    self.stop = True
+                    self.terminate = True
             except Exception:
                 self.last_checkin_successful = False
                 traceback.print_exc()
@@ -220,10 +220,11 @@ class Worker:
         """
         When the pass_down_termination flag is False, set the stop flag to stop running
         the worker without changing the status of existing running bundles. Otherwise,
-        restage all bundles that are not in the terminal states [FINISHED, RESTAGED].
+        set the terminate_and_restage flag to restage all bundles that are not in the
+        terminal states [FINISHED, RESTAGED].
         """
         if not self.pass_down_termination:
-            self.stop = True
+            self.terminate = True
         else:
             self.terminate_and_restage = True
 
@@ -235,7 +236,7 @@ class Worker:
         if self.terminate_and_restage:
             if self.restage_bundles() == 0:
                 # Stop the worker
-                self.stop = True
+                self.terminate = True
                 # Reset the current runs to exclude bundles in terminal states
                 # before save state one last time to worker-state.json
                 self.runs = {
@@ -312,7 +313,7 @@ class Worker:
             self.last_checkin_successful = False
             response = None
         # Stop processing any new runs received from server
-        if not response or self.terminate_and_restage or self.stop:
+        if not response or self.terminate_and_restage or self.terminate:
             return
         action_type = response['type']
         logger.debug('Received %s message: %s', action_type, response)
@@ -465,7 +466,7 @@ class Worker:
         if self.bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
             bundle = BundleInfo.from_dict(bundle)
             resources = RunResources.from_dict(resources)
-            if self.stop:
+            if self.terminate:
                 # Run Manager stopped, refuse more runs
                 return
             bundle_path = (
