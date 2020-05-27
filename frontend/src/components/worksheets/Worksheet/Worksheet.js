@@ -803,7 +803,7 @@ class Worksheet extends React.Component {
 
             // Focus on search
             Mousetrap.bind(['a+f'], function(e) {
-                document.getElementById('search-bar').focus();
+                document.getElementById('codalab-search-bar').focus();
                 return false; //prevent keypress to bubble
             });
 
