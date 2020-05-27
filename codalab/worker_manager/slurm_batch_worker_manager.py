@@ -75,6 +75,11 @@ class SlurmBatchWorkerManager(WorkerManager):
         self.submitted_jobs = self.load_worker_jobs()
 
     def load_worker_jobs(self):
+        """
+        Load worker jobs that are created using SlurmWorkerManager and
+        owned by the current user from the Slurm scheduling queue.
+        :return: a set of job id
+        """
         # Get all the Slurm workers that are submitted by SlurmWorkerManager and owned by the current user.
         # Returning result will be in the following format:
         # JOBID:STATE (header won't be included with "--noheader" option)
