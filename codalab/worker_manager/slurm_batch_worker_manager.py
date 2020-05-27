@@ -69,20 +69,22 @@ class SlurmBatchWorkerManager(WorkerManager):
         super().__init__(args)
         self.username = self.args.user if self.args.user else getpass.getuser()
         # A set of newly submitted job id to keep tracking worker status, as worker might not be created right away.
-        self.submmited_worker_jobs = set()
+        self.submitted_jobs = set()
 
     def get_worker_jobs(self):
         """
         Return a list of workers in RUNNING and PENDING state.
         The current Slurm version on NLP cluster is 17.11.13-2, which doesn't have rest api provided.
         """
-        # Documentation can be found at https://slurm.schedmd.com/squeue.html.
-        failed_worker_jobs = set()
-        for job_id in self.submmited_worker_jobs:
+        # Documentation can be found at https://slurm.schedmd.com
+        # Since allocating resource for a worker may take a while, we periodically check
+        # for worker status and remove those workers that failed at starting phase.
+        failed_jobs = set()
+        for job_id in self.submitted_jobs:
             job_acct = self.run_command(['sacct', '-j', job_id, '--format', 'state'])
             if 'FAILED' in job_acct:
-                failed_worker_jobs.add(job_id)
-        self.submmited_worker_jobs = self.submmited_worker_jobs - failed_worker_jobs
+                failed_jobs.add(job_id)
+        self.submitted_jobs = self.submitted_jobs - failed_jobs
 
         # Get all the Slurm workers that are submitted by SlurmWorkerManager and owned by the current user.
         # Returning result will be in the following format:
@@ -93,7 +95,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         jobs = jobs.strip().split()
         logger.info(
             'Workers: {}'.format(
-                ' '.join(job for job in jobs if job in self.submmited_worker_jobs) or '(none)'
+                ' '.join(job for job in jobs if job in self.submitted_jobs) or '(none)'
             )
         )
 
@@ -106,9 +108,10 @@ class SlurmBatchWorkerManager(WorkerManager):
             ['squeue', '-u', self.username, '-t', 'PENDING,RUNNING', '--format', '%i', '--noheader']
         )
         running_jobs = running_jobs.strip().split()
-        # Return jobs in PENDING and RUNNING states here as we
-        # don't want to create more workers that we actually need.
-        return [WorkerJob(job) for job in running_jobs if job in self.submmited_worker_jobs]
+
+        # Return jobs in PENDING (waiting for resources) and RUNNING (actively running)
+        # states here as we don't want to create more workers that we actually need.
+        return [WorkerJob(job) for job in running_jobs if job in self.submitted_jobs]
 
     def start_worker_job(self):
         """
@@ -161,7 +164,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         else:
             logger.error("Cannot to find job_id: something went wrong.")
             return
-        self.submmited_worker_jobs.add(job_id)
+        self.submitted_jobs.add(job_id)
 
     def run_command(self, command):
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
