@@ -120,7 +120,7 @@ export default ({
                                             canEdit={canEdit}
                                             dataType='list'
                                             fieldName='tags'
-                                            value={info.tags.join(' | ')}
+                                            value={info.tags.join(' ')}
                                             uuid={info && info.uuid}
                                             onChange={() => reloadWorksheet()}
                                         />

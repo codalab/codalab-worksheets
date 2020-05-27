@@ -66,7 +66,7 @@ export function renderSize(size) {
 export function renderFormat(value, type) {
     switch (type) {
         case 'list':
-            return value.join(' | ');
+            return value.join(' ');
         case 'date':
             return renderDate(value);
         case 'size':
@@ -133,7 +133,7 @@ export function renderPermissions(state) {
 
     return (
         <div>
-            &nbsp;&#91;you({wrapPermissionInColorSpan(state.permission_spec)})
+            &#91;you({wrapPermissionInColorSpan(state.permission_spec)})
             {_.map(state.group_permissions || [], function(perm) {
                 return (
                     <span key={perm.group_name}>
