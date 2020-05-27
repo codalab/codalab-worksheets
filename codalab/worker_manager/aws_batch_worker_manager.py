@@ -28,6 +28,9 @@ class AWSBatchWorkerManager(WorkerManager):
             '--cpus', type=int, default=1, help='Default number of CPUs for each worker'
         )
         subparser.add_argument(
+            '--gpus', type=int, default=0, help='Default number of GPUs to request for each worker'
+        )
+        subparser.add_argument(
             '--memory-mb', type=int, default=2048, help='Default memory (in MB) for each worker'
         )
         subparser.add_argument(
@@ -120,6 +123,8 @@ class AWSBatchWorkerManager(WorkerManager):
             },
             'retryStrategy': {'attempts': 1},
         }
+        if self.args.gpus:
+            job_definition["containerProperties"]["resourceRequirements"] = [{"value": str(self.args.gpus), "type": "GPU"}]
 
         # Allow worker to directly mount a directory.  Note that the worker
         # needs to be set up a priori with this shared filesystem.
