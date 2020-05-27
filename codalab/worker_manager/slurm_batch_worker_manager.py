@@ -162,7 +162,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         if match:
             job_id = match.group(1)
         else:
-            logger.error("Cannot find job_id: {}.".format(job_id_str))
+            logger.error("Cannot find job_id in {}.".format(job_id_str))
             return
         self.submitted_jobs.add(job_id)
 
