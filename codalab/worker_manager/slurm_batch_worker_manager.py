@@ -160,6 +160,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             job_id = match.group(1)
         else:
             logger.error("Cannot to find job_id: something went wrong.")
+            return
         self.submmited_worker_jobs.add(job_id)
 
     def run_command(self, command):
