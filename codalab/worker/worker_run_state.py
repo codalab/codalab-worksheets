@@ -66,6 +66,13 @@ class RunStage(object):
     FINISHED = 'RUN_STAGE.FINISHED'
     WORKER_STATE_TO_SERVER_STATE[FINISHED] = State.READY
 
+    """
+    This stage will collect bundles in terminal states and 
+    sent them back to the server with RESTAGED state
+    """
+    RESTAGED = 'RUN_STAGE.RESTAGED'
+    WORKER_STATE_TO_SERVER_STATE[RESTAGED] = State.STAGED
+
 
 RunState = namedtuple(
     'RunState',
@@ -94,6 +101,7 @@ RunState = namedtuple(
         'kill_message',  # Optional[str]
         'finished',  # bool
         'finalized',  # bool
+        'is_restaged',  # bool
     ],
 )
 
@@ -131,6 +139,7 @@ class RunStateMachine(StateTransitioner):
         self.add_transition(RunStage.UPLOADING_RESULTS, self._transition_from_UPLOADING_RESULTS)
         self.add_transition(RunStage.FINALIZING, self._transition_from_FINALIZING)
         self.add_terminal(RunStage.FINISHED)
+        self.add_terminal(RunStage.RESTAGED)
 
         self.dependency_manager = dependency_manager
         self.docker_image_manager = docker_image_manager
@@ -177,7 +186,7 @@ class RunStateMachine(StateTransitioner):
             #   dependency_path:docker_dependency_path:ro
             docker_dependencies.append((dependency.parent_path, dependency.docker_path))
 
-        if run_state.is_killed:
+        if run_state.is_killed or run_state.is_restaged:
             return run_state._replace(stage=RunStage.CLEANING_UP)
 
         # Check CPU and GPU availability
@@ -186,7 +195,9 @@ class RunStateMachine(StateTransitioner):
                 run_state.resources.cpus, run_state.resources.gpus
             )
         except Exception as e:
-            message = "Unexpectedly unable to assign enough resources: %s" % str(e)
+            message = "Unexpectedly unable to assign enough resources to bundle {}: {}".format(
+                run_state.bundle.uuid, str(e)
+            )
             logger.error(message)
             logger.error(traceback.format_exc())
             return run_state._replace(run_status=message)
@@ -436,7 +447,7 @@ class RunStateMachine(StateTransitioner):
         run_state = check_and_report_finished(run_state)
         run_state = check_resource_utilization(run_state)
 
-        if run_state.is_killed:
+        if run_state.is_killed or run_state.is_restaged:
             if docker_utils.container_exists(run_state.container):
                 try:
                     run_state.container.kill()
@@ -510,6 +521,9 @@ class RunStateMachine(StateTransitioner):
                     os.path.join(run_state.bundle_path, Path(dep.child_path).parts[0])
                 )
 
+        if run_state.is_restaged:
+            return run_state._replace(stage=RunStage.RESTAGED)
+
         if not self.shared_file_system and run_state.has_contents:
             # No need to upload results since results are directly written to bundle store
             return run_state._replace(
@@ -529,6 +543,8 @@ class RunStateMachine(StateTransitioner):
         If uploading and finished:
             Move to FINALIZING state
         """
+        if run_state.is_restaged:
+            return run_state._replace(stage=RunStage.RESTAGED)
 
         def upload_results():
             try:
@@ -581,6 +597,9 @@ class RunStateMachine(StateTransitioner):
         """
         Prepare the finalize message to be sent with the next checkin
         """
+        if run_state.is_restaged:
+            return run_state._replace(stage=RunStage.RESTAGED)
+
         if run_state.is_killed:
             # Append kill_message, which contains more useful info on why a run was killed, to the failure message.
             failure_message = (
