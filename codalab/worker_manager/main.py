@@ -20,6 +20,9 @@ def main():
     )
     parser.add_argument('--worker-tag', help='Tag to look for and put on workers')
     parser.add_argument(
+        '--worker-max-work-dir-size', help='Maximum size of the temporary bundle data'
+    )
+    parser.add_argument(
         '--verbose', action='store_true', help='Whether to print out extra information'
     )
     parser.add_argument(
