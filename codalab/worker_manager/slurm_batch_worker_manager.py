@@ -5,6 +5,7 @@ import subprocess
 import getpass
 from pathlib import Path
 import random
+import re
 
 from .worker_manager import WorkerManager, WorkerJob
 
@@ -19,6 +20,7 @@ class SlurmBatchWorkerManager(WorkerManager):
     SBATCH_COMMAND = 'sbatch'
     SBATCH_PREFIX = '#SBATCH'
     SQUEUE_COMMAND = 'squeue'
+    SBATCH_COMMAND_RETRUN_REGEX = re.compile(r'^Submitted batch job (\d+)$')
 
     @staticmethod
     def add_arguments_to_subparser(subparser):
@@ -66,33 +68,47 @@ class SlurmBatchWorkerManager(WorkerManager):
     def __init__(self, args):
         super().__init__(args)
         self.username = self.args.user if self.args.user else getpass.getuser()
+        # A set of newly submitted job id to keep tracking worker status, as worker might not be created right away.
+        self.submmited_worker_jobs = set()
 
     def get_worker_jobs(self):
         """
-        Return a list of workers.
+        Return a list of workers in RUNNING and PENDING state.
         The current Slurm version on NLP cluster is 17.11.13-2, which doesn't have rest api provided.
         """
         # Documentation can be found at https://slurm.schedmd.com/squeue.html.
-        # Get all the Slurm workers that are owned by the current user.
+        failed_worker_jobs = set()
+        for job_id in self.submmited_worker_jobs:
+            job_acct = self.run_command(['sacct', '-j', job_id, '--format', 'state'])
+            if 'FAILED' in job_acct:
+                failed_worker_jobs.add(job_id)
+        self.submmited_worker_jobs = self.submmited_worker_jobs - failed_worker_jobs
+
+        # Get all the Slurm workers that are submitted by SlurmWorkerManager and owned by the current user.
         # Returning result will be in the following format:
-        # JOBID:STATE (header won't be included with "-h" option)
+        # JOBID:STATE (header won't be included with "--noheader" option)
         # 1478828:PENDING
         # 1478830:PENDING
-        jobs = self.run_command(['squeue', '-u', self.username, '-o', '%i:%T', '-h'])
+        jobs = self.run_command(['squeue', '-u', self.username, '--format', '%i:%T', '--noheader'])
         jobs = jobs.strip().split()
-        logger.info('Workers: {}'.format(' '.join(job for job in jobs) or '(none)'))
+        logger.info(
+            'Workers: {}'.format(
+                ' '.join(job for job in jobs if job in self.submmited_worker_jobs) or '(none)'
+            )
+        )
 
-        # Get all the RUNNING jobs that are owned by the current user.
+        # Get all the PENDING and RUNNING jobs that are owned by the current user.
         # Returning result will be in the following format:
-        # JOBID (header won't be included with "-h" option)
+        # JOBID (header won't be included with "--noheader" option)
         # 1478828
         # 1478830
         running_jobs = self.run_command(
-            ['squeue', '-u', self.username, '-t', 'RUNNING', '-o', '%i', '-h']
+            ['squeue', '-u', self.username, '-t', 'PENDING,RUNNING', '--format', '%i', '--noheader']
         )
         running_jobs = running_jobs.strip().split()
-
-        return [WorkerJob(job) for job in running_jobs]
+        # Return jobs in PENDING and RUNNING states here as we
+        # don't want to create more workers that we actually need.
+        return [WorkerJob(job) for job in running_jobs if job in self.submmited_worker_jobs]
 
     def start_worker_job(self):
         """
@@ -137,7 +153,14 @@ class SlurmBatchWorkerManager(WorkerManager):
 
         batch_script = str(work_dir.joinpath(slurm_args['job-name'] + '.slurm'))
         self.save_job_definition(batch_script, job_definition)
-        self.run_command([self.SBATCH_COMMAND, batch_script])
+        job_id_str = self.run_command([self.SBATCH_COMMAND, batch_script])
+
+        match = re.match(self.SBATCH_COMMAND_RETRUN_REGEX, job_id_str)
+        if match:
+            job_id = match.group(1)
+        else:
+            logger.error("Cannot to find job_id: something went wrong.")
+        self.submmited_worker_jobs.add(job_id)
 
     def run_command(self, command):
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
