@@ -232,7 +232,7 @@ def main():
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
         pass_down_termination=args.pass_down_termination,
-        delete_work_dir_on_exit=args.delete_work_dir_on_exit
+        delete_work_dir_on_exit=args.delete_work_dir_on_exit,
     )
 
     # Register a signal handler to ensure safe shutdown.
