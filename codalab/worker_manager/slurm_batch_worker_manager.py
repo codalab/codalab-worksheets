@@ -159,11 +159,13 @@ class SlurmBatchWorkerManager(WorkerManager):
         job_id_str = self.run_command([self.SBATCH_COMMAND, batch_script])
 
         match = re.match(self.SBATCH_COMMAND_RETRUN_REGEX, job_id_str)
-        if match:
+        if match is not None:
             job_id = match.group(1)
         else:
             logger.error("Cannot find job_id in {}.".format(job_id_str))
             return
+
+        # Add the newly submitted job to submitted_jobs for tracking purpose
         self.submitted_jobs.add(job_id)
 
     def run_command(self, command):
