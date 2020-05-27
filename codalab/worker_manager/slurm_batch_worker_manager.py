@@ -51,12 +51,6 @@ class SlurmBatchWorkerManager(WorkerManager):
             help='Print out Slurm batch job definition without submitting to Slurm',
         )
         subparser.add_argument(
-            '--user',
-            type=str,
-            default=getpass.getuser(),
-            help='User to run the Slurm Batch jobs as',
-        )
-        subparser.add_argument(
             '--password-file',
             type=str,
             help='Path to the file containing the username and '
@@ -79,12 +73,16 @@ class SlurmBatchWorkerManager(WorkerManager):
         # Documentation can be found at https://slurm.schedmd.com
         # Since allocating resource for a worker may take a while, we periodically check
         # for worker status and remove those workers that failed at starting phase.
-        failed_jobs = set()
+        jobs_to_remove = set()
         for job_id in self.submitted_jobs:
             job_acct = self.run_command(['sacct', '-j', job_id, '--format', 'state'])
             if 'FAILED' in job_acct:
-                failed_jobs.add(job_id)
-        self.submitted_jobs = self.submitted_jobs - failed_jobs
+                jobs_to_remove.add(job_id)
+                logger.error("Failed to start job {}".format(job_id))
+            elif 'COMPLETING' in job_acct or 'COMPLETED' in job_acct or 'CANCELLED' in job_acct:
+                jobs_to_remove.add(job_id)
+        self.submitted_jobs = self.submitted_jobs - jobs_to_remove
+        logger.info("Submitted jobs: ".format(self.submitted_jobs))
 
         # Get all the Slurm workers that are submitted by SlurmWorkerManager and owned by the current user.
         # Returning result will be in the following format:
@@ -99,19 +97,20 @@ class SlurmBatchWorkerManager(WorkerManager):
             )
         )
 
-        # Get all the PENDING and RUNNING jobs that are owned by the current user.
+        # Get all the RUNNING jobs that are owned by the current user.
         # Returning result will be in the following format:
         # JOBID (header won't be included with "--noheader" option)
         # 1478828
         # 1478830
         running_jobs = self.run_command(
-            ['squeue', '-u', self.username, '-t', 'PENDING,RUNNING', '--format', '%i', '--noheader']
+            ['squeue', '-u', self.username, '-t', 'RUNNING', '--format', '%i', '--noheader']
         )
         running_jobs = running_jobs.strip().split()
 
-        # Return jobs in PENDING (waiting for resources) and RUNNING (actively running)
-        # states here as we don't want to create more workers that we actually need.
-        return [WorkerJob(job) for job in running_jobs if job in self.submitted_jobs]
+        return [
+            WorkerJob(active=True) if job in running_jobs else WorkerJob(active=False)
+            for job in self.submitted_jobs
+        ]
 
     def start_worker_job(self):
         """
