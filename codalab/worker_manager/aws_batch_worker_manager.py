@@ -124,7 +124,9 @@ class AWSBatchWorkerManager(WorkerManager):
             'retryStrategy': {'attempts': 1},
         }
         if self.args.gpus:
-            job_definition["containerProperties"]["resourceRequirements"] = [{"value": str(self.args.gpus), "type": "GPU"}]
+            job_definition["containerProperties"]["resourceRequirements"] = [
+                {"value": str(self.args.gpus), "type": "GPU"}
+            ]
 
         # Allow worker to directly mount a directory.  Note that the worker
         # needs to be set up a priori with this shared filesystem.
