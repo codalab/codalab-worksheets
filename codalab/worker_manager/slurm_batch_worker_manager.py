@@ -51,29 +51,42 @@ class SlurmBatchWorkerManager(WorkerManager):
             help='Print out Slurm batch job definition without submitting to Slurm',
         )
         subparser.add_argument(
+            '--user', type=str, default=getpass.getuser(), help='User to run the Batch jobs as'
+        )
+        subparser.add_argument(
             '--password-file',
             type=str,
             help='Path to the file containing the username and '
             'password for logging into the CodaLab worker '
             'each on a separate line. If not specified, the '
-            'the worker will fail to start.',
+            'the worker will fail to start',
         )
         subparser.add_argument(
             '--work-dir',
             default='slurm-worker-scratch',
             help='Directory where to store temporary bundle data, '
-            'including dependencies and the data from run '
-            'bundles.',
-        )
-        subparser.add_argument(
-            '--user', type=str, default=getpass.getuser(), help='User to run the Batch jobs as'
+            'including dependencies and the data from run bundles',
         )
 
     def __init__(self, args):
         super().__init__(args)
         self.username = self.args.user
         # A set of newly submitted job id to keep tracking worker status, as worker might not be created right away.
-        self.submitted_jobs = set()
+        self.submitted_jobs = self.load_worker_jobs()
+
+    def load_worker_jobs(self):
+        # Get all the Slurm workers that are submitted by SlurmWorkerManager and owned by the current user.
+        # Returning result will be in the following format:
+        # JOBID:STATE (header won't be included with "--noheader" option)
+        # 1478828:PENDING
+        # 1478830:PENDING
+        submitted_jobs = set()
+        jobs = self.run_command(['squeue', '-u', self.username, '--format', '%A,%j', '--noheader'])
+        for job in jobs.strip().split():
+            job_id, job_name = job.split()
+            if job_name.startsWith(self.args.job_name):
+                submitted_jobs.append(job_id)
+        return submitted_jobs
 
     def get_worker_jobs(self):
         """
@@ -97,9 +110,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         # Get all the Slurm workers that are submitted by SlurmWorkerManager and owned by the current user.
         # Returning result will be in the following format:
         # JOBID:STATE (header won't be included with "--noheader" option)
-        # 1478828:PENDING
-        # 1478830:PENDING
-        jobs = self.run_command(['squeue', '-u', self.username, '--format', '%i:%T', '--noheader'])
+        # 1478828,PENDING
+        # 1478830,PENDING
+        jobs = self.run_command(['squeue', '-u', self.username, '--format', '%A,%T', '--noheader'])
         jobs = jobs.strip().split()
         logger.info(
             'Workers: {}'.format(
@@ -113,7 +126,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         # 1478828
         # 1478830
         running_jobs = self.run_command(
-            ['squeue', '-u', self.username, '-t', 'RUNNING', '--format', '%i', '--noheader']
+            ['squeue', '-u', self.username, '-t', 'RUNNING', '--format', '%A', '--noheader']
         )
         running_jobs = running_jobs.strip().split()
 
@@ -180,7 +193,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, errors = proc.communicate()
         if output:
-            logger.info("Ran command: {}".format(' '.join(command)))
+            logger.info("Executed command: {}".format(' '.join(command)))
             return output.decode()
         if errors:
             print(
