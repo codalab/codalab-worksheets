@@ -98,6 +98,7 @@ class TextEditorItem extends React.Component<{
                 const param = { moveIndex };
                 reloadWorksheet(undefined, undefined, param);
                 closeEditor();
+                Mousetrap.unbindGlobal(['ctrl+enter']);
             },
             error: (jqHXR, status, error) => {
                 alert(createAlertText(this.url, jqHXR.responseText));
@@ -114,7 +115,6 @@ class TextEditorItem extends React.Component<{
 
         Mousetrap.bindGlobal(['esc'], () => {
             this.props.closeEditor();
-            Mousetrap.unbindGlobal(['esc']);
         });
 
         return (
