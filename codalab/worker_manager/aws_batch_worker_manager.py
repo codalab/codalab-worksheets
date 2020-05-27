@@ -88,6 +88,8 @@ class AWSBatchWorkerManager(WorkerManager):
         ]
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])
+        if self.args.worker_max_work_dir_size:
+            command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-batch-jobdefinition.html
         # Need to mount:
