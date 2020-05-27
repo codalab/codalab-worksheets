@@ -602,17 +602,10 @@ class BundleCLI(object):
         """
 
         def is_ancestor(path1, path2):
-            # Checks if a path is an ancestor of the other path (e.g. foo and foo/bar)
-            i = 0
-            j = 0
-            path1 = path1.split('/')
-            path2 = path2.split('/')
-            while i < len(path1) and j < len(path2):
-                if path1[i] != path2[j]:
-                    return False
-                i += 1
-                j += 1
-            return True
+            """
+            Return whether path1 is an ancestor of path2 or vice versa.
+            """
+            return path2.startswith(path1 + '/') or path1.startswith(path2 + '/')
 
         keys = []
         targets = []
