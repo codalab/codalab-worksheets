@@ -86,7 +86,6 @@ class WorkerManager(object):
         keywords = ['state=' + State.STAGED] + self.args.search
         if self.args.worker_tag:
             keywords.append('request_queue=tag=' + self.args.worker_tag)
-
         bundles = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
         )
