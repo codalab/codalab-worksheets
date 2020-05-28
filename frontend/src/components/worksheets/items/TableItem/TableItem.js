@@ -102,7 +102,6 @@ class TableItem extends React.Component<{
 
     copyCheckedBundleRows = () => {
         let item = this.props.item;
-        console.log(item, getIds(item));
         let bundleInfos = item.bundles_spec.bundle_infos;
         let ids = getIds(item);
         let result = bundleInfos.filter((item, index) => {

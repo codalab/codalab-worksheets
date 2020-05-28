@@ -443,7 +443,6 @@ class Worksheet extends React.Component {
     removeItemsFromSource = (itemIds) => {
         let worksheetUUID = this.state.ws.uuid;
         // let after_sort_key;
-        console.log(itemIds);
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
         $.ajax({
             url,

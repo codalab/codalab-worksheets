@@ -693,7 +693,7 @@ def resolve_items_into_infos(items):
         )
         if bundle_info is not None:
             bundle_info['sort_key'] = i['sort_key']
-            bundle_info = dict(bundle_info, id = i['id'])
+            bundle_info = dict(bundle_info, id=i['id'])
         if i['subworksheet_uuid']:
             try:
                 subworksheet_info = local.model.get_worksheet(
