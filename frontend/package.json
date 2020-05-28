@@ -16,6 +16,7 @@
     "bootstrap": "^3.4.1",
     "c3": "^0.6.12",
     "classnames": "^2.2.6",
+    "dompurify": "^2.0.11",
     "husky": "^2.7.0",
     "jquery": "^3.5.0",
     "jquery-ui": "^1.12.1",
@@ -24,6 +25,7 @@
     "jsonapi-datastore": "^0.4.0-beta",
     "jszip": "^3.2.2",
     "lint-staged": "^8.2.1",
+    "lodash": "^4.17.15",
     "marked": "^0.8.2",
     "material-ui-chip-input": "^1.0.0-beta.16",
     "query-string": "^6.2.0",
@@ -44,6 +46,7 @@
     "reselect": "^4.0.0",
     "sass": "^1.23.3",
     "seamless-immutable": "^7.1.4",
+    "semantic-ui-react": "^0.88.2",
     "underscore": "^1.9.1",
     "wolfy87-eventemitter": "^5.2.5"
   },

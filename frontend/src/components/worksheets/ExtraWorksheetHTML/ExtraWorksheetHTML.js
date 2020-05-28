@@ -127,6 +127,12 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
                     <th>Other</th>
                     <tr>
                         <td>
+                            <kbd>a f</kbd>
+                        </td>
+                        <td>Focus on search bar</td>
+                    </tr>
+                    <tr>
+                        <td>
                             <kbd>shift+c</kbd>
                         </td>
                         <td>Show/hide web terminal</td>

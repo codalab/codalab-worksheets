@@ -6,7 +6,7 @@ import { JsonApiDataStore } from 'jsonapi-datastore';
 
 import ConfigurationPanel from '../ConfigPanel';
 import MainContent from './MainContent';
-import SideBar from './SideBar';
+import BundleDetailSideBar from './BundleDetailSideBar';
 import BundleActions from './BundleActions';
 
 class BundleDetail extends React.Component<
@@ -222,7 +222,7 @@ class BundleDetail extends React.Component<
                     rerunItem={ rerunItem }
                     onComplete={ bundleMetadataChanged }
                     editPermission={editPermission} /> }
-                sidebar={ <SideBar bundleInfo={ bundleInfo } onUpdate={ onUpdate } onMetaDataChange={ this.fetchBundleMetaData } /> }
+                sidebar={ <BundleDetailSideBar bundleInfo={ bundleInfo } onUpdate={ onUpdate } onMetaDataChange={ this.fetchBundleMetaData } /> }
             >
                 <MainContent
                     bundleInfo={ bundleInfo }
