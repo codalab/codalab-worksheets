@@ -56,6 +56,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--password-file',
             type=str,
+            required=True,
             help='Path to the file containing the username and '
             'password for logging into the CodaLab worker '
             'each on a separate line. If not specified, the '
