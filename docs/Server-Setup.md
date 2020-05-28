@@ -124,7 +124,7 @@ Since tests run against an existing instance, make sure you update your instance
 
 To run the tests against an instance that you've already set up:
 
-    ./codalab_service.py test default
+    python test_runner.py default
 
 Or to run a specific test (e.g., basic):
 
@@ -133,7 +133,7 @@ Or to run a specific test (e.g., basic):
 In sum, to start an instance and run tests on it:
 
     ./codalab_service.py start -bd
-    ./codalab_service.py test default
+    python test_runner.py default
 
 These must pass before you submit a PR.
 
