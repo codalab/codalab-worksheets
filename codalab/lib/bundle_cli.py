@@ -1441,6 +1441,7 @@ class BundleCLI(object):
                 file=self.stdout,
             )
             return
+        
         print("Copying %s..." % source_desc, file=self.stdout)
 
         # Create the bundle, copying over metadata from the source bundle
