@@ -1127,12 +1127,12 @@ def test(ctx):
 
     # Upload directory
     uuid = _run_command(
-        [cl, 'upload', test_path('dir1'), '--link']
+        [cl, 'upload', test_path('dir2'), '--link']
     )
     check_equals(State.READY, get_info(uuid, 'state'))
-    check_equals(test_path('dir1'), get_info(uuid, 'link_url'))
+    check_equals(test_path('dir2'), get_info(uuid, 'link_url'))
     check_equals('raw', get_info(uuid, 'link_format'))
-    check_equals(test_path_contents('dir1/the-only-file'), _run_command([cl, 'cat', uuid + '/dir1/the-only-file']))
+    check_equals(test_path_contents('dir2/the-only-file'), _run_command([cl, 'cat', uuid + '/the-only-file']))
 
     run_uuid = _run_command(
         [
@@ -1145,7 +1145,7 @@ def test(ctx):
         ]
     )
     wait(run_uuid)
-    check_equals(test_path_contents('dir1/the-only-file'), _run_command([cl, 'cat', run_uuid + '/stdout']))
+    check_equals(test_path_contents('dir2/the-only-file'), _run_command([cl, 'cat', run_uuid + '/stdout']))
     
 
 @TestModule.register('read')
