@@ -264,10 +264,10 @@ class RunBundleBuilder extends React.Component<Props> {
 class BundleBrowser extends React.Component {
     render() {
         var worksheet = this.props.ws.info;
-        if (!worksheet || !worksheet.items) return <div />;
+        if (!worksheet || !worksheet.blocks) return <div />;
 
         var rows = [];
-        worksheet.items.forEach(
+        worksheet.blocks.forEach(
             function(item, itemIndex) {
                 if (item.bundles_spec) {
                     item.bundles_spec.bundle_infos.forEach(

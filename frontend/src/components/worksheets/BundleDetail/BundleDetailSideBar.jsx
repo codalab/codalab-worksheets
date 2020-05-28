@@ -56,7 +56,7 @@ class Dependency extends React.PureComponent<
 /**
  * Content to display in sidebar of a Bundle Detail expansion panel.
  */
-class SideBar extends React.Component<
+class BundleDetailSideBar extends React.Component<
     {
         classes: {},
         bundleInfo: {},
@@ -315,4 +315,4 @@ const styles = (theme) => ({
     },
 });
 
-export default withStyles(styles)(SideBar);
+export default withStyles(styles)(BundleDetailSideBar);
