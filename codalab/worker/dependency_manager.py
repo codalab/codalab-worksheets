@@ -364,6 +364,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         """
         Normalize the path for the dependency by replacing / with _, avoiding conflicts
         """
+        # TODO: make this not OS-specific.
         if dependency_key.parent_path:
             path = os.path.join(dependency_key.parent_uuid, dependency_key.parent_path)
         else:
@@ -424,6 +425,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                         % size_str(bytes_downloaded),
                     )
 
+            # TODO: make this not OS-specific.
             dependency_path = os.path.join(self.dependencies_dir, dependency_state.path)
             logger.debug('Downloading dependency %s', dependency_state.dependency_key)
             try:

@@ -46,6 +46,18 @@ Dependency = namedtuple(
 )
 
 
+class LinkFormat(object):
+    """
+    An enumeration of link formats that a bundle supports in the
+    metadata.link_format field.
+    """
+
+    RAW = 'raw'
+    ZIP = 'zip'
+
+    OPTIONS = {RAW, ZIP}
+
+
 class BundleInfo(object):
     """
     Defines the bundle info passed to the worker by the server.

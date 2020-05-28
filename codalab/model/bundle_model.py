@@ -1110,7 +1110,7 @@ class BundleModel(object):
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
 
-        # Generate a list of metadata keys that will be deleted and udpate metadata key-value pair
+        # Generate a list of metadata keys that will be deleted and update metadata key-value pair
         metadata_delete_keys = []
         for key, value in metadata_update.items():
             # Delete the key,value pair when the following two conditions are met:

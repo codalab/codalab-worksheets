@@ -69,11 +69,14 @@ class MultiDiskBundleStore(object):
         return free
 
     @require_partitions
-    def get_bundle_location(self, uuid):
+    def get_bundle_location(self, bundle):
         """
         get_bundle_location: look for bundle in the cache, or if not in cache, go through every partition.
         If not in any partition, return disk with largest free space.
         """
+        if getattr(bundle.metadata, "is_linked", False) == True:
+            return bundle.metadata.link_url
+        uuid = bundle.uuid
         if uuid in self.lru_cache:
             disk = self.lru_cache.pop(uuid)
         else:
@@ -201,11 +204,11 @@ class MultiDiskBundleStore(object):
                 )
             )
 
-    def cleanup(self, uuid, dry_run):
+    def cleanup(self, bundle, dry_run):
         '''
         Remove the bundle with given UUID from on-disk storage.
         '''
-        absolute_path = self.get_bundle_location(uuid)
+        absolute_path = self.get_bundle_location(bundle)
         print("cleanup: data %s" % absolute_path, file=sys.stderr)
         if not dry_run:
             path_util.remove(absolute_path)

@@ -104,7 +104,8 @@ class DownloadManager(object):
                 )
             )
         elif bundle_state != State.RUNNING:
-            bundle_path = self._bundle_store.get_bundle_location(target.bundle_uuid)
+            bundle = self._bundle_model.get_bundle(target.bundle_uuid)
+            bundle_path = self._bundle_store.get_bundle_location(bundle)
             try:
                 return download_util.get_target_info(bundle_path, target, depth)
             except download_util.PathException as err:
@@ -304,7 +305,8 @@ class DownloadManager(object):
         return True
 
     def _get_target_path(self, target):
-        bundle_path = self._bundle_store.get_bundle_location(target.bundle_uuid)
+        bundle = self._bundle_model.get_bundle(target.bundle_uuid)
+        bundle_path = self._bundle_store.get_bundle_location(bundle)
         try:
             return download_util.get_target_path(bundle_path, target)
         except download_util.PathException as e:

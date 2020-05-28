@@ -99,7 +99,7 @@ from codalab.worker.download_util import BundleTarget
 from codalab.lib.spec_util import generate_uuid
 from codalab.worker.docker_utils import get_available_runtime, start_bundle_container
 from codalab.worker.file_util import remove_path
-from codalab.worker.bundle_state import State
+from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
 
 
@@ -1174,6 +1174,15 @@ class BundleCLI(object):
                 help='Name of file containing patterns matching files and directories to exclude from upload. '
                 'This option is currently only supported with the GNU tar library.',
             ),
+            Commands.Argument(
+                '-l',
+                '--link',
+                help='Makes the path the source of truth of the bundle, meaning that workers will retrieve the '
+                'bundle directly from the specified path rather than Codalab downloading the bundle and storing '
+                'it in its own bundle store.',
+                action='store_true',
+                default=False,
+            ),
         )
         + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
@@ -1201,8 +1210,21 @@ class BundleCLI(object):
             'metadata': metadata,
         }
 
-        # Option 1: Upload contents string
-        if args.contents is not None:
+        # Bundles are not linked by default.
+        bundle_info['metadata']['is_linked'] = False
+
+        # Option 1: --link
+        if args.link:
+            if len(args.path) is not 1:
+                raise UsageError("Only a single path can be uploaded when using --link.")
+            bundle_info['metadata']['link_url'] = args.path[0]
+            bundle_info['metadata']['is_linked'] = True
+            bundle_info['metadata']['link_format'] = LinkFormat.RAW
+
+            new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})
+
+        # Option 2: Upload contents string
+        elif args.contents is not None:
             contents_buffer = BytesIO(args.contents.encode())
             new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})
             client.upload_contents_blob(
@@ -1216,7 +1238,7 @@ class BundleCLI(object):
                 },
             )
 
-        # Option 2: Upload URL(s)
+        # Option 3: Upload URL(s)
         elif any(map(path_util.path_is_url, args.path)):
             if not all(map(path_util.path_is_url, args.path)):
                 raise UsageError("URLs and local files cannot be uploaded in the same bundle.")
@@ -1233,7 +1255,7 @@ class BundleCLI(object):
                 },
             )
 
-        # Option 3: Upload file(s) from the local filesystem
+        # Option 4: Upload file(s) from the local filesystem
         else:
             if self.headless:
                 raise UsageError("Local file paths not allowed without a filesystem.")

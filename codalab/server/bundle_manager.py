@@ -195,13 +195,14 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
-            bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+            bundle_location = self._bundle_store.get_bundle_location(bundle)
             path = os.path.normpath(bundle_location)
 
             deps = []
             for dep in bundle.dependencies:
+                parent_bundle = self._model.get_bundle(dep.parent_uuid)
                 parent_bundle_path = os.path.normpath(
-                    self._bundle_store.get_bundle_location(dep.parent_uuid)
+                    self._bundle_store.get_bundle_location(parent_bundle)
                 )
                 dependency_path = os.path.normpath(
                     os.path.join(parent_bundle_path, dep.parent_path)
@@ -289,7 +290,7 @@ class BundleManager(object):
                         bundle.uuid, worker['worker_id']
                     )
                 )
-                bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+                bundle_location = self._bundle_store.get_bundle_location(bundle)
                 self._model.transition_bundle_finished(bundle, bundle_location)
 
     def _bring_offline_stuck_running_bundles(self, workers):
@@ -518,7 +519,7 @@ class BundleManager(object):
             if worker['shared_file_system']:
                 # On a shared file system we create the path here to avoid NFS
                 # directory cache issues.
-                path = self._bundle_store.get_bundle_location(bundle.uuid)
+                path = self._bundle_store.get_bundle_location(bundle)
                 remove_path(path)
                 os.mkdir(path)
             if self._worker_model.send_json_message(
@@ -622,11 +623,10 @@ class BundleManager(object):
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
         if shared_file_system:
-            message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
+            message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle)
             for dependency in message['bundle']['dependencies']:
-                dependency['location'] = self._bundle_store.get_bundle_location(
-                    dependency['parent_uuid']
-                )
+                parent_bundle = self._model.get_bundle(dependency['parent_uuid'])
+                dependency['location'] = self._bundle_store.get_bundle_location(parent_bundle)
 
         # Figure out the resource requirements.
         message['resources'] = bundle_resources.as_dict

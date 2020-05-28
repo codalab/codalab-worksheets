@@ -190,7 +190,8 @@ class RunStateMachine(StateTransitioner):
         status_messages = []
 
         if not self.shared_file_system:
-            # No need to download dependencies if we're in the shared FS since they're already in our FS
+            # No need to download dependencies if we're in the shared FS,
+            # since they're already in our FS
             for dep in run_state.bundle.dependencies:
                 dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
                 dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
@@ -267,6 +268,7 @@ class RunStateMachine(StateTransitioner):
                 return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
             docker_dependency_path = os.path.join(docker_dependencies_path, dep.child_path)
             if self.shared_file_system:
+                # TODO: make this not OS-specific.
                 # On a shared FS, we know where the dep is stored and can get the contents directly
                 dependency_path = os.path.realpath(os.path.join(dep.location, dep.parent_path))
             else:

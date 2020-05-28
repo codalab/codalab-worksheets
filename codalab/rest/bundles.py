@@ -254,7 +254,10 @@ def _create_bundles():
         bundle_class = get_bundle_subclass(bundle['bundle_type'])
         bundle['owner_id'] = request.user.user_id
 
-        if issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
+        metadata = bundle.get("metadata", {})
+        if metadata.get("is_linked") == True:
+            bundle['state'] = State.READY
+        elif issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
             bundle['state'] = State.UPLOADING
         else:
             bundle['state'] = State.CREATED
@@ -712,7 +715,7 @@ def _update_bundle_contents_blob(uuid):
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
             )  # See UploadManager for full explanation of 'simplify'
-            bundle_location = local.bundle_store.get_bundle_location(uuid)
+            bundle_location = local.bundle_store.get_bundle_location(bundle)
             local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
     except UsageError as err:
@@ -855,9 +858,10 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     # Delete the data.
     for uuid in relevant_uuids:
         # check first is needs to be deleted
-        bundle_location = local.bundle_store.get_bundle_location(uuid)
+        bundle = local.model.get_bundle(uuid)
+        bundle_location = local.bundle_store.get_bundle_location(bundle)
         if os.path.lexists(bundle_location):
-            local.bundle_store.cleanup(uuid, dry_run)
+            local.bundle_store.cleanup(bundle)
 
     return relevant_uuids
 

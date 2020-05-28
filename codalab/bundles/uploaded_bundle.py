@@ -18,6 +18,17 @@ class UploadedBundle(NamedBundle):
     METADATA_SPECS.append(
         MetadataSpec('source_url', str, 'URL corresponding to the original source of this bundle.')
     )
+
+    METADATA_SPECS.append(
+        MetadataSpec('is_linked', bool, 'Whether bundle is linked.', generated=True, default=False)
+    )
+    METADATA_SPECS.append(
+        MetadataSpec('link_url', str, 'Link URL of bundle.', generated=True)
+    )
+    METADATA_SPECS.append(
+        MetadataSpec('link_format', str, 'Link format of bundle. Can be equal to'
+            '"raw" or "zip" (only "raw" is supported as of now).', generated=True)
+    )
     # fmt: on
 
     @classmethod
