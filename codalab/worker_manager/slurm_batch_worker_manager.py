@@ -253,7 +253,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         """
         slurm_args = {}
         slurm_args['nodelist'] = self.args.nodelist
-        slurm_args['mem-per-cpu'] = self.args.memory_mb
+        slurm_args['mem'] = self.args.memory_mb
         slurm_args['partition'] = self.args.partition
         slurm_args['gres'] = "gpu:" + str(self.args.gpus)
         # job-name is unique
