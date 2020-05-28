@@ -1434,6 +1434,13 @@ class BundleCLI(object):
             return
 
         source_desc = self.simple_bundle_str(source_info)
+        if source_info['state'] not in [State.READY, State.FAILED]:
+            print(
+                'Not copying %s because it has non-final state %s'
+                % (source_desc, source_info['state']),
+                file=self.stdout,
+            )
+            return
         print("Copying %s..." % source_desc, file=self.stdout)
 
         # Create the bundle, copying over metadata from the source bundle
@@ -3340,8 +3347,9 @@ class BundleCLI(object):
             if item['type'] == worksheet_util.TYPE_BUNDLE:
                 if item['bundle']['state'] not in [State.READY, State.FAILED]:
                     print(
-                        'Not copying %s because it has non-final state %s'
-                        % (item['bundle']['id'], item['bundle']['state']),
+                        'Skip bundle {} because it has non-final state {}'.format(
+                            item['bundle']['id'], item['bundle']['state']
+                        ),
                         file=self.stdout,
                     )
                     continue
