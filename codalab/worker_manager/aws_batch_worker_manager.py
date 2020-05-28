@@ -1,6 +1,9 @@
-import argparse
-import boto3
-import json
+try:
+    import boto3
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "Running the worker manager requires the boto3 module.\n"
+        "Please run: pip install boto3==1.9.228")
 import logging
 import os
 import uuid
