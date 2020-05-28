@@ -394,7 +394,7 @@ class Worksheet extends React.Component {
             this.setState({ openKill: !openKill });
         } else if (cmd_type === 'copy' || cmd_type === 'cut') {
             let validBundles = [];
-            let cutBundleKeys = [];
+            let cutBundleIds = [];
             let actualCopiedCounts = 0;
             let tableIDs = Object.keys(this.copyCallbacks).sort();
             tableIDs.forEach((tableID) => {
@@ -405,7 +405,7 @@ class Worksheet extends React.Component {
                         return;
                     }
                     validBundles.push(bundle);
-                    cutBundleKeys.push(bundle.id);
+                    cutBundleIds.push(bundle.id);
                     actualCopiedCounts += 1;
                 });
             });
@@ -433,20 +433,21 @@ class Worksheet extends React.Component {
             });
             if (cmd_type === 'cut') {
                 // Remove the bundle lines
-                this.removeItemsFromSource(cutBundleKeys);
+                this.removeItemsFromSource(cutBundleIds);
             }
         } else if (cmd_type === 'paste') {
             this.pasteBundlesToWorksheet();
         }
     };
 
-    removeItemsFromSource = (cutBundleKeys) => {
+    removeItemsFromSource = (itemIds) => {
         let worksheetUUID = this.state.ws.uuid;
         // let after_sort_key;
+        console.log(itemIds);
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
         $.ajax({
             url,
-            data: JSON.stringify({ ids: cutBundleKeys }),
+            data: JSON.stringify({ ids: itemIds }),
             contentType: 'application/json',
             type: 'POST',
             success: () => {
