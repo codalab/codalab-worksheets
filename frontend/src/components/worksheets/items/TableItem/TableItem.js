@@ -108,13 +108,6 @@ class TableItem extends React.Component<{
         let result = bundleInfos.filter((item, index) => {
             return this.state.childrenCheckState[index];
         });
-        // result = result.map((bundle, rowIndex) => {
-        //     let bundleInfos = {};
-        //     bundleInfos.uuid = bundle['uuid'];
-        //     bundleInfos.name = bundle.metadata.name;
-        //     // used to remove the source lines
-        //     bundleInfos.key = this.props.itemID + ',' + rowIndex;
-        //     return bundleInfos;
         result = result.map((bundle, index) => {
             let bundleIdName = {};
             bundleIdName.uuid = bundle.uuid;

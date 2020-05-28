@@ -444,6 +444,7 @@ class Worksheet extends React.Component {
         let worksheetUUID = this.state.ws.uuid;
         // let after_sort_key;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
+        console.log(cutBundleKeys);
         $.ajax({
             url,
             data: JSON.stringify({ ids: cutBundleKeys }),
@@ -998,6 +999,17 @@ class Worksheet extends React.Component {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('copy');
+            });
+            Mousetrap.bind(['a z'], () => {
+                if (
+                    this.state.openDetach ||
+                    this.state.openDelete ||
+                    this.state.openKill ||
+                    this.state.openCopy
+                ) {
+                    return;
+                }
+                this.toggleCmdDialogNoEvent('cut');
             });
             if (this.state.ws.info.edit_permission) {
                 Mousetrap.bind(['backspace', 'del'], () => {
