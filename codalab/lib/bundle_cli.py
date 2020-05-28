@@ -2268,7 +2268,8 @@ class BundleCLI(object):
     def print_permissions(self, info):
         print('permission: %s' % permission_str(info['permission']), file=self.stdout)
         print('group_permissions:', file=self.stdout)
-        print('  %s' % group_permissions_str(info['group_permissions']), file=self.stdout)
+        if 'group_permissions' in info:
+            print('  %s' % group_permissions_str(info['group_permissions']), file=self.stdout)
 
     def print_contents(self, client, info):
         def wrap(string):
