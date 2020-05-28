@@ -1178,7 +1178,7 @@ class BundleCLI(object):
                 '-l',
                 '--link',
                 help='Makes the path the source of truth of the bundle, meaning that workers will retrieve the '
-                'bundle directly from the specified path rather than Codalab downloading the bundle and storing '
+                'bundle directly from the specified path rather than CodaLab downloading the bundle and storing '
                 'it in its own bundle store.',
                 action='store_true',
                 default=False,
