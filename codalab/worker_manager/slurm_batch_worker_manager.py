@@ -88,9 +88,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         submitted_jobs = set()
         jobs = self.run_command(['squeue', '-u', self.username, '--format', '%A,%j', '--noheader'])
         for job in jobs.strip().split():
-            job_id, job_name = job.split()
-            if job_name.startsWith(self.args.job_name):
-                submitted_jobs.append(job_id)
+            job_id, job_name = job.split(',')
+            if job_name.startswith(self.username) and self.args.job_name in job_name:
+                submitted_jobs.add(job_id)
         return submitted_jobs
 
     def get_worker_jobs(self):
