@@ -1434,14 +1434,6 @@ class BundleCLI(object):
             return
 
         source_desc = self.simple_bundle_str(source_info)
-        if source_info['state'] not in [State.READY, State.FAILED]:
-            print(
-                'Not copying %s because it has non-final state %s'
-                % (source_desc, source_info['state']),
-                file=self.stdout,
-            )
-            return
-
         print("Copying %s..." % source_desc, file=self.stdout)
 
         # Create the bundle, copying over metadata from the source bundle
@@ -3342,17 +3334,28 @@ class BundleCLI(object):
             args.dest_worksheet_spec
         )
 
+        valid_source_items = []
         # Save all items to the destination worksheet
         for item in source_items:
+            if item['type'] == worksheet_util.TYPE_BUNDLE:
+                if item['bundle']['state'] not in [State.READY, State.FAILED]:
+                    print(
+                        'Not copying %s because it has non-final state %s'
+                        % (item['bundle']['id'], item['bundle']['state']),
+                        file=self.stdout,
+                    )
+                    continue
             item['worksheet'] = JsonApiRelationship('worksheets', dest_worksheet_uuid)
+            valid_source_items.append(item)
+
         dest_client.create(
             'worksheet-items',
-            source_items,
+            valid_source_items,
             params={'replace': args.replace, 'uuid': dest_worksheet_uuid},
         )
 
         # Copy over the bundles
-        for item in source_items:
+        for item in valid_source_items:
             if item['type'] == worksheet_util.TYPE_BUNDLE:
                 self.copy_bundle(
                     source_client,

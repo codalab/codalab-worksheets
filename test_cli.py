@@ -1436,6 +1436,10 @@ def test(ctx):
         _run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
 
+        # Create at local, transfer to remote (non-terminal state bundle)
+        uuid = _run_command([cl, 'run', 'date', '--request-gpus', 100])
+        wait_until_state(uuid, State.STAGED)
+
         # Test adding worksheet items
         _run_command([cl, 'wadd', source_worksheet, remote_worksheet])
         _run_command([cl, 'wadd', remote_worksheet, source_worksheet])
