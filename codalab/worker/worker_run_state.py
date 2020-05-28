@@ -268,7 +268,7 @@ class RunStateMachine(StateTransitioner):
                 return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
             docker_dependency_path = os.path.join(docker_dependencies_path, dep.child_path)
             if self.shared_file_system:
-                # TODO: make this not OS-specific.
+                # TODO: make this not fs-specific.
                 # On a shared FS, we know where the dep is stored and can get the contents directly
                 dependency_path = os.path.realpath(os.path.join(dep.location, dep.parent_path))
             else:
