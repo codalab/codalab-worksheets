@@ -433,29 +433,27 @@ class Worksheet extends React.Component {
             });
             if (cmd_type === 'cut') {
                 // Remove the bundle lines
-                this.removeRawSourceLines(cutBundleKeys);
+                this.removeItemsFromSource(cutBundleKeys);
             }
         } else if (cmd_type === 'paste') {
             this.pasteBundlesToWorksheet();
         }
     };
 
-    removeRawSourceLines = (cutBundleKeys) => {
+    removeItemsFromSource = (cutBundleKeys) => {
         let worksheetUUID = this.state.ws.uuid;
         // let after_sort_key;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
-        console.log(cutBundleKeys);
         $.ajax({
             url,
             data: JSON.stringify({ ids: cutBundleKeys }),
             contentType: 'application/json',
             type: 'POST',
-            success: (data, status, jqXHR) => {
+            success: () => {
                 const textDeleted = true;
                 const param = { textDeleted };
                 this.setState({ deleting: false });
                 this.reloadWorksheet(undefined, undefined, param);
-                // Mousetrap.unbind(['backspace', 'del']);
             },
             error: (jqHXR, status, error) => {
                 this.setState({ deleting: false });

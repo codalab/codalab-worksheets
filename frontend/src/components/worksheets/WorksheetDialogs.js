@@ -169,14 +169,6 @@ const styles = () => ({
         color: 'red',
         marginBottom: 20,
     },
-    copyDialog: {
-        width: 450,
-        height: 200,
-    },
-    copyDialog: {
-        width: 450,
-        height: 200,
-    },
 });
 
 export default withStyles(styles)(WorksheetDialogs);
