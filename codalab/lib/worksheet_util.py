@@ -948,11 +948,11 @@ def interpret_items(schemas, raw_items, db_model=None):
                 current_schema = None
 
             if item_type == TYPE_BUNDLE:
-                bundle_info["sort_key"] = sort_key
+                bundle_info = dict(bundle_info, sort_key=sort_key)
                 raw_to_block.append((len(blocks), len(bundle_infos)))
                 bundle_infos.append((raw_index, bundle_info))
             elif item_type == TYPE_WORKSHEET:
-                subworksheet_info["sort_key"] = sort_key
+                subworksheet_info = dict(subworksheet_info, sort_key=sort_key)
                 raw_to_block.append((len(blocks), len(worksheet_infos)))
                 worksheet_infos.append(subworksheet_info)
             elif item_type == TYPE_MARKUP:

@@ -305,6 +305,7 @@ export function createHandleRedirectFn(worksheetUuid) {
 // Return the sort key at index subFocusIndex, if subFocusIndex is defined.
 // Otherwise, return the largest sort_key.
 export function getAfterSortKey(item, subFocusIndex) {
+    if (!item) return 0;
     const sort_keys = item.sort_keys || [];
     return sort_keys[subFocusIndex] || Math.max(...sort_keys);
 }
