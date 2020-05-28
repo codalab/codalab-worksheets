@@ -38,54 +38,59 @@ class SchemaItem extends React.Component<{
     toggleEdit = (clear, save) => () => {
         if (!this.props.editPermission) return;
         if (clear) {
-            this.setState(
-                { rows: [...this.props.item.field_rows], editing: !this.state.editing },
-                () => {},
-            );
+            this.clearChanges();
             return;
         }
         this.setState({ editing: !this.state.editing });
         if (save) {
-            const { schema_name, field_rows } = this.props.item;
-            let updatedSchema = [];
-            let fromAddSchema = false;
-            let schemaBlockSourceLength = field_rows.length;
-            this.state.rows.forEach((fields) => {
-                if (!fields.field) {
-                    return;
-                }
-                if (!fromAddSchema && fields.from_schema_name !== schema_name) {
-                    // these rows correspond to addschema
-                    fromAddSchema = true;
-                    updatedSchema.push('% addschema ' + fields.from_schema_name);
-                    return;
-                } else if (fromAddSchema && fields.from_schema_name !== schema_name) {
-                    // These rows doesn't occupy any source lines
-                    schemaBlockSourceLength -= 1;
-                    return;
-                } else {
-                    fromAddSchema = false;
-                }
-
-                let curRow = '% add ' + fields.field;
-                if (!fields['generated-path']) {
-                    updatedSchema.push(curRow);
-                    return;
-                }
-                curRow = curRow + ' ' + fields['generated-path'];
-                if (!fields['post-processing']) {
-                    updatedSchema.push(curRow);
-                    return;
-                }
-                curRow = curRow + ' ' + fields['post-processing'];
-                updatedSchema.push(curRow);
-            });
-            this.props.updateSchemaItem(
-                updatedSchema,
-                this.props.item.start_index,
-                schemaBlockSourceLength,
-            );
+            this.saveSchema();
         }
+    };
+
+    clearChanges = () => {
+        this.setState({ rows: [...this.props.item.field_rows], editing: !this.state.editing });
+    };
+
+    saveSchema = () => {
+        const { schema_name, field_rows } = this.props.item;
+        let updatedSchema = [];
+        let fromAddSchema = false;
+        let schemaBlockSourceLength = field_rows.length;
+        this.state.rows.forEach((fields) => {
+            if (!fields.field) {
+                return;
+            }
+            if (!fromAddSchema && fields.from_schema_name !== schema_name) {
+                // these rows correspond to addschema
+                fromAddSchema = true;
+                updatedSchema.push('% addschema ' + fields.from_schema_name);
+                return;
+            } else if (fromAddSchema && fields.from_schema_name !== schema_name) {
+                // These rows doesn't occupy any source lines
+                schemaBlockSourceLength -= 1;
+                return;
+            } else {
+                fromAddSchema = false;
+            }
+
+            let curRow = '% add ' + fields.field;
+            if (!fields['generated-path']) {
+                updatedSchema.push(curRow);
+                return;
+            }
+            curRow = curRow + ' ' + fields['generated-path'];
+            if (!fields['post-processing']) {
+                updatedSchema.push(curRow);
+                return;
+            }
+            curRow = curRow + ' ' + fields['post-processing'];
+            updatedSchema.push(curRow);
+        });
+        this.props.updateSchemaItem(
+            updatedSchema,
+            this.props.item.start_index,
+            schemaBlockSourceLength,
+        );
     };
 
     addFieldRowAfter = (idx) => (e) => {
@@ -289,6 +294,16 @@ class SchemaItem extends React.Component<{
                 },
                 'keydown',
             );
+            Mousetrap.bindGlobal(['ctrl+enter'], () => {
+                this.saveSchema();
+                this.setState({ editing: !editing });
+                Mousetrap.unbindGlobal(['ctrl+enter']);
+            });
+            Mousetrap.bindGlobal(['esc'], () => {
+                this.clearChanges();
+                this.setState({ editing: !editing });
+                Mousetrap.unbindGlobal(['esc']);
+            });
         }
 
         return (
