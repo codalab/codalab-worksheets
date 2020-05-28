@@ -784,12 +784,34 @@ JSON request body:
 
 ### `POST /interpret/wsearch`
 
-Returns worksheet items given a search query for worksheets.
+Returns worksheets information given a search query for worksheets.
 
 JSON request body:
 ```
 {
     "keywords": [ list of search keywords ]
+}
+```
+
+Response body:
+```
+{
+    "response": [
+        {id: 6,
+        uuid: "0x5505f540936f4d0d919f3186141192b0",
+        name: "codalab-a",
+        title: "CodaLab Dashboard",
+        frozen: null,
+        owner_id: "0"
+        owner_name: "codalab"
+        group_permissions: {
+            id: 8,
+            group_uuid: "0x41e95d8592de417cbb726085d6986137",
+            group_name: "public",
+            permission: 1}
+        }
+        ...
+    ]
 }
 ```
 
