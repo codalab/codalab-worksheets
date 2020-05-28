@@ -1106,8 +1106,8 @@ class Worksheet extends React.Component {
             cache: false,
             success: function(worksheet_content) {
                 if (this.state.isUpdatingBundles && worksheet_content.uuid === this.state.ws.uuid) {
-                    if (worksheet_content.items) {
-                        self.reloadWorksheet(worksheet_content.items);
+                    if (worksheet_content.blocks) {
+                        self.reloadWorksheet(worksheet_content.blocks);
                     }
                     var endTime = new Date().getTime();
                     var guaranteedDelayTime = Math.min(3000, numTrials * 1000);
