@@ -601,7 +601,7 @@ class BundleCLI(object):
         Returns: [(key, worker.download_util.BundleTarget), ...]
         """
 
-        def is_ancestor(path1, path2):
+        def is_ancestor_or_descendant(path1, path2):
             """
             Return whether path1 is an ancestor of path2 or vice versa.
             """
@@ -617,7 +617,7 @@ class BundleCLI(object):
                         raise UsageError('Duplicate key: %s' % (key,))
                     else:
                         raise UsageError('Must specify keys when packaging multiple targets!')
-                elif is_ancestor(key, other_key):
+                elif is_ancestor_or_descendant(key, other_key):
                     raise UsageError(
                         'A key cannot be an ancestor of another: {} {}'.format(key, other_key)
                     )

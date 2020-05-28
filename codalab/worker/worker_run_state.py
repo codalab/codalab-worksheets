@@ -156,6 +156,7 @@ class RunStateMachine(StateTransitioner):
         self.upload_bundle_callback = upload_bundle_callback
         self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
         self.shared_file_system = shared_file_system
+        self.paths_to_remove = []
 
     def stop(self):
         for uuid in self.disk_utilization.keys():
@@ -288,13 +289,15 @@ class RunStateMachine(StateTransitioner):
             if dep.child_path == RunStateMachine._CURRENT_DIRECTORY:
                 # Mount all the content of the dependency_path to the top-level of the bundle
                 for child in os.listdir(dependency_path):
+                    child_path = os.path.normpath(os.path.join(run_state.bundle_path, child))
                     to_mount.append(
                         DependencyToMount(
                             docker_path=os.path.join(docker_dependencies_path, child),
-                            child_path=os.path.normpath(os.path.join(run_state.bundle_path, child)),
+                            child_path=child_path,
                             parent_path=os.path.join(dependency_path, child),
                         )
                     )
+                    self.paths_to_remove.append(child_path)
             else:
                 to_mount.append(
                     DependencyToMount(
@@ -302,6 +305,10 @@ class RunStateMachine(StateTransitioner):
                         child_path=full_child_path,
                         parent_path=dependency_path,
                     )
+                )
+                # child_path can be a nested path, so later remove everything from the first element of the path
+                self.paths_to_remove.append(
+                    os.path.join(run_state.bundle_path, Path(dep.child_path).parts[0])
                 )
 
             for dependency in to_mount:
@@ -481,7 +488,7 @@ class RunStateMachine(StateTransitioner):
            Otherwise move to FINALIZING state
         """
 
-        def remove_path_helper(path):
+        def remove_path_no_fail(path):
             try:
                 remove_path(path)
             except Exception:
@@ -510,16 +517,10 @@ class RunStateMachine(StateTransitioner):
                 dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
                 self.dependency_manager.release(run_state.bundle.uuid, dep_key)
 
-            if dep.child_path == RunStateMachine._CURRENT_DIRECTORY:
-                # When child_path is '.', all the children of the dependency path that need to be cleaned up
-                # are mounted at the top-level of the bundle
-                for child in os.listdir(self._get_dependency_path(run_state, dep)):
-                    remove_path_helper(os.path.join(run_state.bundle_path, child))
-            else:
-                # child_path can be a nested path, so remove everything from the first element of the path
-                remove_path_helper(
-                    os.path.join(run_state.bundle_path, Path(dep.child_path).parts[0])
-                )
+        # Clean up dependencies paths
+        for path in self.paths_to_remove:
+            remove_path_no_fail(path)
+        self.paths_to_remove = []
 
         if run_state.is_restaged:
             return run_state._replace(stage=RunStage.RESTAGED)
