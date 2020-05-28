@@ -3,7 +3,6 @@ import * as React from 'react';
 import * as $ from 'jquery';
 import { withStyles } from '@material-ui/core/styles';
 import { renderFormat, serializeFormat } from '../util/worksheet_utils';
-import TextField from '@material-ui/core/TextField';
 
 const KEYCODE_ESC = 27;
 
@@ -110,25 +109,22 @@ class EditableFieldBase extends React.Component<{
         }
         if (!this.state.editing) {
             return (
-                <div className='editable-field' onClick={this.onClick} style={{ color: '#225ea8' }}>
+                <span
+                    className='editable-field'
+                    onClick={this.onClick}
+                    style={{ color: '#225ea8' }}
+                >
                     {this.state.value || '<none>'}
-                </div>
+                </span>
             );
         } else {
-            let onBlurEvent = this.props.customSubmit
-                ? (e) => {
-                      this.props.customSubmit();
-                      this.setState({ editing: false });
-                      e.preventDefault();
-                  }
-                : this.onBlur;
             return (
-                <form onSubmit={onBlurEvent}>
+                <form onSubmit={this.onBlur}>
                     <input
                         type='text'
                         autoFocus
                         value={this.state.value}
-                        onBlur={onBlurEvent}
+                        onBlur={this.onBlur}
                         onChange={
                             this.props.allowASCII ? this.handleFreeChange : this.handleAsciiChange
                         }
@@ -238,31 +234,6 @@ export class BundleEditableField extends React.Component<{
                 url='/rest/bundles'
                 method='PATCH'
                 buildPayload={(value) => this.buildPayload(value)}
-            />
-        );
-    }
-}
-
-export class SchemaEditableField extends React.Component<{
-    value: any,
-    uuid: string,
-    fieldName: string,
-    dataType: string,
-}> {
-    /** Prop default values. */
-    static defaultProps = {
-        dataType: 'string',
-    };
-
-    render() {
-        return (
-            <EditableField
-                {...this.props}
-                value={renderFormat(this.props.value, this.props.dataType)}
-                customSubmit={(e) => {
-                    console.log('custom submit');
-                }}
-                // buildPayload={(value) => this.buildPayload(value)}
             />
         );
     }
