@@ -1103,6 +1103,7 @@ def test(ctx):
 
 @TestModule.register('link')
 def test(ctx):
+    # Upload file
     uuid = _run_command(
         [cl, 'upload', test_path('a.txt'), '--link']
     )
@@ -1117,17 +1118,34 @@ def test(ctx):
             'run',
             'foo:{}'.format(uuid),
             'cat foo',
+            '--request-memory',
+            '10m'
         ]
     )
     wait(run_uuid)
-    check_equals(test_path_contents('a.txt'), _run_command([cl, 'cat', multi_alias_uuid + '/stdout']))
-    check_equals('a.txt', get_info(uuid, 'name'))
-    check_equals('hello', get_info(uuid, 'description'))
-    check_contains(['a', 'b'], get_info(uuid, 'tags'))
-    
-    check_equals('ready\thello', get_info(uuid, 'state,description'))
+    check_equals(test_path_contents('a.txt'), _run_command([cl, 'cat', run_uuid + '/stdout']))
 
-    check_equals('hello', _run_command([cl, 'run', run_uuid + '/foo2/stdout']))
+    # Upload directory
+    uuid = _run_command(
+        [cl, 'upload', test_path('dir1'), '--link']
+    )
+    check_equals(State.READY, get_info(uuid, 'state'))
+    check_equals(test_path('dir1'), get_info(uuid, 'link_url'))
+    check_equals('raw', get_info(uuid, 'link_format'))
+    check_equals(test_path_contents('dir1/the-only-file'), _run_command([cl, 'cat', uuid + '/dir1/the-only-file']))
+
+    run_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'foo:{}'.format(uuid),
+            'cat foo/the-only-file',
+            '--request-memory',
+            '10m'
+        ]
+    )
+    wait(run_uuid)
+    check_equals(test_path_contents('dir1/the-only-file'), _run_command([cl, 'cat', run_uuid + '/stdout']))
     
 
 @TestModule.register('read')
