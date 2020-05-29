@@ -4,7 +4,6 @@ import uuid
 import subprocess
 import getpass
 from pathlib import Path
-import random
 import re
 
 from .worker_manager import WorkerManager, WorkerJob
@@ -16,10 +15,16 @@ class SlurmBatchWorkerManager(WorkerManager):
     NAME = 'slurm-batch'
     DESCRIPTION = 'Worker manager for submitting jobs using Slurm Batch'
 
-    SRUN_COMMAND = 'srun'
-    SBATCH_COMMAND = 'sbatch'
+    """
+    An enumeration of Slurm commands.
+    """
+    SRUN = 'srun'
+    SBATCH = 'sbatch'
+    SQUEUE = 'squeue'
+    SACCT = 'sacct'
+
+    # SBATCH configuration in bash script
     SBATCH_PREFIX = '#SBATCH'
-    SQUEUE_COMMAND = 'squeue'
     SBATCH_COMMAND_RETRUN_REGEX = re.compile(r'^Submitted batch job (\d+)$')
 
     @staticmethod
@@ -56,7 +61,6 @@ class SlurmBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--password-file',
             type=str,
-            required=True,
             help='Path to the file containing the username and '
             'password for logging into the CodaLab worker '
             'each on a separate line. If not specified, the '
@@ -83,11 +87,13 @@ class SlurmBatchWorkerManager(WorkerManager):
         """
         # Get all the Slurm workers that are submitted by SlurmWorkerManager and owned by the current user.
         # Returning result will be in the following format:
-        # JOBID:STATE (header won't be included with "--noheader" option)
+        # JOBID:NAME (header won't be included with "--noheader" option)
         # 1487896,john-job-3157358
         # 1478830,john-job-5234492
         submitted_jobs = set()
-        jobs = self.run_command(['squeue', '-u', self.username, '--format', '%A,%j', '--noheader'])
+        jobs = self.run_command(
+            [self.SQUEUE, '-u', self.username, '--format', '%A,%j', '--noheader']
+        )
         for job in jobs.strip().split():
             job_id, job_name = job.split(',')
             if job_name.startswith(self.username) and self.args.job_name in job_name:
@@ -104,7 +110,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         # for worker status and remove those workers that failed at starting phase.
         jobs_to_remove = set()
         for job_id in self.submitted_jobs:
-            job_acct = self.run_command(['sacct', '-j', job_id, '--format', 'state'])
+            job_acct = self.run_command([self.SACCT, '-j', job_id, '--format', 'state'])
             if 'FAILED' in job_acct:
                 jobs_to_remove.add(job_id)
                 logger.error("Failed to start job {}".format(job_id))
@@ -118,7 +124,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         # JOBID:STATE (header won't be included with "--noheader" option)
         # 1478828,PENDING
         # 1478830,PENDING
-        jobs = self.run_command(['squeue', '-u', self.username, '--format', '%A,%T', '--noheader'])
+        jobs = self.run_command(
+            [self.SQUEUE, '-u', self.username, '--format', '%A,%T', '--noheader']
+        )
         jobs = jobs.strip().split()
         logger.info(
             'Workers: {}'.format(
@@ -132,7 +140,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         # 1478828
         # 1478830
         running_jobs = self.run_command(
-            ['squeue', '-u', self.username, '-t', 'RUNNING', '--format', '%A', '--noheader']
+            [self.SQUEUE, '-u', self.username, '-t', 'RUNNING', '--format', '%A', '--noheader']
         )
         running_jobs = running_jobs.strip().split()
 
@@ -148,7 +156,11 @@ class SlurmBatchWorkerManager(WorkerManager):
         worker_id = uuid.uuid4().hex
         # Set up worker directory
         work_dir = Path(self.args.work_dir, worker_id)
-        work_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            work_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError as e:
+            logger.error("Failed to create worker directory: {}".format(e))
+            return
 
         # This needs to be a unique directory since Batch jobs may share a host
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
@@ -174,7 +186,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])
 
-        slurm_args = self.create_slurm_args(self.args)
+        slurm_args = self.create_slurm_args(worker_id)
         job_definition = self.create_job_definition(slurm_args=slurm_args, command=command)
 
         # Not submit job to Slurm if dry run is specified
@@ -183,7 +195,7 @@ class SlurmBatchWorkerManager(WorkerManager):
 
         batch_script = str(work_dir.joinpath(slurm_args['job-name'] + '.slurm'))
         self.save_job_definition(batch_script, job_definition)
-        job_id_str = self.run_command([self.SBATCH_COMMAND, batch_script])
+        job_id_str = self.run_command([self.SBATCH, batch_script])
 
         match = re.match(self.SBATCH_COMMAND_RETRUN_REGEX, job_id_str)
         if match is not None:
@@ -230,25 +242,18 @@ class SlurmBatchWorkerManager(WorkerManager):
         ]
         # Using the --unbuffered option with srun command will allow output
         # appear in the output file as soon as it is produced.
-        srun_args = [self.SRUN_COMMAND, '--unbuffered'] + command
-        # job definition contains two sections: sbatch arguments and srun command
-        job_definition = '#!/bin/bash\n\n' + '\n'.join(sbatch_args) + '\n\n' + ' '.join(srun_args)
+        srun_args = [self.SRUN, '--unbuffered'] + command
+        # Job definition contains two sections: sbatch arguments and srun command
+        job_definition = (
+            '#!/usr/bin/env bash\n\n' + '\n'.join(sbatch_args) + '\n\n' + ' '.join(srun_args)
+        )
         print("Slurm Batch Job Definition")
         print(job_definition)
         return job_definition
 
-    def create_random_job_name(self, job_name):
-        """
-        Generate a random Slurm job name
-        :param job_name:
-        :return: slurm job name
-        """
-        return self.username + "-" + job_name + '-' + str(random.randint(0, 5000000))
-
-    def create_slurm_args(self, args):
+    def create_slurm_args(self, worker_id):
         """
         Convert command line arguments to Slurm
-        :param args: command line arguments
         :return: a dictionary of Slurm arguments
         """
         slurm_args = {}
@@ -257,7 +262,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         slurm_args['partition'] = self.args.partition
         slurm_args['gres'] = "gpu:" + str(self.args.gpus)
         # job-name is unique
-        slurm_args['job-name'] = self.create_random_job_name(self.args.job_name)
+        slurm_args['job-name'] = self.username + "-" + self.args.job_name + '-' + worker_id[:8]
         slurm_args['cpus-per-task'] = str(self.args.cpus)
         slurm_args['ntasks-per-node'] = 1
         slurm_args['time'] = '10-0'
