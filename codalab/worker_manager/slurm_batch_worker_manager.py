@@ -1,4 +1,3 @@
-import argparse
 import logging
 import uuid
 import subprocess
@@ -70,12 +69,6 @@ class SlurmBatchWorkerManager(WorkerManager):
             '--slurm-work-dir',
             default='slurm-worker-scratch',
             help='Directory where to store Slurm batch scripts, logs, etc.',
-        )
-        subparser.add_argument(
-            '--worker-dir',
-            default='codalab-worker-scratch',
-            help='Directory where to store temporary bundle data, '
-            'including dependencies and the data from run bundles',
         )
 
     def __init__(self, args):
@@ -164,11 +157,16 @@ class SlurmBatchWorkerManager(WorkerManager):
         try:
             slurm_work_dir.mkdir(parents=True, exist_ok=True)
         except PermissionError as e:
-            logger.error("Failed to create the Slurm work directory: {}".format(e))
+            logger.error(
+                "Failed to create the Slurm work directory: {}. "
+                "Stop creating a new worker.".format(e)
+            )
             return
 
         # This needs to be a unique directory since Batch jobs may share a host
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
+        # Codalab worker's work directory
+        worker_work_dir = Path(self.args.worker_work_dir_prefix, 'codalab-worker-scratch')
         command = [
             'cl-worker',
             '--server',
@@ -178,7 +176,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             '--idle-seconds',
             str(self.args.worker_idle_seconds),
             '--work-dir',
-            str(self.args.worker_dir),
+            str(worker_work_dir),
             '--id',
             worker_id,
             '--network-prefix',
