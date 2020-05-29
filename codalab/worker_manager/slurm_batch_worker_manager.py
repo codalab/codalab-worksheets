@@ -67,8 +67,13 @@ class SlurmBatchWorkerManager(WorkerManager):
             'the worker will fail to start',
         )
         subparser.add_argument(
-            '--work-dir',
+            '--slurm-work-dir',
             default='slurm-worker-scratch',
+            help='Directory where to store Slurm batch scripts, logs, etc.',
+        )
+        subparser.add_argument(
+            '--worker-dir',
+            default='codalab-worker-scratch',
             help='Directory where to store temporary bundle data, '
             'including dependencies and the data from run bundles',
         )
@@ -154,12 +159,12 @@ class SlurmBatchWorkerManager(WorkerManager):
         Start a CodaLab Slurm worker that submits batch job to Slurm
         """
         worker_id = uuid.uuid4().hex
-        # Set up worker directory
-        work_dir = Path(self.args.work_dir, worker_id)
+        # Set up the Slurm worker directory
+        slurm_work_dir = Path(self.args.slurm_work_dir, worker_id)
         try:
-            work_dir.mkdir(parents=True, exist_ok=True)
+            slurm_work_dir.mkdir(parents=True, exist_ok=True)
         except PermissionError as e:
-            logger.error("Failed to create worker directory: {}".format(e))
+            logger.error("Failed to create the Slurm work directory: {}".format(e))
             return
 
         # This needs to be a unique directory since Batch jobs may share a host
@@ -173,7 +178,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             '--idle-seconds',
             str(self.args.worker_idle_seconds),
             '--work-dir',
-            str(work_dir),
+            str(self.args.worker_dir),
             '--id',
             worker_id,
             '--network-prefix',
@@ -193,7 +198,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         if self.args.dry_run:
             return
 
-        batch_script = str(work_dir.joinpath(slurm_args['job-name'] + '.slurm'))
+        batch_script = str(slurm_work_dir.joinpath(slurm_args['job-name'] + '.slurm'))
         self.save_job_definition(batch_script, job_definition)
         job_id_str = self.run_command([self.SBATCH, batch_script])
 
