@@ -2,8 +2,9 @@ import logging
 import uuid
 import subprocess
 import getpass
-from pathlib import Path
 import re
+import os
+from pathlib import Path
 
 from .worker_manager import WorkerManager, WorkerJob
 
@@ -166,7 +167,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         # This needs to be a unique directory since Batch jobs may share a host
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         # Codalab worker's work directory
-        worker_work_dir = Path(self.args.worker_work_dir_prefix, 'codalab-worker-scratch')
+        worker_work_dir = Path(
+            self.args.worker_work_dir_prefix, 'codalab-worker-scratch', worker_id
+        )
         command = [
             'cl-worker',
             '--server',
@@ -183,11 +186,11 @@ class SlurmBatchWorkerManager(WorkerManager):
             worker_network_prefix,
             # always set in Slurm worker manager to ensure safe shutdown
             '--pass-down-termination',
-            '--password-file',
-            self.args.password_file,
         ]
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])
+        if self.args.password_file:
+            command.extend(['--password-file', self.args.password_file])
 
         slurm_args = self.create_slurm_args(worker_id)
         job_definition = self.create_job_definition(slurm_args=slurm_args, command=command)
