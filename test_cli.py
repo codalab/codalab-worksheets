@@ -1437,7 +1437,7 @@ def test(ctx):
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
 
         # Create at local, transfer to remote (non-terminal state bundle)
-        uuid = _run_command([cl, 'run', 'date', '--request-gpus', 100])
+        uuid = _run_command([cl, 'run', 'date', '--request-gpus', '100'])
         wait_until_state(uuid, State.STAGED)
 
         # Test adding worksheet items
