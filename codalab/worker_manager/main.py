@@ -19,7 +19,15 @@ def main():
     )
     parser.add_argument('--worker-tag', help='Tag to look for and put on workers')
     parser.add_argument(
+        '--worker-work-dir-prefix', help="Prefix to use for each worker's working directory."
+    )
+    parser.add_argument(
         '--worker-max-work-dir-size', help='Maximum size of the temporary bundle data'
+    )
+    parser.add_argument(
+        '--worker-delete-work-dir-on-exit',
+        action='store_true',
+        help="Delete a worker's working directory when the worker process exits.",
     )
     parser.add_argument(
         '--verbose', action='store_true', help='Whether to print out extra information'

@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 from subprocess import PIPE, Popen
 import threading
 import time
@@ -64,6 +65,8 @@ class Worker:
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.
         pass_down_termination=False,  # type: bool
+        # A flag indicating if the work_dir will be deleted when the worker exits.
+        delete_work_dir_on_exit=False,  # type: bool
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -87,6 +90,7 @@ class Worker:
         self.work_dir = work_dir
         self.local_bundles_dir = local_bundles_dir
         self.shared_file_system = shared_file_system
+        self.delete_work_dir_on_exit = delete_work_dir_on_exit
 
         self.exit_when_idle = exit_when_idle
         self.idle_seconds = idle_seconds
@@ -207,6 +211,8 @@ class Worker:
             self.dependency_manager.stop()
         self.run_state_manager.stop()
         self.save_state()
+        if self.delete_work_dir_on_exit:
+            shutil.rmtree(self.work_dir)
         try:
             self.worker_docker_network.remove()
             self.docker_network_internal.remove()
