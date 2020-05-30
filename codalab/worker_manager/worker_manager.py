@@ -82,8 +82,8 @@ class WorkerManager(object):
             time.sleep(self.args.sleep_time)
 
     def run_one_iteration(self):
-        # Get staged bundles
-        keywords = ['state=' + State.STAGED] + self.args.search
+        # Get staged bundles for the current user.
+        keywords = ['state=' + State.STAGED] + [".mine"] + self.args.search
         if self.args.worker_tag:
             keywords.append('request_queue=tag=' + self.args.worker_tag)
         bundles = self.codalab_client.fetch(
