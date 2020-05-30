@@ -246,16 +246,18 @@ class SlurmBatchWorkerManager(WorkerManager):
             '{} --{}={}'.format(self.SBATCH_PREFIX, key, slurm_args[key])
             for key in sorted(slurm_args.keys())
         ]
-        # Using the --unbuffered option with srun command will allow output
-        # appear in the output file as soon as it is produced.
-        srun_args = [self.SRUN, '--unbuffered'] + command
 
-        # Check the existence of environment CODALAB_USERNAME and CODALAB_PASSWORD when password_file is not given.
+        # Check the existence of environment variables CODALAB_USERNAME and
+        # CODALAB_PASSWORD when password_file is not given.
         worker_authentication = (
             '[ ! -z "${CODALAB_USERNAME}" ] && [ ! -z "${CODALAB_PASSWORD}" ] || exit;\n\n'
             if not self.args.password_file
             else ''
         )
+
+        # Using the --unbuffered option with srun command will allow output
+        # appear in the output file as soon as it is produced.
+        srun_args = [self.SRUN, '--unbuffered'] + command
 
         # Job definition contains two sections: sbatch arguments and srun command
         job_definition = (
