@@ -93,7 +93,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         owned by the current user from the Slurm scheduling queue.
         :return: a set of job id
         """
-        # Get all the Slurm workers that are submitted by SlurmWorkerManager and owned by the current user.
+        # Get all the Slurm workers that are submitted by Slurm Batch Worker Manager and owned by the current user.
         # Returning result will be in the following format:
         # JOBID:NAME (header won't be included with "--noheader" option)
         # 1487896,john-job-3157358
@@ -111,7 +111,8 @@ class SlurmBatchWorkerManager(WorkerManager):
     def get_worker_jobs(self):
         """
         Return a list of workers in RUNNING and PENDING state.
-        The current Slurm version on NLP cluster is 17.11.13-2, which doesn't have rest api provided.
+        The current Slurm Batch Worker Manager is developed and tested with Slurm version 17.11.13-2.
+        TODO: use the default rest api when Slurm upgraded to version >= 20.02
         """
         # Documentation can be found at https://slurm.schedmd.com
         # Since allocating resource for a worker may take a while, we periodically check
@@ -213,8 +214,8 @@ class SlurmBatchWorkerManager(WorkerManager):
 
     def setup_codalab_worker(self, worker_id):
         """
-        Set up the configuration for the codalab worker that will run on the Slurm worker.
-        :param worker_id: a string of worker id in 32 digits.
+        Set up the configuration for the codalab worker that will run on the Slurm worker
+        :param worker_id: a string of worker id in 32 hex characters
         :return: the command to run on
         """
         # This needs to be a unique directory since Batch jobs may share a host
@@ -223,7 +224,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         if self.args.worker_work_dir_prefix:
             work_dir_prefix = Path(self.args.worker_work_dir_prefix)
         else:
-            work_dir_prefix = Path.home()
+            work_dir_prefix = Path()
 
         worker_work_dir = work_dir_prefix.joinpath(
             Path('slurm-codalab-worker-scratch', self.username + '-' + worker_id)
