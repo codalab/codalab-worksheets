@@ -87,7 +87,7 @@ def un_tar_directory(fileobj, directory_path, compression='', force=False):
     """
     directory_path = os.path.realpath(directory_path)
     if force:
-        shutil.rmtree(directory_path)
+        remove_path(directory_path)
     os.mkdir(directory_path)
     with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:
         for member in tar:
