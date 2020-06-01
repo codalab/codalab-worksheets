@@ -78,7 +78,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--slurm-work-dir',
             default='slurm-worker-scratch',
-            help='Directory where to store Slurm batch scripts, logs, etc.',
+            help='Directory where to store Slurm batch scripts, logs, etc',
         )
 
     def __init__(self, args):
