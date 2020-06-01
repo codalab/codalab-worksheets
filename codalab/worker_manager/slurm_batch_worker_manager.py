@@ -196,8 +196,8 @@ class SlurmBatchWorkerManager(WorkerManager):
     def setup_slurm_work_directory(self, worker_id):
         """
         Set up the work directory for Slurm Batch Worker Manager
-        :param worker_id:
-        :return:
+        :param worker_id: a string in the format of 32 hex characters
+        :return: slurm work directory
         """
         # Set up the Slurm worker directory
         slurm_work_dir = Path(self.args.slurm_work_dir, worker_id)
@@ -284,7 +284,6 @@ class SlurmBatchWorkerManager(WorkerManager):
         Save the batch job definition to file.
         :param job_file: a file storing the Slurm batch job configuration
         :param job_definition: the job definition of a Slurm batch job
-        :return:
         """
         with open(job_file, 'w') as f:
             f.write(job_definition)
