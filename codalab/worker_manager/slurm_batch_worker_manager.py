@@ -3,7 +3,7 @@ import uuid
 import subprocess
 import getpass
 import re
-import os
+import textwrap
 from pathlib import Path
 
 from .worker_manager import WorkerManager, WorkerJob
@@ -23,9 +23,11 @@ class SlurmBatchWorkerManager(WorkerManager):
     SQUEUE = 'squeue'
     SACCT = 'sacct'
 
-    # SBATCH configuration in bash script
+    """
+    sbatch configuration in bash script
+    """
     SBATCH_PREFIX = '#SBATCH'
-    SBATCH_COMMAND_RETRUN_REGEX = re.compile(r'^Submitted batch job (\d+)$')
+    SBATCH_COMMAND_RETURN_REGEX = re.compile(r'^Submitted batch job (\d+)$')
 
     @staticmethod
     def add_arguments_to_subparser(subparser):
@@ -51,6 +53,13 @@ class SlurmBatchWorkerManager(WorkerManager):
             '--memory-mb', type=int, default=2048, help='Default memory (in MB) for each worker'
         )
         subparser.add_argument(
+            '--time',
+            type=str,
+            default='10-0',
+            help='Set a limit on the total run time in minutes or days-hours '
+            'of the job allocation. Default to 10-0 (10 days, 0 hours)',
+        )
+        subparser.add_argument(
             '--dry-run',
             action='store_true',
             help='Print out Slurm batch job definition without submitting to Slurm',
@@ -61,10 +70,10 @@ class SlurmBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--password-file',
             type=str,
-            help='Path to the file containing the username and '
-            'password for logging into the CodaLab worker '
-            'each on a separate line. If not specified, the '
-            'the worker will fail to start',
+            help='Path to the file containing the username and password '
+            'for logging into the CodaLab worker each on a separate '
+            'line. If not specified, the worker will read from '
+            'environment variable CODALAB_USERNAME and CODALAB_PASSWORD',
         )
         subparser.add_argument(
             '--slurm-work-dir',
@@ -109,14 +118,16 @@ class SlurmBatchWorkerManager(WorkerManager):
         # for worker status and remove those workers that failed at starting phase.
         jobs_to_remove = set()
         for job_id in self.submitted_jobs:
-            job_acct = self.run_command([self.SACCT, '-j', job_id, '--format', 'state'])
+            job_acct = self.run_command(
+                [self.SACCT, '-j', job_id, '--format', 'state', '--noheader']
+            )
             if 'FAILED' in job_acct:
                 jobs_to_remove.add(job_id)
                 logger.error("Failed to start job {}".format(job_id))
             elif 'COMPLETING' in job_acct or 'COMPLETED' in job_acct or 'CANCELLED' in job_acct:
                 jobs_to_remove.add(job_id)
         self.submitted_jobs = self.submitted_jobs - jobs_to_remove
-        logger.info("Submitted jobs: ".format(self.submitted_jobs))
+        logger.info("Submitted jobs: {}".format(self.submitted_jobs))
 
         # Get all the Slurm workers that are submitted by SlurmWorkerManager and owned by the current user.
         # Returning result will be in the following format:
@@ -150,26 +161,71 @@ class SlurmBatchWorkerManager(WorkerManager):
 
     def start_worker_job(self):
         """
-        Start a CodaLab Slurm worker that submits batch job to Slurm
+        Start a CodaLab Slurm worker by submitting a batch job to Slurm
         """
         worker_id = uuid.uuid4().hex
+
+        # Set up the Slurm worker directory
+        slurm_work_dir = self.setup_slurm_work_directory(worker_id)
+        if slurm_work_dir is None:
+            return
+
+        # Map command line arguments to Slurm arguments
+        slurm_args = self.create_slurm_args(worker_id, slurm_work_dir)
+        command = self.setup_codalab_worker(worker_id)
+        job_definition = self.create_job_definition(slurm_args=slurm_args, command=command)
+
+        # Do not submit job to Slurm if dry run is specified
+        if self.args.dry_run:
+            return
+
+        batch_script = str(slurm_work_dir.joinpath(slurm_args['job-name'] + '.slurm'))
+        self.save_job_definition(batch_script, job_definition)
+        job_id_str = self.run_command([self.SBATCH, batch_script])
+
+        match = re.match(self.SBATCH_COMMAND_RETURN_REGEX, job_id_str)
+        if match is not None:
+            job_id = match.group(1)
+        else:
+            logger.error("Cannot find job_id in {}.".format(job_id_str))
+            return
+
+        # Add the newly submitted job to submitted_jobs for tracking purpose
+        self.submitted_jobs.add(job_id)
+
+    def setup_slurm_work_directory(self, worker_id):
+        """
+        Set up the work directory for Slurm Batch Worker Manager
+        :param worker_id:
+        :return:
+        """
         # Set up the Slurm worker directory
         slurm_work_dir = Path(self.args.slurm_work_dir, worker_id)
         try:
             slurm_work_dir.mkdir(parents=True, exist_ok=True)
+            return slurm_work_dir
         except PermissionError as e:
             logger.error(
                 "Failed to create the Slurm work directory: {}. "
-                "Stop creating a new worker.".format(e)
+                "Stop creating new workers.".format(e)
             )
-            return
+            return None
 
+    def setup_codalab_worker(self, worker_id):
+        """
+        Set up the configuration for the codalab worker that will run on the Slurm worker.
+        :param worker_id: a string of worker id in 32 digits.
+        :return: the command to run on
+        """
         # This needs to be a unique directory since Batch jobs may share a host
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         # Codalab worker's work directory
-        worker_work_dir = Path(
-            self.args.worker_work_dir_prefix, 'codalab-worker-scratch', worker_id
-        )
+        worker_work_dir = Path('slurm-codalab-worker-scratch', self.username + '-' + worker_id)
+        if self.args.worker_work_dir_prefix:
+            worker_work_dir = Path(self.args.worker_work_dir_prefix).joinpath(worker_work_dir)
+        else:
+            worker_work_dir = Path.home().joinpath(worker_work_dir)
+
         command = [
             'cl-worker',
             '--server',
@@ -184,7 +240,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             worker_id,
             '--network-prefix',
             worker_network_prefix,
-            # always set in Slurm worker manager to ensure safe shutdown
+            # always set in the Slurm worker manager to ensure safe shutdown
             '--pass-down-termination',
         ]
         if self.args.worker_tag:
@@ -192,36 +248,32 @@ class SlurmBatchWorkerManager(WorkerManager):
         if self.args.password_file:
             command.extend(['--password-file', self.args.password_file])
 
-        slurm_args = self.create_slurm_args(worker_id)
-        job_definition = self.create_job_definition(slurm_args=slurm_args, command=command)
-
-        # Not submit job to Slurm if dry run is specified
-        if self.args.dry_run:
-            return
-
-        batch_script = str(slurm_work_dir.joinpath(slurm_args['job-name'] + '.slurm'))
-        self.save_job_definition(batch_script, job_definition)
-        job_id_str = self.run_command([self.SBATCH, batch_script])
-
-        match = re.match(self.SBATCH_COMMAND_RETRUN_REGEX, job_id_str)
-        if match is not None:
-            job_id = match.group(1)
-        else:
-            logger.error("Cannot find job_id in {}.".format(job_id_str))
-            return
-
-        # Add the newly submitted job to submitted_jobs for tracking purpose
-        self.submitted_jobs.add(job_id)
+        return command
 
     def run_command(self, command):
-        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, errors = proc.communicate()
-        if output:
-            logger.info("Executed command: {}".format(' '.join(command)))
-            return output.decode()
-        if errors:
-            print("Failed to execute {}: {}: {}".format(' '.join(command), errors, proc.returncode))
-            logger.error(errors)
+        """
+        Run a given shell command and return the result
+        :param command: the input command as list
+        :return: an empty string if an error is caught. Otherwise, return the actual result
+        """
+        try:
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, errors = proc.communicate()
+            if output:
+                logger.info("Executed command: {}".format(' '.join(command)))
+                result = output.decode()
+                logger.info(result)
+                return result
+            if errors:
+                logger.error(
+                    "Failed to execute {}: {}, {}".format(
+                        ' '.join(command), errors, proc.returncode
+                    )
+                )
+        except Exception as e:
+            logger.error(
+                "Caught an exception when executing command {}: {}".format(' '.join(command), e)
+            )
         return ""
 
     def save_job_definition(self, job_file, job_definition):
@@ -249,8 +301,18 @@ class SlurmBatchWorkerManager(WorkerManager):
 
         # Check the existence of environment variables CODALAB_USERNAME and
         # CODALAB_PASSWORD when password_file is not given.
-        worker_authentication = (
-            '[ ! -z "${CODALAB_USERNAME}" ] && [ ! -z "${CODALAB_PASSWORD}" ] || exit;\n\n'
+        worker_authentication = textwrap.dedent(
+            '''
+            if [ ! -z "${CODALAB_USERNAME}" ] && [ ! -z "${CODALAB_PASSWORD}" ]
+            then
+                  echo "Found environment variables CODALAB_USERNAME and CODALAB_PASSWORD."
+            else
+                  echo "Environment variable CODALAB_USERNAME or CODALAB_PASSWORD is not set properly."
+                  echo "Stop creating new workers."
+                  exit 1
+            fi
+            '''
+            + '\n\n'
             if not self.args.password_file
             else ''
         )
@@ -267,17 +329,13 @@ class SlurmBatchWorkerManager(WorkerManager):
             + worker_authentication
             + ' '.join(srun_args)
         )
-        print("Slurm Batch Job Definition")
-        print(job_definition)
+        logger.info("Slurm Batch Job Definition")
+        logger.info(job_definition)
         return job_definition
 
-    def authenticate_codalab_account(self):
-        if not self.args.password_file:
-            return
-
-    def create_slurm_args(self, worker_id):
+    def create_slurm_args(self, worker_id, slurm_worker_dir):
         """
-        Convert command line arguments to Slurm
+        Convert command line arguments to Slurm arguments
         :return: a dictionary of Slurm arguments
         """
         slurm_args = {}
@@ -289,7 +347,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         slurm_args['job-name'] = self.username + "-" + self.args.job_name + '-' + worker_id[:8]
         slurm_args['cpus-per-task'] = str(self.args.cpus)
         slurm_args['ntasks-per-node'] = 1
-        slurm_args['time'] = '10-0'
+        slurm_args['time'] = self.args.time
         slurm_args['open-mode'] = 'append'
-        slurm_args['output'] = slurm_args['job-name'] + '.out'
+        slurm_args['output'] = str(Path(slurm_worker_dir, slurm_args['job-name'] + '.out'))
         return slurm_args
