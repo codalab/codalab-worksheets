@@ -220,11 +220,14 @@ class SlurmBatchWorkerManager(WorkerManager):
         # This needs to be a unique directory since Batch jobs may share a host
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         # Codalab worker's work directory
-        worker_work_dir = Path('slurm-codalab-worker-scratch', self.username + '-' + worker_id)
         if self.args.worker_work_dir_prefix:
-            worker_work_dir = Path(self.args.worker_work_dir_prefix).joinpath(worker_work_dir)
+            work_dir_prefix = Path(self.args.worker_work_dir_prefix)
         else:
-            worker_work_dir = Path.home().joinpath(worker_work_dir)
+            work_dir_prefix = Path.home()
+
+        worker_work_dir = work_dir_prefix.joinpath(
+            Path('slurm-codalab-worker-scratch', self.username + '-' + worker_id)
+        )
 
         command = [
             'cl-worker',
