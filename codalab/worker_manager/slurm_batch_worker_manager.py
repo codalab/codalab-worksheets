@@ -41,7 +41,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             '--nodelist', type=str, default='', help='The worker node to run jobs in'
         )
         subparser.add_argument(
-            '--partition', type=str, default='jag-standard', help='Name of batch job queue to use'
+            '--partition', type=str, required=True, help='Name of batch job queue to use'
         )
         subparser.add_argument(
             '--cpus', type=int, default=1, help='Default number of CPUs for each worker'
