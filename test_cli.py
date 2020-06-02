@@ -1106,7 +1106,7 @@ def test(ctx):
             'run',
             'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt',
             '--exclude-patterns',
-            '*bye*.txt',
+            "'*bye*.txt'",
         ]
     )
     check_num_lines(
@@ -1120,9 +1120,9 @@ def test(ctx):
             'run',
             'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt',
             '--exclude-patterns',
-            'bye.txt',
+            "'bye.txt'",
             '--exclude-patterns',
-            'goodbye.txt',
+            "'goodbye.txt'",
         ]
     )
     check_num_lines(
