@@ -7,20 +7,8 @@ class WorkerInfoAccessor(object):
     Helps with accessing the list of workers returned by the worker model.
     """
 
-    def refresh_cache(f):
-        def wrapper(*args, **kwargs):
-            self = args[0]
-            if datetime.datetime.utcnow() - self._last_fetch >= datetime.timedelta(
-                seconds=self._timeout_seconds
-            ):
-                self._fetch_workers()
-            return f(*args, **kwargs)
-
-        return wrapper
-
-    def __init__(self, model, timeout_seconds):
+    def __init__(self, model):
         self._model = model
-        self._timeout_seconds = timeout_seconds
         self._last_fetch = None
         self._fetch_workers()
 
@@ -37,15 +25,12 @@ class WorkerInfoAccessor(object):
             # 'has_gpus' flag here to indicate if the current worker has GPUs or not.
             worker['has_gpus'] = True if worker['gpus'] > 0 else False
 
-    @refresh_cache
     def workers(self):
         return list(self._workers.values())
 
-    @refresh_cache
     def user_owned_workers(self, user_id):
         return list(worker for worker in self._user_id_to_workers[user_id])
 
-    @refresh_cache
     def remove(self, worker_id):
         worker = self._workers[worker_id]
         for uuid in worker['run_uuids']:
@@ -53,17 +38,14 @@ class WorkerInfoAccessor(object):
         self._user_id_to_workers[worker['user_id']].remove(worker)
         del self._workers[worker_id]
 
-    @refresh_cache
     def is_running(self, uuid):
         return uuid in self._uuid_to_worker
 
-    @refresh_cache
     def set_starting(self, uuid, worker_id):
         worker = self._workers[worker_id]
         worker['run_uuids'].append(uuid)
         self._uuid_to_worker[uuid] = worker
 
-    @refresh_cache
     def restage(self, uuid):
         if uuid in self._uuid_to_worker:
             worker = self._uuid_to_worker[uuid]
