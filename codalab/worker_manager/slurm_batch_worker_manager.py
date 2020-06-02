@@ -327,6 +327,23 @@ class SlurmBatchWorkerManager(WorkerManager):
             else ''
         )
 
+        # Even though slurm does GPU isolation, Docker overrides this, so we need to
+        # manually specify the GPUs.
+        gpu_isolation = textwrap.dedent(
+            '''
+            GPUSET=$(nvidia-smi -L | grep -o 'UUID: [^)]*' | cut -d ' ' -f2 | tr '\n' ',')
+            GPUSET=${GPUSET::-1}
+            if [ -z "$GPUSET" ]; then
+                  echo "No GPUs on the machine"
+                  GPU_ARGS="--gpuset="
+            else
+                  echo "Using GPUs $GPUSET"
+                  GPU_ARGS="--gpuset $GPUSET"
+            fi
+            '''
+            + '\n\n'
+        )
+
         # Using the --unbuffered option with srun command will allow output
         # appear in the output file as soon as it is produced.
         srun_args = [self.SRUN, '--unbuffered'] + command
@@ -337,7 +354,9 @@ class SlurmBatchWorkerManager(WorkerManager):
             + '\n'.join(sbatch_args)
             + '\n\n'
             + worker_authentication
+            + gpu_isolation
             + ' '.join(srun_args)
+            + ' ' + '$GPU_ARGS'
         )
         logger.info("Slurm Batch Job Definition")
         logger.info(job_definition)
