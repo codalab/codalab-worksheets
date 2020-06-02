@@ -1109,6 +1109,7 @@ def test(ctx):
             "'*bye*.txt'",
         ]
     )
+    wait(remote_uuid)
     check_num_lines(
         2 + 1, _run_command([cl, 'cat', remote_uuid])
     )  # 2 header lines, 1 item at bundle target root
@@ -1125,6 +1126,7 @@ def test(ctx):
             "'goodbye.txt'",
         ]
     )
+    wait(remote_uuid)
     check_num_lines(
         2 + 1, _run_command([cl, 'cat', remote_uuid])
     )  # 2 header lines, 1 item at bundle target root
