@@ -141,12 +141,10 @@ class SlurmBatchWorkerManager(WorkerManager):
 
         # Get all the Slurm workers that are submitted by SlurmWorkerManager and owned by the current user.
         # Returning result will be in the following format:
-        # JOBID:STATE (header won't be included with "--noheader" option)
-        # 1478828,PENDING
-        # 1478830,PENDING
-        jobs = self.run_command(
-            [self.SQUEUE, '-u', self.username, '--format', '%A,%T', '--noheader']
-        )
+        # JOBID (header won't be included with "--noheader" option)
+        # 1478828
+        # 1478830
+        jobs = self.run_command([self.SQUEUE, '-u', self.username, '--format', '%A', '--noheader'])
         jobs = jobs.strip().split()
         logger.info(
             'Workers: {}'.format(
