@@ -67,9 +67,11 @@ class AWSBatchWorkerManager(WorkerManager):
         image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         worker_id = uuid.uuid4().hex
         logger.debug('Starting worker %s with image %s', worker_id, image)
-        work_dir = '/tmp/cl_worker_{}_work_dir'.format(
-            worker_id
-        )  # This needs to be a unique directory since Batch jobs may share a host
+        work_dir_prefix = (
+            self.args.worker_work_dir_prefix if self.args.worker_work_dir_prefix else "/tmp/"
+        )
+        # This needs to be a unique directory since Batch jobs may share a host
+        work_dir = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         command = [
             'cl-worker',
@@ -90,6 +92,8 @@ class AWSBatchWorkerManager(WorkerManager):
             command.extend(['--tag', self.args.worker_tag])
         if self.args.worker_max_work_dir_size:
             command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
+        if self.args.worker_delete_work_dir_on_exit:
+            command.extend(['--worker-delete-work-dir-on-exit'])
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-batch-jobdefinition.html
         # Need to mount:
