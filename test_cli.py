@@ -1144,6 +1144,7 @@ def test(ctx):
             2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
         )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
 
+
 @TestModule.register('read')
 def test(ctx):
     dep_uuid = _run_command([cl, 'upload', test_path('')])
