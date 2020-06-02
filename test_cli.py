@@ -1104,9 +1104,25 @@ def test(ctx):
         [
             cl,
             'run',
-            'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt;',
+            'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt',
             '--exclude-patterns',
             '*bye*.txt',
+        ]
+    )
+    check_num_lines(
+        2 + 1, _run_command([cl, 'cat', remote_uuid])
+    )  # 2 header lines, 1 item at bundle target root
+
+    # Test multiple exclude_patterns
+    remote_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt',
+            '--exclude-patterns',
+            'bye.txt',
+            '--exclude-patterns',
+            'goodbye.txt',
         ]
     )
     check_num_lines(
