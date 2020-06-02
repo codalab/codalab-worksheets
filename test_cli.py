@@ -1122,7 +1122,6 @@ def test(ctx):
             'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt',
             '--exclude-patterns',
             'bye.txt',
-            '--exclude-patterns',
             'goodbye.txt',
         ]
     )
