@@ -507,7 +507,7 @@ class RunStateMachine(StateTransitioner):
                 self.upload_bundle_callback(
                     run_state.bundle.uuid,
                     run_state.bundle_path,
-                    run_state.bundle.metadata["upload_exclude_patterns"],
+                    run_state.bundle.metadata["exclude_patterns"],
                     progress_callback,
                 )
                 self.uploading[run_state.bundle.uuid]['success'] = True
