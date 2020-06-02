@@ -959,14 +959,17 @@ def test(ctx):
     time1 = datetime.now().isoformat()
     # These sleeps are required to ensure that there is sufficient time that passes between tests
     # If there is not enough time, all bundles might appear to have the same time
-    time.sleep(2)
+    time.sleep(1)
     uuid1 = _run_command([cl, 'run', 'date', '-n', name])
-    time.sleep(2)
+    wait(uuid1)
+    time.sleep(1)
     time2 = datetime.now().isoformat()
-    time.sleep(2)
+    time.sleep(1)
     uuid2 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid2)
     uuid3 = _run_command([cl, 'run', 'date', '-n', name])
-    time.sleep(2)
+    wait(uuid3)
+    time.sleep(1)
     time3 = datetime.now().isoformat()
 
     # No results
