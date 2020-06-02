@@ -32,6 +32,7 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('request_queue', str, 'Submit run to this job queue.', hide_when_anonymous=True, default=None))
     METADATA_SPECS.append(MetadataSpec('request_priority', int, 'Job priority (higher is more important).', default=None))
     METADATA_SPECS.append(MetadataSpec('request_network', bool, 'Whether to allow network access.', default=False))
+    METADATA_SPECS.append(MetadataSpec('upload_exclude_patterns', str, 'Exclude these file patterns when uploading run output.', default=None))
 
     METADATA_SPECS.append(MetadataSpec('actions', list, 'Actions (e.g., kill) that were performed on this run.', generated=True))
 

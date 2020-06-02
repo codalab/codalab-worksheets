@@ -505,7 +505,10 @@ class RunStateMachine(StateTransitioner):
                     return True
 
                 self.upload_bundle_callback(
-                    run_state.bundle.uuid, run_state.bundle_path, progress_callback
+                    run_state.bundle.uuid,
+                    run_state.bundle_path,
+                    run_state.bundle.metadata["upload_exclude_patterns"],
+                    progress_callback,
                 )
                 self.uploading[run_state.bundle.uuid]['success'] = True
             except Exception as e:

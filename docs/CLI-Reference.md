@@ -63,6 +63,7 @@ Usage: `cl <command> <arguments>`
       --request-queue              Submit run to this job queue.
       --request-priority           Job priority (higher is more important).
       --request-network            Whether to allow network access.
+      --upload-exclude-patterns    Exclude these file patterns when uploading run output.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
@@ -87,6 +88,7 @@ Usage: `cl <command> <arguments>`
       --request-queue              Submit run to this job queue.
       --request-priority           Job priority (higher is more important).
       --request-network            Whether to allow network access.
+      --upload-exclude-patterns    Exclude these file patterns when uploading run output.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
@@ -221,6 +223,7 @@ Usage: `cl <command> <arguments>`
       --request-queue              Submit run to this job queue. (for runs)
       --request-priority           Job priority (higher is more important). (for runs)
       --request-network            Whether to allow network access. (for runs)
+      --upload-exclude-patterns    Exclude these file patterns when uploading run output. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
@@ -249,6 +252,7 @@ Usage: `cl <command> <arguments>`
       --request-queue              Submit run to this job queue. (for runs)
       --request-priority           Job priority (higher is more important). (for runs)
       --request-network            Whether to allow network access. (for runs)
+      --upload-exclude-patterns    Exclude these file patterns when uploading run output. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
