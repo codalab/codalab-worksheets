@@ -135,9 +135,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         # JOBID (header won't be included with "--noheader" option)
         # 1478828
         # 1478830
-        jobs = self.run_command(
-            [self.SQUEUE, '-u', self.username, '--format', '%A', '--noheader']
-        )
+        jobs = self.run_command([self.SQUEUE, '-u', self.username, '--format', '%A', '--noheader'])
         jobs = jobs.strip().split()
         logger.info(
             'Workers: {}'.format(
