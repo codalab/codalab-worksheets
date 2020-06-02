@@ -1099,6 +1099,20 @@ def test(ctx):
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
 
+    # Test exclude_patterns
+    remote_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt;',
+            '--exclude-patterns',
+            '*bye*.txt',
+        ]
+    )
+    check_num_lines(
+        2 + 1, _run_command([cl, 'cat', remote_uuid])
+    )  # 2 header lines, 1 item at bundle target root
+
 
 @TestModule.register('read')
 def test(ctx):
