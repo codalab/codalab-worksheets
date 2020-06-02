@@ -28,6 +28,7 @@ def checkin(worker_id):
         request.user.user_id,
         worker_id,
         request.json.get("tag"),
+        request.json.get("group_name"),
         request.json.get("cpus"),
         request.json.get("gpus"),
         request.json.get("memory_bytes"),

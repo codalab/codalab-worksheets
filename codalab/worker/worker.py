@@ -61,6 +61,7 @@ class Worker:
         bundle_service,  # type: BundleServiceClient
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
+        group_name,  # type: str
         docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.
@@ -84,6 +85,7 @@ class Worker:
         )
 
         self.id = worker_id
+        self.group_name = group_name
         self.tag = tag
         self.tag_exclusive = tag_exclusive
 
@@ -294,6 +296,7 @@ class Worker:
         """
         request = {
             'tag': self.tag,
+            'group_name': self.group_name,
             'cpus': len(self.cpuset),
             'gpus': len(self.gpuset),
             'memory_bytes': self.max_memory,

@@ -1,7 +1,6 @@
 '''
 Defines ORM classes for groups and permissions.
 '''
-from codalab.model.orm_object import ORMObject
 from codalab.common import NotFoundError, precondition, UsageError, PermissionError, IntegrityError
 from codalab.lib import spec_util
 from codalab.model.tables import (
@@ -10,6 +9,7 @@ from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_NONE,
     group_bundle_permission as cl_group_bundle_permission,
     group_object_permission as cl_group_worksheet_permission,
+    group_worker_permission as cl_group_worker_permission,
 )
 from codalab.model.util import LikeQuery
 
@@ -80,24 +80,29 @@ def get_single_group(model, group_spec, search_fn):
 
 
 def _check_permissions(model, table, user, object_uuids, owner_ids, need_permission):
+    # Validate parameter values
+    if table == cl_group_bundle_permission:
+        object_type = 'bundle'
+    elif table == cl_group_worksheet_permission:
+        object_type = 'worksheet'
+    elif table == cl_group_worker_permission:
+        object_type = 'worker'
+    else:
+        raise IntegrityError('Unexpected table: %s' % table)
+
     if len(object_uuids) == 0:
         return
+
     have_permissions = model.get_user_permissions(
         table, user.unique_id if user else None, object_uuids, owner_ids
     )
-    # print '_check_permissions %s %s, have %s, need %s' % (user, object_uuids, map(permission_str, have_permissions.values()), permission_str(need_permission))
     if min(have_permissions.values()) >= need_permission:
         return
     if user:
         user_str = '%s(%s)' % (user.name, user.unique_id)
     else:
         user_str = None
-    if table == cl_group_bundle_permission:
-        object_type = 'bundle'
-    elif table == cl_group_worksheet_permission:
-        object_type = 'worksheet'
-    else:
-        raise IntegrityError('Unexpected table: %s' % table)
+
     raise PermissionError(
         "User %s does not have sufficient permissions on %s %s (have %s, need %s)."
         % (
@@ -158,6 +163,21 @@ def check_worksheet_has_all_permission(model, user, worksheet):
 # or the user who owns the bundle can run it.
 def check_bundle_have_run_permission(model, user_id, bundle):
     return user_id in [model.root_user_id, bundle.owner_id]
+
+
+def check_worker_has_permission(model, user, worker):
+    try:
+        _check_permissions(
+            model,
+            cl_group_worker_permission,
+            user,
+            [worker.id],
+            {worker.id: worker.user_id},
+            GROUP_OBJECT_PERMISSION_ALL,
+        )
+        return True
+    except PermissionError:
+        return False
 
 
 ############################################################

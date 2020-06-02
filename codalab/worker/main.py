@@ -141,6 +141,10 @@ def parse_args():
         action='store_true',
         help="Delete the worker's working directory when the worker process exits.",
     )
+    # TODO: remove the default -tony
+    parser.add_argument(
+        '--group', default='wg1', help='Name of the group that can run jobs on this worker'
+    )
     return parser.parse_args()
 
 
@@ -229,6 +233,7 @@ def main():
         bundle_service,
         args.shared_file_system,
         args.tag_exclusive,
+        args.group,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
         pass_down_termination=args.pass_down_termination,

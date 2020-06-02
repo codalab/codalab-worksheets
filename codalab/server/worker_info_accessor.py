@@ -1,4 +1,7 @@
 from collections import defaultdict
+
+from codalab.objects.permission import check_worker_has_permission
+
 import datetime
 
 
@@ -43,6 +46,20 @@ class WorkerInfoAccessor(object):
 
     @refresh_cache
     def user_owned_workers(self, user_id):
+        return list(worker for worker in self._user_id_to_workers[user_id])
+
+    @refresh_cache
+    def get_workers(self, user_id):
+        """
+        Gets all the workers that the user owns or has permissions for
+        :param user_id: Id of the user
+        :return: List of workers
+        """
+        workers = set(self.user_owned_workers(user_id))
+
+        for worker in self.workers():
+            if check_worker_has_permission(self._model, user_id, worker):
+                workers.add(worker)
         return list(worker for worker in self._user_id_to_workers[user_id])
 
     @refresh_cache

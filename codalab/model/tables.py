@@ -303,7 +303,8 @@ worker = Table(
     'worker',
     db_metadata,
     Column('user_id', String(63), ForeignKey(user.c.user_id), primary_key=True, nullable=False),
-    Column('worker_id', String(127), primary_key=True, nullable=False),
+    Column('worker_id', String(127), nullable=False),
+    # TODO: create worker uuid? -tony
     Column('tag', Text, nullable=True),  # Tag that allows for scheduling runs on specific workers.
     Column('cpus', Integer, nullable=False),  # Number of CPUs on worker.
     Column('gpus', Integer, nullable=False),  # Number of GPUs on worker.
@@ -319,6 +320,18 @@ worker = Table(
     Column(
         'tag_exclusive', Boolean, nullable=False
     ),  # Whether worker runs bundles if and only if they match tags.
+)
+
+# Permissions for workers
+group_worker_permission = Table(
+    'group_worker_permission',
+    db_metadata,
+    Column('id', Integer, primary_key=True, nullable=False),
+    Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=False),
+    # Reference to a worker
+    Column('object_uuid', String(127), ForeignKey(worker.c.worker_id), nullable=False),
+    # Permissions encoded as integer
+    Column('permission', Integer, nullable=False),
 )
 
 # Store information about all sockets currently allocated to each worker.
