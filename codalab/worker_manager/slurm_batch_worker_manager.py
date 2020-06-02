@@ -100,7 +100,16 @@ class SlurmBatchWorkerManager(WorkerManager):
         # 1478830,john-job-5234492
         submitted_jobs = set()
         jobs = self.run_command(
-            [self.SQUEUE, '-u', self.username, '--format', '%A,%j', '--noheader']
+            [
+                self.SQUEUE,
+                '-u',
+                self.username,
+                '-p',
+                self.args.partition,
+                '--format',
+                '%A,%j',
+                '--noheader',
+            ]
         )
         for job in jobs.strip().split():
             job_id, job_name = job.split(',')
