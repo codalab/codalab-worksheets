@@ -1,4 +1,5 @@
 from collections import namedtuple
+import glob
 import logging
 import os
 import threading
@@ -471,11 +472,16 @@ class RunStateMachine(StateTransitioner):
             return run_state._replace(stage=RunStage.RESTAGED)
 
         if not self.shared_file_system and run_state.has_contents:
-            # No need to upload results since results are directly written to bundle store
             return run_state._replace(
                 stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
             )
         else:
+            # No need to upload results since results are directly written to bundle store
+            # Delete any files that match the exclude_patterns .
+            for exclude_pattern in run_state.bundle.metadata["exclude_patterns"]:
+                full_pattern = os.path.join(run_state.bundle_path, exclude_pattern)
+                for file_path in glob.glob(full_pattern, recursive=True):
+                    remove_path(file_path)
             return self.finalize_run(run_state)
 
     def _transition_from_UPLOADING_RESULTS(self, run_state):
