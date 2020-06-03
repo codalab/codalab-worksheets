@@ -901,27 +901,32 @@ class Worksheet extends React.Component {
         if (this.state.showBundleOperationButtons) {
             // Below are allowed shortcut even when a dialog is opened===================
             // The following three are bulk bundle operation shortcuts
-            Mousetrap.bind(['backspace', 'del'], () => {
-                if (
-                    this.state.openDialog &&
-                    this.state.openDialog !== DIALOG_TYPES.OPEN_DELETE_BUNDLE
-                ) {
-                    return;
-                }
-                this.toggleCmdDialogNoEvent('rm');
-            });
-            Mousetrap.bind(['a d'], () => {
-                if (this.state.openDialog && this.state.openDialog !== DIALOG_TYPES.OPEN_DETACH) {
-                    return;
-                }
-                this.toggleCmdDialogNoEvent('detach');
-            });
-            Mousetrap.bind(['a k'], () => {
-                if (this.state.openDialog && this.state.openDialog !== DIALOG_TYPES.OPEN_KILL) {
-                    return;
-                }
-                this.toggleCmdDialogNoEvent('kill');
-            });
+            if (this.state.ws.info.edit_permission) {
+                Mousetrap.bind(['backspace', 'del'], () => {
+                    if (
+                        this.state.openDialog &&
+                        this.state.openDialog !== DIALOG_TYPES.OPEN_DELETE_BUNDLE
+                    ) {
+                        return;
+                    }
+                    this.toggleCmdDialogNoEvent('rm');
+                });
+                Mousetrap.bind(['a d'], () => {
+                    if (
+                        this.state.openDialog &&
+                        this.state.openDialog !== DIALOG_TYPES.OPEN_DETACH
+                    ) {
+                        return;
+                    }
+                    this.toggleCmdDialogNoEvent('detach');
+                });
+                Mousetrap.bind(['a k'], () => {
+                    if (this.state.openDialog && this.state.openDialog !== DIALOG_TYPES.OPEN_KILL) {
+                        return;
+                    }
+                    this.toggleCmdDialogNoEvent('kill');
+                });
+            }
             Mousetrap.bind(['a c'], () => {
                 if (this.state.openDialog) {
                     return;
@@ -1015,8 +1020,8 @@ class Worksheet extends React.Component {
             cache: false,
             success: function(worksheet_content) {
                 if (this.state.isUpdatingBundles && worksheet_content.uuid === this.state.ws.uuid) {
-                    if (worksheet_content.items) {
-                        self.reloadWorksheet(worksheet_content.items);
+                    if (worksheet_content.blocks) {
+                        self.reloadWorksheet(worksheet_content.blocks);
                     }
                     var endTime = new Date().getTime();
                     var guaranteedDelayTime = Math.min(3000, numTrials * 1000);

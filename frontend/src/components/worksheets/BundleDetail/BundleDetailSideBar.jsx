@@ -56,7 +56,7 @@ class Dependency extends React.PureComponent<
 /**
  * Content to display in sidebar of a Bundle Detail expansion panel.
  */
-class SideBar extends React.Component<
+class BundleDetailSideBar extends React.Component<
     {
         classes: {},
         bundleInfo: {},
@@ -108,6 +108,18 @@ class SideBar extends React.Component<
                         value={ metadata.description }
                         canEdit={ hasEditPermission && editableMetadataFields.includes("description") }
                         onChange={ (description) => onUpdate({ description }) }
+                    />
+                </div>
+                {/** ----------------------------------------------------------------------------------------------- */}
+                <ConfigLabel label="Tags"/>
+                <div className={classes.wrappableText}>
+                    <BundleEditableField
+                        dataType={ metadataType.tags }
+                        fieldName="tags"
+                        uuid={ bundleInfo.uuid }
+                        value={ metadata.tags }
+                        canEdit={ hasEditPermission && editableMetadataFields.includes("tags") }
+                        onChange={ (tags) => onUpdate({ tags }) }
                     />
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
@@ -315,4 +327,4 @@ const styles = (theme) => ({
     },
 });
 
-export default withStyles(styles)(SideBar);
+export default withStyles(styles)(BundleDetailSideBar);

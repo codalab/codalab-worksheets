@@ -84,7 +84,7 @@ export default ({
                                             setAnchorEl(ev.currentTarget);
                                         }}
                                         className={classes.permissions}
-                                        style={{ float: 'right' }}
+                                        style={{ display: 'inline-block', margin: '0px 5px' }}
                                     >
                                         {renderPermissions(info)}
                                     </div>
@@ -114,6 +114,17 @@ export default ({
                                             />
                                         </div>
                                     </Popover>
+                                    &nbsp;tags:&nbsp;
+                                    <div style={{ display: 'inline-block' }}>
+                                        <WorksheetEditableField
+                                            canEdit={canEdit}
+                                            dataType='list'
+                                            fieldName='tags'
+                                            value={info.tags.join(' ')}
+                                            uuid={info && info.uuid}
+                                            onChange={() => reloadWorksheet()}
+                                        />
+                                    </div>
                                 </React.Fragment>
                             )}
                         </Grid>
