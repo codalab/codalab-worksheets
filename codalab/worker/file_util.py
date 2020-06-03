@@ -321,7 +321,7 @@ def path_is_parent(parent_path, child_path):
     """
     Given a parent_path and a child_path, determine if the child path
     is a strict subpath of the parent_path. In the case that the resolved
-    parent_path is equivalent to the resolved child_path, this funciton returns
+    parent_path is equivalent to the resolved child_path, this function returns
     False.
 
     Note that this function does not dereference symbolic links.
