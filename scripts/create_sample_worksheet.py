@@ -252,7 +252,7 @@ class SampleWorksheet:
         self._add_line('% schema combined_schema')
         self._add_line('% addschema valid_schema')
         self._add_line('% addschema post_processor_schema')
-        self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)  
+        self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)
         self._add_line('% display table combined_schema')
         self._add_bundles(self._valid_bundles)
         self._add_table_pattern(
