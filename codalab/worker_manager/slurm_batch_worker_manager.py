@@ -100,7 +100,16 @@ class SlurmBatchWorkerManager(WorkerManager):
         # 1478830,john-job-5234492
         submitted_jobs = set()
         jobs = self.run_command(
-            [self.SQUEUE, '-u', self.username, '--format', '%A,%j', '--noheader']
+            [
+                self.SQUEUE,
+                '-u',
+                self.username,
+                '-p',
+                self.args.partition,
+                '--format',
+                '%A,%j',
+                '--noheader',
+            ]
         )
         for job in jobs.strip().split():
             job_id, job_name = job.split(',')
@@ -132,12 +141,10 @@ class SlurmBatchWorkerManager(WorkerManager):
 
         # Get all the Slurm workers that are submitted by SlurmWorkerManager and owned by the current user.
         # Returning result will be in the following format:
-        # JOBID:STATE (header won't be included with "--noheader" option)
-        # 1478828,PENDING
-        # 1478830,PENDING
-        jobs = self.run_command(
-            [self.SQUEUE, '-u', self.username, '--format', '%A,%T', '--noheader']
-        )
+        # JOBID (header won't be included with "--noheader" option)
+        # 1478828
+        # 1478830
+        jobs = self.run_command([self.SQUEUE, '-u', self.username, '--format', '%A', '--noheader'])
         jobs = jobs.strip().split()
         logger.info(
             'Workers: {}'.format(
