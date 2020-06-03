@@ -356,7 +356,8 @@ class SlurmBatchWorkerManager(WorkerManager):
             + worker_authentication
             + gpu_isolation
             + ' '.join(srun_args)
-            + ' ' + '$GPU_ARGS'
+            + ' '
+            + '$GPU_ARGS'
         )
         logger.info("Slurm Batch Job Definition")
         logger.info(job_definition)
