@@ -978,12 +978,6 @@ class Worksheet extends React.Component {
                 }
                 this.toggleCmdDialogNoEvent('copy');
             });
-            Mousetrap.bind(['a z'], () => {
-                if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
-                    return;
-                }
-                this.toggleCmdDialogNoEvent('cut');
-            });
             if (this.state.ws.info.edit_permission) {
                 Mousetrap.bind(['backspace', 'del'], () => {
                     if (this.state.openDetach || this.state.openKill) {
@@ -1002,6 +996,12 @@ class Worksheet extends React.Component {
                         return;
                     }
                     this.toggleCmdDialogNoEvent('kill');
+                });
+                Mousetrap.bind(['a z'], () => {
+                    if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
+                        return;
+                    }
+                    this.toggleCmdDialogNoEvent('cut');
                 });
 
                 // Confirm bulk bundle operation
