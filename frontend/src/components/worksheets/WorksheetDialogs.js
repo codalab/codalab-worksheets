@@ -20,7 +20,7 @@ class WorksheetDialogs extends React.Component {
         return (
             <div>
                 <Dialog
-                    open={this.props.openDialog === DIALOG_TYPES.OPEN_DELETE_BUNDLE}
+                    open={this.props.openedDialog === DIALOG_TYPES.OPEN_DELETE_BUNDLE}
                     onClose={this.props.closeDialog}
                     aria-labelledby='deletion-confirmation-title'
                     aria-describedby='deletion-confirmation-description'
@@ -78,7 +78,7 @@ class WorksheetDialogs extends React.Component {
                     </DialogActions>
                 </Dialog>
                 <Dialog
-                    open={this.props.openDialog === DIALOG_TYPES.OPEN_DETACH}
+                    open={this.props.openedDialog === DIALOG_TYPES.OPEN_DETACH}
                     onClose={this.props.closeDialog}
                     aria-labelledby='detach-confirmation-title'
                     aria-describedby='detach-confirmation-description'
@@ -96,7 +96,7 @@ class WorksheetDialogs extends React.Component {
                     </DialogActions>
                 </Dialog>
                 <Dialog
-                    open={this.props.openDialog === DIALOG_TYPES.OPEN_KILL}
+                    open={this.props.openedDialog === DIALOG_TYPES.OPEN_KILL}
                     onClose={this.props.closeDialog}
                     aria-labelledby='kill-confirmation-title'
                     aria-describedby='kill-confirmation-description'
@@ -120,7 +120,7 @@ class WorksheetDialogs extends React.Component {
                     </DialogActions>
                 </Dialog>
                 <Dialog
-                    open={this.props.openDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN}
+                    open={this.props.openedDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN}
                     onClose={this.props.toggleCmdDialog('deleteItem')}
                     aria-labelledby='deletion-confirmation-title'
                     aria-describedby='deletion-confirmation-description'
@@ -153,7 +153,7 @@ class WorksheetDialogs extends React.Component {
                     </DialogActions>
                 </Dialog>
                 <Dialog
-                    open={this.props.openDialog === DIALOG_TYPES.OPEN_DELETE_WORKSHEET}
+                    open={this.props.openedDialog === DIALOG_TYPES.OPEN_DELETE_WORKSHEET}
                     onClose={this.props.closeDialog}
                     aria-labelledby='delete-worksheet-confirmation-title'
                     aria-describedby='delete-worksheet-confirmation-description'
@@ -187,7 +187,7 @@ class WorksheetDialogs extends React.Component {
                 </Dialog>
                 {/* Error message dialog */}
                 <Dialog
-                    open={this.props.openDialog === DIALOG_TYPES.OPEN_ERROR_DIALOG}
+                    open={this.props.openedDialog === DIALOG_TYPES.OPEN_ERROR_DIALOG}
                     onClose={this.props.toggleErrorMessageDialog}
                     aria-labelledby='error-title'
                     aria-describedby='error-description'
