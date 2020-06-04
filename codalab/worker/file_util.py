@@ -73,10 +73,12 @@ def tar_gzip_directory(
         raise IOError(e.output)
 
 
-def un_tar_directory(fileobj, directory_path, compression=''):
+def un_tar_directory(fileobj, directory_path, compression='', force=False):
     """
     Extracts the given file-like object containing a tar archive into the given
-    directory, which will be created and should not already exist.
+    directory, which will be created and should not already exist. If it already exists,
+    and `force` is `False`, an error is raised. If it already exists, and `force` is `True`,
+    the directory is removed and recreated.
 
     compression specifies the compression scheme and can be one of '', 'gz' or
     'bz2'.
@@ -84,6 +86,8 @@ def un_tar_directory(fileobj, directory_path, compression=''):
     Raises tarfile.TarError if the archive is not valid.
     """
     directory_path = os.path.realpath(directory_path)
+    if force:
+        remove_path(directory_path)
     os.mkdir(directory_path)
     with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:
         for member in tar:
