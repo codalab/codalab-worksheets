@@ -1030,8 +1030,7 @@ def test(ctx):
     # block
     # TODO: Uncomment this when the tail bug is figured out
     # check_contains('hello', _run_command([cl, 'run', 'echo hello', '--tail']))
-    # invalid child path
-    _run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
+
     # make sure special characters in the name of a bundle don't break
     special_name = random_name() + '-dashed.dotted'
     _run_command([cl, 'run', 'echo hello', '-n', special_name])
