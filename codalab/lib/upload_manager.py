@@ -57,7 +57,8 @@ class UploadManager(object):
             if exclude_patterns
             else self._default_exclude_patterns
         )
-        bundle_path = self._bundle_store.get_bundle_location(bundle)
+        bundle_link_url = getattr(bundle.metadata, "link_url", None)
+        bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
             # Note that for uploads with a single source, the directory
@@ -177,7 +178,8 @@ class UploadManager(object):
         path_util.remove(temp_path)
 
     def has_contents(self, bundle):
-        return os.path.exists(self._bundle_store.get_bundle_location(bundle))
+        # TODO: make this non-fs-specific.
+        return os.path.exists(self._bundle_store.get_bundle_location(bundle.uuid))
 
     def cleanup_existing_contents(self, bundle):
         self._bundle_store.cleanup(bundle, dry_run=False)

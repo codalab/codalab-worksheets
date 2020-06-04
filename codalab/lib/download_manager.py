@@ -95,6 +95,9 @@ class DownloadManager(object):
         Raises NotFoundError if the path is not found.
         """
         bundle_state = self._bundle_model.get_bundle_state(target.bundle_uuid)
+        bundle_link_url = self._bundle_model.get_bundle_metadata(
+            [target.bundle_uuid], "link_url"
+        ).get(target.bundle_uuid)
         # Raises NotFoundException if uuid is invalid
 
         if bundle_state == State.PREPARING:
@@ -104,8 +107,9 @@ class DownloadManager(object):
                 )
             )
         elif bundle_state != State.RUNNING:
-            bundle = self._bundle_model.get_bundle(target.bundle_uuid)
-            bundle_path = self._bundle_store.get_bundle_location(bundle)
+            bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(
+                target.bundle_uuid
+            )
             try:
                 return download_util.get_target_info(bundle_path, target, depth)
             except download_util.PathException as err:
@@ -305,8 +309,7 @@ class DownloadManager(object):
         return True
 
     def _get_target_path(self, target):
-        bundle = self._bundle_model.get_bundle(target.bundle_uuid)
-        bundle_path = self._bundle_store.get_bundle_location(bundle)
+        bundle_path = self._bundle_store.get_bundle_location(uuid=target.bundle_uuid)
         try:
             return download_util.get_target_path(bundle_path, target)
         except download_util.PathException as e:
