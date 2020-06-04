@@ -108,15 +108,17 @@ class SchemaItem extends React.Component<{
 
     changeFieldValue = (idx, key) => (e) => {
         if (!this.props.editPermission) return;
-        this.state.rows[idx][key] = e.target.value;
-        this.setState({ rows: this.state.rows });
+        const { rows } = this.state;
+        let copiedRows = JSON.parse(JSON.stringify(rows));
+        copiedRows[idx][key] = e.target.value;
+        this.setState({ rows: [...copiedRows] });
     };
 
     moveFieldRow = (idx, direction) => () => {
         if (!this.props.editPermission) return;
         // -1 for moving up, 1 for moving down
         const { rows } = this.state;
-        let copiedRows = [...rows];
+        let copiedRows = JSON.parse(JSON.stringify(rows));
         let newIndex = idx + direction;
         [copiedRows[newIndex], copiedRows[idx]] = [copiedRows[idx], copiedRows[newIndex]];
         if (copiedRows[idx].from_schema_name !== this.props.item.schema_name) {
@@ -140,13 +142,15 @@ class SchemaItem extends React.Component<{
 
     removeFieldRow = (idx) => () => {
         if (!this.props.editPermission) return;
-        this.state.rows.splice(idx, 1);
-        this.setState({ rows: this.state.rows });
+        const { rows } = this.state;
+        let copiedRows = JSON.parse(JSON.stringify(rows));
+        copiedRows.splice(idx, 1);
+        this.setState({ rows: copiedRows });
     };
 
     componentDidUpdate(prevProps) {
         if (prevProps.item.field_rows !== this.props.item.field_rows) {
-            this.setState({ rows: this.props.item.field_rows });
+            this.setState({ rows: [...this.props.item.field_rows] });
         }
     }
 
@@ -157,6 +161,8 @@ class SchemaItem extends React.Component<{
         const schemaHeaders = schemaItem.header;
         const schema_name = schemaItem.schema_name;
         let headerHtml, bodyRowsHtml;
+        // console.log("props:",this.props.item.field_rows);
+        // console.log("state:", rows);
         headerHtml =
             showSchemaDetail &&
             schemaHeaders.map((item, index) => {
