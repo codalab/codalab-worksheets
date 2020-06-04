@@ -1482,11 +1482,19 @@ def test(ctx):
         _run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
 
+        # Create at local, transfer to remote (non-terminal state bundle)
+        uuid = _run_command([cl, 'run', 'date', '--request-gpus', '100'])
+        wait_until_state(uuid, State.STAGED)
+
         # Test adding worksheet items
         _run_command([cl, 'wadd', source_worksheet, remote_worksheet])
+        # Bundles copied over to remote_worksheet will not contain the bundle in non-terminal states, e.g. STAGED
+        assert_bundles_ready(remote_worksheet)
+
+        # Remove the STAGED bundle from source_worksheet and verify that all bundles are ready.
+        _run_command([cl, 'rm', uuid])
         _run_command([cl, 'wadd', remote_worksheet, source_worksheet])
         assert_bundles_ready(source_worksheet)
-        assert_bundles_ready(remote_worksheet)
 
 
 @TestModule.register('groups')
