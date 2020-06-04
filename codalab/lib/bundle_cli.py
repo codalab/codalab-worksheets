@@ -1215,7 +1215,7 @@ class BundleCLI(object):
 
         # Option 1: --link
         if args.link:
-            if len(args.path) is not 1:
+            if len(args.path) != 1:
                 raise UsageError("Only a single path can be uploaded when using --link.")
             bundle_info['metadata']['link_url'] = args.path[0]
             bundle_info['metadata']['is_linked'] = True
