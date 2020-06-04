@@ -3311,7 +3311,7 @@ class BundleCLI(object):
         help=[
             'Append all the items of the source worksheet to the destination worksheet.',
             'Bundles that do not yet exist on the destination service will be copied over.',
-            'Bundles in non-terminal states (READY or FAILED) will not be copied over to destination worksheet.'
+            'Bundles in non-terminal states (READY or FAILED) will not be copied over to destination worksheet.',
             'The existing items on the destination worksheet are not affected unless the -r/--replace flag is set.',
         ],
         arguments=(
