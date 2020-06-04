@@ -405,7 +405,6 @@ class Worksheet extends React.Component {
                         return;
                     }
                     validBundles.push(bundle);
-                    cutBundleIds.push(bundle.id);
                     actualCopiedCounts += 1;
                 });
             });
@@ -414,12 +413,17 @@ class Worksheet extends React.Component {
             if (validBundles.length > 0) {
                 this.setState({ showPasteButton: true });
             }
+            let copycut = cmd_type === 'cut' ? 'Cut ' : 'Copied';
             let toastString =
                 actualCopiedCounts > 0
-                    ? 'Copied ' + actualCopiedCounts + ' bundle'
-                    : 'No valid bundle to copy';
+                    ? copycut + actualCopiedCounts + ' bundle'
+                    : 'No valid bundle selected';
             if (actualCopiedCounts > 1) {
                 toastString += 's';
+            }
+            if (cmd_type === 'cut') {
+                // Remove the bundle lines
+                this.removeItemsFromSource(validBundles.map((e) => e.id));
             }
             this.clearCheckedBundles(() => {
                 toast.info(toastString, {
@@ -431,10 +435,6 @@ class Worksheet extends React.Component {
                     draggable: true,
                 });
             });
-            if (cmd_type === 'cut') {
-                // Remove the bundle lines
-                this.removeItemsFromSource(cutBundleIds);
-            }
         } else if (cmd_type === 'paste') {
             this.pasteBundlesToWorksheet();
         }
@@ -442,7 +442,6 @@ class Worksheet extends React.Component {
 
     removeItemsFromSource = (itemIds) => {
         let worksheetUUID = this.state.ws.uuid;
-        // let after_sort_key;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
         $.ajax({
             url,
