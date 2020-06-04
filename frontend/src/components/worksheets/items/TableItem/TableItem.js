@@ -103,18 +103,19 @@ class TableItem extends React.Component<{
     copyCheckedBundleRows = () => {
         let item = this.props.item;
         let bundleInfos = item.bundles_spec.bundle_infos;
-        let ids = getIds(item);
-        let result = bundleInfos.filter((item, index) => {
+        let ids = getIds(item).filter((item, index) => {
             return this.state.childrenCheckState[index];
         });
-        result = result.map((bundle, index) => {
+        let checkedBundleInfos = bundleInfos.filter((item, index) => {
+            return this.state.childrenCheckState[index];
+        });
+        return checkedBundleInfos.map((bundle, index) => {
             let bundleIdName = {};
             bundleIdName.uuid = bundle.uuid;
             bundleIdName.name = bundle.metadata.name;
             bundleIdName.id = ids[index];
             return bundleIdName;
         });
-        return result;
     };
 
     // BULK OPERATION RELATED CODE ABOVE
