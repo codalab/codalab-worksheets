@@ -345,7 +345,7 @@ class Worksheet extends React.Component {
 
     handleCommand = (cmd_type) => {
         if (this.state.openedDialog) {
-            this.setState({ openedDialog: null });
+            this.setState({ openedDialog: null, deleteItemCallback: null });
             return;
         }
         if (cmd_type === 'deleteItem') {
@@ -882,8 +882,10 @@ class Worksheet extends React.Component {
                 ['enter'],
                 function(e) {
                     e.preventDefault();
-                    this.state.deleteItemCallback();
-                    this.toggleCmdDialogNoEvent('deleteItem');
+                    if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN) {
+                        this.state.deleteItemCallback();
+                        this.toggleCmdDialogNoEvent('deleteItem');
+                    }
                 }.bind(this),
             );
         }
