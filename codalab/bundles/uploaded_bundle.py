@@ -20,9 +20,6 @@ class UploadedBundle(NamedBundle):
     )
 
     METADATA_SPECS.append(
-        MetadataSpec('is_linked', bool, 'Whether bundle is a link.', default=False)
-    )
-    METADATA_SPECS.append(
         MetadataSpec('link_url', str, 'Link URL of bundle.')
     )
     METADATA_SPECS.append(

@@ -1210,15 +1210,11 @@ class BundleCLI(object):
             'metadata': metadata,
         }
 
-        # Bundles are not linked by default.
-        bundle_info['metadata']['is_linked'] = False
-
         # Option 1: --link
         if args.link:
             if len(args.path) != 1:
                 raise UsageError("Only a single path can be uploaded when using --link.")
             bundle_info['metadata']['link_url'] = args.path[0]
-            bundle_info['metadata']['is_linked'] = True
             bundle_info['metadata']['link_format'] = LinkFormat.RAW
 
             new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})

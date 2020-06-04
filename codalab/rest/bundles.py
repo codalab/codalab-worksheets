@@ -255,7 +255,7 @@ def _create_bundles():
         bundle['owner_id'] = request.user.user_id
 
         metadata = bundle.get("metadata", {})
-        if metadata.get("is_linked") == True:
+        if metadata.get("link_url"):
             bundle['state'] = State.READY
         elif issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
             bundle['state'] = State.UPLOADING
