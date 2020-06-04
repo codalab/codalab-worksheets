@@ -102,6 +102,7 @@ class TextEditorItem extends React.Component<{
             },
             error: (jqHXR, status, error) => {
                 alert(createAlertText(this.url, jqHXR.responseText));
+                Mousetrap.unbindGlobal(['ctrl+enter']);
             },
         });
     };
