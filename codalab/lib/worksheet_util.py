@@ -485,7 +485,7 @@ def format_metadata(metadata):
 def canonicalize_schema_item(args, from_schema_name=None):
     """
     Users who type in schema items can specify a partial argument list.
-    Return the canonicalize version (a triple).
+    Return the canonicalize version (four items in a tuple).
     from_schema_name: which schema this item belongs to, used to identify items added from addschema
     """
     if len(args) == 1:  # genpath
