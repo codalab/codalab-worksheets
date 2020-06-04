@@ -1,3 +1,4 @@
+apache-beam[aws,gcp]==2.21.0
 bottle==0.12.9
 docker==3.7.0
 marshmallow-jsonapi==0.15.1
