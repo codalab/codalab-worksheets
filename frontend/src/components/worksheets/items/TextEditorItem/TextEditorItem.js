@@ -96,13 +96,11 @@ class TextEditorItem extends React.Component<{
             success: (data, status, jqXHR) => {
                 const moveIndex = true ? mode === 'create' : false;
                 const param = { moveIndex };
-                reloadWorksheet(undefined, undefined, param);
                 closeEditor();
-                Mousetrap.unbindGlobal(['ctrl+enter']);
+                reloadWorksheet(undefined, undefined, param);
             },
             error: (jqHXR, status, error) => {
                 alert(createAlertText(this.url, jqHXR.responseText));
-                Mousetrap.unbindGlobal(['ctrl+enter']);
             },
         });
     };
@@ -111,6 +109,7 @@ class TextEditorItem extends React.Component<{
         const { classes, defaultValue, showDefault } = this.props;
         Mousetrap.bindGlobal(['ctrl+enter'], () => {
             this.saveText();
+            Mousetrap.unbindGlobal(['ctrl+enter']);
         });
 
         Mousetrap.bindGlobal(['esc'], () => {
