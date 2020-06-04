@@ -136,7 +136,7 @@ class WorkerManager(object):
             seconds_since_last_worker = int(time.time() - self.last_worker_start_time)
             if seconds_since_last_worker < self.args.min_seconds_between_workers:
                 logger.info(
-                    'Don\'t launch becaused waited {} < {} seconds since last worker'.format(
+                    'Don\'t launch because waited {} < {} seconds since last worker'.format(
                         seconds_since_last_worker, self.args.min_seconds_between_workers
                     )
                 )
