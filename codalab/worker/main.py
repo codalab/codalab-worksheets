@@ -231,7 +231,7 @@ def main():
         args.work_dir,
         local_bundles_dir,
         args.exit_when_idle,
-        args.exit_number_jobs,
+        args.exit_after_num_runs,
         args.idle_seconds,
         bundle_service,
         args.shared_file_system,

@@ -1737,7 +1737,7 @@ def test(ctx):
             'gpus',
             'memory',
             'free_disk',
-            'exit_number_jobs',
+            'exit_after_num_runs',
             'last_checkin',
             'tag',
             'runs',

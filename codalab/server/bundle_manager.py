@@ -405,7 +405,7 @@ class BundleManager(object):
                     worker['cpus'] -= bundle_resources.cpus
                     worker['gpus'] -= bundle_resources.gpus
                     worker['memory_bytes'] -= bundle_resources.memory
-                    worker['exit_number_jobs'] -= 1
+                    worker['exit_after_num_runs'] -= 1
                     break
 
     def _deduct_worker_resources(self, workers_list, running_bundles_info):
@@ -431,7 +431,7 @@ class BundleManager(object):
                 worker['cpus'] -= bundle_resources.cpus
                 worker['gpus'] -= bundle_resources.gpus
                 worker['memory_bytes'] -= bundle_resources.memory
-                worker['exit_number_jobs'] -= 1
+                worker['exit_after_num_runs'] -= 1
         return workers_list
 
     def _filter_and_sort_workers(self, workers_list, bundle, bundle_resources):
@@ -470,7 +470,7 @@ class BundleManager(object):
 
         # Filter by the number of jobs allowed to run on this worker.
         workers_list = [
-            worker for worker in workers_list if worker['exit_number_jobs'] > 0
+            worker for worker in workers_list if worker['exit_after_num_runs'] > 0
         ]
 
         # Sort workers list according to these keys in the following succession:

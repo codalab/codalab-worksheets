@@ -48,7 +48,7 @@ class WorkerModel(object):
         dependencies,
         shared_file_system,
         tag_exclusive,
-        exit_number_jobs,
+        exit_after_num_runs,
     ):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
@@ -64,7 +64,7 @@ class WorkerModel(object):
                 'checkin_time': datetime.datetime.utcnow(),
                 'shared_file_system': shared_file_system,
                 'tag_exclusive': tag_exclusive,
-                'exit_number_jobs': exit_number_jobs,
+                'exit_after_num_runs': exit_after_num_runs,
             }
             existing_row = conn.execute(
                 cl_worker.select().where(
@@ -190,7 +190,7 @@ class WorkerModel(object):
                 and self._deserialize_dependencies(row.dependencies),
                 'shared_file_system': row.shared_file_system,
                 'tag_exclusive': row.tag_exclusive,
-                'exit_number_jobs': row.exit_number_jobs,
+                'exit_after_num_runs': row.exit_after_num_runs,
             }
             for row in worker_rows
         }

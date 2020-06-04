@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    op.add_column('worker', sa.Column('exit_number_jobs', sa.Integer(), nullable=False))
+    op.add_column('worker', sa.Column('exit_after_num_runs', sa.Integer(), nullable=False))
 
 
 def downgrade():
-    op.drop_column('worker', 'exit_number_jobs')
+    op.drop_column('worker', 'exit_after_num_runs')
