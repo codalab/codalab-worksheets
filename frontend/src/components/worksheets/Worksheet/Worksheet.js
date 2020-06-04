@@ -467,8 +467,6 @@ class Worksheet extends React.Component {
                 this.state.openDelete ||
                 this.state.openDetach ||
                 this.state.openKill ||
-                this.state.openCopy ||
-                this.state.openCut ||
                 this.state.BulkBundleDialog
             )
         ) {
@@ -482,8 +480,6 @@ class Worksheet extends React.Component {
             this.executeBundleCommandNoEvent('detach');
         } else if (this.state.openKill) {
             this.executeBundleCommandNoEvent('kill');
-        } else if (this.state.openCopy) {
-            document.getElementById('copyBundleIdToClipBoard').click();
         }
         return true;
     };
@@ -977,23 +973,13 @@ class Worksheet extends React.Component {
             // Below are allowed shortcut even when a dialog is opened===================
             // The following three are bulk bundle operation shortcuts
             Mousetrap.bind(['a c'], () => {
-                if (
-                    this.state.openDetach ||
-                    this.state.openDelete ||
-                    this.state.openKill ||
-                    this.state.openCut
-                ) {
+                if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('copy');
             });
             Mousetrap.bind(['a z'], () => {
-                if (
-                    this.state.openDetach ||
-                    this.state.openDelete ||
-                    this.state.openKill ||
-                    this.state.openCopy
-                ) {
+                if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('cut');
