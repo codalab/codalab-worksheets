@@ -142,10 +142,10 @@ def parse_args():
         help="Delete the worker's working directory when the worker process exits.",
     )
     parser.add_argument(
-        '--exit-number-jobs',
+        '--exit-after-num-runs',
         help='The worker quits after this many jobs assigned to this worker',
         type=int,
-        default=10000,
+        default=sys.maxint,
     )
     return parser.parse_args()
 
