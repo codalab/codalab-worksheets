@@ -1383,7 +1383,7 @@ class BundleCLI(object):
         )
         with progress, closing(contents):
             if target_info['type'] == 'directory':
-                un_tar_directory(contents, final_path, 'gz')
+                un_tar_directory(contents, final_path, 'gz', force=args.force)
             elif target_info['type'] == 'file':
                 with open(final_path, 'wb') as out:
                     shutil.copyfileobj(contents, out)
