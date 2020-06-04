@@ -972,16 +972,6 @@ class Worksheet extends React.Component {
                 'keyup',
             );
         }
-        // paste after current focused cell
-        if (this.state.ws.info.edit_permission) {
-            Mousetrap.bind(
-                ['a v'],
-                function(e) {
-                    this.pasteBundlesToWorksheet();
-                }.bind(this),
-                'keyup',
-            );
-        }
 
         if (this.state.showBundleOperationButtons) {
             // Below are allowed shortcut even when a dialog is opened===================
