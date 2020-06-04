@@ -82,7 +82,7 @@ class WorksheetDialogs extends React.Component {
                     aria-describedby='detach-confirmation-description'
                 >
                     <DialogTitle id='detach-confirmation-title'>
-                        {'Detach all selected bundle from this worksheet?'}
+                        {'Detach all selected bundles from this worksheet?'}
                     </DialogTitle>
                     <DialogActions>
                         <Button color='primary' onClick={this.props.toggleCmdDialog('detach')}>
