@@ -40,7 +40,7 @@ class UITester(ABC):
         options = ChromeOptions()
         add_headless(options)
         self.browser = webdriver.Chrome(chrome_options=options)
-        self.browser.implicitly_wait(10)  # 10 seconds
+        self.browser.implicitly_wait(60)  # 60 seconds
         self.test()
         self.browser.close()
 
