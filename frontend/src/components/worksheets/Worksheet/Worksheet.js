@@ -392,8 +392,9 @@ class Worksheet extends React.Component {
             this.setState({ openDetach: !openDetach });
         } else if (cmd_type === 'kill') {
             this.setState({ openKill: !openKill });
-        } else if (cmd_type === 'copy') {
+        } else if (cmd_type === 'copy' || cmd_type === 'cut') {
             let validBundles = [];
+            let cutBundleIds = [];
             let actualCopiedCounts = 0;
             let tableIDs = Object.keys(this.copyCallbacks).sort();
             tableIDs.forEach((tableID) => {
@@ -412,12 +413,17 @@ class Worksheet extends React.Component {
             if (validBundles.length > 0) {
                 this.setState({ showPasteButton: true });
             }
+            let copycut = cmd_type === 'cut' ? 'Cut ' : 'Copied';
             let toastString =
                 actualCopiedCounts > 0
-                    ? 'Copied ' + actualCopiedCounts + ' bundle'
-                    : 'No valid bundle to copy';
+                    ? copycut + actualCopiedCounts + ' bundle'
+                    : 'No valid bundle selected';
             if (actualCopiedCounts > 1) {
                 toastString += 's';
+            }
+            if (cmd_type === 'cut') {
+                // Remove the bundle lines
+                this.removeItemsFromSource(validBundles.map((e) => e.id));
             }
             this.clearCheckedBundles(() => {
                 toast.info(toastString, {
@@ -434,13 +440,33 @@ class Worksheet extends React.Component {
         }
     };
 
+    removeItemsFromSource = (itemIds) => {
+        let worksheetUUID = this.state.ws.uuid;
+        const url = `/rest/worksheets/${worksheetUUID}/add-items`;
+        $.ajax({
+            url,
+            data: JSON.stringify({ ids: itemIds }),
+            contentType: 'application/json',
+            type: 'POST',
+            success: () => {
+                const textDeleted = true;
+                const param = { textDeleted };
+                this.setState({ deleting: false });
+                this.reloadWorksheet(undefined, undefined, param);
+            },
+            error: (jqHXR, status, error) => {
+                this.setState({ deleting: false });
+                alert(createAlertText(this.url, jqHXR.responseText));
+            },
+        });
+    };
+
     confirmBundleRowAction = (code) => {
         if (
             !(
                 this.state.openDelete ||
                 this.state.openDetach ||
                 this.state.openKill ||
-                this.state.openCopy ||
                 this.state.BulkBundleDialog
             )
         ) {
@@ -454,8 +480,6 @@ class Worksheet extends React.Component {
             this.executeBundleCommandNoEvent('detach');
         } else if (this.state.openKill) {
             this.executeBundleCommandNoEvent('kill');
-        } else if (this.state.openCopy) {
-            document.getElementById('copyBundleIdToClipBoard').click();
         }
         return true;
     };
@@ -953,6 +977,12 @@ class Worksheet extends React.Component {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('copy');
+            });
+            Mousetrap.bind(['a z'], () => {
+                if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
+                    return;
+                }
+                this.toggleCmdDialogNoEvent('cut');
             });
             if (this.state.ws.info.edit_permission) {
                 Mousetrap.bind(['backspace', 'del'], () => {
