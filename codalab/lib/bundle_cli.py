@@ -1361,7 +1361,7 @@ class BundleCLI(object):
         )
         with progress, closing(contents):
             if target_info['type'] == 'directory':
-                un_tar_directory(contents, final_path, 'gz')
+                un_tar_directory(contents, final_path, 'gz', force=args.force)
             elif target_info['type'] == 'file':
                 with open(final_path, 'wb') as out:
                     shutil.copyfileobj(contents, out)
@@ -3311,6 +3311,7 @@ class BundleCLI(object):
         help=[
             'Append all the items of the source worksheet to the destination worksheet.',
             'Bundles that do not yet exist on the destination service will be copied over.',
+            'Bundles in non-terminal states (READY or FAILED) will not be copied over to destination worksheet.',
             'The existing items on the destination worksheet are not affected unless the -r/--replace flag is set.',
         ],
         arguments=(
@@ -3342,17 +3343,29 @@ class BundleCLI(object):
             args.dest_worksheet_spec
         )
 
+        valid_source_items = []
         # Save all items to the destination worksheet
         for item in source_items:
+            if item['type'] == worksheet_util.TYPE_BUNDLE:
+                if item['bundle']['state'] not in [State.READY, State.FAILED]:
+                    print(
+                        'Skipping bundle {} because it has non-final state {}'.format(
+                            item['bundle']['id'], item['bundle']['state']
+                        ),
+                        file=self.stdout,
+                    )
+                    continue
             item['worksheet'] = JsonApiRelationship('worksheets', dest_worksheet_uuid)
+            valid_source_items.append(item)
+
         dest_client.create(
             'worksheet-items',
-            source_items,
+            valid_source_items,
             params={'replace': args.replace, 'uuid': dest_worksheet_uuid},
         )
 
         # Copy over the bundles
-        for item in source_items:
+        for item in valid_source_items:
             if item['type'] == worksheet_util.TYPE_BUNDLE:
                 self.copy_bundle(
                     source_client,

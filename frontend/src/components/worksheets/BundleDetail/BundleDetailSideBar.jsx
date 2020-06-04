@@ -111,6 +111,18 @@ class BundleDetailSideBar extends React.Component<
                     />
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
+                <ConfigLabel label="Tags"/>
+                <div className={classes.wrappableText}>
+                    <BundleEditableField
+                        dataType={ metadataType.tags }
+                        fieldName="tags"
+                        uuid={ bundleInfo.uuid }
+                        value={ metadata.tags }
+                        canEdit={ hasEditPermission && editableMetadataFields.includes("tags") }
+                        onChange={ (tags) => onUpdate({ tags }) }
+                    />
+                </div>
+                {/** ----------------------------------------------------------------------------------------------- */}
                 <div>
                     <ConfigLabel label="State" inline={true}/>
                     <span className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`} style={{ display: 'inline' }}>

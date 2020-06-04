@@ -960,48 +960,51 @@ def test(ctx):
     # These sleeps are required to ensure that there is sufficient time that passes between tests
     # If there is not enough time, all bundles might appear to have the same time
     time.sleep(1)
-    uuid1 = run_command([cl, 'run', 'date', '-n', name])
+    uuid1 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid1)
     time.sleep(1)
     time2 = datetime.now().isoformat()
     time.sleep(1)
-    uuid2 = run_command([cl, 'run', 'date', '-n', name])
-    uuid3 = run_command([cl, 'run', 'date', '-n', name])
+    uuid2 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid2)
+    uuid3 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid3)
     time.sleep(1)
     time3 = datetime.now().isoformat()
 
     # No results
-    check_equals('', run_command([cl, 'search', 'name=' + name, '.before=' + time1, '-u']))
+    check_equals('', _run_command([cl, 'search', 'name=' + name, '.before=' + time1, '-u']))
     check_equals('', run_command([cl, 'search', 'name=' + name, '.after=' + time3, '-u']))
 
     # Before
     check_equals(
-        uuid1, run_command([cl, 'search', 'name=' + name, '.before=' + time2, 'id=.sort', '-u'])
+        uuid1, _run_command([cl, 'search', 'name=' + name, '.before=' + time2, 'id=.sort', '-u'])
     )
     check_equals(
         uuid1 + '\n' + uuid2 + '\n' + uuid3,
-        run_command([cl, 'search', 'name=' + name, '.before=' + time3, 'id=.sort', '-u']),
+        _run_command([cl, 'search', 'name=' + name, '.before=' + time3, 'id=.sort', '-u']),
     )
 
     # After
     check_equals(
         uuid1 + '\n' + uuid2 + '\n' + uuid3,
-        run_command([cl, 'search', 'name=' + name, '.after=' + time1, 'id=.sort', '-u']),
+        _run_command([cl, 'search', 'name=' + name, '.after=' + time1, 'id=.sort', '-u']),
     )
     check_equals(
         uuid2 + '\n' + uuid3,
-        run_command([cl, 'search', 'name=' + name, '.after=' + time2, 'id=.sort', '-u']),
+        _run_command([cl, 'search', 'name=' + name, '.after=' + time2, 'id=.sort', '-u']),
     )
 
     # Before And After
     check_equals(
         uuid1,
-        run_command(
+        _run_command(
             [cl, 'search', 'name=' + name, '.after=' + time1, '.before=' + time2, 'id=.sort', '-u']
         ),
     )
     check_equals(
         uuid2 + '\n' + uuid3,
-        run_command(
+        _run_command(
             [cl, 'search', 'name=' + name, '.after=' + time2, '.before=' + time3, 'id=.sort', '-u']
         ),
     )
@@ -1434,11 +1437,19 @@ def test(ctx):
         _run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
 
+        # Create at local, transfer to remote (non-terminal state bundle)
+        uuid = _run_command([cl, 'run', 'date', '--request-gpus', '100'])
+        wait_until_state(uuid, State.STAGED)
+
         # Test adding worksheet items
         _run_command([cl, 'wadd', source_worksheet, remote_worksheet])
+        # Bundles copied over to remote_worksheet will not contain the bundle in non-terminal states, e.g. STAGED
+        assert_bundles_ready(remote_worksheet)
+
+        # Remove the STAGED bundle from source_worksheet and verify that all bundles are ready.
+        _run_command([cl, 'rm', uuid])
         _run_command([cl, 'wadd', remote_worksheet, source_worksheet])
         assert_bundles_ready(source_worksheet)
-        assert_bundles_ready(remote_worksheet)
 
 
 @TestModule.register('groups')
