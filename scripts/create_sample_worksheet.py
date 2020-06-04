@@ -71,10 +71,6 @@ class SampleWorksheet:
                     self._worksheet_name, worksheet_uuids[0]
                 )
             )
-            self._valid_worksheets = []
-            self._private_worksheets = []
-            self._valid_bundles = []
-            self._private_bundles = []
             return
 
         print('Creating a {} worksheet...'.format(self._description))
@@ -92,10 +88,13 @@ class SampleWorksheet:
 
     def test_print(self):
         self._wait_for_bundles_to_finish()
+        print('\n\nValidating output of cl print {}...'.format(self._worksheet_name))
         output_lines = run_command([self._cl, 'print', self._worksheet_name]).split('\n')
         has_error = False
         for i in range(len(self._expected_lines)):
-            if not re.match(self._expected_lines[i], output_lines[i]):
+            if re.match(self._expected_lines[i], output_lines[i]):
+                print('\x1b[1;34m{}\x1b[0m'.format(output_lines[i]))
+            else:
                 has_error = True
                 # Output mismatch message in red
                 print(
