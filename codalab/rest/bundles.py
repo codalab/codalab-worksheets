@@ -859,9 +859,13 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     for uuid in relevant_uuids:
         # check first is needs to be deleted
         bundle = local.model.get_bundle(uuid)
-        bundle_location = local.bundle_store.get_bundle_location(bundle)
-        if os.path.lexists(bundle_location):
-            local.bundle_store.cleanup(bundle)
+        if getattr(bundle.metadata, "is_linked", False) == True:
+            # Don't physically delete linked bundles.
+            pass
+        else:
+            bundle_location = local.bundle_store.get_bundle_location(bundle)
+            if os.path.lexists(bundle_location):
+                local.bundle_store.cleanup(bundle)
 
     return relevant_uuids
 
