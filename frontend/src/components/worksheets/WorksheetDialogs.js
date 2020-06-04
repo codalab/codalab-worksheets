@@ -10,7 +10,6 @@ import Tooltip from '@material-ui/core/Tooltip';
 import IconButton from '@material-ui/core/IconButton';
 import InfoIcon from '@material-ui/icons/InfoOutlined';
 import Button from '@material-ui/core/Button';
-import { red } from '@material-ui/core/colors';
 
 class WorksheetDialogs extends React.Component {
     render() {
@@ -169,10 +168,6 @@ const styles = () => ({
     warning: {
         color: 'red',
         marginBottom: 20,
-    },
-    copyDialog: {
-        width: 450,
-        height: 200,
     },
 });
 

@@ -11,6 +11,7 @@ import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import SvgIcon from '@material-ui/core/SvgIcon';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
+import { getIds } from '../../../../util/worksheet_utils';
 import { semaphore } from '../../../../util/async_loading_utils';
 import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 
@@ -102,13 +103,15 @@ class TableItem extends React.Component<{
     copyCheckedBundleRows = () => {
         let item = this.props.item;
         let bundleInfos = item.bundles_spec.bundle_infos;
+        let ids = getIds(item);
         let result = bundleInfos.filter((item, index) => {
             return this.state.childrenCheckState[index];
         });
-        result = result.map((bundle) => {
+        result = result.map((bundle, index) => {
             let bundleIdName = {};
             bundleIdName.uuid = bundle.uuid;
             bundleIdName.name = bundle.metadata.name;
+            bundleIdName.id = ids[index];
             return bundleIdName;
         });
         return result;
