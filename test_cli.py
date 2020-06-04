@@ -969,8 +969,12 @@ def test(ctx):
     time2 = datetime.now().isoformat()
     time.sleep(1)
     uuid2 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid2)
+    uuid3 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid3)
     time.sleep(1)
     time3 = datetime.now().isoformat()
+
     # No results
     check_equals('', _run_command([cl, 'search', 'name=' + name, '.before=' + time1, '-u']))
     check_equals('', _run_command([cl, 'search', 'name=' + name, '.after=' + time3, '-u']))
