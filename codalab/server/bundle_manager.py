@@ -413,7 +413,12 @@ class BundleManager(object):
         # worker's checkin frequency, update the column "exit_after_num_runs" in worker table
         # before bundle manager's next scheduling loop
         for worker in workers_list:
-            if worker['exit_after_num_runs'] < workers[worker['worker_id']]['exit_after_num_runs']:
+            # Update workers that have "exit_after_num_runs" manually set from CLI (sys.maxsize is the default value).
+            if (
+                workers[worker['worker_id']]['exit_after_num_runs'] < sys.maxsize
+                and worker['exit_after_num_runs']
+                < workers[worker['worker_id']]['exit_after_num_runs']
+            ):
                 self._worker_model.update_workers(
                     worker["user_id"],
                     worker['worker_id'],
