@@ -309,7 +309,7 @@ class DownloadManager(object):
         return True
 
     def _get_target_path(self, target):
-        bundle_path = self._bundle_store.get_bundle_location(uuid=target.bundle_uuid)
+        bundle_path = self._bundle_store.get_bundle_location(target.bundle_uuid)
         try:
             return download_util.get_target_path(bundle_path, target)
         except download_util.PathException as e:
