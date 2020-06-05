@@ -5,7 +5,6 @@ import unittest
 
 from codalab.lib.upload_manager import UploadManager
 from codalab.worker.file_util import gzip_bytestring, remove_path, tar_gzip_directory
-from codalab.objects.metadata import Metadata
 
 class UploadManagerTest(unittest.TestCase):
     def setUp(self):
@@ -36,7 +35,7 @@ class UploadManagerTest(unittest.TestCase):
         class FakeBundle(object):
             def __init__(self):
                 self.uuid = 'fake'
-                self.metadata = Metadata()
+                self.metadata = object()
 
         self.manager.upload_to_bundle_store(
             FakeBundle(),
