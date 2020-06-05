@@ -1,5 +1,5 @@
 from contextlib import closing
-from io import BytesIO
+from io import BytesIO, TextIOWrapper
 import gzip
 import os
 import shutil
@@ -9,6 +9,8 @@ import zlib
 import bz2
 
 from codalab.common import BINARY_PLACEHOLDER
+from apache_beam.io.filesystem import CompressionTypes
+from apache_beam.io.filesystems import FileSystems
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -25,6 +27,13 @@ def get_tar_version_output():
         return subprocess.getoutput('tar --version')
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
+
+
+def get_path_exists(path):
+    """
+    Returns whether the given path exists.
+    """
+    return FileSystems.exists(path)
 
 
 def tar_gzip_directory(
@@ -104,12 +113,11 @@ def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
     """
-    args = ['gzip', '-c', '-n', file_path]
     try:
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-        return proc.stdout
-    except subprocess.CalledProcessError as e:
-        raise IOError(e.output)
+        data = FileSystems.open(file_path, compression_type=CompressionTypes.UNCOMPRESSED).read()
+        return BytesIO(gzip.compress(data))
+    except Exception as e:
+        raise IOError(e)
 
 
 def un_bz2_file(source, dest_path):
@@ -122,7 +130,7 @@ def un_bz2_file(source, dest_path):
     # fileno(). Our version requires only read() and close().
 
     BZ2_BUFFER_SIZE = 100 * 1024 * 1024  # Unzip in chunks of 100MB
-    with open(dest_path, 'wb') as dest:
+    with FileSystems.create(dest_path, compression_type=CompressionTypes.UNCOMPRESSED) as dest:
         decompressor = bz2.BZ2Decompressor()
         for data in iter(lambda: source.read(BZ2_BUFFER_SIZE), b''):
             dest.write(decompressor.decompress(data))
@@ -198,15 +206,26 @@ def un_gzip_bytestring(bytestring):
             return fileobj.read()
 
 
+def get_file_size(file_path):
+    """
+    Gets the size of the file, in bytes. If file is not found, raises a
+    FileNotFoundError.
+    """
+    if not get_path_exists(file_path):
+        raise FileNotFoundError
+    # TODO: add a FileSystems.size() method to Apache Beam to make this less verbose.
+    filesystem = FileSystems.get_filesystem(file_path)
+    return filesystem.size(file_path)
+
+
 def read_file_section(file_path, offset, length):
     """
     Reads length bytes of the given file from the given offset.
     Return bytes.
     """
-    file_size = os.stat(file_path).st_size
-    if offset >= file_size:
+    if offset >= get_file_size(file_path):
         return b''
-    with open(file_path, 'rb') as fileobj:
+    with FileSystems.open(file_path, 'rb') as fileobj:
         fileobj.seek(offset, os.SEEK_SET)
         return fileobj.read(length)
 
@@ -228,11 +247,11 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 lines[-1] += '\n'
 
     try:
-        file_size = os.stat(file_path).st_size
+        file_size = get_file_size(file_path)
     except FileNotFoundError:
         return NONE_PLACEHOLDER
 
-    with open(file_path) as fileobj:
+    with TextIOWrapper(FileSystems.open(file_path)) as fileobj:
         if file_size > (num_head_lines + num_tail_lines) * max_line_length:
             if num_head_lines > 0:
                 # To ensure that the last line is a whole line, we remove the
@@ -292,15 +311,13 @@ def get_path_size(path, exclude_names=[]):
     If path is a directory, any directory entries in exclude_names will be
     ignored.
     """
-    result = os.lstat(path).st_size
-    if not os.path.islink(path) and os.path.isdir(path):
-        for child in os.listdir(path):
-            if child not in exclude_names:
-                try:
-                    full_child_path = os.path.join(path, child)
-                except UnicodeDecodeError:
-                    full_child_path = os.path.join(path.decode('utf-8'), child.decode('utf-8'))
-                result += get_path_size(full_child_path)
+    result = get_file_size(path)
+    patterns = [
+        os.path.join(path, "", "**")
+    ]  # Adds trailing slash if not already there -- this is needed so that on somewhere like S3, we correctly match directory contents, not files starting with the same prefix.
+    for child in FileSystems.match(patterns)[0].metadata_list:
+        if child.path not in exclude_names:
+            result += child.size_in_bytes
     return result
 
 
@@ -308,10 +325,7 @@ def remove_path(path):
     """
     Removes a path if it exists.
     """
-    if os.path.islink(path) or os.path.exists(path):
-        if os.path.islink(path):
-            os.remove(path)
-        elif os.path.isdir(path):
-            shutil.rmtree(path)
-        else:
-            os.remove(path)
+    filesystem = FileSystems.get_filesystem(path)
+    if not filesystem.exists(path):
+        return
+    FileSystems.delete([path])
