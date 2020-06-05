@@ -381,6 +381,7 @@ class BundleManager(object):
             workers.user_owned_workers(self._model.root_user_id), running_bundles_info
         )
 
+        workers_list = []
         # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
             if user_parallel_run_quota_left[bundle.owner_id] > 0:
@@ -408,6 +409,17 @@ class BundleManager(object):
                     worker['exit_after_num_runs'] -= 1
                     break
 
+        # To avoid the potential race condition between bundle manager's dispatch frequency and
+        # worker's checkin frequency, update the column "exit_after_num_runs" in worker table
+        # before bundle manager's next scheduling loop
+        for worker in workers_list:
+            if worker['exit_after_num_runs'] < workers[worker['worker_id']]['exit_after_num_runs']:
+                self._worker_model.update_workers(
+                    worker["user_id"],
+                    worker['worker_id'],
+                    {'exit_after_num_runs': worker['exit_after_num_runs']},
+                )
+
     def _deduct_worker_resources(self, workers_list, running_bundles_info):
         """
         From each worker, subtract resources used by running bundles.
@@ -431,7 +443,6 @@ class BundleManager(object):
                 worker['cpus'] -= bundle_resources.cpus
                 worker['gpus'] -= bundle_resources.gpus
                 worker['memory_bytes'] -= bundle_resources.memory
-                worker['exit_after_num_runs'] -= 1
         return workers_list
 
     def _filter_and_sort_workers(self, workers_list, bundle, bundle_resources):
