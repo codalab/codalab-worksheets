@@ -300,12 +300,12 @@ class Worker:
             'gpus': len(self.gpuset),
             'memory_bytes': self.max_memory,
             'free_disk_bytes': self.free_disk_bytes,
-            'exit_after_num_runs': self.exit_after_num_runs,
             'dependencies': self.cached_dependencies,
             'hostname': socket.gethostname(),
             'runs': [run.as_dict for run in self.all_runs],
             'shared_file_system': self.shared_file_system,
             'tag_exclusive': self.tag_exclusive,
+            'exit_after_num_runs': self.exit_after_num_runs,
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
