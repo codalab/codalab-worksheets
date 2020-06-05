@@ -622,10 +622,10 @@ class Worker:
 
         threading.Thread(target=write_fn).start()
 
-    def upload_bundle_contents(self, bundle_uuid, bundle_path, update_status):
+    def upload_bundle_contents(self, bundle_uuid, bundle_path, exclude_patterns, update_status):
         self.execute_bundle_service_command_with_retry(
             lambda: self.bundle_service.update_bundle_contents(
-                self.id, bundle_uuid, bundle_path, update_status
+                self.id, bundle_uuid, bundle_path, exclude_patterns, update_status
             )
         )
 
