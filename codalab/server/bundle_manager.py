@@ -420,6 +420,7 @@ class BundleManager(object):
                 and worker['exit_after_num_runs']
                 < workers[worker['worker_id']]['exit_after_num_runs']
             ):
+                # TODO: batch update workers
                 self._worker_model.update_workers(
                     worker["user_id"],
                     worker['worker_id'],
