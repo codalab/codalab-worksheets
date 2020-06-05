@@ -145,7 +145,7 @@ def parse_args():
         '--exit-after-num-runs',
         help='The worker quits after this many jobs assigned to this worker',
         type=int,
-        default=sys.maxint,
+        default=sys.maxsize,
     )
     return parser.parse_args()
 
