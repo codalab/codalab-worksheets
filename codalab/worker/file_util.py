@@ -315,3 +315,27 @@ def remove_path(path):
             shutil.rmtree(path)
         else:
             os.remove(path)
+
+
+def path_is_parent(parent_path, child_path):
+    """
+    Given a parent_path and a child_path, determine if the child path
+    is a strict subpath of the parent_path. In the case that the resolved
+    parent_path is equivalent to the resolved child_path, this function returns
+    False.
+
+    Note that this function does not dereference symbolic links.
+    """
+    # Remove relative path references.
+    parent_path = os.path.abspath(parent_path)
+    child_path = os.path.abspath(child_path)
+
+    # Explicitly handle the case where the parent_path equals the child_path
+    if parent_path == child_path:
+        return False
+
+    # Compare the common path of the parent and child path with the common
+    # path of just the parent path. Using the commonpath method on just
+    # the parent path will regularize the path name in the same way as the
+    # comparison that deals with both paths, removing any trailing path separator.
+    return os.path.commonpath([parent_path]) == os.path.commonpath([parent_path, child_path])
