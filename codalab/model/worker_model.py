@@ -203,22 +203,22 @@ class WorkerModel(object):
         Returns information about all the workers in the database. The return
         value is a list of dicts with the structure shown in the code below.
         """
-        if update:
-            with self._engine.begin() as conn:
-                existing_row = conn.execute(
-                    cl_worker.select().where(
-                        and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
-                    )
-                ).fetchone()
+        if not update:
+            return
 
-                if existing_row:
-                    conn.execute(
-                        cl_worker.update()
-                        .where(
-                            and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
-                        )
-                        .values(update)
-                    )
+        with self._engine.begin() as conn:
+            existing_row = conn.execute(
+                cl_worker.select().where(
+                    and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
+                )
+            ).fetchone()
+
+            if existing_row:
+                conn.execute(
+                    cl_worker.update()
+                    .where(and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id))
+                    .values(update)
+                )
 
     def allocate_socket(self, user_id, worker_id, conn=None):
         """
