@@ -10,6 +10,8 @@ from codalab.worker.bundle_state import State
 logger = logging.getLogger(__name__)
 
 
+# TODO: fix methods here.
+
 def retry_if_no_longer_running(f):
     """
     Decorator that retries a download if the bundle finishes running in the
@@ -162,6 +164,7 @@ class DownloadManager(object):
                 )
             )
         elif bundle_state != State.RUNNING:
+            # TODO: fix this
             directory_path = self._get_target_path(target)
             return file_util.tar_gzip_directory(directory_path)
         else:
@@ -190,6 +193,7 @@ class DownloadManager(object):
         Returns a file-like object reading the given file. This file is gzipped
         if gzipped is True.
         """
+        # TODO: fix this
         if self._is_available_locally(target):
             file_path = self._get_target_path(target)
             if gzipped:
@@ -218,6 +222,7 @@ class DownloadManager(object):
         Reads length bytes of the file at the given path in the bundle.
         The result is gzipped if gzipped is True.
         """
+        # TODO: fix this
         if self._is_available_locally(target):
             file_path = self._get_target_path(target)
             bytestring = file_util.read_file_section(file_path, offset, length)
@@ -252,6 +257,7 @@ class DownloadManager(object):
         truncation point.
         The return value is gzipped if gzipped is True.
         """
+        # TODO: fix this
         if self._is_available_locally(target):
             file_path = self._get_target_path(target)
             # Note: summarize_file returns string, but make it bytes for consistency.

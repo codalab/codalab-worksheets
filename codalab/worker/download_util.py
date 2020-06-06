@@ -4,6 +4,7 @@ import os
 class PathException(Exception):
     pass
 
+# TODO: fix methods here.
 
 class BundleTarget:
     """

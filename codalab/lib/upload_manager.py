@@ -5,6 +5,7 @@ import shutil
 from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
 
+# TODO: fix methods here.
 
 class UploadManager(object):
     """
@@ -60,6 +61,7 @@ class UploadManager(object):
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
         bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
         try:
+            # TODO: fix this
             path_util.make_directory(bundle_path)
             # Note that for uploads with a single source, the directory
             # structure is simplified at the end.
@@ -179,6 +181,7 @@ class UploadManager(object):
 
     def has_contents(self, bundle):
         # TODO: make this non-fs-specific.
+        # TODO: fix this.
         return os.path.exists(self._bundle_store.get_bundle_location(bundle.uuid))
 
     def cleanup_existing_contents(self, bundle):

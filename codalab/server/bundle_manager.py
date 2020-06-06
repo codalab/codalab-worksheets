@@ -208,7 +208,7 @@ class BundleManager(object):
                 parent_bundle_path = parent_bundle_link_url or os.path.normpath(
                     self._bundle_store.get_bundle_location(dep.parent_uuid)
                 )
-                # TODO: make this logic non-fs specific.
+                # TODO: make this logic non-fs specific. TODO.
                 dependency_path = os.path.normpath(
                     os.path.join(parent_bundle_path, dep.parent_path)
                 )
