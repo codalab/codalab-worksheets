@@ -96,8 +96,8 @@ class TextEditorItem extends React.Component<{
             success: (data, status, jqXHR) => {
                 const moveIndex = true ? mode === 'create' : false;
                 const param = { moveIndex };
-                reloadWorksheet(undefined, undefined, param);
                 closeEditor();
+                reloadWorksheet(undefined, undefined, param);
             },
             error: (jqHXR, status, error) => {
                 alert(createAlertText(this.url, jqHXR.responseText));

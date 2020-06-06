@@ -1101,6 +1101,51 @@ def test(ctx):
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
 
+    # Test exclude_patterns
+    remote_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt',
+            '--exclude-patterns',
+            '*bye*.txt',
+        ]
+    )
+    wait(remote_uuid)
+    # Since shared file system workers don't upload, exclude_patterns do not apply.
+    # Verify that all files are kept if the worker is using a shared file system.
+    if os.environ.get("CODALAB_SHARED_FILE_SYSTEM"):
+        check_num_lines(
+            2 + 2 + 3, _run_command([cl, 'cat', remote_uuid])
+        )  # 2 header lines, 1 stdout file, 1 stderr file, 3 items at bundle target root
+    else:
+        check_num_lines(
+            2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
+        )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
+
+    # Test multiple exclude_patterns
+    remote_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt',
+            '--exclude-patterns',
+            'bye.txt',
+            'goodbye.txt',
+        ]
+    )
+    wait(remote_uuid)
+    # Since shared file system workers don't upload, exclude_patterns do not apply.
+    # Verify that all files are kept if the worker is using a shared file system.
+    if os.environ.get("CODALAB_SHARED_FILE_SYSTEM"):
+        check_num_lines(
+            2 + 2 + 3, _run_command([cl, 'cat', remote_uuid])
+        )  # 2 header lines, 1 stdout file, 1 stderr file, 3 items at bundle target root
+    else:
+        check_num_lines(
+            2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
+        )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
+
 
 @TestModule.register('run2')
 def test(ctx):

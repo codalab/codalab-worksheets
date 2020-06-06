@@ -1,4 +1,5 @@
 import docker
+import glob
 import logging
 import os
 import threading
@@ -11,7 +12,7 @@ from collections import namedtuple
 from pathlib import Path
 
 from codalab.lib.formatting import size_str, duration_str
-from codalab.worker.file_util import remove_path, get_path_size
+from codalab.worker.file_util import remove_path, get_path_size, path_is_parent
 from codalab.worker.bundle_state import State, DependencyKey
 from codalab.worker.fsm import DependencyStage, StateTransitioner
 from codalab.worker.worker_thread import ThreadDict
@@ -527,11 +528,19 @@ class RunStateMachine(StateTransitioner):
             return run_state._replace(stage=RunStage.RESTAGED)
 
         if not self.shared_file_system and run_state.has_contents:
-            # No need to upload results since results are directly written to bundle store
             return run_state._replace(
                 stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
             )
         else:
+            # No need to upload results since results are directly written to bundle store
+            # Delete any files that match the exclude_patterns .
+            for exclude_pattern in run_state.bundle.metadata["exclude_patterns"]:
+                full_pattern = os.path.join(run_state.bundle_path, exclude_pattern)
+                for file_path in glob.glob(full_pattern, recursive=True):
+                    # Only remove files that are subpaths of run_state.bundle_path, in case
+                    # that exclude_pattern is something like "../../../".
+                    if path_is_parent(parent_path=run_state.bundle_path, child_path=file_path):
+                        remove_path(file_path)
             return self.finalize_run(run_state)
 
     def _transition_from_UPLOADING_RESULTS(self, run_state):
@@ -561,7 +570,10 @@ class RunStateMachine(StateTransitioner):
                     return True
 
                 self.upload_bundle_callback(
-                    run_state.bundle.uuid, run_state.bundle_path, progress_callback
+                    run_state.bundle.uuid,
+                    run_state.bundle_path,
+                    run_state.bundle.metadata["exclude_patterns"],
+                    progress_callback,
                 )
                 self.uploading[run_state.bundle.uuid]['success'] = True
             except Exception as e:
