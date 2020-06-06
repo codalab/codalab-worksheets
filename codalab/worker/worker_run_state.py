@@ -118,6 +118,7 @@ class RunStateMachine(StateTransitioner):
     It's not always clear where the line is.
     """
 
+    _ROOT = '/'
     _CURRENT_DIRECTORY = '.'
 
     def __init__(
@@ -271,18 +272,13 @@ class RunStateMachine(StateTransitioner):
         # 2) Set up symlinks
         docker_dependencies = []
         docker_dependencies_path = (
-            '/' + run_state.bundle.uuid + ('_dependencies' if not self.shared_file_system else '')
+            RunStateMachine._ROOT
+            + run_state.bundle.uuid
+            + ('_dependencies' if not self.shared_file_system else '')
         )
 
         for dep in run_state.bundle.dependencies:
             full_child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
-            if not full_child_path.startswith(run_state.bundle_path):
-                # Dependencies should end up in their bundles (ie prevent using relative paths like ..
-                # to get out of their parent bundles
-                message = 'Invalid key for dependency: %s' % (dep.child_path)
-                logger.error(message)
-                return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
-
             to_mount = []
             dependency_path = self._get_dependency_path(run_state, dep)
 
@@ -306,10 +302,15 @@ class RunStateMachine(StateTransitioner):
                         parent_path=dependency_path,
                     )
                 )
-                # child_path can be a nested path, so later remove everything from the first element of the path
-                self.paths_to_remove.append(
-                    os.path.join(run_state.bundle_path, Path(dep.child_path).parts[0])
-                )
+
+                first_element_of_path = Path(dep.child_path).parts[0]
+                if first_element_of_path == RunStateMachine._ROOT:
+                    self.paths_to_remove.append(full_child_path)
+                else:
+                    # child_path can be a nested path, so later remove everything from the first element of the path
+                    self.paths_to_remove.append(
+                        os.path.join(run_state.bundle_path, first_element_of_path)
+                    )
 
             for dependency in to_mount:
                 try:

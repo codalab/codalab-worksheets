@@ -1129,6 +1129,13 @@ def test(ctx):
     wait(uuid)
     check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
 
+    # Keys can also be absolute paths
+    uuid = _run_command(
+        [cl, 'run', '/foo/bar:%s' % dir1, '/foo/bar2:%s' % dir3, 'cat /foo/bar2/f1']
+    )
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
     # Test that backwards compatibility is maintained
     uuid = _run_command([cl, 'run', 'f1:%s/f1' % dir1, 'foo/bar:%s' % dir1, 'cat f1'])
     wait(uuid)
