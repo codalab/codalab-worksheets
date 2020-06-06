@@ -162,8 +162,7 @@ class FileUtilTest(unittest.TestCase):
             f2.write(b"hello world")
             f2.seek(0)
             results = get_path_size(dirname)
-            # One behavioral change from os tools -> Beam localfilesystem -- we don't count 4096 bytes for subdirectories in the dir size. So this value is equal to 4118, not 8215.
-            self.assertEqual(results, 4118)
+            self.assertEqual(results, 8215)
 
     def test_remove_path(self):
         with tempfile.NamedTemporaryFile(delete=False) as f:
