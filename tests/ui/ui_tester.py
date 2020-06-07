@@ -86,7 +86,6 @@ class UITester(ABC):
             self.send_keyboard_shortcut('an')
         else:
             self.expand_last_bundle()
-            self.pause()
             self.scroll_to_bottom('worksheet_container')
             self.click(By.XPATH, "//span[.='Edit and Rerun']")
         self.pause()
@@ -107,7 +106,6 @@ class UITester(ABC):
 
         # Edit name and description
         self.expand_last_bundle()
-        self.pause()
         editable_fields = self.browser.find_elements(By.CLASS_NAME, 'editable-field')
         edit_field(editable_fields[-2], name)
         edit_field(editable_fields[-1], description)
@@ -115,7 +113,6 @@ class UITester(ABC):
         # Edit bundle permission
         self.scroll_to_bottom('worksheet_container')
         self.browser.find_elements_by_tag_name('svg')[-1].click()
-        self.longer_pause()
         select_boxes = self.browser.find_elements_by_tag_name('select')
         self.select_option(select_boxes[-1], permission)
         self.longer_pause()
@@ -134,7 +131,6 @@ class UITester(ABC):
             self.send_keyboard_shortcut(Keys.SHIFT + 'e')
         else:
             self.click(By.CSS_SELECTOR, '[aria-label="Edit Source"]')
-        self.pause()
         source_field = self.browser.switch_to.active_element
         source_field.send_keys(Keys.ENTER + Keys.ENTER)
         source_field.send_keys(text)
@@ -148,7 +144,7 @@ class UITester(ABC):
     def expand_last_bundle(self):
         self.scroll_to_bottom('worksheet_container')
         self.browser.find_elements_by_tag_name('button')[-1].click()
-        self.pause()
+        self.longer_pause()
 
     def add_text_to_worksheet(self, text, use_keyboard_shortcut=False):
         if use_keyboard_shortcut:
