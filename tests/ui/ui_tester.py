@@ -44,10 +44,8 @@ class UITester(ABC):
         self.test()
         self.browser.close()
 
-        # TODO: Firefox driver is not working with GitHub Actions
         # Test Firefox
         options = FirefoxOptions()
-        options.log.level = "trace"
         add_headless(options)
         self.browser = webdriver.Firefox(log_path='', firefox_options=options)
         self.browser.implicitly_wait(60)  # 60 seconds
