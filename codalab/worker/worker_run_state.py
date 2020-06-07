@@ -1,4 +1,5 @@
 from collections import namedtuple
+import glob
 import logging
 import os
 import threading
@@ -9,7 +10,7 @@ import docker
 import codalab.worker.docker_utils as docker_utils
 
 from codalab.lib.formatting import size_str, duration_str
-from codalab.worker.file_util import remove_path, get_path_size
+from codalab.worker.file_util import remove_path, get_path_size, path_is_parent
 from codalab.worker.bundle_state import State, DependencyKey
 from codalab.worker.fsm import DependencyStage, StateTransitioner
 from codalab.worker.worker_thread import ThreadDict
@@ -64,6 +65,13 @@ class RunStage(object):
     FINISHED = 'RUN_STAGE.FINISHED'
     WORKER_STATE_TO_SERVER_STATE[FINISHED] = State.READY
 
+    """
+    This stage will collect bundles in terminal states and 
+    sent them back to the server with RESTAGED state
+    """
+    RESTAGED = 'RUN_STAGE.RESTAGED'
+    WORKER_STATE_TO_SERVER_STATE[RESTAGED] = State.STAGED
+
 
 RunState = namedtuple(
     'RunState',
@@ -92,6 +100,7 @@ RunState = namedtuple(
         'kill_message',  # Optional[str]
         'finished',  # bool
         'finalized',  # bool
+        'is_restaged',  # bool
     ],
 )
 
@@ -125,6 +134,7 @@ class RunStateMachine(StateTransitioner):
         self.add_transition(RunStage.UPLOADING_RESULTS, self._transition_from_UPLOADING_RESULTS)
         self.add_transition(RunStage.FINALIZING, self._transition_from_FINALIZING)
         self.add_terminal(RunStage.FINISHED)
+        self.add_terminal(RunStage.RESTAGED)
 
         self.dependency_manager = dependency_manager
         self.docker_image_manager = docker_image_manager
@@ -161,7 +171,7 @@ class RunStateMachine(StateTransitioner):
             - Start the docker container
         4- If all is successful, move to RUNNING state
         """
-        if run_state.is_killed:
+        if run_state.is_killed or run_state.is_restaged:
             return run_state._replace(stage=RunStage.CLEANING_UP)
 
         # Check CPU and GPU availability
@@ -170,7 +180,9 @@ class RunStateMachine(StateTransitioner):
                 run_state.resources.cpus, run_state.resources.gpus
             )
         except Exception as e:
-            message = "Unexpectedly unable to assign enough resources: %s" % str(e)
+            message = "Unexpectedly unable to assign enough resources to bundle {}: {}".format(
+                run_state.bundle.uuid, str(e)
+            )
             logger.error(message)
             logger.error(traceback.format_exc())
             return run_state._replace(run_status=message)
@@ -394,7 +406,7 @@ class RunStateMachine(StateTransitioner):
         run_state = check_and_report_finished(run_state)
         run_state = check_resource_utilization(run_state)
 
-        if run_state.is_killed:
+        if run_state.is_killed or run_state.is_restaged:
             if docker_utils.container_exists(run_state.container):
                 try:
                     run_state.container.kill()
@@ -456,12 +468,23 @@ class RunStateMachine(StateTransitioner):
             except Exception:
                 logger.error(traceback.format_exc())
 
+        if run_state.is_restaged:
+            return run_state._replace(stage=RunStage.RESTAGED)
+
         if not self.shared_file_system and run_state.has_contents:
-            # No need to upload results since results are directly written to bundle store
             return run_state._replace(
                 stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
             )
         else:
+            # No need to upload results since results are directly written to bundle store
+            # Delete any files that match the exclude_patterns .
+            for exclude_pattern in run_state.bundle.metadata["exclude_patterns"]:
+                full_pattern = os.path.join(run_state.bundle_path, exclude_pattern)
+                for file_path in glob.glob(full_pattern, recursive=True):
+                    # Only remove files that are subpaths of run_state.bundle_path, in case
+                    # that exclude_pattern is something like "../../../".
+                    if path_is_parent(parent_path=run_state.bundle_path, child_path=file_path):
+                        remove_path(file_path)
             return self.finalize_run(run_state)
 
     def _transition_from_UPLOADING_RESULTS(self, run_state):
@@ -475,6 +498,8 @@ class RunStateMachine(StateTransitioner):
         If uploading and finished:
             Move to FINALIZING state
         """
+        if run_state.is_restaged:
+            return run_state._replace(stage=RunStage.RESTAGED)
 
         def upload_results():
             try:
@@ -489,7 +514,10 @@ class RunStateMachine(StateTransitioner):
                     return True
 
                 self.upload_bundle_callback(
-                    run_state.bundle.uuid, run_state.bundle_path, progress_callback
+                    run_state.bundle.uuid,
+                    run_state.bundle_path,
+                    run_state.bundle.metadata["exclude_patterns"],
+                    progress_callback,
                 )
                 self.uploading[run_state.bundle.uuid]['success'] = True
             except Exception as e:
@@ -527,6 +555,9 @@ class RunStateMachine(StateTransitioner):
         """
         Prepare the finalize message to be sent with the next checkin
         """
+        if run_state.is_restaged:
+            return run_state._replace(stage=RunStage.RESTAGED)
+
         if run_state.is_killed:
             # Append kill_message, which contains more useful info on why a run was killed, to the failure message.
             failure_message = (

@@ -25,6 +25,7 @@ import shutil
 import sys
 import time
 import textwrap
+import json
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
@@ -32,6 +33,8 @@ from shlex import quote
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
+
+import codalab.model.bundle_model as bundle_model
 
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.make_bundle import MakeBundle
@@ -151,6 +154,8 @@ OTHER_COMMANDS = ('help', 'status', 'alias', 'config', 'logout')
 # Markdown headings
 HEADING_LEVEL_2 = '## '
 HEADING_LEVEL_3 = '### '
+
+NO_RESULTS_FOUND = 'No results found'
 
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
@@ -791,6 +796,12 @@ class BundleCLI(object):
             help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
             completer=WorksheetsCompleter,
         ),
+        Commands.Argument(
+            '-m',
+            '--memoize',
+            help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
+            action='store_true',
+        ),
     ) + WAIT_ARGUMENTS
 
     @staticmethod
@@ -874,6 +885,22 @@ class BundleCLI(object):
 
     def print_version(self):
         print('CodaLab CLI version %s' % CODALAB_VERSION, file=self.stdout)
+
+    def print_result_limit_info(self, result_size):
+        """
+        Print at most SEARCH_RESULTS_LIMIT (10) results are shown by default to stderr.
+        Args:
+            result_size: number of results returned.
+        Returns:
+            None
+        """
+        if result_size == bundle_model.SEARCH_RESULTS_LIMIT:
+            print(
+                'Only {} results are shown. Use .limit=N to show the first N results.'.format(
+                    bundle_model.SEARCH_RESULTS_LIMIT
+                ),
+                file=self.stderr,
+            )
 
     @Commands.command(
         'help',
@@ -1277,6 +1304,12 @@ class BundleCLI(object):
                 help='Path to download bundle to.  By default, the bundle or subpath name in the current directory is used.',
             ),
             Commands.Argument(
+                '-f',
+                '--force',
+                action='store_true',
+                help='Overwrite the output path if a file already exists.',
+            ),
+            Commands.Argument(
                 '-w',
                 '--worksheet-spec',
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
@@ -1306,8 +1339,11 @@ class BundleCLI(object):
             )
         final_path = os.path.join(os.getcwd(), local_path)
         if os.path.exists(final_path):
-            print('Local file/directory \'%s\' already exists.' % local_path, file=self.stdout)
-            return
+            if args.force:
+                shutil.rmtree(final_path)
+            else:
+                print('Local file/directory \'%s\' already exists.' % local_path, file=self.stdout)
+                return
 
         # Do the download.
         target_info = client.fetch_contents_info(target, 0)
@@ -1325,7 +1361,7 @@ class BundleCLI(object):
         )
         with progress, closing(contents):
             if target_info['type'] == 'directory':
-                un_tar_directory(contents, final_path, 'gz')
+                un_tar_directory(contents, final_path, 'gz', force=args.force)
             elif target_info['type'] == 'file':
                 with open(final_path, 'wb') as out:
                     shutil.copyfileobj(contents, out)
@@ -1419,40 +1455,41 @@ class BundleCLI(object):
             },
         )
 
-        # If bundle contents don't exist, finish after just copying metadata
+        # Fetch bundle metadata of bundle contents from source client
         try:
-            target_info = source_client.fetch_contents_info((source_bundle_uuid, ''))
+            target_info = source_client.fetch_contents_info(BundleTarget(source_bundle_uuid, ''))
         except NotFoundError:
+            # When bundle content doesn't exist, update the bundle state with final states and return
+            dest_client.upload_contents_blob(
+                dest_bundle['id'],
+                params={
+                    'state_on_success': source_info['state'],  # copy bundle state
+                    'finalize_on_success': True,
+                },
+            )
             return
 
         # Collect information about how server should unpack
         filename = nested_dict_get(source_info, 'metadata', 'name')
+        # Zip bundle directory if there is any
         if target_info['type'] == 'directory':
             filename += '.tar.gz'
             unpack = True
         else:
             unpack = False
-
-        # Bundles stuck in non-final states such as 'running' should not keep
-        # that state at the destination server, and should instead just fallback
-        # to 'failed'
-        if source_info['state'] == State.READY:
-            source_state = State.READY
-        else:
-            source_state = State.FAILED
-
+        # Fetch bundle content from source client
+        source_file = source_client.fetch_contents_blob(BundleTarget(source_bundle_uuid, ''))
         # Send file over
         progress = FileTransferProgress('Copied ', f=self.stderr)
-        source = source_client.fetch_contents_blob((source_bundle_uuid, ''))
-        with closing(source), progress:
+        with closing(source_file), progress:
             dest_client.upload_contents_blob(
                 dest_bundle['id'],
-                fileobj=source,
+                fileobj=source_file,
                 params={
                     'filename': filename,
                     'unpack': unpack,
                     'simplify': False,  # retain original bundle verbatim
-                    'state_on_success': source_state,  # copy bundle state
+                    'state_on_success': source_info['state'],  # copy bundle state
                     'finalize_on_success': True,
                 },
                 progress_callback=progress.update,
@@ -1552,6 +1589,12 @@ class BundleCLI(object):
             Commands.Argument(  # Internal for web FE positioned insert.
                 '-a', '--after_sort_key', help='Insert after this sort_key', completer=NullCompleter
             ),
+            Commands.Argument(
+                '-m',
+                '--memoize',
+                help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
+                action='store_true',
+            ),
         )
         + Commands.metadata_arguments([RunBundle])
         + EDIT_ARGUMENTS
@@ -1564,16 +1607,39 @@ class BundleCLI(object):
 
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
         params = {'worksheet': worksheet_uuid}
+
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
-        new_bundle = client.create(
-            'bundles',
-            self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
-            params=params,
-        )
+        if args.memoize:
+            dependencies = [
+                {'child_path': key, 'parent_uuid': bundle_target.bundle_uuid}
+                for key, bundle_target in targets
+            ]
+            # A list of matched uuids in the order they were created.
+            memoized_bundles = client.fetch(
+                'bundles',
+                params={'command': args.command, 'dependencies': json.dumps(dependencies)},
+            )
 
-        print(new_bundle['uuid'], file=self.stdout)
-        self.wait(client, args, new_bundle['uuid'])
+        if args.memoize and len(memoized_bundles) > 0:
+            new_bundle = memoized_bundles[-1]
+            print(new_bundle['uuid'], file=self.stdout)
+            self.copy_bundle(
+                source_client=client,
+                source_bundle_uuid=new_bundle['uuid'],
+                dest_client=client,
+                dest_worksheet_uuid=worksheet_uuid,
+                copy_dependencies=False,
+                add_to_worksheet=True,
+            )
+        else:
+            new_bundle = client.create(
+                'bundles',
+                self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
+                params=params,
+            )
+            print(new_bundle['uuid'], file=self.stdout)
+            self.wait(client, args, new_bundle['uuid'])
 
     @Commands.command(
         'docker',
@@ -1932,6 +1998,8 @@ class BundleCLI(object):
         # Print table
         if len(bundles) > 0:
             self.print_bundle_info_list(bundles, uuid_only=args.uuid_only, print_ref=False)
+        elif not args.uuid_only:
+            print(NO_RESULTS_FOUND, file=self.stderr)
 
         # Add the bundles to the current worksheet
         if args.append:
@@ -2039,6 +2107,8 @@ class BundleCLI(object):
                     return '^' + str(len(bundle_info_list) - i)
                 else:
                     return info.get(col, nested_dict_get(info, 'metadata', col))
+
+            self.print_result_limit_info(len(bundle_info_list))
 
             for bundle_info in bundle_info_list:
                 bundle_info['owner'] = nested_dict_get(bundle_info, 'owner', 'user_name')
@@ -2198,7 +2268,7 @@ class BundleCLI(object):
     def print_permissions(self, info):
         print('permission: %s' % permission_str(info['permission']), file=self.stdout)
         print('group_permissions:', file=self.stdout)
-        print('  %s' % group_permissions_str(info['group_permissions']), file=self.stdout)
+        print('  %s' % group_permissions_str(info.get('group_permissions', [])), file=self.stdout)
 
     def print_contents(self, client, info):
         def wrap(string):
@@ -2507,7 +2577,7 @@ class BundleCLI(object):
                     if not result:
                         break
                     subpath_offset[i] += len(result)
-                    self.stdout.write(result)
+                    self.stdout.write(ensure_str(result))
                     if len(result) < READ_LENGTH:
                         # No more to read.
                         break
@@ -2646,6 +2716,7 @@ class BundleCLI(object):
             args.shadow,
             args.dry_run,
             metadata_override=metadata,
+            memoize=args.memoize,
         )
         for (old, new) in plan:
             print(
@@ -3107,7 +3178,7 @@ class BundleCLI(object):
                 print(line, file=self.stdout)
         else:
             print(self._worksheet_description(worksheet_info), file=self.stdout)
-            interpreted_blocks = client.fetch_interpreted_worksheet(worksheet_uuid)['items']
+            interpreted_blocks = client.fetch_interpreted_worksheet(worksheet_uuid)['blocks']
             self.display_blocks(client, worksheet_info, interpreted_blocks)
 
     def display_blocks(self, client, worksheet_info, interpreted_blocks):
@@ -3184,11 +3255,13 @@ class BundleCLI(object):
             'worksheets',
             params={'keywords': args.keywords, 'include': ['owner', 'group_permissions']},
         )
+
         if args.uuid_only:
             for row in worksheet_dicts:
                 print(row['uuid'], file=self.stdout)
         else:
             if worksheet_dicts:
+                self.print_result_limit_info(len((worksheet_dicts)))
                 for row in worksheet_dicts:
                     row['owner'] = self.simple_user_str(row['owner'])
                     row['permissions'] = group_permissions_str(row['group_permissions'])
@@ -3196,6 +3269,8 @@ class BundleCLI(object):
                 self.print_table(
                     ('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs
                 )
+            else:
+                print(NO_RESULTS_FOUND, file=self.stderr)
         return {'refs': self.create_reference_map('worksheet', worksheet_dicts)}
 
     @Commands.command(
@@ -3236,6 +3311,7 @@ class BundleCLI(object):
         help=[
             'Append all the items of the source worksheet to the destination worksheet.',
             'Bundles that do not yet exist on the destination service will be copied over.',
+            'Bundles in non-terminal states (READY or FAILED) will not be copied over to destination worksheet.',
             'The existing items on the destination worksheet are not affected unless the -r/--replace flag is set.',
         ],
         arguments=(
@@ -3267,17 +3343,29 @@ class BundleCLI(object):
             args.dest_worksheet_spec
         )
 
+        valid_source_items = []
         # Save all items to the destination worksheet
         for item in source_items:
+            if item['type'] == worksheet_util.TYPE_BUNDLE:
+                if item['bundle']['state'] not in [State.READY, State.FAILED]:
+                    print(
+                        'Skipping bundle {} because it has non-final state {}'.format(
+                            item['bundle']['id'], item['bundle']['state']
+                        ),
+                        file=self.stdout,
+                    )
+                    continue
             item['worksheet'] = JsonApiRelationship('worksheets', dest_worksheet_uuid)
+            valid_source_items.append(item)
+
         dest_client.create(
             'worksheet-items',
-            source_items,
+            valid_source_items,
             params={'replace': args.replace, 'uuid': dest_worksheet_uuid},
         )
 
         # Copy over the bundles
-        for item in source_items:
+        for item in valid_source_items:
             if item['type'] == worksheet_util.TYPE_BUNDLE:
                 self.copy_bundle(
                     source_client,

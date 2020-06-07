@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.11_
+_version 0.5.14_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -306,7 +306,8 @@ Query parameters:
 
 ### `GET /bundles`
 
-Fetch bundles by bundle `specs` OR search `keywords`. Behavior is undefined
+Fetch bundles in the following two ways:
+1. By bundle `specs` OR search `keywords` . Behavior is undefined
 when both `specs` and `keywords` are provided.
 
 Query parameters:
@@ -343,7 +344,17 @@ is returned as:
     }
 }
 ```
+2. By bundle `command` and/or `dependencies` (for `--memoized` option in cl [run/mimic] command).
+When `dependencies` is not defined, the searching result will include bundles that match with command only.
 
+Query parameters:
+ - `command`      : the command of a bundle in string
+ - `dependencies` : the dependencies of a bundle in the format of
+                    '[{"child_path":key1, "parent_uuid":UUID1},
+                    {"child_path":key2, "parent_uuid":UUID2}]'
+    1. a UUID should be in the format of 32 hex characters with a preceding '0x' (partial UUID is not allowed).
+    2. the key should be able to uniquely identify a (child_path, parent_uuid) pair in the list.
+The returning result will be aggregated in the same way as 1.
 
 ### `POST /bundles`
 
@@ -773,12 +784,34 @@ JSON request body:
 
 ### `POST /interpret/wsearch`
 
-Returns worksheet items given a search query for worksheets.
+Returns worksheets information given a search query for worksheets.
 
 JSON request body:
 ```
 {
     "keywords": [ list of search keywords ]
+}
+```
+
+Response body:
+```
+{
+    "response": [
+        {id: 6,
+        uuid: "0x5505f540936f4d0d919f3186141192b0",
+        name: "codalab-a",
+        title: "CodaLab Dashboard",
+        frozen: null,
+        owner_id: "0"
+        owner_name: "codalab"
+        group_permissions: {
+            id: 8,
+            group_uuid: "0x41e95d8592de417cbb726085d6986137",
+            group_name: "public",
+            permission: 1}
+        }
+        ...
+    ]
 }
 ```
 
@@ -849,6 +882,42 @@ Return information about a worksheet. Calls
 - resolve_interpreted_items: get more information about a worksheet.
 In the future, for large worksheets, might want to break this up so
 that we can render something basic.
+Return: 
+    worksheet_info dict{}:
+        key:[value_type] <description>
+        blocks:[list] 
+                Resolved worksheet blocks from raw_items.
+                    Bundles will be grouped into table block items, 
+                    text items might be grouped into one markdown block etc.
+        source:[list] source lines
+        raw_to_block:[list] 
+                        Raw_items to its block index pair.
+                            For example, assume the first resolved block item is a bundle table that has 2 rows,
+                            then the 2nd element in the list would be [0, 1]
+                            [0, 1]: 0 means the item belongs to the first block,
+                                    1 means the item is the second item of the block (2nd bundle in our example)
+                            NOTE: Used for setting focus on frontend
+        block_to_raw:[dict] 
+                        Maps the blocks (table, markdown, records) to their corresponding source line indices,
+                        it's mostly a reverse mapping of raw_to_block, by mostly: raw_to_block has some bug,
+                        please refer to worksheet_utils flush_bundles function.
+                        This can be used to index the source on the frontend
+                        Example:
+                        [0, 0]: 0
+                        [0, 1]: 1
+                        [1, 0]: 9
+                        This means the first blocks' first item corresponds to the first line in source,
+                        the second item corresponds to the second line in source
+                        The second block corresponds the 10th line in source. 
+                        2-8 can be skipped for multiple reasons: blank lines, comments, schema lines etc.
+                            NOTE: Used for setting focus on frontend                                      
+
+This endpoint can be called with &brief=1 in order to give an abbreviated version,
+which does not resolve searches or wsearches.
+
+To return an interpreted worksheet that only resolves a particular search/wsearch,
+pass in the search query to the "directive" argument. The value for this argument
+must be a search/wsearch query -- for example, &directive=search 0x .limit=100
 
 
 &uarr; [Back to Top](#table-of-contents)

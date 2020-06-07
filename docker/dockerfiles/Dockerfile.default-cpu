@@ -74,7 +74,6 @@ RUN pip2 install -U \
       pandas \
       sympy \
       nose \
-      spacy \
       tqdm \
       wheel \
       scikit-learn \
@@ -94,6 +93,8 @@ RUN python3 -m pip install -U \
       scikit-image \
       nltk
 
+# Install spacy separately for python2.7, otherwise it tries to force a newer version of numpy which isn't supported on python2.7
+RUN pip2 install spacy
 RUN python -m spacy download en
 RUN python3 -m spacy download en
 

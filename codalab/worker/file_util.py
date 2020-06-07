@@ -11,7 +11,20 @@ import bz2
 from codalab.common import BINARY_PLACEHOLDER
 
 NONE_PLACEHOLDER = '<none>'
-GIT_PATTERN = '.git'
+
+# Patterns to always ignore when zipping up directories
+ALWAYS_IGNORE_PATTERNS = ['.git', '._*', '__MACOSX']
+
+
+def get_tar_version_output():
+    """
+    Gets the current tar library's version information by returning the stdout
+    of running `tar --version`.
+    """
+    try:
+        return subprocess.getoutput('tar --version')
+    except subprocess.CalledProcessError as e:
+        raise IOError(e.output)
 
 
 def tar_gzip_directory(
@@ -28,19 +41,24 @@ def tar_gzip_directory(
                       the directory structure are excluded.
     ignore_file: Name of the file where exclusion patterns are read from.
     """
-    # Always ignore entries specified by the ignore file (e.g. .gitignore)
     args = ['tar', 'czf', '-', '-C', directory_path]
+
+    # If the BSD tar library is being used, append --disable-copy to prevent creating ._* files
+    if 'bsdtar' in get_tar_version_output():
+        args.append('--disable-copyfile')
+
     if ignore_file:
+        # Ignore entries specified by the ignore file (e.g. .gitignore)
         args.append('--exclude-ignore=' + ignore_file)
     if follow_symlinks:
         args.append('-h')
     if not exclude_patterns:
         exclude_patterns = []
 
-    # Always exclude .git
-    exclude_patterns.append(GIT_PATTERN)
+    exclude_patterns.extend(ALWAYS_IGNORE_PATTERNS)
     for pattern in exclude_patterns:
         args.append('--exclude=' + pattern)
+
     if exclude_names:
         for name in exclude_names:
             # Exclude top-level entries provided by exclude_names
@@ -55,10 +73,12 @@ def tar_gzip_directory(
         raise IOError(e.output)
 
 
-def un_tar_directory(fileobj, directory_path, compression=''):
+def un_tar_directory(fileobj, directory_path, compression='', force=False):
     """
     Extracts the given file-like object containing a tar archive into the given
-    directory, which will be created and should not already exist.
+    directory, which will be created and should not already exist. If it already exists,
+    and `force` is `False`, an error is raised. If it already exists, and `force` is `True`,
+    the directory is removed and recreated.
 
     compression specifies the compression scheme and can be one of '', 'gz' or
     'bz2'.
@@ -66,6 +86,8 @@ def un_tar_directory(fileobj, directory_path, compression=''):
     Raises tarfile.TarError if the archive is not valid.
     """
     directory_path = os.path.realpath(directory_path)
+    if force:
+        remove_path(directory_path)
     os.mkdir(directory_path)
     with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:
         for member in tar:
@@ -293,3 +315,27 @@ def remove_path(path):
             shutil.rmtree(path)
         else:
             os.remove(path)
+
+
+def path_is_parent(parent_path, child_path):
+    """
+    Given a parent_path and a child_path, determine if the child path
+    is a strict subpath of the parent_path. In the case that the resolved
+    parent_path is equivalent to the resolved child_path, this function returns
+    False.
+
+    Note that this function does not dereference symbolic links.
+    """
+    # Remove relative path references.
+    parent_path = os.path.abspath(parent_path)
+    child_path = os.path.abspath(child_path)
+
+    # Explicitly handle the case where the parent_path equals the child_path
+    if parent_path == child_path:
+        return False
+
+    # Compare the common path of the parent and child path with the common
+    # path of just the parent path. Using the commonpath method on just
+    # the parent path will regularize the path name in the same way as the
+    # comparison that deals with both paths, removing any trailing path separator.
+    return os.path.commonpath([parent_path]) == os.path.commonpath([parent_path, child_path])
