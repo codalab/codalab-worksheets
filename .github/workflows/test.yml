@@ -163,7 +163,7 @@ jobs:
         uses: actions/upload-artifact@v1
         if: failure()
         with:
-          name: screenshots-test-${{ matrix.test }}-sharedfs-${{ matrix.sharedfs }}
+          name: screenshots-test-${{ matrix.test }}
           path: tests/ui
       - name: Save logs on failure
         run: |
@@ -174,5 +174,5 @@ jobs:
         uses: actions/upload-artifact@v1
         if: failure()
         with:
-          name: logs-test-${{ matrix.test }}-sharedfs-${{ matrix.sharedfs }}
+          name: logs-test-${{ matrix.test }}
           path: /tmp/logs
