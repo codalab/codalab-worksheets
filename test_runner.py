@@ -17,6 +17,7 @@ import time
 class TestRunner(object):
     _CODALAB_SERVICE_SCRIPT = 'codalab_service.py'
     _TEMP_INSTANCE_NEEDED_TESTS = ['all', 'default', 'copy']
+    _FRONTEND_MODULE = 'frontend'
 
     @staticmethod
     def _docker_exec(command):
@@ -84,7 +85,9 @@ class TestRunner(object):
         success = True
         try:
 
-            non_frontend_tests = list(filter(lambda test: test != 'frontend', self.tests))
+            non_frontend_tests = list(
+                filter(lambda test: test != TestRunner._FRONTEND_MODULE, self.tests)
+            )
 
             if len(non_frontend_tests):
                 # Run backend tests using test_cli
@@ -107,7 +110,7 @@ class TestRunner(object):
         return success
 
     def _run_frontend_tests(self):
-        if 'frontend' not in self.tests:
+        if TestRunner._FRONTEND_MODULE not in self.tests:
             return
 
         # Execute front end tests here
