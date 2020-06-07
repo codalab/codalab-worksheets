@@ -393,10 +393,11 @@ class SampleWorksheet:
         self._add_description('Search for recently created bundles')
         self._add_line('% schema recently_created_schema')
         self._add_line('% add name')
+        self._add_line('% add owner owner_name')
         self._add_line('% add created created date')
         self._add_line('% display table recently_created_schema')
-        self._add_line('% search created=.sort- .limit={}'.format(self._entities_count))
-        self._add_table_pattern(['name', 'created'], self._entities_count)
+        self._add_line('% search .mine .limit={}'.format(self._entities_count))
+        self._add_table_pattern(['name', 'owner', 'created'], self._entities_count)
 
     def _add_invalid_directives(self):
         self._add_header('Invalid Directives')
