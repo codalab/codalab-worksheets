@@ -64,11 +64,11 @@ class UITester(ABC):
             self.send_keyboard_shortcut('ar')
         else:
             self.click(By.CSS_SELECTOR, '[aria-label="Add New Run"]')
-        self.longer_pause()
+        self.pause()
         self.scroll_to_bottom('worksheet_container')
         active_textbox = self.browser.switch_to.active_element
         active_textbox.send_keys(command)
-        self.longer_pause()
+        self.pause()
         if use_keyboard_shortcut:
             self.save_edit_keyboard_shortcut(active_textbox)
         else:
@@ -114,7 +114,6 @@ class UITester(ABC):
 
         # Edit bundle permission
         self.scroll_to_bottom('worksheet_container')
-        self.pause()
         self.browser.find_elements_by_tag_name('svg')[-1].click()
         self.longer_pause()
         select_boxes = self.browser.find_elements_by_tag_name('select')
@@ -148,7 +147,6 @@ class UITester(ABC):
 
     def expand_last_bundle(self):
         self.scroll_to_bottom('worksheet_container')
-        self.pause()
         self.browser.find_elements_by_tag_name('button')[-1].click()
         self.pause()
 
@@ -160,10 +158,8 @@ class UITester(ABC):
             self.click(By.CSS_SELECTOR, '[aria-label="Add Text"]')
         self.pause()
         self.scroll_to_bottom('worksheet_container')
-        self.pause()
         last_text_box = self.browser.find_elements_by_tag_name('textarea')[-1]
         self.focus_and_send_keys(last_text_box, text)
-        self.pause()
         if use_keyboard_shortcut:
             self.save_edit_keyboard_shortcut(last_text_box)
         else:
@@ -298,6 +294,7 @@ class UITester(ABC):
         element = "document.getElementById('{}')".format(selector)
         scroll_height = float(self.browser.execute_script('return {}.scrollHeight'.format(element)))
         self.browser.execute_script('{}.scrollTo(0, {})'.format(element, scroll_height))
+        self.pause()
 
     def _get_partial_matched_elements(self, by, selector):
         return self.browser.find_elements(By.XPATH, self.constructPartialSelector(by, selector))
@@ -388,7 +385,6 @@ class EditWorksheetTest(UITester):
         self.send_keyboard_shortcut('x')
         # Backspace = Attempt to delete the selected bundles
         self.send_keyboard_shortcut(Keys.BACKSPACE)
-        self.pause()
         self.browser.find_elements_by_tag_name('button')[-1].click()
         # Wait for bundles to be deleted before proceeding
         self.longer_pause()
