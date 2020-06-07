@@ -44,6 +44,7 @@ class UITester(ABC):
         self.test()
         self.browser.close()
 
+        # TODO: Firefox driver is not working with GitHub Actions
         # Test Firefox
         # options = FirefoxOptions()
         # options.log.level = "trace"
@@ -64,7 +65,7 @@ class UITester(ABC):
             self.send_keyboard_shortcut('ar')
         else:
             self.click(By.CSS_SELECTOR, '[aria-label="Add New Run"]')
-        self.pause()
+        self.longer_pause()
         self.scroll_to_bottom('worksheet_container')
         active_textbox = self.browser.switch_to.active_element
         active_textbox.send_keys(command)
