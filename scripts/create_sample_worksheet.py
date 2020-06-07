@@ -390,15 +390,14 @@ class SampleWorksheet:
         )
         self._add_worksheets_pattern(self._entities_count)
 
-        # TODO: inconsistent behavior here...sometimes returns 1 or 2 bundles when it should be 3 total
-        # self._add_description('Search for recently created bundles')
-        # self._add_line('% schema recently_created_schema')
-        # self._add_line('% add name')
-        # self._add_line('% add owner owner_name')
-        # self._add_line('% add created created date')
-        # self._add_line('% display table recently_created_schema')
-        # self._add_line('% search created=.sort- .limit={}'.format(self._entities_count))
-        # self._add_table_pattern(['name', 'owner', 'created'], self._entities_count)
+        self._add_description('Search for recently created bundles')
+        self._add_line('% schema recently_created_schema')
+        self._add_line('% add name')
+        self._add_line('% add owner owner_name')
+        self._add_line('% add created created date')
+        self._add_line('% display table recently_created_schema')
+        self._add_line('% search .mine created=.sort- .limit={}'.format(self._entities_count))
+        self._add_table_pattern(['name', 'owner', 'created'], self._entities_count)
 
     def _add_invalid_directives(self):
         self._add_header('Invalid Directives')
