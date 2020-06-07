@@ -133,7 +133,6 @@ jobs:
     strategy:
       matrix:
         test: [frontend]
-        sharedfs: [true, false]
     steps:
       - name: Clear free space
         run: |
@@ -153,19 +152,9 @@ jobs:
         env:
           VERSION: ${{ github.head_ref }}
       - name: Run tests
-        if: ${{ !matrix.sharedfs }}
         run: |
           python3 codalab_service.py start --services default --version ${VERSION}
-          docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
-          python3 test_runner.py --version ${VERSION} ${TEST}
-        env:
-          TEST: ${{ matrix.test }}
-          VERSION: ${{ github.head_ref }}
-      - name: Run shared filesystem tests
-        if: ${{ matrix.sharedfs }}
-        run: |
-          python3 codalab_service.py start --services default --version ${VERSION} --shared-file-system
-          docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"
+          docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py --test-print"
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
