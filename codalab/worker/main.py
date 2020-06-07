@@ -11,8 +11,7 @@ import signal
 import socket
 import stat
 import sys
-import multiprocessing
-
+import psutil
 
 from codalab.lib.formatting import parse_size
 from .bundle_service_client import BundleServiceClient, BundleAuthException
@@ -132,6 +131,16 @@ def parse_args():
         action='store_true',
         help='To be used when the worker should only run bundles that match the worker\'s tag.',
     )
+    parser.add_argument(
+        '--pass-down-termination',
+        action='store_true',
+        help='Terminate the worker and kill all the existing running bundles.',
+    )
+    parser.add_argument(
+        '--delete-work-dir-on-exit',
+        action='store_true',
+        help="Delete the worker's working directory when the worker process exits.",
+    )
     return parser.parse_args()
 
 
@@ -222,6 +231,8 @@ def main():
         args.tag_exclusive,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
+        pass_down_termination=args.pass_down_termination,
+        delete_work_dir_on_exit=args.delete_work_dir_on_exit,
     )
 
     # Register a signal handler to ensure safe shutdown.
@@ -250,7 +261,7 @@ def parse_cpuset_args(arg):
     except AttributeError:
         # os.sched_getaffinity() isn't available on all platforms,
         # so fallback to using the number of physical cores.
-        cpu_count = multiprocessing.cpu_count()
+        cpu_count = psutil.cpu_count(logical=False)
 
     if arg == 'ALL':
         cpuset = list(range(cpu_count))

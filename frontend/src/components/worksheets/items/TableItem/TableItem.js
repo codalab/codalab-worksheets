@@ -1,16 +1,19 @@
 // @flow
-import * as React from 'react';
+import React, { useEffect } from 'react';
+import $ from 'jquery';
 import { withStyles } from '@material-ui/core';
 import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
 import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import { getMinMaxKeys } from '../../../../util/worksheet_utils';
 import BundleRow from './BundleRow';
 import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import SvgIcon from '@material-ui/core/SvgIcon';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
+import { getIds } from '../../../../util/worksheet_utils';
+import { semaphore } from '../../../../util/async_loading_utils';
+import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -31,6 +34,7 @@ class TableItem extends React.Component<{
             numSelectedChild: 0,
             indeterminateCheckState: false,
         };
+        this.copyCheckedBundleRows = this.copyCheckedBundleRows.bind(this);
     }
 
     // BULK OPERATION RELATED CODE
@@ -95,6 +99,25 @@ class TableItem extends React.Component<{
             indeterminateCheckState: false,
         });
     };
+
+    copyCheckedBundleRows = () => {
+        let item = this.props.item;
+        let bundleInfos = item.bundles_spec.bundle_infos;
+        let ids = getIds(item).filter((item, index) => {
+            return this.state.childrenCheckState[index];
+        });
+        let checkedBundleInfos = bundleInfos.filter((item, index) => {
+            return this.state.childrenCheckState[index];
+        });
+        return checkedBundleInfos.map((bundle, index) => {
+            let bundleIdName = {};
+            bundleIdName.uuid = bundle.uuid;
+            bundleIdName.name = bundle.metadata.name;
+            bundleIdName.id = ids[index];
+            return bundleIdName;
+        });
+    };
+
     // BULK OPERATION RELATED CODE ABOVE
 
     updateRowIndex = (rowIndex) => {
@@ -102,14 +125,9 @@ class TableItem extends React.Component<{
     };
 
     render() {
-        const { worksheetUUID, setFocus, prevItem, editPermission } = this.props;
-
-        let prevItemProcessed = null;
-        if (prevItem) {
-            const { maxKey } = getMinMaxKeys(prevItem);
-            prevItemProcessed = { sort_key: maxKey };
-        }
-
+        const { worksheetUUID, setFocus, editPermission } = this.props;
+        // Provide copy data callback
+        this.props.addCopyBundleRowsCallback(this.props.itemID, this.copyCheckedBundleRows);
         var tableClassName = this.props.focused ? 'table focused' : 'table';
         var item = this.props.item;
         var canEdit = this.props.canEdit;
@@ -136,7 +154,6 @@ class TableItem extends React.Component<{
                                 <path d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z' />
                             </SvgIcon>
                         }
-                        style={{ marginRight: 30, borderLeft: '3px solid transparent' }}
                     />
                 );
             }
@@ -146,9 +163,8 @@ class TableItem extends React.Component<{
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
-                    style={editPermission || index !== 0 ? { paddingLeft: 0 } : { paddingLeft: 30 }}
                 >
-                    {editPermission && checkbox}
+                    {checkbox}
                     {item}
                 </TableCell>
             );
@@ -184,7 +200,6 @@ class TableItem extends React.Component<{
                     url={url}
                     bundleInfo={bundleInfo}
                     uuid={bundleInfo.uuid}
-                    prevBundleInfo={rowIndex > 0 ? bundleInfos[rowIndex - 1] : prevItemProcessed}
                     headerItems={headerItems}
                     canEdit={canEdit}
                     updateRowIndex={this.updateRowIndex}
@@ -200,6 +215,20 @@ class TableItem extends React.Component<{
                     worksheetName={worksheetName}
                     worksheetUrl={worksheetUrl}
                     editPermission={editPermission}
+                    after_sort_key={this.props.after_sort_key}
+                    showNewRun={
+                        this.props.showNewButtonsAfterEachBundleRow &&
+                        this.props.showNewRun &&
+                        rowFocused
+                    }
+                    showNewText={
+                        this.props.showNewButtonsAfterEachBundleRow &&
+                        this.props.showNewText &&
+                        rowFocused
+                    }
+                    onHideNewRun={this.props.onHideNewRun}
+                    onHideNewText={this.props.onHideNewText}
+                    ids={this.props.ids}
                 />
             );
         });
@@ -245,4 +274,46 @@ const styles = (theme) => ({
 
 const TableContainer = withStyles(styles)(_TableContainer);
 
-export default TableItem;
+async function fetchAsyncTableContents({ contents }) {
+    return semaphore.use(async () => {
+        const response = await $.ajax({
+            type: 'POST',
+            contentType: 'application/json',
+            url: '/rest/interpret/genpath-table-contents',
+            async: true,
+            data: JSON.stringify({ contents }),
+            dataType: 'json',
+            cache: false,
+        });
+        return response;
+    });
+}
+
+const TableWrapper = (props) => {
+    const { item, onAsyncItemLoad } = props;
+    useEffect(() => {
+        (async function() {
+            if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
+                try {
+                    const { contents } = await fetchAsyncTableContents({ contents: item.rows });
+                    onAsyncItemLoad({
+                        ...item,
+                        rows: contents,
+                        status: {
+                            code: FETCH_STATUS_SCHEMA.READY,
+                            error_message: '',
+                        },
+                    });
+                } catch (e) {
+                    console.error(e);
+                    // TODO: better error message handling here.
+                }
+            }
+        })();
+        // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [item.rows, item.status]);
+    return <TableItem {...props} />;
+};
+
+export default TableWrapper;

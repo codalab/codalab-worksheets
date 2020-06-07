@@ -363,26 +363,48 @@ class BundleManager(object):
         # Build a dictionary which maps from uuid to running bundle and bundle_resources
         running_bundles_info = self._get_running_bundles_info(workers, staged_bundles_to_run)
 
+        # We pre-compute the workers available to each user (and the codalab-owned workers),
+        # such that workers that come online or regain the necessary resources while we
+        # are attempting to run each staged bundle will respect the ordering of
+        # staged_bundles_to_run (i.e., they won't be used immediately, and will be instead
+        # assigned bundles on the next run of _run_iteration).
+        resource_deducted_user_owned_workers = {}
+        user_parallel_run_quota_left = {}
+        for user in user_queue_positions.keys():
+            resource_deducted_user_owned_workers[user] = self._deduct_worker_resources(
+                workers.user_owned_workers(user), running_bundles_info
+            )
+            user_parallel_run_quota_left[user] = self._model.get_user_parallel_run_quota_left(
+                user, user_info_cache[user]
+            )
+        resource_deducted_codalab_owned_workers = self._deduct_worker_resources(
+            workers.user_owned_workers(self._model.root_user_id), running_bundles_info
+        )
+
         # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
-            # Check if there is enough parallel run quota left for this user
-            if (
-                self._model.get_user_parallel_run_quota_left(
-                    bundle.owner_id, user_info_cache[bundle.owner_id]
+            if user_parallel_run_quota_left[bundle.owner_id] > 0:
+                workers_list = (
+                    resource_deducted_user_owned_workers[bundle.owner_id]
+                    + resource_deducted_codalab_owned_workers
                 )
-                <= 0
-            ):
-                # Don't include CodaLab-owned workers, as there is no parallel_run_quota left for this user.
-                codalab_owned_workers = []
             else:
-                codalab_owned_workers = workers.user_owned_workers(self._model.root_user_id)
-            user_owned_workers = workers.user_owned_workers(bundle.owner_id)
-            workers_list = user_owned_workers + codalab_owned_workers
-            workers_list = self._deduct_worker_resources(workers_list, running_bundles_info)
+                workers_list = resource_deducted_user_owned_workers[bundle.owner_id]
+
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
                 if self._try_start_bundle(workers, worker, bundle, bundle_resources):
+                    # If we successfully started a bundle on a codalab-owned worker,
+                    # decrement the parallel run quota left.
+                    if worker["user_id"] == self._model.root_user_id:
+                        user_parallel_run_quota_left[bundle.owner_id] -= 1
+                    # Update available worker resoures. This is a lower-bound,
+                    # since resources released by jobs that finish are not used until
+                    # the next call to _schedule_run_bundles_on_workers.
+                    worker['cpus'] -= bundle_resources.cpus
+                    worker['gpus'] -= bundle_resources.gpus
+                    worker['memory_bytes'] -= bundle_resources.memory
                     break
 
     def _deduct_worker_resources(self, workers_list, running_bundles_info):
@@ -475,7 +497,7 @@ class BundleManager(object):
             # 6. break ties randomly by a random seed.
             return (
                 not worker['tag_exclusive'],
-                worker['gpus'],
+                worker['gpus'] or worker['has_gpus'],
                 -num_available_deps,
                 worker['cpus'],
                 len(worker['run_uuids']),
@@ -501,7 +523,7 @@ class BundleManager(object):
                 os.mkdir(path)
             if self._worker_model.send_json_message(
                 worker['socket_id'],
-                self._construct_run_message(worker, bundle, bundle_resources),
+                self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
                 0.2,
             ):
                 logger.info(
@@ -519,7 +541,7 @@ class BundleManager(object):
     def _compute_request_cpus(bundle):
         """
         Compute the CPU limit used for scheduling the run.
-        The default of 1 is for backwards compatibilty for
+        The default of 1 is for backwards compatibility for
         runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_cpus:
@@ -541,7 +563,7 @@ class BundleManager(object):
     def _compute_request_memory(bundle):
         """
         Compute the memory limit used for scheduling the run.
-        The default of 2g is for backwards compatibilty for
+        The default of 2g is for backwards compatibility for
         runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_memory:
@@ -591,7 +613,7 @@ class BundleManager(object):
             docker_image += ':latest'
         return docker_image
 
-    def _construct_run_message(self, worker, bundle, bundle_resources):
+    def _construct_run_message(self, shared_file_system, bundle, bundle_resources):
         """
         Constructs the run message that is sent to the given worker to tell it
         to run the given bundle.
@@ -599,7 +621,7 @@ class BundleManager(object):
         message = {}
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
-        if worker['shared_file_system']:
+        if shared_file_system:
             message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
             for dependency in message['bundle']['dependencies']:
                 dependency['location'] = self._bundle_store.get_bundle_location(
@@ -826,7 +848,9 @@ class BundleManager(object):
                     # Remove the uuid from self._bundles_without_matched_workers if a matched
                     # private worker is found in the system and update bundle's metadata
                     if bundle.uuid in self._bundles_without_matched_workers:
-                        self._model.update_bundle(bundle, {'metadata': {'staged_status': None}})
+                        self._model.update_bundle(
+                            bundle, {'metadata': {'staged_status': None}}, delete=True
+                        )
                         self._bundles_without_matched_workers.remove(bundle.uuid)
                     staged_bundles_to_run.append((bundle, bundle_resources))
             else:
