@@ -105,7 +105,7 @@ class SampleWorksheet:
                 )
 
         assert not has_error
-        print('Finished validating content of the sample worksheet...5')
+        print('Finished validating content of the sample worksheet...')
         print('Success.')
 
     def _create_dependencies(self):
