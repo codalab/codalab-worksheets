@@ -182,6 +182,7 @@ class Worker:
         self.load_state()
         self.image_manager.start()
         if not self.shared_file_system:
+            # TODO: do we still want this? probably.
             self.dependency_manager.start()
         while not self.terminate:
             try:
