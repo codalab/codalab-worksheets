@@ -581,6 +581,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     except Exception as e:
         abort(http.client.BAD_REQUEST, str(e))
 
+    # TODO: get this to work.
     # Figure out the file name.
     bundle_name = local.model.get_bundle(target.bundle_uuid).metadata.name
     if not path and bundle_name:

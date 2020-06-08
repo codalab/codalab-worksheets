@@ -522,6 +522,7 @@ class BundleManager(object):
         """
         if self._model.transition_bundle_starting(bundle, worker['user_id'], worker['worker_id']):
             workers.set_starting(bundle.uuid, worker['worker_id'])
+            # TODO: fix this.
             if worker['shared_file_system']:
                 # On a shared file system we create the path here to avoid NFS
                 # directory cache issues.
