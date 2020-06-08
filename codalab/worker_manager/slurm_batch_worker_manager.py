@@ -21,7 +21,6 @@ class SlurmBatchWorkerManager(WorkerManager):
     SRUN = 'srun'
     SBATCH = 'sbatch'
     SQUEUE = 'squeue'
-    SACCT = 'sacct'
 
     """
     sbatch configuration in bash script
@@ -129,7 +128,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         jobs_to_remove = set()
         for job_id in self.submitted_jobs:
             job_acct = self.run_command(
-                [self.SACCT, '-j', job_id, '--format', 'state', '--noheader']
+                [self.SQUEUE, '-j', job_id, '--format', '%T', '--noheader']
             )
             if 'FAILED' in job_acct:
                 jobs_to_remove.add(job_id)
