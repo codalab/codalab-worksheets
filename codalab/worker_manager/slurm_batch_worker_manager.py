@@ -233,9 +233,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         else:
             work_dir_prefix = Path()
 
-        worker_work_dir = work_dir_prefix.joinpath(
-            Path('slurm-codalab-worker-scratch', worker_id)
-        )
+        worker_work_dir = work_dir_prefix.joinpath(Path('slurm-codalab-worker-scratch', worker_id))
 
         command = [
             'cl-worker',
