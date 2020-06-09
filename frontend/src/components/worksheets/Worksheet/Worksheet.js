@@ -781,7 +781,7 @@ class Worksheet extends React.Component {
 
             // Focus on search
             Mousetrap.bind(['a+f'], function(e) {
-                document.getElementById('search-bar').focus();
+                document.getElementById('codalab-search-bar').focus();
                 return false; //prevent keypress to bubble
             });
 
@@ -934,12 +934,6 @@ class Worksheet extends React.Component {
                 }
                 this.toggleCmdDialogNoEvent('copy');
             });
-            Mousetrap.bind(['a z'], () => {
-                if (this.state.openedDialog) {
-                    return;
-                }
-                this.toggleCmdDialogNoEvent('cut');
-            });
             if (this.state.ws.info.edit_permission) {
                 Mousetrap.bind(['backspace', 'del'], () => {
                     if (
@@ -968,33 +962,39 @@ class Worksheet extends React.Component {
                     }
                     this.toggleCmdDialogNoEvent('kill');
                 });
-            }
+                Mousetrap.bind(['a z'], () => {
+                    if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
+                        return;
+                    }
+                    this.toggleCmdDialogNoEvent('cut');
+                });
 
-            // Confirm bulk bundle operation
-            if (this.state.openedDialog) {
-                Mousetrap.bind(
-                    ['enter'],
-                    function(e) {
-                        if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_BUNDLE) {
-                            this.executeBundleCommandNoEvent('rm');
-                        } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_KILL) {
-                            this.executeBundleCommandNoEvent('kill');
-                        } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_DETACH) {
-                            this.executeBundleCommandNoEvent('detach');
-                        }
-                    }.bind(this),
-                );
+                // Confirm bulk bundle operation
+                if (this.state.openedDialog) {
+                    Mousetrap.bind(
+                        ['enter'],
+                        function(e) {
+                            if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_BUNDLE) {
+                                this.executeBundleCommandNoEvent('rm');
+                            } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_KILL) {
+                                this.executeBundleCommandNoEvent('kill');
+                            } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_DETACH) {
+                                this.executeBundleCommandNoEvent('detach');
+                            }
+                        }.bind(this),
+                    );
 
-                // Select/Deselect to force delete during deletion dialog
-                Mousetrap.bind(
-                    ['f'],
-                    function() {
-                        //force deletion through f
-                        if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_BUNDLE) {
-                            this.setState({ forceDelete: !this.state.forceDelete });
-                        }
-                    }.bind(this),
-                );
+                    // Select/Deselect to force delete during deletion dialog
+                    Mousetrap.bind(
+                        ['f'],
+                        function() {
+                            //force deletion through f
+                            if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_BUNDLE) {
+                                this.setState({ forceDelete: !this.state.forceDelete });
+                            }
+                        }.bind(this),
+                    );
+                }
             }
         }
         //====================Bulk bundle operations===================

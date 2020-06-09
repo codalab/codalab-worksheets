@@ -71,6 +71,7 @@ class BundleBulkActionMenu extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Cut'
+                    disabled={!this.props.editPermission}
                     onClick={this.props.toggleCmdDialog('cut')}
                 >
                     <FileCopyOutlinedIcon className={classes.buttonIcon} />
