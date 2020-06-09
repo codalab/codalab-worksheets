@@ -34,7 +34,7 @@ jobs:
         - ./scripts/test-setup.sh
         - export PATH=$PATH:/usr/bin/geckodriver
       script:
-        - travis_wait python3 test_runner.py --version ${TRAVIS_BRANCH} default
+        - python3 test_runner.py --version ${TRAVIS_BRANCH} default
         # Make sure restarting worker doesn't cause any issues (ie in serialization/deserialization)
         - docker restart codalab_worker_1 && python3 test_runner.py --version ${TRAVIS_BRANCH} run
         - docker stop codalab_worker_1
