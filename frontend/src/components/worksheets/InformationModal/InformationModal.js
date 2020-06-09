@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { Alert, Modal } from 'react-bootstrap';
-import './ExtraWorksheetHTML.scss';
+import { Modal } from 'react-bootstrap';
+import './InformationModal.scss';
 
 const KeyboardShortcutModal = ({ show, toggle }) => (
     <Modal id='glossaryModal' tabIndex='-1' keyboard show={show} onHide={toggle}>
@@ -185,24 +185,13 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
     </Modal>
 );
 
-let ExtraWorksheetHTML = ({
-    showGlossaryModal,
-    toggleGlossaryModal,
-    errorMessage,
-    clearErrorMessage,
-}) => (
+let InformationModal = ({ showInformationModal, toggleInformationModal }) => (
     <React.Fragment>
         <div id='update_progress' className='progress-message'>
             <img src='/img/Preloader_Small.gif' /> Updating...
         </div>
-        {/* TODO: Move all error messages to worksheet dialog */}
-        {errorMessage && (
-            <Alert className='codalab-error-message' bsStyle='danger' onDismiss={clearErrorMessage}>
-                <i className='glyphicon glyphicon-remove-circle' /> Error: {errorMessage}
-            </Alert>
-        )}
-        <KeyboardShortcutModal show={showGlossaryModal} toggle={toggleGlossaryModal} />
+        <KeyboardShortcutModal show={showInformationModal} toggle={toggleInformationModal} />
     </React.Fragment>
 );
 
-export default ExtraWorksheetHTML;
+export default InformationModal;

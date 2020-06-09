@@ -450,13 +450,14 @@ class Worker:
         """
         Available disk space by bytes of this RunManager.
         """
-        error_msg = "Failed to run command {}".format("df " + self.work_dir)
+        error_msg = "Failed to run command {}".format("df -k" + self.work_dir)
         try:
-            p = Popen(["df", self.work_dir], stdout=PIPE)
+            # Option "-k" will ensure us with the returning disk space in 1KB units
+            p = Popen(["df", "-k", self.work_dir], stdout=PIPE)
             output, error = p.communicate()
             # Return None when there is an error.
             if error:
-                logger.error(error.strip())
+                logger.error(error.strip() + ": {}".format(error))
                 return None
 
             if output:
@@ -465,7 +466,7 @@ class Worker:
                 # The machine being attached as a worker may be using a different language other than
                 # English, so check the 4th header if "Available" is not present.
                 index = headers.index("Available") if "Available" in headers else 3
-                # We convert the original result from df command in unit of 1KB blocks into bytes.
+                # We convert the original result from df command in unit of 1KB units into bytes.
                 return int(lines[1].split()[index]) * 1024
 
         except Exception as e:
