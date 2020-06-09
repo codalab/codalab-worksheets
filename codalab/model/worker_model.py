@@ -202,7 +202,7 @@ class WorkerModel(object):
         """
         Update the designated worker with columns and values
         :param user_id: a user_id indicating whom a worker belongs to
-        :param worker_id: the worker_id that a worker has when it registered to the CodaLab server
+        :param worker_id: a worker's identification number
         :param update: a dictionary of (key, value) pairs that specifies the columns and the values to update
         """
         if not update:
