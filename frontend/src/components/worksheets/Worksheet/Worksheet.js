@@ -1117,13 +1117,13 @@ class Worksheet extends React.Component {
     // If there are unfinished bundles and we are not updating bundles now, call updateRunBundles, which will recursively call itself until all the bundles in the worksheet are finished.
     // this.state.updatingBundleUuids keeps track of the "unfinished" bundles in the worksheet at every moment.
     checkRunBundle(info) {
-        var updatingBundleUuids = _.clone(this.state.updatingBundleUuids);
+        let updatingBundleUuids = _.clone(this.state.updatingBundleUuids);
         if (info && info.blocks.length > 0) {
-            var items = info.blocks;
-            for (var i = 0; i < items.length; i++) {
-                if (items[i].bundles_spec) {
-                    for (var j = 0; j < items[i].bundles_spec.bundle_infos.length; j++) {
-                        var bundle_info = items[i].bundles_spec.bundle_infos[j];
+            let blocks = info.blocks;
+            for (let i = 0; i < blocks.length; i++) {
+                if (blocks[i].bundles_spec) {
+                    for (let j = 0; j < blocks[i].bundles_spec.bundle_infos.length; j++) {
+                        let bundle_info = blocks[i].bundles_spec.bundle_infos[j];
                         if (bundle_info.bundle_type === 'run') {
                             if (bundle_info.state !== 'ready' && bundle_info.state !== 'failed') {
                                 updatingBundleUuids[bundle_info.uuid] = true;
@@ -1298,11 +1298,11 @@ class Worksheet extends React.Component {
                     this.setState({ errorMessage: '' });
                     $('#update_progress').hide();
                     $('#worksheet_content').show();
-                    var items = this.state.ws.info.blocks;
-                    var numOfBundles = this.getNumOfBundles();
-                    var focus = this.state.focusIndex;
+                    let blocks = this.state.ws.info.blocks;
+                    let numOfBundles = this.getNumOfBundles();
+                    let focus = this.state.focusIndex;
                     if (rawIndexAfterEditMode !== undefined) {
-                        var focusIndexPair = this.state.ws.info.raw_to_block[rawIndexAfterEditMode];
+                        let focusIndexPair = this.state.ws.info.raw_to_block[rawIndexAfterEditMode];
                         if (focusIndexPair === undefined) {
                             console.error(
                                 "Can't map raw index " +
@@ -1325,9 +1325,9 @@ class Worksheet extends React.Component {
                         // If the number of bundles increases then the focus should be on the new bundle.
                         // if the current focus is not on a table
                         if (
-                            items[focus] &&
-                            items[focus].mode &&
-                            items[focus].mode !== 'table_block'
+                            blocks[focus] &&
+                            blocks[focus].mode &&
+                            blocks[focus].mode !== 'table_block'
                         ) {
                             this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
                         } else if (this.state.subFocusIndex !== undefined) {
@@ -1342,14 +1342,14 @@ class Worksheet extends React.Component {
                         // the deleted bundle is the only item of the table
                         if (this.state.subFocusIndex === 0) {
                             // the deleted item is the last item of the worksheet
-                            if (items.length === focus + 1) {
+                            if (blocks.length === focus) {
                                 this.setFocus(focus - 1, 0);
                             } else {
                                 this.setFocus(focus, 0);
                             }
                             // the deleted bundle is the last item of the table
                             // note that for some reason subFocusIndex begins with 1, not 0
-                        } else if (this._numTableRows(items[focus]) === this.state.subFocusIndex) {
+                        } else if (this._numTableRows(blocks[focus]) === this.state.subFocusIndex) {
                             this.setFocus(focus, this.state.subFocusIndex - 1);
                         } else {
                             this.setFocus(focus, this.state.subFocusIndex);
@@ -1357,13 +1357,16 @@ class Worksheet extends React.Component {
                     } else {
                         if (moveIndex) {
                             // for adding a new cell, we want the focus to be the one below the current focus
-                            this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
+                            this.setFocus(focus >= 0 ? focus + 1 : blocks.length - 1, 0);
                         }
                         if (textDeleted) {
                             // When deleting text, we want the focus to stay at the same index,
                             // unless it is the last item in the worksheet, at which point the
                             // focus goes to the last item in the worksheet.
-                            this.setFocus(items.length === focus ? items.length - 1 : focus, 'end');
+                            this.setFocus(
+                                blocks.length === focus ? blocks.length - 1 : focus,
+                                'end',
+                            );
                         }
                     }
                     this.setState({
