@@ -253,6 +253,8 @@ class SlurmBatchWorkerManager(WorkerManager):
             worker_network_prefix,
             # always set in the Slurm worker manager to ensure safe shutdown
             '--pass-down-termination',
+            '--exit-after-num-runs',
+            str(self.args.exit_after_num_runs),
         ]
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])

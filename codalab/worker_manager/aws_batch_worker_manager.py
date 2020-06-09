@@ -91,6 +91,8 @@ class AWSBatchWorkerManager(WorkerManager):
             worker_id,
             '--network-prefix',
             worker_network_prefix,
+            '--exit-after-num-runs',
+            str(self.args.exit_after_num_runs),
         ]
         if self.args.worker_tag:
             command.extend(['--tag', self.args.worker_tag])
