@@ -33,7 +33,6 @@ import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import './Worksheet.scss';
 import ErrorMessage from '../ErrorMessage';
-import { ContextMenuMixin, default as ContextMenu } from '../ContextMenu';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
 import { executeCommand } from '../../../util/cli_utils';
 import Tooltip from '@material-ui/core/Tooltip';
@@ -898,10 +897,6 @@ class Worksheet extends React.Component {
             this.toggleWorksheetSize();
         });
 
-        Mousetrap.bind(['esc'], (e) => {
-            ContextMenuMixin.closeContextMenu();
-        });
-
         if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN) {
             Mousetrap.bind(
                 ['enter'],
@@ -1585,10 +1580,6 @@ class Worksheet extends React.Component {
             />
         );
 
-        const context_menu_display = (
-            <ContextMenu userInfo={this.state.userInfo} ws={this.state.ws} />
-        );
-
         var worksheet_display = this.state.editMode ? raw_display : items_display;
         var editButtons = this.state.editMode ? editModeFeatures : editFeatures;
         if (!this.state.isValid) {
@@ -1618,7 +1609,6 @@ class Worksheet extends React.Component {
 
         return (
             <React.Fragment>
-                {context_menu_display}
                 <WorksheetHeader
                     showActionBar={this.state.showActionBar}
                     canEdit={this.canEdit()}
