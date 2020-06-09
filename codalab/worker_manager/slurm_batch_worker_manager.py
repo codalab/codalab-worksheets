@@ -128,7 +128,9 @@ class SlurmBatchWorkerManager(WorkerManager):
         # for worker status and remove those workers that failed at starting phase.
         jobs_to_remove = set()
         for job_id in self.submitted_jobs:
-            job_acct = self.run_command([self.SCONTROL, 'show', 'jobid', '-d', job_id, '--oneliner'])
+            job_acct = self.run_command(
+                [self.SCONTROL, 'show', 'jobid', '-d', job_id, '--oneliner']
+            )
             job_state = re.search(r'JobState=(.*) ', job_acct).group(1)
             if 'FAILED' in job_state:
                 jobs_to_remove.add(job_id)
