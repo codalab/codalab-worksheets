@@ -200,8 +200,10 @@ class WorkerModel(object):
 
     def update_workers(self, user_id, worker_id, update):
         """
-        Returns information about all the workers in the database. The return
-        value is a list of dicts with the structure shown in the code below.
+        Update the designated worker with columns and values
+        :param user_id: a user_id indicating whom a worker belongs to
+        :param worker_id: the worker_id that a worker has when it registered to the CodaLab server
+        :param update: a dictionary of (key, value) pairs that specifies the columns and the values to update
         """
         if not update:
             return
