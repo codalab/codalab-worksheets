@@ -38,7 +38,7 @@ export default ({
     showBundleOperationButtons,
     toggleCmdDialog,
     toggleCmdDialogNoEvent,
-    toggleGlossaryModal,
+    toggleInformationModal,
     copiedBundleIds,
     showPasteButton,
     toggleWorksheetSize,
@@ -162,7 +162,11 @@ export default ({
                                 title='Shortcuts'
                                 aria-label='keyboard shortcuts'
                             >
-                                <IconButton color='inherit' href='#' onClick={toggleGlossaryModal}>
+                                <IconButton
+                                    color='inherit'
+                                    href='#'
+                                    onClick={toggleInformationModal}
+                                >
                                     <InfoIcon fontSize='small' />
                                 </IconButton>
                             </Tooltip>
