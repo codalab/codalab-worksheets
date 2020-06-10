@@ -43,7 +43,6 @@ COPY alembic alembic
 COPY alembic.ini alembic.ini
 COPY codalab codalab
 COPY codalab_service.py codalab_service.py
-COPY docs docs
 COPY monitor.py monitor.py
 COPY scripts scripts
 COPY setup.py setup.py
