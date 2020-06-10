@@ -1178,7 +1178,7 @@ class BundleCLI(object):
                 '-l',
                 '--link',
                 help='Makes the path the source of truth of the bundle, meaning that the server will retrieve the '
-                'bundle directly from the specified path rather than downloading the bundle and storing its contents'
+                'bundle directly from the specified path rather than storing its contents'
                 'in its own bundle store.',
                 action='store_true',
                 default=False,
