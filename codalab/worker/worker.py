@@ -57,6 +57,7 @@ class Worker:
         work_dir,  # type: str
         local_bundles_dir,  # type: Optional[str]
         exit_when_idle,  # type: str
+        exit_after_num_runs,  # type: int
         idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
         shared_file_system,  # type: bool
@@ -93,6 +94,8 @@ class Worker:
         self.delete_work_dir_on_exit = delete_work_dir_on_exit
 
         self.exit_when_idle = exit_when_idle
+        self.exit_after_num_runs = exit_after_num_runs
+        self.num_runs = 0
         self.idle_seconds = idle_seconds
 
         self.terminate = False
@@ -177,6 +180,14 @@ class Worker:
         is_idle = now - self.last_time_ran > self.idle_seconds
         return self.exit_when_idle and is_idle and self.last_checkin_successful
 
+    def check_num_runs_stop(self):
+        """
+        Checks whether the worker has finished the number of job allowed to run.
+        :return: True if the number of jobs allowed to run is 0 and all those runs are finished.
+                 False if neither of the two conditions are met.
+        """
+        return self.exit_after_num_runs == self.num_runs and len(self.runs) == 0
+
     def start(self):
         """Return whether we ran anything."""
         self.load_state()
@@ -190,7 +201,7 @@ class Worker:
                 self.checkin()
                 self.check_termination()
                 self.save_state()
-                if self.check_idle_stop():
+                if self.check_idle_stop() or self.check_num_runs_stop():
                     self.terminate = True
             except Exception:
                 self.last_checkin_successful = False
@@ -303,6 +314,7 @@ class Worker:
             'runs': [run.as_dict for run in self.all_runs],
             'shared_file_system': self.shared_file_system,
             'tag_exclusive': self.tag_exclusive,
+            'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
@@ -463,10 +475,20 @@ class Worker:
 
     def initialize_run(self, bundle, resources):
         """
-        First, checks in with the bundle service and sees if the bundle
-        is still assigned to this worker. If not, returns immediately.
+        First, checks if the worker has already finished receiving/starting the number of jobs allowed to run.
+        If not, returns immediately.
+        Then, checks in with the bundle service and sees if the bundle is still assigned to this worker.
+        If not, returns immediately.
         Otherwise, tell RunManager to create the run.
         """
+        if self.exit_after_num_runs == self.num_runs:
+            print(
+                'Worker has finished starting the number of jobs allowed to run on: {}. '
+                'Stop starting further runs.'.format(self.exit_after_num_runs),
+                file=sys.stdout,
+            )
+            return
+
         now = time.time()
         start_message = {'hostname': socket.gethostname(), 'start_time': int(now)}
 
@@ -508,6 +530,8 @@ class Worker:
                 finalized=False,
                 is_restaged=False,
             )
+            # Increment the number of runs that have been successfully started on this worker
+            self.num_runs += 1
         else:
             print(
                 'Bundle {} no longer assigned to this worker'.format(bundle['uuid']),
