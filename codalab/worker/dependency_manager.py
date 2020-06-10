@@ -430,6 +430,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             logger.debug('Downloading dependency %s', dependency_state.dependency_key)
             try:
                 # Start async download to the fileobj
+                # TODO: this is where we download
                 fileobj, target_type = self._bundle_service.get_bundle_contents(
                     dependency_state.dependency_key.parent_uuid,
                     dependency_state.dependency_key.parent_path,
