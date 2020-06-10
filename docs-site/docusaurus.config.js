@@ -3,15 +3,16 @@ module.exports = {
   tagline: 'Accelerating reproducible computational research.',
   url: 'https://docs.worksheets.codalab.org',
   baseUrl: '/',
-  favicon: 'img/favicon.ico',
-  organizationName: 'facebook', // Usually your GitHub org/user name.
-  projectName: 'co', // Usually your repo name.
+  favicon: 'https://worksheets.codalab.org/favicon.ico',
+  organizationName: 'codalab',
+  projectName: 'codalab-worksheets',
   themeConfig: {
     navbar: {
       title: '',
       logo: {
         alt: 'My Site Logo',
         src: 'https://worksheets.codalab.org/img/codalab-logo.png',
+        srcDark: 'https://worksheets.codalab.org/img/codalab-logo-onecolor-reverse.png'
       },
       links: [
         {
