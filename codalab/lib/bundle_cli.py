@@ -3377,7 +3377,7 @@ class BundleCLI(object):
                 )
 
         print(
-            'Copied %s worksheet items to %s.' % (len(source_items), dest_worksheet_uuid),
+            'Copied %s worksheet items to %s.' % (len(valid_source_items), dest_worksheet_uuid),
             file=self.stdout,
         )
 
