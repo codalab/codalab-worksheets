@@ -1,3 +1,9 @@
+---
+id: Execution
+title: Execution
+sidebar_label: Execution
+---
+
 This page describes how CodaLab executes run bundles and
 manages the environment and hardware of those executions.
 

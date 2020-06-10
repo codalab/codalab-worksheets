@@ -1,3 +1,9 @@
+---
+id: Server-Setup
+title: Server Setup
+sidebar_label: Server Setup
+---
+
 It's easy to run your own instance of CodaLab Worksheets!
 You may want to do this if you'd like to use CodaLab locally on your laptop or
 on your organization's own compute cluster, or if you want to develop and test

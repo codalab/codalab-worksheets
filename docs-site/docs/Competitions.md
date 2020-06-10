@@ -1,3 +1,9 @@
+---
+id: Competitions
+title: Competitions
+sidebar_label: Competitions
+---
+
 _This article is about hosting competitions on CodaLab **Worksheets**. To learn
 more about CodaLab **Competitions**, which is an affiliated project built on a
 separate stack, check out the [Competitions

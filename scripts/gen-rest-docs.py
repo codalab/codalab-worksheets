@@ -71,14 +71,18 @@ def get_codalab_schemas():
 
 
 INDEX_DOC = '''\
-# REST API Reference
+---
+id: REST-API-Reference
+title: REST API Reference
+sidebar_label: REST API Reference
+---
 
 _version {{version}}_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
 
-## Table of Contents
+# Table of Contents
 - [Introduction](#introduction)
 - [Resource Object Schemas](#resource-object-schemas)
 - [API Endpoints](#api-endpoints)
@@ -258,7 +262,7 @@ INDEX_LINK = "\n&uarr; [Back to Top](#table-of-contents)\n"
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--docs', default='docs')
+    parser.add_argument('--docs', default='docs-site/docs')
     args = parser.parse_args()
 
     with open(os.path.join(args.docs, 'REST-API-Reference.md'), 'w') as out:

@@ -1,4 +1,8 @@
-# About CodaLab Worksheets
+---
+id: About
+title: About CodaLab Worksheets
+sidebar_label: About Us
+---
 
 CodaLab Worksheets is an open-source platform that provides an ecosystem for
 conducting computational research in a more efficient, reproducible, and

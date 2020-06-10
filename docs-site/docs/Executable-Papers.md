@@ -1,3 +1,9 @@
+---
+id: Executable-Papers
+title: Executable Papers
+sidebar_label: Executable Papers
+---
+
 A CodaLab executable paper is a worksheet that contains the code, data, main experiments, tables, and graphs used in a published paper (think of it as an appendix or supplementary material).
 
 Since CodaLab keeps track of the full provenance generating a particular result, executable papers allow someone to independently verify the results in a published paper.  Furthermore, it is likely that the original authors did not explore the full space of possible experiments, but one can easily use CodaLab to run variants of the paper to answer new questions (`cl mimic` makes this super easy).

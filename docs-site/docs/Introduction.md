@@ -1,3 +1,9 @@
+---
+id: Introduction
+title: Introduction
+sidebar_label: Introduction
+---
+
 # CodaLab Worksheets
 
 For an introduction to CodaLab, check out our two-minute overview:

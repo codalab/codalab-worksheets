@@ -1,3 +1,9 @@
+---
+id: Workflow
+title: Workflow
+sidebar_label: Workflow
+---
+
 This document describes how you can use CodaLab as part of your daily research
 pipeline to become a more efficient researcher.
 

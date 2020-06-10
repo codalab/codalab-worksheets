@@ -1,3 +1,9 @@
+---
+id: Code-Overview
+title: Code Overview
+sidebar_label: Code Overview
+---
+
 This document provides an overview of the components of CodaLab and should be read by anyone who wants to contribute to CodaLab.
 
 # Core backend

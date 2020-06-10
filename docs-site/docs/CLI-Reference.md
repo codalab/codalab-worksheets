@@ -1,4 +1,8 @@
-# CLI Reference
+---
+id: CLI-Reference
+title: CLI Reference
+sidebar_label: CLI Reference
+---
 
 This file is auto-generated from the output of `cl help -v -m` and provides the list of all CLI commands.
 

@@ -1,3 +1,9 @@
+---
+id: Worksheet-Markdown
+title: Worksheet Markdown
+sidebar_label: Worksheet Markdown
+---
+
 CodaLab worksheets are represented using the standard
 [markdown](http://daringfireball.net/projects/markdown/syntax) with a few modifications.
 
@@ -202,7 +208,7 @@ there is a bit more room if you have schemas with lots of fields):
         % display graph <generalized-path> [display_name=<field>,x=<int>,y=<int>,xlabel=<string>,ylabel=<string>]
         % display /progress.tsv display_name=command xlabel=iteration ylabel=accuracy
 
-The <generalized-path> should point to a TSV file.  For each subsequent bundle, the TSV file inside that bundle is read, and the columns corresponding to `x` and `y` are pulled out (defaulting to 0 and 1).  These are the points that are graphed in a line.  For display, `display_name` specifies the field that is used to pull out a name for the bundle in the legend, and `xlabel`/`ylabel` are just the labels of the axes.
+The &lt;generalized-path&gt; should point to a TSV file.  For each subsequent bundle, the TSV file inside that bundle is read, and the columns corresponding to `x` and `y` are pulled out (defaulting to 0 and 1).  These are the points that are graphed in a line.  For display, `display_name` specifies the field that is used to pull out a name for the bundle in the legend, and `xlabel`/`ylabel` are just the labels of the axes.
 
 ### Displaying a dynamic set of bundles
 

@@ -1,11 +1,15 @@
-# REST API Reference
+---
+id: REST-API-Reference
+title: REST API Reference
+sidebar_label: REST API Reference
+---
 
 _version 0.5.14_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
 
-## Table of Contents
+# Table of Contents
 - [Introduction](#introduction)
 - [Resource Object Schemas](#resource-object-schemas)
 - [API Endpoints](#api-endpoints)
@@ -884,7 +888,7 @@ In the future, for large worksheets, might want to break this up so
 that we can render something basic.
 Return: 
     worksheet_info dict{}:
-        key:[value_type] <description>
+        key:[value_type] &lt;description&gt;
         blocks:[list] 
                 Resolved worksheet blocks from raw_items.
                     Bundles will be grouped into table block items, 

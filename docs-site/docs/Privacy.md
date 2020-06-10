@@ -1,4 +1,8 @@
-# Privacy
+---
+id: Privacy
+title: Privacy
+sidebar_label: Privacy
+---
 
 Last updated: August 3, 2016
 

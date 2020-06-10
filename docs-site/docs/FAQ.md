@@ -1,3 +1,9 @@
+---
+id: FAQ
+title: FAQ
+sidebar_label: FAQ
+---
+
 ### I installed CodaLab using `pip`. Why am I seeing `-bash: cl: command not found` when trying to use the CLI?
 
 When installing CodaLab, `pip` will output the following error if the executable path is not in your $PATH. 

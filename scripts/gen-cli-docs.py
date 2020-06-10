@@ -5,7 +5,12 @@ import os
 import argparse
 from codalab.lib.bundle_cli import Commands
 
-INTRODUCTION = """# CLI Reference
+INTRODUCTION = """\
+---
+id: CLI-Reference
+title: CLI Reference
+sidebar_label: CLI Reference
+---
 
 This file is auto-generated from the output of `cl help -v -m` and provides the list of all CLI commands.
 """
@@ -17,7 +22,7 @@ def indent(s):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--docs', default='docs')
+    parser.add_argument('--docs', default='docs-site/docs')
     args = parser.parse_args()
 
     with open(os.path.join(args.docs, 'CLI-Reference.md'), 'w') as f:
