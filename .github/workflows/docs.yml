@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build_docs:
+    runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/master'
+    defaults:
+      run:
+        working-directory: docs-site
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - run: yarn
+    - run: yarn build
+
+  deploy_docs:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    defaults:
+      run:
+        working-directory: docs-site
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - run: yarn
+    - run: yarn build
+    - name: Deploy to GitHub Pages
+      uses: crazy-max/ghaction-github-pages@v1.4.0
+      with:
+        keep_history: true
+        target-branch: gh-pages
+        build_dir: docs-site/build
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

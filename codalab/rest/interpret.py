@@ -192,7 +192,7 @@ def fetch_interpreted_worksheet(uuid):
     that we can render something basic.
     Return: 
         worksheet_info dict{}:
-            key:[value_type] <description>
+            key:[value_type] &lt;description&gt;
             blocks:[list] 
                     Resolved worksheet blocks from raw_items.
                         Bundles will be grouped into table block items, 

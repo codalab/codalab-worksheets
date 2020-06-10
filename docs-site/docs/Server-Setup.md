@@ -201,14 +201,15 @@ If you want to modify the database schema, use `alembic` to create a migration. 
 
 ## Developing the documentation
 
-We use `mkdocs` to install and serve our documentation:
+We use `docusaurus` to install and serve our documentation:
 
 ```bash
-pip install -r requirements.docs.txt
-mkdocs serve
+cd docs-site
+yarn
+yarn start
 ```
 
-You can then open the local docs site at [http://localhost:8000/](http://localhost:8000/).
+You can then open the local docs site at [http://localhost:3000/](http://localhost:3000/).
 
 # Production
 
