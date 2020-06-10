@@ -193,6 +193,17 @@ If you want to modify the database schema, use `alembic` to create a migration. 
         docker exec -ti codalab_mysql_1 bash
         mysql -u codalab -p codalab_bundles   # Type in `codalab` as the password
 
+## Developing the documentation
+
+We use `mkdocs` to install and serve our documentation:
+
+```bash
+pip install -r requirements.docs.txt
+mkdocs serve
+```
+
+You can then open the local docs site at [http://localhost:8000/](http://localhost:8000/).
+
 # Production
 
 If you want to make the CodaLab instance more permanent and exposed to a larger
@@ -262,13 +273,18 @@ The issue is documented in detail [here](https://github.com/benoitc/gunicorn/iss
 is to unselect `/tmp` in Docker's preferences under file sharing.
 
 The image below shows where the file sharing pane is.
-<img src="images/docker-preferences.png" />
+
+![File sharing pane](./images/docker-preferences.png)
 
 ## Sending Slack notifications from the monitor.py service
 If you need to send Slack notifications from monitor.py service, you can configure your system by Slack Email App as follows:
-* Go to [Slack Email App](https://slack.com/apps/A0F81496D-email) 
+
+* Go to the [Slack Email App](https://slack.com/apps/A0F81496D-email) 
+
 * Sign in to install and follow instructions listed on the above web page to generate your special Slack email address.
+
 * Since the system notifications from monitor.py are sent to $CODALAB_ADMIN_EMAIL, you can set $CODALAB_ADMIN_EMAIL to your special 
    Slack email address which will show up in a designated Slack channel.
+
 * Note that this integration only works with workspaces on *the Slack Standard Plan and above*.
 
