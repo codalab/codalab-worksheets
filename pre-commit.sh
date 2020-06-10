@@ -5,7 +5,6 @@
 if ! [ -e venv ]; then
   virtualenv -p python3 venv || exit 1
   venv/bin/pip install -r requirements-server.txt || exit 1
-  venv/bin/pip install -r requirements.docs.txt || exit 1
 fi
 
 venv/bin/pip install -e .

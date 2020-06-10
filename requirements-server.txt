@@ -1,9 +1,6 @@
 # Client
 -r requirements.txt
 
-# For generating readthedocs
--r requirements.docs.txt
-
 # For worker manager
 boto3==1.9.228
 
