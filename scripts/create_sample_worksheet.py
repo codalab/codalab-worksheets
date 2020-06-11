@@ -4,7 +4,7 @@ import random
 import re
 import string
 import time
-
+from os import path
 from scripts.test_util import cleanup, run_command
 
 """
@@ -67,11 +67,19 @@ class SampleWorksheet:
         ).split('\n')
         if re.match(SampleWorksheet._FULL_UUID_REGEX, worksheet_uuids[0]):
             print(
-                'There is already an existing {} with UUID {}. Removing and creating a new sample worksheet...'.format(
+                'There is already an existing {} with UUID {}. Checking if expected lines file exist'.format(
                     self._worksheet_name, worksheet_uuids[0]
                 )
             )
-            run_command([self._cl, 'wrm', '--force', self._worksheet_name])
+            if path.exists(self._worksheet_name + "_expected_lines.txt"):
+                print('Found expected lines file, reading from file and skipping the creation')
+                with open(self._worksheet_name + "_expected_lines.txt") as f:
+                    self._expected_lines = f.read().split("\n")
+                    self._valid_bundles = []
+                return
+            else:
+                print('Expected lines file not found, recreating the worksheet')
+                run_command([self._cl, 'wrm', '--force', self._worksheet_name])
 
         print('Creating a {} worksheet...'.format(self._description))
         self._create_dependencies()
@@ -84,6 +92,9 @@ class SampleWorksheet:
         self._add_invalid_directives()
         self._add_rendering_logic()
         self._create_sample_worksheet()
+        with open(self._worksheet_name + "_expected_lines.txt", "w") as f:
+                for line in self._expected_lines:
+                    f.write(line+"\n")
         print('Done.')
 
     def test_print(self):
