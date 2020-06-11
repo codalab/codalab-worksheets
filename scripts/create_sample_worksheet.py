@@ -67,11 +67,11 @@ class SampleWorksheet:
         ).split('\n')
         if re.match(SampleWorksheet._FULL_UUID_REGEX, worksheet_uuids[0]):
             print(
-                'There is already an existing {} with UUID {}. Skipping creating a sample worksheet...'.format(
+                'There is already an existing {} with UUID {}. Removing and creating a new sample worksheet...'.format(
                     self._worksheet_name, worksheet_uuids[0]
                 )
             )
-            return
+            run_command([self._cl, 'wrm', '--force', self._worksheet_name])
 
         print('Creating a {} worksheet...'.format(self._description))
         self._create_dependencies()
