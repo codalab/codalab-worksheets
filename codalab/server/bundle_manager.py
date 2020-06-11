@@ -296,7 +296,7 @@ class BundleManager(object):
                         bundle.uuid, worker['worker_id']
                     )
                 )
-                bundle_location = self._bundle_store.get_bundle_location(bundle=bundle)
+                bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
                 self._model.transition_bundle_finished(bundle, bundle_location)
 
     def _bring_offline_stuck_running_bundles(self, workers):
