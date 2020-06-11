@@ -153,7 +153,7 @@ class BundleImageBlockSchema(BundleBlockSchema):
 
 class SchemaBlockSchema(WorksheetBlockSchema):
     """
-    Schema for user defined schemas in worksheets
+    Schema for user-defined schemas in worksheets
     """
 
     mode = fields.Constant(BlockModes.schema_block)
