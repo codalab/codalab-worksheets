@@ -171,7 +171,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         """
         Start a CodaLab Slurm worker by submitting a batch job to Slurm
         """
-        worker_id = uuid.uuid4().hex
+        worker_id = self.username + "-" + self.args.job_name + '-' + uuid.uuid4().hex[:8]
 
         # Set up the Slurm worker directory
         slurm_work_dir = self.setup_slurm_work_directory(worker_id)
@@ -204,7 +204,7 @@ class SlurmBatchWorkerManager(WorkerManager):
     def setup_slurm_work_directory(self, worker_id):
         """
         Set up the work directory for Slurm Batch Worker Manager
-        :param worker_id: a string in the format of 32 hex characters
+        :param worker_id: a string representing the worker id
         :return: slurm work directory
         """
         # Set up the Slurm worker directory
@@ -222,7 +222,7 @@ class SlurmBatchWorkerManager(WorkerManager):
     def setup_codalab_worker(self, worker_id):
         """
         Set up the configuration for the codalab worker that will run on the Slurm worker
-        :param worker_id: a string of worker id in 32 hex characters
+        :param worker_id: a string representing the worker id
         :return: the command to run on
         """
         # This needs to be a unique directory since Batch jobs may share a host
@@ -233,9 +233,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         else:
             work_dir_prefix = Path()
 
-        worker_work_dir = work_dir_prefix.joinpath(
-            Path('slurm-codalab-worker-scratch', self.username + '-' + worker_id)
-        )
+        worker_work_dir = work_dir_prefix.joinpath(Path('slurm-codalab-worker-scratch', worker_id))
 
         command = [
             'cl-worker',
@@ -258,6 +256,10 @@ class SlurmBatchWorkerManager(WorkerManager):
             command.extend(['--tag', self.args.worker_tag])
         if self.args.password_file:
             command.extend(['--password-file', self.args.password_file])
+        if self.args.worker_max_work_dir_size:
+            command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
+        if self.args.worker_delete_work_dir_on_exit:
+            command.extend(['--delete-work-dir-on-exit'])
 
         return command
 
@@ -354,7 +356,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         slurm_args['partition'] = self.args.partition
         slurm_args['gres'] = "gpu:" + str(self.args.gpus)
         # job-name is unique
-        slurm_args['job-name'] = self.username + "-" + self.args.job_name + '-' + worker_id[:8]
+        slurm_args['job-name'] = worker_id
         slurm_args['cpus-per-task'] = str(self.args.cpus)
         slurm_args['ntasks-per-node'] = 1
         slurm_args['time'] = self.args.time

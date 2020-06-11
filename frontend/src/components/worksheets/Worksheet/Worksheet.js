@@ -12,7 +12,7 @@ import {
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
-import ExtraWorksheetHTML from '../ExtraWorksheetHTML/ExtraWorksheetHTML';
+import InformationModal from '../InformationModal/InformationModal';
 import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import {
@@ -20,11 +20,11 @@ import {
     EXPANDED_WORKSHEET_WIDTH,
     DEFAULT_WORKSHEET_WIDTH,
     LOCAL_STORAGE_WORKSHEET_WIDTH,
+    DIALOG_TYPES,
 } from '../../../constants';
 import WorksheetActionBar from '../WorksheetActionBar';
 import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
-import Icon from '@material-ui/core/Icon';
 import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
 import DeleteIcon from '@material-ui/icons/DeleteOutline';
@@ -33,22 +33,14 @@ import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import './Worksheet.scss';
 import ErrorMessage from '../ErrorMessage';
-import { ContextMenuMixin, default as ContextMenu } from '../ContextMenu';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
 import { executeCommand } from '../../../util/cli_utils';
-import Dialog from '@material-ui/core/Dialog';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogContentText from '@material-ui/core/DialogContentText';
-import DialogTitle from '@material-ui/core/DialogTitle';
-import DialogActions from '@material-ui/core/DialogActions';
 import Tooltip from '@material-ui/core/Tooltip';
-import CloseIcon from '@material-ui/icons/Close';
-import Grid from '@material-ui/core/Grid';
 import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import queryString from 'query-string';
-import { setPriority } from 'os';
+import { Dialog } from '@material-ui/core';
 
 /*
 Information about the current worksheet and its items.
@@ -92,13 +84,10 @@ class Worksheet extends React.Component {
             BulkBundleDialog: null,
             showBundleOperationButtons: false,
             uuidBundlesCheckedCount: {},
-            openDelete: false,
-            openDetach: false,
-            openKill: false,
-            openDeleteItem: false,
+            openedDialog: null,
+            errorDialogMessage: '',
             forceDelete: false,
-            showGlossaryModal: false,
-            errorMessage: '',
+            showInformationModal: false,
             deleteWorksheetConfirmation: false,
             deleteItemCallback: null,
             copiedBundleIds: '',
@@ -310,42 +299,11 @@ class Worksheet extends React.Component {
                 this.reloadWorksheet();
             })
             .fail((e) => {
-                let bundle_error_dialog = (
-                    <Dialog
-                        open={true}
-                        onClose={this.toggleBundleBulkMessageDialog}
-                        aria-labelledby='bundle-error-confirmation-title'
-                        aria-describedby='bundle-error-confirmation-description'
-                    >
-                        <DialogTitle id='bundle-error-confirmation-title'>
-                            <Grid container direction='row'>
-                                <Grid item xs={10}>
-                                    {'Failed to perform this action'}
-                                </Grid>
-                                <Grid item xs={2}>
-                                    <Button
-                                        variant='outlined'
-                                        size='small'
-                                        onClick={(e) => {
-                                            this.setState({ BulkBundleDialog: null });
-                                        }}
-                                    >
-                                        <CloseIcon size='small' />
-                                    </Button>
-                                </Grid>
-                            </Grid>
-                        </DialogTitle>
-                        <DialogContent>
-                            <DialogContentText
-                                id='alert-dialog-description'
-                                style={{ color: 'grey' }}
-                            >
-                                {e.responseText}
-                            </DialogContentText>
-                        </DialogContent>
-                    </Dialog>
-                );
-                this.setState({ BulkBundleDialog: bundle_error_dialog, updating: false });
+                this.setState({
+                    openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
+                    errorDialogMessage: e.responseText,
+                    updating: false,
+                });
             });
     };
 
@@ -355,6 +313,10 @@ class Worksheet extends React.Component {
 
     toggleBundleBulkMessageDialog = () => {
         this.setState({ BulkBundleDialog: null });
+    };
+
+    toggleErrorMessageDialog = () => {
+        this.setState({ openedDialog: null, errorDialogMessage: '' });
     };
 
     executeBundleCommand = (cmd_type) => () => {
@@ -381,17 +343,20 @@ class Worksheet extends React.Component {
     };
 
     handleCommand = (cmd_type) => {
+        if (this.state.openedDialog) {
+            this.setState({ openedDialog: null, deleteItemCallback: null });
+            return;
+        }
         if (cmd_type === 'deleteItem') {
             // This is used to delete markdown blocks
-            this.setState({ openDeleteItem: !this.state.openDeleteItem });
+            this.setState({ openedDialog: DIALOG_TYPES.OPEN_DELETE_MARKDOWN });
         }
-        const { openKill, openDelete, openDetach } = this.state;
         if (cmd_type === 'rm') {
-            this.setState({ openDelete: !openDelete });
+            this.setState({ openedDialog: DIALOG_TYPES.OPEN_DELETE_BUNDLE });
         } else if (cmd_type === 'detach') {
-            this.setState({ openDetach: !openDetach });
+            this.setState({ openedDialog: DIALOG_TYPES.OPEN_DETACH });
         } else if (cmd_type === 'kill') {
-            this.setState({ openKill: !openKill });
+            this.setState({ openedDialog: DIALOG_TYPES.OPEN_KILL });
         } else if (cmd_type === 'copy' || cmd_type === 'cut') {
             let validBundles = [];
             let cutBundleIds = [];
@@ -462,30 +427,26 @@ class Worksheet extends React.Component {
     };
 
     confirmBundleRowAction = (code) => {
-        if (
-            !(
-                this.state.openDelete ||
-                this.state.openDetach ||
-                this.state.openKill ||
-                this.state.BulkBundleDialog
-            )
-        ) {
+        if (!(this.state.openedDialog || this.state.BulkBundleDialog)) {
             // no dialog is opened, open bundle row detail
             return false;
         } else if (code === 'KeyX' || code === 'Space') {
             return true;
-        } else if (this.state.openDelete) {
+        } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_BUNDLE) {
             this.executeBundleCommandNoEvent('rm');
-        } else if (this.state.openDetach) {
+        } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_DETACH) {
             this.executeBundleCommandNoEvent('detach');
-        } else if (this.state.openKill) {
+        } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_KILL) {
             this.executeBundleCommandNoEvent('kill');
         }
         return true;
     };
     // BULK OPERATION RELATED CODE ABOVE======================================
     setDeleteItemCallback = (callback) => {
-        this.setState({ deleteItemCallback: callback, openDeleteItem: true });
+        this.setState({
+            deleteItemCallback: callback,
+            openedDialog: DIALOG_TYPES.OPEN_DELETE_MARKDOWN,
+        });
     };
 
     pasteBundlesToWorksheet = () => {
@@ -677,13 +638,13 @@ class Worksheet extends React.Component {
                     updating: false,
                     version: this.state.version + 1,
                     numOfBundles: this.getNumOfBundles(),
-                    errorMessage: '',
                 });
                 // Fix out of bounds.
             }.bind(this),
             error: function(xhr, status, err) {
                 this.setState({
-                    errorMessage: xhr.responseText,
+                    openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
+                    errorDialogMessage: xhr.responseText,
                     isValid: false,
                 });
             }.bind(this),
@@ -740,8 +701,8 @@ class Worksheet extends React.Component {
         $('#command_line').data('resizing', null);
         $('#ws_search').removeAttr('style');
     };
-    toggleGlossaryModal = () => {
-        this.setState({ showGlossaryModal: !this.state.showGlossaryModal });
+    toggleInformationModal = () => {
+        this.setState({ showInformationModal: !this.state.showInformationModal });
     };
     toggleWorksheetSize = () => {
         let newPercentage =
@@ -775,15 +736,7 @@ class Worksheet extends React.Component {
             // disable all keyboard shortcuts when loading worksheet
             return;
         }
-
-        if (
-            !(
-                this.state.openDelete ||
-                this.state.openDetach ||
-                this.state.openKill ||
-                this.state.BulkBundleDialog
-            )
-        ) {
+        if (!(this.state.openedDialog || this.state.BulkBundleDialog)) {
             // Only enable these shortcuts when no dialog is opened
             Mousetrap.bind(
                 ['shift+r'],
@@ -937,24 +890,22 @@ class Worksheet extends React.Component {
         }
         Mousetrap.bind(['?'], (e) => {
             this.setState({
-                showGlossaryModal: true,
+                showInformationModal: true,
             });
         });
         Mousetrap.bind(['+'], (e) => {
             this.toggleWorksheetSize();
         });
 
-        Mousetrap.bind(['esc'], (e) => {
-            ContextMenuMixin.closeContextMenu();
-        });
-
-        if (this.state.openDeleteItem) {
+        if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN) {
             Mousetrap.bind(
                 ['enter'],
                 function(e) {
                     e.preventDefault();
-                    this.state.deleteItemCallback();
-                    this.toggleCmdDialogNoEvent('deleteItem');
+                    if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN) {
+                        this.state.deleteItemCallback();
+                        this.toggleCmdDialogNoEvent('deleteItem');
+                    }
                 }.bind(this),
             );
         }
@@ -973,26 +924,35 @@ class Worksheet extends React.Component {
             // Below are allowed shortcut even when a dialog is opened===================
             // The following three are bulk bundle operation shortcuts
             Mousetrap.bind(['a c'], () => {
-                if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
+                if (this.state.openedDialog) {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('copy');
             });
             if (this.state.ws.info.edit_permission) {
                 Mousetrap.bind(['backspace', 'del'], () => {
-                    if (this.state.openDetach || this.state.openKill) {
+                    if (
+                        this.state.openedDialog &&
+                        this.state.openedDialog !== DIALOG_TYPES.OPEN_DELETE_BUNDLE
+                    ) {
                         return;
                     }
                     this.toggleCmdDialogNoEvent('rm');
                 });
                 Mousetrap.bind(['a d'], () => {
-                    if (this.state.openDelete || this.state.openKill) {
+                    if (
+                        this.state.openedDialog &&
+                        this.state.openedDialog !== DIALOG_TYPES.OPEN_DETACH
+                    ) {
                         return;
                     }
                     this.toggleCmdDialogNoEvent('detach');
                 });
                 Mousetrap.bind(['a k'], () => {
-                    if (this.state.openDetach || this.state.openDelete) {
+                    if (
+                        this.state.openedDialog &&
+                        this.state.openedDialog !== DIALOG_TYPES.OPEN_KILL
+                    ) {
                         return;
                     }
                     this.toggleCmdDialogNoEvent('kill');
@@ -1005,15 +965,15 @@ class Worksheet extends React.Component {
                 });
 
                 // Confirm bulk bundle operation
-                if (this.state.openDelete || this.state.openKill || this.state.openDetach) {
+                if (this.state.openedDialog) {
                     Mousetrap.bind(
                         ['enter'],
                         function(e) {
-                            if (this.state.openDelete) {
+                            if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_BUNDLE) {
                                 this.executeBundleCommandNoEvent('rm');
-                            } else if (this.state.openKill) {
+                            } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_KILL) {
                                 this.executeBundleCommandNoEvent('kill');
-                            } else if (this.state.openDetach) {
+                            } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_DETACH) {
                                 this.executeBundleCommandNoEvent('detach');
                             }
                         }.bind(this),
@@ -1024,7 +984,7 @@ class Worksheet extends React.Component {
                         ['f'],
                         function() {
                             //force deletion through f
-                            if (this.state.openDelete) {
+                            if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_BUNDLE) {
                                 this.setState({ forceDelete: !this.state.forceDelete });
                             }
                         }.bind(this),
@@ -1107,7 +1067,10 @@ class Worksheet extends React.Component {
                 }
             }.bind(this),
             error: function(xhr, status, err) {
-                this.setState({ errorMessage: xhr.responseText });
+                this.setState({
+                    openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
+                    errorDialogMessage: xhr.responseText,
+                });
                 $('#worksheet_container').hide();
             },
         });
@@ -1295,7 +1258,6 @@ class Worksheet extends React.Component {
                         });
                         return false;
                     }
-                    this.setState({ errorMessage: '' });
                     $('#update_progress').hide();
                     $('#worksheet_content').show();
                     var items = this.state.ws.info.blocks;
@@ -1376,7 +1338,8 @@ class Worksheet extends React.Component {
                 error: function(xhr, status, err) {
                     this.setState({
                         updating: false,
-                        errorMessage: xhr.responseText,
+                        openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
+                        errorDialogMessage: xhr.responseText,
                     });
                     $('#update_progress').hide();
                     $('#worksheet_container').hide();
@@ -1412,7 +1375,6 @@ class Worksheet extends React.Component {
     };
 
     saveAndUpdateWorksheet = (fromRaw, rawIndex) => {
-        this.setState({ updating: true, errorMessage: '' });
         this.saveWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
@@ -1422,7 +1384,10 @@ class Worksheet extends React.Component {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
-                this.setState({ errorMessage: xhr.responseText });
+                this.setState({
+                    openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
+                    errorDialogMessage: xhr.responseText,
+                });
                 if (fromRaw) {
                     this.toggleEditMode(true);
                 }
@@ -1430,8 +1395,7 @@ class Worksheet extends React.Component {
         });
     };
 
-    deteleWorksheetAction = () => {
-        this.setState({ updating: true, errorMessage: '' });
+    deleteWorksheetAction = () => {
         this.deleteWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
@@ -1441,50 +1405,13 @@ class Worksheet extends React.Component {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
-                this.setState({ errorMessage: xhr.responseText });
+                this.setState({
+                    openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
+                    errorDialogMessage: xhr.responseText,
+                });
             }.bind(this),
         });
     };
-
-    deleteThisWorksheet() {
-        // TODO: put all worksheet dialogs into WorksheetDialogs.js if possible
-        let deleteWorksheetDialog = (
-            <Dialog
-                open={true}
-                onClose={this.toggleBundleBulkMessageDialog}
-                aria-labelledby='delete-worksheet-confirmation-title'
-                aria-describedby='delete-worksheet-confirmation-description'
-            >
-                <DialogTitle id='delete-worksheet-confirmation-title' style={{ color: 'red' }}>
-                    Delete this worksheet permanently?
-                </DialogTitle>
-                <DialogContent>
-                    <DialogContentText
-                        id='alert-dialog-description'
-                        style={{ color: 'red', marginBottom: '20px' }}
-                    >
-                        {'Warning: Deleted worksheets cannot be recovered.'}
-                    </DialogContentText>
-                    <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
-                        {'Note: Deleting worksheets does not delete the bundles inside it.'}
-                    </DialogContentText>
-                    <DialogActions>
-                        <Button color='primary' onClick={this.toggleBundleBulkMessageDialog}>
-                            CANCEL
-                        </Button>
-                        <Button
-                            color='primary'
-                            variant='contained'
-                            onClick={this.deteleWorksheetAction}
-                        >
-                            DELETE
-                        </Button>
-                    </DialogActions>
-                </DialogContent>
-            </Dialog>
-        );
-        this.setState({ BulkBundleDialog: deleteWorksheetDialog });
-    }
 
     showUploadMenu = (e) => {
         // pause mousetrap events such as up, down, and enter
@@ -1541,7 +1468,9 @@ class Worksheet extends React.Component {
                     {this.state.showActionBar ? 'HIDE TERMINAL' : 'SHOW TERMINAL'}
                 </Button>
                 <Button
-                    onClick={(e) => this.deleteThisWorksheet()}
+                    onClick={(e) =>
+                        this.setState({ openedDialog: DIALOG_TYPES.OPEN_DELETE_WORKSHEET })
+                    }
                     size='small'
                     color='inherit'
                     aria-label='Delete Worksheet'
@@ -1651,10 +1580,6 @@ class Worksheet extends React.Component {
             />
         );
 
-        const context_menu_display = (
-            <ContextMenu userInfo={this.state.userInfo} ws={this.state.ws} />
-        );
-
         var worksheet_display = this.state.editMode ? raw_display : items_display;
         var editButtons = this.state.editMode ? editModeFeatures : editFeatures;
         if (!this.state.isValid) {
@@ -1663,12 +1588,15 @@ class Worksheet extends React.Component {
 
         var worksheet_dialogs = (
             <WorksheetDialogs
-                openKill={this.state.openKill}
-                openDelete={this.state.openDelete}
-                openDetach={this.state.openDetach}
-                openDeleteItem={this.state.openDeleteItem}
+                openedDialog={this.state.openedDialog}
+                closeDialog={() => {
+                    this.setState({ openedDialog: null });
+                }}
+                errorDialogMessage={this.state.errorDialogMessage}
                 toggleCmdDialog={this.toggleCmdDialog}
                 toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
+                toggleErrorMessageDialog={this.toggleErrorMessageDialog}
+                deleteWorksheetAction={this.deleteWorksheetAction}
                 executeBundleCommand={this.executeBundleCommand}
                 forceDelete={this.state.forceDelete}
                 handleForceDelete={this.handleForceDelete}
@@ -1681,7 +1609,6 @@ class Worksheet extends React.Component {
 
         return (
             <React.Fragment>
-                {context_menu_display}
                 <WorksheetHeader
                     showActionBar={this.state.showActionBar}
                     canEdit={this.canEdit()}
@@ -1703,7 +1630,7 @@ class Worksheet extends React.Component {
                     handleSelectedBundleCommand={this.handleSelectedBundleCommand}
                     showBundleOperationButtons={this.state.showBundleOperationButtons}
                     toggleCmdDialog={this.toggleCmdDialog}
-                    toggleGlossaryModal={this.toggleGlossaryModal}
+                    toggleInformationModal={this.toggleInformationModal}
                     toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
                     copiedBundleIds={this.state.copiedBundleIds}
                     showPasteButton={this.state.showPasteButton}
@@ -1738,13 +1665,9 @@ class Worksheet extends React.Component {
                                         {worksheet_display}
                                         {/* Show error dialog if bulk bundle execution failed*/}
                                         {this.state.BulkBundleDialog}
-                                        <ExtraWorksheetHTML
-                                            showGlossaryModal={this.state.showGlossaryModal}
-                                            toggleGlossaryModal={this.toggleGlossaryModal}
-                                            errorMessage={this.state.errorMessage}
-                                            clearErrorMessage={() =>
-                                                this.setState({ errorMessage: '' })
-                                            }
+                                        <InformationModal
+                                            showInformationModal={this.state.showInformationModal}
+                                            toggleInformationModal={this.toggleInformationModal}
                                         />
                                     </div>
                                 </div>
@@ -1753,9 +1676,9 @@ class Worksheet extends React.Component {
                     </div>
                 </div>
                 {worksheet_dialogs}
-                <ExtraWorksheetHTML
-                    showGlossaryModal={this.state.showGlossaryModal}
-                    toggleGlossaryModal={this.toggleGlossaryModal}
+                <InformationModal
+                    showInformationModal={this.state.showInformationModal}
+                    toggleInformationModal={this.toggleInformationModal}
                 />
                 {this.state.updating && <Loading />}
                 {!info && <Loading />}

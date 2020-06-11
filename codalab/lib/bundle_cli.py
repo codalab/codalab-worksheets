@@ -1104,6 +1104,7 @@ class BundleCLI(object):
             'runs',
             'shared_file_system',
             'tag_exclusive',
+            'exit_after_num_runs',
         ]
 
         data = []
@@ -1123,6 +1124,7 @@ class BundleCLI(object):
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
                     'tag_exclusive': worker['tag_exclusive'],
+                    'exit_after_num_runs': worker['exit_after_num_runs'],
                 }
             )
 
@@ -3390,7 +3392,7 @@ class BundleCLI(object):
                 )
 
         print(
-            'Copied %s worksheet items to %s.' % (len(source_items), dest_worksheet_uuid),
+            'Copied %s worksheet items to %s.' % (len(valid_source_items), dest_worksheet_uuid),
             file=self.stdout,
         )
 
