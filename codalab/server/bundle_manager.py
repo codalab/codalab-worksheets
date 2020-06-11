@@ -629,7 +629,7 @@ class BundleManager(object):
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
         if shared_file_system:
-            message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle=bundle)
+            message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
             for dependency in message['bundle']['dependencies']:
                 dependency['location'] = self._bundle_store.get_bundle_location(
                     bundle_uuid=dependency['parent_uuid']
