@@ -93,8 +93,8 @@ class SampleWorksheet:
         self._add_rendering_logic()
         self._create_sample_worksheet()
         with open(self._worksheet_name + "_expected_lines.txt", "w") as f:
-                for line in self._expected_lines:
-                    f.write(line+"\n")
+            for line in self._expected_lines:
+                f.write(line + "\n")
         print('Done.')
 
     def test_print(self):
