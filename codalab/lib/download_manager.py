@@ -99,7 +99,6 @@ class DownloadManager(object):
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
         # Raises NotFoundException if uuid is invalid
-
         if bundle_state == State.PREPARING:
             raise NotFoundError(
                 "Bundle {} hasn't started running yet, files not available".format(
@@ -309,7 +308,10 @@ class DownloadManager(object):
         return True
 
     def _get_target_path(self, target):
-        bundle_path = self._bundle_store.get_bundle_location(target.bundle_uuid)
+        bundle_link_url = self._bundle_model.get_bundle_metadata(
+            [target.bundle_uuid], "link_url"
+        ).get(target.bundle_uuid)
+        bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(target.bundle_uuid)
         try:
             return download_util.get_target_path(bundle_path, target)
         except download_util.PathException as e:

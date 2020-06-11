@@ -33,6 +33,9 @@ class BundleTarget:
     def from_dict(cls, dct):
         return cls(dct['bundle_uuid'], dct['subpath'])
 
+    def __str__(self):
+        return "{}:{}".format(self.bundle_uuid, self.subpath)
+
 
 def get_target_info(bundle_path, target, depth):
     """

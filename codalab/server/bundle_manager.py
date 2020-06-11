@@ -297,6 +297,7 @@ class BundleManager(object):
                     )
                 )
                 bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+                # TODO: fix this -- bundle location could be linked.
                 self._model.transition_bundle_finished(bundle, bundle_location)
 
     def _bring_offline_stuck_running_bundles(self, workers):
@@ -542,6 +543,7 @@ class BundleManager(object):
             if worker['shared_file_system']:
                 # On a shared file system we create the path here to avoid NFS
                 # directory cache issues.
+                # TODO: fix for --link
                 path = self._bundle_store.get_bundle_location(bundle.uuid)
                 remove_path(path)
                 os.mkdir(path)
@@ -646,6 +648,7 @@ class BundleManager(object):
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
         if shared_file_system:
+            # TODO: fix for --link
             message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
             for dependency in message['bundle']['dependencies']:
                 dependency['location'] = self._bundle_store.get_bundle_location(
