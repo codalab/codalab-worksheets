@@ -865,7 +865,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             # Don't physically delete linked bundles.
             pass
         else:
-            bundle_location = local.bundle_store.get_bundle_location(uuid=uuid)
+            bundle_location = local.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):
                 local.bundle_store.cleanup(uuid, dry_run)
 
