@@ -220,6 +220,7 @@ class SampleWorksheet:
         self._add_line('% add permission')
         self._add_line('% add group_permissions')
         self._add_line('% display table valid_schema')
+        self._add_blank_line_pattern()
         self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)
         self._add_bundles(self._valid_bundles)
         self._add_table_pattern(
@@ -242,6 +243,7 @@ class SampleWorksheet:
         self._add_line('% add size data_size size')
         self._add_line('% add uuid uuid "[0:8]"')
         self._add_line('% display table post_processor_schema')
+        self._add_blank_line_pattern()
         self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)
         self._add_bundles(self._valid_bundles)
         self._add_table_pattern(
@@ -252,6 +254,7 @@ class SampleWorksheet:
         self._add_line('% schema combined_schema')
         self._add_line('% addschema valid_schema')
         self._add_line('% addschema post_processor_schema')
+        self._add_blank_line_pattern()
         self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)
         self._add_line('% display table combined_schema')
         self._add_bundles(self._valid_bundles)
@@ -291,6 +294,7 @@ class SampleWorksheet:
         self._add_line('% add time time duration2')
         self._add_line('% add updated last_updated date2')
         self._add_line('% add size data_size size2')
+        self._add_blank_line_pattern()
         self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)
         self._add_line('% display table invalid_functions_schema')
         self._add_bundles(self._valid_bundles)
@@ -384,6 +388,7 @@ class SampleWorksheet:
         self._add_line('% add created created date')
         self._add_line('% display table recently_created_schema')
         self._add_line('% search created=.sort- .limit={}'.format(self._entities_count))
+        self._add_blank_line_pattern()
         self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)
         self._add_table_pattern(['name', 'owner', 'created'], self._entities_count)
 
