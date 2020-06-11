@@ -25,7 +25,6 @@ class SchemaItem extends React.Component<{
     item: {},
     reloadWorksheet: () => any,
 }> {
-    /** Constructor. */
     constructor(props) {
         super(props);
         this.state = {
@@ -57,7 +56,7 @@ class SchemaItem extends React.Component<{
         let fromAddSchema = false;
         let schemaBlockSourceLength = field_rows.length;
         this.state.rows.forEach((fields) => {
-            if (!fields.field) {
+            if (!fields['field']) {
                 return;
             }
             if (!fromAddSchema && fields.from_schema_name !== schema_name) {
@@ -73,7 +72,7 @@ class SchemaItem extends React.Component<{
                 fromAddSchema = false;
             }
 
-            let curRow = '% add ' + fields.field;
+            let curRow = '% add ' + fields['field'];
             if (!fields['generated-path']) {
                 updatedSchema.push(curRow);
                 return;
@@ -101,7 +100,7 @@ class SchemaItem extends React.Component<{
         schemaHeaders.forEach((header) => {
             newRow[header] = '';
         });
-        let curRow = this.state.rows;
+        let curRow = [...this.state.rows];
         curRow.splice(idx + 1, 0, newRow);
         this.setState({ rows: curRow });
     };
@@ -109,7 +108,7 @@ class SchemaItem extends React.Component<{
     changeFieldValue = (idx, key) => (e) => {
         if (!this.props.editPermission) return;
         const { rows } = this.state;
-        let copiedRows = JSON.parse(JSON.stringify(rows));
+        let copiedRows = [...rows];
         copiedRows[idx][key] = e.target.value;
         this.setState({ rows: [...copiedRows] });
     };
@@ -118,7 +117,7 @@ class SchemaItem extends React.Component<{
         if (!this.props.editPermission) return;
         // -1 for moving up, 1 for moving down
         const { rows } = this.state;
-        let copiedRows = JSON.parse(JSON.stringify(rows));
+        let copiedRows = [...rows];
         let newIndex = idx + direction;
         [copiedRows[newIndex], copiedRows[idx]] = [copiedRows[idx], copiedRows[newIndex]];
         if (copiedRows[idx].from_schema_name !== this.props.item.schema_name) {
@@ -143,7 +142,7 @@ class SchemaItem extends React.Component<{
     removeFieldRow = (idx) => () => {
         if (!this.props.editPermission) return;
         const { rows } = this.state;
-        let copiedRows = JSON.parse(JSON.stringify(rows));
+        let copiedRows = [...rows];
         copiedRows.splice(idx, 1);
         this.setState({ rows: copiedRows });
     };
@@ -161,8 +160,6 @@ class SchemaItem extends React.Component<{
         const schemaHeaders = schemaItem.header;
         const schema_name = schemaItem.schema_name;
         let headerHtml, bodyRowsHtml;
-        // console.log("props:",this.props.item.field_rows);
-        // console.log("state:", rows);
         headerHtml =
             showSchemaDetail &&
             schemaHeaders.map((item, index) => {

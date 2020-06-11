@@ -932,12 +932,12 @@ def interpret_items(schemas, raw_items, db_model=None):
                                 'schema_name': current_schema_name,
                                 'field_rows': [
                                     {
-                                        "field": field,
+                                        "field": name,
                                         "generated-path": path,
                                         "post-processing": post,
                                         "from_schema_name": from_schema_name,
                                     }
-                                    for field, path, post, from_schema_name in current_schema
+                                    for name, path, post, from_schema_name in current_schema
                                 ],
                                 'start_index': start_schema_index,
                                 'sort_keys': [sort_key],

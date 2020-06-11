@@ -535,8 +535,9 @@ class Worksheet extends React.Component {
         //      % schema example
         //      % add uuid uuid [0:8]
         // start_index: the index in source corresponding to % schema example
-        // original_length: how many fields the original schema occupied, one for the example (starting from add)
+        // original_length: how many source lines the original schema fields occupied, 1 for the example (starting from add)
         let source = this.state.ws.info.source;
+        // replace with the new fields, start index is the source line index of % schema example
         source.splice(start_index + 1, original_length, ...rows);
         this.saveAndUpdateWorksheet();
     };
