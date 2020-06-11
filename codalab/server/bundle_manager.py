@@ -525,7 +525,7 @@ class BundleManager(object):
             if worker['shared_file_system']:
                 # On a shared file system we create the path here to avoid NFS
                 # directory cache issues.
-                path = self._bundle_store.get_bundle_location(bundle=bundle)
+                path = self._bundle_store.get_bundle_location(bundle.uuid)
                 remove_path(path)
                 os.mkdir(path)
             if self._worker_model.send_json_message(
