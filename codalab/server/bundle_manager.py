@@ -632,7 +632,7 @@ class BundleManager(object):
             message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
             for dependency in message['bundle']['dependencies']:
                 dependency['location'] = self._bundle_store.get_bundle_location(
-                    bundle_uuid=dependency['parent_uuid']
+                   dependency['parent_uuid']
                 )
 
         # Figure out the resource requirements.
