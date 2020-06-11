@@ -1782,6 +1782,7 @@ def test(ctx):
             'gpus',
             'memory',
             'free_disk',
+            'exit_after_num_runs',
             'last_checkin',
             'tag',
             'runs',
@@ -1793,7 +1794,7 @@ def test(ctx):
 
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
-    check_equals(True, len(worker_info) >= 8)
+    check_equals(True, len(worker_info) >= 9)
 
 
 @TestModule.register('rest1')
