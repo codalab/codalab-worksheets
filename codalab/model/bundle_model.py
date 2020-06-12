@@ -2164,7 +2164,8 @@ class BundleModel(object):
             return result[0]
         return None
 
-    def get_users(self, user_ids=None, usernames=None, check_active=True):
+    def get_users(self, user_ids=None, usernames=None, check_active=True,
+        date_joined=None, last_login=None):
         """
         Get users.
 
@@ -2179,11 +2180,190 @@ class BundleModel(object):
             clauses.append(cl_user.c.user_id.in_(user_ids))
         if usernames is not None:
             clauses.append(or_(cl_user.c.user_name.in_(usernames), cl_user.c.email.in_(usernames)))
+        if date_joined is not None:
+            clauses.append(cl_user.c.date_joined >= date_joined)
+        if last_login is not None:
+            clauses.append(cl_user.c.last_login >= last_login)
 
         with self.engine.begin() as connection:
             rows = connection.execute(select([cl_user]).where(and_(*clauses))).fetchall()
 
         return [User(row) for row in rows]
+
+    def get_user_stats(self, keywords):
+        """
+        Get user stats, specifically used for weekly on-call.
+
+        Returns a bundle search result dict where:
+            result: list of bundle uuids matching search criteria in order
+                        specified for bundle searches
+                    single number value for aggregate searches(.count)
+            is_aggregate: True for aggregate searches, False otherwise
+        Each keyword is either:
+        - <key>=<value>
+        - .active_before=<datetime>: return users whose last login is before the datetime
+        - .active_after=<datetime>: return users whose last login is after the datetime
+        - .joined_before=<datetime>: return users who joined before the datetime
+        - .joined_after=<datetime>: return users who joined after the datetime
+        - .offset=<int>: return bundles starting at this offset
+        - .limit=<int>: maximum number of bundles to return
+        - .count: just return the number of bundles
+        Keys are one of the following:
+        - User fields (e.g., name)
+        - Special fields (e.g., date_joined)
+        Values can be one of the following:
+        - .sort: sort in increasing order
+        - .sort-: sort by decreasing order
+        :return: list of matching User objects
+        """
+        clauses = []
+        offset = 0
+        format_func = None
+        limit = SEARCH_RESULTS_LIMIT
+        count = False
+        sort_key = [None]
+        aux_fields = []  # Fields (e.g., sorting) that we need to include in the query
+
+        # Number nested subqueries
+        subquery_index = [0]
+
+        def alias(clause):
+            subquery_index[0] += 1
+            return clause.alias('q' + str(subquery_index[0]))
+
+        def is_numeric(key):
+            return key in ('id', 'time_quota', 'parallel_run_quota', 'time_used',
+                'disk_quota', 'disk_used')
+
+        def make_condition(key, field, value):
+            # Special
+            if value == '.sort':
+                aux_fields.append(field)
+                if is_numeric(key):
+                    field = field * 1
+                sort_key[0] = field
+            elif value == '.sort-':
+                aux_fields.append(field)
+                if is_numeric(key):
+                    field = field * 1
+                sort_key[0] = desc(field)
+            else:
+                # Ordinary value
+                if isinstance(value, list):
+                    return field.in_(value)
+                if '%' in value:
+                    return field.like(value)
+                return field == value
+            return None
+
+        for keyword in keywords:
+            keyword = keyword.replace('.*', '%')
+            # Sugar
+            if keyword == '.count':
+                count = True
+                limit = None
+                continue
+            elif keyword == '.last':
+                keyword = 'id=.sort-'
+
+            m = SEARCH_KEYWORD_REGEX.match(keyword)  # key=value
+            if m:
+                key, value = m.group(1), m.group(2)
+                if ',' in value:  # value is value1,value2
+                    value = value.split(',')
+            else:
+                key, value = '', keyword
+
+            clause = None
+            # Special functions
+            if key == '.offset':
+                offset = int(value)
+            elif key == '.limit':
+                limit = int(value)
+            elif key == '.format':
+                format_func = value
+            # Bundle fields
+            elif key == 'id':
+                clause = make_condition(key, cl_user.c.id, value)
+            elif key == 'user_id':
+                clause = make_condition(key, cl_user.c.user_id, value)
+            elif key == 'user_name':
+                clause = make_condition(key, cl_user.c.user_name, value)
+            elif key == 'email':
+                clause = make_condition(key, cl_user.c.email, value)
+            elif key == 'last_login':
+                clause = make_condition(key, cl_user.c.last_login, value)
+            elif key == 'first_name':
+                clause = make_condition(key, cl_user.c.first_name, value)
+            elif key == 'last_name':
+                clause = make_condition(key, cl_user.c.last_name, value)
+            elif key == 'affiliation':
+                clause = make_condition(key, cl_user.c.affiliation, value)
+            elif key == 'time_quota':
+                clause = make_condition(key, cl_user.c.time_quota, value)
+            elif key == 'parallel_run_quota':
+                clause = make_condition(key, cl_user.c.parallel_run_quota, value)
+            elif key == 'time_used':
+                clause = make_condition(key, cl_user.c.time_used, value)
+            elif key == 'disk_quota':
+                clause = make_condition(key, cl_user.c.disk_quota, value)
+            elif key == 'disk_used':
+                clause = make_condition(key, cl_user.c.disk_used, value)
+            # Special fields
+            elif key in ('.joined_after', '.active_after', '.joined_before', '.active_before'):
+                if key == '.joined_after':
+                    clause = cl_user.c.date_joined >= value
+
+                if key == '.active_after':
+                    clause = cl_user.c.last_login >= value
+
+                if key == '.joined_before':
+                    clause = cl_user.c.date_joined <= value
+
+                if key == '.active_before':
+                    clause = cl_user.c.last_login <= value
+            elif key == '':  # Match any field
+                clause = []
+                clause.append(cl_user.c.id.like('%' + value + '%'))
+                clause.append(cl_user.c.user_id.like('%' + value + '%'))
+                clause.append(cl_user.c.user_name.like('%' + value + '%'))
+                clause.append(cl_user.c.first_name.like('%' + value + '%'))
+                clause.append(cl_user.c.last_name.like('%' + value + '%'))
+                clause = or_(*clause)
+
+            else:
+                raise UsageError('Unknown key: %s' % key)
+
+            if clause is not None:
+                clauses.append(clause)
+
+        clause = and_(*clauses)
+
+        query = (
+            select([cl_user] + aux_fields)
+            .distinct()
+            .where(clause)
+            .offset(offset)
+            .limit(limit)
+        )
+
+        # Sort
+        if sort_key[0] is not None:
+            query = query.order_by(sort_key[0])
+
+        # Count
+        if count:
+            query = alias(query).count()
+
+        with self.engine.begin() as connection:
+            rows = connection.execute(query).fetchall()
+
+        if count:  # Just returning a single number
+            rows = worksheet_util.apply_func(format_func, rows[0][0])
+            return {'results': rows, 'is_aggregate': True}
+        else:
+            results = [User(row) for row in rows]
+            return {'results': results, 'is_aggregate': False}
 
     def user_exists(self, username, email):
         """

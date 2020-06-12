@@ -6,7 +6,7 @@ import http.client
 from bottle import abort, get, request, local, delete
 
 from codalab.lib.spec_util import NAME_REGEX
-from codalab.lib.server_util import bottle_patch as patch, json_api_meta
+from codalab.lib.server_util import bottle_patch as patch, json_api_meta, query_get_list
 from codalab.rest.schemas import AuthenticatedUserSchema, USER_READ_ONLY_FIELDS, UserSchema
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
 from codalab.rest.util import get_resource_ids
@@ -143,6 +143,44 @@ def fetch_users():
     users = local.model.get_users(usernames=(usernames or None))
     return allowed_user_schema()(many=True).dump(users).data
 
+@get('/userstats')
+def fetch_user_stats():
+    """
+    Fetch list of users, filterable by username and email.
+
+    Takes the following query parameters:
+        filter[user_name]=name1,name2,...
+        filter[email]=email1,email2,...
+
+    Query parameters:
+
+    - `keywords`: Search keyword. May be provided multiples times for multiple
+    keywords.
+    Examples of other special keyword forms:
+    - `name=<name>            ` : More targeted search of using metadata fields.
+    - `date_joined=.sort             ` : Sort by a particular field.
+    - `date_joined=.sort-            ` : Sort by a particular field in reverse.
+    - `size=.sum              ` : Compute total of a particular field.
+    - `.count                 ` : Count the number of users.
+    - `.limit=10              ` : Limit the number of results to the top 10.
+    """
+    keywords = query_get_list('keywords')
+    if keywords:
+        # Handle search keywords
+        users = local.model.get_user_stats(keywords)
+        # Return simple dict if scalar result (e.g. .sum or .count queries)
+        if users.get('is_aggregate'):
+
+            return json_api_meta({}, {'results': users['results']})
+        else:
+            users = users['results']
+    else:
+        abort(
+            http.client.BAD_REQUEST,
+            "Request must include 'keywords' query parameter",
+        )
+
+    return allowed_user_schema()(many=True).dump(users).data
 
 @patch('/users')
 def update_users():

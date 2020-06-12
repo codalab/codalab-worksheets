@@ -140,7 +140,7 @@ GROUP_AND_PERMISSION_COMMANDS = (
     'chown',
 )
 
-USER_COMMANDS = ('uinfo', 'uedit', 'ufarewell')
+USER_COMMANDS = ('uinfo', 'uedit', 'ufarewell', 'uls')
 
 SERVER_COMMANDS = (
     'workers',
@@ -661,7 +661,25 @@ class BundleCLI(object):
         for row_dict in row_dicts:
             row = []
             for col in columns:
-                cell = row_dict.get(col)
+                # These fields will not be returned by the server if the
+                # authenticated user is not root
+                if col in ('last_login', 'email', 'time', 'disk', 'parallel_run_quota'):
+                    try:
+                        if col == 'time':
+                            cell = formatting.ratio_str(
+                                formatting.duration_str, row_dict['time_used'], row_dict['time_quota']
+                            )
+                        elif col == 'disk':
+                            cell = formatting.ratio_str(
+                                formatting.size_str, row_dict['disk_used'], row_dict['disk_quota']
+                            )
+                        else:
+                            cell = row_dict.get(col)
+                    except KeyError:
+                        return
+                else:
+                    cell = row_dict.get(col)
+
                 func = post_funcs.get(col)
                 if func:
                     cell = worksheet_util.apply_func(func, cell)
@@ -1955,7 +1973,7 @@ class BundleCLI(object):
             '  search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).',
             '  search .offset=<offset>                : Return results starting at <offset>.',
             '',
-            '  search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-3-14).',
+            '  search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).',
             '  search .after=<datetime>               : Returns bundles created after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).',
             '',
             '  search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).',
@@ -3729,6 +3747,69 @@ class BundleCLI(object):
         self.print_user_info(user)
 
     @Commands.command(
+        'uls',
+        help=[
+            'Search for users on CodaLab (returns 10 results by default).',
+            '  search <keyword> ... <keyword>         : Username or id contains each <keyword>.',
+            '  search user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., first_name).',
+            '',
+            '  search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).',
+            '  search .offset=<offset>                : Return results starting at <offset>.',
+            '',
+            '  search .joined_before=<datetime>       : Returns users joined before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).',
+            '  search .joined_after=<datetime>        : Returns users joined after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).',
+            '  search .active_before=<datetime>       : Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).',
+            '  search .active_after=<datetime>        : Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).',
+            '',
+            '  search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).',
+            '  search size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).',
+            '  search .last                           : Sort in reverse chronological order (equivalent to id=.sort-).',
+            '  search .count                          : Count the number of matching bundles.',
+            '  search .format=<format>                : Apply <format> function (see worksheet markdown).',
+            '',
+            ],
+        arguments=(
+            Commands.Argument('keywords', help='Keywords to search for.', nargs='+'),
+            Commands.Argument('-f', '--field', help='Print out these comma-separated fields.'),
+            Commands.Argument('-w', '--weekly_stats', help='Print out the summary report of weekly new and active users respectively.'),
+        ),
+    )
+    def do_uls_command(self, args):
+        """
+        Search for specific users.
+        """
+        client = self.manager.current_client()
+            #             user_id = client.fetch('user')['id']
+            # if request.user.user_id != local.model.root_user_id:
+        users = client.fetch('userstats', params={'keywords': args.keywords,})
+        # users = client.fetch('users', params={'date_joined': args.date_joined})
+        # Print direct numeric result
+        if 'meta' in users:
+            print(users['meta']['results'], file=self.stdout)
+            return
+
+        # Print table
+        if len(users) > 0:
+            if args.field:
+                columns = args.field.split(',')
+            else:
+                columns = (
+                    'user_name',
+                    'first_name',
+                    'last_name',
+                    'affiliation',
+                    'date_joined',
+                    'last_login',
+                    'time',
+                    'disk',
+                    'parallel_run_quota',
+                )
+            self.print_result_limit_info(len(users))
+            self.print_table(columns, users)
+        else:
+            print(NO_RESULTS_FOUND, file=self.stderr)
+
+    @Commands.command(
         'uinfo',
         help=['Show user information.'],
         arguments=(
@@ -3745,11 +3826,16 @@ class BundleCLI(object):
         Edit properties of users.
         """
         client = self.manager.current_client()
+        print(args.user_spec)
         if args.user_spec is None:
             user = client.fetch('user')
         else:
             user = client.fetch('users', args.user_spec)
         self.print_user_info(user, args.field)
+
+    def print_users_info(self, users):
+        for user in users:
+            self.print_user_info(user, fields=None)
 
     def print_user_info(self, user, fields=None):
         def print_attribute(key, user, should_pretty_print):
@@ -3785,7 +3871,6 @@ class BundleCLI(object):
             'affiliation',
             'url',
             'date_joined',
-            'last_login',
             'email',
             'time',
             'disk',

@@ -146,7 +146,7 @@ Usage: `cl <command> <arguments>`
       search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
       search .offset=<offset>                : Return results starting at <offset>.
     
-      search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-3-14).
+      search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
       search .after=<datetime>               : Returns bundles created after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
     
       search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
@@ -433,6 +433,28 @@ Usage: `cl <command> <arguments>`
     Arguments:
       user_spec    Username or id of user to show [default: the authenticated user]
       -f, --field  Print out these comma-separated fields.
+
+### uls:
+    Search for users on CodaLab (returns 10 results by default).
+    search <keyword> ... <keyword>         : Username or id contains each <keyword>.
+    search user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., first_name).
+
+    search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
+    search .offset=<offset>                : Return results starting at <offset>.
+
+    search .joined_before=<datetime>       : Returns users joined before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
+    search .joined_after=<datetime>        : Returns users joined after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
+    search .active_before=<datetime>       : Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
+    search .active_after=<datetime>        : Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
+
+    search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
+    search size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).
+    search .last                           : Sort in reverse chronological order (equivalent to id=.sort-).
+    search .count                          : Count the number of matching bundles.
+    search .format=<format>                : Apply <format> function (see worksheet markdown).
+    Arguments:
+      keywords              Keywords to search for.
+      -f, --field           Print out these comma-separated fields.
 
 ### uedit:
     Edit user information.
