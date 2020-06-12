@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 from subprocess import PIPE, Popen
 import threading
 import time
@@ -56,6 +57,7 @@ class Worker:
         work_dir,  # type: str
         local_bundles_dir,  # type: Optional[str]
         exit_when_idle,  # type: str
+        exit_after_num_runs,  # type: int
         idle_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
         shared_file_system,  # type: bool
@@ -64,6 +66,8 @@ class Worker:
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.
         pass_down_termination=False,  # type: bool
+        # A flag indicating if the work_dir will be deleted when the worker exits.
+        delete_work_dir_on_exit=False,  # type: bool
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -87,8 +91,11 @@ class Worker:
         self.work_dir = work_dir
         self.local_bundles_dir = local_bundles_dir
         self.shared_file_system = shared_file_system
+        self.delete_work_dir_on_exit = delete_work_dir_on_exit
 
         self.exit_when_idle = exit_when_idle
+        self.exit_after_num_runs = exit_after_num_runs
+        self.num_runs = 0
         self.idle_seconds = idle_seconds
 
         self.terminate = False
@@ -173,6 +180,14 @@ class Worker:
         is_idle = now - self.last_time_ran > self.idle_seconds
         return self.exit_when_idle and is_idle and self.last_checkin_successful
 
+    def check_num_runs_stop(self):
+        """
+        Checks whether the worker has finished the number of job allowed to run.
+        :return: True if the number of jobs allowed to run is 0 and all those runs are finished.
+                 False if neither of the two conditions are met.
+        """
+        return self.exit_after_num_runs == self.num_runs and len(self.runs) == 0
+
     def start(self):
         """Return whether we ran anything."""
         self.load_state()
@@ -186,7 +201,7 @@ class Worker:
                 self.checkin()
                 self.check_termination()
                 self.save_state()
-                if self.check_idle_stop():
+                if self.check_idle_stop() or self.check_num_runs_stop():
                     self.terminate = True
             except Exception:
                 self.last_checkin_successful = False
@@ -207,6 +222,8 @@ class Worker:
             self.dependency_manager.stop()
         self.run_state_manager.stop()
         self.save_state()
+        if self.delete_work_dir_on_exit:
+            shutil.rmtree(self.work_dir)
         try:
             self.worker_docker_network.remove()
             self.docker_network_internal.remove()
@@ -297,6 +314,7 @@ class Worker:
             'runs': [run.as_dict for run in self.all_runs],
             'shared_file_system': self.shared_file_system,
             'tag_exclusive': self.tag_exclusive,
+            'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
@@ -432,13 +450,14 @@ class Worker:
         """
         Available disk space by bytes of this RunManager.
         """
-        error_msg = "Failed to run command {}".format("df " + self.work_dir)
+        error_msg = "Failed to run command {}".format("df -k" + self.work_dir)
         try:
-            p = Popen(["df", self.work_dir], stdout=PIPE)
+            # Option "-k" will ensure us with the returning disk space in 1KB units
+            p = Popen(["df", "-k", self.work_dir], stdout=PIPE)
             output, error = p.communicate()
             # Return None when there is an error.
             if error:
-                logger.error(error.strip())
+                logger.error(error.strip() + ": {}".format(error))
                 return None
 
             if output:
@@ -447,7 +466,7 @@ class Worker:
                 # The machine being attached as a worker may be using a different language other than
                 # English, so check the 4th header if "Available" is not present.
                 index = headers.index("Available") if "Available" in headers else 3
-                # We convert the original result from df command in unit of 1KB blocks into bytes.
+                # We convert the original result from df command in unit of 1KB units into bytes.
                 return int(lines[1].split()[index]) * 1024
 
         except Exception as e:
@@ -456,10 +475,20 @@ class Worker:
 
     def initialize_run(self, bundle, resources):
         """
-        First, checks in with the bundle service and sees if the bundle
-        is still assigned to this worker. If not, returns immediately.
+        First, checks if the worker has already finished receiving/starting the number of jobs allowed to run.
+        If not, returns immediately.
+        Then, checks in with the bundle service and sees if the bundle is still assigned to this worker.
+        If not, returns immediately.
         Otherwise, tell RunManager to create the run.
         """
+        if self.exit_after_num_runs == self.num_runs:
+            print(
+                'Worker has finished starting the number of jobs allowed to run on: {}. '
+                'Stop starting further runs.'.format(self.exit_after_num_runs),
+                file=sys.stdout,
+            )
+            return
+
         now = time.time()
         start_message = {'hostname': socket.gethostname(), 'start_time': int(now)}
 
@@ -501,6 +530,8 @@ class Worker:
                 finalized=False,
                 is_restaged=False,
             )
+            # Increment the number of runs that have been successfully started on this worker
+            self.num_runs += 1
         else:
             print(
                 'Bundle {} no longer assigned to this worker'.format(bundle['uuid']),
@@ -592,10 +623,10 @@ class Worker:
 
         threading.Thread(target=write_fn).start()
 
-    def upload_bundle_contents(self, bundle_uuid, bundle_path, update_status):
+    def upload_bundle_contents(self, bundle_uuid, bundle_path, exclude_patterns, update_status):
         self.execute_bundle_service_command_with_retry(
             lambda: self.bundle_service.update_bundle_contents(
-                self.id, bundle_uuid, bundle_path, update_status
+                self.id, bundle_uuid, bundle_path, exclude_patterns, update_status
             )
         )
 

@@ -960,48 +960,51 @@ def test(ctx):
     # These sleeps are required to ensure that there is sufficient time that passes between tests
     # If there is not enough time, all bundles might appear to have the same time
     time.sleep(1)
-    uuid1 = run_command([cl, 'run', 'date', '-n', name])
+    uuid1 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid1)
     time.sleep(1)
     time2 = datetime.now().isoformat()
     time.sleep(1)
-    uuid2 = run_command([cl, 'run', 'date', '-n', name])
-    uuid3 = run_command([cl, 'run', 'date', '-n', name])
+    uuid2 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid2)
+    uuid3 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid3)
     time.sleep(1)
     time3 = datetime.now().isoformat()
 
     # No results
-    check_equals('', run_command([cl, 'search', 'name=' + name, '.before=' + time1, '-u']))
+    check_equals('', _run_command([cl, 'search', 'name=' + name, '.before=' + time1, '-u']))
     check_equals('', run_command([cl, 'search', 'name=' + name, '.after=' + time3, '-u']))
 
     # Before
     check_equals(
-        uuid1, run_command([cl, 'search', 'name=' + name, '.before=' + time2, 'id=.sort', '-u'])
+        uuid1, _run_command([cl, 'search', 'name=' + name, '.before=' + time2, 'id=.sort', '-u'])
     )
     check_equals(
         uuid1 + '\n' + uuid2 + '\n' + uuid3,
-        run_command([cl, 'search', 'name=' + name, '.before=' + time3, 'id=.sort', '-u']),
+        _run_command([cl, 'search', 'name=' + name, '.before=' + time3, 'id=.sort', '-u']),
     )
 
     # After
     check_equals(
         uuid1 + '\n' + uuid2 + '\n' + uuid3,
-        run_command([cl, 'search', 'name=' + name, '.after=' + time1, 'id=.sort', '-u']),
+        _run_command([cl, 'search', 'name=' + name, '.after=' + time1, 'id=.sort', '-u']),
     )
     check_equals(
         uuid2 + '\n' + uuid3,
-        run_command([cl, 'search', 'name=' + name, '.after=' + time2, 'id=.sort', '-u']),
+        _run_command([cl, 'search', 'name=' + name, '.after=' + time2, 'id=.sort', '-u']),
     )
 
     # Before And After
     check_equals(
         uuid1,
-        run_command(
+        _run_command(
             [cl, 'search', 'name=' + name, '.after=' + time1, '.before=' + time2, 'id=.sort', '-u']
         ),
     )
     check_equals(
         uuid2 + '\n' + uuid3,
-        run_command(
+        _run_command(
             [cl, 'search', 'name=' + name, '.after=' + time2, '.before=' + time3, 'id=.sort', '-u']
         ),
     )
@@ -1012,7 +1015,6 @@ def test(ctx):
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
-    '''
     # test search
     check_contains(name, _run_command([cl, 'search', name]))
     check_equals(uuid, _run_command([cl, 'search', name, '-u']))
@@ -1028,8 +1030,7 @@ def test(ctx):
     # block
     # TODO: Uncomment this when the tail bug is figured out
     # check_contains('hello', _run_command([cl, 'run', 'echo hello', '--tail']))
-    # invalid child path
-    _run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
+
     # make sure special characters in the name of a bundle don't break
     special_name = random_name() + '-dashed.dotted'
     _run_command([cl, 'run', 'echo hello', '-n', special_name])
@@ -1082,7 +1083,6 @@ def test(ctx):
     _run_command(
         [cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1
     )
-    '''
 
     # Test multiple keys pointing to the same bundle
     multi_alias_uuid = _run_command(
@@ -1100,6 +1100,99 @@ def test(ctx):
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo/stdout']))
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
+
+    # Test exclude_patterns
+    remote_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt',
+            '--exclude-patterns',
+            '*bye*.txt',
+        ]
+    )
+    wait(remote_uuid)
+    # Since shared file system workers don't upload, exclude_patterns do not apply.
+    # Verify that all files are kept if the worker is using a shared file system.
+    if os.environ.get("CODALAB_SHARED_FILE_SYSTEM"):
+        check_num_lines(
+            2 + 2 + 3, _run_command([cl, 'cat', remote_uuid])
+        )  # 2 header lines, 1 stdout file, 1 stderr file, 3 items at bundle target root
+    else:
+        check_num_lines(
+            2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
+        )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
+
+    # Test multiple exclude_patterns
+    remote_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt',
+            '--exclude-patterns',
+            'bye.txt',
+            'goodbye.txt',
+        ]
+    )
+    wait(remote_uuid)
+    # Since shared file system workers don't upload, exclude_patterns do not apply.
+    # Verify that all files are kept if the worker is using a shared file system.
+    if os.environ.get("CODALAB_SHARED_FILE_SYSTEM"):
+        check_num_lines(
+            2 + 2 + 3, _run_command([cl, 'cat', remote_uuid])
+        )  # 2 header lines, 1 stdout file, 1 stderr file, 3 items at bundle target root
+    else:
+        check_num_lines(
+            2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
+        )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
+
+
+@TestModule.register('run2')
+def test(ctx):
+    # Test that content of dependency is mounted at the top when . is specified as the dependency key
+    dir3 = _run_command([cl, 'upload', test_path('dir3')])
+    uuid = _run_command([cl, 'run', '.:%s' % dir3, 'cat f1'])
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    uuid = _run_command([cl, 'run', '.:%s' % dir3, 'cat dir1/f1'])
+    wait(uuid)
+    check_equals('first nested file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    nested_dir = _run_command([cl, 'upload', test_path('dir3/dir1')])
+    uuid = _run_command([cl, 'run', '.:%s' % nested_dir, 'cat f1'])
+    wait(uuid)
+    check_equals('first nested file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # Specify a path for the dependency key
+    dir1 = _run_command([cl, 'upload', test_path('dir1')])
+    uuid = _run_command([cl, 'run', 'foo/bar:%s' % dir1, 'foo/bar2:%s' % dir3, 'cat foo/bar/f1'])
+    wait(uuid)
+    check_equals('first file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    uuid = _run_command([cl, 'run', 'foo/bar:%s' % dir1, 'foo/bar2:%s' % dir3, 'cat foo/bar2/f1'])
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # Keys can also be absolute paths
+    uuid = _run_command(
+        [cl, 'run', '/foo/bar:%s' % dir1, '/foo/bar2:%s' % dir3, 'cat /foo/bar2/f1']
+    )
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # Test that backwards compatibility is maintained
+    uuid = _run_command([cl, 'run', 'f1:%s/f1' % dir1, 'foo/bar:%s' % dir1, 'cat f1'])
+    wait(uuid)
+    output = _run_command([cl, 'cat', uuid + '/stdout'])
+    uuid = _run_command([cl, 'run', 'f1:%s/f1' % dir1, 'foo/bar:%s' % dir1, 'cat foo/bar/f1'])
+    wait(uuid)
+    check_equals(output, _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # We currently don't support the case where a dependency key is an ancestor of another. Expect an error.
+    _run_command(
+        [cl, 'run', 'foo:%s' % dir3, 'foo/bar:%s' % dir1, 'cat foo/bar/f1'], expected_exit_code=1
+    )
 
 
 @TestModule.register('read')
@@ -1436,11 +1529,19 @@ def test(ctx):
         _run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
 
+        # Create at local, transfer to remote (non-terminal state bundle)
+        uuid = _run_command([cl, 'run', 'date', '--request-gpus', '100'])
+        wait_until_state(uuid, State.STAGED)
+
         # Test adding worksheet items
         _run_command([cl, 'wadd', source_worksheet, remote_worksheet])
+        # Bundles copied over to remote_worksheet will not contain the bundle in non-terminal states, e.g. STAGED
+        assert_bundles_ready(remote_worksheet)
+
+        # Remove the STAGED bundle from source_worksheet and verify that all bundles are ready.
+        _run_command([cl, 'rm', uuid])
         _run_command([cl, 'wadd', remote_worksheet, source_worksheet])
         assert_bundles_ready(source_worksheet)
-        assert_bundles_ready(remote_worksheet)
 
 
 @TestModule.register('groups')
@@ -1728,6 +1829,7 @@ def test(ctx):
             'gpus',
             'memory',
             'free_disk',
+            'exit_after_num_runs',
             'last_checkin',
             'tag',
             'runs',
@@ -1739,7 +1841,7 @@ def test(ctx):
 
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
-    check_equals(True, len(worker_info) >= 8)
+    check_equals(True, len(worker_info) >= 9)
 
 
 @TestModule.register('rest1')
