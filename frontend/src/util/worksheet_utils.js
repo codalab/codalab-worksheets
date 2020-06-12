@@ -7,7 +7,8 @@ export function renderDuration(s) {
     // s: number of seconds
     // Return a human-readable string.
     // Example: 100 => "1m40s", 10000 => "2h46m"
-    if (s === null) {
+    // Checking s == null here will cover two cases: 1) s is undefined 2) s is null
+    if (s == null) {
         return '<none>';
     }
 
