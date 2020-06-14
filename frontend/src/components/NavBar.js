@@ -414,9 +414,6 @@ class NavBar extends React.Component<{
                 >
                     <DialogTitle id='form-dialog-title'>New Worksheet</DialogTitle>
                     <DialogContent>
-                        <DialogContentText>
-                            To create a new worksheet, give it a name.
-                        </DialogContentText>
                         <TextField
                             autoFocus
                             margin='dense'
@@ -438,6 +435,9 @@ class NavBar extends React.Component<{
                                 }
                             }}
                         />
+                        <DialogContentText>
+                            Note: worksheet names must be globally unique and not contain any spaces.
+                        </DialogContentText>
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={() => this.resetDialog()} color='primary'>

@@ -378,14 +378,11 @@ class Worksheet extends React.Component {
             if (validBundles.length > 0) {
                 this.setState({ showPasteButton: true });
             }
-            let copycut = cmd_type === 'cut' ? 'Cut ' : 'Copied';
-            let toastString =
+            const copycut = cmd_type === 'cut' ? 'Cut ' : 'Copied ';
+            const toastString =
                 actualCopiedCounts > 0
-                    ? copycut + actualCopiedCounts + ' bundle'
-                    : 'No valid bundle selected';
-            if (actualCopiedCounts > 1) {
-                toastString += 's';
-            }
+                    ? copycut + actualCopiedCounts + ' bundle' + (actualCopiedCounts > 1 ? 's' : '')
+                    : 'No bundle(s) selected';
             if (cmd_type === 'cut') {
                 // Remove the bundle lines
                 this.removeItemsFromSource(validBundles.map((e) => e.id));
@@ -939,7 +936,8 @@ class Worksheet extends React.Component {
                     }
                     this.toggleCmdDialogNoEvent('rm');
                 });
-                Mousetrap.bind(['a d'], () => {
+                // Consider deprecating detach from the frontend
+                Mousetrap.bind(['a D'], () => {
                     if (
                         this.state.openedDialog &&
                         this.state.openedDialog !== DIALOG_TYPES.OPEN_DETACH
@@ -957,7 +955,7 @@ class Worksheet extends React.Component {
                     }
                     this.toggleCmdDialogNoEvent('kill');
                 });
-                Mousetrap.bind(['a z'], () => {
+                Mousetrap.bind(['a d'], () => {
                     if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
                         return;
                     }

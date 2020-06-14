@@ -26,14 +26,14 @@ class WorksheetDialogs extends React.Component {
                     aria-describedby='deletion-confirmation-description'
                 >
                     <DialogTitle id='deletion-confirmation-title'>
-                        {'Delect selected bundles permanently?'}
+                        {'Delete selected bundles permanently?'}
                     </DialogTitle>
                     <DialogContent className={classes.dialog}>
                         <DialogContentText
                             id='alert-dialog-description'
                             className={classes.warning}
                         >
-                            Deletion cannot be undone.
+                            Bundle deletion cannot be undone.
                         </DialogContentText>
                         <DialogContentText id='alert-dialog-description'>
                             Force delete?
@@ -48,7 +48,7 @@ class WorksheetDialogs extends React.Component {
                             <Tooltip
                                 disableFocusListener
                                 disableTouchListener
-                                title='Force deletion will ignore all bundle dependencies'
+                                title='Delete a bundle even if other bundles depend on it.'
                             >
                                 <IconButton color='inherit'>
                                     <InfoIcon fontSize='small' />
@@ -60,7 +60,7 @@ class WorksheetDialogs extends React.Component {
                                 id='alert-dialog-description'
                                 className={classes.warning}
                             >
-                                The deletion will ignore all bundle dependencies
+                                Delete a bundle even if other bundles depend on it.
                             </DialogContentText>
                         ) : null}
                     </DialogContent>
@@ -84,13 +84,13 @@ class WorksheetDialogs extends React.Component {
                     aria-describedby='detach-confirmation-description'
                 >
                     <DialogTitle id='detach-confirmation-title'>
-                        {'Detach all selected bundles from this worksheet?'}
+                        {'Detach selected bundles from this worksheet?'}
                     </DialogTitle>
                     <DialogActions>
                         <Button color='primary' onClick={this.props.closeDialog}>
                             CANCEL
                         </Button>
-                        <Button color='primary' onClick={this.props.executeBundleCommand('detach')}>
+                        <Button color='primary' variant='contained' onClick={this.props.executeBundleCommand('detach')}>
                             DETACH
                         </Button>
                     </DialogActions>
@@ -102,19 +102,18 @@ class WorksheetDialogs extends React.Component {
                     aria-describedby='kill-confirmation-description'
                 >
                     <DialogTitle id='kill-confirmation-title'>
-                        {'Kill all selected bundles if running?'}
+                        {'Kill selected bundles?'}
                     </DialogTitle>
                     <DialogContent>
                         <DialogContentText id='alert-dialog-description'>
-                            It may take a few seconds to finish killing. <br /> Only running bundles
-                            can be killed.
+                            Note: this might take a few seconds.
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
                         <Button color='primary' onClick={this.props.closeDialog}>
                             CANCEL
                         </Button>
-                        <Button color='primary' onClick={this.props.executeBundleCommand('kill')}>
+                        <Button color='primary' variant='contained' onClick={this.props.executeBundleCommand('kill')}>
                             KILL
                         </Button>
                     </DialogActions>
@@ -126,7 +125,7 @@ class WorksheetDialogs extends React.Component {
                     aria-describedby='deletion-confirmation-description'
                 >
                     <DialogTitle id='deletion-confirmation-title'>
-                        {'Delect selected markdown block?'}
+                        {'Delete selected markdown?'}
                     </DialogTitle>
                     <DialogContent className={classes.dialog}>
                         <DialogContentText
@@ -166,10 +165,10 @@ class WorksheetDialogs extends React.Component {
                             id='alert-dialog-description'
                             style={{ color: 'red', marginBottom: '20px' }}
                         >
-                            {'Warning: Deleted worksheets cannot be recovered.'}
+                            {'Worksheet deletion cannot be undone.'}
                         </DialogContentText>
                         <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
-                            {'Note: Deleting worksheets does not delete the bundles inside it.'}
+                            {'Note: Deleting a worksheet does not delete its bundles.'}
                         </DialogContentText>
                         <DialogActions>
                             <Button color='primary' onClick={this.props.closeDialog}>
