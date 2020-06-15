@@ -79,7 +79,7 @@ class TextEditorItem extends React.Component<{
 
         const data = { items };
 
-        if (after_sort_key !== null || after_sort_key !== undefined) {
+        if (after_sort_key || after_sort_key === 0) {
             data['after_sort_key'] = after_sort_key;
         }
 

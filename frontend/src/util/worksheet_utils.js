@@ -308,7 +308,10 @@ export function createHandleRedirectFn(worksheetUuid) {
 export function getAfterSortKey(item, subFocusIndex) {
     if (!item) return 0;
     const sort_keys = item.sort_keys || [];
-    return sort_keys[subFocusIndex] || Math.max(...sort_keys);
+    if (sort_keys[subFocusIndex] || sort_keys[subFocusIndex] === 0) {
+        return 0;
+    }
+    return Math.max(...sort_keys);
 }
 
 export function getIds(item) {
