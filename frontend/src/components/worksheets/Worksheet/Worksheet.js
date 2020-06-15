@@ -956,7 +956,7 @@ class Worksheet extends React.Component {
                     this.toggleCmdDialogNoEvent('kill');
                 });
                 Mousetrap.bind(['a d'], () => {
-                    if (this.state.openDetach || this.state.openDelete || this.state.openKill) {
+                    if (this.state.openedDialog) {
                         return;
                     }
                     this.toggleCmdDialogNoEvent('cut');
