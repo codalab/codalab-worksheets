@@ -309,7 +309,7 @@ export function getAfterSortKey(item, subFocusIndex) {
     if (!item) return 0;
     const sort_keys = item.sort_keys || [];
     if (sort_keys[subFocusIndex] || sort_keys[subFocusIndex] === 0) {
-        return 0;
+        return sort_keys[subFocusIndex];
     }
     return Math.max(...sort_keys);
 }
