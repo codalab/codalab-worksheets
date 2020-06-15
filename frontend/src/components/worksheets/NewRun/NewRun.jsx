@@ -234,7 +234,7 @@ class NewRun extends React.Component<{
 
         let args = ['run'];
 
-        if (after_sort_key) args.push(`-a ${ after_sort_key }`);
+        if (after_sort_key !== null || after_sort_key !== undefined) args.push(`-a ${ after_sort_key }`);
         if (name) args.push(`--name=${name}`);
         if (description) args.push(`--description=${description}`);
         if (tags) args.push(`--tags=${tags.map((tag) => `'${tag}'`).join(",")}`);
