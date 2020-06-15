@@ -436,7 +436,8 @@ class NavBar extends React.Component<{
                             }}
                         />
                         <DialogContentText>
-                            Note: worksheet names must be globally unique and not contain any spaces.
+                            Note: worksheet names must be globally unique and not contain any
+                            spaces.
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>

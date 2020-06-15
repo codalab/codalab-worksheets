@@ -47,9 +47,7 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
                         <td>
                             <kbd>enter</kbd>
                         </td>
-                        <td>
-                          Start editing markdown
-                        </td>
+                        <td>Start editing markdown</td>
                     </tr>
                     <tr>
                         <td>
@@ -100,17 +98,13 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
                         <td>
                             <kbd>enter</kbd>
                         </td>
-                        <td>
-                            Toggle current bundle details
-                        </td>
+                        <td>Toggle current bundle details</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>shift+enter</kbd>
                         </td>
-                        <td>
-                            Show current bundle in new window
-                        </td>
+                        <td>Show current bundle in new window</td>
                     </tr>
                     <tr>
                         <td>
@@ -189,7 +183,6 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
                         </td>
                         <td>Expand/shrink worksheet size</td>
                     </tr>
-
                 </tbody>
             </table>
             <div>

@@ -90,7 +90,11 @@ class WorksheetDialogs extends React.Component {
                         <Button color='primary' onClick={this.props.closeDialog}>
                             CANCEL
                         </Button>
-                        <Button color='primary' variant='contained' onClick={this.props.executeBundleCommand('detach')}>
+                        <Button
+                            color='primary'
+                            variant='contained'
+                            onClick={this.props.executeBundleCommand('detach')}
+                        >
                             DETACH
                         </Button>
                     </DialogActions>
@@ -113,7 +117,11 @@ class WorksheetDialogs extends React.Component {
                         <Button color='primary' onClick={this.props.closeDialog}>
                             CANCEL
                         </Button>
-                        <Button color='primary' variant='contained' onClick={this.props.executeBundleCommand('kill')}>
+                        <Button
+                            color='primary'
+                            variant='contained'
+                            onClick={this.props.executeBundleCommand('kill')}
+                        >
                             KILL
                         </Button>
                     </DialogActions>

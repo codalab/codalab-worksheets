@@ -1,0 +1,250 @@
+### Worksheet: https?:\/\/[a-z\-.\d:]*cl_small_worksheet\(0x[a-z0-9]{32}\)
+### Title: (Small|Large) Worksheet
+### Tags: codalab-sample-worksheet
+### Owner: [\s\S]{0,100}
+### Permissions: public\(0x[a-z0-9]{6}\):(read|all|none)
+
+## Introduction
+This\ is\ the\ \*\*small\*\*\ sample\ worksheet\.
+
+## Worksheet\ References
+
+#### Valid\ Worksheet\ References
+
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+
+#### Private\ Worksheet\ References
+
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+
+## Bundle\ References
+
+#### Valid\ Bundle\ References
+
+\s\suuid\[0:8\]\s*name\s*summary\s*data_size\s*state\s*description
+\s\s[-]*
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+
+#### Private\ Bundle\ References
+
+\s\suuid\[0:8\]\s*name\s*summary\s*data_size\s*state\s*description
+\s\s[-]*
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+
+## Schemas
+
+#### Valid\ Schema
+
+\s\suuid\s*name\s*summary\s*metadata\s*permission\s*group_permissions
+\s\s[-]*
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}
+
+##### Attempting\ to\ reference\ private\ bundles\ with\ a\ valid\ schema
+
+\s\suuid\s*name\s*summary\s*metadata\s*permission\s*group_permissions
+\s\s[-]*
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}
+
+#### Post\-Processor\ Schema
+
+\s\sduration\s*time\s*updated\s*size\s*uuid
+\s\s[-]*
+\s\s[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*0x[a-z0-9]{6}
+\s\s[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*0x[a-z0-9]{6}
+\s\s[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*0x[a-z0-9]{6}
+
+#### Combine\ Schemas
+
+\s\suuid\s*name\s*summary\s*metadata\s*permission\s*group_permissions\s*duration\s*time\s*updated\s*size\s*uuid
+\s\s[-]*
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*0x[a-z0-9]{6}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*0x[a-z0-9]{6}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*0x[a-z0-9]{6}
+
+#### Invalid\ Schemas
+
+##### Attempting\ to\ add\ a\ field\ before\ referencing\ a\ schema
+
+Error in source line [\d]+: `add` must be preceded by `schema` directive
+
+##### Attempting\ to\ add\ a\ non\-existing\ schema
+
+Unexpected error while parsing line [\d]+
+
+##### Attempting\ to\ create\ a\ schema\ with\ invalid\ functions
+
+\s\stime\s*updated\s*size
+\s\s[-]*
+\s\s<invalid function: duration2>\s\s<invalid function: date2>\s\s<invalid function: size2>
+\s\s<invalid function: duration2>\s\s<invalid function: date2>\s\s<invalid function: size2>
+\s\s<invalid function: duration2>\s\s<invalid function: date2>\s\s<invalid function: size2>
+
+## Display\ Modes
+
+#### Table
+
+\s\suuid\s*name\s*summary\s*metadata\s*permission\s*group_permissions
+\s\s[-]*
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(read|all|none)\s*[\s\S]{0,1000}
+
+#### Image
+
+#### Record
+
+\s\s[-]*
+\s\suuid:\s*0x[a-z0-9]{6}
+\s\sname:\s*[\s\S]{0,100}
+\s\ssummary:\s*[\s\S]{0,1000}
+\s\smetadata:\s*[\s\S]{0,1000}
+\s\spermission:\s*(read|all|none)
+\s\sgroup_permissions:\s*[\s\S]{0,1000}
+
+\s\s[-]*
+\s\suuid:\s*0x[a-z0-9]{6}
+\s\sname:\s*[\s\S]{0,100}
+\s\ssummary:\s*[\s\S]{0,1000}
+\s\smetadata:\s*[\s\S]{0,1000}
+\s\spermission:\s*(read|all|none)
+\s\sgroup_permissions:\s*[\s\S]{0,1000}
+
+\s\s[-]*
+\s\suuid:\s*0x[a-z0-9]{6}
+\s\sname:\s*[\s\S]{0,100}
+\s\ssummary:\s*[\s\S]{0,1000}
+\s\smetadata:\s*[\s\S]{0,1000}
+\s\spermission:\s*(read|all|none)
+\s\sgroup_permissions:\s*[\s\S]{0,1000}
+
+#### HTML
+
+#### Graph
+
+## Search
+
+#### Bundle\ Search
+
+\s\suuid\[0:8\]\s*name\s*summary\s*data_size\s*state\s*description
+\s\s[-]*
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+
+#### Partial\ UUID\ Matching
+
+\s\suuid\[0:8\]\s*name\s*summary\s*data_size\s*state\s*description
+\s\s[-]*
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+
+#### Worksheet\ Search
+
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+
+#### More\ Examples
+
+##### Search\ for\ total\ disk\ usage
+Total Disk Usage:
+[0-9.]{0,10}[tkgmb]{0,2}
+
+##### Search\ for\ my\ bundles
+
+\s\suuid\[0:8\]\s*name\s*summary\s*data_size\s*state\s*description
+\s\s[-]*
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+
+##### Search\ for\ the\ largest\ bundles
+
+\s\suuid\[0:8\]\s*name\s*summary\s*data_size\s*state\s*description
+\s\s[-]*
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+
+##### Search\ for\ recently\ ready\ runs
+
+\s\suuid\[0:8\]\s*name\s*summary\s*data_size\s*state\s*description
+\s\s[-]*
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+\s\s0x[a-z0-9]{6}\s*[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}\s*(uploading|created|staged|making|starting|preparing|running|finalizing|ready|failed|killed|worker_offline)\s*[\s\S]{0,1000}
+
+##### Search\ for\ worksheets\ \(tag\:\ codalab\-sample\-worksheet\)
+
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+\[Worksheet \S*\(0x[a-z0-9]{32}\)\]
+
+##### Search\ for\ recently\ created\ bundles
+
+\s\sname\s*owner\s*created
+\s\s[-]*
+\s\s[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}
+\s\s[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}
+\s\s[\s\S]{0,100}\s*[\s\S]{0,1000}\s*[\s\S]{0,1000}
+
+## Invalid\ Directives
+
+Error in source line [\d]+: unknown directive `hi`
+
+Error in source line [\d]+: unknown directive `hello`
+
+## Rendering
+
+#### Markdown
+Emphasis\,\ aka\ italics\,\ with\ \*asterisks\*\ or\ _underscores_\.
+Strong\ emphasis\,\ aka\ bold\,\ with\ \*\*asterisks\*\*\ or\ __underscores__\.
+Combined\ emphasis\ with\ \*\*asterisks\ and\ _underscores_\*\*\.
+Strikethrough\ uses\ two\ tildes\.\ \~\~Scratch\ this\.\~\~
+
+##### Below\ is\ an\ ordered\ list
+1\.\ First\ item
+2\.\ Second\ item
+
+##### Below\ is\ an\ unordered\ list
+\*\ Unordered\ list\ can\ use\ asterisks
+\-\ Or\ minuses
+\+\ Or\ pluses
+
+##### Below\ is\ a\ table
+\|\ Tables\ \ \ \ \ \ \ \ \|\ Are\ \ \ \ \ \ \ \ \ \ \ \|\ Cool\ \ \|
+\|\ \-\-\-\-\-\-\-\-\-\-\-\-\-\ \|\:\-\-\-\-\-\-\-\-\-\-\-\-\-\:\|\ \-\-\-\-\-\:\|
+\|\ col\ 3\ is\ \ \ \ \ \ \|\ right\-aligned\ \|\ 1600\ \|
+\|\ col\ 2\ is\ \ \ \ \ \ \|\ centered\ \ \ \ \ \ \|\ \ \ 12\ \|
+\|\ zebra\ stripes\ \|\ are\ neat\ \ \ \ \ \ \|\ \ \ \ 1\ \|
+
+#### Unicode\ Characters
+En\-Dash\ \&ndash\;\ \&\#150\;
+Em\-Dash\ \&mdash\;\ \&\#151\;
+Minus\ Symbol\ \&minus\;\ \&\#8722\;
+
+#### Code\ Block
+\~\~\~\ Python
+def\ main\(\)\:
+\	\#\ This\ is\ some\ Python\ code
+\	print\(\"Hello\"\)
+\~\~\~
+
+#### Some\ Latex\ and\ Math
+Source\:\ \[CS221\]\(http\:\/\/cs221\.stanford\.edu\/\)
+[\s\S]{0,1000}
+[\s\S]{0,1000}
+[\s\S]{0,1000}
