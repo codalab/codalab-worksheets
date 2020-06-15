@@ -302,6 +302,7 @@ class Worksheet extends React.Component {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: e.responseText,
+                    forceDelete: false,
                     updating: false,
                 });
             });
