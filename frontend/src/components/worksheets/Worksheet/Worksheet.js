@@ -510,6 +510,7 @@ class Worksheet extends React.Component {
                 checkedBundles: {},
                 showBundleOperationButtons: false,
                 updating: false,
+                forceDelete: false,
             },
             clear_callback,
         );
