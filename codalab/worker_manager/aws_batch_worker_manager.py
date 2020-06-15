@@ -98,7 +98,7 @@ class AWSBatchWorkerManager(WorkerManager):
             command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
         if self.args.worker_delete_work_dir_on_exit:
             command.extend(['--worker-delete-work-dir-on-exit'])
-        if self.args.exit_after_num_runs and self.args.exit_after_num_runs > 0:
+        if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
             command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-batch-jobdefinition.html

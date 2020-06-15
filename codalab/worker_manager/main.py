@@ -56,7 +56,7 @@ def main():
     parser.add_argument(
         '--worker-exit-after-num-runs',
         type=int,
-        help='The CodaLab worker will exit after this many of runs finished',
+        help='If specified, the CodaLab worker will exit after finishing this many of runs',
     )
     subparsers = parser.add_subparsers(
         title='Worker Manager to run',
