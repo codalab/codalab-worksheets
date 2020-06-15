@@ -109,7 +109,7 @@ class SchemaItem extends React.Component<{
         if (!this.props.editPermission) return;
         const { rows } = this.state;
         let copiedRows = [...rows];
-        copiedRows[idx][key] = e.target.value;
+        copiedRows.splice(idx, 1, { ...rows[idx], [key]: e.target.value });
         this.setState({ rows: [...copiedRows] });
     };
 
