@@ -600,20 +600,33 @@ class BundleCLI(object):
         Helper: target_specs is a list of strings which are [<key>]:<target>
         Returns: [(key, worker.download_util.BundleTarget), ...]
         """
-        keys = set()
+
+        def is_ancestor_or_descendant(path1, path2):
+            """
+            Return whether path1 is an ancestor of path2 or vice versa.
+            """
+            return path2.startswith(path1 + '/') or path1.startswith(path2 + '/')
+
+        keys = []
         targets = []
         target_keys_values = [parse_key_target(spec) for spec in target_specs]
         for key, target_spec in target_keys_values:
-            if key in keys:
-                if key:
-                    raise UsageError('Duplicate key: %s' % (key,))
-                else:
-                    raise UsageError('Must specify keys when packaging multiple targets!')
+            for other_key in keys:
+                if key == other_key:
+                    if key:
+                        raise UsageError('Duplicate key: %s' % (key,))
+                    else:
+                        raise UsageError('Must specify keys when packaging multiple targets!')
+                elif is_ancestor_or_descendant(key, other_key):
+                    raise UsageError(
+                        'A key cannot be an ancestor of another: {} {}'.format(key, other_key)
+                    )
+
             _, worksheet_uuid, target = self.resolve_target(
                 client, worksheet_uuid, target_spec, allow_remote=False
             )
             targets.append((key, target))
-            keys.add(key)
+            keys.append(key)
         return targets
 
     @staticmethod
