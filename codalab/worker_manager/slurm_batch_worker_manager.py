@@ -21,7 +21,7 @@ class SlurmBatchWorkerManager(WorkerManager):
     SRUN = 'srun'
     SBATCH = 'sbatch'
     SQUEUE = 'squeue'
-    SACCT = 'sacct'
+    SCONTROL = 'scontrol'
 
     """
     sbatch configuration in bash script
