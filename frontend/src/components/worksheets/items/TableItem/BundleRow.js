@@ -325,7 +325,7 @@ class BundleRow extends Component {
                                         this.setState({ showNewRun: 0, showDetail: false });
                                         onHideNewRerun();
                                     }}
-                                    after_sort_key={bundleInfo.sort_key}
+                                    after_sort_key={this.props.after_sort_key}
                                     reloadWorksheet={reloadWorksheet}
                                     defaultRun={runProp}
                                 />
@@ -338,7 +338,7 @@ class BundleRow extends Component {
                         <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
                             <div className={classes.insertBox}>
                                 <NewRun
-                                    after_sort_key={bundleInfo.sort_key}
+                                    after_sort_key={this.props.after_sort_key}
                                     ws={this.props.ws}
                                     onSubmit={() => this.props.onHideNewRun()}
                                     reloadWorksheet={reloadWorksheet}
@@ -354,7 +354,7 @@ class BundleRow extends Component {
                                 <TextEditorItem
                                     ids={this.props.ids}
                                     mode='create'
-                                    after_sort_key={bundleInfo.sort_key}
+                                    after_sort_key={this.props.after_sort_key}
                                     worksheetUUID={this.props.worksheetUUID}
                                     reloadWorksheet={reloadWorksheet}
                                     closeEditor={() => {
