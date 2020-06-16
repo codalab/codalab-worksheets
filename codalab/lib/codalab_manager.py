@@ -434,7 +434,7 @@ class CodaLabManager(object):
 
     @property
     def cli_verbose(self):
-        return self.config.get('cli', {}).get('verbose')
+        return self.config.get('cli', {}).get('verbose', 0)
 
     def _authenticate(self, cache_key, auth_handler):
         """

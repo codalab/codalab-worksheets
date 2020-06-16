@@ -21,7 +21,7 @@ class SlurmBatchWorkerManager(WorkerManager):
     SRUN = 'srun'
     SBATCH = 'sbatch'
     SQUEUE = 'squeue'
-    SACCT = 'sacct'
+    SCONTROL = 'scontrol'
 
     """
     sbatch configuration in bash script
@@ -129,12 +129,13 @@ class SlurmBatchWorkerManager(WorkerManager):
         jobs_to_remove = set()
         for job_id in self.submitted_jobs:
             job_acct = self.run_command(
-                [self.SACCT, '-j', job_id, '--format', 'state', '--noheader']
+                [self.SCONTROL, 'show', 'jobid', '-d', job_id, '--oneliner']
             )
-            if 'FAILED' in job_acct:
+            job_state = re.search(r'JobState=(.*) ', job_acct).group(1)
+            if 'FAILED' in job_state:
                 jobs_to_remove.add(job_id)
                 logger.error("Failed to start job {}".format(job_id))
-            elif 'COMPLETING' in job_acct or 'COMPLETED' in job_acct or 'CANCELLED' in job_acct:
+            elif 'COMPLETING' in job_state or 'COMPLETED' in job_state or 'CANCELLED' in job_state:
                 jobs_to_remove.add(job_id)
         self.submitted_jobs = self.submitted_jobs - jobs_to_remove
         logger.info("Submitted jobs: {}".format(self.submitted_jobs))
