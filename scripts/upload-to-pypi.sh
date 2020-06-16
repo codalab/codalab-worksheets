@@ -12,4 +12,4 @@ VER=$1
 echo "==> Packaging codalab"
 python3 setup.py sdist
 echo "==> Uploading codalab"
-twine upload dist/codalab-$VER.tar.gz
+twine upload --skip-existing dist/codalab-$VER.tar.gz
