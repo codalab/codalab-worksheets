@@ -91,7 +91,7 @@ jobs:
     needs: [build]
     strategy:
       matrix:
-        test: [run,read,write,kill,resources,netcat,netcurl]
+        test: [run,run2,read,write,kill,resources,netcat,netcurl]
     steps:
       - name: Clear free space
         run: |
