@@ -1,9 +1,15 @@
+from collections import namedtuple
+import http
 import logging
+import socket
 import time
 import traceback
+import urllib
+
+from codalab.common import NotFoundError
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.bundle_state import State
-from collections import namedtuple
+
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +84,7 @@ class WorkerManager(object):
         while True:
             try:
                 self.run_one_iteration()
-            except Exception:
+            except (urllib.error.URLError, http.client.HTTPException, socket.error, NotFoundError):
                 traceback.print_exc()
             if self.args.once:
                 break
