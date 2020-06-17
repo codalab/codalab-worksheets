@@ -1,8 +1,10 @@
-FROM node:10
+FROM node:10 AS dev
 
 ENV NPM_CONFIG_LOGLEVEL warn
 
 RUN npm install -g serve
+
+RUN npm --version
 
 WORKDIR /opt/frontend
 
@@ -14,7 +16,22 @@ RUN npm ci
 # Overridden in dev mode
 COPY frontend .
 
+RUN ls /opt/frontend
+
+EXPOSE 2700
+
 # Build static files
-RUN npm run build --production
+# RUN npm run build
+
+
+# Production mode - only copy in the build files, not
+# node modules.
+FROM node:10 AS prod
+
+RUN npm install -g serve
+
+WORKDIR /opt/frontend
+
+COPY --from=dev /opt/frontend/build build
 
 EXPOSE 2700
