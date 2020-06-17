@@ -563,11 +563,16 @@ class CodalabServiceManager(object):
             cache_args = ' --cache-from {}'.format(cache_image)
         else:
             cache_args = ''
+        
+        if image == "frontend" and self.args.dev:
+            target_args = ' --target dev'
+        else:
+            target_args = ''
 
         # Build the image using the cache
         self._run_docker_cmd(
-            'build%s -t %s -f docker/dockerfiles/Dockerfile.%s .'
-            % (cache_args, docker_image, image)
+            'build%s%s -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            % (cache_args, target_args, docker_image, image)
         )
 
     def push_image(self, image):
