@@ -7,6 +7,7 @@ export function renderDuration(s) {
     // s: number of seconds
     // Return a human-readable string.
     // Example: 100 => "1m40s", 10000 => "2h46m"
+    // Checking s == null here will cover two cases: 1) s is undefined 2) s is null
     if (s == null) {
         return '<none>';
     }
@@ -66,7 +67,7 @@ export function renderSize(size) {
 export function renderFormat(value, type) {
     switch (type) {
         case 'list':
-            return value.join(' | ');
+            return value.join(' ');
         case 'date':
             return renderDate(value);
         case 'size':
@@ -133,7 +134,7 @@ export function renderPermissions(state) {
 
     return (
         <div>
-            &nbsp;&#91;you({wrapPermissionInColorSpan(state.permission_spec)})
+            &#91;you({wrapPermissionInColorSpan(state.permission_spec)})
             {_.map(state.group_permissions || [], function(perm) {
                 return (
                     <span key={perm.group_name}>
@@ -305,8 +306,12 @@ export function createHandleRedirectFn(worksheetUuid) {
 // Return the sort key at index subFocusIndex, if subFocusIndex is defined.
 // Otherwise, return the largest sort_key.
 export function getAfterSortKey(item, subFocusIndex) {
+    if (!item) return 0;
     const sort_keys = item.sort_keys || [];
-    return sort_keys[subFocusIndex] || Math.max(...sort_keys);
+    if (sort_keys[subFocusIndex] || sort_keys[subFocusIndex] === 0) {
+        return sort_keys[subFocusIndex];
+    }
+    return Math.max(...sort_keys);
 }
 
 export function getIds(item) {
