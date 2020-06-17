@@ -68,7 +68,6 @@ jobs:
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default no-frontend --version ${VERSION}
-#          docker restart codalab_worker_1
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
