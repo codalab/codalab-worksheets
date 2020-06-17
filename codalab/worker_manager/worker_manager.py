@@ -1,5 +1,6 @@
 import logging
 import time
+import traceback
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.bundle_state import State
 from collections import namedtuple
@@ -75,7 +76,10 @@ class WorkerManager(object):
 
     def run_loop(self):
         while True:
-            self.run_one_iteration()
+            try:
+                self.run_one_iteration()
+            except Exception:
+                traceback.print_exc()
             if self.args.once:
                 break
             logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
