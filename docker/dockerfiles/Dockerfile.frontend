@@ -16,7 +16,7 @@ RUN ls /opt/frontend
 
 EXPOSE 2700
 
-# RUN npm run build
+RUN npm run build
 
 # Production mode - only copy in the build files, not
 # node modules.
