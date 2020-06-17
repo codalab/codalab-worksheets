@@ -1,4 +1,4 @@
-FROM node:10 AS dev
+FROM node:10-slim AS dev
 
 ENV NPM_CONFIG_LOGLEVEL warn
 
@@ -15,6 +15,8 @@ COPY frontend .
 RUN ls /opt/frontend
 
 EXPOSE 2700
+
+RUN npm run build
 
 # Production mode - only copy in the build files, not
 # node modules.
