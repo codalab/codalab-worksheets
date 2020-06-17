@@ -1030,8 +1030,7 @@ def test(ctx):
     # block
     # TODO: Uncomment this when the tail bug is figured out
     # check_contains('hello', _run_command([cl, 'run', 'echo hello', '--tail']))
-    # invalid child path
-    _run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
+
     # make sure special characters in the name of a bundle don't break
     special_name = random_name() + '-dashed.dotted'
     _run_command([cl, 'run', 'echo hello', '-n', special_name])
@@ -1178,6 +1177,54 @@ def test(ctx):
     wait(run_uuid)
     check_equals(
         test_path_contents('dir2/the-only-file'), _run_command([cl, 'cat', run_uuid + '/stdout'])
+    )
+
+
+@TestModule.register('run2')
+def test(ctx):
+    # Test that content of dependency is mounted at the top when . is specified as the dependency key
+    dir3 = _run_command([cl, 'upload', test_path('dir3')])
+    uuid = _run_command([cl, 'run', '.:%s' % dir3, 'cat f1'])
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    uuid = _run_command([cl, 'run', '.:%s' % dir3, 'cat dir1/f1'])
+    wait(uuid)
+    check_equals('first nested file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    nested_dir = _run_command([cl, 'upload', test_path('dir3/dir1')])
+    uuid = _run_command([cl, 'run', '.:%s' % nested_dir, 'cat f1'])
+    wait(uuid)
+    check_equals('first nested file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # Specify a path for the dependency key
+    dir1 = _run_command([cl, 'upload', test_path('dir1')])
+    uuid = _run_command([cl, 'run', 'foo/bar:%s' % dir1, 'foo/bar2:%s' % dir3, 'cat foo/bar/f1'])
+    wait(uuid)
+    check_equals('first file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    uuid = _run_command([cl, 'run', 'foo/bar:%s' % dir1, 'foo/bar2:%s' % dir3, 'cat foo/bar2/f1'])
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # Keys can also be absolute paths
+    uuid = _run_command(
+        [cl, 'run', '/foo/bar:%s' % dir1, '/foo/bar2:%s' % dir3, 'cat /foo/bar2/f1']
+    )
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # Test that backwards compatibility is maintained
+    uuid = _run_command([cl, 'run', 'f1:%s/f1' % dir1, 'foo/bar:%s' % dir1, 'cat f1'])
+    wait(uuid)
+    output = _run_command([cl, 'cat', uuid + '/stdout'])
+    uuid = _run_command([cl, 'run', 'f1:%s/f1' % dir1, 'foo/bar:%s' % dir1, 'cat foo/bar/f1'])
+    wait(uuid)
+    check_equals(output, _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # We currently don't support the case where a dependency key is an ancestor of another. Expect an error.
+    _run_command(
+        [cl, 'run', 'foo:%s' % dir3, 'foo/bar:%s' % dir1, 'cat foo/bar/f1'], expected_exit_code=1
     )
 
 
