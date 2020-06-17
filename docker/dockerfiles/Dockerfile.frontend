@@ -16,7 +16,7 @@ RUN ls /opt/frontend
 
 EXPOSE 2700
 
-RUN npm run build
+# RUN npm run build
 
 # Production mode - only copy in the build files, not
 # node modules.
@@ -26,6 +26,6 @@ RUN npm install -g serve
 
 WORKDIR /opt/frontend
 
-COPY --from=prod build build
+COPY --from=dev /opt/frontend/build build
 
 EXPOSE 2700
