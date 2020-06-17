@@ -133,12 +133,13 @@ class NavBar extends React.Component<{
     handleChange = (e, { value }) => this.setState({ value });
 
     handleResultSelect = (e, { result }) => {
+        this.setState({ value: result.plaintextTitle || result.plaintextDescription });
         window.open('/worksheets/' + result.uuid, '_self');
     };
 
     initialState = { isLoading: false, results: [], value: '' };
 
-    resultRenderer = ({ title, description }) => [
+    resultRenderer = ({ title, description }) => (
         <div key='content' className='content'>
             {title && <div dangerouslySetInnerHTML={{ __html: title }} className='title'></div>}
             {description && (
@@ -147,8 +148,8 @@ class NavBar extends React.Component<{
                     className='description'
                 ></div>
             )}
-        </div>,
-    ];
+        </div>
+    );
 
     handleSearchChange = (e, { value }) => {
         this.setState({ isLoading: true, value });
@@ -208,9 +209,11 @@ class NavBar extends React.Component<{
                     let filteredResults = {};
                     for (let item of data.response) {
                         // use DOMPurify to get rid of the XSS security risk
+                        item.plaintextDescription = item.name;
                         item.description = DOMPurify.sanitize(
                             item.name.replace(re, "<span id='highlight'>$&</span>"),
                         );
+                        item.plaintextTitle = item.title;
                         item.title = DOMPurify.sanitize(
                             (item.title || '').replace(re, "<span id='highlight'>$&</span>"),
                         );
@@ -238,7 +241,8 @@ class NavBar extends React.Component<{
                             ]
                         },
                     */
-                    const finalResults = _.reduce(
+
+                    const preRanking = _.reduce(
                         filteredResults,
                         (memo, data, name) => {
                             memo[name] = { name, results: data.results };
@@ -247,10 +251,24 @@ class NavBar extends React.Component<{
                         {},
                     );
 
-                    this.setState({
-                        isLoading: false,
-                        results: finalResults,
-                    });
+                    // the results are displayed using the map function, which remembers
+                    // order of insertion. We therefore put the owner's worksheets on top
+                    const currName = this.state.userInfo.user_name;
+                    if (currName in preRanking) {
+                        let ownerResults = {};
+                        ownerResults[currName] = preRanking[currName];
+                        delete preRanking[currName];
+                        let finalResults = { ...ownerResults, ...preRanking };
+                        this.setState({
+                            isLoading: false,
+                            results: finalResults,
+                        });
+                    } else {
+                        this.setState({
+                            isLoading: false,
+                            results: preRanking,
+                        });
+                    }
                 },
                 error: (xhr, status, err) => {
                     console.error(xhr.responseText);
@@ -291,6 +309,7 @@ class NavBar extends React.Component<{
                         {this.props.auth.isAuthenticated && (
                             <div className={classes.searchContainer}>
                                 <Search
+                                    fluid
                                     category
                                     loading={isLoading}
                                     input={{ icon: 'search', iconPosition: 'left', fluid: true }}
@@ -303,7 +322,7 @@ class NavBar extends React.Component<{
                                     results={results}
                                     value={value}
                                     showNoResults={true}
-                                    id='search-bar'
+                                    id='codalab-search-bar'
                                 />
                             </div>
                         )}
@@ -395,9 +414,6 @@ class NavBar extends React.Component<{
                 >
                     <DialogTitle id='form-dialog-title'>New Worksheet</DialogTitle>
                     <DialogContent>
-                        <DialogContentText>
-                            To create a new worksheet, give it a name.
-                        </DialogContentText>
                         <TextField
                             autoFocus
                             margin='dense'
@@ -419,6 +435,10 @@ class NavBar extends React.Component<{
                                 }
                             }}
                         />
+                        <DialogContentText>
+                            Note: worksheet names must be globally unique and not contain any
+                            spaces.
+                        </DialogContentText>
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={() => this.resetDialog()} color='primary'>

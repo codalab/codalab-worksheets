@@ -17,6 +17,7 @@ from sqlalchemy import and_, or_, not_, select, union, desc, func
 from sqlalchemy.sql.expression import literal, true
 
 from codalab.bundles import get_bundle_subclass
+from codalab.bundles.run_bundle import RunBundle
 from codalab.common import IntegrityError, NotFoundError, precondition, UsageError
 from codalab.lib import crypt_util, spec_util, worksheet_util, path_util
 from codalab.model.util import LikeQuery
@@ -52,7 +53,6 @@ from codalab.objects.user import User
 from codalab.objects.dependency import Dependency
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
-
 
 logger = logging.getLogger(__name__)
 
@@ -829,7 +829,7 @@ class BundleModel(object):
             Adds a worker_run row that tracks which worker will run the bundle.
         """
         with self.engine.begin() as connection:
-            # Check that it still exists.
+            # Check if the requested bundle still exists.
             row = connection.execute(
                 cl_bundle.select().where(cl_bundle.c.id == bundle.id)
             ).fetchone()
@@ -861,17 +861,19 @@ class BundleModel(object):
             ).fetchone()
             if not row:
                 raise IntegrityError('Missing bundle with UUID %s' % bundle.uuid)
-            if row.state != State.STARTING:
-                # It is possible that this method is called on a bundle
-                # that has started running.
-                return False
 
-            update_message = {'state': State.STAGED, 'metadata': {'job_handle': None}}
-            self.update_bundle(bundle, update_message, connection)
+            # Reset all metadata fields that aren't input by user from RunBundle class to be None.
+            # Excluding all the fields that can be set by users, which for now is just the action field.
+            metadata_update = {
+                spec.key: None
+                for spec in RunBundle.METADATA_SPECS
+                if spec.generated and spec.key != 'action'
+            }
+            bundle_update = {'state': State.STAGED, 'metadata': metadata_update}
+            self.update_bundle(bundle, bundle_update, connection)
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
-
             return True
 
     def transition_bundle_preparing(self, bundle, user_id, worker_id, start_time, remote):
@@ -1057,6 +1059,10 @@ class BundleModel(object):
             if not row:
                 return False
 
+            # Get staged bundle from worker checkin and move it to staged state
+            if worker_run.state == State.STAGED:
+                return self.transition_bundle_staged(bundle)
+
             if worker_run.state == State.FINALIZING:
                 # update bundle metadata using transition_bundle_running one last time before finalizing it
                 self.transition_bundle_running(
@@ -1068,6 +1074,7 @@ class BundleModel(object):
                 return self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
+
             # State isn't one we can check in for
             return False
 
@@ -1089,7 +1096,7 @@ class BundleModel(object):
             self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
             bundle.id = result.lastrowid
 
-    def update_bundle(self, bundle, update, connection=None):
+    def update_bundle(self, bundle, update, connection=None, delete=False):
         """
         For each key-value pair in the update dictionary, add or update key-value pair. Note
         that metadata keys not in the update dictionary are not affected in the update operation.
@@ -1106,7 +1113,10 @@ class BundleModel(object):
         # Generate a list of metadata keys that will be deleted and udpate metadata key-value pair
         metadata_delete_keys = []
         for key, value in metadata_update.items():
-            if value is None:
+            # Delete the key,value pair when the following two conditions are met:
+            # 1. the delete flag is True
+            # 2. the value is None
+            if delete and value is None:
                 bundle.metadata.remove_metadata_key(key)
                 metadata_delete_keys.append(key)
             else:

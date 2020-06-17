@@ -600,20 +600,33 @@ class BundleCLI(object):
         Helper: target_specs is a list of strings which are [<key>]:<target>
         Returns: [(key, worker.download_util.BundleTarget), ...]
         """
-        keys = set()
+
+        def is_ancestor_or_descendant(path1, path2):
+            """
+            Return whether path1 is an ancestor of path2 or vice versa.
+            """
+            return path2.startswith(path1 + '/') or path1.startswith(path2 + '/')
+
+        keys = []
         targets = []
         target_keys_values = [parse_key_target(spec) for spec in target_specs]
         for key, target_spec in target_keys_values:
-            if key in keys:
-                if key:
-                    raise UsageError('Duplicate key: %s' % (key,))
-                else:
-                    raise UsageError('Must specify keys when packaging multiple targets!')
+            for other_key in keys:
+                if key == other_key:
+                    if key:
+                        raise UsageError('Duplicate key: %s' % (key,))
+                    else:
+                        raise UsageError('Must specify keys when packaging multiple targets!')
+                elif is_ancestor_or_descendant(key, other_key):
+                    raise UsageError(
+                        'A key cannot be an ancestor of another: {} {}'.format(key, other_key)
+                    )
+
             _, worksheet_uuid, target = self.resolve_target(
                 client, worksheet_uuid, target_spec, allow_remote=False
             )
             targets.append((key, target))
-            keys.add(key)
+            keys.append(key)
         return targets
 
     @staticmethod
@@ -1091,6 +1104,7 @@ class BundleCLI(object):
             'runs',
             'shared_file_system',
             'tag_exclusive',
+            'exit_after_num_runs',
         ]
 
         data = []
@@ -1110,6 +1124,7 @@ class BundleCLI(object):
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
                     'tag_exclusive': worker['tag_exclusive'],
+                    'exit_after_num_runs': worker['exit_after_num_runs'],
                 }
             )
 
@@ -1361,7 +1376,7 @@ class BundleCLI(object):
         )
         with progress, closing(contents):
             if target_info['type'] == 'directory':
-                un_tar_directory(contents, final_path, 'gz')
+                un_tar_directory(contents, final_path, 'gz', force=args.force)
             elif target_info['type'] == 'file':
                 with open(final_path, 'wb') as out:
                     shutil.copyfileobj(contents, out)
@@ -1455,11 +1470,18 @@ class BundleCLI(object):
             },
         )
 
-        # Fetch bundle metadata from source client
+        # Fetch bundle metadata of bundle contents from source client
         try:
             target_info = source_client.fetch_contents_info(BundleTarget(source_bundle_uuid, ''))
         except NotFoundError:
-            print("Cannot find metadata for bundle {}".format(source_bundle_uuid))
+            # When bundle content doesn't exist, update the bundle state with final states and return
+            dest_client.upload_contents_blob(
+                dest_bundle['id'],
+                params={
+                    'state_on_success': source_info['state'],  # copy bundle state
+                    'finalize_on_success': True,
+                },
+            )
             return
 
         # Collect information about how server should unpack
@@ -1470,37 +1492,22 @@ class BundleCLI(object):
             unpack = True
         else:
             unpack = False
-
         # Fetch bundle content from source client
-        try:
-            source_file = source_client.fetch_contents_blob(BundleTarget(source_bundle_uuid, ''))
-        except NotFoundError:
-            source_file = None
-
-        if source_file:
-            # Send file over
-            progress = FileTransferProgress('Copied ', f=self.stderr)
-            with closing(source_file), progress:
-                dest_client.upload_contents_blob(
-                    dest_bundle['id'],
-                    fileobj=source_file,
-                    params={
-                        'filename': filename,
-                        'unpack': unpack,
-                        'simplify': False,  # retain original bundle verbatim
-                        'state_on_success': source_info['state'],  # copy bundle state
-                        'finalize_on_success': True,
-                    },
-                    progress_callback=progress.update,
-                )
-        else:
-            # Update the bundle state with final states
+        source_file = source_client.fetch_contents_blob(BundleTarget(source_bundle_uuid, ''))
+        # Send file over
+        progress = FileTransferProgress('Copied ', f=self.stderr)
+        with closing(source_file), progress:
             dest_client.upload_contents_blob(
                 dest_bundle['id'],
+                fileobj=source_file,
                 params={
+                    'filename': filename,
+                    'unpack': unpack,
+                    'simplify': False,  # retain original bundle verbatim
                     'state_on_success': source_info['state'],  # copy bundle state
                     'finalize_on_success': True,
                 },
+                progress_callback=progress.update,
             )
 
     @Commands.command(
@@ -2276,7 +2283,7 @@ class BundleCLI(object):
     def print_permissions(self, info):
         print('permission: %s' % permission_str(info['permission']), file=self.stdout)
         print('group_permissions:', file=self.stdout)
-        print('  %s' % group_permissions_str(info['group_permissions']), file=self.stdout)
+        print('  %s' % group_permissions_str(info.get('group_permissions', [])), file=self.stdout)
 
     def print_contents(self, client, info):
         def wrap(string):
@@ -3319,6 +3326,7 @@ class BundleCLI(object):
         help=[
             'Append all the items of the source worksheet to the destination worksheet.',
             'Bundles that do not yet exist on the destination service will be copied over.',
+            'Bundles in non-terminal states (READY or FAILED) will not be copied over to destination worksheet.',
             'The existing items on the destination worksheet are not affected unless the -r/--replace flag is set.',
         ],
         arguments=(
@@ -3350,17 +3358,29 @@ class BundleCLI(object):
             args.dest_worksheet_spec
         )
 
+        valid_source_items = []
         # Save all items to the destination worksheet
         for item in source_items:
+            if item['type'] == worksheet_util.TYPE_BUNDLE:
+                if item['bundle']['state'] not in [State.READY, State.FAILED]:
+                    print(
+                        'Skipping bundle {} because it has non-final state {}'.format(
+                            item['bundle']['id'], item['bundle']['state']
+                        ),
+                        file=self.stdout,
+                    )
+                    continue
             item['worksheet'] = JsonApiRelationship('worksheets', dest_worksheet_uuid)
+            valid_source_items.append(item)
+
         dest_client.create(
             'worksheet-items',
-            source_items,
+            valid_source_items,
             params={'replace': args.replace, 'uuid': dest_worksheet_uuid},
         )
 
         # Copy over the bundles
-        for item in source_items:
+        for item in valid_source_items:
             if item['type'] == worksheet_util.TYPE_BUNDLE:
                 self.copy_bundle(
                     source_client,
@@ -3372,7 +3392,7 @@ class BundleCLI(object):
                 )
 
         print(
-            'Copied %s worksheet items to %s.' % (len(source_items), dest_worksheet_uuid),
+            'Copied %s worksheet items to %s.' % (len(valid_source_items), dest_worksheet_uuid),
             file=self.stdout,
         )
 

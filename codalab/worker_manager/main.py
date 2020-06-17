@@ -5,6 +5,7 @@ Main entry point for the worker managers.
 import argparse
 import logging
 from .aws_batch_worker_manager import AWSBatchWorkerManager
+from .slurm_batch_worker_manager import SlurmBatchWorkerManager
 
 
 def main():
@@ -18,6 +19,17 @@ def main():
         '--search', nargs='*', help='Monitor only runs that satisfy these criteria', default=[]
     )
     parser.add_argument('--worker-tag', help='Tag to look for and put on workers')
+    parser.add_argument(
+        '--worker-work-dir-prefix', help="Prefix to use for each worker's working directory."
+    )
+    parser.add_argument(
+        '--worker-max-work-dir-size', help='Maximum size of the temporary bundle data'
+    )
+    parser.add_argument(
+        '--worker-delete-work-dir-on-exit',
+        action='store_true',
+        help="Delete a worker's working directory when the worker process exits.",
+    )
     parser.add_argument(
         '--verbose', action='store_true', help='Whether to print out extra information'
     )
@@ -50,7 +62,10 @@ def main():
     # Each worker manager class defines its NAME, which is the subcommand the users use
     # to invoke that type of Worker Manager. We map those to their respective classes
     # so we can automatically initialize the correct worker manager class from the argument
-    worker_manager_types = {AWSBatchWorkerManager.NAME: AWSBatchWorkerManager}
+    worker_manager_types = {
+        AWSBatchWorkerManager.NAME: AWSBatchWorkerManager,
+        SlurmBatchWorkerManager.NAME: SlurmBatchWorkerManager,
+    }
     for worker_manager_name, worker_manager_type in worker_manager_types.items():
         # This lets each worker manager class to define its own arguments
         worker_manager_subparser = subparsers.add_parser(

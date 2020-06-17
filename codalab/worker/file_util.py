@@ -73,10 +73,12 @@ def tar_gzip_directory(
         raise IOError(e.output)
 
 
-def un_tar_directory(fileobj, directory_path, compression=''):
+def un_tar_directory(fileobj, directory_path, compression='', force=False):
     """
     Extracts the given file-like object containing a tar archive into the given
-    directory, which will be created and should not already exist.
+    directory, which will be created and should not already exist. If it already exists,
+    and `force` is `False`, an error is raised. If it already exists, and `force` is `True`,
+    the directory is removed and recreated.
 
     compression specifies the compression scheme and can be one of '', 'gz' or
     'bz2'.
@@ -84,6 +86,8 @@ def un_tar_directory(fileobj, directory_path, compression=''):
     Raises tarfile.TarError if the archive is not valid.
     """
     directory_path = os.path.realpath(directory_path)
+    if force:
+        remove_path(directory_path)
     os.mkdir(directory_path)
     with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:
         for member in tar:
@@ -311,3 +315,27 @@ def remove_path(path):
             shutil.rmtree(path)
         else:
             os.remove(path)
+
+
+def path_is_parent(parent_path, child_path):
+    """
+    Given a parent_path and a child_path, determine if the child path
+    is a strict subpath of the parent_path. In the case that the resolved
+    parent_path is equivalent to the resolved child_path, this function returns
+    False.
+
+    Note that this function does not dereference symbolic links.
+    """
+    # Remove relative path references.
+    parent_path = os.path.abspath(parent_path)
+    child_path = os.path.abspath(child_path)
+
+    # Explicitly handle the case where the parent_path equals the child_path
+    if parent_path == child_path:
+        return False
+
+    # Compare the common path of the parent and child path with the common
+    # path of just the parent path. Using the commonpath method on just
+    # the parent path will regularize the path name in the same way as the
+    # comparison that deals with both paths, removing any trailing path separator.
+    return os.path.commonpath([parent_path]) == os.path.commonpath([parent_path, child_path])
