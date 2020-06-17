@@ -16,11 +16,9 @@ RUN ls /opt/frontend
 
 EXPOSE 2700
 
-RUN npm run build
-
 # Production mode - only copy in the build files, not
 # node modules.
-FROM node:10 AS prod
+FROM node:10-slim AS prod
 
 RUN npm install -g serve
 
