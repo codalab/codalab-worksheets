@@ -35,7 +35,7 @@ venv*/
 /tags
 
 /var
-node_modules
+**/node_modules
 pip-wheel-metadata
 site
 
