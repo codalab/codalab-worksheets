@@ -148,7 +148,8 @@ jobs:
           export PATH=$PATH:$PWD/geckodriver
           sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
-          pip install -r requirements.txt
+          pip install --upgrade diffimg==0.2.3
+          pip install --upgrade selenium==3.141.0
         env:
           VERSION: ${{ github.head_ref }}
       - name: Run tests
