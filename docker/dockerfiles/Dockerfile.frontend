@@ -2,10 +2,6 @@ FROM node:10 AS dev
 
 ENV NPM_CONFIG_LOGLEVEL warn
 
-RUN npm install -g serve
-
-RUN npm --version
-
 WORKDIR /opt/frontend
 
 # Install dependencies
@@ -20,9 +16,7 @@ RUN ls /opt/frontend
 
 EXPOSE 2700
 
-# Build static files
-# RUN npm run build
-
+RUN npm run build
 
 # Production mode - only copy in the build files, not
 # node modules.
@@ -32,6 +26,6 @@ RUN npm install -g serve
 
 WORKDIR /opt/frontend
 
-COPY --from=dev /opt/frontend/build build
+COPY --from=prod build build
 
 EXPOSE 2700
