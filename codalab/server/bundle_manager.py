@@ -363,36 +363,31 @@ class BundleManager(object):
         # Build a dictionary which maps from uuid to running bundle and bundle_resources
         running_bundles_info = self._get_running_bundles_info(workers, staged_bundles_to_run)
 
-        # We pre-compute the workers available to each user (and the codalab-owned workers),
-        # such that workers that come online or regain the necessary resources while we
-        # are attempting to run each staged bundle will respect the ordering of
-        # staged_bundles_to_run (i.e., they won't be used immediately, and will be instead
-        # assigned bundles on the next run of _run_iteration).
-        resource_deducted_user_owned_workers = {}
+        # We pre-compute the parallel_run_quota left to each user, such that workers that come online
+        # or regain the necessary resources while we are attempting to run each staged bundle will
+        # respect the ordering of staged_bundles_to_run (i.e., they won't be used immediately, and will
+        # be instead assigned bundles on the next run of _run_iteration).
         user_parallel_run_quota_left = {}
-        for user in user_queue_positions.keys():
-            resource_deducted_user_owned_workers[user] = self._deduct_worker_resources(
-                workers.user_owned_workers(user), running_bundles_info
-            )
+        for user in user_queue_positions:
             user_parallel_run_quota_left[user] = self._model.get_user_parallel_run_quota_left(
                 user, user_info_cache[user]
             )
-        resource_deducted_codalab_owned_workers = self._deduct_worker_resources(
-            workers.user_owned_workers(self._model.root_user_id), running_bundles_info
-        )
 
         workers_list = []
         # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
+            # Check if there is enough parallel run quota left for this user
             if user_parallel_run_quota_left[bundle.owner_id] > 0:
-                workers_list = (
-                    resource_deducted_user_owned_workers[bundle.owner_id]
-                    + resource_deducted_codalab_owned_workers
-                )
+                codalab_owned_workers = workers.user_owned_workers(self._model.root_user_id)
             else:
-                workers_list = resource_deducted_user_owned_workers[bundle.owner_id]
+                # Don't include CodaLab-owned workers, as there is no parallel_run_quota left for this user.
+                codalab_owned_workers = []
 
+            user_owned_workers = workers.user_owned_workers(bundle.owner_id)
+            workers_list = user_owned_workers + codalab_owned_workers
+            workers_list = self._deduct_worker_resources(workers_list, running_bundles_info)
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
+
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
                 if self._try_start_bundle(workers, worker, bundle, bundle_resources):
@@ -400,12 +395,6 @@ class BundleManager(object):
                     # decrement the parallel run quota left.
                     if worker["user_id"] == self._model.root_user_id:
                         user_parallel_run_quota_left[bundle.owner_id] -= 1
-                    # Update available worker resoures. This is a lower-bound,
-                    # since resources released by jobs that finish are not used until
-                    # the next call to _schedule_run_bundles_on_workers.
-                    worker['cpus'] -= bundle_resources.cpus
-                    worker['gpus'] -= bundle_resources.gpus
-                    worker['memory_bytes'] -= bundle_resources.memory
                     worker['exit_after_num_runs'] -= 1
                     break
 
