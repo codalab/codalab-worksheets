@@ -44,7 +44,7 @@ jobs:
           VERSION: ${{ github.head_ref }}
           SERVICE: ${{ matrix.service }}
   test_backend:
-    name: Test backend
+    name: Backend
     runs-on: ubuntu-latest
     needs: [build]
     strategy:
@@ -87,7 +87,7 @@ jobs:
           path: /tmp/logs
     
   test_backend_sharedfs:
-    name: Test backend with sharedfs
+    name: Backend - shared FS
     runs-on: ubuntu-latest
     needs: [build]
     strategy:
