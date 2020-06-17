@@ -68,6 +68,47 @@ jobs:
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default no-frontend --version ${VERSION}
+          python3 test_runner.py --version ${VERSION} ${TEST}
+        env:
+          TEST: ${{ matrix.test }}
+          VERSION: ${{ github.head_ref }}
+      - name: Save logs on failure
+        run: |
+          mkdir /tmp/logs
+          for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err; done
+        if: failure()
+      - name: Upload logs on failure
+        uses: actions/upload-artifact@v1
+        if: failure()
+        with:
+          name: logs-test-${{ matrix.test }}
+          path: /tmp/logs
+
+  test_backend_with_worker_restart:
+    name: Test backend
+    runs-on: ubuntu-latest
+    needs: [build]
+    strategy:
+      matrix:
+        test: [run]
+    steps:
+      - name: Clear free space
+        run: |
+          sudo rm -rf /opt/ghc
+          df -h
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - name: Setup tests
+        run: |
+          sudo service mysql stop
+          python3 codalab_service.py pull --version ${VERSION}
+        env:
+          VERSION: ${{ github.head_ref }}
+      - name: Run tests
+        run: |
+          python3 codalab_service.py start --services default no-frontend --version ${VERSION}
           docker restart codalab_worker_1
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
@@ -109,7 +150,7 @@ jobs:
           VERSION: ${{ github.head_ref }}
       - name: Run shared filesystem tests
         run: |
-          python3 codalab_service.py start --services init worker --version ${VERSION} --shared-file-system
+          python3 codalab_service.py start --services default no-frontend --version ${VERSION} --shared-file-system
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
