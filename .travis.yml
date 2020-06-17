@@ -36,11 +36,11 @@ jobs:
       script:
         - python3 test_runner.py --version ${TRAVIS_BRANCH} default
         # Make sure restarting worker doesn't cause any issues (ie in serialization/deserialization)
-#        - docker restart codalab_worker_1 && python3 test_runner.py --version ${TRAVIS_BRANCH} run
-#        - docker stop codalab_worker_1
-#        - python3 codalab_service.py start --services init worker --version ${TRAVIS_BRANCH} --shared-file-system
-#        # Run frontend tests + backend test modules that test shared file systems code paths
-#        - python3 test_runner.py --version ${TRAVIS_BRANCH} frontend basic run run2 read write kill resources netcat netcurl workers
+        - docker restart codalab_worker_1 && python3 test_runner.py --version ${TRAVIS_BRANCH} run
+        - docker stop codalab_worker_1
+        - python3 codalab_service.py start --services init worker --version ${TRAVIS_BRANCH} --shared-file-system
+        # Run frontend tests + backend test modules that test shared file systems code paths
+        - python3 test_runner.py --version ${TRAVIS_BRANCH} frontend basic run run2 read write kill resources netcat netcurl workers
     - stage: deploy
       script: echo "Deploying"
       language: python
