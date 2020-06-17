@@ -563,7 +563,7 @@ class CodalabServiceManager(object):
             cache_args = ' --cache-from {}'.format(cache_image)
         else:
             cache_args = ''
-        
+
         if image == "frontend" and self.args.dev:
             target_args = ' --target dev'
         else:
