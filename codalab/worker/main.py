@@ -126,6 +126,10 @@ def parse_args():
         action='store_true',
         help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
+    # TODO: remove the default -tony
+    parser.add_argument(
+        '--group', default='wg1', help='Name of the group that can run jobs on this worker'
+    )
     parser.add_argument(
         '--tag-exclusive',
         action='store_true',
@@ -141,9 +145,11 @@ def parse_args():
         action='store_true',
         help="Delete the worker's working directory when the worker process exits.",
     )
-    # TODO: remove the default -tony
     parser.add_argument(
-        '--group', default='wg1', help='Name of the group that can run jobs on this worker'
+        '--exit-after-num-runs',
+        type=int,
+        default=sys.maxsize,
+        help='The worker quits after this many jobs assigned to this worker',
     )
     return parser.parse_args()
 
@@ -229,6 +235,7 @@ def main():
         args.work_dir,
         local_bundles_dir,
         args.exit_when_idle,
+        args.exit_after_num_runs,
         args.idle_seconds,
         bundle_service,
         args.shared_file_system,

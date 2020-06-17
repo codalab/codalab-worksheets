@@ -241,7 +241,8 @@ class NavBar extends React.Component<{
                             ]
                         },
                     */
-                    const finalResults = _.reduce(
+
+                    const preRanking = _.reduce(
                         filteredResults,
                         (memo, data, name) => {
                             memo[name] = { name, results: data.results };
@@ -250,10 +251,24 @@ class NavBar extends React.Component<{
                         {},
                     );
 
-                    this.setState({
-                        isLoading: false,
-                        results: finalResults,
-                    });
+                    // the results are displayed using the map function, which remembers
+                    // order of insertion. We therefore put the owner's worksheets on top
+                    const currName = this.state.userInfo.user_name;
+                    if (currName in preRanking) {
+                        let ownerResults = {};
+                        ownerResults[currName] = preRanking[currName];
+                        delete preRanking[currName];
+                        let finalResults = { ...ownerResults, ...preRanking };
+                        this.setState({
+                            isLoading: false,
+                            results: finalResults,
+                        });
+                    } else {
+                        this.setState({
+                            isLoading: false,
+                            results: preRanking,
+                        });
+                    }
                 },
                 error: (xhr, status, err) => {
                     console.error(xhr.responseText);
@@ -399,9 +414,6 @@ class NavBar extends React.Component<{
                 >
                     <DialogTitle id='form-dialog-title'>New Worksheet</DialogTitle>
                     <DialogContent>
-                        <DialogContentText>
-                            To create a new worksheet, give it a name.
-                        </DialogContentText>
                         <TextField
                             autoFocus
                             margin='dense'
@@ -423,6 +435,10 @@ class NavBar extends React.Component<{
                                 }
                             }}
                         />
+                        <DialogContentText>
+                            Note: worksheet names must be globally unique and not contain any
+                            spaces.
+                        </DialogContentText>
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={() => this.resetDialog()} color='primary'>

@@ -600,20 +600,33 @@ class BundleCLI(object):
         Helper: target_specs is a list of strings which are [<key>]:<target>
         Returns: [(key, worker.download_util.BundleTarget), ...]
         """
-        keys = set()
+
+        def is_ancestor_or_descendant(path1, path2):
+            """
+            Return whether path1 is an ancestor of path2 or vice versa.
+            """
+            return path2.startswith(path1 + '/') or path1.startswith(path2 + '/')
+
+        keys = []
         targets = []
         target_keys_values = [parse_key_target(spec) for spec in target_specs]
         for key, target_spec in target_keys_values:
-            if key in keys:
-                if key:
-                    raise UsageError('Duplicate key: %s' % (key,))
-                else:
-                    raise UsageError('Must specify keys when packaging multiple targets!')
+            for other_key in keys:
+                if key == other_key:
+                    if key:
+                        raise UsageError('Duplicate key: %s' % (key,))
+                    else:
+                        raise UsageError('Must specify keys when packaging multiple targets!')
+                elif is_ancestor_or_descendant(key, other_key):
+                    raise UsageError(
+                        'A key cannot be an ancestor of another: {} {}'.format(key, other_key)
+                    )
+
             _, worksheet_uuid, target = self.resolve_target(
                 client, worksheet_uuid, target_spec, allow_remote=False
             )
             targets.append((key, target))
-            keys.add(key)
+            keys.append(key)
         return targets
 
     @staticmethod
@@ -1091,6 +1104,7 @@ class BundleCLI(object):
             'runs',
             'shared_file_system',
             'tag_exclusive',
+            'exit_after_num_runs',
         ]
 
         data = []
@@ -1110,6 +1124,7 @@ class BundleCLI(object):
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
                     'tag_exclusive': worker['tag_exclusive'],
+                    'exit_after_num_runs': worker['exit_after_num_runs'],
                 }
             )
 
@@ -2268,7 +2283,7 @@ class BundleCLI(object):
     def print_permissions(self, info):
         print('permission: %s' % permission_str(info['permission']), file=self.stdout)
         print('group_permissions:', file=self.stdout)
-        print('  %s' % group_permissions_str(info['group_permissions']), file=self.stdout)
+        print('  %s' % group_permissions_str(info.get('group_permissions', [])), file=self.stdout)
 
     def print_contents(self, client, info):
         def wrap(string):
@@ -3311,6 +3326,7 @@ class BundleCLI(object):
         help=[
             'Append all the items of the source worksheet to the destination worksheet.',
             'Bundles that do not yet exist on the destination service will be copied over.',
+            'Bundles in non-terminal states (READY or FAILED) will not be copied over to destination worksheet.',
             'The existing items on the destination worksheet are not affected unless the -r/--replace flag is set.',
         ],
         arguments=(
@@ -3342,17 +3358,29 @@ class BundleCLI(object):
             args.dest_worksheet_spec
         )
 
+        valid_source_items = []
         # Save all items to the destination worksheet
         for item in source_items:
+            if item['type'] == worksheet_util.TYPE_BUNDLE:
+                if item['bundle']['state'] not in [State.READY, State.FAILED]:
+                    print(
+                        'Skipping bundle {} because it has non-final state {}'.format(
+                            item['bundle']['id'], item['bundle']['state']
+                        ),
+                        file=self.stdout,
+                    )
+                    continue
             item['worksheet'] = JsonApiRelationship('worksheets', dest_worksheet_uuid)
+            valid_source_items.append(item)
+
         dest_client.create(
             'worksheet-items',
-            source_items,
+            valid_source_items,
             params={'replace': args.replace, 'uuid': dest_worksheet_uuid},
         )
 
         # Copy over the bundles
-        for item in source_items:
+        for item in valid_source_items:
             if item['type'] == worksheet_util.TYPE_BUNDLE:
                 self.copy_bundle(
                     source_client,
@@ -3364,7 +3392,7 @@ class BundleCLI(object):
                 )
 
         print(
-            'Copied %s worksheet items to %s.' % (len(source_items), dest_worksheet_uuid),
+            'Copied %s worksheet items to %s.' % (len(valid_source_items), dest_worksheet_uuid),
             file=self.stdout,
         )
 
