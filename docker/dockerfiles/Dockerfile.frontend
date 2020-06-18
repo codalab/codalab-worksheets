@@ -22,8 +22,6 @@ WORKDIR /opt/frontend
 
 RUN npm run build
 
-COPY --from=dev /opt/frontend/build build
-
 # Production mode - only copy in the build files, not
 # node modules.
 FROM node:10-slim AS prod
