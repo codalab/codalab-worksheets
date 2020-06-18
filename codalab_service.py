@@ -287,7 +287,7 @@ CODALAB_ARGUMENTS = [
     ),
     CodalabArg(
         name='link_allowed_paths',
-        help='Glob expression for allowed local paths that can be used with the --link argument.'
+        help='Glob expression for allowed local paths that can be used with the --link argument.',
     ),
     ### Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
