@@ -7,7 +7,7 @@ RUN go get -u github.com/awslabs/amazon-ecr-credential-helper/ecr-login/cli/dock
 WORKDIR /root/go/src/github.com/awslabs/amazon-ecr-credential-helper
 RUN make
 
-FROM ubuntu:16.04
+FROM python:3.6.10-buster
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -15,18 +15,10 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
   apt-get install -y --no-install-recommends software-properties-common && \
-  add-apt-repository ppa:deadsnakes/ppa && \
   apt-get update && \
   apt-get install -y --no-install-recommends \
-    build-essential \
-    python3.6 \
-    python3.6-dev \
-    python3-pip \
-    python3-setuptools && \
+    build-essential && \
     rm -rf /var/lib/apt/lists/*;
-
-# Set Python3.6 as the default python3 version
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 
 COPY --from=ecr-login-installation /root/go/src/github.com/awslabs/amazon-ecr-credential-helper/bin/local /usr/local/bin
 RUN mkdir $HOME/.docker
