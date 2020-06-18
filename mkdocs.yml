@@ -3,20 +3,24 @@ docs_dir: docs
 theme: readthedocs
 
 nav:
-  - Introduction: index.md
-  - Examples: https://github.com/codalab/worksheets-examples
-  - The CodaLab Workflow: Workflow.md
-  - Executable Papers: Executable-Papers.md
-  - CLI Reference: CLI-Reference.md
-  - Worksheet Markdown: Worksheet-Markdown.md
-  - Execution: Execution.md
-  - Competitions: Competitions.md
-  - Server Setup: Server-Setup.md
-  - Code Overview: Code-Overview.md
-  - REST API Reference: REST-API-Reference.md
-  - About: About.md
-  - Privacy: Privacy.md
-  - Frequently Asked Questions: FAQ.md
+  - Docs:
+    - Introduction: index.md
+    - Examples: https://github.com/codalab/worksheets-examples
+    - The CodaLab Workflow: Workflow.md
+    - Executable Papers: Executable-Papers.md
+    - CLI Reference: CLI-Reference.md
+    - Worksheet Markdown: Worksheet-Markdown.md
+    - Execution: Execution.md
+    - Competitions: Competitions.md
+    - Server Setup: Server-Setup.md
+    - Code Overview: Code-Overview.md
+    - REST API Reference: REST-API-Reference.md
+  - About:
+    - About: About.md
+    - Privacy: Privacy.md
+    - Frequently Asked Questions: FAQ.md
+  - blog:
+      - New site and updates from the past year: blog/2020-06-18-new-site-updates.md
 
 markdown_extensions:
   - toc:
