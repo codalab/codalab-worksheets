@@ -20,7 +20,8 @@ RUN apt-get update && \
   apt-get install -y --no-install-recommends \
     python3.6 \
     python3.6-dev \
-    python3-pip && \
+    python3-pip \
+    python3-setuptools && \
     rm -rf /var/lib/apt/lists/*;
 
 # Set Python3.6 as the default python3 version
