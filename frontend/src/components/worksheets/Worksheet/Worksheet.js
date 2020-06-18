@@ -22,7 +22,7 @@ import {
     LOCAL_STORAGE_WORKSHEET_WIDTH,
     DIALOG_TYPES,
 } from '../../../constants';
-import WorksheetActionBar from '../WorksheetActionBar';
+import WorksheetTerminal from '../WorksheetTerminal';
 import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
 import EditIcon from '@material-ui/icons/EditOutlined';
@@ -66,7 +66,7 @@ class Worksheet extends React.Component {
             activeComponent: 'list', // Where the focus is (action, list, or side_panel)
             editMode: false, // Whether we're editing the worksheet
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind editMode)
-            showActionBar: false, // Whether the action bar is shown
+            showTerminal: false, // Whether the terminal is shown
             focusIndex: -1, // Which worksheet items to be on (-1 is none)
             subFocusIndex: 0, // For tables, which row in the table
             numOfBundles: -1, // Number of bundles in this worksheet (-1 is just the initial value)
@@ -680,7 +680,7 @@ class Worksheet extends React.Component {
     editMode = () => {
         this.toggleEditMode(true);
     };
-    handleActionBarFocus = (event) => {
+    handleTerminalFocus = (event) => {
         this.setState({ activeComponent: 'action' });
         // just scroll to the top of the page.
         // Add the stop() to keep animation events from building up in the queue
@@ -689,8 +689,8 @@ class Worksheet extends React.Component {
             .stop(true)
             .animate({ scrollTop: 0 }, 250);
     };
-    handleActionBarBlur = (event) => {
-        // explicitly close terminal because we're leaving the action bar
+    handleTerminalBlur = (event) => {
+        // explicitly close terminal because we're leaving the terminal
         // $('#command_line').terminal().focus(false);
         this.setState({ activeComponent: 'list' });
         $('#command_line').data('resizing', null);
@@ -723,7 +723,7 @@ class Worksheet extends React.Component {
         }.bind(this);
 
         if (this.state.activeComponent === 'action') {
-            // no need for other keys, we have the action bar focused
+            // no need for other keys, we have the terminal focused
             return;
         }
 
@@ -748,19 +748,19 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
 
-            // Show/hide web terminal (action bar)
+            // Show/hide web terminal
             Mousetrap.bind(
                 ['shift+c'],
                 function(e) {
-                    this.toggleActionBar();
+                    this.toggleTerminal();
                 }.bind(this),
             );
 
-            // Focus on web terminal (action bar)
+            // Focus on web terminal
             Mousetrap.bind(
                 ['c c'],
                 function(e) {
-                    this.focusActionBar();
+                    this.focusTerminal();
                 }.bind(this),
             );
 
@@ -1169,21 +1169,21 @@ class Worksheet extends React.Component {
                 editor.renderer.scrollToRow(rawIndex);
             }
         }
-        if (prevState.showActionBar !== this.state.showActionBar) {
+        if (prevState.showTerminal !== this.state.showTerminal) {
             // Hack to make sure that the <Sticky> component in WorksheetHeader.js updates.
             // This is needed because otherwise the header doesn't move up or down as needed
-            // when the action bar is shown / hidden.
+            // when the terminal is shown / hidden.
             window.scrollTo(window.scrollX, window.scrollY + 1);
         }
     }
 
-    toggleActionBar() {
-        this.setState({ showActionBar: !this.state.showActionBar });
+    toggleTerminal() {
+        this.setState({ showTerminal: !this.state.showTerminal });
     }
 
-    focusActionBar() {
+    focusTerminal() {
         this.setState({ activeComponent: 'action' });
-        this.setState({ showActionBar: true });
+        this.setState({ showTerminal: true });
         $('#command_line')
             .terminal()
             .focus();
@@ -1350,7 +1350,7 @@ class Worksheet extends React.Component {
             },
         });
 
-        // Note: this is redundant if we're doing 'cl work' from the action bar,
+        // Note: this is redundant if we're doing 'cl work' from the terminal,
         // but is necessary if triggered in other ways.
         this.reloadWorksheet();
 
@@ -1420,7 +1420,7 @@ class Worksheet extends React.Component {
         var editPermission = info && info.edit_permission;
         var canEdit = this.canEdit() && this.state.editMode;
 
-        var searchClassName = this.state.showActionBar ? '' : 'search-hidden';
+        var searchClassName = this.state.showTerminal ? '' : 'search-hidden';
         var editableClassName = canEdit ? 'editable' : '';
         var disableWorksheetEditing = this.canEdit() ? '' : 'disabled';
         var sourceStr = editPermission ? 'Edit Source' : 'View Source';
@@ -1437,19 +1437,19 @@ class Worksheet extends React.Component {
                     {sourceStr}
                 </Button>
                 <Button
-                    onClick={(e) => this.toggleActionBar()}
+                    onClick={(e) => this.toggleTerminal()}
                     size='small'
                     color='inherit'
                     aria-label='Expand CLI'
                     id='terminal-button'
                     disabled={!info}
                 >
-                    {this.state.showActionBar ? (
+                    {this.state.showTerminal ? (
                         <ContractIcon className={classes.buttonIcon} />
                     ) : (
                         <ExpandIcon className={classes.buttonIcon} />
                     )}
-                    {this.state.showActionBar ? 'HIDE TERMINAL' : 'SHOW TERMINAL'}
+                    {this.state.showTerminal ? 'HIDE TERMINAL' : 'SHOW TERMINAL'}
                 </Button>
                 <Button
                     onClick={(e) =>
@@ -1520,17 +1520,17 @@ class Worksheet extends React.Component {
         );
 
         var action_bar_display = (
-            <WorksheetActionBar
+            <WorksheetTerminal
                 ref={'action'}
                 ws={this.state.ws}
-                handleFocus={this.handleActionBarFocus}
-                handleBlur={this.handleActionBarBlur}
+                handleFocus={this.handleTerminalFocus}
+                handleBlur={this.handleTerminalBlur}
                 active={this.state.activeComponent === 'action'}
                 reloadWorksheet={this.reloadWorksheet}
                 openWorksheet={this.openWorksheet}
                 editMode={this.editMode}
                 setFocus={this.setFocus}
-                hidden={!this.state.showActionBar}
+                hidden={!this.state.showTerminal}
             />
         );
 
@@ -1547,7 +1547,7 @@ class Worksheet extends React.Component {
                 reloadWorksheet={this.reloadWorksheet}
                 saveAndUpdateWorksheet={this.saveAndUpdateWorksheet}
                 openWorksheet={this.openWorksheet}
-                focusActionBar={this.focusActionBar}
+                focusTerminal={this.focusTerminal}
                 ensureIsArray={this.ensureIsArray}
                 showNewRun={this.state.showNewRun}
                 showNewText={this.state.showNewText}
@@ -1594,7 +1594,7 @@ class Worksheet extends React.Component {
         return (
             <React.Fragment>
                 <WorksheetHeader
-                    showActionBar={this.state.showActionBar}
+                    showTerminal={this.state.showTerminal}
                     canEdit={this.canEdit()}
                     info={info}
                     classes={classes}
