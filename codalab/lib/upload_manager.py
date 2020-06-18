@@ -61,7 +61,7 @@ class UploadManager(object):
         if bundle_link_url:
             # Don't do anything for linked bundles.
             return
-        bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
+        bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
             # Note that for uploads with a single source, the directory

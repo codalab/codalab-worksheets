@@ -22,11 +22,14 @@ Usage: `cl <command> <arguments>`
       -z, --force-compression  Always use compression (this may speed up single-file uploads over a slow network).
       -w, --worksheet-spec     Upload to this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
       -i, --ignore             Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
+      -l, --link               Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store. If this argument is used and a local file path is specified,the path must match a glob expression specified by the CODALAB_LINK_ALLOWED_PATHS environment variableor the --link_allowed_paths command-line parameter to codalab_service.py.
       -n, --name               Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description        Full description of the bundle.
       --tags                   Space-separated list of tags used for search (e.g., machine-learning).
       --license                The license under which this program/dataset is released.
       --source-url             URL corresponding to the original source of this bundle.
+      --link-url               Link URL of bundle.
+      --link-format            Link format of bundle. Can be equal to"raw" or "zip" (only "raw" is supported as of now).
       -e, --edit               Show an editor to allow editing of the bundle metadata.
 
 ### make:

@@ -1194,7 +1194,9 @@ class BundleCLI(object):
                 '--link',
                 help='Makes the path the source of truth of the bundle, meaning that the server will retrieve the '
                 'bundle directly from the specified path rather than storing its contents'
-                'in its own bundle store.',
+                'in its own bundle store. If this argument is used and a local file path is specified,'
+                'the path must match a glob expression specified by the CODALAB_LINK_ALLOWED_PATHS environment variable'
+                'or the --link_allowed_paths command-line parameter to codalab_service.py.',
                 action='store_true',
                 default=False,
             ),

@@ -18,7 +18,7 @@ jobs:
       services:
         - docker
       env:
-        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=true
+        - CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CI=true CODALAB_LINK_ALLOWED_PATHS=/opt*
       python: 3.6
       before_install:
         - sudo rm /usr/local/bin/docker-compose

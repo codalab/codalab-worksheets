@@ -285,6 +285,10 @@ CODALAB_ARGUMENTS = [
         default=SERVICE_REQUEST_TIMEOUT_SECONDS,
         help='Docker client timeout (in seconds)',
     ),
+    CodalabArg(
+        name='link_allowed_paths',
+        help='Glob expression for allowed local paths that can be used with the --link argument.'
+    ),
     ### Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
 ]

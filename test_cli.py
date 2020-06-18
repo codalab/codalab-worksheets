@@ -1154,6 +1154,11 @@ def test(ctx):
 
 @TestModule.register('link')
 def test(ctx):
+    # Upload fails
+    uuid = _run_command([cl, "upload", "/etc/shadow", '--link'])
+    check_equals(State.READY, get_info(uuid, 'state'))
+    _run_command([cl, 'cat', uuid], 1)
+
     # Upload file
     uuid = _run_command([cl, 'upload', test_path('a.txt'), '--link'])
     check_equals(State.READY, get_info(uuid, 'state'))
