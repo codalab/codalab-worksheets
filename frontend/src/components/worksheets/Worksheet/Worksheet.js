@@ -353,8 +353,6 @@ class Worksheet extends React.Component {
         }
         if (cmd_type === 'rm') {
             this.setState({ openedDialog: DIALOG_TYPES.OPEN_DELETE_BUNDLE });
-        } else if (cmd_type === 'detach') {
-            this.setState({ openedDialog: DIALOG_TYPES.OPEN_DETACH });
         } else if (cmd_type === 'kill') {
             this.setState({ openedDialog: DIALOG_TYPES.OPEN_KILL });
         } else if (cmd_type === 'copy' || cmd_type === 'cut') {
@@ -431,8 +429,6 @@ class Worksheet extends React.Component {
             return true;
         } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_BUNDLE) {
             this.executeBundleCommandNoEvent('rm');
-        } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_DETACH) {
-            this.executeBundleCommandNoEvent('detach');
         } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_KILL) {
             this.executeBundleCommandNoEvent('kill');
         }
@@ -937,16 +933,6 @@ class Worksheet extends React.Component {
                     }
                     this.toggleCmdDialogNoEvent('rm');
                 });
-                // Consider deprecating detach from the frontend
-                Mousetrap.bind(['a D'], () => {
-                    if (
-                        this.state.openedDialog &&
-                        this.state.openedDialog !== DIALOG_TYPES.OPEN_DETACH
-                    ) {
-                        return;
-                    }
-                    this.toggleCmdDialogNoEvent('detach');
-                });
                 Mousetrap.bind(['a k'], () => {
                     if (
                         this.state.openedDialog &&
@@ -972,8 +958,6 @@ class Worksheet extends React.Component {
                                 this.executeBundleCommandNoEvent('rm');
                             } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_KILL) {
                                 this.executeBundleCommandNoEvent('kill');
-                            } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_DETACH) {
-                                this.executeBundleCommandNoEvent('detach');
                             }
                         }.bind(this),
                     );
