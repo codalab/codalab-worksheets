@@ -42,7 +42,6 @@ class TableItem extends React.Component<{
     // The main idea is to let TableItem maintain its BundleRows' check status
     // this.state.childrenCheckState are the checkStatus of the bundle rows that belong to this table
     // BundleRow can also update itself through childrenCheck callback that TableItems passes
-    // handleSelectAllClick & handleSelectAllSpaceHit handles select all events through click & space keydown
 
     refreshCheckBox = () => {
         let childrenStatus = new Array(this.props.item.rows.length).fill(false);
@@ -80,23 +79,6 @@ class TableItem extends React.Component<{
             childrenCheckState: childrenStatus,
             indeterminateCheckState: indeterminateCheckState,
             checked: selfChecked,
-        });
-    };
-
-    handleSelectAllClick = (event) => {
-        if (event.target !== event.currentTarget) {
-            return;
-        }
-        let numSelectedChild = 0;
-        let childrenStatus = new Array(this.state.childrenCheckState.length).fill(
-            event.target.checked,
-        );
-        numSelectedChild = event.target.checked ? childrenStatus.length : 0;
-        this.setState({
-            checked: event.target.checked,
-            childrenCheckState: [...childrenStatus],
-            numSelectedChild: numSelectedChild,
-            indeterminateCheckState: false,
         });
     };
 
