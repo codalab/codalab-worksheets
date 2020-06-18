@@ -27,7 +27,7 @@ class Dependency extends React.PureComponent<
   render() {
     const { bundleInfo } = this.props;
     let dependencies_table = [];
-    if (!bundleInfo.dependencies || bundleInfo.dependencies.length == 0) return <div />;
+    if (!bundleInfo.dependencies || bundleInfo.dependencies.length === 0) return <div />;
 
     bundleInfo.dependencies.forEach((dep, i) => {
         let dep_bundle_url = '/bundles/' + dep.parent_uuid;
@@ -56,7 +56,7 @@ class Dependency extends React.PureComponent<
 /**
  * Content to display in sidebar of a Bundle Detail expansion panel.
  */
-class SideBar extends React.Component<
+class BundleDetailSideBar extends React.Component<
     {
         classes: {},
         bundleInfo: {},
@@ -71,7 +71,7 @@ class SideBar extends React.Component<
         const { bundleInfo, classes, onUpdate } = this.props;
         const { metadata, editableMetadataFields=[], metadataType } = bundleInfo;
         const hasEditPermission = bundleInfo.permission > 1;
-        const bundleState = (bundleInfo.state == 'running' &&
+        const bundleState = (bundleInfo.state === 'running' &&
 							bundleInfo.metadata.run_status != 'Running')
 					? bundleInfo.metadata.run_status
 					: bundleInfo.state;
@@ -108,6 +108,18 @@ class SideBar extends React.Component<
                         value={ metadata.description }
                         canEdit={ hasEditPermission && editableMetadataFields.includes("description") }
                         onChange={ (description) => onUpdate({ description }) }
+                    />
+                </div>
+                {/** ----------------------------------------------------------------------------------------------- */}
+                <ConfigLabel label="Tags"/>
+                <div className={classes.wrappableText}>
+                    <BundleEditableField
+                        dataType={ metadataType.tags }
+                        fieldName="tags"
+                        uuid={ bundleInfo.uuid }
+                        value={ metadata.tags }
+                        canEdit={ hasEditPermission && editableMetadataFields.includes("tags") }
+                        onChange={ (tags) => onUpdate({ tags }) }
                     />
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
@@ -315,4 +327,4 @@ const styles = (theme) => ({
     },
 });
 
-export default withStyles(styles)(SideBar);
+export default withStyles(styles)(BundleDetailSideBar);

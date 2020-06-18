@@ -234,7 +234,7 @@ class NewRun extends React.Component<{
 
         let args = ['run'];
 
-        if (after_sort_key) args.push(`-a ${ after_sort_key }`);
+        if (after_sort_key || after_sort_key === 0) args.push(`-a ${ after_sort_key }`);
         if (name) args.push(`--name=${name}`);
         if (description) args.push(`--description=${description}`);
         if (tags) args.push(`--tags=${tags.map((tag) => `'${tag}'`).join(",")}`);
@@ -281,8 +281,8 @@ class NewRun extends React.Component<{
         const { classes, ws } = this.props;
         this.shortcuts();
         let candidates: Bundle[] = [];
-        if(ws && ws.info && ws.info.items) {
-            ws.info.items.forEach((item) => {
+        if(ws && ws.info && ws.info.blocks) {
+            ws.info.blocks.forEach((item) => {
                 if(item.bundles_spec && item.bundles_spec.bundle_infos) {
                     item.bundles_spec.bundle_infos.forEach((bundle) => {
                         candidates.push({

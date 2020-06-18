@@ -8,6 +8,7 @@ import ActionButtons from '../items/ActionButtons';
 import Tooltip from '@material-ui/core/Tooltip';
 import IconButton from '@material-ui/core/IconButton';
 import InfoIcon from '@material-ui/icons/InfoOutlined';
+import OpenWithIcon from '@material-ui/icons/OpenWith';
 import './Worksheet.scss';
 
 const styles = {
@@ -35,8 +36,12 @@ export default ({
     setAnchorEl,
     handleSelectedBundleCommand,
     showBundleOperationButtons,
-    togglePopup,
-    toggleGlossaryModal,
+    toggleCmdDialog,
+    toggleCmdDialogNoEvent,
+    toggleInformationModal,
+    copiedBundleIds,
+    showPasteButton,
+    toggleWorksheetSize,
 }) => (
     <Sticky top={6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
@@ -79,7 +84,7 @@ export default ({
                                             setAnchorEl(ev.currentTarget);
                                         }}
                                         className={classes.permissions}
-                                        style={{ float: 'right' }}
+                                        style={{ display: 'inline-block', margin: '0px 5px' }}
                                     >
                                         {renderPermissions(info)}
                                     </div>
@@ -109,6 +114,17 @@ export default ({
                                             />
                                         </div>
                                     </Popover>
+                                    &nbsp;tags:&nbsp;
+                                    <div style={{ display: 'inline-block' }}>
+                                        <WorksheetEditableField
+                                            canEdit={canEdit}
+                                            dataType='list'
+                                            fieldName='tags'
+                                            value={info.tags.join(' ')}
+                                            uuid={info && info.uuid}
+                                            onChange={() => reloadWorksheet()}
+                                        />
+                                    </div>
                                 </React.Fragment>
                             )}
                         </Grid>
@@ -132,7 +148,10 @@ export default ({
                                 uploadAnchor={uploadAnchor}
                                 handleSelectedBundleCommand={handleSelectedBundleCommand}
                                 showBundleOperationButtons={showBundleOperationButtons}
-                                togglePopup={togglePopup}
+                                toggleCmdDialog={toggleCmdDialog}
+                                toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
+                                copiedBundleIds={copiedBundleIds}
+                                showPasteButton={showPasteButton}
                             />
                         </Grid>
                         <Grid item>
@@ -143,8 +162,22 @@ export default ({
                                 title='Shortcuts'
                                 aria-label='keyboard shortcuts'
                             >
-                                <IconButton color='inherit' href='#' onClick={toggleGlossaryModal}>
+                                <IconButton
+                                    color='inherit'
+                                    href='#'
+                                    onClick={toggleInformationModal}
+                                >
                                     <InfoIcon fontSize='small' />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip
+                                disableFocusListener
+                                disableTouchListener
+                                title='Expand/Shrink'
+                                aria-label='toggle worksheet width'
+                            >
+                                <IconButton color='inherit' href='#' onClick={toggleWorksheetSize}>
+                                    <OpenWithIcon fontSize='small' />
                                 </IconButton>
                             </Tooltip>
                         </Grid>

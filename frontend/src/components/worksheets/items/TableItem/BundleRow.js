@@ -14,6 +14,7 @@ import NewRun from '../../NewRun';
 
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleDetail from '../../BundleDetail';
+import TextEditorItem from '../TextEditorItem';
 
 // The approach taken in this design is to hack the HTML `Table` element by using one `TableBody` for each `BundleRow`.
 // We need the various columns to be aligned for all `BundleRow` within a `Table`, therefore using `div` is not an
@@ -161,6 +162,11 @@ class BundleRow extends Component {
                     rowContent = rowContent['path'].split('/')[1];
                 }
             }
+            if (Array.isArray(rowContent) && rowContent.length === 3) {
+                // Cell is a bundle genpath triple -- see is_bundle_genpath_triple() in backend.
+                // This means that the cell is only briefly loaded.
+                rowContent = <span style={{ color: 'grey' }}>Loading...</span>;
+            }
             if (url)
                 rowContent = (
                     <a
@@ -185,14 +191,14 @@ class BundleRow extends Component {
                     classes={{
                         root: classNames({
                             [classes.rootNoPad]: true,
-                            [classes.noCheckBox]: !(editPermission && checkBox),
-                            [classes.withCheckBox]: editPermission && checkBox,
+                            [classes.noCheckBox]: !checkBox,
+                            [classes.withCheckBox]: checkBox,
                         }),
                     }}
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                 >
-                    {editPermission && checkBox}
+                    {checkBox}
                     {showDetailButton}
                     {rowContent}
                 </TableCell>
@@ -220,9 +226,6 @@ class BundleRow extends Component {
             );
             Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
             Mousetrap.bind(['x'], (e) => {
-                if (!editPermission) {
-                    return;
-                }
                 if (!this.props.confirmBundleRowAction(e.code)) {
                     this.props.handleCheckBundle(
                         uuid,
@@ -236,7 +239,7 @@ class BundleRow extends Component {
 
             if (
                 this.props.focusIndex >= 0 &&
-                ws.info.items[this.props.focusIndex].mode === 'table_block'
+                ws.info.blocks[this.props.focusIndex].mode === 'table_block'
             ) {
                 const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
                 const isDownloadableRunBundle =
@@ -322,9 +325,41 @@ class BundleRow extends Component {
                                         this.setState({ showNewRun: 0, showDetail: false });
                                         onHideNewRerun();
                                     }}
-                                    after_sort_key={bundleInfo.sort_key}
+                                    after_sort_key={this.props.after_sort_key}
                                     reloadWorksheet={reloadWorksheet}
                                     defaultRun={runProp}
+                                />
+                            </div>
+                        </TableCell>
+                    </TableRow>
+                )}
+                {this.props.showNewRun && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                            <div className={classes.insertBox}>
+                                <NewRun
+                                    after_sort_key={this.props.after_sort_key}
+                                    ws={this.props.ws}
+                                    onSubmit={() => this.props.onHideNewRun()}
+                                    reloadWorksheet={reloadWorksheet}
+                                />
+                            </div>
+                        </TableCell>
+                    </TableRow>
+                )}
+                {this.props.showNewText && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                            <div className={classes.insertBox}>
+                                <TextEditorItem
+                                    ids={this.props.ids}
+                                    mode='create'
+                                    after_sort_key={this.props.after_sort_key}
+                                    worksheetUUID={this.props.worksheetUUID}
+                                    reloadWorksheet={reloadWorksheet}
+                                    closeEditor={() => {
+                                        this.props.onHideNewText();
+                                    }}
                                 />
                             </div>
                         </TableCell>
@@ -352,7 +387,7 @@ const styles = (theme) => ({
     rootNoPad: {
         verticalAlign: 'middle !important',
         border: 'none !important',
-        padding: '0px !important',
+        padding: '0px 4px !important',
         wordWrap: 'break-word',
     },
     noCheckBox: {
