@@ -1610,6 +1610,7 @@ def test(ctx):
         [cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'], request_memory="10m"
     )
     wait_until_state(uuid, State.RUNNING)
+    time.sleep(10)
     address = ctx.client.address
     check_equals(
         'hello',
