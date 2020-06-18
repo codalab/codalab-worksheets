@@ -73,14 +73,12 @@ jobs:
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref }}
-      - name: Save logs on failure
+      - name: Save logs
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err; done
-        if: failure()
-      - name: Upload logs on failure
+      - name: Upload logs
         uses: actions/upload-artifact@v1
-        if: failure()
         with:
           name: logs-test-${{ matrix.test }}
           path: /tmp/logs
@@ -114,14 +112,12 @@ jobs:
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref }}
-      - name: Save logs on failure
+      - name: Save logs
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err; done
-        if: failure()
-      - name: Upload logs on failure
+      - name: Upload logs
         uses: actions/upload-artifact@v1
-        if: failure()
         with:
           name: logs-test-sharedfs-${{ matrix.test }}
           path: /tmp/logs
@@ -166,14 +162,12 @@ jobs:
         with:
           name: screenshots-test-${{ matrix.test }}
           path: tests/ui
-      - name: Save logs on failure
+      - name: Save logs
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err; done
-        if: failure()
-      - name: Upload logs on failure
+      - name: Upload logs
         uses: actions/upload-artifact@v1
-        if: failure()
         with:
           name: logs-test-${{ matrix.test }}
           path: /tmp/logs
