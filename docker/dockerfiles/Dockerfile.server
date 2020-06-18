@@ -31,7 +31,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
 
-RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --no-cache-dir --upgrade pip
 RUN mkdir /opt/codalab-worksheets
 WORKDIR /opt/codalab-worksheets
 
@@ -41,7 +41,7 @@ RUN chmod a+rx /opt/wait-for-it.sh
 COPY requirements.txt requirements.txt
 COPY requirements.docs.txt requirements.docs.txt
 COPY requirements-server.txt requirements-server.txt
-RUN python3 -m pip install -r requirements-server.txt
+RUN python3 -m pip install --no-cache-dir -r requirements-server.txt
 
 # Install code
 COPY alembic alembic
@@ -59,7 +59,7 @@ COPY stress_test.py stress_test.py
 COPY tests tests
 COPY views views
 
-RUN python3 -m pip install -e .
+RUN python3 -m pip install --no-cache-dir -e .
 
 # Allow non-root to read everything
 RUN chmod -R og=u-w .
