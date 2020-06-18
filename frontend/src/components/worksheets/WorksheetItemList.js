@@ -3,7 +3,6 @@ import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import { buildTerminalCommand, getAfterSortKey, getIds } from '../../util/worksheet_utils';
-import { ContextMenuEnum, ContextMenuMixin } from './ContextMenu';
 import ContentsItem from './items/ContentsItem';
 import GraphItem from './items/GraphItem';
 import ImageItem from './items/ImageItem';
@@ -172,39 +171,6 @@ class WorksheetItemList extends React.Component {
         return uuidToIndex;
     }
 
-    handleContextMenuSelection = (uuid, focusIndex, subFocusIndex, option) => {
-        var type = option[0];
-        var args = option[1];
-        args.push(uuid);
-        if (type === ContextMenuEnum.command.ADD_BUNDLE_TO_HOMEWORKSHEET) {
-            args.push('/');
-        } else if (type === ContextMenuEnum.command.DETACH_BUNDLE) {
-            var uuidToIndex = this.bundleUuidToIndex();
-            if (uuidToIndex[uuid].length > 1) {
-                // if a bundle appears more than once in the current worksheet, take the last one
-                for (var i = uuidToIndex[uuid].length - 1; i >= 0; i--) {
-                    var indices = uuidToIndex[uuid][i];
-                    if (indices[0] === focusIndex && indices[1] === subFocusIndex) break;
-                }
-                // index counting from the end
-                args.push('-n', uuidToIndex[uuid].length - i);
-            }
-        }
-        $('#command_line')
-            .terminal()
-            .exec(buildTerminalCommand(args));
-    };
-
-    handleContextMenu = (uuid, focusIndex, subFocusIndex, isRunBundle, e) => {
-        e.preventDefault();
-        this.props.setFocus(focusIndex, subFocusIndex, false);
-        var bundleType = isRunBundle ? ContextMenuEnum.type.RUN : ContextMenuEnum.type.BUNDLE;
-        ContextMenuMixin.openContextMenu(
-            bundleType,
-            this.handleContextMenuSelection.bind(undefined, uuid, focusIndex, subFocusIndex),
-        );
-    };
-
     handleClickForDeselect = (event) => {
         //Deselect if clicking between worksheet row items
         if (event.target === event.currentTarget) {
@@ -261,7 +227,6 @@ class WorksheetItemList extends React.Component {
                         setFocus: this.props.setFocus,
                         focusActionBar: this.props.focusActionBar,
                         openWorksheet: this.props.openWorksheet,
-                        handleContextMenu: this.handleContextMenu,
                         reloadWorksheet: this.props.reloadWorksheet,
                         ws: this.props.ws,
                         showNewRun: this.props.showNewRun,

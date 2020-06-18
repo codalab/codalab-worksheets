@@ -48,6 +48,7 @@ class WorkerModel(object):
         dependencies,
         shared_file_system,
         tag_exclusive,
+        exit_after_num_runs,
     ):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
@@ -63,6 +64,7 @@ class WorkerModel(object):
                 'checkin_time': datetime.datetime.utcnow(),
                 'shared_file_system': shared_file_system,
                 'tag_exclusive': tag_exclusive,
+                'exit_after_num_runs': exit_after_num_runs,
             }
             existing_row = conn.execute(
                 cl_worker.select().where(
@@ -188,12 +190,37 @@ class WorkerModel(object):
                 and self._deserialize_dependencies(row.dependencies),
                 'shared_file_system': row.shared_file_system,
                 'tag_exclusive': row.tag_exclusive,
+                'exit_after_num_runs': row.exit_after_num_runs,
             }
             for row in worker_rows
         }
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
         return list(worker_dict.values())
+
+    def update_workers(self, user_id, worker_id, update):
+        """
+        Update the designated worker with columns and values
+        :param user_id: a user_id indicating whom a worker belongs to
+        :param worker_id: a worker's identification number
+        :param update: a dictionary of (key, value) pairs that specifies the columns and the values to update
+        """
+        if not update:
+            return
+
+        with self._engine.begin() as conn:
+            existing_row = conn.execute(
+                cl_worker.select().where(
+                    and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
+                )
+            ).fetchone()
+
+            if existing_row:
+                conn.execute(
+                    cl_worker.update()
+                    .where(and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id))
+                    .values(update)
+                )
 
     def allocate_socket(self, user_id, worker_id, conn=None):
         """

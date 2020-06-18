@@ -17,6 +17,7 @@ provided by Microsoft Azure.
 - Ashwin Ramaswami
 - Levi Lian
 - Yipeng He
+- Tony Lee
 
 ## Former Developers
 
