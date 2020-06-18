@@ -173,7 +173,7 @@ jobs:
         if: failure()
       - name: Upload logs on failure
         uses: actions/upload-artifact@v1
-        if: failure()
+        if: failure() 
         with:
           name: logs-test-${{ matrix.test }}
           path: /tmp/logs
