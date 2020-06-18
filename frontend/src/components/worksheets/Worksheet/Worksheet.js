@@ -66,7 +66,7 @@ class Worksheet extends React.Component {
             activeComponent: 'list', // Where the focus is (action, list, or side_panel)
             editMode: false, // Whether we're editing the worksheet
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind editMode)
-            showTerminal: false, // Whether the action bar is shown
+            showTerminal: false, // Whether the terminal is shown
             focusIndex: -1, // Which worksheet items to be on (-1 is none)
             subFocusIndex: 0, // For tables, which row in the table
             numOfBundles: -1, // Number of bundles in this worksheet (-1 is just the initial value)
