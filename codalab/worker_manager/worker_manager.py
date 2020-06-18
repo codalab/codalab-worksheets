@@ -85,6 +85,10 @@ class WorkerManager(object):
             try:
                 self.run_one_iteration()
             except (urllib.error.URLError, http.client.HTTPException, socket.error, NotFoundError):
+                # Sometimes, network errors occur when running the WorkerManager . These are often
+                # transient exceptions, and retrying the command would lead to success---as a result,
+                # we ignore these network-based exceptions (rather than fatally exiting from the
+                # WorkerManager )
                 traceback.print_exc()
             if self.args.once:
                 break
