@@ -200,7 +200,7 @@ class BundleManager(object):
             path = os.path.normpath(bundle_location)
 
             deps = []
-            parent_bundle_link_urls = self._bundle_model.get_bundle_metadata(
+            parent_bundle_link_urls = self._model.get_bundle_metadata(
                 [dep.parent_uuid for dep in bundle.dependencies], "link_url"
             )
             for dep in bundle.dependencies:
