@@ -4,9 +4,9 @@ import $ from 'jquery';
 import _ from 'underscore';
 import 'jquery.terminal';
 
-const ACTIONBAR_MINIMIZE_HEIGHT = 30;
-let ACTIONBAR_DRAGHEIGHT = 350;
-class WorksheetActionBar extends React.Component {
+const TERMINAL_MINIMIZE_HEIGHT = 30;
+let TERMINAL_DRAGHEIGHT = 350;
+class WorksheetTerminal extends React.Component {
     /** Constructor. */
 
     constructor(props) {
@@ -65,7 +65,7 @@ class WorksheetActionBar extends React.Component {
                 greetings:
                     "Click here to enter commands (e.g., help, run '<bash command>', rm <bundle>, kill <bundle>, etc.).",
                 name: 'command_line',
-                height: ACTIONBAR_MINIMIZE_HEIGHT,
+                height: TERMINAL_MINIMIZE_HEIGHT,
                 prompt: 'CodaLab> ',
                 history: true,
                 keydown: function(event, terminal) {
@@ -87,13 +87,13 @@ class WorksheetActionBar extends React.Component {
                         return false;
                     }
                     if (term.enabled()) {
-                        term.resize(term.width(), ACTIONBAR_MINIMIZE_HEIGHT);
+                        term.resize(term.width(), TERMINAL_MINIMIZE_HEIGHT);
                         self.props.handleBlur();
                     }
                 },
                 onFocus: function(term) {
                     if (!term.data('resizing')) {
-                        term.resize(term.width(), ACTIONBAR_DRAGHEIGHT);
+                        term.resize(term.width(), TERMINAL_DRAGHEIGHT);
                     }
                     self.props.handleFocus();
                 },
@@ -217,20 +217,20 @@ class WorksheetActionBar extends React.Component {
     componentWillUnmount() {}
     componentDidUpdate() {}
     resizePanel(e) {
-        var actionbar = $('#ws_search');
-        var topOffset = actionbar.offset().top;
+        var terminal = $('#ws_search');
+        var topOffset = terminal.offset().top;
         var worksheetHeight = $('#worksheet').height();
         var commandLine = $('#command_line');
         $(document).mousemove(function(e) {
             e.preventDefault();
             $('#command_line').data('resizing', 'true');
-            var actionbarHeight = e.pageY - topOffset;
-            var actionbarHeightPercentage = (actionbarHeight / worksheetHeight) * 100;
-            if (65 < actionbarHeight && actionbarHeightPercentage < 90) {
+            var terminalHeight = e.pageY - topOffset;
+            var terminalHeightPercentage = (terminalHeight / worksheetHeight) * 100;
+            if (65 < terminalHeight && terminalHeightPercentage < 90) {
                 // minimum height: 65px; maximum height: 90% of worksheet height
-                actionbar.css('height', actionbarHeight);
-                ACTIONBAR_DRAGHEIGHT = actionbarHeight - 20;
-                commandLine.terminal().resize(commandLine.width(), ACTIONBAR_DRAGHEIGHT);
+                terminal.css('height', terminalHeight);
+                TERMINAL_DRAGHEIGHT = terminalHeight - 20;
+                commandLine.terminal().resize(commandLine.width(), TERMINAL_DRAGHEIGHT);
             }
         });
     }
@@ -246,4 +246,4 @@ class WorksheetActionBar extends React.Component {
     }
 }
 
-export default WorksheetActionBar;
+export default WorksheetTerminal;
