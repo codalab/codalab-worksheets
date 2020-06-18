@@ -43,7 +43,6 @@ jobs:
           CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}
           VERSION: ${{ github.head_ref }}
           SERVICE: ${{ matrix.service }}
-
   test_backend:
     name: Test backend
     runs-on: ubuntu-latest
@@ -85,7 +84,6 @@ jobs:
         with:
           name: logs-test-${{ matrix.test }}
           path: /tmp/logs
-    
   test_backend_sharedfs:
     name: Test backend - shared FS
     runs-on: ubuntu-latest
@@ -126,7 +124,6 @@ jobs:
         with:
           name: logs-test-sharedfs-${{ matrix.test }}
           path: /tmp/logs
-    
   test_frontend:
     name: Test frontend
     runs-on: ubuntu-latest
