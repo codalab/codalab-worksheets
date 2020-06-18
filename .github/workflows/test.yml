@@ -50,7 +50,7 @@ jobs:
     needs: [build]
     strategy:
       matrix:
-        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups,search,run,run2,read,kill,write,mimic workers,resources,copy netcat netcurl memoize]
+        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups,search,run,run2,read,kill,write,mimic workers,resources,copy memoize,netcat,netcurl]
     steps:
       - name: Clear free space
         run: |
