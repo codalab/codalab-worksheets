@@ -694,7 +694,7 @@ class Worksheet extends React.Component {
             .animate({ scrollTop: 0 }, 250);
     };
     handleTerminalBlur = (event) => {
-        // explicitly close terminal because we're leaving the action bar
+        // explicitly close terminal because we're leaving the terminal
         // $('#command_line').terminal().focus(false);
         this.setState({ activeComponent: 'list' });
         $('#command_line').data('resizing', null);
@@ -727,7 +727,7 @@ class Worksheet extends React.Component {
         }.bind(this);
 
         if (this.state.activeComponent === 'action') {
-            // no need for other keys, we have the action bar focused
+            // no need for other keys, we have the terminal focused
             return;
         }
 
@@ -752,7 +752,7 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
 
-            // Show/hide web terminal (action bar)
+            // Show/hide web terminal
             Mousetrap.bind(
                 ['shift+c'],
                 function(e) {
@@ -760,7 +760,7 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
 
-            // Focus on web terminal (action bar)
+            // Focus on web terminal
             Mousetrap.bind(
                 ['c c'],
                 function(e) {
@@ -1188,7 +1188,7 @@ class Worksheet extends React.Component {
         if (prevState.showTerminal !== this.state.showTerminal) {
             // Hack to make sure that the <Sticky> component in WorksheetHeader.js updates.
             // This is needed because otherwise the header doesn't move up or down as needed
-            // when the action bar is shown / hidden.
+            // when the terminal is shown / hidden.
             window.scrollTo(window.scrollX, window.scrollY + 1);
         }
     }
@@ -1366,7 +1366,7 @@ class Worksheet extends React.Component {
             },
         });
 
-        // Note: this is redundant if we're doing 'cl work' from the action bar,
+        // Note: this is redundant if we're doing 'cl work' from the terminal,
         // but is necessary if triggered in other ways.
         this.reloadWorksheet();
 
