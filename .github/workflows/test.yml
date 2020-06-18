@@ -68,7 +68,7 @@ jobs:
           VERSION: ${{ github.head_ref }}
       - name: Run tests
         run: |
-          python3 codalab_service.py start --services default no-frontend --version ${VERSION}
+          python3 codalab_service.py start --services default --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
@@ -109,7 +109,7 @@ jobs:
           VERSION: ${{ github.head_ref }}
       - name: Run shared filesystem tests
         run: |
-          python3 codalab_service.py start --services default no-frontend --version ${VERSION} --shared-file-system
+          python3 codalab_service.py start --services default --version ${VERSION} --shared-file-system
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
