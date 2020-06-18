@@ -37,8 +37,8 @@ RUN mkdir ${WORKDIR}/codalab
 
 # Install dependencies
 COPY requirements.txt requirements.txt
-RUN python3.6 -m pip install --user --upgrade pip; \
-    python3.6 -m pip install -r requirements.txt;
+RUN python3.6 -m pip install --user --no-cache-dir --upgrade pip; \
+    python3.6 -m pip install --no-cache-dir -r requirements.txt;
 
 # Install code
 COPY codalab/lib codalab/lib
@@ -46,7 +46,7 @@ COPY codalab/worker codalab/worker
 COPY codalab/common.py codalab/common.py
 COPY setup.py setup.py
 
-RUN python3 -m pip install -e .
+RUN python3 -m pip install --no-cache-dir -e .
 
 # Allow non-root to read everything
 RUN chmod -R og=u-w .
