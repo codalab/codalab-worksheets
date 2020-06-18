@@ -228,11 +228,14 @@ def _run_command(
     if args[0] == cl:
         if len(args) > 1 and args[1] == 'run':
             if request_memory:
-                args.extend(["--request-memory", request_memory])
+                args.insert(2, request_memory)
+                args.insert(2, "--request-memory")
             if request_disk:
-                args.extend(["--request-disk", request_disk])
+                args.insert(2, request_disk)
+                args.insert(2, "--request-disk")
             if request_time:
-                args.extend(["--request-time", request_time])
+                args.insert(2, request_time)
+                args.insert(2, "--request-time")
     else:
         # Always use subprocess for non-"cl" commands.
         force_subprocess = True
