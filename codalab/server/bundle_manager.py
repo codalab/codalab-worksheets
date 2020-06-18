@@ -368,17 +368,17 @@ class BundleManager(object):
         # are attempting to run each staged bundle will respect the ordering of
         # staged_bundles_to_run (i.e., they won't be used immediately, and will be instead
         # assigned bundles on the next run of _run_iteration).
-        resource_deducted_user_owned_workers = {}
+        resource_deducted_user_workers = {}
         user_parallel_run_quota_left = {}
         for user in user_queue_positions.keys():
-            resource_deducted_user_owned_workers[user] = self._deduct_worker_resources(
-                workers.get_workers(user), running_bundles_info
+            resource_deducted_user_workers[user] = self._deduct_worker_resources(
+                workers.get_user_workers(user), running_bundles_info
             )
             user_parallel_run_quota_left[user] = self._model.get_user_parallel_run_quota_left(
                 user, user_info_cache[user]
             )
         resource_deducted_codalab_owned_workers = self._deduct_worker_resources(
-            workers.user_owned_workers(self._model.root_user_id), running_bundles_info
+            workers.get_user_workers(self._model.root_user_id), running_bundles_info
         )
 
         workers_list = []
@@ -386,11 +386,12 @@ class BundleManager(object):
         for bundle, bundle_resources in staged_bundles_to_run:
             if user_parallel_run_quota_left[bundle.owner_id] > 0:
                 workers_list = (
-                    resource_deducted_user_owned_workers[bundle.owner_id]
+                    resource_deducted_user_workers[bundle.owner_id]
                     + resource_deducted_codalab_owned_workers
                 )
             else:
-                workers_list = resource_deducted_user_owned_workers[bundle.owner_id]
+                workers_list = resource_deducted_user_workers[bundle.owner_id]
+
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
@@ -698,7 +699,7 @@ class BundleManager(object):
         READY / FAILED, no worker_run DB entry:
             Finished.
         """
-        workers = WorkerInfoAccessor(self._worker_model, WORKER_TIMEOUT_SECONDS - 5)
+        workers = WorkerInfoAccessor(self._model, self._worker_model, WORKER_TIMEOUT_SECONDS - 5)
 
         # Handle some exceptional cases.
         self._cleanup_dead_workers(workers)

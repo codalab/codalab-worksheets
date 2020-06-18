@@ -9,7 +9,6 @@ from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_NONE,
     group_bundle_permission as cl_group_bundle_permission,
     group_object_permission as cl_group_worksheet_permission,
-    group_worker_permission as cl_group_worker_permission,
 )
 from codalab.model.util import LikeQuery
 
@@ -85,8 +84,6 @@ def _check_permissions(model, table, user, object_uuids, owner_ids, need_permiss
         object_type = 'bundle'
     elif table == cl_group_worksheet_permission:
         object_type = 'worksheet'
-    elif table == cl_group_worker_permission:
-        object_type = 'worker'
     else:
         raise IntegrityError('Unexpected table: %s' % table)
 
@@ -163,21 +160,6 @@ def check_worksheet_has_all_permission(model, user, worksheet):
 # or the user who owns the bundle can run it.
 def check_bundle_have_run_permission(model, user_id, bundle):
     return user_id in [model.root_user_id, bundle.owner_id]
-
-
-def check_worker_has_permission(model, user, worker):
-    try:
-        _check_permissions(
-            model,
-            cl_group_worker_permission,
-            user,
-            [worker.id],
-            {worker.id: worker.user_id},
-            GROUP_OBJECT_PERMISSION_ALL,
-        )
-        return True
-    except PermissionError:
-        return False
 
 
 ############################################################

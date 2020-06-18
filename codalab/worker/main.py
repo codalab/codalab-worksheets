@@ -126,9 +126,8 @@ def parse_args():
         action='store_true',
         help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
-    # TODO: remove the default -tony
     parser.add_argument(
-        '--group', default='wg1', help='Name of the group that can run jobs on this worker'
+        '--group', default=None, help='Name of the group that can run jobs on this worker'
     )
     parser.add_argument(
         '--tag-exclusive',

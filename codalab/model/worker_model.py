@@ -10,10 +10,8 @@ from sqlalchemy import and_, select
 
 from codalab.common import precondition
 from codalab.model.tables import (
-    GROUP_OBJECT_PERMISSION_ALL,
     worker as cl_worker,
     group as cl_group,
-    group_worker_permission as cl_group_worker_permission,
     worker_socket as cl_worker_socket,
     worker_run as cl_worker_run,
     worker_dependency as cl_worker_dependency,
@@ -70,6 +68,14 @@ class WorkerModel(object):
                 'tag_exclusive': tag_exclusive,
                 'exit_after_num_runs': exit_after_num_runs,
             }
+
+            # Populate the group for this worker, if group_name is valid
+            group_row = conn.execute(
+                cl_group.select().where(cl_group.c.name == group_name)
+            ).fetchone()
+            if group_row:
+                worker_row['group_uuid'] = group_row.uuid
+
             existing_row = conn.execute(
                 cl_worker.select().where(
                     and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
@@ -88,30 +94,6 @@ class WorkerModel(object):
                     {'user_id': user_id, 'worker_id': worker_id, 'socket_id': socket_id}
                 )
                 conn.execute(cl_worker.insert().values(worker_row))
-
-            # Populate worker group table
-            group_row = conn.execute(
-                cl_group.select().where(cl_group.c.name == group_name)
-            ).fetchone()
-            if group_row:
-                # TODO: tony
-                logger.info('Tony - group_row.uuid: ' + group_row.uuid)
-                existing_row = conn.execute(
-                    cl_group_worker_permission.select().where(
-                        and_(
-                            cl_group_worker_permission.c.group_uuid == group_row.uuid,
-                            cl_group_worker_permission.c.object_uuid == worker_id,
-                        )
-                    )
-                ).fetchone()
-                if not existing_row:
-                    conn.execute(
-                        cl_group_worker_permission.insert().values(
-                            group_uuid=group_row.uuid,
-                            object_uuid=worker_id,
-                            permission=GROUP_OBJECT_PERMISSION_ALL,
-                        )
-                    )
 
             # Update dependencies
             blob = self._serialize_dependencies(dependencies).encode()
@@ -132,6 +114,7 @@ class WorkerModel(object):
                         user_id=user_id, worker_id=worker_id, dependencies=blob
                     )
                 )
+
         return socket_id
 
     @staticmethod
@@ -180,12 +163,6 @@ class WorkerModel(object):
                 )
             )
             conn.execute(
-                cl_group_worker_permission.delete().where(
-                    cl_group_worker_permission.c.worker_id == worker_id
-                )
-            )
-
-            conn.execute(
                 cl_worker.delete().where(
                     and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
                 )
@@ -211,6 +188,7 @@ class WorkerModel(object):
             (row.user_id, row.worker_id): {
                 'user_id': row.user_id,
                 'worker_id': row.worker_id,
+                'group_uuid': row.group_uuid,
                 'tag': row.tag,
                 'cpus': row.cpus,
                 'gpus': row.gpus,
