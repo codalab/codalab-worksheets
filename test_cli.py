@@ -204,19 +204,37 @@ def _run_command(
     include_stderr=False,
     binary=False,
     force_subprocess=False,
+    request_memory="4m",
+    request_disk="1m",
+    request_time=None,
 ):
-    # We skip using the cli directly if force_subprocess is set to true (which forces
-    # us to use subprocess even for cl commands).
+    """Runs a command.
+
+    Args:
+        args ([str]): Arguments of function.
+        expected_exit_code (int, optional): Expected exit code. Defaults to 0.
+        max_output_chars (int, optional): Truncates output printed to the console log to this number. Defaults to 4096.
+        env ([type], optional): Environment variables. Defaults to None.
+        include_stderr (bool, optional): Include stderr in output. Defaults to False.
+        binary (bool, optional): Whether output is binary. Defaults to False.
+        force_subprocess (bool, optional): Force "cl" commands to run with subprocess, rather than running the CodaLab CLI directly through Python. Defaults to False.
+        request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "4m".
+        request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m". request_time=None.
+        request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed). request_time=None.
+
+    Returns:
+        str: Command output.
+    """
     if args[0] == cl:
-        force_subprocess = force_subprocess if args[0] == cl else True
-        # By default, request only 4m of memory and 1m of disk so that runs are faster.
-        if len(args) > 1 and args[1] == 'run' and '--request-memory' not in args:
-            args.insert(2, '4m')
-            args.insert(2, '--request-memory')
-        if len(args) > 1 and args[1] == 'run' and '--request-disk' not in args:
-            args.insert(2, '1m')
-            args.insert(2, '--request-disk')
+        if len(args) > 1 and args[1] == 'run':
+            if request_memory:
+                args.extend(["--request-memory", request_memory])
+            if request_disk:
+                args.extend(["--request-disk", request_disk])
+            if request_time:
+                args.extend(["--request-time", request_time])
     else:
+        # Always use subprocess for non-"cl" commands.
         force_subprocess = True
     return run_command(
         args, expected_exit_code, max_output_chars, env, include_stderr, binary, force_subprocess
@@ -1410,15 +1428,12 @@ def test(ctx):
             [
                 cl,
                 'run',
-                '--request-time',
-                str(request_time),
-                '--request-memory',
-                str(request_memory) + 'm',
-                '--request-disk',
-                str(request_disk) + 'm',
                 'main.pl:' + uuid,
                 'perl main.pl %s %s %s' % (use_time, use_memory, use_disk),
-            ]
+            ],
+            request_time=str(request_time),
+            request_memory=str(request_memory) + 'm',
+            request_disk=str(request_disk) + 'm',
         )
         wait(run_uuid, expected_exit_code)
         if expected_failure_message:
@@ -1570,14 +1585,7 @@ def test(ctx):
     script_uuid = _run_command([cl, 'upload', test_path('netcat-test.py')])
     _run_command([cl, 'info', script_uuid])
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-memory',
-            '10m',
-            'netcat-test.py:' + script_uuid,
-            'python netcat-test.py',
-        ]
+        [cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'], request_memory="10m"
     )
     wait_until_state(uuid, State.RUNNING)
     time.sleep(5)
@@ -1585,14 +1593,7 @@ def test(ctx):
     check_equals('No, this is dawg', output)
 
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-memory',
-            '10m',
-            'netcat-test.py:' + script_uuid,
-            'python netcat-test.py',
-        ]
+        [cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'], request_memory="10m"
     )
     wait_until_state(uuid, State.RUNNING)
     time.sleep(5)
@@ -1603,7 +1604,7 @@ def test(ctx):
 @TestModule.register('netcurl')
 def test(ctx):
     uuid = _run_command(
-        [cl, 'run', '--request-memory', '10m', 'echo hello > hello.txt; python -m SimpleHTTPServer']
+        [cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'], request_memory="10m"
     )
     wait_until_state(uuid, State.RUNNING)
     address = ctx.client.address
