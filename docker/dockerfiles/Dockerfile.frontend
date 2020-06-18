@@ -9,14 +9,20 @@ COPY frontend/package.json ./
 COPY frontend/package-lock.json ./
 RUN npm ci
 
-# Overridden in dev mode
 COPY frontend .
 
 RUN ls /opt/frontend
 
 EXPOSE 2700
 
+# Build React code in production
+FROM dev AS prod_build
+
+WORKDIR /opt/frontend
+
 RUN npm run build
+
+COPY --from=dev /opt/frontend/build build
 
 # Production mode - only copy in the build files, not
 # node modules.
@@ -26,6 +32,6 @@ RUN npm install -g serve
 
 WORKDIR /opt/frontend
 
-COPY --from=dev /opt/frontend/build build
+COPY --from=prod_build /opt/frontend/build build
 
 EXPOSE 2700
