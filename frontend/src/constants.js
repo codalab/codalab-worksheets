@@ -13,7 +13,6 @@ export const LOCAL_STORAGE_WORKSHEET_WIDTH = 'worksheetWidth';
 // Dialog constants
 export const DIALOG_TYPES = {
     OPEN_DELETE_BUNDLE: 'delete_bundle',
-    OPEN_DETACH: 'detach_bundle',
     OPEN_KILL: 'kill_bundle',
     OPEN_DELETE_MARKDOWN: 'delete_markdown_block',
     OPEN_DELETE_WORKSHEET: 'delete_whole_worksheet',
