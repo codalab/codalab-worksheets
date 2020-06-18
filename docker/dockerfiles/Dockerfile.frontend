@@ -11,8 +11,6 @@ RUN npm ci
 
 COPY frontend .
 
-RUN ls /opt/frontend
-
 EXPOSE 2700
 
 # Build React code in production

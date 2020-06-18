@@ -14,7 +14,8 @@ RUN apt-get update && \
     libjpeg-dev \
     libssl-dev \
     default-mysql-client \
-    zip && \
+    zip \
+    unzip && \
     rm -rf /var/lib/apt/lists/*;
 
 ### Without this Python thinks we're ASCII and unicode chars fail
