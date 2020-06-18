@@ -39,7 +39,7 @@ class WorksheetItem extends React.Component {
                 $('#command_line')
                     .terminal()
                     .insert(uuid + ' ');
-                //this.props.focusActionBar();
+                //this.props.focusTerminal();
             }.bind(this),
             'keydown',
         );
