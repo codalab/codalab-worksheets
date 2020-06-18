@@ -1,8 +1,15 @@
+from collections import namedtuple
+import http
 import logging
+import socket
 import time
+import traceback
+import urllib
+
+from codalab.common import NotFoundError
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.bundle_state import State
-from collections import namedtuple
+
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +82,14 @@ class WorkerManager(object):
 
     def run_loop(self):
         while True:
-            self.run_one_iteration()
+            try:
+                self.run_one_iteration()
+            except (urllib.error.URLError, http.client.HTTPException, socket.error, NotFoundError):
+                # Sometimes, network errors occur when running the WorkerManager . These are often
+                # transient exceptions, and retrying the command would lead to success---as a result,
+                # we ignore these network-based exceptions (rather than fatally exiting from the
+                # WorkerManager )
+                traceback.print_exc()
             if self.args.once:
                 break
             logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
