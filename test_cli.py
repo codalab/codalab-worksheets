@@ -154,7 +154,12 @@ def wait_for_contents(uuid, substring, timeout_seconds=100):
 
 
 def wait(uuid, expected_exit_code=0):
-    _run_command([cl, 'wait', uuid], expected_exit_code)
+    try:
+        _run_command([cl, 'wait', uuid], expected_exit_code)
+    except AssertionError as e:
+        _run_command([cl, 'info', uuid])
+        print(e)
+        raise e
 
 
 def check_equals(true_value, pred_value):
