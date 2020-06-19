@@ -1,18 +1,13 @@
 // @flow
 import React, { useEffect } from 'react';
-import $ from 'jquery';
 import { withStyles } from '@material-ui/core';
 import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
 import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import BundleRow from './BundleRow';
-import Checkbox from '@material-ui/core/Checkbox';
-import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
-import SvgIcon from '@material-ui/core/SvgIcon';
-import CheckBoxIcon from '@material-ui/icons/CheckBox';
 import { getIds } from '../../../../util/worksheet_utils';
-import { semaphore } from '../../../../util/async_loading_utils';
+import { fetchAsyncBundleContents } from '../../../../util/async_loading_utils';
 import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 
 class TableItem extends React.Component<{
@@ -42,7 +37,6 @@ class TableItem extends React.Component<{
     // The main idea is to let TableItem maintain its BundleRows' check status
     // this.state.childrenCheckState are the checkStatus of the bundle rows that belong to this table
     // BundleRow can also update itself through childrenCheck callback that TableItems passes
-    // handleSelectAllClick & handleSelectAllSpaceHit handles select all events through click & space keydown
 
     refreshCheckBox = () => {
         let childrenStatus = new Array(this.props.item.rows.length).fill(false);
@@ -83,23 +77,6 @@ class TableItem extends React.Component<{
         });
     };
 
-    handleSelectAllClick = (event) => {
-        if (event.target !== event.currentTarget) {
-            return;
-        }
-        let numSelectedChild = 0;
-        let childrenStatus = new Array(this.state.childrenCheckState.length).fill(
-            event.target.checked,
-        );
-        numSelectedChild = event.target.checked ? childrenStatus.length : 0;
-        this.setState({
-            checked: event.target.checked,
-            childrenCheckState: [...childrenStatus],
-            numSelectedChild: numSelectedChild,
-            indeterminateCheckState: false,
-        });
-    };
-
     copyCheckedBundleRows = () => {
         let item = this.props.item;
         let bundleInfos = item.bundles_spec.bundle_infos;
@@ -134,37 +111,14 @@ class TableItem extends React.Component<{
         var bundleInfos = item.bundles_spec.bundle_infos;
         var headerItems = item.header;
         var headerHtml = headerItems.map((item, index) => {
-            let checkbox;
-            if (index === 0) {
-                checkbox = (
-                    <Checkbox
-                        checked={this.state.checked}
-                        onChange={this.handleSelectAllClick}
-                        value='checked'
-                        icon={
-                            <CheckBoxOutlineBlankIcon
-                                color={this.state.hovered ? 'action' : 'disabled'}
-                                fontSize='small'
-                            />
-                        }
-                        checkedIcon={<CheckBoxIcon fontSize='small' />}
-                        indeterminate={this.state.indeterminateCheckState}
-                        indeterminateIcon={
-                            <SvgIcon fontSize='small'>
-                                <path d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z' />
-                            </SvgIcon>
-                        }
-                    />
-                );
-            }
             return (
                 <TableCell
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
+                    style={index === 0 ? { paddingLeft: '70px' } : {}}
                 >
-                    {checkbox}
                     {item}
                 </TableCell>
             );
@@ -274,28 +228,13 @@ const styles = (theme) => ({
 
 const TableContainer = withStyles(styles)(_TableContainer);
 
-async function fetchAsyncTableContents({ contents }) {
-    return semaphore.use(async () => {
-        const response = await $.ajax({
-            type: 'POST',
-            contentType: 'application/json',
-            url: '/rest/interpret/genpath-table-contents',
-            async: true,
-            data: JSON.stringify({ contents }),
-            dataType: 'json',
-            cache: false,
-        });
-        return response;
-    });
-}
-
 const TableWrapper = (props) => {
     const { item, onAsyncItemLoad } = props;
     useEffect(() => {
         (async function() {
             if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
                 try {
-                    const { contents } = await fetchAsyncTableContents({ contents: item.rows });
+                    const { contents } = await fetchAsyncBundleContents({ contents: item.rows });
                     onAsyncItemLoad({
                         ...item,
                         rows: contents,
