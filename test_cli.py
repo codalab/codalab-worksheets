@@ -1612,7 +1612,7 @@ def test(ctx):
 @TestModule.register('netcurl')
 def test(ctx):
     uuid = _run_command(
-        [cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'], request_memory="10m"
+        [cl, 'run', 'echo hello > hello.txt; python -m http.server'], request_memory="10m"
     )
     wait_until_state(uuid, State.RUNNING)
     time.sleep(10)
