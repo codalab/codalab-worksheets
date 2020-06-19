@@ -354,22 +354,22 @@ class Commands(object):
                 """
         Usage: {inline_code}cl <command> <arguments>{inline_code}
 
-        {heading}Commands for bundles:
+        {heading}Commands for bundles
         {bundle_commands}
 
-        {heading}Commands for worksheets:
+        {heading}Commands for worksheets
         {worksheet_commands}
 
-        {heading}Commands for groups and permissions:
+        {heading}Commands for groups and permissions
         {group_and_permission_commands}
 
-        {heading}Commands for users:
+        {heading}Commands for users
         {user_commands}
 
-        {heading}Commands for managing server:
+        {heading}Commands for managing server
         {server_commands}
 
-        {heading}Other commands:
+        {heading}Other commands
         {other_commands}
         """
             )
@@ -600,20 +600,33 @@ class BundleCLI(object):
         Helper: target_specs is a list of strings which are [<key>]:<target>
         Returns: [(key, worker.download_util.BundleTarget), ...]
         """
-        keys = set()
+
+        def is_ancestor_or_descendant(path1, path2):
+            """
+            Return whether path1 is an ancestor of path2 or vice versa.
+            """
+            return path2.startswith(path1 + '/') or path1.startswith(path2 + '/')
+
+        keys = []
         targets = []
         target_keys_values = [parse_key_target(spec) for spec in target_specs]
         for key, target_spec in target_keys_values:
-            if key in keys:
-                if key:
-                    raise UsageError('Duplicate key: %s' % (key,))
-                else:
-                    raise UsageError('Must specify keys when packaging multiple targets!')
+            for other_key in keys:
+                if key == other_key:
+                    if key:
+                        raise UsageError('Duplicate key: %s' % (key,))
+                    else:
+                        raise UsageError('Must specify keys when packaging multiple targets!')
+                elif is_ancestor_or_descendant(key, other_key):
+                    raise UsageError(
+                        'A key cannot be an ancestor of another: {} {}'.format(key, other_key)
+                    )
+
             _, worksheet_uuid, target = self.resolve_target(
                 client, worksheet_uuid, target_spec, allow_remote=False
             )
             targets.append((key, target))
-            keys.add(key)
+            keys.append(key)
         return targets
 
     @staticmethod
@@ -1091,6 +1104,7 @@ class BundleCLI(object):
             'runs',
             'shared_file_system',
             'tag_exclusive',
+            'exit_after_num_runs',
         ]
 
         data = []
@@ -1110,6 +1124,7 @@ class BundleCLI(object):
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
                     'tag_exclusive': worker['tag_exclusive'],
+                    'exit_after_num_runs': worker['exit_after_num_runs'],
                 }
             )
 
@@ -3377,7 +3392,7 @@ class BundleCLI(object):
                 )
 
         print(
-            'Copied %s worksheet items to %s.' % (len(source_items), dest_worksheet_uuid),
+            'Copied %s worksheet items to %s.' % (len(valid_source_items), dest_worksheet_uuid),
             file=self.stdout,
         )
 
