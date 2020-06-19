@@ -58,6 +58,11 @@ def main():
         type=int,
         help='If specified, the CodaLab worker will exit after finishing this many of runs',
     )
+    parser.add_argument(
+        '--worker-exit-on-exception',
+        action='store_true',
+        help="If set, the CodaLab worker will exit if it encounters an exception (rather than sleeping).",
+    )
     subparsers = parser.add_subparsers(
         title='Worker Manager to run',
         description='Which worker manager to run (AWS Batch etc.)',

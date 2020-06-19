@@ -265,6 +265,8 @@ class SlurmBatchWorkerManager(WorkerManager):
             command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
         if self.args.worker_delete_work_dir_on_exit:
             command.extend(['--delete-work-dir-on-exit'])
+        if self.args.worker_exit_on_exception:
+            command.extend(['--exit-on-exception'])
 
         return command
 

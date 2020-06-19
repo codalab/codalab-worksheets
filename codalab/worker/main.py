@@ -147,6 +147,11 @@ def parse_args():
         default=sys.maxsize,
         help='The worker quits after this many jobs assigned to this worker',
     )
+    parser.add_argument(
+        '--exit-on-exception',
+        action='store_true',
+        help="Exit the worker if it encounters an exception (rather than sleeping).",
+    )
     return parser.parse_args()
 
 
