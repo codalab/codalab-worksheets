@@ -65,7 +65,7 @@ jobs:
       - name: Setup tests
         run: |
           sudo service mysql stop
-          python3 codalab_service.py pull --version ${VERSION}
+          python3 codalab_service.py build services --version ${VERSION} --pull
         env:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
@@ -104,7 +104,7 @@ jobs:
       - name: Setup tests
         run: |
           sudo service mysql stop
-          python3 codalab_service.py pull --version ${VERSION}
+          python3 codalab_service.py build services --version ${VERSION} --pull
         env:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run shared filesystem tests
@@ -145,7 +145,7 @@ jobs:
           sudo ./scripts/test-setup.sh
           export PATH=$PATH:$PWD/geckodriver
           sudo service mysql stop
-          python3 codalab_service.py pull --version ${VERSION}
+          python3 codalab_service.py build services --version ${VERSION} --pull
           pip install --upgrade diffimg==0.2.3
           pip install --upgrade selenium==3.141.0
         env:
