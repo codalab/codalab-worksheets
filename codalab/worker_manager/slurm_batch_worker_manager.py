@@ -129,14 +129,16 @@ class SlurmBatchWorkerManager(WorkerManager):
         jobs_to_remove = set()
         for job_id in self.submitted_jobs:
             job_acct = self.run_command(
-                [self.SCONTROL, 'show', 'jobid', '-d', job_id, '--oneliner']
+                [self.SCONTROL, 'show', 'jobid', '-d', job_id, '--oneliner'], verbose=False
             )
             job_state = re.search(r'JobState=(.*) ', job_acct).group(1)
+            logger.info("Job ID {} has state {}".format(job_id, job_state))
             if 'FAILED' in job_state:
                 jobs_to_remove.add(job_id)
                 logger.error("Failed to start job {}".format(job_id))
-            elif 'COMPLETING' in job_state or 'COMPLETED' in job_state or 'CANCELLED' in job_state:
+            elif 'COMPLETED' in job_state or 'CANCELLED' in job_state:
                 jobs_to_remove.add(job_id)
+                logger.info("Removing job ID {}".format(job_id))
         self.submitted_jobs = self.submitted_jobs - jobs_to_remove
         logger.info("Submitted jobs: {}".format(self.submitted_jobs))
 
@@ -257,6 +259,8 @@ class SlurmBatchWorkerManager(WorkerManager):
             command.extend(['--tag', self.args.worker_tag])
         if self.args.password_file:
             command.extend(['--password-file', self.args.password_file])
+        if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
+            command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
         if self.args.worker_max_work_dir_size:
             command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
         if self.args.worker_delete_work_dir_on_exit:
@@ -264,7 +268,7 @@ class SlurmBatchWorkerManager(WorkerManager):
 
         return command
 
-    def run_command(self, command):
+    def run_command(self, command, verbose=True):
         """
         Run a given shell command and return the result
         :param command: the input command as list
@@ -276,7 +280,8 @@ class SlurmBatchWorkerManager(WorkerManager):
             if output:
                 logger.info("Executed command: {}".format(' '.join(command)))
                 result = output.decode()
-                logger.info(result)
+                if verbose:
+                    logger.info(result)
                 return result
             if errors:
                 logger.error(
