@@ -4,7 +4,7 @@ This file is auto-generated from the output of `cl help -v -m` and provides the 
 
 Usage: `cl <command> <arguments>`
 
-## Commands for bundles:
+## Commands for bundles
 ### upload (up):
     Create a bundle by uploading an existing file/directory.
       upload <path>            : Upload contents of file/directory <path> as a bundle.
@@ -294,7 +294,7 @@ Usage: `cl <command> <arguments>`
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
 
-## Commands for worksheets:
+## Commands for worksheets
 ### new:
     Create a new worksheet.
     Arguments:
@@ -375,7 +375,7 @@ Usage: `cl <command> <arguments>`
       -u, --uuid-only  Print only uuids.
 
 
-## Commands for groups and permissions:
+## Commands for groups and permissions
 ### gls:
     Show groups to which you belong.
     Arguments:
@@ -432,7 +432,7 @@ Usage: `cl <command> <arguments>`
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
 
-## Commands for users:
+## Commands for users
 ### uinfo:
     Show user information.
     Arguments:
@@ -459,7 +459,7 @@ Usage: `cl <command> <arguments>`
       user_spec  Username or id of user to delete.
 
 
-## Commands for managing server:
+## Commands for managing server
 ### workers:
     Display information about workers that you have connected to the CodaLab instance.
 
@@ -485,7 +485,7 @@ Usage: `cl <command> <arguments>`
       -r, --repair     When used with --force and --data-hash, repairs incorrect data_hash in existing bundles
 
 
-## Other commands:
+## Other commands
 ### help:
     Show usage information for commands.
       help           : Show brief description for all commands.
