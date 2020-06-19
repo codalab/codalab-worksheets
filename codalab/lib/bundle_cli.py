@@ -1105,6 +1105,7 @@ class BundleCLI(object):
             'shared_file_system',
             'tag_exclusive',
             'exit_after_num_runs',
+            'is_terminating',
         ]
 
         data = []
@@ -1125,6 +1126,7 @@ class BundleCLI(object):
                     'shared_file_system': worker['shared_file_system'],
                     'tag_exclusive': worker['tag_exclusive'],
                     'exit_after_num_runs': worker['exit_after_num_runs'],
+                    'is_terminating': worker['is_terminating'],
                 }
             )
 

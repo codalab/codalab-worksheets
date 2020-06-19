@@ -837,6 +837,16 @@ class BundleModel(object):
                 # The user deleted the bundle.
                 return False
 
+            # Check if the designated worker is going to be terminated soon
+            row = connection.execute(
+                cl_worker.select().where(
+                    and_(cl_worker.c.worker_id == worker_id, cl_worker.c.is_terminating == True)
+                )
+            ).fetchone()
+            # If the worker is going to be terminated soon, stop starting bundle on this worker
+            if row:
+                return False
+
             bundle_update = {
                 'state': State.STARTING,
                 'metadata': {'last_updated': int(time.time())},

@@ -629,6 +629,9 @@ class RunStateMachine(StateTransitioner):
         If a full worker cycle has passed since we got into FINALIZING we already reported to
         server so can move on to FINISHED. Can also remove bundle_path now
         """
+        if run_state.is_restaged:
+            return run_state._replace(stage=RunStage.RESTAGED)
+
         if run_state.finalized:
             if not self.shared_file_system:
                 remove_path(run_state.bundle_path)  # don't remove bundle if shared FS

@@ -315,6 +315,7 @@ class Worker:
             'shared_file_system': self.shared_file_system,
             'tag_exclusive': self.tag_exclusive,
             'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
+            'is_terminating': self.terminate or self.terminate_and_restage,
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
