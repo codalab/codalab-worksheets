@@ -623,9 +623,9 @@ class RunStateMachine(StateTransitioner):
 
     def _transition_from_FINALIZING(self, run_state):
         """
-        If a full worker cycle has passed since we got into FINALIZING we already reported to
-        server, if bundle is going to set go restage to server, move on to RESTAGED. Otherwise,
-        move on to FINISHED. Can also remove bundle_path now.
+        If a full worker cycle has passed since we got into the FINALIZING state we already reported to
+        server, if bundle is going be sent back to the server, move on to the RESTAGED state. Otherwise,
+        move on to the FINISHED state. Can also remove bundle_path now.
         """
         if run_state.is_restaged:
             return run_state._replace(stage=RunStage.RESTAGED)
