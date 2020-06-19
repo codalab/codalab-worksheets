@@ -403,7 +403,10 @@ class BundleManager(object):
         # before bundle manager's next scheduling loop
         for worker in workers_list:
             # Update workers that have "exit_after_num_runs" manually set from CLI.
-            if worker['exit_after_num_runs'] < workers[worker['worker_id']]['exit_after_num_runs']:
+            if (
+                worker['exit_after_num_runs']
+                < workers._workers[worker['worker_id']]['exit_after_num_runs']
+            ):
                 self._worker_model.update_workers(
                     worker["user_id"],
                     worker['worker_id'],
