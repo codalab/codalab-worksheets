@@ -207,6 +207,7 @@ def _run_command(
     request_memory="4m",
     request_disk="1m",
     request_time=None,
+    request_docker_image="python:3.6.10-slim-buster",
 ):
     """Runs a command.
 
@@ -219,8 +220,9 @@ def _run_command(
         binary (bool, optional): Whether output is binary. Defaults to False.
         force_subprocess (bool, optional): Force "cl" commands to run with subprocess, rather than running the CodaLab CLI directly through Python. Defaults to False.
         request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "4m".
-        request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m". request_time=None.
-        request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed). request_time=None.
+        request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m".
+        request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed).
+        request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands. Defaults to "python:3.6.10-slim-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
 
     Returns:
         str: Command output.
@@ -236,6 +238,9 @@ def _run_command(
             if request_time:
                 args.insert(2, request_time)
                 args.insert(2, "--request-time")
+            if request_docker_image:
+                args.insert(2, request_docker_image)
+                args.insert(2, "--request-docker-image")
     else:
         # Always use subprocess for non-"cl" commands.
         force_subprocess = True
@@ -1484,8 +1489,9 @@ def test(ctx):
     )
 
     # Test network access
-    wait(_run_command([cl, 'run', 'curl google.com']), 1)
-    wait(_run_command([cl, 'run', 'curl google.com', '--request-network']), 0)
+    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
+    wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 1)
+    wait(_run_command([cl, 'run', '--request-network', REQUEST_CMD], request_memory="10m"), 0)
 
 
 @TestModule.register('copy')
@@ -1607,7 +1613,7 @@ def test(ctx):
 @TestModule.register('netcurl')
 def test(ctx):
     uuid = _run_command(
-        [cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'], request_memory="10m"
+        [cl, 'run', 'echo hello > hello.txt; python -m http.server'], request_memory="10m"
     )
     wait_until_state(uuid, State.RUNNING)
     time.sleep(10)
@@ -1634,100 +1640,61 @@ def test(ctx):
     """
     Placeholder for tests for default Codalab docker images
     """
-    uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python --version']
-    )
+    CPU_DOCKER_IMAGE = 'codalab/default-cpu:latest'
+    uuid = _run_command([cl, 'run', 'python --version'], request_docker_image=CPU_DOCKER_IMAGE)
     wait(uuid)
     check_contains('2.7', _run_command([cl, 'cat', uuid + '/stderr']))
-    uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3 --version']
-    )
+    uuid = _run_command([cl, 'run', 'python3 --version'], request_docker_image=CPU_DOCKER_IMAGE)
     wait(uuid)
     check_contains('3.6', _run_command([cl, 'cat', uuid + '/stdout']))
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python -c "import tensorflow"',
-        ]
+        [cl, 'run', 'python -c "import tensorflow"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import torch"']
+        [cl, 'run', 'python -c "import torch"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import numpy"']
+        [cl, 'run', 'python -c "import numpy"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import nltk"']
+        [cl, 'run', 'python -c "import nltk"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import spacy"']
+        [cl, 'run', 'python -c "import spacy"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python -c "import matplotlib"',
-        ]
+        [cl, 'run', 'python -c "import matplotlib"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3 -c "import tensorflow"',
-        ]
+        [cl, 'run', 'python3 -c "import tensorflow"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3 -c "import torch"',
-        ]
+        [cl, 'run', 'python3 -c "import torch"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3 -c "import numpy"',
-        ]
+        [cl, 'run', 'python3 -c "import numpy"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3 -c "import nltk"']
+        [cl, 'run', 'python3 -c "import nltk"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3 -c "import spacy"',
-        ]
+        [cl, 'run', 'python3 -c "import spacy"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3 -c "import matplotlib"',
-        ]
+        [cl, 'run', 'python3 -c "import matplotlib"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
-    pass
 
 
 @TestModule.register('competition')
