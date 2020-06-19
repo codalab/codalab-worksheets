@@ -155,6 +155,7 @@ class UITester(ABC):
         self.scroll_to_bottom('worksheet_container')
         last_text_box = self.browser.find_elements_by_tag_name('textarea')[-1]
         self.focus_and_send_keys(last_text_box, text)
+        self.pause()
         if use_keyboard_shortcut:
             self.save_edit_keyboard_shortcut(last_text_box)
         else:
