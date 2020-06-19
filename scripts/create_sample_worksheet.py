@@ -145,6 +145,8 @@ class SampleWorksheet:
                     'run',
                     '--request-memory',
                     '10m',
+                    '--request-docker-image',
+                    'python:3.6.10-slim-buster',
                     'echo codalab rules!',
                     '--tags=%s' % SampleWorksheet.TAG,
                 ]
@@ -162,6 +164,8 @@ class SampleWorksheet:
                     'run',
                     '--request-memory',
                     '10m',
+                    '--request-docker-image',
+                    'python:3.6.10-slim-buster',
                     'echo private run',
                     '--tags=%s' % SampleWorksheet.TAG,
                 ]
