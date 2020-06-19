@@ -42,7 +42,6 @@ class TableItem extends React.Component<{
     // The main idea is to let TableItem maintain its BundleRows' check status
     // this.state.childrenCheckState are the checkStatus of the bundle rows that belong to this table
     // BundleRow can also update itself through childrenCheck callback that TableItems passes
-    // handleSelectAllClick & handleSelectAllSpaceHit handles select all events through click & space keydown
 
     refreshCheckBox = () => {
         let childrenStatus = new Array(this.props.item.rows.length).fill(false);
@@ -83,23 +82,6 @@ class TableItem extends React.Component<{
         });
     };
 
-    handleSelectAllClick = (event) => {
-        if (event.target !== event.currentTarget) {
-            return;
-        }
-        let numSelectedChild = 0;
-        let childrenStatus = new Array(this.state.childrenCheckState.length).fill(
-            event.target.checked,
-        );
-        numSelectedChild = event.target.checked ? childrenStatus.length : 0;
-        this.setState({
-            checked: event.target.checked,
-            childrenCheckState: [...childrenStatus],
-            numSelectedChild: numSelectedChild,
-            indeterminateCheckState: false,
-        });
-    };
-
     copyCheckedBundleRows = () => {
         let item = this.props.item;
         let bundleInfos = item.bundles_spec.bundle_infos;
@@ -134,37 +116,14 @@ class TableItem extends React.Component<{
         var bundleInfos = item.bundles_spec.bundle_infos;
         var headerItems = item.header;
         var headerHtml = headerItems.map((item, index) => {
-            let checkbox;
-            if (index === 0) {
-                checkbox = (
-                    <Checkbox
-                        checked={this.state.checked}
-                        onChange={this.handleSelectAllClick}
-                        value='checked'
-                        icon={
-                            <CheckBoxOutlineBlankIcon
-                                color={this.state.hovered ? 'action' : 'disabled'}
-                                fontSize='small'
-                            />
-                        }
-                        checkedIcon={<CheckBoxIcon fontSize='small' />}
-                        indeterminate={this.state.indeterminateCheckState}
-                        indeterminateIcon={
-                            <SvgIcon fontSize='small'>
-                                <path d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z' />
-                            </SvgIcon>
-                        }
-                    />
-                );
-            }
             return (
                 <TableCell
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
+                    style={index === 0 ? { paddingLeft: '70px' } : {}}
                 >
-                    {checkbox}
                     {item}
                 </TableCell>
             );
