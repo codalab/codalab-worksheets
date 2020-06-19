@@ -1,13 +1,13 @@
 """Added group_uuid to worker
 
-Revision ID: 9c112904525e
+Revision ID: 4a91b66ca44b
 Revises: 54e95ff2e718
-Create Date: 2020-06-18 10:05:10.071454
+Create Date: 2020-06-19 16:12:06.552677
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '9c112904525e'
+revision = '4a91b66ca44b'
 down_revision = '54e95ff2e718'
 
 from alembic import op
