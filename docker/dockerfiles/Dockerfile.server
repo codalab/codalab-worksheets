@@ -23,7 +23,8 @@ RUN apt-get update && \
     python-virtualenv \
     python3-software-properties \
     zip \
-    unzip && \
+    unzip \
+    rsync && \
     rm -rf /var/lib/apt/lists/*;
  
 # Set Python3.6 as the default python3 version
