@@ -1,4 +1,4 @@
-"""Added group_uuid foreign key to worker
+"""Added group_uuid to worker
 
 Revision ID: 9c112904525e
 Revises: 54e95ff2e718
