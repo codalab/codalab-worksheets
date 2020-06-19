@@ -1489,10 +1489,9 @@ def test(ctx):
     )
 
     # Test network access
-    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()"
-    """
+    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
     wait(_run_command([cl, 'run', REQUEST_CMD]), 1)
-    wait(_run_command([cl, 'run', REQUEST_CMD, '--request-network']), 0)
+    wait(_run_command([cl, 'run', '--request-network', REQUEST_CMD]), 0)
 
 
 @TestModule.register('copy')
