@@ -36,17 +36,17 @@ class UITester(ABC):
             if args.headless:
                 browser_options.add_argument('--headless')
 
-        # Test Firefox
-        options = FirefoxOptions()
-        add_headless(options)
-        self.browser = webdriver.Firefox(log_path='', firefox_options=options)
-        self.test()
-        self.browser.close()
-
         # Test Chrome
         options = ChromeOptions()
         add_headless(options)
         self.browser = webdriver.Chrome(chrome_options=options)
+        self.test()
+        self.browser.close()
+
+        # Test Firefox
+        options = FirefoxOptions()
+        add_headless(options)
+        self.browser = webdriver.Firefox(log_path='', firefox_options=options)
         self.test()
         self.browser.close()
 
@@ -84,7 +84,6 @@ class UITester(ABC):
             self.send_keyboard_shortcut('an')
         else:
             self.expand_last_bundle()
-            self.pause()
             self.scroll_to_bottom('worksheet_container')
             self.click(By.XPATH, "//span[.='Edit and Rerun']")
         self.pause()

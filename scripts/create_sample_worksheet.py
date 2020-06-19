@@ -88,15 +88,19 @@ class SampleWorksheet:
 
     def test_print(self):
         self._wait_for_bundles_to_finish()
+        print('\n\nValidating output of cl print {}...'.format(self._worksheet_name))
         output_lines = run_command([self._cl, 'print', self._worksheet_name]).split('\n')
         has_error = False
         for i in range(len(self._expected_lines)):
-            if not re.match(self._expected_lines[i], output_lines[i]):
+            line = str(i + 1).zfill(5)
+            if re.match(self._expected_lines[i], output_lines[i]):
+                print('\x1b[1;34m{}| {}\x1b[0m'.format(line, output_lines[i]))
+            else:
                 has_error = True
                 # Output mismatch message in red
                 print(
-                    '\033[91mMISMATCH! line: {} pattern: {} output: {}\033[0m'.format(
-                        i + 1, self._expected_lines[i], output_lines[i]
+                    '\033[91m{}| {} EXPECTED: {} \033[0m'.format(
+                        line, output_lines[i], self._expected_lines[i]
                     )
                 )
 
@@ -135,11 +139,17 @@ class SampleWorksheet:
             name = 'valid_worksheet_%s' % id
             title = 'Other Worksheet %s' % id
             self._valid_worksheets.append(self._create_tagged_worksheet(name, title))
-            self._valid_bundles.append(
-                run_command(
-                    [self._cl, 'run', 'echo codalab rules!', '--tags=%s' % SampleWorksheet.TAG]
-                )
+            uuid = run_command(
+                [
+                    self._cl,
+                    'run',
+                    '--request-memory',
+                    '10m',
+                    'echo codalab rules!',
+                    '--tags=%s' % SampleWorksheet.TAG,
+                ]
             )
+            self._valid_bundles.append(uuid)
             # Create a valid private worksheet and a bundle each
             name = 'valid_private_worksheet_%s' % id
             title = 'Other Private Worksheet %s' % id
@@ -147,7 +157,14 @@ class SampleWorksheet:
             run_command([self._cl, 'wperm', uuid, 'public', 'none'])
             self._private_worksheets.append(uuid)
             uuid = run_command(
-                [self._cl, 'run', 'echo private run', '--tags=%s' % SampleWorksheet.TAG]
+                [
+                    self._cl,
+                    'run',
+                    '--request-memory',
+                    '10m',
+                    'echo private run',
+                    '--tags=%s' % SampleWorksheet.TAG,
+                ]
             )
             run_command([self._cl, 'perm', uuid, 'public', 'none'])
             self._private_bundles.append(uuid)
@@ -379,7 +396,7 @@ class SampleWorksheet:
         self._add_line('% add owner owner_name')
         self._add_line('% add created created date')
         self._add_line('% display table recently_created_schema')
-        self._add_line('% search created=.sort- .limit={}'.format(self._entities_count))
+        self._add_line('% search .mine .limit={}'.format(self._entities_count))
         self._add_table_pattern(['name', 'owner', 'created'], self._entities_count)
 
     def _add_invalid_directives(self):
