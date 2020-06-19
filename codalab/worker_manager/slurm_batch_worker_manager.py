@@ -259,6 +259,8 @@ class SlurmBatchWorkerManager(WorkerManager):
             command.extend(['--tag', self.args.worker_tag])
         if self.args.password_file:
             command.extend(['--password-file', self.args.password_file])
+        if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
+            command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
         if self.args.worker_max_work_dir_size:
             command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
         if self.args.worker_delete_work_dir_on_exit:
