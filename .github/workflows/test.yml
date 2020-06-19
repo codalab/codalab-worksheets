@@ -41,7 +41,9 @@ jobs:
         env:
           CODALAB_DOCKER_USERNAME: ${{ secrets.CODALAB_DOCKER_USERNAME }}
           CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}
-          VERSION: ${{ github.ref }}
+          # Gives us the branch name of the PR if on a pull_request-triggered build,
+          # otherwise, "master" if on a push-triggered build
+          VERSION: ${{ github.head_ref || 'master' }}
           SERVICE: ${{ matrix.service }}
 
   test_backend:
@@ -65,14 +67,14 @@ jobs:
           sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
         env:
-          VERSION: ${{ github.ref }}
+          VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.ref }}
+          VERSION: ${{ github.head_ref || 'master' }}
       - name: Save logs
         run: |
           mkdir /tmp/logs
@@ -104,14 +106,14 @@ jobs:
           sudo service mysql stop
           python3 codalab_service.py pull --version ${VERSION}
         env:
-          VERSION: ${{ github.ref }}
+          VERSION: ${{ github.head_ref || 'master' }}
       - name: Run shared filesystem tests
         run: |
           python3 codalab_service.py start --services default --version ${VERSION} --shared-file-system
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.ref }}
+          VERSION: ${{ github.head_ref || 'master' }}
       - name: Save logs
         run: |
           mkdir /tmp/logs
@@ -147,7 +149,7 @@ jobs:
           pip install --upgrade diffimg==0.2.3
           pip install --upgrade selenium==3.141.0
         env:
-          VERSION: ${{ github.ref }}
+          VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default --version ${VERSION}
@@ -155,7 +157,7 @@ jobs:
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.ref }}
+          VERSION: ${{ github.head_ref || 'master' }}
       - name: Upload screenshots on failure
         uses: actions/upload-artifact@v1
         if: failure()
