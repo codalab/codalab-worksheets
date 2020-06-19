@@ -51,7 +51,7 @@ class SampleWorksheet:
             self._entities_count = 100
         else:
             self._description = 'small'
-            self._entities_count = 1
+            self._entities_count = 3
         self._cl = cl
         self._preview_mode = preview_mode
         self._worksheet_name = 'cl_{}_worksheet'.format(self._description)
