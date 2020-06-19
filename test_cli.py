@@ -207,7 +207,7 @@ def _run_command(
     request_memory="4m",
     request_disk="1m",
     request_time=None,
-    request_docker_image="python:3.6.10-buster",
+    request_docker_image="python:3.6.10-slim-buster",
 ):
     """Runs a command.
 
@@ -222,7 +222,7 @@ def _run_command(
         request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "4m".
         request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m".
         request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed).
-        request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands. Defaults to "python:3.6.10-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
+        request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands. Defaults to "python:3.6.10-slim-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
 
     Returns:
         str: Command output.
@@ -1489,8 +1489,10 @@ def test(ctx):
     )
 
     # Test network access
-    wait(_run_command([cl, 'run', 'curl google.com']), 1)
-    wait(_run_command([cl, 'run', 'curl google.com', '--request-network']), 0)
+    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()"
+    """
+    wait(_run_command([cl, 'run', REQUEST_CMD]), 1)
+    wait(_run_command([cl, 'run', REQUEST_CMD, '--request-network']), 0)
 
 
 @TestModule.register('copy')
