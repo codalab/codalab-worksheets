@@ -840,11 +840,11 @@ class BundleModel(object):
             # Check if the designated worker is going to be terminated soon
             row = connection.execute(
                 cl_worker.select().where(
-                    and_(cl_worker.c.worker_id == worker_id, cl_worker.c.is_terminating == True)
+                    and_(cl_worker.c.worker_id == worker_id, cl_worker.c.is_terminating == False)
                 )
             ).fetchone()
             # If the worker is going to be terminated soon, stop starting bundle on this worker
-            if row:
+            if not row:
                 return False
 
             bundle_update = {
