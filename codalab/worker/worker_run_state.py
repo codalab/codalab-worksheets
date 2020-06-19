@@ -611,9 +611,6 @@ class RunStateMachine(StateTransitioner):
         """
         Prepare the finalize message to be sent with the next checkin
         """
-        if run_state.is_restaged:
-            return run_state._replace(stage=RunStage.RESTAGED)
-
         if run_state.is_killed:
             # Append kill_message, which contains more useful info on why a run was killed, to the failure message.
             failure_message = (
@@ -629,7 +626,9 @@ class RunStateMachine(StateTransitioner):
         If a full worker cycle has passed since we got into FINALIZING we already reported to
         server so can move on to FINISHED. Can also remove bundle_path now
         """
-        if run_state.finalized:
+        if run_state.is_restaged:
+            return run_state._replace(stage=RunStage.RESTAGED)
+        elif run_state.finalized:
             if not self.shared_file_system:
                 remove_path(run_state.bundle_path)  # don't remove bundle if shared FS
             return run_state._replace(stage=RunStage.FINISHED, run_status='Finished')
