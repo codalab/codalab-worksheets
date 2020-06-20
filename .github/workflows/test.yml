@@ -104,7 +104,7 @@ jobs:
       - name: Setup tests
         run: |
           sudo service mysql stop
-          python3 codalab_service.py pull --version ${VERSION}
+          python3 codalab_service.py build services --version ${VERSION} --pull
         env:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
