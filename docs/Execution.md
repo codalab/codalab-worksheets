@@ -125,7 +125,7 @@ If you have not installed the drivers, here are some links that may help:
 
 **Step 3**: Test your setup by checking if Docker can find GPUs. Run:
 
-    sudo docker run --runtime=nvidia --rm nvidia/cuda nvidia-smi
+    sudo docker run --runtime=nvidia --rm nvidia/cuda:8.0-runtime nvidia-smi
     
 You should see something similar to before:
 
