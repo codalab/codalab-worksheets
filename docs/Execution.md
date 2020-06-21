@@ -134,7 +134,7 @@ You should see something similar to before:
     | NVIDIA-SMI 367.48                 Driver Version: 367.48                    |
     ...
 
-**Step 4**: Run this command, which tests that `nvidia-smi` is working inside of Docker:
+**Step 4**: Run this command, which tests that `nvidia-smi` is working inside of Docker through CodaLab:
 
     cl run --request-docker-image nvidia/cuda:8.0-runtime --request-gpus 1 "nvidia-smi"
 
