@@ -68,7 +68,7 @@ If the default workers are full or do not satisfy your needs, one of the advanta
 
 **Step 0**. Install the CodaLab CLI (`pip install codalab`).
 
-**Step 1**. Install Docker, which will be used to run your bundles in an isolated environment.
+**Step 1**. Install Docker, which will be used to run your bundles in an isolated environment. Currently, to use GPUs in workers, CodaLab requires a version of Docker < 19.03 .
 
 **Step 2**. Start the worker, which will prompt you for your username and password:
 
@@ -101,7 +101,7 @@ controlling which CPUs and GPUs the system has access to.
 
 If your machine has GPUs and would like to hook them up to CodaLab, then follow these instructions.
 
-**Step 0**: Complete the worker setup instructions in the previous section.
+**Step 0**: Complete the worker setup instructions in the previous section. Make sure that your version of Docker is < 19.03 .
 
 **Step 1**: Check that the appropriate drivers are installed by running `nvidia-smi` on your machine. Check for an output similar to this one:
 
@@ -116,14 +116,25 @@ If you have not installed the drivers, here are some links that may help:
 * For [AWS P2 GPUs](https://aws.amazon.com/blogs/aws/new-p2-instance-type-for-amazon-ec2-up-to-16-gpus/2)
 * For [Google Cloud GPUs](https://cloud.google.com/compute/docs/gpus/add-gpus)
 
-**Step 2**: For Debian/Ubuntu users, install `nvidia-docker` by following the instructions 
-[here](https://github.com/NVIDIA/nvidia-docker).
+**Step 2**: For Debian/Ubuntu users, install `nvidia-docker` for your version of Docker. For instance, on Ubuntu, the following commands install Docker 18.03.1 and the appropriate version of `nvidia-docker`:
 
-**Step 3**: Test your setup. Run:
+    sudo apt-get install docker-ce=18.03.1~ce-0~ubuntu
+    sudo apt-get install nvidia-docker2=2.0.3+docker18.03.1-1 nvidia-container-runtime=2.0.0+docker18.03.1-1
+    sudo systemctl daemon-reload
+    sudo systemctl restart docker
 
-    sudo nvidia-docker run --rm nvidia/cuda nvidia-smi
+**Step 3**: Test your setup by checking if Docker can find GPUs. Run:
 
-**Step 4**: Run this command, which tests that nvidia-smi is working inside of Docker:
+    sudo docker run --runtime=nvidia --rm nvidia/cuda nvidia-smi
+    
+You should see something similar to before:
+
+    Wed May 24 19:03:55 2017``
+    +-----------------------------------------------------------------------------+
+    | NVIDIA-SMI 367.48                 Driver Version: 367.48                    |
+    ...
+
+**Step 4**: Run this command, which tests that `nvidia-smi` is working inside of Docker:
 
     cl run --request-docker-image nvidia/cuda:8.0-runtime --request-gpus 1 "nvidia-smi"
 
