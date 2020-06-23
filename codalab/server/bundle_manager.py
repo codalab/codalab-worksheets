@@ -256,6 +256,20 @@ class BundleManager(object):
                 self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
                 workers.remove(worker['worker_id'])
 
+    def _is_offline_worker(self, worker, workers):
+        # Fetch worker from database
+        workers= workers.workers()
+        worker = workers._workers.get(worker['worker_id'])
+        # Compare the timestamp
+        if datetime.datetime.utcnow() - worker['checkin_time'] > datetime.timedelta(
+                seconds=WORKER_TIMEOUT_SECONDS
+        ):
+            logger.info(
+                'Detected dead worker (%s, %s)', worker['user_id'], worker['worker_id']
+            )
+            return True
+        return False
+
     def _restage_stuck_starting_bundles(self, workers):
         """
         Moves bundles that got stuck in the STARTING state back to the STAGED
@@ -392,7 +406,7 @@ class BundleManager(object):
             else:
                 workers_list = resource_deducted_user_owned_workers[bundle.owner_id]
 
-            workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
+            workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources, workers)
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
                 if self._try_start_bundle(workers, worker, bundle, bundle_resources):
@@ -449,7 +463,7 @@ class BundleManager(object):
                 worker['memory_bytes'] -= bundle_resources.memory
         return workers_list
 
-    def _filter_and_sort_workers(self, workers_list, bundle, bundle_resources):
+    def _filter_and_sort_workers(self, workers_list, bundle, bundle_resources, workers):
         """
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
@@ -485,6 +499,9 @@ class BundleManager(object):
 
         # Filter by the number of jobs allowed to run on this worker.
         workers_list = [worker for worker in workers_list if worker['exit_after_num_runs'] > 0]
+
+        # Filter by dead workers
+        workers_list = [worker for worker in workers_list if not self._is_offline_worker(worker, workers)]
 
         # Sort workers list according to these keys in the following succession:
         #  - whether the worker is a CPU-only worker, if the bundle doesn't request GPUs

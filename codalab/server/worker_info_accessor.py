@@ -10,10 +10,7 @@ class WorkerInfoAccessor(object):
     def refresh_cache(f):
         def wrapper(*args, **kwargs):
             self = args[0]
-            if datetime.datetime.utcnow() - self._last_fetch >= datetime.timedelta(
-                seconds=self._timeout_seconds
-            ):
-                self._fetch_workers()
+            self._fetch_workers()
             return f(*args, **kwargs)
 
         return wrapper
@@ -69,3 +66,7 @@ class WorkerInfoAccessor(object):
             worker = self._uuid_to_worker[uuid]
             worker['run_uuids'].remove(uuid)
             del self._uuid_to_worker[uuid]
+
+    @refresh_cache
+    def get_worker(self, worker_id):
+        return self._workers[worker_id]
