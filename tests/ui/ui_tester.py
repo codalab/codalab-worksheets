@@ -370,8 +370,11 @@ class EditWorksheetTest(UITester):
         )
 
         # Test keyboard shortcuts
-        self.add_run_to_worksheet('echo goodbye', use_keyboard_shortcut=True)
-        self.rerun_last_bundle(use_keyboard_shortcut=True)
+        # TODO: Keyboard shortcuts are disabled for now due to a GitHub Actions issue;
+        # once they work again, replace instances of use_keyboard_shortcut=False
+        # with use_keyboard_shortcut=True.
+        self.add_run_to_worksheet('echo goodbye', use_keyboard_shortcut=False)
+        self.rerun_last_bundle(use_keyboard_shortcut=False)
         # Select the last two bundles and delete them
         # shift + g = Jump to the last bundle
         self.send_keyboard_shortcut(Keys.SHIFT + 'g')
@@ -385,14 +388,14 @@ class EditWorksheetTest(UITester):
         # Wait for bundles to be deleted before proceeding
         self.longer_pause()
         # Add some more text via keyboard shortcuts
-        self.add_text_to_worksheet('Some more text. ' * 25, use_keyboard_shortcut=True)
+        self.add_text_to_worksheet('Some more text. ' * 25, use_keyboard_shortcut=False)
         # Edit source
-        self.edit_source('The End.', use_keyboard_shortcut=True)
+        self.edit_source('The End.', use_keyboard_shortcut=False)
 
         # Refresh the page to ensure that new changes are persisted
         self.browser.refresh()
         self.wait_until_worksheet_content_loads()
-        self.toggle_web_terminal(use_keyboard_shortcut=True)
+        self.toggle_web_terminal(use_keyboard_shortcut=False)
         self.refresh_worksheet()
 
         # Take screenshots and compare to the existing baseline images
