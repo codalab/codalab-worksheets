@@ -152,9 +152,7 @@ class Worker:
         self.state_committer.commit(runs)
 
     def load_state(self):
-        # Load the worker state from existing worker-state.json file
         runs = self.state_committer.load()
-
         # Retrieve the complex container objects from the Docker API
         for uuid, run_state in runs.items():
             if run_state.container_id:
