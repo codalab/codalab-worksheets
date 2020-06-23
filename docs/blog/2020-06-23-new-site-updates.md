@@ -1,6 +1,6 @@
 # New site and updates from the past year
 
-June 8, 2020
+June 23, 2020
 
 The CodaLab Team
 
