@@ -172,7 +172,6 @@ class Worker:
         """
         Sync worker run state by appending all additional new fields in the current RunState object
         with the default value "None" to an older RunState object that is read from worker-state.json.
-        :return: a dictionary of runs that contains all the fields of the latest RunState definition
         """
         for uuid, run_state in self.runs.items():
             values = [getattr(run_state, name) for name in run_state._fields]
