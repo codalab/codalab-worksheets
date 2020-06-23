@@ -76,6 +76,7 @@ jobs:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Save logs
+        if: always()
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
@@ -104,7 +105,7 @@ jobs:
       - name: Setup tests
         run: |
           sudo service mysql stop
-          python3 codalab_service.py pull --version ${VERSION}
+          python3 codalab_service.py build services --version ${VERSION} --pull
         env:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
@@ -121,6 +122,7 @@ jobs:
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-${{ matrix.test }}
@@ -156,10 +158,12 @@ jobs:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Save logs
+        if: always()
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-sharedfs-${{ matrix.test }}
@@ -206,10 +210,12 @@ jobs:
           name: screenshots-test-${{ matrix.test }}
           path: tests/ui
       - name: Save logs
+        if: always()
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-${{ matrix.test }}
