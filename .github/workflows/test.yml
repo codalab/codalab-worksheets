@@ -198,7 +198,8 @@ jobs:
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default --version ${VERSION}
-          python3 scripts/create_sample_worksheet.py --test-print
+          docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py --test-print"
+          sleep 30
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
