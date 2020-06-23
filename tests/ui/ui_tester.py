@@ -40,6 +40,7 @@ class UITester(ABC):
         options = ChromeOptions()
         add_headless(options)
         self.browser = webdriver.Chrome(chrome_options=options)
+        self.browser.implicitly_wait(10)
         self.test()
         self.browser.close()
 
@@ -47,6 +48,7 @@ class UITester(ABC):
         options = FirefoxOptions()
         add_headless(options)
         self.browser = webdriver.Firefox(log_path='', firefox_options=options)
+        self.browser.implicitly_wait(10)
         self.test()
         self.browser.close()
 
