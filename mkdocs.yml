@@ -20,7 +20,7 @@ nav:
     - Privacy: Privacy.md
     - Frequently Asked Questions: FAQ.md
   - blog:
-      - New site and updates from the past year: blog/2020-06-18-new-site-updates.md
+      - New site and updates from the past year: blog/2020-06-23-new-site-updates.md
 
 markdown_extensions:
   - toc:
