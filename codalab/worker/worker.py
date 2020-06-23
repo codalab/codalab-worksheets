@@ -154,8 +154,7 @@ class Worker:
     def load_state(self):
         # Load the worker state from existing worker-state.json file
         runs = self.state_committer.load()
-        # Sync the worker state with the new RunState object
-        runs = self.sync_run_state(runs)
+
         # Retrieve the complex container objects from the Docker API
         for uuid, run_state in runs.items():
             if run_state.container_id:
@@ -171,15 +170,13 @@ class Worker:
                 resources=RunResources.from_dict(run_state.resources),
             )
 
-    def sync_run_state(self, runs):
+    def sync_state(self):
         """
         Sync worker run state by appending all additional new fields in the current RunState object
         with the default value "None" to an older RunState object that is read from worker-state.json.
-        :param runs: a dictionary of runs that is read from worker-state.json from the previous release
-        :return: a dictionary of runs that contains all the fields of RunState from the current release
+        :return: a dictionary of runs that contains all the fields of the latest RunState definition
         """
-        synced_runs = {}
-        for uuid, run_state in runs.items():
+        for uuid, run_state in self.runs.items():
             values = [getattr(run_state, name) for name in run_state._fields]
             old_len = len(run_state._fields)
             new_len = len(RunState._fields)
@@ -188,8 +185,7 @@ class Worker:
                 for i in range(old_len, new_len):
                     values.append(None)
                 run_state = RunState(*values)
-            synced_runs[uuid] = run_state
-        return synced_runs
+            self.runs[uuid] = run_state
 
     def check_idle_stop(self):
         """
@@ -217,6 +213,7 @@ class Worker:
     def start(self):
         """Return whether we ran anything."""
         self.load_state()
+        self.sync_state()
         self.image_manager.start()
         if not self.shared_file_system:
             self.dependency_manager.start()
