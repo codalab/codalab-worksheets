@@ -69,6 +69,8 @@ class Worker:
         pass_down_termination=False,  # type: bool
         # A flag indicating if the work_dir will be deleted when the worker exits.
         delete_work_dir_on_exit=False,  # type: bool
+        # A flag indicating if the worker will exit if it encounters an exception
+        exit_on_exception=False,  # type: bool
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -103,6 +105,7 @@ class Worker:
         self.terminate = False
         self.terminate_and_restage = False
         self.pass_down_termination = pass_down_termination
+        self.exit_on_exception = exit_on_exception
 
         self.last_checkin_successful = False
         self.last_time_ran = None  # type: Optional[bool]
@@ -208,9 +211,13 @@ class Worker:
             except Exception:
                 self.last_checkin_successful = False
                 traceback.print_exc()
-                # Sleep for a long time so we don't keep on failing.
-                logger.error('Sleeping for 1 hour due to exception...please help me!')
-                time.sleep(1 * 60 * 60)
+                if self.exit_on_exception:
+                    logger.error('Encountered exception, terminating the worker...')
+                    self.terminate = True
+                else:
+                    # Sleep for a long time so we don't keep on failing.
+                    logger.error('Sleeping for 1 hour due to exception...please help me!')
+                    time.sleep(1 * 60 * 60)
         self.cleanup()
 
     def cleanup(self):

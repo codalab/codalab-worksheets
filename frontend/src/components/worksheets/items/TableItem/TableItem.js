@@ -1,18 +1,13 @@
 // @flow
 import React, { useEffect } from 'react';
-import $ from 'jquery';
 import { withStyles } from '@material-ui/core';
 import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
 import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import BundleRow from './BundleRow';
-import Checkbox from '@material-ui/core/Checkbox';
-import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
-import SvgIcon from '@material-ui/core/SvgIcon';
-import CheckBoxIcon from '@material-ui/icons/CheckBox';
 import { getIds } from '../../../../util/worksheet_utils';
-import { semaphore } from '../../../../util/async_loading_utils';
+import { fetchAsyncBundleContents } from '../../../../util/async_loading_utils';
 import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 
 class TableItem extends React.Component<{
@@ -233,28 +228,13 @@ const styles = (theme) => ({
 
 const TableContainer = withStyles(styles)(_TableContainer);
 
-async function fetchAsyncTableContents({ contents }) {
-    return semaphore.use(async () => {
-        const response = await $.ajax({
-            type: 'POST',
-            contentType: 'application/json',
-            url: '/rest/interpret/genpath-table-contents',
-            async: true,
-            data: JSON.stringify({ contents }),
-            dataType: 'json',
-            cache: false,
-        });
-        return response;
-    });
-}
-
 const TableWrapper = (props) => {
     const { item, onAsyncItemLoad } = props;
     useEffect(() => {
         (async function() {
             if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
                 try {
-                    const { contents } = await fetchAsyncTableContents({ contents: item.rows });
+                    const { contents } = await fetchAsyncBundleContents({ contents: item.rows });
                     onAsyncItemLoad({
                         ...item,
                         rows: contents,
