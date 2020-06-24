@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-To get the latest security updates, please update CodaLab to the latest supported version.
+To get the latest security updates on either the CLI or the server, please ensure that you update CodaLab Worksheets to the latest supported version.
 
 ## Reporting a Vulnerability
 
