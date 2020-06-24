@@ -289,6 +289,7 @@ class UITester(ABC):
         element = "document.getElementById('{}')".format(selector)
         scroll_height = float(self.browser.execute_script('return {}.scrollHeight'.format(element)))
         self.browser.execute_script('{}.scrollTo(0, {})'.format(element, scroll_height))
+        self.pause()
 
     def _get_partial_matched_elements(self, by, selector):
         return self.browser.find_elements(By.XPATH, self.constructPartialSelector(by, selector))
