@@ -584,7 +584,7 @@ class CodalabServiceManager(object):
             success = True
         else:
             try:
-                subprocess.check_call(command_string, shell=True, cwd=BASE_DIR)
+                subprocess.check_call(command_string, shell=True, cwd=BASE_DIR, env={"DOCKER_BUILDKIT": "1"})
                 success = True
             except subprocess.CalledProcessError as e:
                 success = False
