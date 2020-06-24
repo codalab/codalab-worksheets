@@ -172,10 +172,10 @@ class UITester(ABC):
         self.send_keyboard_shortcut(Keys.SHIFT + 'r')
 
     def pause(self):
-        time.sleep(3)
+        time.sleep(4)
 
     def longer_pause(self):
-        time.sleep(5)
+        time.sleep(6)
 
     def set_browser_size(self, width=1500, height=1200):
         self.browser.set_window_position(0, 0)
