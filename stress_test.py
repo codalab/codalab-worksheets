@@ -112,6 +112,8 @@ class StressTestRunner:
         subprocess.call([self._cl, 'work', '%s::' % args.instance])
 
     def run(self):
+        print('Cleaning up stress test files from other runs...')
+        cleanup(self._cl, StressTestRunner._TAG, should_wait=False)
         print('Running stress tests...')
         self._start_heartbeat()
         self._test_large_bundle()
