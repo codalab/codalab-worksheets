@@ -23,9 +23,10 @@ repo_name: codalab/codalab-worksheets
 repo_url: https://github.com/codalab/codalab-worksheets
 
 nav:
-  - Overview:
+  - Home:
     - Introduction: index.md
     - Examples: https://github.com/codalab/worksheets-examples
+  - Concepts:
     - The CodaLab Workflow: Workflow.md
     - Executable Papers: Executable-Papers.md
     - Worksheet Markdown: Worksheet-Markdown.md
