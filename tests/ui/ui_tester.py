@@ -114,7 +114,8 @@ class UITester(ABC):
 
         # Edit bundle permission
         self.scroll_to_bottom('worksheet_container')
-        self.browser.find_elements_by_tag_name('svg')[-1].click()
+        add_button = self.browser.find_elements_by_tag_name('svg')[-1]
+        webdriver.ActionChains(self.browser).move_to_element(add_button).click(add_button).perform()
         self.pause()
         select_boxes = self.browser.find_elements_by_tag_name('select')
         self.select_option(select_boxes[-1], permission)
