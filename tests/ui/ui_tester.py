@@ -101,6 +101,7 @@ class UITester(ABC):
             field.click()
             self.browser.switch_to.active_element.send_keys(text)
             self.browser.switch_to.active_element.send_keys(Keys.ENTER)
+            self.longer_pause()
 
         # Edit name and description
         self.expand_last_bundle()
