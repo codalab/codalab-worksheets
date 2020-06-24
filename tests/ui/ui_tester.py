@@ -367,7 +367,10 @@ class EditWorksheetTest(UITester):
 
         # Edit metadata of the last bundle
         self.edit_last_bundle_metadata(
-            'New Name Given to this Bundle', 'New Description given to this bundle. ' * 5, 'Some tag', 'none'
+            'New Name Given to this Bundle',
+            'New Description given to this bundle. ' * 5,
+            'Some tag',
+            'none',
         )
 
         # Test keyboard shortcuts
