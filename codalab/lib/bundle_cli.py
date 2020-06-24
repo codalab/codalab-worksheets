@@ -325,7 +325,7 @@ class Commands(object):
             if verbose:
                 if markdown:
                     name = HEADING_LEVEL_3 + name
-                return '%s%s:\n%s\n%s' % (
+                return '%s%s\n%s\n%s' % (
                     # This is to make GitHub Markdown format compatible with the Read the Docs theme.
                     ' ' * indent if not markdown else '',
                     name,
