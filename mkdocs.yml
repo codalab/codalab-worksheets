@@ -1,23 +1,43 @@
 site_name: CodaLab Worksheets Documentation
 docs_dir: docs
-theme: readthedocs
+theme:
+  name: 'material'
+  features:
+    - tabs
+  palette:
+    primary: white
+    accent: blue grey
+  logo: ./images/codalab-logo.png
+  favicon: ./images/favicon.ico
 
-nav:
-  - Introduction: index.md
-  - Examples: https://github.com/codalab/worksheets-examples
-  - The CodaLab Workflow: Workflow.md
-  - Executable Papers: Executable-Papers.md
-  - CLI Reference: CLI-Reference.md
-  - Worksheet Markdown: Worksheet-Markdown.md
-  - Execution: Execution.md
-  - Competitions: Competitions.md
-  - Server Setup: Server-Setup.md
-  - Code Overview: Code-Overview.md
-  - REST API Reference: REST-API-Reference.md
-  - About: About.md
-  - Privacy: Privacy.md
-  - Frequently Asked Questions: FAQ.md
+extra_css:
+  - main.css
 
 markdown_extensions:
+  - admonition
+  - codehilite
   - toc:
       permalink: true
+
+repo_name: codalab/codalab-worksheets
+repo_url: https://github.com/codalab/codalab-worksheets
+
+nav:
+  - Introduction:
+    - Introduction: index.md
+    - Examples: https://github.com/codalab/worksheets-examples
+    - The CodaLab Workflow: Workflow.md
+    - Executable Papers: Executable-Papers.md
+    - Worksheet Markdown: Worksheet-Markdown.md
+    - Execution: Execution.md
+    - Competitions: Competitions.md
+  - Reference:
+    - CLI Reference: CLI-Reference.md
+    - REST API Reference: REST-API-Reference.md
+  - Contributing:
+    - Code Overview: Code-Overview.md
+    - Server Setup: Server-Setup.md
+  - About:
+    - About: About.md
+    - Privacy: Privacy.md
+    - Frequently Asked Questions: FAQ.md
