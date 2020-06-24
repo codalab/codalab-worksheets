@@ -110,7 +110,7 @@ def get_info(uuid, key):
     return _run_command([cl, 'info', '-f', key, uuid])
 
 
-def wait_until_state(uuid, expected_state, timeout_seconds=100):
+def wait_until_state(uuid, expected_state, timeout_seconds=1000):
     """
     Waits until a bundle in in the expected state or one of the final states. If a bundle is
     in one of the final states that is not the expected_state, fail earlier than the timeout.
@@ -138,7 +138,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=100):
         time.sleep(0.5)
 
 
-def wait_for_contents(uuid, substring, timeout_seconds=100):
+def wait_for_contents(uuid, substring, timeout_seconds=1000):
     start_time = time.time()
     while True:
         if time.time() - start_time > timeout_seconds:
@@ -204,10 +204,46 @@ def _run_command(
     include_stderr=False,
     binary=False,
     force_subprocess=False,
+    request_memory="4m",
+    request_disk="1m",
+    request_time=None,
+    request_docker_image="python:3.6.10-slim-buster",
 ):
-    # We skip using the cli directly if force_subprocess is set to true (which forces
-    # us to use subprocess even for cl commands).
-    force_subprocess = not force_subprocess and args[0] == cl
+    """Runs a command.
+
+    Args:
+        args ([str]): Arguments of function.
+        expected_exit_code (int, optional): Expected exit code. Defaults to 0.
+        max_output_chars (int, optional): Truncates output printed to the console log to this number. Defaults to 4096.
+        env ([type], optional): Environment variables. Defaults to None.
+        include_stderr (bool, optional): Include stderr in output. Defaults to False.
+        binary (bool, optional): Whether output is binary. Defaults to False.
+        force_subprocess (bool, optional): Force "cl" commands to run with subprocess, rather than running the CodaLab CLI directly through Python. Defaults to False.
+        request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "4m".
+        request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m".
+        request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed).
+        request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands. Defaults to "python:3.6.10-slim-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
+
+    Returns:
+        str: Command output.
+    """
+    if args[0] == cl:
+        if len(args) > 1 and args[1] == 'run':
+            if request_memory:
+                args.insert(2, request_memory)
+                args.insert(2, "--request-memory")
+            if request_disk:
+                args.insert(2, request_disk)
+                args.insert(2, "--request-disk")
+            if request_time:
+                args.insert(2, request_time)
+                args.insert(2, "--request-time")
+            if request_docker_image:
+                args.insert(2, request_docker_image)
+                args.insert(2, "--request-docker-image")
+    else:
+        # Always use subprocess for non-"cl" commands.
+        force_subprocess = True
     return run_command(
         args, expected_exit_code, max_output_chars, env, include_stderr, binary, force_subprocess
     )
@@ -500,12 +536,6 @@ def test(ctx):
     check_equals('None', get_info(uuid, 'data_hash'))
     _run_command([cl, 'rm', uuid])
 
-    # run and check the data_hash
-    uuid = _run_command([cl, 'run', 'echo hello'])
-    print('Waiting echo hello with uuid %s' % uuid)
-    wait(uuid)
-    check_contains('0x', get_info(uuid, 'data_hash'))
-
 
 @TestModule.register('upload1')
 def test(ctx):
@@ -778,7 +808,6 @@ def test(ctx):
     _run_command([cl, 'add', 'text', '% add data_hash data_hash s/0x/HEAD'])
     _run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"'])
     _run_command([cl, 'add', 'text', '% display table foo'])
-
     _run_command([cl, 'add', 'bundle', uuid])
     _run_command(
         [cl, 'add', 'bundle', uuid, '--dest-worksheet', wuuid]
@@ -888,9 +917,9 @@ def test(ctx):
     _run_command([cl, 'detach', uuid1], 1)  # multiple indices
     _run_command([cl, 'detach', uuid1, '-n', '3'], 1)  # index out of range
     _run_command([cl, 'detach', uuid2, '-n', '2'])  # State: 1 1 2
-    check_equals(get_info('^', 'uuid'), uuid2)
+    check_equals(uuid2, get_info('^', 'uuid'))
     _run_command([cl, 'detach', uuid2])  # State: 1 1
-    check_equals(get_info('^', 'uuid'), uuid1)
+    check_equals(uuid1, get_info('^', 'uuid'))
     _run_command([cl, 'detach', uuid1, '-n', '2'])  # State: 1
     _run_command([cl, 'detach', uuid1])  # Worksheet becomes empty
     check_equals(
@@ -960,48 +989,51 @@ def test(ctx):
     # These sleeps are required to ensure that there is sufficient time that passes between tests
     # If there is not enough time, all bundles might appear to have the same time
     time.sleep(1)
-    uuid1 = run_command([cl, 'run', 'date', '-n', name])
+    uuid1 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid1)
     time.sleep(1)
     time2 = datetime.now().isoformat()
     time.sleep(1)
-    uuid2 = run_command([cl, 'run', 'date', '-n', name])
-    uuid3 = run_command([cl, 'run', 'date', '-n', name])
+    uuid2 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid2)
+    uuid3 = _run_command([cl, 'run', 'date', '-n', name])
+    wait(uuid3)
     time.sleep(1)
     time3 = datetime.now().isoformat()
 
     # No results
-    check_equals('', run_command([cl, 'search', 'name=' + name, '.before=' + time1, '-u']))
-    check_equals('', run_command([cl, 'search', 'name=' + name, '.after=' + time3, '-u']))
+    check_equals('', _run_command([cl, 'search', 'name=' + name, '.before=' + time1, '-u']))
+    check_equals('', _run_command([cl, 'search', 'name=' + name, '.after=' + time3, '-u']))
 
     # Before
     check_equals(
-        uuid1, run_command([cl, 'search', 'name=' + name, '.before=' + time2, 'id=.sort', '-u'])
+        uuid1, _run_command([cl, 'search', 'name=' + name, '.before=' + time2, 'id=.sort', '-u'])
     )
     check_equals(
         uuid1 + '\n' + uuid2 + '\n' + uuid3,
-        run_command([cl, 'search', 'name=' + name, '.before=' + time3, 'id=.sort', '-u']),
+        _run_command([cl, 'search', 'name=' + name, '.before=' + time3, 'id=.sort', '-u']),
     )
 
     # After
     check_equals(
         uuid1 + '\n' + uuid2 + '\n' + uuid3,
-        run_command([cl, 'search', 'name=' + name, '.after=' + time1, 'id=.sort', '-u']),
+        _run_command([cl, 'search', 'name=' + name, '.after=' + time1, 'id=.sort', '-u']),
     )
     check_equals(
         uuid2 + '\n' + uuid3,
-        run_command([cl, 'search', 'name=' + name, '.after=' + time2, 'id=.sort', '-u']),
+        _run_command([cl, 'search', 'name=' + name, '.after=' + time2, 'id=.sort', '-u']),
     )
 
     # Before And After
     check_equals(
         uuid1,
-        run_command(
+        _run_command(
             [cl, 'search', 'name=' + name, '.after=' + time1, '.before=' + time2, 'id=.sort', '-u']
         ),
     )
     check_equals(
         uuid2 + '\n' + uuid3,
-        run_command(
+        _run_command(
             [cl, 'search', 'name=' + name, '.after=' + time2, '.before=' + time3, 'id=.sort', '-u']
         ),
     )
@@ -1012,7 +1044,8 @@ def test(ctx):
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
-    '''
+    check_contains('0x', get_info(uuid, 'data_hash'))
+
     # test search
     check_contains(name, _run_command([cl, 'search', name]))
     check_equals(uuid, _run_command([cl, 'search', name, '-u']))
@@ -1028,8 +1061,7 @@ def test(ctx):
     # block
     # TODO: Uncomment this when the tail bug is figured out
     # check_contains('hello', _run_command([cl, 'run', 'echo hello', '--tail']))
-    # invalid child path
-    _run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
+
     # make sure special characters in the name of a bundle don't break
     special_name = random_name() + '-dashed.dotted'
     _run_command([cl, 'run', 'echo hello', '-n', special_name])
@@ -1082,7 +1114,6 @@ def test(ctx):
     _run_command(
         [cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1
     )
-    '''
 
     # Test multiple keys pointing to the same bundle
     multi_alias_uuid = _run_command(
@@ -1100,6 +1131,85 @@ def test(ctx):
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo/stdout']))
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo1/stdout']))
     check_equals('hello', _run_command([cl, 'cat', multi_alias_uuid + '/foo2/stdout']))
+
+    # Test exclude_patterns
+    remote_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt',
+            '--exclude-patterns',
+            '*bye*.txt',
+        ]
+    )
+    wait(remote_uuid)
+    check_num_lines(
+        2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
+    )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
+
+    # Test multiple exclude_patterns
+    remote_uuid = _run_command(
+        [
+            cl,
+            'run',
+            'echo "hi" > hi.txt ; echo "bye" > bye.txt; echo "goodbye" > goodbye.txt',
+            '--exclude-patterns',
+            'bye.txt',
+            'goodbye.txt',
+        ]
+    )
+    wait(remote_uuid)
+    check_num_lines(
+        2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
+    )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
+
+
+@TestModule.register('run2')
+def test(ctx):
+    # Test that content of dependency is mounted at the top when . is specified as the dependency key
+    dir3 = _run_command([cl, 'upload', test_path('dir3')])
+    uuid = _run_command([cl, 'run', '.:%s' % dir3, 'cat f1'])
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    uuid = _run_command([cl, 'run', '.:%s' % dir3, 'cat dir1/f1'])
+    wait(uuid)
+    check_equals('first nested file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    nested_dir = _run_command([cl, 'upload', test_path('dir3/dir1')])
+    uuid = _run_command([cl, 'run', '.:%s' % nested_dir, 'cat f1'])
+    wait(uuid)
+    check_equals('first nested file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # Specify a path for the dependency key
+    dir1 = _run_command([cl, 'upload', test_path('dir1')])
+    uuid = _run_command([cl, 'run', 'foo/bar:%s' % dir1, 'foo/bar2:%s' % dir3, 'cat foo/bar/f1'])
+    wait(uuid)
+    check_equals('first file', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    uuid = _run_command([cl, 'run', 'foo/bar:%s' % dir1, 'foo/bar2:%s' % dir3, 'cat foo/bar2/f1'])
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # Keys can also be absolute paths
+    uuid = _run_command(
+        [cl, 'run', '/foo/bar:%s' % dir1, '/foo/bar2:%s' % dir3, 'cat /foo/bar2/f1']
+    )
+    wait(uuid)
+    check_equals('first file in dir3', _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # Test that backwards compatibility is maintained
+    uuid = _run_command([cl, 'run', 'f1:%s/f1' % dir1, 'foo/bar:%s' % dir1, 'cat f1'])
+    wait(uuid)
+    output = _run_command([cl, 'cat', uuid + '/stdout'])
+    uuid = _run_command([cl, 'run', 'f1:%s/f1' % dir1, 'foo/bar:%s' % dir1, 'cat foo/bar/f1'])
+    wait(uuid)
+    check_equals(output, _run_command([cl, 'cat', uuid + '/stdout']))
+
+    # We currently don't support the case where a dependency key is an ancestor of another. Expect an error.
+    _run_command(
+        [cl, 'run', 'foo:%s' % dir3, 'foo/bar:%s' % dir1, 'cat foo/bar/f1'], expected_exit_code=1
+    )
 
 
 @TestModule.register('read')
@@ -1328,13 +1438,10 @@ def test(ctx):
                 'run',
                 'main.pl:' + uuid,
                 'perl main.pl %s %s %s' % (use_time, use_memory, use_disk),
-                '--request-time',
-                str(request_time),
-                '--request-memory',
-                str(request_memory) + 'm',
-                '--request-disk',
-                str(request_disk) + 'm',
-            ]
+            ],
+            request_time=str(request_time),
+            request_memory=str(request_memory) + 'm',
+            request_disk=str(request_disk) + 'm',
         )
         wait(run_uuid, expected_exit_code)
         if expected_failure_message:
@@ -1344,10 +1451,10 @@ def test(ctx):
     stress(
         use_time=1,
         request_time=10,
-        use_memory=50,
-        request_memory=1000,
-        use_disk=10,
-        request_disk=100,
+        use_memory=1,
+        request_memory=10,
+        use_disk=5,
+        request_disk=10,
         expected_exit_code=0,
         expected_failure_message=None,
     )
@@ -1356,10 +1463,10 @@ def test(ctx):
     stress(
         use_time=10,
         request_time=1,
-        use_memory=50,
-        request_memory=1000,
-        use_disk=10,
-        request_disk=100,
+        use_memory=15,
+        request_memory=10,
+        use_disk=5,
+        request_disk=10,
         expected_exit_code=1,
         expected_failure_message='Time limit exceeded.',
     )
@@ -1371,10 +1478,10 @@ def test(ctx):
 
     # Too much disk
     stress(
-        use_time=2,
+        use_time=1,
         request_time=10,
-        use_memory=50,
-        request_memory=1000,
+        use_memory=1,
+        request_memory=10,
         use_disk=10,
         request_disk=2,
         expected_exit_code=1,
@@ -1382,8 +1489,9 @@ def test(ctx):
     )
 
     # Test network access
-    wait(_run_command([cl, 'run', 'ping -c 1 google.com']), 1)
-    wait(_run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)
+    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
+    wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 1)
+    wait(_run_command([cl, 'run', '--request-network', REQUEST_CMD], request_memory="10m"), 0)
 
 
 @TestModule.register('copy')
@@ -1436,11 +1544,19 @@ def test(ctx):
         _run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
 
+        # Create at local, transfer to remote (non-terminal state bundle)
+        uuid = _run_command([cl, 'run', 'date', '--request-gpus', '100'])
+        wait_until_state(uuid, State.STAGED)
+
         # Test adding worksheet items
         _run_command([cl, 'wadd', source_worksheet, remote_worksheet])
+        # Bundles copied over to remote_worksheet will not contain the bundle in non-terminal states, e.g. STAGED
+        assert_bundles_ready(remote_worksheet)
+
+        # Remove the STAGED bundle from source_worksheet and verify that all bundles are ready.
+        _run_command([cl, 'rm', uuid])
         _run_command([cl, 'wadd', remote_worksheet, source_worksheet])
         assert_bundles_ready(source_worksheet)
-        assert_bundles_ready(remote_worksheet)
 
 
 @TestModule.register('groups')
@@ -1476,13 +1592,18 @@ def test(ctx):
 @TestModule.register('netcat')
 def test(ctx):
     script_uuid = _run_command([cl, 'upload', test_path('netcat-test.py')])
-    uuid = _run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    _run_command([cl, 'info', script_uuid])
+    uuid = _run_command(
+        [cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'], request_memory="10m"
+    )
     wait_until_state(uuid, State.RUNNING)
     time.sleep(5)
     output = _run_command([cl, 'netcat', uuid, '5005', '---', 'hi patrick'])
     check_equals('No, this is dawg', output)
 
-    uuid = _run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    uuid = _run_command(
+        [cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'], request_memory="10m"
+    )
     wait_until_state(uuid, State.RUNNING)
     time.sleep(5)
     output = _run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
@@ -1491,8 +1612,11 @@ def test(ctx):
 
 @TestModule.register('netcurl')
 def test(ctx):
-    uuid = _run_command([cl, 'run', 'echo hello > hello.txt; python -m SimpleHTTPServer'])
+    uuid = _run_command(
+        [cl, 'run', 'echo hello > hello.txt; python -m http.server'], request_memory="10m"
+    )
     wait_until_state(uuid, State.RUNNING)
+    time.sleep(10)
     address = ctx.client.address
     check_equals(
         'hello',
@@ -1516,100 +1640,61 @@ def test(ctx):
     """
     Placeholder for tests for default Codalab docker images
     """
-    uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python --version']
-    )
+    CPU_DOCKER_IMAGE = 'codalab/default-cpu:latest'
+    uuid = _run_command([cl, 'run', 'python --version'], request_docker_image=CPU_DOCKER_IMAGE)
     wait(uuid)
     check_contains('2.7', _run_command([cl, 'cat', uuid + '/stderr']))
-    uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3 --version']
-    )
+    uuid = _run_command([cl, 'run', 'python3 --version'], request_docker_image=CPU_DOCKER_IMAGE)
     wait(uuid)
     check_contains('3.6', _run_command([cl, 'cat', uuid + '/stdout']))
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python -c "import tensorflow"',
-        ]
+        [cl, 'run', 'python -c "import tensorflow"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import torch"']
+        [cl, 'run', 'python -c "import torch"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import numpy"']
+        [cl, 'run', 'python -c "import numpy"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import nltk"']
+        [cl, 'run', 'python -c "import nltk"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import spacy"']
+        [cl, 'run', 'python -c "import spacy"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python -c "import matplotlib"',
-        ]
+        [cl, 'run', 'python -c "import matplotlib"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3 -c "import tensorflow"',
-        ]
+        [cl, 'run', 'python3 -c "import tensorflow"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3 -c "import torch"',
-        ]
+        [cl, 'run', 'python3 -c "import torch"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3 -c "import numpy"',
-        ]
+        [cl, 'run', 'python3 -c "import numpy"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3 -c "import nltk"']
+        [cl, 'run', 'python3 -c "import nltk"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3 -c "import spacy"',
-        ]
+        [cl, 'run', 'python3 -c "import spacy"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/default-cpu:latest',
-            'python3 -c "import matplotlib"',
-        ]
+        [cl, 'run', 'python3 -c "import matplotlib"'], request_docker_image=CPU_DOCKER_IMAGE
     )
     wait(uuid)
-    pass
 
 
 @TestModule.register('competition')
@@ -1709,7 +1794,6 @@ def test(ctx):
 
 @TestModule.register('workers')
 def test(ctx):
-    # Run workers command
     result = _run_command([cl, 'workers'])
     lines = result.split("\n")
 
@@ -1728,6 +1812,7 @@ def test(ctx):
             'gpus',
             'memory',
             'free_disk',
+            'exit_after_num_runs',
             'last_checkin',
             'tag',
             'runs',
@@ -1739,7 +1824,7 @@ def test(ctx):
 
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
-    check_equals(True, len(worker_info) >= 8)
+    check_equals(True, len(worker_info) >= 9)
 
 
 @TestModule.register('rest1')

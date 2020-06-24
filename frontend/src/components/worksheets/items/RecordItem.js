@@ -2,7 +2,9 @@ import * as React from 'react';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import BundleDetail from '../BundleDetail';
 import NewRun from '../NewRun';
-import { worksheetItemPropsChanged } from '../../../util/worksheet_utils';
+import { useEffect } from 'react';
+import { fetchAsyncBundleContents } from '../../../util/async_loading_utils';
+import { FETCH_STATUS_SCHEMA } from '../../../constants';
 
 class RecordItem extends React.Component {
     /** Constructor. */
@@ -27,13 +29,6 @@ class RecordItem extends React.Component {
         bundleInfoUpdates = { ...bundleInfoUpdates, ...update };
         this.setState({ bundleInfoUpdates: { ...bundleInfoUpdates, ...update } });
     };
-
-    shouldComponentUpdate(nextProps, nextState) {
-        return (
-            worksheetItemPropsChanged(this.props, nextProps) ||
-            this.state.showDetail !== nextState.showDetail
-        );
-    }
 
     rerunItem = (runProp) => {
         this.setState({
@@ -130,4 +125,33 @@ class RecordItem extends React.Component {
     }
 }
 
-export default RecordItem;
+const RecordWrapper = (props) => {
+    const { item, onAsyncItemLoad } = props;
+    useEffect(() => {
+        (async function() {
+            if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
+                try {
+                    const { contents } = await fetchAsyncBundleContents({ contents: item.rows });
+                    onAsyncItemLoad({
+                        ...item,
+                        rows: contents,
+                        status: {
+                            code: FETCH_STATUS_SCHEMA.READY,
+                            error_message: '',
+                        },
+                    });
+                } catch (e) {
+                    console.error(e);
+                    // TODO: better error message handling here.
+                }
+            }
+        })();
+        // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [item.rows, item.status]);
+    return <RecordItem {...props} />;
+};
+
+export default RecordWrapper;
+
+// export default RecordItem;

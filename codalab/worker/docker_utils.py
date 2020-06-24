@@ -19,6 +19,7 @@ MIN_API_VERSION = '1.17'
 NVIDIA_RUNTIME = 'nvidia'
 DEFAULT_RUNTIME = 'runc'
 DEFAULT_TIMEOUT = 720
+DEFAULT_CONTAINER_RUNNING_TIME = 0
 # Docker Registry HTTP API v2 URI prefix
 URI_PREFIX = 'https://hub.docker.com/v2/repositories/'
 
@@ -275,6 +276,9 @@ def check_finished(container):
 
 @wrap_exception('Unable to check Docker container running time')
 def get_container_running_time(container):
+    # This usually happens when container gets accidentally removed or deleted
+    if container is None:
+        return DEFAULT_CONTAINER_RUNNING_TIME
     # Get the current container
     container = client.containers.get(container.id)
     # Load this container from the server again and update attributes with the new data.

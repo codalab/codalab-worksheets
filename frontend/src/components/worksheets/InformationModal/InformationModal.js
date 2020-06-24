@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { Alert, Modal } from 'react-bootstrap';
-import './ExtraWorksheetHTML.scss';
+import { Modal } from 'react-bootstrap';
+import './InformationModal.scss';
 
 const KeyboardShortcutModal = ({ show, toggle }) => (
     <Modal id='glossaryModal' tabIndex='-1' keyboard show={show} onHide={toggle}>
@@ -27,103 +27,131 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
                         <td>
                             <kbd>shift+g</kbd>
                         </td>
-                        <td>Move to end of worksheet</td>
+                        <td>Move cursor to end of worksheet</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>g g</kbd>
                         </td>
-                        <td>Move to beginning of worksheet</td>
+                        <td>Move cursor to beginning of worksheet</td>
+                    </tr>
+
+                    <th>Markdown</th>
+                    <tr>
+                        <td>
+                            <kbd>a t</kbd>
+                        </td>
+                        <td>Add markdown right below cursor</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>enter</kbd>
                         </td>
-                        <td>
-                            Open current bundle detail or worksheet (shift+enter: open in new
-                            window)
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>x</kbd>
-                        </td>
-                        <td>Select the bundle row</td>
-                    </tr>
-                    <th>Editing</th>
-                    <tr>
-                        <td>
-                            <kbd>shift+e</kbd>
-                        </td>
-                        <td>Edit worksheet in source mode</td>
+                        <td>Start editing markdown</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>ctrl/cmd+enter</kbd>
                         </td>
-                        <td>Save current edit changes in worksheet source/text block</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>backspace/del</kbd>
-                        </td>
-                        <td>Delete focused items (bundle rows need to be selected)</td>
+                        <td>Save edits to markdown</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>esc</kbd>
                         </td>
-                        <td>Exit editing worksheet source/text block</td>
+                        <td>Stop editing markdown without saving</td>
                     </tr>
                     <tr>
                         <td>
-                            <kbd>a t</kbd>
+                            <kbd>backspace/del</kbd>
                         </td>
-                        <td>Add a cell right below the current focus</td>
+                        <td>Delete current markdown</td>
                     </tr>
+                    <tr>
+                        <td>
+                            <kbd>shift+e</kbd>
+                        </td>
+                        <td>Edit full worksheet as markdown</td>
+                    </tr>
+
+                    <th>Bundles</th>
                     <tr>
                         <td>
                             <kbd>a u</kbd>
                         </td>
-                        <td>Upload a file right below the current focus</td>
+                        <td>Upload bundle right below cursor</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>a r</kbd>
                         </td>
-                        <td>Add a new run</td>
+                        <td>Add a new run bundle right below cursor</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>a n</kbd>
                         </td>
-                        <td>Edit and add a rerun in bundle details</td>
+                        <td>Rerun current bundle right below cursor</td>
+                    </tr>
+
+                    <tr>
+                        <td>
+                            <kbd>enter</kbd>
+                        </td>
+                        <td>Toggle current bundle details</td>
                     </tr>
                     <tr>
                         <td>
-                            <kbd>a v</kbd>
+                            <kbd>shift+enter</kbd>
                         </td>
-                        <td>Paste clipboard content to source after the current line</td>
+                        <td>Show current bundle in new window</td>
                     </tr>
-                    <th>Bundles operation</th>
                     <tr>
                         <td>
-                            <kbd>a d</kbd>
+                            <kbd>a s</kbd>
                         </td>
-                        <td>Detach all selected bundles from this worksheet</td>
+                        <td>Download current bundle</td>
+                    </tr>
+
+                    <tr>
+                        <td>
+                            <kbd>x</kbd>
+                        </td>
+                        <td>Select current bundle</td>
+                    </tr>
+
+                    <tr>
+                        <td>
+                            <kbd>backspace/del</kbd>
+                        </td>
+                        <td>Remove selected bundles</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>a k</kbd>
                         </td>
-                        <td>Kill all selected bundles</td>
+                        <td>Kill selected bundles</td>
                     </tr>
+
                     <tr>
                         <td>
                             <kbd>a c</kbd>
                         </td>
-                        <td>Copy all selected bundles' ids</td>
+                        <td>Copy selected bundles</td>
                     </tr>
+                    <tr>
+                        <td>
+                            <kbd>a d</kbd>
+                        </td>
+                        <td>Cut selected bundles</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <kbd>a v</kbd>
+                        </td>
+                        <td>Paste cut/copied bundle(s) right below cursor</td>
+                    </tr>
+
                     <th>Other</th>
                     <tr>
                         <td>
@@ -139,33 +167,15 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
                     </tr>
                     <tr>
                         <td>
-                            <kbd>c c</kbd>
-                        </td>
-                        <td>Open full web terminal regardless of show/hide status</td>
-                    </tr>
-                    <tr>
-                        <td>
                             <kbd>shift+r</kbd>
                         </td>
                         <td>Refresh worksheet</td>
                     </tr>
                     <tr>
                         <td>
-                            <kbd>a s</kbd>
-                        </td>
-                        <td>Download the focused bundle (should the bundle be downloadable)</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <kbd>i</kbd>
-                        </td>
-                        <td>Input the focused worksheet uid to the terminal</td>
-                    </tr>
-                    <tr>
-                        <td>
                             <kbd>?</kbd>
                         </td>
-                        <td>Show keyboard shortcut help</td>
+                        <td>Show keyboard shortcuts help (this page)</td>
                     </tr>
                     <tr>
                         <td>
@@ -185,24 +195,13 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
     </Modal>
 );
 
-let ExtraWorksheetHTML = ({
-    showGlossaryModal,
-    toggleGlossaryModal,
-    errorMessage,
-    clearErrorMessage,
-}) => (
+let InformationModal = ({ showInformationModal, toggleInformationModal }) => (
     <React.Fragment>
         <div id='update_progress' className='progress-message'>
             <img src='/img/Preloader_Small.gif' /> Updating...
         </div>
-        {/* TODO: Move all error messages to worksheet dialog */}
-        {errorMessage && (
-            <Alert className='codalab-error-message' bsStyle='danger' onDismiss={clearErrorMessage}>
-                <i className='glyphicon glyphicon-remove-circle' /> Error: {errorMessage}
-            </Alert>
-        )}
-        <KeyboardShortcutModal show={showGlossaryModal} toggle={toggleGlossaryModal} />
+        <KeyboardShortcutModal show={showInformationModal} toggle={toggleInformationModal} />
     </React.Fragment>
 );
 
-export default ExtraWorksheetHTML;
+export default InformationModal;

@@ -135,16 +135,7 @@ class GraphItem extends React.Component {
         var className = 'type-image' + (this.props.focused ? ' focused' : '');
         var bundleInfo = this.props.item.bundles_spec.bundle_infos[0];
         return (
-            <div
-                className='ws-item'
-                onContextMenu={this.props.handleContextMenu.bind(
-                    null,
-                    bundleInfo.uuid,
-                    this.props.focusIndex,
-                    0,
-                    bundleInfo.bundle_type === 'run',
-                )}
-            >
+            <div className='ws-item'>
                 <div className={className} onClick={this.handleClick}>
                     <div id={this._chartId()} />
                 </div>

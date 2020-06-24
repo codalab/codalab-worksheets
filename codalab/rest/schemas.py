@@ -54,7 +54,7 @@ def validate_name(name):
 
 def validate_sub_path(path):
     if not SUB_PATH_REGEX.match(path):
-        raise ValidationError('Child path must match %s, was %s' % (NAME_REGEX.pattern, path))
+        raise ValidationError('Child path must match %s, was %s' % (SUB_PATH_REGEX.pattern, path))
 
 
 def validate_ascii(value):

@@ -169,6 +169,7 @@ export const EditableField = withStyles(efStyles)(EditableFieldBase);
 export class WorksheetEditableField extends React.Component<{
     uuid: string,
     fieldName: string,
+    dataType: string,
 }> {
     buildPayload(value) {
         return {
@@ -177,7 +178,7 @@ export class WorksheetEditableField extends React.Component<{
                     id: this.props.uuid,
                     type: 'worksheets',
                     attributes: {
-                        [this.props.fieldName]: value,
+                        [this.props.fieldName]: serializeFormat(value, this.props.dataType),
                     },
                 },
             ],
@@ -198,6 +199,7 @@ export class WorksheetEditableField extends React.Component<{
 
 WorksheetEditableField.defaultProps = {
     allowASCII: false,
+    dataType: 'string',
 };
 
 export class BundleEditableField extends React.Component<{

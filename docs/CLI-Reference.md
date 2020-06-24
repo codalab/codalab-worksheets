@@ -4,7 +4,7 @@ This file is auto-generated from the output of `cl help -v -m` and provides the 
 
 Usage: `cl <command> <arguments>`
 
-## Commands for bundles:
+## Commands for bundles
 ### upload (up):
     Create a bundle by uploading an existing file/directory.
       upload <path>            : Upload contents of file/directory <path> as a bundle.
@@ -63,6 +63,7 @@ Usage: `cl <command> <arguments>`
       --request-queue              Submit run to this job queue.
       --request-priority           Job priority (higher is more important).
       --request-network            Whether to allow network access.
+      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
@@ -87,6 +88,7 @@ Usage: `cl <command> <arguments>`
       --request-queue              Submit run to this job queue.
       --request-priority           Job priority (higher is more important).
       --request-network            Whether to allow network access.
+      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
@@ -221,6 +223,7 @@ Usage: `cl <command> <arguments>`
       --request-queue              Submit run to this job queue. (for runs)
       --request-priority           Job priority (higher is more important). (for runs)
       --request-network            Whether to allow network access. (for runs)
+      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
@@ -249,6 +252,7 @@ Usage: `cl <command> <arguments>`
       --request-queue              Submit run to this job queue. (for runs)
       --request-priority           Job priority (higher is more important). (for runs)
       --request-network            Whether to allow network access. (for runs)
+      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
@@ -290,7 +294,7 @@ Usage: `cl <command> <arguments>`
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
 
-## Commands for worksheets:
+## Commands for worksheets
 ### new:
     Create a new worksheet.
     Arguments:
@@ -312,6 +316,7 @@ Usage: `cl <command> <arguments>`
 ### wadd:
     Append all the items of the source worksheet to the destination worksheet.
     Bundles that do not yet exist on the destination service will be copied over.
+    Bundles in non-terminal states (READY or FAILED) will not be copied over to destination worksheet.
     The existing items on the destination worksheet are not affected unless the -r/--replace flag is set.
     Arguments:
       source_worksheet_spec  [(<alias>|<address>)::](<uuid>|<name>)
@@ -370,7 +375,7 @@ Usage: `cl <command> <arguments>`
       -u, --uuid-only  Print only uuids.
 
 
-## Commands for groups and permissions:
+## Commands for groups and permissions
 ### gls:
     Show groups to which you belong.
     Arguments:
@@ -427,7 +432,7 @@ Usage: `cl <command> <arguments>`
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
 
-## Commands for users:
+## Commands for users
 ### uinfo:
     Show user information.
     Arguments:
@@ -454,7 +459,7 @@ Usage: `cl <command> <arguments>`
       user_spec  Username or id of user to delete.
 
 
-## Commands for managing server:
+## Commands for managing server
 ### workers:
     Display information about workers that you have connected to the CodaLab instance.
 
@@ -480,7 +485,7 @@ Usage: `cl <command> <arguments>`
       -r, --repair     When used with --force and --data-hash, repairs incorrect data_hash in existing bundles
 
 
-## Other commands:
+## Other commands
 ### help:
     Show usage information for commands.
       help           : Show brief description for all commands.
