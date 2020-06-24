@@ -100,6 +100,8 @@ class AWSBatchWorkerManager(WorkerManager):
             command.extend(['--worker-delete-work-dir-on-exit'])
         if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
             command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
+        if self.args.worker_exit_on_exception:
+            command.extend(['--exit-on-exception'])
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-batch-jobdefinition.html
         # Need to mount:
