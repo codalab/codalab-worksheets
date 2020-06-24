@@ -41,6 +41,7 @@ class UITester(ABC):
         add_headless(options)
         self.browser = webdriver.Chrome(chrome_options=options)
         self.browser.implicitly_wait(10)
+        self.set_browser_size()
         self.test()
         self.browser.close()
 
@@ -49,6 +50,7 @@ class UITester(ABC):
         add_headless(options)
         self.browser = webdriver.Firefox(log_path='', firefox_options=options)
         self.browser.implicitly_wait(10)
+        self.set_browser_size()
         self.test()
         self.browser.close()
 
@@ -338,7 +340,6 @@ class EditWorksheetTest(UITester):
         super().__init__('edit_worksheet')
 
     def test(self):
-        self.set_browser_size()
         self.login()
         self.wait_until_worksheet_content_loads()
 
