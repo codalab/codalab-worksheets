@@ -52,7 +52,7 @@ class ImageItem extends React.Component {
         return (
             <div className='ws-item'>
                 <div className={className} ref={this.props.item.ref} onClick={this.handleClick}>
-                    <img style={styles} src={src} />
+                    <img alt='Worksheet item' style={styles} src={src} />
                 </div>
                 {this.state.showDetail && (
                     <BundleDetail
