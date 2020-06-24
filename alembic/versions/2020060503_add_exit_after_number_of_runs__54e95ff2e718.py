@@ -15,7 +15,7 @@ import sqlalchemy as sa
 import sys
 
 def upgrade():
-    op.add_column('worker', sa.Column('exit_after_num_runs', sa.Integer(), nullable=False, server_default=sys.maxsize))
+    op.add_column('worker', sa.Column('exit_after_num_runs', sa.Integer(), nullable=False, server_default='999999999'))
 
 
 def downgrade():
