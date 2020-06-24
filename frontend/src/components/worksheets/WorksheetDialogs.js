@@ -78,28 +78,6 @@ class WorksheetDialogs extends React.Component {
                     </DialogActions>
                 </Dialog>
                 <Dialog
-                    open={this.props.openedDialog === DIALOG_TYPES.OPEN_DETACH}
-                    onClose={this.props.closeDialog}
-                    aria-labelledby='detach-confirmation-title'
-                    aria-describedby='detach-confirmation-description'
-                >
-                    <DialogTitle id='detach-confirmation-title'>
-                        {'Detach selected bundles from this worksheet?'}
-                    </DialogTitle>
-                    <DialogActions>
-                        <Button color='primary' onClick={this.props.closeDialog}>
-                            CANCEL
-                        </Button>
-                        <Button
-                            color='primary'
-                            variant='contained'
-                            onClick={this.props.executeBundleCommand('detach')}
-                        >
-                            DETACH
-                        </Button>
-                    </DialogActions>
-                </Dialog>
-                <Dialog
                     open={this.props.openedDialog === DIALOG_TYPES.OPEN_KILL}
                     onClose={this.props.closeDialog}
                     aria-labelledby='kill-confirmation-title'
