@@ -229,7 +229,8 @@ jobs:
       - uses: actions/setup-python@v1
         with:
           python-version: 3.6
-      - name: Setup tests
+      - run: pip install -e .
+      - name: Run tests
         run: python stress_test.py --instance https://worksheets-dev.codalab.org --heavy
         env:
           CODALAB_USERNAME: ${{ secrets.CODALAB_DEV_USERNAME }}
