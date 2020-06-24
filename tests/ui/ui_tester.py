@@ -403,7 +403,7 @@ def main():
     all_tests = [
         WorksheetTest(),
         # TODO: this test is failing intermittently in GHA. Disabling for now.
-        #  EditWorksheetTest()
+        # EditWorksheetTest()
     ]
 
     start_time = time.time()
