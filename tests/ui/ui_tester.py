@@ -166,9 +166,9 @@ class UITester(ABC):
 
     def save_edit_keyboard_shortcut(self):
         # Control + Enter = Save current edit
-        webdriver.ActionChains(self.browser).key_down(
-            Keys.CONTROL
-        ).key_down(Keys.ENTER).key_up(Keys.ENTER).key_up(Keys.CONTROL).perform()
+        webdriver.ActionChains(self.browser).key_down(Keys.CONTROL).key_down(Keys.ENTER).key_up(
+            Keys.ENTER
+        ).key_up(Keys.CONTROL).perform()
         self.pause()
 
     def refresh_worksheet(self):
