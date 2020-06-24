@@ -52,7 +52,7 @@ jobs:
     needs: [build]
     strategy:
       matrix:
-        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags worksheet freeze detach perm search_time groups,search,run,run2,read,kill,write,mimic workers,resources,copy memoize,netcat,netcurl]
+        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups,search,run,run2,read,kill,write,mimic workers,resources,copy memoize,netcat,netcurl]
     steps:
       - name: Clear free space
         run: |
@@ -171,7 +171,7 @@ jobs:
     needs: [build]
     strategy:
       matrix:
-        test: [worksheets frontend]
+        test: [frontend]
     steps:
       - name: Clear free space
         run: |
@@ -194,6 +194,7 @@ jobs:
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default --version ${VERSION}
+          docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py --test-print"
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
