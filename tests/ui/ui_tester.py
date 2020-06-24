@@ -66,9 +66,9 @@ class UITester(ABC):
         self.scroll_to_bottom('worksheet_container')
         active_textbox = self.browser.switch_to.active_element
         active_textbox.send_keys(command)
-        self.pause()
+        self.longer_pause()
         if use_keyboard_shortcut:
-            self.save_edit_keyboard_shortcut(active_textbox)
+            self.save_edit_keyboard_shortcut()
         else:
             self.click(By.XPATH, "//span[.='Confirm']")
         self.longer_pause()
@@ -90,7 +90,7 @@ class UITester(ABC):
         active_textbox = self.browser.switch_to.active_element
         active_textbox.send_keys(' rerunning bundle...')
         if use_keyboard_shortcut:
-            self.save_edit_keyboard_shortcut(active_textbox)
+            self.save_edit_keyboard_shortcut()
         else:
             self.scroll_to_bottom('worksheet_container')
             self.click(By.XPATH, "//span[.='Confirm']")
@@ -138,7 +138,7 @@ class UITester(ABC):
         source_field.send_keys(text)
         if use_keyboard_shortcut:
             self.pause()
-            self.save_edit_keyboard_shortcut(source_field)
+            self.save_edit_keyboard_shortcut()
         else:
             self.click(By.CSS_SELECTOR, '[aria-label="Save Edit"]')
         self.longer_pause()
@@ -159,16 +159,17 @@ class UITester(ABC):
         last_text_box = self.browser.find_elements_by_tag_name('textarea')[-1]
         self.focus_and_send_keys(last_text_box, text)
         if use_keyboard_shortcut:
-            self.save_edit_keyboard_shortcut(last_text_box)
+            self.save_edit_keyboard_shortcut()
         else:
             self.click(By.XPATH, "//span[.='Save']")
         self.pause()
 
-    def save_edit_keyboard_shortcut(self, element):
+    def save_edit_keyboard_shortcut(self):
         # Control + Enter = Save current edit
-        webdriver.ActionChains(self.browser).move_to_element(element).key_down(
+        webdriver.ActionChains(self.browser).key_down(
             Keys.CONTROL
         ).key_down(Keys.ENTER).key_up(Keys.ENTER).key_up(Keys.CONTROL).perform()
+        self.pause()
 
     def refresh_worksheet(self):
         # Shift + r = Refresh worksheet
@@ -189,9 +190,11 @@ class UITester(ABC):
 
     def focus_and_send_keys(self, element, keys):
         webdriver.ActionChains(self.browser).move_to_element(element).send_keys(keys).perform()
+        self.pause()
 
     def send_keyboard_shortcut(self, keys):
         self.browser.find_element(By.TAG_NAME, 'html').send_keys(keys)
+        self.pause()
 
     def fill_field(self, by, selector, text, press_enter=False):
         textbox = self.browser.find_element(by, selector)
