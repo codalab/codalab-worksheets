@@ -96,7 +96,7 @@ class UITester(ABC):
             self.click(By.XPATH, "//span[.='Confirm']")
         self.longer_pause()
 
-    def edit_last_bundle_metadata(self, name, description, permission):
+    def edit_last_bundle_metadata(self, name, description, tag, permission):
         def edit_field(field, text):
             field.click()
             self.browser.switch_to.active_element.send_keys(text)
@@ -106,13 +106,14 @@ class UITester(ABC):
         # Edit name and description
         self.expand_last_bundle()
         editable_fields = self.browser.find_elements(By.CLASS_NAME, 'editable-field')
-        edit_field(editable_fields[-2], name)
-        edit_field(editable_fields[-1], description)
+        edit_field(editable_fields[-3], name)
+        edit_field(editable_fields[-2], description)
+        edit_field(editable_fields[-1], tag)
 
         # Edit bundle permission
         self.scroll_to_bottom('worksheet_container')
         self.browser.find_elements_by_tag_name('svg')[-1].click()
-        self.longer_pause()
+        self.pause()
         select_boxes = self.browser.find_elements_by_tag_name('select')
         self.select_option(select_boxes[-1], permission)
         self.longer_pause()
@@ -366,7 +367,7 @@ class EditWorksheetTest(UITester):
 
         # Edit metadata of the last bundle
         self.edit_last_bundle_metadata(
-            'New Name Given to this Bundle', 'New Description given to this bundle. ' * 5, 'none'
+            'New Name Given to this Bundle', 'New Description given to this bundle. ' * 5, 'Some tag', 'none'
         )
 
         # Test keyboard shortcuts
