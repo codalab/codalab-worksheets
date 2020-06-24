@@ -23,7 +23,7 @@ cl upload /var/data/a.txt
 
 ### Allowed paths
 
-For security reasons, in order for the `--link` command to work with file paths, either the CODALAB_LINK_ALLOWED_PATHS environment variable or the --link_allowed_paths command-line parameter to codalab_service.py must be set on the server. This must be equal to a glob expression that specifies the allowed paths that `--link` can grab data from.
+For security reasons, in order for the `--link` command to work with file paths, either the `CODALAB_LINK_ALLOWED_PATHS` environment variable or the `--link_allowed_paths` command-line parameter to `codalab_service.py` must be set on the server. This must be equal to a glob expression that specifies the allowed paths that `--link` can grab data from.
 
 For example, in order to restrict all linked paths to files inside the `/var/data` directory, run the server with this command:
 
