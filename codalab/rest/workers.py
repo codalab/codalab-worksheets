@@ -4,6 +4,7 @@ from __future__ import (
 from contextlib import closing
 import http.client
 import json
+import sys
 from datetime import datetime
 
 from bottle import abort, get, local, post, put, request, response
@@ -35,7 +36,7 @@ def checkin(worker_id):
         request.json["dependencies"],
         request.json.get("shared_file_system", False),
         request.json.get("tag_exclusive", False),
-        request.json.get("exit_after_num_runs"),
+        request.json.get("exit_after_num_runs", sys.maxsize),
     )
 
     for run in request.json["runs"]:
