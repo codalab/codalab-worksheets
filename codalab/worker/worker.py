@@ -109,6 +109,7 @@ class Worker:
         self.last_time_ran = None  # type: Optional[bool]
 
         self.runs = {}  # type: Dict[str, RunState]
+        self.docker_network_prefix = docker_network_prefix
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
             docker_image_manager=self.image_manager,
@@ -366,6 +367,9 @@ class Worker:
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
+        # We (re-)initialize the Docker networks here, in case they've been removed.
+        # For any networks that exist, this is essentially a no-op.
+        self.init_docker_networks(self.docker_network_prefix)
         # 1. transition all runs
         for uuid in self.runs:
             run_state = self.runs[uuid]
