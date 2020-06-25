@@ -123,24 +123,29 @@ class Worker:
             shared_file_system=self.shared_file_system,
         )
 
-    def init_docker_networks(self, docker_network_prefix):
+    def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
         Set up docker networks for runs: one with external network access and one without
         """
 
-        def create_or_get_network(name, internal):
+        def create_or_get_network(name, internal, verbose):
             try:
-                logger.debug('Creating docker network %s', name)
-                return self.docker.networks.create(name, internal=internal, check_duplicate=True)
+                if verbose:
+                    logger.debug('Creating docker network %s', name)
+                network = self.docker.networks.create(name, internal=internal, check_duplicate=True)
+                # This logging statement is only run if a network is created.
+                logger.debug('Created docker network %s', name)
+                return network
             except docker.errors.APIError:
-                logger.debug('Network %s already exists, reusing', name)
+                if verbose:
+                    logger.debug('Network %s already exists, reusing', name)
                 return self.docker.networks.list(names=[name])[0]
 
         # Right now the suffix to the general worker network is hardcoded to manually match the suffix
         # in the docker-compose file, so make sure any changes here are synced to there.
-        self.worker_docker_network = create_or_get_network(docker_network_prefix + "_general", True)
-        self.docker_network_external = create_or_get_network(docker_network_prefix + "_ext", False)
-        self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", True)
+        self.worker_docker_network = create_or_get_network(docker_network_prefix + "_general", internal=True, verbose=verbose)
+        self.docker_network_external = create_or_get_network(docker_network_prefix + "_ext", internal=False, verbose=verbose)
+        self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", internal=True, verbose=verbose)
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved
@@ -369,7 +374,7 @@ class Worker:
         """ Transition each run then filter out finished runs """
         # We (re-)initialize the Docker networks here, in case they've been removed.
         # For any networks that exist, this is essentially a no-op.
-        self.init_docker_networks(self.docker_network_prefix)
+        self.init_docker_networks(self.docker_network_prefix, verbose=False)
         # 1. transition all runs
         for uuid in self.runs:
             run_state = self.runs[uuid]
