@@ -102,6 +102,8 @@ class AWSBatchWorkerManager(WorkerManager):
             command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
         if self.args.worker_exit_on_exception:
             command.extend(['--exit-on-exception'])
+        if self.args.worker_pass_down_termination:
+            command.extend(['--pass-down-termination'])
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-batch-jobdefinition.html
         # Need to mount:
