@@ -391,6 +391,24 @@ class BundleManager(object):
                 )
             else:
                 workers_list = resource_deducted_user_owned_workers[bundle.owner_id]
+            # Although we pre-compute the available workers, workers might go offline.
+            # As a result, we refresh the currently-online workers (by cleaning up the
+            # dead workers), and filter out the precomputed workers that are no longer online.
+            # If we don't do this, the workers might appear otherwise-eligible for runs, and we'll
+            # attempt to start every bundle on every such worker. This can take a long time (if there
+            # are many staged bundles, over an hour), and new bundles cannot be assigned to workers
+            # in the meantime.
+            self._cleanup_dead_workers(workers)
+            online_worker_ids = set(
+                worker["worker_id"]
+                for worker in (
+                    workers.user_owned_workers(bundle.owner_id)
+                    + workers.user_owned_workers(self._model.root_user_id)
+                )
+            )
+            workers_list = [
+                worker for worker in workers_list if worker["worker_id"] in online_worker_ids
+            ]
 
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
             # Try starting bundles on the workers that have enough computing resources
