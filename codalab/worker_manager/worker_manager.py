@@ -98,8 +98,6 @@ class WorkerManager(object):
     def run_one_iteration(self):
         # Get staged bundles for the current user.
         keywords = ['state=' + State.STAGED] + [".mine"] + self.args.search
-        if self.args.worker_tag:
-            keywords.append('request_queue=tag=' + self.args.worker_tag)
         bundles = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
         )
