@@ -622,7 +622,7 @@ class CodalabServiceManager(object):
                         break
                     print(
                         "process: "
-                        + stdout_line.decode('utf-8').encode('ascii', errors='replace').decode(),
+                        + stdout_line.decode('utf-8'),
                         end="",
                     )
                 popen.wait()
@@ -632,7 +632,7 @@ class CodalabServiceManager(object):
             except subprocess.CalledProcessError as e:
                 print(
                     "CalledProcessError: {}, {}".format(
-                        str(e), e.output.decode('utf-8').encode('ascii', errors='replace').decode()
+                        str(e), e.output.decode('utf-8')
                     )
                 )
                 raise e
