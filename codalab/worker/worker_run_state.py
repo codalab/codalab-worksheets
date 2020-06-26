@@ -104,6 +104,8 @@ RunState = namedtuple(
         'finalized',  # bool
         'is_restaged',  # bool
     ],
+    # Specify the default value of the newly added (rightmost) parameters, e.g. is_restaged is set to False
+    defaults=[False],
 )
 
 DependencyToMount = namedtuple('DependencyToMount', 'docker_path, child_path, parent_path')

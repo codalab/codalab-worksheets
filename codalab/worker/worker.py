@@ -175,12 +175,9 @@ class Worker:
         """
         for uuid, run_state in self.runs.items():
             values = [getattr(run_state, name) for name in run_state._fields]
-            old_len = len(run_state._fields)
-            new_len = len(RunState._fields)
-            if old_len < new_len:
-                # For any new fields, fill with the "None" value by default.
-                for i in range(old_len, new_len):
-                    values.append(None)
+            # When there are additional new fields detected, recreate the run_state object
+            # to include those new fields with defaults specified from RunState object
+            if len(run_state._fields) < len(RunState._fields):
                 run_state = RunState(*values)
             self.runs[uuid] = run_state
 
