@@ -104,7 +104,7 @@ RunState = namedtuple(
         'finalized',  # bool
         'is_restaged',  # bool
     ],
-    # Specify the default value of the newly added (rightmost) parameters, e.g. is_restaged is set to False
+    # Specify the default value of the newly added parameters (from rightmost to left), e.g. is_restaged is set to False
     defaults=[False],
 )
 
