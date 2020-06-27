@@ -171,13 +171,17 @@ class Worker:
     def sync_state(self):
         """
         Sync worker run state by appending all additional new fields in the current RunState object
-        with the default value to an older RunState object that is read from worker-state.json.
+        with the default value "None" to an older RunState object that is read from worker-state.json.
         """
         for uuid, run_state in self.runs.items():
             values = [getattr(run_state, name) for name in run_state._fields]
+            old_len = len(run_state._fields)
+            new_len = len(RunState._fields)
             # When there are additional new fields detected, recreate the run_state object
-            # to include those new fields with defaults specified from RunState object
-            if len(run_state._fields) < len(RunState._fields):
+            # to include those new fields with default "None" specified from RunState object
+            if old_len < new_len:
+                for i in range(old_len, new_len):
+                    values.append(None)
                 run_state = RunState(*values)
             self.runs[uuid] = run_state
 
