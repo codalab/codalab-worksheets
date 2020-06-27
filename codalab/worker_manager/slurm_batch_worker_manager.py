@@ -240,7 +240,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         worker_work_dir = work_dir_prefix.joinpath(Path('slurm-codalab-worker-scratch', worker_id))
 
         command = [
-            'cl-worker',
+            self.args.worker_executable,
             '--server',
             self.args.server,
             '--verbose',
