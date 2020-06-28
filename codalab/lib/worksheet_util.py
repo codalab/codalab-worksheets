@@ -928,13 +928,13 @@ def interpret_items(schemas, raw_items, db_model=None):
                         .load(
                             {
                                 'status': FetchStatusSchema.get_unknown_status(),
-                                'header': ["field", "generated-path", "post-processing"],
+                                'header': ["field", "generalized-path", "post-processor"],
                                 'schema_name': current_schema_name,
                                 'field_rows': [
                                     {
                                         "field": name,
-                                        "generated-path": path,
-                                        "post-processing": post,
+                                        "generalized-path": path,
+                                        "post-processor": post,
                                         "from_schema_name": from_schema_name,
                                     }
                                     for name, path, post, from_schema_name in current_schema

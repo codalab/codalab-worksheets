@@ -1,6 +1,7 @@
 // @flow
 import * as React from 'react';
 import { withStyles } from '@material-ui/core';
+import Button from '@material-ui/core/Button';
 import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
 import TableBody from '@material-ui/core/TableBody';
@@ -8,8 +9,7 @@ import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import CheckIcon from '@material-ui/icons/Check';
 import TextField from '@material-ui/core/TextField';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import ExpandLessIcon from '@material-ui/icons/ExpandLess';
+import ArrowDropDownRoundedIcon from '@material-ui/icons/ArrowDropDownRounded';
 import IconButton from '@material-ui/core/IconButton';
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import ArrowDropUpIcon from '@material-ui/icons/ArrowDropUp';
@@ -19,6 +19,10 @@ import AddCircleIcon from '@material-ui/icons/AddCircle';
 import EditIcon from '@material-ui/icons/Edit';
 import ClearIcon from '@material-ui/icons/Clear';
 import classNames from 'classnames';
+import ViewListIcon from '@material-ui/icons/ViewList';
+import ArrowRightRoundedIcon from '@material-ui/icons/ArrowRightRounded';
+import Tooltip from '@material-ui/core/Tooltip';
+import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 
 class SchemaItem extends React.Component<{
     worksheetUUID: string,
@@ -73,16 +77,16 @@ class SchemaItem extends React.Component<{
             }
 
             let curRow = '% add ' + fields['field'];
-            if (!fields['generated-path']) {
+            if (!fields['generalized-path']) {
                 updatedSchema.push(curRow);
                 return;
             }
-            curRow = curRow + ' ' + fields['generated-path'];
-            if (!fields['post-processing']) {
+            curRow = curRow + ' ' + fields['generalized-path'];
+            if (!fields['post-processor']) {
                 updatedSchema.push(curRow);
                 return;
             }
-            curRow = curRow + ' ' + fields['post-processing'];
+            curRow = curRow + ' ' + fields['post-processor'];
             updatedSchema.push(curRow);
         });
         this.props.updateSchemaItem(
@@ -160,16 +164,36 @@ class SchemaItem extends React.Component<{
         const schemaHeaders = schemaItem.header;
         const schema_name = schemaItem.schema_name;
         let headerHtml, bodyRowsHtml;
+        const explanations = {
+            field: 'Name of the field. ',
+            'generalized-path':
+                "Either a field of bundle's metadata (like uuid, name) or a file path inside the bundle prefixed by / (like '/stdout').\n",
+            'post-processor':
+                'Optional, a function that transforms the string value result of generalized-path, for example uuid uuid [0:8] will keep the first 8 digits of the uuid. ',
+        };
         headerHtml =
             showSchemaDetail &&
-            schemaHeaders.map((item, index) => {
+            schemaHeaders.map((header, index) => {
                 return (
                     <TableCell
                         component='th'
                         key={index}
                         style={{ padding: '5', fontSize: '16px', maxWidth: '100' }}
                     >
-                        {item}
+                        {header}
+                        <Tooltip
+                            title={
+                                explanations[header] +
+                                'Click for more information and examples on schemas'
+                            }
+                        >
+                            <IconButton
+                                href='https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown/#schemas'
+                                target='_blank'
+                            >
+                                <HelpOutlineOutlinedIcon fontSize='small' />
+                            </IconButton>
+                        </Tooltip>
                     </TableCell>
                 );
             });
@@ -181,24 +205,31 @@ class SchemaItem extends React.Component<{
                     component='th'
                     scope='row'
                 >
-                    <IconButton disabled={!editing} onClick={this.addFieldRowAfter(-1)}>
-                        <AddCircleIcon />
-                    </IconButton>
+                    <Tooltip title={'Add a new row before the first line'}>
+                        <IconButton disabled={!editing} onClick={this.addFieldRowAfter(-1)}>
+                            <AddCircleIcon />
+                        </IconButton>
+                    </Tooltip>
                     {!editing ? (
                         editPermission && (
-                            <IconButton onClick={this.toggleEdit(false, false)}>
-                                <EditIcon />
-                            </IconButton>
+                            <Button onClick={this.toggleEdit(false, false)}>
+                                <EditIcon color='primary' />
+                                {'Edit'}
+                            </Button>
                         )
                     ) : (
-                        <IconButton onClick={this.toggleEdit(false, true)}>
-                            <CheckIcon />
-                        </IconButton>
+                        <Tooltip title={'Save all changes'}>
+                            <IconButton onClick={this.toggleEdit(false, true)}>
+                                <CheckIcon />
+                            </IconButton>
+                        </Tooltip>
                     )}
                     {editing && (
-                        <IconButton onClick={this.toggleEdit(true, false)}>
-                            <ClearIcon />
-                        </IconButton>
+                        <Tooltip title={'Cancel all unsaved changes'}>
+                            <IconButton onClick={this.toggleEdit(true, false)}>
+                                <ClearIcon />
+                            </IconButton>
+                        </Tooltip>
                     )}
                 </TableCell>,
             );
@@ -208,7 +239,12 @@ class SchemaItem extends React.Component<{
             rows.map((rowItem, ind) => {
                 let rowCells = schemaHeaders.map((headerKey, col) => {
                     return (
-                        <TableCell key={col} style={{ padding: '5' }} component='th' scope='row'>
+                        <TableCell
+                            key={col}
+                            style={{ padding: '5', borderBottom: 'none' }}
+                            component='th'
+                            scope='row'
+                        >
                             <TextField
                                 id='standard-multiline-static'
                                 multiline
@@ -228,24 +264,35 @@ class SchemaItem extends React.Component<{
                             component='th'
                             scope='row'
                         >
-                            <IconButton disabled={!editing} onClick={this.addFieldRowAfter(ind)}>
-                                <AddCircleIcon />
-                            </IconButton>
-                            <IconButton disabled={!editing} onClick={this.removeFieldRow(ind)}>
-                                <DeleteSweepIcon />
-                            </IconButton>
-                            <IconButton
-                                disabled={!editing || ind === 0}
-                                onClick={this.moveFieldRow(ind, -1)}
-                            >
-                                <ArrowDropUpIcon />
-                            </IconButton>
-                            <IconButton
-                                disabled={!editing || ind === rows.length - 1}
-                                onClick={this.moveFieldRow(ind, 1)}
-                            >
-                                <ArrowDropDownIcon />
-                            </IconButton>
+                            <Tooltip title={'Add a new row after this row'}>
+                                <IconButton
+                                    disabled={!editing}
+                                    onClick={this.addFieldRowAfter(ind)}
+                                >
+                                    <AddCircleIcon />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title={'Delete this row'}>
+                                <IconButton disabled={!editing} onClick={this.removeFieldRow(ind)}>
+                                    <DeleteSweepIcon />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title={'Move this row up'}>
+                                <IconButton
+                                    disabled={!editing || ind === 0}
+                                    onClick={this.moveFieldRow(ind, -1)}
+                                >
+                                    <ArrowDropUpIcon />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title={'Move this row down'}>
+                                <IconButton
+                                    disabled={!editing || ind === rows.length - 1}
+                                    onClick={this.moveFieldRow(ind, 1)}
+                                >
+                                    <ArrowDropDownIcon />
+                                </IconButton>
+                            </Tooltip>
                         </TableCell>,
                     );
                 } else {
@@ -261,14 +308,6 @@ class SchemaItem extends React.Component<{
                     </TableBody>
                 );
             });
-        let showSchemasButton = (
-            <IconButton
-                onClick={() => this.setState({ showSchemaDetail: !showSchemaDetail })}
-                style={{ padding: 2 }}
-            >
-                {showSchemaDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            </IconButton>
-        );
         let schemaTable = null;
         if (showSchemaDetail) {
             schemaTable = (
@@ -315,10 +354,23 @@ class SchemaItem extends React.Component<{
                     this.props.setFocus(this.props.focusIndex, 0);
                 }}
             >
-                <div className={classNames(classes.item, focused ? classes.highlight : '')}>
-                    {showSchemasButton}
-                    {'Schema: ' + schemaItem.schema_name}
-                </div>
+                <Tooltip title={showSchemaDetail ? '' : 'Click to view schema'} placement='right'>
+                    <Button
+                        color='secondary'
+                        variant='outlined'
+                        onClick={() => this.setState({ showSchemaDetail: !showSchemaDetail })}
+                        style={{ paddingLeft: '20px' }}
+                        className={classNames(focused ? classes.highlight : '')}
+                    >
+                        <ViewListIcon style={{ padding: '0px' }} />
+                        {schemaItem.schema_name}
+                        {showSchemaDetail ? (
+                            <ArrowDropDownRoundedIcon />
+                        ) : (
+                            <ArrowRightRoundedIcon />
+                        )}
+                    </Button>
+                </Tooltip>
                 {schemaTable}
             </div>
         );
@@ -326,12 +378,6 @@ class SchemaItem extends React.Component<{
 }
 
 const styles = (theme) => ({
-    item: {
-        borderTop: '2px solid #ddd',
-    },
-    fullTable: {
-        borderTop: '2px solid #ddd',
-    },
     highlight: {
         backgroundColor: `${theme.color.primary.lightest} !important`,
     },
