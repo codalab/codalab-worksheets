@@ -78,7 +78,7 @@ class AWSBatchWorkerManager(WorkerManager):
         work_dir = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         command = [
-            'cl-worker',
+            self.args.worker_executable,
             '--server',
             self.args.server,
             '--verbose',
