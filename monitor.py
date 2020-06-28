@@ -73,7 +73,7 @@ if not os.path.exists(args.backup_path):
     os.mkdir(args.backup_path)
 
 # Comma-separated list of worker ids to monitor. Example: vm-clws-prod-worker-0,vm-clws-prod-worker-1
-public_workers = set(os.environ['CODALAB_PUBLIC_WORKERS'].split(','))
+public_workers = set([worker.strip() for worker in os.environ['CODALAB_PUBLIC_WORKERS'].split(',')])
 
 report = []  # Build up the current report to send in an email
 
@@ -260,6 +260,7 @@ def poll_online_workers():
         error_logs(
             'worker check failed', 'Missing value for environment variable CODALAB_PUBLIC_WORKERS.'
         )
+        return
     lines = run_command(['cl', 'workers']).split('\n')
     workers_info = lines[2:]
     online_workers = set()
@@ -329,16 +330,7 @@ while True:
                     'Uploaded file should contain the string BYTES_IN_MB, contents:\n' + cat_result,
                 )
             uuid = run_command(
-                [
-                    'cl',
-                    'run',
-                    '--request-memory',
-                    '10m',
-                    '--request-disk',
-                    '10m',
-                    'stress-test.pl:' + upload_uuid,
-                    'perl stress-test.pl 5 5 5',
-                ]
+                ['cl', 'run', 'stress-test.pl:' + upload_uuid, 'perl stress-test.pl 5 10 10']
             )
             run_command(
                 ['cl', 'wait', uuid], 600, 3600
