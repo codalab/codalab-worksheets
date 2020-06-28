@@ -325,7 +325,7 @@ class Commands(object):
             if verbose:
                 if markdown:
                     name = HEADING_LEVEL_3 + name
-                return '%s%s:\n%s\n%s' % (
+                return '%s%s\n%s\n%s' % (
                     # This is to make GitHub Markdown format compatible with the Read the Docs theme.
                     ' ' * indent if not markdown else '',
                     name,
@@ -354,22 +354,22 @@ class Commands(object):
                 """
         Usage: {inline_code}cl <command> <arguments>{inline_code}
 
-        {heading}Commands for bundles:
+        {heading}Commands for bundles
         {bundle_commands}
 
-        {heading}Commands for worksheets:
+        {heading}Commands for worksheets
         {worksheet_commands}
 
-        {heading}Commands for groups and permissions:
+        {heading}Commands for groups and permissions
         {group_and_permission_commands}
 
-        {heading}Commands for users:
+        {heading}Commands for users
         {user_commands}
 
-        {heading}Commands for managing server:
+        {heading}Commands for managing server
         {server_commands}
 
-        {heading}Other commands:
+        {heading}Other commands
         {other_commands}
         """
             )

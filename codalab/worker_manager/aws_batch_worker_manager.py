@@ -78,7 +78,7 @@ class AWSBatchWorkerManager(WorkerManager):
         work_dir = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         command = [
-            'cl-worker',
+            self.args.worker_executable,
             '--server',
             self.args.server,
             '--verbose',
@@ -98,6 +98,12 @@ class AWSBatchWorkerManager(WorkerManager):
             command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
         if self.args.worker_delete_work_dir_on_exit:
             command.extend(['--worker-delete-work-dir-on-exit'])
+        if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
+            command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
+        if self.args.worker_exit_on_exception:
+            command.extend(['--exit-on-exception'])
+        if self.args.worker_pass_down_termination:
+            command.extend(['--pass-down-termination'])
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-batch-jobdefinition.html
         # Need to mount:
