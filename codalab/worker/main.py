@@ -23,6 +23,9 @@ from codalab.worker.docker_image_manager import DockerImageManager
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_EXIT_AFTER_NUM_RUNS = 999999999
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
     parser.add_argument('--tag', help='Tag that allows for scheduling runs on specific workers.')
@@ -144,7 +147,7 @@ def parse_args():
     parser.add_argument(
         '--exit-after-num-runs',
         type=int,
-        default=sys.maxsize,
+        default=DEFAULT_EXIT_AFTER_NUM_RUNS,
         help='The worker quits after this many jobs assigned to this worker',
     )
     parser.add_argument(
