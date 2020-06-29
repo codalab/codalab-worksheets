@@ -369,6 +369,7 @@ class NavBar extends React.Component<{
                             <IconButton
                                 href='https://github.com/codalab/codalab-worksheets/issues'
                                 target='_blank'
+                                rel='noopener noreferrer'
                             >
                                 <ContactIcon />
                             </IconButton>

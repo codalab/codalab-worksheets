@@ -50,7 +50,7 @@ class HomePage extends React.Component<{
         return (
             <TableRow style={{ height: 0 }}>
                 <TableCell>
-                    <a target='_blank' href={href}>
+                    <a target='_blank' rel='noopener noreferrer' href={href}>
                         {title}
                     </a>
                 </TableCell>
@@ -137,6 +137,7 @@ class HomePage extends React.Component<{
                         </Grid>
                         <Grid item xs={12} sm={7} className={classes.textBox}>
                             <img
+                                alt='Upload'
                                 src={`${process.env.PUBLIC_URL}/img/summary1.png`}
                                 className={classes.summaryImg}
                             />
@@ -164,6 +165,7 @@ class HomePage extends React.Component<{
                         </Grid>
                         <Grid item xs={12} sm={7} className={classes.textBox}>
                             <img
+                                alt='Experiment'
                                 src={`${process.env.PUBLIC_URL}/img/summary2.png`}
                                 className={classes.summaryImg}
                             />
@@ -192,6 +194,7 @@ class HomePage extends React.Component<{
                         </Grid>
                         <Grid item xs={12} sm={7} className={classes.textBox}>
                             <img
+                                alt='Publish'
                                 src={`${process.env.PUBLIC_URL}/img/summary3.png`}
                                 className={classes.summaryImg}
                             />
@@ -222,6 +225,7 @@ class HomePage extends React.Component<{
                                     color='primary'
                                     href='https://github.com/codalab/worksheets-examples'
                                     target='_blank'
+                                    rel='noopener noreferrer'
                                 >
                                     Go To Repo
                                 </Button>
@@ -299,12 +303,14 @@ class HomePage extends React.Component<{
 
                             <Grid item className={classes.textBox}>
                                 <img
+                                    alt='Stanford'
                                     src={`${process.env.PUBLIC_URL}/img/users/stanford.png`}
                                     className={classes.userLogo}
                                 />
                             </Grid>
                             <Grid item className={classes.textBox}>
                                 <img
+                                    alt='Microsoft'
                                     src={`${process.env.PUBLIC_URL}/img/users/microsoft.png`}
                                     className={classes.userLogo}
                                 />
