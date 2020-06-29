@@ -170,20 +170,20 @@ class Worker:
 
     def sync_state(self):
         """
-        Sync worker run state by appending all additional new fields in the current RunState object
-        with the default value "None" to an older RunState object that is read from worker-state.json.
+        Sync worker run state by matching the fields that are read from worker-state.json with the RunState object.
         """
         for uuid, run_state in self.runs.items():
-            values = [getattr(run_state, name) for name in run_state._fields]
-            old_len = len(run_state._fields)
-            new_len = len(RunState._fields)
-            # When there are additional new fields detected, recreate the run_state object
-            # to include those new fields with default "None" specified from RunState object
-            if old_len < new_len:
-                for i in range(old_len, new_len):
+            if run_state._fields == RunState._fields:
+                continue
+            values = []
+            for field in RunState._fields:
+                # When there are additional new fields or missing fields detected, recreate the run_state
+                # object to include or delete those fields specified from the RunState object
+                if field in run_state._fields:
+                    values.append(getattr(run_state, field))
+                else:
                     values.append(None)
-                run_state = RunState(*values)
-            self.runs[uuid] = run_state
+            self.runs[uuid] = RunState(*values)
 
     def check_idle_stop(self):
         """
