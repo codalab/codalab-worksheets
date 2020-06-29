@@ -249,6 +249,7 @@ class WorksheetItemList extends React.Component {
             );
             items_display = (
                 <>
+                    {/*Show new runs/text at the top of worksheet when no blocks are focused*/}
                     {this.props.showNewText && !focusedItem && (
                         <TextEditorItem
                             mode='create'
