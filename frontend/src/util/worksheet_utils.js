@@ -195,7 +195,7 @@ export function worksheetItemPropsChanged(props, nextProps) {
 export function buildTerminalCommand(args) {
     var ret = [];
     args.forEach(function(s) {
-        if (/[^A-Za-z0-9_\/:=-]/.test(s)) {
+        if (/[^A-Za-z0-9_s/:=-]/.test(s)) {
             s = "'" + s.replace(/'/g, "'\\''") + "'";
             s = s
                 .replace(/^(?:'')+/g, '') // unduplicate single-quote at the beginning
@@ -219,7 +219,7 @@ export function createAlertText(requestURL, responseText, solution) {
 
 // the five functions below are used for uplading files on the web. Some of them are the same as some functions on the CLI.
 export const ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip', '.gz'];
-export const NOT_NAME_CHAR_REGEX = /[^a-zA-Z0-9_\.\-]/gi;
+export const NOT_NAME_CHAR_REGEX = /[^a-zA-Z0-9_.-]/gi;
 export const BEGIN_NAME_REGEX = /[a-zA-Z_]/gi;
 
 // same as shorten_name in /lib/spec_util.py
@@ -264,7 +264,7 @@ export function getArchiveExt(name) {
 export function createDefaultBundleName(name) {
     name = stripArchiveExt(name);
     name = name.replace(NOT_NAME_CHAR_REGEX, '-');
-    name = name.replace(/\-+/gi, '-'); // Collapse '---' => '-'
+    name = name.replace(/-+/gi, '-'); // Collapse '---' => '-'
     var beginChar = name.charAt(0);
     if (!beginChar.match(BEGIN_NAME_REGEX)) {
         name = '_' + name;
