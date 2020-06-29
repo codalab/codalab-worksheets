@@ -12,6 +12,7 @@ from codalab.lib import spec_util
 from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from codalab.worker.bundle_state import BundleCheckinState
+from codalab.worker.main import DEFAULT_EXIT_AFTER_NUM_RUNS
 
 
 @post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedPlugin())
@@ -35,7 +36,7 @@ def checkin(worker_id):
         request.json["dependencies"],
         request.json.get("shared_file_system", False),
         request.json.get("tag_exclusive", False),
-        request.json.get("exit_after_num_runs"),
+        request.json.get("exit_after_num_runs", DEFAULT_EXIT_AFTER_NUM_RUNS),
     )
 
     for run in request.json["runs"]:
