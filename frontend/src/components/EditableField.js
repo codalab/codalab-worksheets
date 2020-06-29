@@ -7,7 +7,7 @@ import { renderFormat, serializeFormat } from '../util/worksheet_utils';
 const KEYCODE_ESC = 27;
 
 function isAscii(str) {
-    return /^[\x00-\x7F]*$/.test(str);
+    return /^[\x20-\x7F]*$/.test(str);
 }
 
 class EditableFieldBase extends React.Component<{
