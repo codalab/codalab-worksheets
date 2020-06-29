@@ -173,6 +173,7 @@ class BundleRow extends Component {
                         href={url}
                         className='bundle-link'
                         target='_blank'
+                        rel='noopener noreferrer'
                         style={{ display: 'inline-block', width: 60 }}
                     >
                         {rowContent}
