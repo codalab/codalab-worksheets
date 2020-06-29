@@ -496,7 +496,6 @@ def test(ctx):
     _run_command(['python3', os.path.join(base_path, 'scripts/gen-cli-docs.py'), '--docs', '/tmp'])
 
 
-# TODO: This test is failing in staging branch. Disable for now.
 @TestModule.register('gen-readthedocs')
 def test(ctx):
     """Generate the readthedocs site."""
