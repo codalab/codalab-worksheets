@@ -57,8 +57,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "check-ci": "eslint src && prettier --config ./.prettierrc --check 'src/**/*.js'",
-    "format": "eslint src --fix && prettier --config ./.prettierrc --check 'src/**/*.js' --write"
+    "check-ci": "CI=true eslint src && prettier --config ./.prettierrc --check 'src/**/*.js'",
+    "format": "CI=true eslint src --fix && prettier --config ./.prettierrc --check 'src/**/*.js' --write"
   },
   "husky": {
     "hooks": {
