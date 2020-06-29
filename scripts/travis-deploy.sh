@@ -14,7 +14,7 @@ tag=$1
 PUSH_FLAG=$([ -z "${CODALAB_DOCKER_USERNAME}" ] || echo "--push")
 
 python3 codalab_service.py build --version v$tag --pull $PUSH_FLAG
-# if [ "$tag" != "master" ]; then
-#   python3 codalab_service.py build --version latest --pull $PUSH_FLAG
-#   ./scripts/upload-to-pypi.sh $tag
-# fi
+if [ "$tag" != "master" ]; then
+  python3 codalab_service.py build --version latest --pull $PUSH_FLAG
+  ./scripts/upload-to-pypi.sh $tag
+fi
