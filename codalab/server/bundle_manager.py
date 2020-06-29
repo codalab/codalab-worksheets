@@ -411,8 +411,9 @@ class BundleManager(object):
                 )
             )
             # Store the workers that have gone offline.
-            offline_workers.update([worker for worker in workers_list if
-                                    worker["worker_id"] not in online_worker_ids])
+            offline_workers.update(
+                [worker for worker in workers_list if worker["worker_id"] not in online_worker_ids]
+            )
             # Filter worker that have gone offline. Note that we can't just use
             # online_worker_ids here, since we want to also exclude workers that go
             # offline, and then later come back online while we're still dispatching bundles.
