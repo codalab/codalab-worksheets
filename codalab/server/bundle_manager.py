@@ -381,7 +381,11 @@ class BundleManager(object):
             workers.user_owned_workers(self._model.root_user_id), running_bundles_info
         )
 
-        workers_list = []
+        # We store a running record of the workers that go offline while we're dispatching
+        # bundles, so if they come back online, we continue to ignore them in order in order to
+        # respect bundle prioritization. Such workers will be assigned bundles in the BundleManager's
+        # next iteration.
+        offline_workers = set()
         # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
             if user_parallel_run_quota_left[bundle.owner_id] > 0:
@@ -406,8 +410,14 @@ class BundleManager(object):
                     + workers.user_owned_workers(self._model.root_user_id)
                 )
             )
+            # Store the workers that have gone offline.
+            offline_workers.update([worker for worker in workers_list if
+                                    worker["worker_id"] not in online_worker_ids])
+            # Filter worker that have gone offline. Note that we can't just use
+            # online_worker_ids here, since we want to also exclude workers that go
+            # offline, and then later come back online while we're still dispatching bundles.
             workers_list = [
-                worker for worker in workers_list if worker["worker_id"] in online_worker_ids
+                worker for worker in workers_list if worker["worker_id"] not in offline_workers
             ]
 
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
@@ -430,7 +440,7 @@ class BundleManager(object):
         # To avoid the potential race condition between bundle manager's dispatch frequency and
         # worker's checkin frequency, update the column "exit_after_num_runs" in worker table
         # before bundle manager's next scheduling loop
-        for worker in workers_list:
+        for worker in workers.workers():
             # Update workers that have "exit_after_num_runs" manually set from CLI.
             if (
                 worker['exit_after_num_runs']
