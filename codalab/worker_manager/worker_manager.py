@@ -7,6 +7,7 @@ import traceback
 import urllib
 
 from codalab.common import NotFoundError
+from codalab.client.json_api_client import JsonApiException
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.bundle_state import State
 
@@ -84,7 +85,13 @@ class WorkerManager(object):
         while True:
             try:
                 self.run_one_iteration()
-            except (urllib.error.URLError, http.client.HTTPException, socket.error, NotFoundError):
+            except (
+                urllib.error.URLError,
+                http.client.HTTPException,
+                socket.error,
+                NotFoundError,
+                JsonApiException,
+            ):
                 # Sometimes, network errors occur when running the WorkerManager . These are often
                 # transient exceptions, and retrying the command would lead to success---as a result,
                 # we ignore these network-based exceptions (rather than fatally exiting from the
