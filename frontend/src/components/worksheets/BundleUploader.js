@@ -12,7 +12,6 @@ import {
 } from '../../util/worksheet_utils';
 import Button from '../Button';
 import ReactDOM from 'react-dom';
-import 'jquery-ui-bundle';
 
 const PROGRESS_BAR_ID = 'progressbar-';
 const PROGRESS_LABEL_ID = 'progressbar-label-';
