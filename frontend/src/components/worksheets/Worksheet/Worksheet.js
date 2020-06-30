@@ -13,7 +13,6 @@ import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
 import InformationModal from '../InformationModal/InformationModal';
-import 'jquery-ui-bundle';
 import WorksheetHeader from './WorksheetHeader';
 import {
     NAVBAR_HEIGHT,
@@ -570,7 +569,7 @@ class Worksheet extends React.Component {
             // focusedBundleUuidList is a list of uuids of all bundles after the selected bundle (itself included)
             // Say the selected bundle has focusIndex 1 and subFocusIndex 2, then focusedBundleUuidList will include the uuids of
             // all the bundles that have focusIndex 1 and subFocusIndex >= 2, and also all the bundles that have focusIndex > 1
-            for (var i = index; i < info.blocks.length; i++) {
+            for (let i = index; i < info.blocks.length; i++) {
                 if (info.blocks[i].bundles_spec) {
                     var j = i === index ? subIndex : 0;
                     for (; j < (this._numTableRows(info.blocks[i]) || 1); j++) {
@@ -1511,6 +1510,7 @@ class Worksheet extends React.Component {
                 Press ctrl-enter to save. See{' '}
                 <a
                     target='_blank'
+                    rel='noopener noreferrer'
                     href='https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown'
                 >
                     markdown syntax

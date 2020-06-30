@@ -7,6 +7,6 @@ export default () => (
             left: '50%',
         }}
     >
-        <img src={`${process.env.PUBLIC_URL}/img/Preloader_Small.gif`} />
+        <img alt='Loading' src={`${process.env.PUBLIC_URL}/img/Preloader_Small.gif`} />
     </div>
 );
