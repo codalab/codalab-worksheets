@@ -137,7 +137,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             if 'FAILED' in job_state:
                 jobs_to_remove.add(job_id)
                 logger.error("Failed to start job {}".format(job_id))
-            elif 'COMPLETED' in job_state or 'CANCELLED' in job_state:
+            elif 'COMPLETED' in job_state or 'CANCELLED' in job_state or "TIMEOUT" in job_state:
                 jobs_to_remove.add(job_id)
                 logger.info("Removing job ID {}".format(job_id))
         self.submitted_jobs = self.submitted_jobs - jobs_to_remove
