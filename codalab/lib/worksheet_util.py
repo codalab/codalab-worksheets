@@ -202,7 +202,7 @@ def get_formatted_metadata(cls, metadata, raw=False):
                 continue
             value = apply_func(spec.formatting, metadata.get(key))
             if isinstance(value, list):
-                value = ' | '.join(value)
+                value = ' '.join(value)
         else:
             value = metadata.get(key)
         result.append((key, value))
