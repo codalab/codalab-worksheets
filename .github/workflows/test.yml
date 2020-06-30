@@ -59,8 +59,7 @@ jobs:
           - search read kill write mimic workers
           - resources
           - memoize
-          - copy netcat
-          - netcurl
+          - copy netcat netcurl
     steps:
       - name: Clear free space
         run: |
