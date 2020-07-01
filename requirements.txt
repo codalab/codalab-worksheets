@@ -1,4 +1,4 @@
-bottle==0.12.9
+bottle==0.12.18
 docker==3.7.0
 marshmallow-jsonapi==0.15.1
 marshmallow==2.15.1
