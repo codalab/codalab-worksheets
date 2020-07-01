@@ -142,7 +142,7 @@ jobs:
     needs: [build]
     strategy:
       matrix:
-        test: [run,run2,read write kill resources link]
+        test: [run,run2,link read write kill resources]
     steps:
       - name: Clear free space
         run: |
