@@ -1,10 +1,14 @@
 # Storage Externalization
 
-## --link
+## Link functionality
 
-CodaLab allows storage externalization by using the `--link` argument when running `cl upload`. This makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contents in its own bundle store.
+CodaLab allows storage externalization by passing a file path to the `--link` argument when running `cl upload`. This makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contents in its own bundle store.
 
-Note that the path specified by `--link` must be accessible by the CodaLab server, so the `--link` functionality is useful when you have a shared filesystem that both the server and users of CodaLab access, and the users just want to refer to specific files on the filesystem.
+Note that the path specified by `--link` must be accessible by the CodaLab server, so the `--link` functionality is useful for private instances of CodaLab in which the server and users both have access to the same filesystem.
+
+In this case, it would be inefficient to copy every bundle upload to a separate bundle store. Additionally, using `--link` would make debugging easier by allowing users to directly mutate the underlying files that a bundle is associated with.
+
+### CLI usage
 
 Here is an example of using the link functionality:
 
@@ -21,11 +25,11 @@ Compare this operation to a normal upload, in which `/var/data/a.txt` will be up
 cl upload /var/data/a.txt
 ```
 
-### Allowed paths
+### Server setup with --link
 
-For security reasons, in order for the `--link` command to work with file paths, either the `CODALAB_LINK_ALLOWED_PATHS` environment variable or the `--link_allowed_paths` command-line parameter to `codalab_service.py` must be set on the server. This must be equal to a glob expression that specifies the allowed paths that `--link` can grab data from.
+For security reasons, the `--link` argument is not enabled by default on CodaLab installations. In order to enable it, either `CODALAB_LINK_ALLOWED_PATHS` environment variable or the `--link_allowed_paths` command-line parameter to `codalab_service.py` must be set on the server. This variable must be equal to a glob expression that specifies the allowed paths that `--link` can grab data from.
 
-For example, in order to restrict all linked paths to files inside the `/var/data` directory, run the server with this command:
+For example, in order to restrict all possible linked paths to files inside the `/var/data` directory, run the server with this command:
 
 ```bash
 python codalab_service.py --link_allowed_paths=/var/data/**
