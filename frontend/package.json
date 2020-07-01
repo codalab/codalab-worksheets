@@ -28,7 +28,7 @@
     "react": "^16.8.6",
     "react-bootstrap": "^1.0.1",
     "react-circular-progressbar": "^2.0.3",
-    "react-cookie": "^3.0.8",
+    "react-cookie": "^4.0.3",
     "react-copy-to-clipboard": "^5.0.1",
     "react-dom": "^16.8.6",
     "react-responsive-embed": "^2.1.0",
