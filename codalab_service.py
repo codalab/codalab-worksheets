@@ -624,21 +624,13 @@ class CodalabServiceManager(object):
                     stdout_line = popen.stdout.readline()
                     if not stdout_line:
                         break
-                    print(
-                        "process: "
-                        + stdout_line.decode('utf-8').encode('ascii', errors='replace').decode(),
-                        end="",
-                    )
+                    print("process: " + stdout_line.decode('utf-8'), end="")
                 popen.wait()
                 success = popen.returncode == 0
                 if not success:
                     raise Exception('Command exited with code {}'.format(popen.returncode))
             except subprocess.CalledProcessError as e:
-                print(
-                    "CalledProcessError: {}, {}".format(
-                        str(e), e.output.decode('utf-8').encode('ascii', errors='replace').decode()
-                    )
-                )
+                print("CalledProcessError: {}, {}".format(str(e), e.output.decode('utf-8')))
                 raise e
         print('')
         return success

@@ -206,7 +206,9 @@ class StressTestRunner:
         self._set_worksheet('infinite_memory')
         file = self._create_infinite_memory_script()
         self._run_bundle([self._cl, 'upload', file.name()])
-        self._run_bundle([self._cl, 'run', ':' + file.name(), 'python ' + file.name()])
+        self._run_bundle(
+            [self._cl, 'run', ':' + file.name(), 'python ' + file.name()], expected_exit_code=1
+        )
         file.delete()
 
     def _create_infinite_memory_script(self):
@@ -221,7 +223,8 @@ class StressTestRunner:
         self._run_bundle([self._cl, 'upload', file.name()])
         for _ in range(self._args.infinite_gpu_runs_count):
             self._run_bundle(
-                [self._cl, 'run', ':' + file.name(), 'python ' + file.name(), '--request-gpus=1']
+                [self._cl, 'run', ':' + file.name(), 'python ' + file.name(), '--request-gpus=1'],
+                expected_exit_code=1,
             )
         file.delete()
 
@@ -257,9 +260,9 @@ class StressTestRunner:
             random.choice(string.ascii_lowercase + string.ascii_uppercase) for _ in range(24)
         )
 
-    def _run_bundle(self, args):
+    def _run_bundle(self, args, expected_exit_code=0):
         args.append('--tags=%s' % StressTestRunner._TAG)
-        return run_command(args)
+        return run_command(args, expected_exit_code)
 
     def cleanup(self):
         if self._args.bypass_cleanup:
