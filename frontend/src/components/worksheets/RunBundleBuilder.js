@@ -305,7 +305,7 @@ class BundleBrowser extends React.Component {
                                                     '',
                                                 )}
                                             />
-                                            <a href={url} target='_blank'>
+                                            <a href={url} target='_blank' rel='noopener noreferrer'>
                                                 {b.metadata.name}({short_uuid})
                                             </a>
                                         </td>

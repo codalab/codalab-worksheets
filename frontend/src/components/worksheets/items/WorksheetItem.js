@@ -64,7 +64,7 @@ class WorksheetItem extends React.Component {
         if (item.mode === 'subworksheets_block') {
             return item.subworksheet_infos;
         } else {
-            throw 'Invalid: ' + item.mode;
+            throw new Error('Invalid: ' + item.mode);
         }
     }
 
@@ -145,7 +145,7 @@ class TableWorksheetRow extends React.Component {
             <tr className={className}>
                 <td>
                     <div onClick={this.handleRowClick}>
-                        <a href='javascript:void(0)' onClick={this.handleTextClick}>
+                        <a href='#' onClick={this.handleTextClick}>
                             {`${item.title + ' '}[${item.name}]`}
                         </a>
                     </div>
