@@ -685,11 +685,18 @@ class BundleManager(object):
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
         if shared_file_system:
-            # TODO: fix for --link
-            message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
+            bundle_link_url = getattr(bundle.metadata, "link_url", None)
+            message['bundle'][
+                'location'
+            ] = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
+            parent_bundle_link_urls = self._model.get_bundle_metadata(
+                [dep['parent_uuid'] for dep in message['bundle']['dependencies']], "link_url"
+            )
             for dependency in message['bundle']['dependencies']:
-                dependency['location'] = self._bundle_store.get_bundle_location(
-                    dependency['parent_uuid']
+                parent_bundle_link_url = parent_bundle_link_urls.get(dependency['parent_uuid'])
+                dependency['location'] = (
+                    parent_bundle_link_url
+                    or self._bundle_store.get_bundle_location(dependency['parent_uuid'])
                 )
 
         # Figure out the resource requirements.

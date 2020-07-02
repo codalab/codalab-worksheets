@@ -1017,7 +1017,7 @@ class BundleModel(object):
             self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
 
         if worker['shared_file_system']:
-            # TODO: fix.
+            # TODO: fix for --link.
             self.update_disk_metadata(bundle, bundle_location)
 
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
