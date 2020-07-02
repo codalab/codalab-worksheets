@@ -158,6 +158,7 @@ jobs:
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
           VERSION: ${{ github.head_ref || 'master' }}
+          CODALAB_LINK_ALLOWED_PATHS: /opt*
       - name: Run shared filesystem tests
         run: |
           python3 codalab_service.py start --services default --version ${VERSION} --shared-file-system
