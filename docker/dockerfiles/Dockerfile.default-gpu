@@ -1,4 +1,4 @@
-FROM nvidia/cuda:9.2-cudnn7-devel
+FROM nvidia/cuda:10.2-cudnn7-devel
 MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 
 ############################################################
