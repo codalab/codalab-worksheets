@@ -109,6 +109,7 @@ class Worker:
         self.last_time_ran = None  # type: Optional[bool]
 
         self.runs = {}  # type: Dict[str, RunState]
+        self.docker_network_prefix = docker_network_prefix
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
             docker_image_manager=self.image_manager,
@@ -122,24 +123,35 @@ class Worker:
             shared_file_system=self.shared_file_system,
         )
 
-    def init_docker_networks(self, docker_network_prefix):
+    def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
         Set up docker networks for runs: one with external network access and one without
         """
 
-        def create_or_get_network(name, internal):
+        def create_or_get_network(name, internal, verbose):
             try:
-                logger.debug('Creating docker network %s', name)
-                return self.docker.networks.create(name, internal=internal, check_duplicate=True)
+                if verbose:
+                    logger.debug('Creating docker network %s', name)
+                network = self.docker.networks.create(name, internal=internal, check_duplicate=True)
+                # This logging statement is only run if a network is created.
+                logger.debug('Created docker network %s', name)
+                return network
             except docker.errors.APIError:
-                logger.debug('Network %s already exists, reusing', name)
+                if verbose:
+                    logger.debug('Network %s already exists, reusing', name)
                 return self.docker.networks.list(names=[name])[0]
 
         # Right now the suffix to the general worker network is hardcoded to manually match the suffix
         # in the docker-compose file, so make sure any changes here are synced to there.
-        self.worker_docker_network = create_or_get_network(docker_network_prefix + "_general", True)
-        self.docker_network_external = create_or_get_network(docker_network_prefix + "_ext", False)
-        self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", True)
+        self.worker_docker_network = create_or_get_network(
+            docker_network_prefix + "_general", internal=True, verbose=verbose
+        )
+        self.docker_network_external = create_or_get_network(
+            docker_network_prefix + "_ext", internal=False, verbose=verbose
+        )
+        self.docker_network_internal = create_or_get_network(
+            docker_network_prefix + "_int", internal=True, verbose=verbose
+        )
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved
@@ -168,6 +180,23 @@ class Worker:
                 resources=RunResources.from_dict(run_state.resources),
             )
 
+    def sync_state(self):
+        """
+        Sync worker run state by matching the fields that are read from worker-state.json with the RunState object.
+        """
+        for uuid, run_state in self.runs.items():
+            if run_state._fields == RunState._fields:
+                continue
+            values = []
+            for field in RunState._fields:
+                # When there are additional new fields or missing fields detected, recreate the run_state
+                # object to include or delete those fields specified from the RunState object
+                if field in run_state._fields:
+                    values.append(getattr(run_state, field))
+                else:
+                    values.append(None)
+            self.runs[uuid] = RunState(*values)
+
     def check_idle_stop(self):
         """
         Checks whether the worker is idle (ie if it hasn't had runs for longer than the configured
@@ -194,6 +223,7 @@ class Worker:
     def start(self):
         """Return whether we ran anything."""
         self.load_state()
+        self.sync_state()
         self.image_manager.start()
         if not self.shared_file_system:
             self.dependency_manager.start()
@@ -366,6 +396,9 @@ class Worker:
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
+        # We (re-)initialize the Docker networks here, in case they've been removed.
+        # For any networks that exist, this is essentially a no-op.
+        self.init_docker_networks(self.docker_network_prefix, verbose=False)
         # 1. transition all runs
         for uuid in self.runs:
             run_state = self.runs[uuid]
