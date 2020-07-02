@@ -96,11 +96,11 @@ RUN python -m spacy download en
 RUN python3 -m spacy download en
 
 RUN pip2 install -U \
-      tensorflow-gpu==1.12.0 \
+      tensorflow-gpu==1.13.0 \
       tensorboard \
       keras
 RUN python3 -m pip install -U \
-      tensorflow-gpu==1.12.0 \
+      tensorflow-gpu==1.13.0 \
       tensorboard \
       keras
 
