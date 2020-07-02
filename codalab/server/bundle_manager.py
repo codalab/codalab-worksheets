@@ -381,6 +381,7 @@ class BundleManager(object):
             workers.user_owned_workers(self._model.root_user_id), running_bundles_info
         )
 
+        workers_list = []
         # We store a running record of the workers that go offline while we're dispatching
         # bundles, so if they come back online, we continue to ignore them in order in order to
         # respect bundle prioritization. Such workers will be assigned bundles in the BundleManager's
@@ -445,7 +446,7 @@ class BundleManager(object):
         # To avoid the potential race condition between bundle manager's dispatch frequency and
         # worker's checkin frequency, update the column "exit_after_num_runs" in worker table
         # before bundle manager's next scheduling loop
-        for worker in workers.workers():
+        for worker in workers_list:
             # Update workers that have "exit_after_num_runs" manually set from CLI.
             if (
                 worker['exit_after_num_runs']
