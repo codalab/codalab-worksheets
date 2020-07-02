@@ -36,7 +36,7 @@
     "react-select": "^2.4.3",
     "react-stickynode": "^2.1.1",
     "react-toastify": "^6.0.6",
-    "sass": "^1.23.3",
+    "sass": "^1.26.9",
     "seamless-immutable": "^7.1.4",
     "semantic-ui-react": "^0.88.2",
     "underscore": "^1.9.1"
