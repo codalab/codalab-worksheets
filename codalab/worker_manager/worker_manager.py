@@ -104,7 +104,12 @@ class WorkerManager(object):
 
     def run_one_iteration(self):
         # Get staged bundles for the current user.
-        keywords = ['state=' + State.STAGED] + [".mine"] + self.args.search
+        keywords = ['state=' + State.STAGED] + self.args.search
+        # If the current user is "codalab", don't filter by .mine because the workers owned
+        # by "codalab" can be shared by all users. But, for all other users, we only
+        # want to see their staged bundles.
+        if os.environ.get('CODALAB_USERNAME') != "codalab":
+            keywords += [".mine"]
         bundles = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
         )
