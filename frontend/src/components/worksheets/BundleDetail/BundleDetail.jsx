@@ -179,7 +179,7 @@ class BundleDetail extends React.Component<
             }
         }).fail(function(xhr, status, err) {
             // 404 Not Found errors are normal if contents aren't available yet, so ignore them
-            if (xhr.status != 404) {
+            if (xhr.status !== 404) {
                 this.setState({
                     bundleInfo: null,
                     fileContents: null,

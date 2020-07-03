@@ -120,7 +120,11 @@ class WorksheetTerminal extends React.Component {
                         var link = '/' + hyperlink_info['type'] + 's/' + hyperlink_info['uuid'];
                         return html.replace(
                             key,
-                            '<a href=' + link + " target='_blank'>" + key + '</a>',
+                            '<a href=' +
+                                link +
+                                " target='_blank' rel='noopener noreferrer'>" +
+                                key +
+                                '</a>',
                         );
                     } else {
                         console.warn(

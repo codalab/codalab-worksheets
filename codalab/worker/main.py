@@ -10,6 +10,7 @@ import logging
 import signal
 import socket
 import stat
+import subprocess
 import sys
 import psutil
 
@@ -21,6 +22,9 @@ from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
 
 logger = logging.getLogger(__name__)
+
+
+DEFAULT_EXIT_AFTER_NUM_RUNS = 999999999
 
 
 def parse_args():
@@ -144,7 +148,7 @@ def parse_args():
     parser.add_argument(
         '--exit-after-num-runs',
         type=int,
-        default=sys.maxsize,
+        default=DEFAULT_EXIT_AFTER_NUM_RUNS,
         help='The worker quits after this many jobs assigned to this worker',
     )
     parser.add_argument(
@@ -303,8 +307,21 @@ def parse_gpuset_args(arg):
         return set()
 
     try:
-        all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
-    except docker_utils.DockerException:
+        # We run nvidia-smi on the host directly, in order to respect
+        # environment variables like CUDA_VISIBLE_DEVICES or other restrictions
+        # that, for instance, might be placed by Slurm or a similar resource
+        # allocation system. Running nvidia-smi in Docker ignores these
+        # restrictions, hence why we don't just simply use
+        # docker_utils.get_nvidia_devices()
+        nvidia_command = ['nvidia-smi', '--query-gpu=index,uuid', '--format=csv,noheader']
+        output = subprocess.run(
+            nvidia_command, stdout=subprocess.PIPE, check=True, universal_newlines=True
+        ).stdout
+        print(output.split('\n')[:-1])
+        all_gpus = {
+            gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]
+        }
+    except (subprocess.CalledProcessError, FileNotFoundError):
         all_gpus = {}
 
     if arg == 'ALL':

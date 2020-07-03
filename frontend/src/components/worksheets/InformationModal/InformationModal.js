@@ -187,7 +187,11 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
             </table>
             <div>
                 For terminal keyboard shortcuts, see{' '}
-                <a href='http://terminal.jcubic.pl/api_reference.php#shortcuts' target='_blank'>
+                <a
+                    href='http://terminal.jcubic.pl/api_reference.php#shortcuts'
+                    target='_blank'
+                    rel='noopener noreferrer'
+                >
                     here
                 </a>{' '}
             </div>
@@ -198,7 +202,7 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
 let InformationModal = ({ showInformationModal, toggleInformationModal }) => (
     <React.Fragment>
         <div id='update_progress' className='progress-message'>
-            <img src='/img/Preloader_Small.gif' /> Updating...
+            <img alt='Updating' src='/img/Preloader_Small.gif' /> Updating...
         </div>
         <KeyboardShortcutModal show={showInformationModal} toggle={toggleInformationModal} />
     </React.Fragment>
