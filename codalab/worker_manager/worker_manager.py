@@ -103,7 +103,8 @@ class WorkerManager(object):
             time.sleep(self.args.sleep_time)
 
     def run_one_iteration(self):
-        # Get staged bundles for the current user.
+        # Get staged bundles for the current user. The principle here is that we want to get all of
+        # the staged bundles can be run by this user.
         keywords = ['state=' + State.STAGED] + self.args.search
         # If the current user is "codalab", don't filter by .mine because the workers owned
         # by "codalab" can be shared by all users. But, for all other users, we only
