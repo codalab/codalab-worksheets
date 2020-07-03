@@ -37,7 +37,7 @@ def checkin(worker_id):
         request.json.get("shared_file_system", False),
         request.json.get("tag_exclusive", False),
         request.json.get("exit_after_num_runs", DEFAULT_EXIT_AFTER_NUM_RUNS),
-        request.json.get("is_terminating"),
+        request.json.get("is_terminating", False),
     )
 
     for run in request.json["runs"]:
