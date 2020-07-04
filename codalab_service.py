@@ -147,6 +147,12 @@ CODALAB_ARGUMENTS = [
         default='codalab',
     ),
     CodalabArg(
+        name='protected_mode',
+        help='Whether to run the instance in protected mode',
+        type=bool,
+        default=False,
+    ),
+    CodalabArg(
         name='worker_network_prefix',
         help='Network name for the worker',
         default=lambda args: args.instance_name + '-worker-network',

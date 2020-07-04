@@ -35,14 +35,14 @@ from codalab.rest.schemas import (
 )
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
-from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalab.server.authenticated_plugin import AuthenticatedPlugin, ProtectedAuthenticatedPlugin
 from codalab.worker.bundle_state import State
 from codalab.worker.download_util import BundleTarget
 
 logger = logging.getLogger(__name__)
 
 
-@get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR)
+@get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR, apply=ProtectedAuthenticatedPlugin())
 def _fetch_bundle(uuid):
     """
     Fetch bundle by UUID.
@@ -59,7 +59,7 @@ def _fetch_bundle(uuid):
     return document
 
 
-@get('/bundles')
+@get('/bundles', apply=ProtectedAuthenticatedPlugin())
 def _fetch_bundles():
     """
     Fetch bundles in the following two ways:
@@ -429,7 +429,11 @@ def _fetch_bundle_contents_info(uuid, path=''):
     return {'data': info}
 
 
-@put('/bundles/<uuid:re:%s>/netcat/<port:int>/' % spec_util.UUID_STR, name='netcat_bundle')
+@put(
+    '/bundles/<uuid:re:%s>/netcat/<port:int>/' % spec_util.UUID_STR,
+    name='netcat_bundle',
+    apply=ProtectedAuthenticatedPlugin(),
+)
 def _netcat_bundle(uuid, port):
     """
     Send a raw bytestring into the specified port of the running bundle with uuid.
@@ -450,22 +454,27 @@ def _netcat_bundle(uuid, port):
 @post(
     '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
     name='netcurl_bundle',
+    apply=ProtectedAuthenticatedPlugin(),
 )
 @put(
     '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
     name='netcurl_bundle',
+    apply=ProtectedAuthenticatedPlugin(),
 )
 @delete(
     '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
     name='netcurl_bundle',
+    apply=ProtectedAuthenticatedPlugin(),
 )
 @get(
     '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
     name='netcurl_bundle',
+    apply=ProtectedAuthenticatedPlugin(),
 )
 @patch(
     '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
     name='netcurl_bundle',
+    apply=ProtectedAuthenticatedPlugin(),
 )
 def _netcurl_bundle(uuid, port, path=''):
     """
@@ -517,10 +526,15 @@ def _netcurl_bundle(uuid, port, path=''):
         request.path_shift(-4)  # restore the URL
 
 
-@get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')
+@get(
+    '/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR,
+    name='fetch_bundle_contents_blob',
+    apply=ProtectedAuthenticatedPlugin(),
+)
 @get(
     '/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR,
     name='fetch_bundle_contents_blob',
+    apply=ProtectedAuthenticatedPlugin(),
 )
 def _fetch_bundle_contents_blob(uuid, path=''):
     """

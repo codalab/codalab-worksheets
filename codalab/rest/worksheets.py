@@ -31,10 +31,10 @@ from codalab.rest.schemas import (
 )
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, resolve_owner_in_keywords, get_resource_ids
-from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalab.server.authenticated_plugin import AuthenticatedPlugin, ProtectedAuthenticatedPlugin
 
 
-@get('/worksheets/<uuid:re:%s>' % spec_util.UUID_STR)
+@get('/worksheets/<uuid:re:%s>' % spec_util.UUID_STR, apply=ProtectedAuthenticatedPlugin())
 def fetch_worksheet(uuid):
     """
     Fetch a single worksheet by UUID.
@@ -107,7 +107,7 @@ def fetch_worksheet(uuid):
     return document
 
 
-@get('/worksheets')
+@get('/worksheets', apply=ProtectedAuthenticatedPlugin())
 def fetch_worksheets():
     """
     Fetch worksheets by worksheet specs (names) OR search keywords.
@@ -161,8 +161,8 @@ def create_worksheets():
     return WorksheetSchema(many=True).dump(worksheets).data
 
 
-@put('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR)
-@post('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR)
+@put('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR, apply=ProtectedAuthenticatedPlugin())
+@post('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR, apply=ProtectedAuthenticatedPlugin())
 def update_worksheet_raw(uuid):
     """
     Request body contains the raw lines of the worksheet.

@@ -3,6 +3,8 @@ from bottle import abort, httplib, redirect, request, url
 from codalab.lib.server_util import redirect_with_query
 from codalab.objects.user import PUBLIC_USER
 
+import os
+
 
 def user_is_authenticated():
     return hasattr(request, 'user') and request.user is not None and request.user is not PUBLIC_USER
@@ -63,11 +65,36 @@ class AuthenticatedPlugin(object):
 
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
+            # TODO: need to check protected mode here. if protected, check if verified.
             if not user_is_authenticated():
                 if request.is_ajax:
                     abort(httplib.UNAUTHORIZED, 'Not authorized')
                 else:
                     redirect_with_query('/account/login', {'next': request.url})
+
+            return callback(*args, **kwargs)
+
+        return wrapper
+
+
+class ProtectedAuthenticatedPlugin(object):
+
+    api = 2
+
+    # TODO: refactor and add docs
+    def apply(self, callback, route):
+        def wrapper(*args, **kwargs):
+            if os.environ.get('CODALAB_PROTECTED_MODE') == 'true':
+                if not user_is_authenticated():
+                    if request.is_ajax:
+                        abort(httplib.UNAUTHORIZED, 'Not authorized')
+                    else:
+                        redirect_with_query('/account/login', {'next': request.url})
+                elif not request.user.is_verified:
+                    if request.is_ajax:
+                        abort(httplib.UNAUTHORIZED, 'User is not verified')
+                    else:
+                        redirect(url('resend_key'))
 
             return callback(*args, **kwargs)
 
