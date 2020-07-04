@@ -887,7 +887,7 @@ def test(ctx):
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    create_group(group_name)
+    create_group(ctx, group_name)
     # Make worksheet unavailable to public but available to the group
     _run_command([cl, 'wperm', group_wuuid, 'public', 'n'])
     _run_command([cl, 'wperm', group_wuuid, group_name, 'r'])
@@ -1008,7 +1008,7 @@ def test(ctx):
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    create_group(group_name)
+    create_group(ctx, group_name)
     # Make bundle unavailable to public but available to the group
     _run_command([cl, 'perm', group_buuid, 'public', 'n'])
     _run_command([cl, 'perm', group_buuid, group_name, 'r'])
@@ -1602,7 +1602,7 @@ def test(ctx):
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    create_group(group_name)
+    create_group(ctx, group_name)
 
     # Check that you are added to your own group
     group_info = _run_command([cl, 'ginfo', group_name])
@@ -1879,7 +1879,7 @@ def test(ctx):
 
     # userB will start a worker and be granted access to another one
     create_user('userB')
-    create_group('group1')
+    create_group(ctx, 'group1')
     _run_command(['cl-worker', '--id', 'worker1', '--group', 'group1'])
 
     # userC will not have access to any workers
@@ -1887,7 +1887,7 @@ def test(ctx):
 
     # userD will start a worker
     create_user('userD')
-    create_group('group2')
+    create_group(ctx, 'group2')
     add_user_to_group('group2', 'userA')
     _run_command(['cl-worker', '--id', 'worker2', '--group', 'group2'])
 
