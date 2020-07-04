@@ -103,7 +103,9 @@ def create_user(context, username, password='codalab'):
     # Currently there isn't a method for creating a user with the CLI. Use CodaLabManager instead.
     manager = CodaLabManager()
     model = manager.model()
-    model.add_user(username, '', '', '', password, '', user_id=username, is_verified=True)
+    model.add_user(
+        username, random_name(), '', '', password, '', user_id=username, is_verified=True
+    )
     context.collect_user(username)
     switch_user(username, password)
 
