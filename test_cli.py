@@ -1875,18 +1875,18 @@ def test(ctx):
             assert worker in result
 
     # userA will not start a worker, but will be granted access to one
-    create_user('userA')
+    create_user(ctx, 'userA')
 
     # userB will start a worker and be granted access to another one
-    create_user('userB')
+    create_user(ctx, 'userB')
     create_group(ctx, 'group1')
     _run_command(['cl-worker', '--id', 'worker1', '--group', 'group1'])
 
     # userC will not have access to any workers
-    create_user('userC')
+    create_user(ctx, 'userC')
 
     # userD will start a worker
-    create_user('userD')
+    create_user(ctx, 'userD')
     create_group(ctx, 'group2')
     add_user_to_group('group2', 'userA')
     _run_command(['cl-worker', '--id', 'worker2', '--group', 'group2'])
