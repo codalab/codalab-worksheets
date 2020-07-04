@@ -1868,8 +1868,8 @@ def test(ctx):
         result = _run_command([cl, 'workers'])
 
         # Subtract 2 for the headers that is included in the output of `cl workers`
-        actual_number_of_workers = result.split('\n') - 2
-        check_equals(actual_number_of_workers, 2 + len(expected_workers))
+        actual_number_of_workers = len(result.split('\n')) - 2
+        check_equals(actual_number_of_workers, len(expected_workers))
 
         for worker in expected_workers:
             assert worker in result
