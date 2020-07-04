@@ -1876,7 +1876,7 @@ def test(ctx):
                 worker_id,
                 '--group',
                 group,
-                '--verbose'
+                '--verbose',
             ]
         )
 
