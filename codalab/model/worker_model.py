@@ -51,6 +51,7 @@ class WorkerModel(object):
         shared_file_system,
         tag_exclusive,
         exit_after_num_runs,
+        is_terminating,
     ):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
@@ -67,6 +68,7 @@ class WorkerModel(object):
                 'shared_file_system': shared_file_system,
                 'tag_exclusive': tag_exclusive,
                 'exit_after_num_runs': exit_after_num_runs,
+                'is_terminating': is_terminating,
             }
 
             # Populate the group for this worker, if group_name is valid
@@ -203,6 +205,7 @@ class WorkerModel(object):
                 'shared_file_system': row.shared_file_system,
                 'tag_exclusive': row.tag_exclusive,
                 'exit_after_num_runs': row.exit_after_num_runs,
+                'is_terminating': row.is_terminating,
             }
             for row in worker_rows
         }

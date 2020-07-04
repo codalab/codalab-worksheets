@@ -837,6 +837,16 @@ class BundleModel(object):
                 # The user deleted the bundle.
                 return False
 
+            # Check if the designated worker is going to be terminated soon
+            row = connection.execute(
+                cl_worker.select().where(
+                    and_(cl_worker.c.worker_id == worker_id, cl_worker.c.is_terminating == False)
+                )
+            ).fetchone()
+            # If the worker is going to be terminated soon, stop starting bundle on this worker
+            if not row:
+                return False
+
             bundle_update = {
                 'state': State.STARTING,
                 'metadata': {'last_updated': int(time.time())},
@@ -863,11 +873,12 @@ class BundleModel(object):
                 raise IntegrityError('Missing bundle with UUID %s' % bundle.uuid)
 
             # Reset all metadata fields that aren't input by user from RunBundle class to be None.
-            # Excluding all the fields that can be set by users, which for now is just the action field.
+            # Excluding all the fields that can be set by users, which for now is just the "actions" field.
+            # Excluding the "created" field to keep track of the original date when the bundle is created
             metadata_update = {
                 spec.key: None
                 for spec in RunBundle.METADATA_SPECS
-                if spec.generated and spec.key != 'action'
+                if spec.generated and spec.key not in ['actions', 'created']
             }
             bundle_update = {'state': State.STAGED, 'metadata': metadata_update}
             self.update_bundle(bundle, bundle_update, connection)
@@ -1110,7 +1121,7 @@ class BundleModel(object):
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
 
-        # Generate a list of metadata keys that will be deleted and udpate metadata key-value pair
+        # Generate a list of metadata keys that will be deleted and update metadata key-value pair
         metadata_delete_keys = []
         for key, value in metadata_update.items():
             # Delete the key,value pair when the following two conditions are met:

@@ -74,7 +74,7 @@ restart all the CodaLab services.  Any ongoing runs should not be affected.
 
 If you're actively developing and want to test your changes, add the following two flags:
 
-- `-b` (`--build-locally`): builds the Docker images above based on your local
+- `-b` (`--build-images`): builds the Docker images above based on your local
   code.  Otherwise, by default, the public images on
   [DockerHub](https://hub.docker.com/u/codalab) will be used.
 - `-d` (`--dev`): runs the development version of the frontend so that your
