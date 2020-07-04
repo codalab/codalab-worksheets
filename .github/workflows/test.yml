@@ -133,7 +133,7 @@ jobs:
       - name: Upload logs
         uses: actions/upload-artifact@v1
         with:
-          name: logs-test-${{ matrix.test }}
+          name: logs-sharing-workers-${{ matrix.test }}
           path: /tmp/logs
 
   test_backend_on_worker_restart:

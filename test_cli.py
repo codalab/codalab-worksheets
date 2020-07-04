@@ -1876,13 +1876,30 @@ def test(ctx):
         for worker in expected_workers:
             assert worker in result
 
+        # Create a run bundle and see if one of the expected workers picks it up
+        if len(expected_workers) > 0:
+            wait_until_state(_run_command([cl, 'run', 'echo hello']), State.READY)
+
+    def create_worker(worker_id, group):
+        _run_command(
+            [
+                'cl-worker',
+                '--server',
+                'http://rest-server:2900',
+                '--id',
+                worker_id,
+                '--group',
+                group,
+            ]
+        )
+
     # userA will not start a worker, but will be granted access to one
     create_user(ctx, 'userA')
 
     # userB will start a worker and be granted access to another one
     create_user(ctx, 'userB')
     create_group(ctx, 'group1')
-    _run_command(['cl-worker', '--id', 'worker1', '--group', 'group1'])
+    create_worker('worker1', 'group1')
 
     # userC will not have access to any workers
     create_user(ctx, 'userC')
@@ -1891,7 +1908,7 @@ def test(ctx):
     create_user(ctx, 'userD')
     create_group(ctx, 'group2')
     add_user_to_group('group2', 'userA')
-    _run_command(['cl-worker', '--id', 'worker2', '--group', 'group2'])
+    create_worker('worker2', 'group2')
 
     # Test to see that a user has access to a worker after the worker was created
     add_user_to_group('group2', 'userB')
