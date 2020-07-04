@@ -1865,6 +1865,21 @@ def test(ctx):
 
 @TestModule.register('sharing_workers')
 def test(ctx):
+    def create_worker(worker_id, group):
+        _run_command(
+            [
+                'cl-worker',
+                '--server http://rest-server:2900',
+                '--work-dir',
+                os.environ.get('CODALAB_WORKER_DIR'),
+                '--id',
+                worker_id,
+                '--group',
+                group,
+                '--verbose'
+            ]
+        )
+
     def check_workers(user, expected_workers):
         switch_user(user)
         result = _run_command([cl, 'workers'])
@@ -1879,19 +1894,6 @@ def test(ctx):
         # Create a run bundle and see if one of the expected workers picks it up
         if len(expected_workers) > 0:
             wait_until_state(_run_command([cl, 'run', 'echo hello']), State.READY)
-
-    def create_worker(worker_id, group):
-        _run_command(
-            [
-                'cl-worker',
-                '--server',
-                'http://rest-server:2900',
-                '--id',
-                worker_id,
-                '--group',
-                group,
-            ]
-        )
 
     # userA will not start a worker, but will be granted access to one
     create_user(ctx, 'userA')
