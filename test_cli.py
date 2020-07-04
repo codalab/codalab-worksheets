@@ -1875,11 +1875,13 @@ def test(ctx):
                 'codalab-worker-network',
                 '--work-dir',
                 '/home/runner/work/codalab-worksheets/codalab-worksheets/var/codalab/worker',
+                #'/home',
                 '--id',
                 worker_id,
                 '--group',
                 group,
                 '--verbose',
+                '--shared-file-system',
             ]
         )
 
