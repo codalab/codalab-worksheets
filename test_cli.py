@@ -1874,7 +1874,7 @@ def test(ctx):
                 '--network-prefix',
                 'codalab-worker-network',
                 '--work-dir',
-                '/home/runner/work/codalab-worksheets/codalab-worker-scratch',
+                '/home/runner/work/codalab-worksheets',
                 # '/home/runner/work/codalab-worksheets/codalab-worksheets/var/codalab/worker',
                 '--id',
                 worker_id,
