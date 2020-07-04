@@ -889,7 +889,7 @@ def test(ctx):
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    create_group(ctx, group_name)
+    group_uuid = create_group(ctx, group_name)
     # Make worksheet unavailable to public but available to the group
     _run_command([cl, 'wperm', group_wuuid, 'public', 'n'])
     _run_command([cl, 'wperm', group_wuuid, group_name, 'r'])
@@ -1010,7 +1010,7 @@ def test(ctx):
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    create_group(ctx, group_name)
+    group_uuid = create_group(ctx, group_name)
     # Make bundle unavailable to public but available to the group
     _run_command([cl, 'perm', group_buuid, 'public', 'n'])
     _run_command([cl, 'perm', group_buuid, group_name, 'r'])
