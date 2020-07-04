@@ -632,6 +632,8 @@ class CodalabServiceManager(object):
         return success
 
     def bring_up_service(self, service):
+        # TODO: remove later -tony
+        print_header('Tony - {}'.format(self.args.worker_dir))
         if should_run_service(self.args, service):
             print_header('Bringing up {}'.format(service))
             self._run_compose_cmd('up -d --no-deps %s' % service)
