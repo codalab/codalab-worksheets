@@ -71,6 +71,7 @@ jobs:
           python-version: 3.6
       - name: Setup tests
         run: |
+          pip install -r requirements.txt
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
@@ -111,6 +112,7 @@ jobs:
           python-version: 3.6
       - name: Setup tests
         run: |
+          pip install -r requirements.txt
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
@@ -152,6 +154,7 @@ jobs:
           python-version: 3.6
       - name: Setup tests
         run: |
+          pip install -r requirements.txt
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
@@ -194,6 +197,7 @@ jobs:
           python-version: 3.6
       - name: Setup tests
         run: |
+          pip install -r requirements.txt
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
@@ -236,11 +240,10 @@ jobs:
       - name: Setup tests
         run: |
           sudo ./scripts/test-setup.sh
+          pip install -r requirements.txt
           export PATH=$PATH:$PWD/geckodriver
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
-          pip install --upgrade diffimg==0.2.3
-          pip install --upgrade selenium==3.141.0
         env:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests

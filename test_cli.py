@@ -22,6 +22,7 @@ from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
+from datetime import datetime
 from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
 
@@ -35,7 +36,6 @@ import subprocess
 import sys
 import time
 import traceback
-from datetime import datetime
 
 
 global cl

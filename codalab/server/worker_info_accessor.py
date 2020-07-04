@@ -39,7 +39,7 @@ class WorkerInfoAccessor(object):
             owner_id = worker['user_id']
             self._user_id_to_workers[owner_id].append(worker)
 
-            # Add the worker to all the users of worker's group except the owner
+            # Add the worker to all the users of the worker's group except the owner
             memberships = self._model.batch_get_user_in_group(group_uuid=worker['group_uuid'])
             for m in memberships:
                 if m['user_id'] != owner_id:
