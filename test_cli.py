@@ -1870,8 +1870,8 @@ def test(ctx):
             [
                 'cl-worker',
                 '--server http://rest-server:2900',
-                '--work-dir',
-                os.environ.get('CODALAB_WORKER_DIR'),
+                '--network-prefix codalab-worker-network'
+                '--work-dir /home/runner/work/codalab-worksheets/codalab-worksheets/var/codalab/worker',
                 '--id',
                 worker_id,
                 '--group',
