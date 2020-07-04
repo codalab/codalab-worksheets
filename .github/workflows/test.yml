@@ -119,8 +119,9 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
         # Start essential services except for a worker, as workers will be created during test time
+        # python3 codalab_service.py start --services mysql nginx rest-server bundle-manager init --version ${VERSION}
         run: |
-          python3 codalab_service.py start --services mysql nginx rest-server bundle-manager init --version ${VERSION}
+          python3 codalab_service.py start --services default --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
