@@ -80,7 +80,11 @@ If the default workers are full or do not satisfy your needs, one of the advanta
 
 You should see that the run finished, and if you look at the `remote` metadata field, you should see your hostname.
 
-Note that only your runs will be run on your workers, so you don't have to worry about interference with other users.
+**Sharing a worker with a group** 
+
+You can also share your worker with other users within a group, by simply starting a worker with a valid group name specified: 
+
+    cl-worker --group <group name>
 
 **Controlling where runs happen with tags**.
 
