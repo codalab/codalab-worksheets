@@ -1907,8 +1907,12 @@ class BundleModel(object):
                 return []
         return [str_key_dict(row) for row in rows]
 
-    # Helper function: return list of group uuids that |user_id| is in.
-    def _get_user_groups(self, user_id):
+    def get_user_groups(self, user_id):
+        """
+        Get the list of groups that the user belongs to
+        :param user_id: ID of the user
+        :return: A list of group uuid's
+        """
         groups = [self.public_group_uuid]  # Everyone is in the public group implicitly.
         if user_id is not None:
             groups += [row['group_uuid'] for row in self.batch_get_user_in_group(user_id=user_id)]
@@ -2049,7 +2053,7 @@ class BundleModel(object):
 
         if len(remaining_object_uuids) > 0:
             result = self.batch_get_group_permissions(table, user_id, remaining_object_uuids)
-            user_groups = self._get_user_groups(user_id)
+            user_groups = self.get_user_groups(user_id)
             for object_uuid, permissions in result.items():
                 for row in permissions:
                     if row['group_uuid'] in user_groups:

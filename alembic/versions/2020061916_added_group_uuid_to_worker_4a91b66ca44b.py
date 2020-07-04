@@ -1,14 +1,14 @@
 """Added group_uuid to worker
 
 Revision ID: 4a91b66ca44b
-Revises: 54e95ff2e718
+Revises: 664d15d50318
 Create Date: 2020-06-19 16:12:06.552677
 
 """
 
 # revision identifiers, used by Alembic.
 revision = '4a91b66ca44b'
-down_revision = '54e95ff2e718'
+down_revision = '664d15d50318'
 
 from alembic import op
 import sqlalchemy as sa

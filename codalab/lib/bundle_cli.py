@@ -1100,6 +1100,7 @@ class BundleCLI(object):
             'memory',
             'free_disk',
             'last_checkin',
+            'group',
             'tag',
             'runs',
             'shared_file_system',
@@ -1121,6 +1122,7 @@ class BundleCLI(object):
                     'last_checkin': '{} ago'.format(
                         formatting.duration_str(int(time.time()) - worker['checkin_time'])
                     ),
+                    'group': worker['group_uuid'],
                     'tag': worker['tag'],
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],

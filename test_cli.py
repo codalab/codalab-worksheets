@@ -1814,6 +1814,7 @@ def test(ctx):
             'free_disk',
             'exit_after_num_runs',
             'last_checkin',
+            'group',
             'tag',
             'runs',
             'shared_file_system',

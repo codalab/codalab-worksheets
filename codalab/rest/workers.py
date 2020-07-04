@@ -142,10 +142,15 @@ def start_bundle(worker_id, uuid):
 def workers_info():
     workers = local.worker_model.get_workers()
     if request.user.user_id != local.model.root_user_id:
-        # Filter to workers that only this user owns.
-        workers = [worker for worker in workers if worker['user_id'] == request.user.user_id]
+        # Filter to only the workers that the user owns or has access to
+        user_groups = local.model.get_user_groups(request.user.user_id)
+        workers = [
+            worker
+            for worker in workers
+            if worker['user_id'] == request.user.user_id or worker['group_uuid'] in user_groups
+        ]
 
-    # edit entries in data to make them suitable for human reading
+    # Edit entries in the data to make them suitable for human reading
     for worker in workers:
         # checkin_time: seconds since epoch
         worker["checkin_time"] = int(
