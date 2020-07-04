@@ -407,8 +407,8 @@ class BundleManager(object):
             online_worker_ids = set(
                 worker["worker_id"]
                 for worker in (
-                    workers.user_owned_workers(bundle.owner_id)
-                    + workers.user_owned_workers(self._model.root_user_id)
+                    workers.get_user_workers(bundle.owner_id)
+                    + workers.get_user_workers(self._model.root_user_id)
                 )
             )
             # Store the worker IDs for workers that have gone offline.
