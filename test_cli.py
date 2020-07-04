@@ -103,6 +103,8 @@ def create_user(context, username, password='codalab'):
     # Currently there isn't a method for creating a user with the CLI. Use CodaLabManager instead.
     manager = CodaLabManager()
     model = manager.model()
+
+    # Creates a user without going through the full sign-up process
     model.add_user(
         username, random_name(), '', '', password, '', user_id=username, is_verified=True
     )
@@ -121,6 +123,18 @@ def create_group(context, name):
     group_uuid = get_uuid(group_uuid_line)
     context.collect_group(group_uuid)
     return group_uuid
+
+
+def create_worker(context, user_id, worker_id, tag=None, group_name=None):
+    manager = CodaLabManager()
+    worker_model = manager.worker_model()
+
+    # Creating a worker through cl-worker on the same instance can cause conflicts with existing workers, so instead
+    # mimic the behavior of cl-worker --id [worker_id] --group [group_name], by leveraging the worker check-in.
+    worker_model.worker_checkin(
+        user_id, worker_id, tag, group_name, 1, 0, 1000, 1000, None, False, False, 100, False
+    )
+    context.collect_worker(user_id, worker_id)
 
 
 def add_user_to_group(group, user_name):
@@ -323,6 +337,7 @@ class ModuleContext(object):
         self.bundles = []
         self.groups = []
         self.users = []
+        self.worker_to_user = {}
         self.error = None
 
         # Allow for making REST calls
@@ -386,8 +401,14 @@ class ModuleContext(object):
         if len(self.groups) > 0:
             _run_command([cl, 'grm'] + list(set(self.groups)))
 
-        # Delete all the extra users created during testing
         manager = CodaLabManager()
+
+        # Delete all extra workers created
+        worker_model = manager.worker_model()
+        for worker_id, user_id in self.worker_to_user.items():
+            worker_model.worker_cleanup(user_id, worker_id)
+
+        # Delete all the extra users created during testing
         model = manager.model()
         for user in self.users:
             model.delete_user(user)
@@ -406,13 +427,16 @@ class ModuleContext(object):
         """Mark a bundle for cleanup on exit."""
         self.bundles.append(uuid)
 
+    def collect_user(self, uuid):
+        """Mark a user for cleanup on exit."""
+        self.users.append(uuid)
+
     def collect_group(self, uuid):
         """Mark a group for cleanup on exit."""
         self.groups.append(uuid)
 
-    def collect_user(self, uuid):
-        """Mark a user for cleanup on exit."""
-        self.users.append(uuid)
+    def collect_worker(self, user_id, worker_id):
+        self.worker_to_user[worker_id] = user_id
 
 
 class TestModule(object):
@@ -1865,40 +1889,17 @@ def test(ctx):
 
 @TestModule.register('sharing_workers')
 def test(ctx):
-    def create_worker(worker_id, group):
-        _run_command(
-            [
-                'cl-worker',
-                '--server',
-                'http://rest-server:2900',
-                '--network-prefix',
-                'codalab-worker-network',
-                '--work-dir',
-                '/home/runner/work/codalab-worksheets',
-                # '/home/runner/work/codalab-worksheets/codalab-worksheets/var/codalab/worker',
-                '--id',
-                worker_id,
-                '--group',
-                group,
-                '--verbose',
-                '--shared-file-system',
-            ]
-        )
-
     def check_workers(user, expected_workers):
         switch_user(user)
         result = _run_command([cl, 'workers'])
 
         # Subtract 2 for the headers that is included in the output of `cl workers`
-        actual_number_of_workers = len(result.split('\n')) - 2
+        # and 1 for the existing public worker
+        actual_number_of_workers = len(result.split('\n')) - 3
         check_equals(actual_number_of_workers, len(expected_workers))
 
         for worker in expected_workers:
             assert worker in result
-
-        # Create a run bundle and see if one of the expected workers picks it up
-        if len(expected_workers) > 0:
-            wait_until_state(_run_command([cl, 'run', 'echo hello']), State.READY)
 
     # userA will not start a worker, but will be granted access to one
     create_user(ctx, 'userA')
@@ -1906,7 +1907,7 @@ def test(ctx):
     # userB will start a worker and be granted access to another one
     create_user(ctx, 'userB')
     create_group(ctx, 'group1')
-    create_worker('worker1', 'group1')
+    create_worker(ctx, 'userB', 'worker1', group_name='group1')
 
     # userC will not have access to any workers
     create_user(ctx, 'userC')
@@ -1915,13 +1916,12 @@ def test(ctx):
     create_user(ctx, 'userD')
     create_group(ctx, 'group2')
     add_user_to_group('group2', 'userA')
-    create_worker('worker2', 'group2')
+    create_worker(ctx, 'userD', 'worker2', group_name='group2')
 
     # Test to see that a user has access to a worker after the worker was created
     add_user_to_group('group2', 'userB')
 
-    # Give enough time for the worker cache to get updated
-    time.sleep(WORKER_TIMEOUT_SECONDS)
+    # Validate user's access to the newly created workers
     check_workers('userA', ['worker2'])
     check_workers('userB', ['worker1', 'worker2'])
     check_workers('userC', [])
