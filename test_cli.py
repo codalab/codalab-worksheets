@@ -17,7 +17,6 @@ Things not tested:
 """
 
 from codalab.lib.codalab_manager import CodaLabManager
-from codalab.server.bundle_manager import WORKER_TIMEOUT_SECONDS
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from collections import namedtuple, OrderedDict
@@ -110,6 +109,7 @@ def create_user(context, username, password='codalab'):
     )
     context.collect_user(username)
     switch_user(username, password)
+    _run_command([cl, 'uinfo'])
 
 
 def switch_user(username, password='codalab'):
@@ -399,8 +399,8 @@ class ModuleContext(object):
                 _run_command([cl, 'rm', '--force', bundle])
 
         # Delete all groups (dedup first)
-        if len(self.groups) > 0:
-            _run_command([cl, 'grm'] + list(set(self.groups)))
+        for group in list(set(self.groups)):
+            _run_command([cl, 'grm', group])
 
         manager = CodaLabManager()
 
