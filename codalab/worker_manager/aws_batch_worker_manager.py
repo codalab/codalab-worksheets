@@ -50,8 +50,8 @@ class AWSBatchWorkerManager(WorkerManager):
             '--job-filter',
             type=str,
             help=(
-                'Ignore jobs on the job queue if their job name does not '
-                'completely match provided regex filter.'
+                'Only consider jobs on the job queue with job names that '
+                'completely match this regex filter.'
             ),
         )
 
