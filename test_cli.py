@@ -113,7 +113,9 @@ def create_user(context, username, password='codalab'):
 
 
 def switch_user(username, password='codalab'):
-    _run_command([cl, 'logout'])
+    source_worksheet_full = current_worksheet()
+    host = source_worksheet_full.split("::")[0]
+    _run_command([cl, 'logout', host])
     env = {'CODALAB_USERNAME': username, 'CODALAB_PASSWORD': password}
     _run_command([cl, 'work'], env=env)
     _run_command([cl, 'uinfo'])
