@@ -116,6 +116,7 @@ def switch_user(username, password='codalab'):
     _run_command([cl, 'logout'])
     env = {'CODALAB_USERNAME': username, 'CODALAB_PASSWORD': password}
     _run_command([cl, 'work'], env=env)
+    _run_command([cl, 'uinfo'])
 
 
 def create_group(context, name):
