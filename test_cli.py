@@ -108,15 +108,16 @@ def create_user(context, username, password='codalab'):
         username, random_name(), '', '', password, '', user_id=username, is_verified=True
     )
     context.collect_user(username)
-    switch_user(username, password)
+    switch_user(context, username, password)
     _run_command([cl, 'uinfo'])
 
 
-def switch_user(username, password='codalab'):
+def switch_user(context, username, password='codalab'):
     # source_worksheet_full = current_worksheet()
     # host = source_worksheet_full.split("::")[0]
     # _run_command([cl, 'logout', host])
-    _run_command([cl, 'logout'])
+    # _run_command([cl, 'logout'])
+    context.logout()
     _run_command([cl, 'uinfo'])
     env = {'CODALAB_USERNAME': username, 'CODALAB_PASSWORD': password}
     _run_command([cl, 'work'], env=env)
@@ -348,8 +349,8 @@ class ModuleContext(object):
         # Allow for making REST calls
         from codalab.lib.codalab_manager import CodaLabManager
 
-        manager = CodaLabManager()
-        self.client = manager.current_client()
+        self.manager = CodaLabManager()
+        self.client = self.manager.current_client()
 
     def __enter__(self):
         """Prepares clean environment for test module."""
@@ -406,15 +407,13 @@ class ModuleContext(object):
         for group in list(set(self.groups)):
             _run_command([cl, 'grm', group])
 
-        manager = CodaLabManager()
-
         # Delete all extra workers created
-        worker_model = manager.worker_model()
+        worker_model = self.manager.worker_model()
         for worker_id, user_id in self.worker_to_user.items():
             worker_model.worker_cleanup(user_id, worker_id)
 
         # Delete all the extra users created during testing
-        model = manager.model()
+        model = self.manager.model()
         for user in self.users:
             model.delete_user(user)
 
@@ -441,7 +440,11 @@ class ModuleContext(object):
         self.groups.append(uuid)
 
     def collect_worker(self, user_id, worker_id):
+        """Keep track of workers to users for cleanup on exit."""
         self.worker_to_user[worker_id] = user_id
+
+    def logout(self):
+        self.manager.logout()
 
 
 class TestModule(object):
