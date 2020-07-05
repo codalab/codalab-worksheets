@@ -444,7 +444,7 @@ class ModuleContext(object):
         self.worker_to_user[worker_id] = user_id
 
     def logout(self):
-        self.manager.logout()
+        self.manager.logout(self.client.address)
 
 
 class TestModule(object):
