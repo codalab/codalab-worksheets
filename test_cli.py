@@ -108,11 +108,11 @@ def create_user(context, username, password='codalab'):
         username, random_name(), '', '', password, '', user_id=username, is_verified=True
     )
     context.collect_user(username)
-    switch_user(context, username, password)
+    switch_user(username, password)
     _run_command([cl, 'uinfo'])
 
 
-def switch_user(context, username, password='codalab'):
+def switch_user(username, password='codalab'):
     _run_command([cl, 'logout'])
     _run_command([cl, 'uinfo'])
     env = {'CODALAB_USERNAME': username, 'CODALAB_PASSWORD': password}
@@ -1891,7 +1891,7 @@ def test(ctx):
 @TestModule.register('sharing_workers')
 def test(ctx):
     def check_workers(user, expected_workers):
-        switch_user(ctx, user)
+        switch_user(user)
         result = _run_command([cl, 'workers'])
 
         # TODO: Currently test_cli does not support switching between users. Disable this check for now.
