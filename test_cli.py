@@ -399,10 +399,6 @@ class ModuleContext(object):
                     pass
                 _run_command([cl, 'rm', '--force', bundle])
 
-        # Delete all groups (dedup first)
-        for group in list(set(self.groups)):
-            _run_command([cl, 'grm', group])
-
         # Delete all extra workers created
         worker_model = self.manager.worker_model()
         for worker_id, user_id in self.worker_to_user.items():
@@ -412,6 +408,10 @@ class ModuleContext(object):
         model = self.manager.model()
         for user in self.users:
             model.delete_user(user)
+
+        # Delete all groups (dedup first)
+        for group in list(set(self.groups)):
+            _run_command([cl, 'grm', group])
 
         # Reraise only KeyboardInterrupt
         if exc_type is KeyboardInterrupt:
