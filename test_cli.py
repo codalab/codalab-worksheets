@@ -109,7 +109,9 @@ def create_user(context, username, password='codalab'):
     )
     context.collect_user(username)
     switch_user(username, password)
+    # TODO: keep only one of these -tony
     _run_command([cl, 'uinfo'])
+    _run_command([cl, 'status'])
 
 
 def switch_user(username, password='codalab'):
@@ -117,7 +119,9 @@ def switch_user(username, password='codalab'):
     _run_command([cl, 'uinfo'])
     env = {'CODALAB_USERNAME': username, 'CODALAB_PASSWORD': password}
     _run_command([cl, 'work'], env=env)
+    # TODO: keep only one of these -tony
     _run_command([cl, 'uinfo'])
+    _run_command([cl, 'status'])
 
 
 def create_group(context, name):
@@ -1902,6 +1906,9 @@ def test(ctx):
 
         for worker in expected_workers:
             assert worker in result
+
+    # TODO: delete later -tony
+    _run_command([cl, 'status'])
 
     # userA will not start a worker, but will be granted access to one
     create_user(ctx, 'userA')
