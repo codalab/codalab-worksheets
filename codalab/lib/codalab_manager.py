@@ -559,6 +559,12 @@ class CodaLabManager(object):
         if address in self.state['auth']:
             del self.state['auth'][address]
             self.save_state()
+        # TODO: delete later -tony
+        print(
+            'Tony - logged out...address: {}, request: {}, temporary: {}'.format(
+                address, str(self.state), self.temporary
+            )
+        )
 
     def save_config(self):
         if self.temporary:
