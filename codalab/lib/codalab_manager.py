@@ -548,6 +548,9 @@ class CodaLabManager(object):
             sys.stderr.write(message)
 
     def logout(self, address):
+        # TODO: delete later -tony
+        print('Tony - logging out...address: {} request: {}'.format(address, str(self.state)))
+
         """Clear credentials associated with given address."""
         if address in self.state['auth']:
             del self.state['auth'][address]

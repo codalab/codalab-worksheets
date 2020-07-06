@@ -5,6 +5,8 @@ from codalab.objects.user import PUBLIC_USER
 
 
 def user_is_authenticated():
+    # TODO: delete later -tony
+    print('Tony - checking authenticated...request: ' + str(request))
     return hasattr(request, 'user') and request.user is not None and request.user is not PUBLIC_USER
 
 
