@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
         with:
-          node-version: 10.x
+          node-version: 14.x
       - name: Set up Python 3.6
         uses: actions/setup-python@v1
         with:
@@ -52,7 +52,14 @@ jobs:
     needs: [build]
     strategy:
       matrix:
-        test: [unittest gen-rest-docs gen-cli-docs gen-readthedocs basic status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups,search,run,run2,read,kill,write,mimic workers,resources,copy memoize,netcat,netcurl]
+        test:
+          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
+          - run
+          - run2
+          - search read kill write mimic workers
+          - resources
+          - memoize
+          - copy netcat netcurl
     steps:
       - name: Clear free space
         run: |
@@ -134,7 +141,7 @@ jobs:
     needs: [build]
     strategy:
       matrix:
-        test: [run,run2,read,write kill resources]
+        test: [run,run2,read write kill resources]
     steps:
       - name: Clear free space
         run: |

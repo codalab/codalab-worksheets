@@ -837,6 +837,16 @@ class BundleModel(object):
                 # The user deleted the bundle.
                 return False
 
+            # Check if the designated worker is going to be terminated soon
+            row = connection.execute(
+                cl_worker.select().where(
+                    and_(cl_worker.c.worker_id == worker_id, cl_worker.c.is_terminating == False)
+                )
+            ).fetchone()
+            # If the worker is going to be terminated soon, stop starting bundle on this worker
+            if not row:
+                return False
+
             bundle_update = {
                 'state': State.STARTING,
                 'metadata': {'last_updated': int(time.time())},
@@ -1111,7 +1121,7 @@ class BundleModel(object):
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
 
-        # Generate a list of metadata keys that will be deleted and udpate metadata key-value pair
+        # Generate a list of metadata keys that will be deleted and update metadata key-value pair
         metadata_delete_keys = []
         for key, value in metadata_update.items():
             # Delete the key,value pair when the following two conditions are met:

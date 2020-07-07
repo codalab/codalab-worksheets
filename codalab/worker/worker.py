@@ -180,6 +180,23 @@ class Worker:
                 resources=RunResources.from_dict(run_state.resources),
             )
 
+    def sync_state(self):
+        """
+        Sync worker run state by matching the fields that are read from worker-state.json with the RunState object.
+        """
+        for uuid, run_state in self.runs.items():
+            if run_state._fields == RunState._fields:
+                continue
+            values = []
+            for field in RunState._fields:
+                # When there are additional new fields or missing fields detected, recreate the run_state
+                # object to include or delete those fields specified from the RunState object
+                if field in run_state._fields:
+                    values.append(getattr(run_state, field))
+                else:
+                    values.append(None)
+            self.runs[uuid] = RunState(*values)
+
     def check_idle_stop(self):
         """
         Checks whether the worker is idle (ie if it hasn't had runs for longer than the configured
@@ -206,6 +223,7 @@ class Worker:
     def start(self):
         """Return whether we ran anything."""
         self.load_state()
+        self.sync_state()
         self.image_manager.start()
         if not self.shared_file_system:
             self.dependency_manager.start()
@@ -334,6 +352,7 @@ class Worker:
             'shared_file_system': self.shared_file_system,
             'tag_exclusive': self.tag_exclusive,
             'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
+            'is_terminating': self.terminate or self.terminate_and_restage,
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
