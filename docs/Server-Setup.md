@@ -119,8 +119,10 @@ hour because lots of packages have to be installed):
 ## Testing
 
 Since tests run against an existing instance, make sure you update your instance first.
+You also need to set the CODALAB_LINK_ALLOWED_PATHS environment variable so that the `link` tests
+can properly succeed.
 
-    ./codalab_service.py start -bd -s rest-server
+    CODALAB_LINK_ALLOWED_PATHS=/opt* ./codalab_service.py start -bd -s rest-server
 
 To run the tests against an instance that you've already set up:
 
@@ -132,7 +134,7 @@ Or to run a specific test (e.g., basic):
 
 In sum, to start an instance and run tests on it:
 
-    ./codalab_service.py start -bd
+    CODALAB_LINK_ALLOWED_PATHS=/opt* ./codalab_service.py start -bd
     python test_runner.py default
 
 These must pass before you submit a PR.
