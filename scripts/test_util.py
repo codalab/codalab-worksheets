@@ -108,7 +108,6 @@ def run_command(
             # than opening a new subprocess to do so.
             stderr = io.StringIO()  # Not used; we just don't want to redirect cli.stderr to stdout.
             stdout = FakeStdout()
-            # TODO: look into here -tony
             cli = BundleCLI(CodaLabManager(), stdout=stdout, stderr=stderr)
             try:
                 cli.do_command(args[1:])
