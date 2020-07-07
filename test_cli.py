@@ -253,7 +253,7 @@ def _run_command(
     env=None,
     include_stderr=False,
     binary=False,
-    force_subprocess=False,
+    force_subprocess=True,  # TODO: change this back -tony
     request_memory="4m",
     request_disk="1m",
     request_time=None,
