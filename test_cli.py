@@ -333,7 +333,6 @@ class ModuleContext(object):
         print("[*][*] CLEANING UP")
         os.environ.clear()
         os.environ.update(self.original_environ)
-        return
 
     def collect_worksheet(self, uuid):
         """Mark a worksheet for cleanup on exit."""
