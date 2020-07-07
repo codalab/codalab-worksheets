@@ -13,24 +13,42 @@ In this case, it would be inefficient to copy every bundle upload to a separate 
 Here is an example of using the link functionality:
 
 ```bash
-cl upload /var/data/a.txt --link
+cl upload /u/nlp/data/a.txt --link
 ```
 
 In the above example, the upload command happens instantaneously (with no data transfer of the actual file), and the server will retrieve the data from the given link path when the bundle is required as a dependency.
 
 
-Compare this operation to a normal upload, in which `/var/data/a.txt` will be uploaded to the server and a copy of it will be stored in the bundle store:
+Compare this operation to a normal upload, in which `/u/nlp/data/a.txt` will be uploaded to the server and a copy of it will be stored in the bundle store:
 
 ```bash
-cl upload /var/data/a.txt
+cl upload /u/nlp/data/a.txt
 ```
 
 ### Server setup with --link
 
 For security reasons, the `--link` argument is not enabled by default on CodaLab installations. In order to enable it, either `CODALAB_LINK_ALLOWED_PATHS` environment variable or the `--link_allowed_paths` command-line parameter to `codalab_service.py` must be set on the server. This variable must be equal to a glob expression that specifies the allowed paths that `--link` can grab data from.
 
-For example, in order to restrict all possible linked paths to files inside the `/var/data` directory, run the server with this command:
+For example, in order to restrict all possible linked paths to files inside the `/u/nlp/data` directory, run the server with this command:
 
 ```bash
-python codalab_service.py --link_allowed_paths=/var/data/**
+python codalab_service.py --link_allowed_paths=/u/nlp/data/**
 ```
+
+### The interplay between --link and --shared-file-system
+
+It is important to note how `--link` differs from `--shared-file-system`:
+
+- `--link` is an argument passed to
+`cl upload` that means that the user is referencing a path that is already on the server (which typically means that the
+user and the server share a file system).
+- `--shared-file-system` is an argument passed to `codalab_service.py` that
+means that the _workers_ and the server share a file system from which they can retrieve bundle contents.
+
+When a bundle is run with a dependency, here is what the CodaLab server sends the worker, based on different combinations
+of `--link` (applied to the dependency) and `--shared-file-system`:
+
+ <!-- -->       |--link | no --link            |
+-------| ----------|------------------------------|
+ --shared-file-system        | Server sends worker just the bundle path (`/u/nlp/data`) | Server sends worker just the bundle path (which must be in CodaLab bundle store `/u/codalab/bundles/...`)
+ no --shared-file-system     | Server sends worker the bundle contents (reading from the path - `/u/nlp/data`)   | Server sends worker the bundle contents (reading from the path in the CodaLab bundle store - `/u/codalab/bundles/...`)
