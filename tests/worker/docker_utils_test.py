@@ -41,3 +41,25 @@ class DockerUtilsTest(unittest.TestCase):
         except Exception as e:
             self.assertEqual(str(e), 'Should throw DockerUserErrorException: ' + error)
             self.assertIsInstance(e, DockerUserErrorException)
+
+    def test_wrap_exception_with_memory_limit_error(self):
+        error = (
+            'Unable to start Docker container: 500 Server Error: Internal Server Error '
+            '("OCI runtime create failed: container_linux.go:349: starting container process '
+            'caused "process_linux.go:449: container init caused \"process_linux.go:415: '
+            'setting cgroup config for procHooks process caused \\\"failed to write\\\\\\\"8388608'
+            '\\\\\\\" to \\\\\\\"/sys/fs/cgroup/memory/docker/a5475e95e98bbb534870dfdf290e91251f54'
+            'e5c13be07a7b6819619a2dba48ef/memory.limit_in_bytes\\\\\\\":write /sys/fs/cgroup/memory'
+            '/docker/a5475e95e98bbb534870dfdf290e91251f54e5c13be07a7b6819619a2dba48ef/'
+            'memory.limit_in_bytes: device or resource busy\\\"\"": unknown'
+        )
+
+        @wrap_exception('Should throw DockerUserErrorException')
+        def throw_memory_error():
+            raise APIError(error)
+
+        try:
+            throw_memory_error()
+        except Exception as e:
+            self.assertEqual(str(e), 'Should throw DockerUserErrorException: ' + error)
+            self.assertIsInstance(e, DockerUserErrorException)
