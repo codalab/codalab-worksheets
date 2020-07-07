@@ -33,7 +33,7 @@
     "react-dom": "^16.8.6",
     "react-responsive-embed": "^2.1.0",
     "react-router-dom": "^4.3.1",
-    "react-select": "^2.4.3",
+    "react-select": "^3.1.0",
     "react-stickynode": "^3.0.3",
     "react-toastify": "^6.0.6",
     "sass": "^1.26.9",
