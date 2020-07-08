@@ -262,10 +262,12 @@ The issue is documented in detail [here](https://github.com/benoitc/gunicorn/iss
 is to unselect `/tmp` in Docker's preferences under file sharing.
 
 The image below shows where the file sharing pane is.
-<img src="images/docker-preferences.png" />
+
+![docker preferences](images/docker-preferences.png)
 
 ## Sending Slack notifications from the monitor.py service
 If you need to send Slack notifications from monitor.py service, you can configure your system by Slack Email App as follows:
+
 * Go to [Slack Email App](https://slack.com/apps/A0F81496D-email) 
 * Sign in to install and follow instructions listed on the above web page to generate your special Slack email address.
 * Since the system notifications from monitor.py are sent to $CODALAB_ADMIN_EMAIL, you can set $CODALAB_ADMIN_EMAIL to your special 
