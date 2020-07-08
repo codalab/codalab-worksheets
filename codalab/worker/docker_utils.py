@@ -28,11 +28,6 @@ NVIDIA_MOUNT_ERROR_REGEX = (
     '[\s\S]*OCI runtime create failed[\s\S]*stderr:[\s\S]*nvidia-container-cli: '
     'mount error: file creation failed:[\s\S]*nvidia-smi'
 )
-# This error happens when the memory requested by user is not enough to start a docker container
-MEMORY_LIMIT_ERROR_REGEX = (
-    '[\s\S]*OCI runtime create failed[\s\S]*failed to write[\s\S]*'
-    'memory.limit_in_bytes: device or resource busy[\s\S]*'
-)
 
 logger = logging.getLogger(__name__)
 client = docker.from_env(timeout=DEFAULT_TIMEOUT)
