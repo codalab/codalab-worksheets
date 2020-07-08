@@ -268,6 +268,8 @@ class SlurmBatchWorkerManager(WorkerManager):
             command.extend(['--delete-work-dir-on-exit'])
         if self.args.worker_exit_on_exception:
             command.extend(['--exit-on-exception'])
+        if self.args.worker_tag_exclusive:
+            command.extend(['--tag-exclusive'])
 
         return command
 
