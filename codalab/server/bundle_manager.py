@@ -24,11 +24,6 @@ WORKER_TIMEOUT_SECONDS = 60
 SECONDS_PER_DAY = 60 * 60 * 24
 # Fail unresponsive bundles in uploading, staged and running state after this many days.
 BUNDLE_TIMEOUT_DAYS = 60
-# Impose a minimum container request memory 4mb (4 * 1024 * 1024 bytes), same as docker's minimum allowed value
-# https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory
-# When using the REST api, it is allowed to set Memory to 0 but that means the container has unbounded
-# access to the host machine's memory, which we have decided to not allow
-MINIMUM_REQUEST_MEMORY_BYTES = 4 * 1024 * 1024
 # Deduct DISK_QUOTA_SLACK_BYTES from the max user disk quota bytes when computing the default amount of disk space to
 # request. Then the default max disk quota that can be requested becomes disk quota left - DISK_QUOTA_SLACK_BYTES.
 DISK_QUOTA_SLACK_BYTES = 0.5 * 1024 * 1024 * 1024
@@ -63,9 +58,6 @@ class BundleManager(object):
 
         self._max_request_time = parse(formatting.parse_duration, 'max_request_time') or 0
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory') or 0
-        self._min_request_memory = (
-            parse(formatting.parse_size, 'min_request_memory') or MINIMUM_REQUEST_MEMORY_BYTES
-        )
         self._max_request_disk = parse(formatting.parse_size, 'max_request_disk') or 0
 
         self._default_cpu_image = config.get('default_cpu_image')
@@ -757,14 +749,11 @@ class BundleManager(object):
         global_fail_string=None,
         user_max=None,
         global_max=None,
-        global_min=None,
         pretty_print=lambda x: str(x),
     ):
         """
         Returns a failure message in case a certain resource limit is not respected.
         If value > user_max, user_fail_string is formatted with value and user_max in that order
-        If value > global_max, global_fail_string is formatted with value and global_max in that order
-        If value < global_min, global_fail_string is formatted with value and global_min in that order
         Pretty print is applied to both the value and max values before they're passed on to the functions
         The strings should expect string inputs for formatting and pretty_print should convert values to strings
         """
@@ -780,12 +769,6 @@ class BundleManager(object):
                     pretty_print(value),
                     pretty_print(global_max),
                     pretty_print(value - global_max),
-                )
-            elif global_min and value < global_min:
-                return global_fail_string % (
-                    pretty_print(value),
-                    pretty_print(global_min),
-                    pretty_print(global_min - value),
                 )
         return None
 
@@ -854,16 +837,6 @@ class BundleManager(object):
                     bundle_resources.memory,
                     global_fail_string='Requested more memory (%s) than maximum limit (%s) by %s',
                     global_max=self._max_request_memory,
-                    pretty_print=formatting.size_str,
-                )
-            )
-            # Filter out all the bundles that have requested memory less than 4m which is the
-            # minimum amount of memory to start a Docker container
-            failures.append(
-                self._check_resource_failure(
-                    bundle_resources.memory,
-                    global_fail_string='Requested less memory (%s) than minimum limit (%s) by %s',
-                    global_min=self._min_request_memory,
                     pretty_print=formatting.size_str,
                 )
             )

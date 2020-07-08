@@ -13,6 +13,7 @@ from dateutil import parser, tz
 import datetime
 import re
 import requests
+from codalab.lib.formatting import parse_size
 
 
 MIN_API_VERSION = '1.17'
@@ -28,11 +29,6 @@ NVIDIA_MOUNT_ERROR_REGEX = (
     '[\s\S]*OCI runtime create failed[\s\S]*stderr:[\s\S]*nvidia-container-cli: '
     'mount error: file creation failed:[\s\S]*nvidia-smi'
 )
-# This error happens when the memory requested by user is not enough to start a docker container
-MEMORY_LIMIT_ERROR_REGEX = (
-    '[\s\S]*OCI runtime create failed[\s\S]*failed to write[\s\S]*'
-    'memory.limit_in_bytes: device or resource busy[\s\S]*'
-)
 
 logger = logging.getLogger(__name__)
 client = docker.from_env(timeout=DEFAULT_TIMEOUT)
@@ -47,8 +43,6 @@ def wrap_exception(message):
             def check_for_user_error(exception):
                 error_message = format_error_message(e)
                 if re.match(NVIDIA_MOUNT_ERROR_REGEX, str(exception)):
-                    raise DockerUserErrorException(error_message)
-                elif re.match(MEMORY_LIMIT_ERROR_REGEX, str(exception)):
                     raise DockerUserErrorException(error_message)
                 else:
                     raise DockerException(error_message)
@@ -145,6 +139,17 @@ def start_bundle_container(
     tty=False,
     runtime=DEFAULT_RUNTIME,
 ):
+    # Impose a minimum container request memory 4mb, same as docker's minimum allowed value	
+    # https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory	
+    # When using the REST api, it is allowed to set Memory to 0 but that means the container has unbounded	
+    # access to the host machine's memory, which we have decided to not allow	
+    if memory_bytes < parse_size('4m'):	
+        raise DockerException(	
+            'Bundle {}: minimum memory to start {} must be 4m ({} bytes), '	
+            'current available memory is {} bytes'.format(	
+                uuid, docker_image, parse_size('4m'), memory_bytes	
+            )	
+        )
     if not command.endswith(';'):
         command = '{};'.format(command)
     # Explicitly specifying "/bin/bash" instead of "bash" for bash shell to avoid the situation when
