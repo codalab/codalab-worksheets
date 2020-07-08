@@ -65,12 +65,19 @@ class AuthenticatedPlugin(object):
 
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
-            # TODO: need to check protected mode here. if protected, check if verified.
             if not user_is_authenticated():
                 if request.is_ajax:
                     abort(httplib.UNAUTHORIZED, 'Not authorized')
                 else:
                     redirect_with_query('/account/login', {'next': request.url})
+
+            # TODO: need to check protected mode here. if protected, check if verified.
+            if os.environ.get('CODALAB_PROTECTED_MODE') == 'true':
+                if not request.user.has_access:
+                    if request.is_ajax:
+                        abort(httplib.UNAUTHORIZED, 'User is not granted access')
+                    else:
+                        redirect_with_query('/account/login', {'next': request.url})
 
             return callback(*args, **kwargs)
 
@@ -90,11 +97,11 @@ class ProtectedAuthenticatedPlugin(object):
                         abort(httplib.UNAUTHORIZED, 'Not authorized')
                     else:
                         redirect_with_query('/account/login', {'next': request.url})
-                elif not request.user.is_verified:
+                elif not request.user.has_access:
                     if request.is_ajax:
-                        abort(httplib.UNAUTHORIZED, 'User is not verified')
+                        abort(httplib.UNAUTHORIZED, 'User is not granted access')
                     else:
-                        redirect(url('resend_key'))
+                        redirect_with_query('/account/login', {'next': request.url})
 
             return callback(*args, **kwargs)
 

@@ -2,6 +2,7 @@
 Worksheets REST API Users Views.
 """
 import http.client
+import os
 
 from bottle import abort, get, request, local, delete
 
@@ -160,7 +161,13 @@ def update_users():
     users = AuthenticatedUserSchema(strict=True, many=True).load(request.json, partial=True).data
 
     if len(users) != 1:
-        abort(http.client.BAD_REQUEST, "Users can only be updated on at a time.")
+        abort(http.client.BAD_REQUEST, "Users can only be updated one at a time.")
+
+    if 'has_access' in users[0]:
+        if os.environ.get('CODALAB_PROTECTED_MODE') != 'true':
+            abort(http.client.BAD_REQUEST, "This CodaLab instance is not in protected mode")
+        if not local.model.is_verified(users[0]):
+            abort(http.client.BAD_REQUEST, "User has to be verified in order to be grant access")
 
     local.model.update_user_info(users[0])
 

@@ -2386,6 +2386,21 @@ class BundleModel(object):
 
         return True
 
+    def is_verified(self, user_id):
+        """
+        Checks if the user is verified or not.
+        :param user_id: id of the user
+        :return: boolean to indicate if the user is verified or not
+        """
+        with self.engine.begin() as connection:
+            verify_row = connection.execute(
+                cl_user.select()
+                .where(and_(cl_user.c.user_id == user_id, cl_user.c.is_verified == True))
+                .limit(1)
+            ).fetchone()
+
+            return verify_row is not None
+
     def new_user_reset_code(self, user_id):
         """
         Generate a new password reset code.

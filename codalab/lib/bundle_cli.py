@@ -3725,6 +3725,11 @@ class BundleCLI(object):
             Commands.Argument(
                 '-d', '--disk-quota', help='Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)'
             ),
+            Commands.Argument(
+                '--grant-access',
+                action='store_true',
+                help='Grant access to the user in protected mode',
+            ),
         ),
     )
     def do_uedit_command(self, args):
@@ -3745,6 +3750,8 @@ class BundleCLI(object):
             user_info['parallel_run_quota'] = args.parallel_run_quota
         if args.disk_quota is not None:
             user_info['disk_quota'] = formatting.parse_size(args.disk_quota)
+        if args.grant_access:
+            user_info['has_access'] = True
         if not user_info:
             raise UsageError("No fields to update.")
 
