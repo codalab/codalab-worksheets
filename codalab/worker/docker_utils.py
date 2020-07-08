@@ -107,7 +107,7 @@ def get_nvidia_devices():
            docker.errors.ImageNotFound if the CUDA image cannot be pulled
            docker.errors.APIError if another server error occurs
     """
-    cuda_image = 'nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04'
+    cuda_image = 'nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04'
     client.images.pull(cuda_image)
     nvidia_command = 'nvidia-smi --query-gpu=index,uuid --format=csv,noheader'
     output = client.containers.run(
