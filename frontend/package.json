@@ -24,7 +24,7 @@
     "lodash": "^4.17.15",
     "marked": "^1.1.0",
     "material-ui-chip-input": "^1.0.0-beta.16",
-    "query-string": "^6.2.0",
+    "query-string": "^6.13.1",
     "react": "^16.8.6",
     "react-bootstrap": "^1.0.1",
     "react-circular-progressbar": "^2.0.3",
