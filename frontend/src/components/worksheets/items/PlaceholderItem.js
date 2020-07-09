@@ -27,7 +27,6 @@ async function fetchData({ worksheetUUID, directive }) {
 export default forwardRef((props, ref) => {
     const [item, setItem] = useState(undefined);
     const [error, setError] = useState(false);
-    const { focusIndex } = props;
     const { worksheetUUID, onAsyncItemLoad, itemHeight } = props;
     const { directive, sort_keys } = props.item;
     useEffect(() => {
@@ -38,27 +37,11 @@ export default forwardRef((props, ref) => {
                 if (blocks.length > 0) {
                     let actualBlock = blocks[0];
                     // replace with existing sort keys if there is one
-                    if (sort_keys && actualBlock['sort_keys'] === undefined) {
+                    if (sort_keys) {
                         actualBlock['sort_keys'] = sort_keys;
                     }
                     actualBlock.loadedFromPlaceholder = true;
-                    if (
-                        actualBlock['sort_keys'].length > 1 &&
-                        actualBlock['sort_keys'][actualBlock['sort_keys'].length - 1] === null &&
-                        focusIndex > 0
-                    ) {
-                        // When the last element in sort_keys is equal to "null" and there is more than one
-                        // "sort key", this means that we have resolved an aggregate search directive such as
-                        // "search .mine .count" that should be combined with the block right above it.
-                        // An example of worksheet source that would trigger this condition:
-                        //      ## **Basic statistics**
-                        //      Number of bundles owned by me:
-                        //      % search .mine .count
-                        onAsyncItemLoad(focusIndex - 1, actualBlock);
-                        onAsyncItemLoad(focusIndex, null);
-                    } else {
-                        onAsyncItemLoad(focusIndex, actualBlock);
-                    }
+                    onAsyncItemLoad(actualBlock);
                 }
             } catch (e) {
                 console.error(e);

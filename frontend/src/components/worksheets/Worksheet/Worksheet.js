@@ -512,20 +512,13 @@ class Worksheet extends React.Component {
     };
 
     onAsyncItemLoad = (focusIndex, item) => {
-        let blocks;
-        if (item === null) {
-            // Remove item at index *focusIndex* from array.
-            blocks = this.state.ws.info.blocks.filter((_, i) => i !== focusIndex);
-        } else {
-            // immutably change item at index *focusIndex*
-            blocks = Object.assign([], this.state.ws.info.blocks, { [focusIndex]: item });
-        }
         this.setState({
             ws: {
                 ...this.state.ws,
                 info: {
                     ...this.state.ws.info,
-                    blocks,
+                    // immutably change item at index *focusIndex*
+                    blocks: Object.assign([], this.state.ws.info.blocks, { [focusIndex]: item }),
                 },
             },
         });

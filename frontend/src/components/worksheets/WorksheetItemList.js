@@ -236,7 +236,7 @@ class WorksheetItemList extends React.Component {
                         addCopyBundleRowsCallback: this.props.addCopyBundleRowsCallback,
                         itemID: index,
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
-                        onAsyncItemLoad: (a, b) => this.props.onAsyncItemLoad(a, b),
+                        onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         itemHeights: this.props.itemHeights,
                     };
                     addWorksheetItems(
