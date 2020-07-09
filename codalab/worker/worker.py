@@ -141,6 +141,13 @@ class Worker:
                     logger.debug('Network %s already exists, reusing', name)
                 return self.docker.networks.list(names=[name])[0]
 
+        # Docker's default local bridge network only supports 30 different networks
+        # (each one of them uniquely identifiable by their name), so we prune old,
+        # unused docker networks, or network creation might fail. We only prune docker networks
+        # older than 1h, to avoid interfering with any newly-created (but still unused) networks
+        # that might have been created by other workers.
+        self.docker.networks.prune(filters={"until": "1h"})
+
         # Right now the suffix to the general worker network is hardcoded to manually match the suffix
         # in the docker-compose file, so make sure any changes here are synced to there.
         self.worker_docker_network = create_or_get_network(
