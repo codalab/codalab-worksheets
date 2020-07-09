@@ -12,7 +12,7 @@ down_revision = '9d0f1ffb18e9'
 
 from alembic import op
 import sqlalchemy as sa
-import sys
+
 
 def upgrade():
     op.add_column('worker', sa.Column('exit_after_num_runs', sa.Integer(), nullable=False, server_default='999999999'))

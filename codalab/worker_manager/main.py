@@ -59,9 +59,22 @@ def main():
         help='If specified, the CodaLab worker will exit after finishing this many of runs',
     )
     parser.add_argument(
+        '--worker-pass-down-termination',
+        action='store_true',
+        help="If set, the CodaLab worker will kill and restage all existing running bundles when terminated.",
+    )
+    parser.add_argument(
         '--worker-exit-on-exception',
         action='store_true',
         help="If set, the CodaLab worker will exit if it encounters an exception (rather than sleeping).",
+    )
+    parser.add_argument(
+        '--worker-tag-exclusive',
+        action='store_true',
+        help="If set, the CodaLab worker will only run bundles that match the worker\'s tag.",
+    )
+    parser.add_argument(
+        '--worker-executable', default="cl-worker", help="The CodaLab worker executable to run."
     )
     subparsers = parser.add_subparsers(
         title='Worker Manager to run',

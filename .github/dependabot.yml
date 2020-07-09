@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "npm"
+    directory: "frontend"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "docker"
+    directory: "docker/dockerfiles"
+    schedule:
+      interval: "daily"
+      
+  - package-ecosystem: "github-actions"
+    directory: ".github/workflows"
+    schedule:
+      interval: "daily"

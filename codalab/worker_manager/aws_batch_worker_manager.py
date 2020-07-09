@@ -46,6 +46,14 @@ class AWSBatchWorkerManager(WorkerManager):
             default='codalab-batch-cpu',
             help='Name of the AWS Batch job queue to use',
         )
+        subparser.add_argument(
+            '--job-filter',
+            type=str,
+            help=(
+                'Only consider jobs on the job queue with job names that '
+                'completely match this regex filter.'
+            ),
+        )
 
     def __init__(self, args):
         super().__init__(args)
@@ -53,12 +61,14 @@ class AWSBatchWorkerManager(WorkerManager):
 
     def get_worker_jobs(self):
         """Return list of workers."""
-        # Get all jobs that are not SUCCEEDED or FAILED.  Assume these
-        # represent workers we launched (no one is sharing this queue).
+        # Get all jobs that are not SUCCEEDED or FAILED.
         jobs = []
         for status in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING']:
             response = self.batch_client.list_jobs(jobQueue=self.args.job_queue, jobStatus=status)
-            jobs.extend(response['jobSummaryList'])
+            # Only record jobs if a job regex filter isn't provided or if the job's name completely matches
+            # a provided job regex filter.
+            if not args.job_filter or re.fullmatch(args.job_filter, response.get("jobName", "")):
+                jobs.extend(response['jobSummaryList'])
         logger.info(
             'Workers: {}'.format(
                 ' '.join(job['jobId'] + ':' + job['status'] for job in jobs) or '(none)'
@@ -78,7 +88,7 @@ class AWSBatchWorkerManager(WorkerManager):
         work_dir = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
         worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         command = [
-            'cl-worker',
+            self.args.worker_executable,
             '--server',
             self.args.server,
             '--verbose',
@@ -102,6 +112,10 @@ class AWSBatchWorkerManager(WorkerManager):
             command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
         if self.args.worker_exit_on_exception:
             command.extend(['--exit-on-exception'])
+        if self.args.worker_pass_down_termination:
+            command.extend(['--pass-down-termination'])
+        if self.args.worker_tag_exclusive:
+            command.extend(['--tag-exclusive'])
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-batch-jobdefinition.html
         # Need to mount:

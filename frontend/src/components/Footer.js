@@ -19,6 +19,7 @@ class Footer extends React.Component {
                             <a
                                 href='https://codalab-worksheets.readthedocs.io/en/latest/About'
                                 target='_blank'
+                                rel='noopener noreferrer'
                             >
                                 About
                             </a>
@@ -27,6 +28,7 @@ class Footer extends React.Component {
                             <a
                                 href='https://codalab-worksheets.readthedocs.io/en/latest/Privacy'
                                 target='_blank'
+                                rel='noopener noreferrer'
                             >
                                 Privacy and Terms
                             </a>
@@ -35,6 +37,7 @@ class Footer extends React.Component {
                             <a
                                 href='https://github.com/codalab/codalab-worksheets/releases'
                                 target='_blank'
+                                rel='noopener noreferrer'
                             >
                                 v{CODALAB_VERSION}
                             </a>
