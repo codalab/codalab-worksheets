@@ -204,7 +204,7 @@ def _run_command(
     include_stderr=False,
     binary=False,
     force_subprocess=False,
-    request_memory="4m",
+    request_memory="10m",
     request_disk="1m",
     request_time=None,
     request_docker_image="python:3.6.10-slim-buster",

@@ -69,6 +69,11 @@ def main():
         help="If set, the CodaLab worker will exit if it encounters an exception (rather than sleeping).",
     )
     parser.add_argument(
+        '--worker-tag-exclusive',
+        action='store_true',
+        help="If set, the CodaLab worker will only run bundles that match the worker\'s tag.",
+    )
+    parser.add_argument(
         '--worker-executable', default="cl-worker", help="The CodaLab worker executable to run."
     )
     subparsers = parser.add_subparsers(
