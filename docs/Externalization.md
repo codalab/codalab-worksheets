@@ -8,6 +8,9 @@ Note that the path specified by `--link` must be accessible by the CodaLab serve
 
 In this case, it would be inefficient to copy every bundle upload to a separate bundle store. Additionally, using `--link` would make debugging easier by allowing users to directly mutate the underlying files that a bundle is associated with.
 
+!!! note
+    The `--link` functionality is not enabled by default on CodaLab installations. Read [Server setup](#server-setup) for more information on how to enable it.
+
 ### CLI usage
 
 Here is an example of using the link functionality:
@@ -25,17 +28,31 @@ Compare this operation to a normal upload, in which `/u/nlp/data/a.txt` will be 
 cl upload /u/nlp/data/a.txt
 ```
 
-### Server setup with --link
+### Server setup
 
-For security reasons, the `--link` argument is not enabled by default on CodaLab installations. In order to enable it, either `CODALAB_LINK_ALLOWED_PATHS` environment variable or the `--link_allowed_paths` command-line parameter to `codalab_service.py` must be set on the server. This variable must be equal to a glob expression that specifies the allowed paths that `--link` can grab data from.
+For security reasons, the `--link` argument is not enabled by default on CodaLab installations. In order to enable it, set either the `CODALAB_LINK_MOUNTS` environment variable or the `--link_mounts` command-line parameter to `codalab_service.py` on the server.
 
-For example, in order to restrict all possible linked paths to files inside the `/u/nlp/data` directory, run the server with this command:
+This variable must be equal to a file path on the server that will be mounted onto the CodaLab server Docker container so it can access them. To specify multiple file paths to be mounted, separate these file paths with a comma.
+
+For example, in order to restrict all possible linked paths to files inside the `/u/nlp/data` directory or `/u/nlp/output` directory, use:
 
 ```bash
-python codalab_service.py --link_allowed_paths=/u/nlp/data/**
+CODALAB_LINK_MOUNTS=/u/nlp/data,/u/nlp/output python codalab_service.py
 ```
 
-### The interplay between --link and --shared-file-system
+### Design
+
+#### Mounting process
+
+The `--link_mounts` parameter is necessary because the CodaLab server runs on a Docker container and does not have access to the entire host's filesystem
+by default.
+
+Each path that is passed to `--link_mounts` will be mounted in a directory called `/opt/codalab-worksheets-link-mounts` on the Docker container, at a location that mirrors the original path in the host filesystem.
+
+For example, if `--link_mounts=/u/nlp/data` is specified, this means that the host path `/u/nlp/data` will be mounted to `/opt/codalab-worksheets-link-mounts/u/nlp/data` on the CodaLab server Docker container.
+
+
+#### The interplay between --link and --shared-file-system
 
 It is important to note how `--link` differs from `--shared-file-system`:
 
