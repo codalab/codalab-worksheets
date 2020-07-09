@@ -52,8 +52,10 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
     props.url = url;
     props.prevItem = prevItem;
     props.itemHeight = (props.itemHeights || {})[props.ref] || 100;
-
-    props.after_sort_key = getAfterSortKey(props.item, props.subFocusIndex);
+    props.after_sort_key = getAfterSortKey(
+        props.item,
+        props.item.mode === 'markup_block' ? undefined : props.subFocusIndex,
+    );
     props.ids = getIds(item);
     // showNewButtonsAfterEachBundleRow is set to true when we have a bundle table, because in this case,
     // we must show the new upload / new run buttons after each row in the table (in the BundleRow component)
