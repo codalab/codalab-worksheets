@@ -2,7 +2,7 @@ import * as React from 'react';
 import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
-import { buildTerminalCommand, getAfterSortKey, getIds } from '../../util/worksheet_utils';
+import { getAfterSortKey, getIds } from '../../util/worksheet_utils';
 import ContentsItem from './items/ContentsItem';
 import GraphItem from './items/GraphItem';
 import ImageItem from './items/ImageItem';
@@ -13,6 +13,9 @@ import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
 import PlaceholderItem from './items/PlaceholderItem';
 import NewUpload from './NewUpload/NewUpload';
+import TextEditorItem from './items/TextEditorItem';
+import NewRun from './NewRun';
+import { withStyles } from '@material-ui/core/styles';
 
 export const BLOCK_TO_COMPONENT = {
     markup_block: MarkdownItem,
@@ -83,14 +86,10 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             worksheetUUID={props.worksheetUUID}
             reloadWorksheet={props.reloadWorksheet}
             showNewRun={
-                !props.showNewButtonsAfterEachBundleRow &&
-                props.focusedForButtons &&
-                props.showNewRun
+                !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewRun
             }
             showNewText={
-                !props.showNewButtonsAfterEachBundleRow &&
-                props.focusedForButtons &&
-                props.showNewText
+                !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewText
             }
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
@@ -124,14 +123,14 @@ class WorksheetItemList extends React.Component {
     }
 
     capture_keys() {
-        // Move focus to the top
+        // Move focus to the top, above the first item of worksheet
         Mousetrap.bind(
             ['g g'],
             function() {
                 $('body')
                     .stop(true)
                     .animate({ scrollTop: 0 }, 'fast');
-                this.props.setFocus(0, 0);
+                this.props.setFocus(-1, 0);
             }.bind(this),
             'keydown',
         );
@@ -197,22 +196,18 @@ class WorksheetItemList extends React.Component {
                 },
             ];
         }
-        let focusedForButtonsItem;
+        let focusedItem;
         if (info && info.blocks.length > 0) {
             var worksheet_items = [];
             info.blocks.forEach(
                 function(item, index) {
                     const focused = index === this.props.focusIndex;
 
-                    // focusedForButtons determines whether clicking on Cell/Upload/Run will
+                    // focused determines whether clicking on Cell/Upload/Run will
                     // apply to this cell. If nothing is focused (focusIndex = -1),
-                    // append to the end by default.
-                    const focusedForButtons =
-                        focused ||
-                        (this.props.focusIndex === -1 && index === info.blocks.length - 1);
-
-                    if (focusedForButtons) {
-                        focusedForButtonsItem = item;
+                    // prepend to the top by default.
+                    if (focused) {
+                        focusedItem = item;
                     }
                     var props = {
                         worksheetUUID: info.uuid,
@@ -220,12 +215,11 @@ class WorksheetItemList extends React.Component {
                         version: this.props.version,
                         active: this.props.active,
                         focused,
-                        focusedForButtons,
                         canEdit: this.props.canEdit,
                         focusIndex: index,
                         subFocusIndex: this.props.subFocusIndex,
                         setFocus: this.props.setFocus,
-                        focusActionBar: this.props.focusActionBar,
+                        focusTerminal: this.props.focusTerminal,
                         openWorksheet: this.props.openWorksheet,
                         reloadWorksheet: this.props.reloadWorksheet,
                         ws: this.props.ws,
@@ -255,13 +249,34 @@ class WorksheetItemList extends React.Component {
             );
             items_display = (
                 <>
+                    {/*Show new runs/text at the top of worksheet when no blocks are focused*/}
+                    {this.props.showNewText && !focusedItem && (
+                        <TextEditorItem
+                            mode='create'
+                            after_sort_key={-1}
+                            worksheetUUID={info.uuid}
+                            reloadWorksheet={() => this.props.reloadWorksheet(undefined, (0, 0))}
+                            closeEditor={() => {
+                                this.props.onHideNewText();
+                            }}
+                        />
+                    )}
+                    {this.props.showNewRun && !focusedItem && (
+                        <div className={this.props.classes.insertBox}>
+                            <NewRun
+                                after_sort_key={-1}
+                                ws={this.props.ws}
+                                onSubmit={() => this.props.onHideNewRun()}
+                                reloadWorksheet={() =>
+                                    this.props.reloadWorksheet(undefined, (0, 0))
+                                }
+                            />
+                        </div>
+                    )}
                     {worksheet_items}
                     <NewUpload
                         key={this.state.newUploadKey}
-                        after_sort_key={getAfterSortKey(
-                            focusedForButtonsItem,
-                            this.props.subFocusIndex,
-                        )}
+                        after_sort_key={getAfterSortKey(focusedItem, this.props.subFocusIndex)}
                         worksheetUUID={info.uuid}
                         reloadWorksheet={this.props.reloadWorksheet}
                         // Reset newUploadKey so that NewUpload gets re-rendered. This way,
@@ -285,4 +300,11 @@ class WorksheetItemList extends React.Component {
     }
 }
 
-export default WorksheetItemList;
+const styles = (theme) => ({
+    insertBox: {
+        border: `2px solid ${theme.color.primary.base}`,
+        margin: '32px 64px !important',
+    },
+});
+
+export default withStyles(styles)(WorksheetItemList);

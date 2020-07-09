@@ -131,12 +131,13 @@ class SlurmBatchWorkerManager(WorkerManager):
             job_acct = self.run_command(
                 [self.SCONTROL, 'show', 'jobid', '-d', job_id, '--oneliner'], verbose=False
             )
-            job_state = re.search(r'JobState=(.*) ', job_acct).group(1)
+            # Extract out the JobState from the full scontrol output.
+            job_state = re.search(r'JobState=(.*)\sReason', job_acct).group(1)
             logger.info("Job ID {} has state {}".format(job_id, job_state))
             if 'FAILED' in job_state:
                 jobs_to_remove.add(job_id)
                 logger.error("Failed to start job {}".format(job_id))
-            elif 'COMPLETED' in job_state or 'CANCELLED' in job_state:
+            elif 'COMPLETED' in job_state or 'CANCELLED' in job_state or "TIMEOUT" in job_state:
                 jobs_to_remove.add(job_id)
                 logger.info("Removing job ID {}".format(job_id))
         self.submitted_jobs = self.submitted_jobs - jobs_to_remove
@@ -239,7 +240,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         worker_work_dir = work_dir_prefix.joinpath(Path('slurm-codalab-worker-scratch', worker_id))
 
         command = [
-            'cl-worker',
+            self.args.worker_executable,
             '--server',
             self.args.server,
             '--verbose',
@@ -259,10 +260,16 @@ class SlurmBatchWorkerManager(WorkerManager):
             command.extend(['--tag', self.args.worker_tag])
         if self.args.password_file:
             command.extend(['--password-file', self.args.password_file])
+        if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
+            command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
         if self.args.worker_max_work_dir_size:
             command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
         if self.args.worker_delete_work_dir_on_exit:
             command.extend(['--delete-work-dir-on-exit'])
+        if self.args.worker_exit_on_exception:
+            command.extend(['--exit-on-exception'])
+        if self.args.worker_tag_exclusive:
+            command.extend(['--tag-exclusive'])
 
         return command
 

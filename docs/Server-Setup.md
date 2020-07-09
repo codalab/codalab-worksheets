@@ -74,7 +74,7 @@ restart all the CodaLab services.  Any ongoing runs should not be affected.
 
 If you're actively developing and want to test your changes, add the following two flags:
 
-- `-b` (`--build-locally`): builds the Docker images above based on your local
+- `-b` (`--build-images`): builds the Docker images above based on your local
   code.  Otherwise, by default, the public images on
   [DockerHub](https://hub.docker.com/u/codalab) will be used.
 - `-d` (`--dev`): runs the development version of the frontend so that your
@@ -262,10 +262,12 @@ The issue is documented in detail [here](https://github.com/benoitc/gunicorn/iss
 is to unselect `/tmp` in Docker's preferences under file sharing.
 
 The image below shows where the file sharing pane is.
-<img src="images/docker-preferences.png" />
+
+![docker preferences](images/docker-preferences.png)
 
 ## Sending Slack notifications from the monitor.py service
 If you need to send Slack notifications from monitor.py service, you can configure your system by Slack Email App as follows:
+
 * Go to [Slack Email App](https://slack.com/apps/A0F81496D-email) 
 * Sign in to install and follow instructions listed on the above web page to generate your special Slack email address.
 * Since the system notifications from monitor.py are sent to $CODALAB_ADMIN_EMAIL, you can set $CODALAB_ADMIN_EMAIL to your special 

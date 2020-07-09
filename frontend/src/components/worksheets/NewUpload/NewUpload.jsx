@@ -174,7 +174,7 @@ class NewUpload extends React.Component<{
         const { name, description } = this.state;
         const folderNamePos = files[0].webkitRelativePath.indexOf("/");
         let folderName = "";
-        if (folderNamePos != -1) {
+        if (folderNamePos !== -1) {
             folderName = files[0].webkitRelativePath.slice(0, folderNamePos)
         }
 
