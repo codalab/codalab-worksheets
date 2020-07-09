@@ -847,7 +847,7 @@ class Worksheet extends React.Component {
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
-                            $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                            $('html, body').animate({ scrollTop: 0 }, 'fast');
                         }
                         this.setState({ showNewText: true });
                     }.bind(this),
@@ -860,7 +860,7 @@ class Worksheet extends React.Component {
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
-                            $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                            $('html, body').animate({ scrollTop: 0 }, 'fast');
                         }
                         document.querySelector('#upload-button').click();
                     }.bind(this),
@@ -872,7 +872,7 @@ class Worksheet extends React.Component {
                     function(e) {
                         // if no active focus, scroll to the bottom position
                         if (this.state.focusIndex < 0) {
-                            $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                            $('html, body').animate({ scrollTop: 0 }, 'fast');
                         }
                         this.setState({ showNewRun: true });
                     }.bind(this),

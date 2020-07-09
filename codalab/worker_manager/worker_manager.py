@@ -103,8 +103,17 @@ class WorkerManager(object):
             time.sleep(self.args.sleep_time)
 
     def run_one_iteration(self):
-        # Get staged bundles for the current user.
-        keywords = ['state=' + State.STAGED] + [".mine"] + self.args.search
+        # Get staged bundles for the current user. The principle here is that we want to get all of
+        # the staged bundles can be run by this user.
+        keywords = ['state=' + State.STAGED] + self.args.search
+        # If the current user is "codalab", don't filter by .mine because the workers owned
+        # by "codalab" can be shared by all users. But, for all other users, we only
+        # want to see their staged bundles.
+        if os.environ.get('CODALAB_USERNAME') != "codalab":
+            keywords += [".mine"]
+        if args.worker_tag_exclusive and args.worker_tag:
+            keywords += ["request_queue=" + args.worker_tag]
+
         bundles = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
         )
