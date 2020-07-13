@@ -124,27 +124,8 @@ def delete_user():
     # Return list of deleted id as meta
     return json_api_meta({}, {'ids': user_ids})
 
-
 @get('/users')
 def fetch_users():
-    """
-    Fetch list of users, filterable by username and email.
-
-    Takes the following query parameters:
-        filter[user_name]=name1,name2,...
-        filter[email]=email1,email2,...
-
-    Fetches all users that match any of these usernames or emails.
-    """
-    # Combine username and email filters
-    usernames = set(request.query.get('filter[user_name]', '').split(','))
-    usernames |= set(request.query.get('filter[email]', '').split(','))
-    usernames.discard('')  # str.split(',') will return '' on empty strings
-    users = local.model.get_users(usernames=(usernames or None))
-    return allowed_user_schema()(many=True).dump(users).data
-
-@get('/userstats')
-def fetch_user_stats():
     """
     Fetch list of users, filterable by username and email.
 
@@ -164,21 +145,25 @@ def fetch_user_stats():
     - `.count                 ` : Count the number of users.
     - `.limit=10              ` : Limit the number of results to the top 10.
     """
-    keywords = query_get_list('keywords')
-    if keywords:
-        # Handle search keywords
-        users = local.model.get_user_stats(keywords)
-        # Return simple dict if scalar result (e.g. .sum or .count queries)
-        if users.get('is_aggregate'):
+    # Combine username and email filters
+    usernames = set(request.query.get('filter[user_name]', '').split(','))
+    usernames |= set(request.query.get('filter[email]', '').split(','))
+    usernames.discard('')  # str.split(',') will return '' on empty strings
 
-            return json_api_meta({}, {'results': users['results']})
-        else:
-            users = users['results']
-    else:
+    keywords = query_get_list('keywords')
+    if usernames == None and keywords == None:
         abort(
             http.client.BAD_REQUEST,
-            "Request must include 'keywords' query parameter",
+            "Request must include 'keywords' query parameter or usernames",
         )
+    # Handle search keywords
+    users = local.model.get_users(keywords, usernames=(usernames or None))
+    # Return simple dict if scalar result (e.g. .sum or .count queries)
+    if users.get('is_aggregate'):
+
+        return json_api_meta({}, {'results': users['results']})
+    else:
+        users = users['results']
 
     return allowed_user_schema()(many=True).dump(users).data
 

@@ -664,7 +664,7 @@ class BundleCLI(object):
         return worksheet_uuid
 
     def print_table(
-        self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''
+        self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent='',
     ):
         """
         Pretty-print a list of columns from each row in the given list of dicts.
@@ -674,24 +674,19 @@ class BundleCLI(object):
         for row_dict in row_dicts:
             row = []
             for col in columns:
-                # These fields will not be returned by the server if the
-                # authenticated user is not root
-                if col in ('last_login', 'email', 'time', 'disk', 'parallel_run_quota'):
-                    try:
-                        if col == 'time':
-                            cell = formatting.ratio_str(
-                                formatting.duration_str, row_dict['time_used'], row_dict['time_quota']
-                            )
-                        elif col == 'disk':
-                            cell = formatting.ratio_str(
-                                formatting.size_str, row_dict['disk_used'], row_dict['disk_quota']
-                            )
-                        else:
-                            cell = row_dict.get(col)
-                    except KeyError:
-                        return
-                else:
-                    cell = row_dict.get(col)
+                try:
+                    if col == 'time':
+                        cell = formatting.ratio_str(
+                            formatting.duration_str, row_dict['time_used'], row_dict['time_quota']
+                        )
+                    elif col == 'disk':
+                        cell = formatting.ratio_str(
+                            formatting.size_str, row_dict['disk_used'], row_dict['disk_quota']
+                        )
+                    else:
+                        cell = row_dict.get(col)
+                except KeyError:
+                    return
 
                 func = post_funcs.get(col)
                 if func:
@@ -3799,7 +3794,6 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('keywords', help='Keywords to search for.', nargs='+'),
             Commands.Argument('-f', '--field', help='Print out these comma-separated fields.'),
-            Commands.Argument('-w', '--weekly_stats', help='Print out the summary report of weekly new and active users respectively.'),
         ),
     )
     def do_uls_command(self, args):
@@ -3807,10 +3801,7 @@ class BundleCLI(object):
         Search for specific users.
         """
         client = self.manager.current_client()
-            #             user_id = client.fetch('user')['id']
-            # if request.user.user_id != local.model.root_user_id:
-        users = client.fetch('userstats', params={'keywords': args.keywords,})
-        # users = client.fetch('users', params={'date_joined': args.date_joined})
+        users = client.fetch('users', params={'keywords': args.keywords, })
         # Print direct numeric result
         if 'meta' in users:
             print(users['meta']['results'], file=self.stdout)
@@ -3854,7 +3845,6 @@ class BundleCLI(object):
         Edit properties of users.
         """
         client = self.manager.current_client()
-        print(args.user_spec)
         if args.user_spec is None:
             user = client.fetch('user')
         else:

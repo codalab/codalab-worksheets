@@ -2165,35 +2165,9 @@ class BundleModel(object):
             return result[0]
         return None
 
-    def get_users(self, user_ids=None, usernames=None, check_active=True,
-        date_joined=None, last_login=None):
+    def get_users(self, keywords, usernames=None):
         """
-        Get users.
-
-        :param user_ids: user ids of users to fetch
-        :param usernames: usernames or emails of users to fetch
-        :return: list of matching User objects
-        """
-        clauses = []
-        if check_active:
-            clauses.append(cl_user.c.is_active)
-        if user_ids is not None:
-            clauses.append(cl_user.c.user_id.in_(user_ids))
-        if usernames is not None:
-            clauses.append(or_(cl_user.c.user_name.in_(usernames), cl_user.c.email.in_(usernames)))
-        if date_joined is not None:
-            clauses.append(cl_user.c.date_joined >= date_joined)
-        if last_login is not None:
-            clauses.append(cl_user.c.last_login >= last_login)
-
-        with self.engine.begin() as connection:
-            rows = connection.execute(select([cl_user]).where(and_(*clauses))).fetchall()
-
-        return [User(row) for row in rows]
-
-    def get_user_stats(self, keywords):
-        """
-        Get user stats, specifically used for weekly on-call.
+        Get user stats.
 
         Returns a bundle search result dict where:
             result: list of bundle uuids matching search criteria in order
@@ -2209,12 +2183,12 @@ class BundleModel(object):
         - .offset=<int>: return bundles starting at this offset
         - .limit=<int>: maximum number of bundles to return
         - .count: just return the number of bundles
-        Keys are one of the following:
+        Keys are the following:
         - User fields (e.g., name)
-        - Special fields (e.g., date_joined)
         Values can be one of the following:
         - .sort: sort in increasing order
         - .sort-: sort by decreasing order
+        :param usernames: usernames or emails of users to fetch
         :return: list of matching User objects
         """
         clauses = []
@@ -2256,6 +2230,9 @@ class BundleModel(object):
                     return field.like(value)
                 return field == value
             return None
+
+        # if usernames is not None:
+        #     clauses.append(or_(cl_user.c.user_name.in_(usernames), cl_user.c.email.in_(usernames)))
 
         for keyword in keywords:
             keyword = keyword.replace('.*', '%')
@@ -2310,22 +2287,16 @@ class BundleModel(object):
                 clause = make_condition(key, cl_user.c.disk_quota, value)
             elif key == 'disk_used':
                 clause = make_condition(key, cl_user.c.disk_used, value)
-            # Special fields
-            elif key in ('.joined_after', '.active_after', '.joined_before', '.active_before'):
-                if key == '.joined_after':
+            elif key == '.joined_after':
                     clause = cl_user.c.date_joined >= value
-
-                if key == '.active_after':
+            elif key == '.active_after':
                     clause = cl_user.c.last_login >= value
-
-                if key == '.joined_before':
+            elif key == '.joined_before':
                     clause = cl_user.c.date_joined <= value
-
-                if key == '.active_before':
+            elif key == '.active_before':
                     clause = cl_user.c.last_login <= value
             elif key == '':  # Match any field
                 clause = []
-                clause.append(cl_user.c.id.like('%' + value + '%'))
                 clause.append(cl_user.c.user_id.like('%' + value + '%'))
                 clause.append(cl_user.c.user_name.like('%' + value + '%'))
                 clause.append(cl_user.c.first_name.like('%' + value + '%'))
