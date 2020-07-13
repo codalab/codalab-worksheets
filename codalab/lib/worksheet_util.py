@@ -202,7 +202,7 @@ def get_formatted_metadata(cls, metadata, raw=False):
                 continue
             value = apply_func(spec.formatting, metadata.get(key))
             if isinstance(value, list):
-                value = ' | '.join(value)
+                value = ' '.join(value)
         else:
             value = metadata.get(key)
         result.append((key, value))
@@ -767,6 +767,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                             'status': FetchStatusSchema.get_unknown_status(),
                             'header': header,
                             'rows': rows,
+                            'sort_keys': [bundle_info["sort_key"]],
                         }
                     )
                     .data

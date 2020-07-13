@@ -325,7 +325,7 @@ class Commands(object):
             if verbose:
                 if markdown:
                     name = HEADING_LEVEL_3 + name
-                return '%s%s:\n%s\n%s' % (
+                return '%s%s\n%s\n%s' % (
                     # This is to make GitHub Markdown format compatible with the Read the Docs theme.
                     ' ' * indent if not markdown else '',
                     name,
@@ -1118,6 +1118,7 @@ class BundleCLI(object):
             'shared_file_system',
             'tag_exclusive',
             'exit_after_num_runs',
+            'is_terminating',
         ]
 
         data = []
@@ -1138,6 +1139,7 @@ class BundleCLI(object):
                     'shared_file_system': worker['shared_file_system'],
                     'tag_exclusive': worker['tag_exclusive'],
                     'exit_after_num_runs': worker['exit_after_num_runs'],
+                    'is_terminating': worker['is_terminating'],
                 }
             )
 
