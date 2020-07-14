@@ -273,8 +273,6 @@ class UserSchema(Schema):
 
 class AuthenticatedUserSchema(UserSchema):
     email = fields.String()
-    is_verified = fields.Bool()
-    has_access = fields.Bool()  # TODO: Ensure this is omitted when not in protected mode -tony
     notifications = fields.Integer()
     time_quota = fields.Integer()
     parallel_run_quota = fields.Integer()
@@ -284,12 +282,16 @@ class AuthenticatedUserSchema(UserSchema):
     last_login = fields.LocalDateTime("%c")
 
 
+class AdminUserSchema(AuthenticatedUserSchema):
+    is_verified = fields.Bool()
+    has_access = fields.Bool()
+
+
 # Email must be updated through the /account/changeemail interface.
 # We cannot use the `dump_only` arguments to specify these filters, since
 # some users (i.e. the admin) CAN use the API to update some of these fields.
 USER_READ_ONLY_FIELDS = (
     'email',
-    'is_verified',
     'has_access',
     'time_quota',
     'parallel_run_quota',

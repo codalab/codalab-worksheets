@@ -8,7 +8,12 @@ from bottle import abort, get, request, local, delete
 
 from codalab.lib.spec_util import NAME_REGEX
 from codalab.lib.server_util import bottle_patch as patch, json_api_meta
-from codalab.rest.schemas import AuthenticatedUserSchema, USER_READ_ONLY_FIELDS, UserSchema
+from codalab.rest.schemas import (
+    AdminUserSchema,
+    AuthenticatedUserSchema,
+    USER_READ_ONLY_FIELDS,
+    UserSchema,
+)
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
 from codalab.rest.util import get_resource_ids
 
@@ -61,7 +66,7 @@ def update_authenticated_user():
 def allowed_user_schema():
     """Return schema with more fields if authenticated user is root."""
     if request.user.user_id == local.model.root_user_id:
-        return AuthenticatedUserSchema
+        return AdminUserSchema
     else:
         return UserSchema
 
@@ -163,7 +168,7 @@ def update_users():
     if request.user.user_id != local.model.root_user_id:
         abort(http.client.FORBIDDEN, "Only root user can update other users.")
 
-    users = AuthenticatedUserSchema(strict=True, many=True).load(request.json, partial=True).data
+    users = AdminUserSchema(strict=True, many=True).load(request.json, partial=True).data
 
     if len(users) != 1:
         abort(http.client.BAD_REQUEST, "Users can only be updated one at a time.")
@@ -171,8 +176,11 @@ def update_users():
     # TODO: remove later -tony
     logger.info('Tony - In update_users(): users[0]={}'.format(str(users[0])))
     if 'has_access' in users[0]:
+        # has_access can only be updated in protected mode
         if os.environ.get('CODALAB_PROTECTED_MODE') != 'True':
             abort(http.client.BAD_REQUEST, "This CodaLab instance is not in protected mode")
+
+        # has_access can only be updated once a user verifies the account
         if not local.model.is_verified(users[0]['user_id']):
             abort(
                 http.client.BAD_REQUEST,
@@ -183,4 +191,4 @@ def update_users():
 
     # Return updated users
     users = local.model.get_users(user_ids=[users[0]['user_id']])
-    return AuthenticatedUserSchema(many=True).dump(users).data
+    return AdminUserSchema(many=True).dump(users).data
