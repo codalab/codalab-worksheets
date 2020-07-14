@@ -31,10 +31,10 @@ from codalab.rest.schemas import (
 )
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, resolve_owner_in_keywords, get_resource_ids
-from codalab.server.authenticated_plugin import AuthenticatedPlugin, ProtectedAuthenticatedPlugin
+from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin, ProtectedPlugin
 
 
-@get('/worksheets/<uuid:re:%s>' % spec_util.UUID_STR, apply=ProtectedAuthenticatedPlugin())
+@get('/worksheets/<uuid:re:%s>' % spec_util.UUID_STR, apply=ProtectedPlugin())
 def fetch_worksheet(uuid):
     """
     Fetch a single worksheet by UUID.
@@ -107,7 +107,7 @@ def fetch_worksheet(uuid):
     return document
 
 
-@get('/worksheets', apply=ProtectedAuthenticatedPlugin())
+@get('/worksheets', apply=ProtectedPlugin())
 def fetch_worksheets():
     """
     Fetch worksheets by worksheet specs (names) OR search keywords.
@@ -148,7 +148,7 @@ def fetch_worksheets():
     return document
 
 
-@post('/worksheets', apply=AuthenticatedPlugin())
+@post('/worksheets', apply=AuthenticatedProtectedPlugin())
 def create_worksheets():
     # TODO: support more attributes
     worksheets = (
@@ -161,8 +161,8 @@ def create_worksheets():
     return WorksheetSchema(many=True).dump(worksheets).data
 
 
-@put('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR, apply=ProtectedAuthenticatedPlugin())
-@post('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR, apply=ProtectedAuthenticatedPlugin())
+@put('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR, apply=ProtectedPlugin())
+@post('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR, apply=ProtectedPlugin())
 def update_worksheet_raw(uuid):
     """
     Request body contains the raw lines of the worksheet.
@@ -174,7 +174,7 @@ def update_worksheet_raw(uuid):
     response.status = 204  # Success, No Content
 
 
-@patch('/worksheets', apply=AuthenticatedPlugin())
+@patch('/worksheets', apply=AuthenticatedProtectedPlugin())
 def update_worksheets():
     """
     Bulk update worksheets metadata.
@@ -189,7 +189,7 @@ def update_worksheets():
     return WorksheetSchema(many=True).dump(worksheet_updates).data
 
 
-@delete('/worksheets', apply=AuthenticatedPlugin())
+@delete('/worksheets', apply=AuthenticatedProtectedPlugin())
 def delete_worksheets():
     """
     Delete the bundles specified.
@@ -205,7 +205,8 @@ def delete_worksheets():
 
 
 @post(
-    '/worksheets/<worksheet_uuid:re:%s>/add-items' % spec_util.UUID_STR, apply=AuthenticatedPlugin()
+    '/worksheets/<worksheet_uuid:re:%s>/add-items' % spec_util.UUID_STR,
+    apply=AuthenticatedProtectedPlugin(),
 )
 def replace_items(worksheet_uuid):
     """
@@ -226,7 +227,7 @@ def replace_items(worksheet_uuid):
     local.model.add_worksheet_items(worksheet_uuid, items, after_sort_key, ids)
 
 
-@post('/worksheet-items', apply=AuthenticatedPlugin())
+@post('/worksheet-items', apply=AuthenticatedProtectedPlugin())
 def create_worksheet_items():
     """
     Bulk add worksheet items.
@@ -260,7 +261,7 @@ def create_worksheet_items():
     return WorksheetItemSchema(many=True).dump(new_items).data
 
 
-@post('/worksheet-permissions', apply=AuthenticatedPlugin())
+@post('/worksheet-permissions', apply=AuthenticatedProtectedPlugin())
 def set_worksheet_permissions():
     """
     Bulk set worksheet permissions.
@@ -273,7 +274,7 @@ def set_worksheet_permissions():
     return WorksheetPermissionSchema(many=True).dump(new_permissions).data
 
 
-@get('/worksheets/sample/')
+@get('/worksheets/sample/', apply=ProtectedPlugin())
 def get_sample_worksheets():
     """
     Get worksheets to display on the front page.
@@ -300,7 +301,7 @@ def get_sample_worksheets():
     return json.dumps(list_worksheets)
 
 
-@get('/worksheets/')
+@get('/worksheets/', apply=ProtectedPlugin())
 def get_worksheets_landing():
     requested_ws = request.query.get('uuid', request.query.get('name', 'home'))
     uuid = get_worksheet_uuid_or_create(None, requested_ws)

@@ -2223,6 +2223,7 @@ class BundleModel(object):
         notifications=NOTIFICATIONS_GENERAL,
         user_id=None,
         is_verified=False,
+        has_access=False,
     ):
         """
         Create a brand new unverified user.
@@ -2250,6 +2251,7 @@ class BundleModel(object):
                         "first_name": first_name,
                         "last_name": last_name,
                         "date_joined": now,
+                        "has_access": has_access,
                         "is_verified": is_verified,
                         "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
@@ -2395,7 +2397,7 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             verify_row = connection.execute(
                 cl_user.select()
-                .where(and_(cl_user.c.user_id == user_id, cl_user.c.is_verified == True))
+                .where(and_(cl_user.c.user_id == user_id, cl_user.c.is_verified))
                 .limit(1)
             ).fetchone()
 

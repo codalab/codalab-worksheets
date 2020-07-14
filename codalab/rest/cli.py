@@ -13,10 +13,10 @@ from codalab.common import UsageError
 from codalab.lib import bundle_cli
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.objects.oauth2 import OAuth2Token
-from codalab.server.authenticated_plugin import ProtectedAuthenticatedPlugin
+from codalab.server.authenticated_plugin import ProtectedPlugin
 
 
-@post('/cli/command', apply=ProtectedAuthenticatedPlugin())
+@post('/cli/command', apply=ProtectedPlugin())
 def post_worksheets_command():
     """
     JSON request body:

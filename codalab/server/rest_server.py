@@ -26,7 +26,11 @@ from bottle import (
 
 from codalab.common import exception_to_http_error
 from codalab.lib import formatting, server_util
-from codalab.server.authenticated_plugin import PublicUserPlugin, UserVerifiedPlugin
+from codalab.server.authenticated_plugin import (
+    PublicUserPlugin,
+    UserVerifiedPlugin,
+    ProtectedPlugin,
+)
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
 from codalab.server.oauth2_provider import oauth2_provider

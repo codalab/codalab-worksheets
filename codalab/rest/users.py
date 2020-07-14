@@ -12,7 +12,13 @@ from codalab.rest.schemas import AuthenticatedUserSchema, USER_READ_ONLY_FIELDS,
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
 from codalab.rest.util import get_resource_ids
 
+# TODO: delete later -tony
+import logging
 
+logger = logging.getLogger(__name__)
+
+
+# TODO: we need a new plugin that inherits AuthenticatedPlugin
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def fetch_authenticated_user():
     """Fetch authenticated user."""
@@ -163,11 +169,16 @@ def update_users():
     if len(users) != 1:
         abort(http.client.BAD_REQUEST, "Users can only be updated one at a time.")
 
+    # TODO: remove later -tony
+    logger.info('Tony - In update_users(): users[0]={}'.format(str(users[0])))
     if 'has_access' in users[0]:
-        if os.environ.get('CODALAB_PROTECTED_MODE') != 'true':
+        if os.environ.get('CODALAB_PROTECTED_MODE') != 'True':
             abort(http.client.BAD_REQUEST, "This CodaLab instance is not in protected mode")
-        if not local.model.is_verified(users[0]):
-            abort(http.client.BAD_REQUEST, "User has to be verified in order to be grant access")
+        if not local.model.is_verified(users[0]['user_id']):
+            abort(
+                http.client.BAD_REQUEST,
+                "User has to be verified first in order to be granted access",
+            )
 
     local.model.update_user_info(users[0])
 

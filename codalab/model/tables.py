@@ -177,9 +177,6 @@ NOTIFICATIONS_NONE = 0x00  # Receive no notifications
 NOTIFICATIONS_IMPORTANT = 0x01  # Receive only important notifications
 NOTIFICATIONS_GENERAL = 0x02  # Receive general notifications (new features)
 
-# TODO: add column here or leverage is_verified? -Tony
-# Learning towards adding a column and root user manually approves user
-# is_verified should truly be is_email_verified
 
 # Store information about users.
 user = Table(
@@ -202,6 +199,7 @@ user = Table(
     Column('first_name', String(30, convert_unicode=True)),
     Column('last_name', String(30, convert_unicode=True)),
     Column('date_joined', DateTime, nullable=False),
+    Column('has_access', Boolean, default=False, nullable=True),
     Column('is_verified', Boolean, nullable=False, default=False),
     Column('is_superuser', Boolean, nullable=False, default=False),
     Column('password', String(128), nullable=False),
@@ -214,7 +212,6 @@ user = Table(
     Column('time_used', Float, nullable=False),  # Number of seconds already used
     Column('disk_quota', Float, nullable=False),  # Number of bytes allowed
     Column('disk_used', Float, nullable=False),  # Number of bytes already used
-    Column('has_access', Boolean, default=False, nullable=True),
     Index('user_user_id_index', 'user_id'),
     Index('user_user_name_index', 'user_name'),
     UniqueConstraint('user_id', name='uix_1'),
