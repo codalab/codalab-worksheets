@@ -66,7 +66,7 @@ class UserVerifiedPlugin(AuthenticationPlugin):
     """
     Fails the request if the user is authenticated but not verified.
 
-    The handling of AJAX requests is the same as above for AuthenticatedPlugin.
+    The handling of AJAX requests is the same as AuthenticatedPlugin.
     """
 
     def apply(self, callback, route):
@@ -122,7 +122,13 @@ class AuthenticatedPlugin(AuthenticationPlugin):
 
 
 class AuthenticatedProtectedPlugin(AuthenticationPlugin):
-    # TODO: refactor and add docs -Tony
+    """
+    Fails the request if the user is not authenticated. It does not matter if the instance is protected or not.
+    Then checks if the user has access to the instance if the instance is protected.
+
+    The handling of AJAX requests is the same as AuthenticatedPlugin.
+    """
+
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
             self.check_user_authenticated()
@@ -133,7 +139,12 @@ class AuthenticatedProtectedPlugin(AuthenticationPlugin):
 
 
 class ProtectedPlugin(AuthenticationPlugin):
-    # TODO: refactor and add docs -Tony
+    """
+    Checks if the user is authenticated and has access to the instance only if the instance is in protected mode.
+
+    The handling of AJAX requests is the same as AuthenticatedPlugin.
+    """
+
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
             # TODO: delete later -tony

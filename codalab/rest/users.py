@@ -18,7 +18,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# TODO: we need a new plugin that inherits AuthenticatedPlugin
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def fetch_authenticated_user():
     """Fetch authenticated user."""
