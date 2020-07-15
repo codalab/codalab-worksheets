@@ -182,7 +182,7 @@ jobs:
     needs: [build]
     strategy:
       matrix:
-        test: [protected_mode]
+        test: [run,protected_mode]
     steps:
       - name: Clear free space
         run: |
