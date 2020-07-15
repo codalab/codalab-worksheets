@@ -7,7 +7,7 @@ import TableHead from '@material-ui/core/TableHead';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import CheckIcon from '@material-ui/icons/Check';
+import SaveIcon from '@material-ui/icons/Save';
 import TextField from '@material-ui/core/TextField';
 import ArrowDropDownRoundedIcon from '@material-ui/icons/ArrowDropDownRounded';
 import IconButton from '@material-ui/core/IconButton';
@@ -16,8 +16,7 @@ import ArrowDropUpIcon from '@material-ui/icons/ArrowDropUp';
 import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import DeleteSweepIcon from '@material-ui/icons/DeleteSweep';
 import AddCircleIcon from '@material-ui/icons/AddCircle';
-import EditIcon from '@material-ui/icons/Edit';
-import ClearIcon from '@material-ui/icons/Clear';
+import RestoreIcon from '@material-ui/icons/Restore';
 import classNames from 'classnames';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import ArrowRightRoundedIcon from '@material-ui/icons/ArrowRightRounded';
@@ -34,7 +33,6 @@ class SchemaItem extends React.Component<{
         this.state = {
             showSchemaDetail: false,
             rows: [...this.props.item.field_rows],
-            editing: false,
         };
     }
 
@@ -44,14 +42,13 @@ class SchemaItem extends React.Component<{
             this.clearChanges();
             return;
         }
-        this.setState({ editing: !this.state.editing });
         if (save) {
             this.saveSchema();
         }
     };
 
     clearChanges = () => {
-        this.setState({ rows: [...this.props.item.field_rows], editing: !this.state.editing });
+        this.setState({ rows: [...this.props.item.field_rows] });
     };
 
     saveSchema = () => {
@@ -159,7 +156,7 @@ class SchemaItem extends React.Component<{
 
     render() {
         const { classes, editPermission, focused, item } = this.props;
-        const { editing, showSchemaDetail, rows } = this.state;
+        const { showSchemaDetail, rows } = this.state;
         const schemaItem = item;
         const schemaHeaders = schemaItem.header;
         const schema_name = schemaItem.schema_name;
@@ -197,7 +194,7 @@ class SchemaItem extends React.Component<{
                     </TableCell>
                 );
             });
-        if (headerHtml) {
+        if (headerHtml && editPermission) {
             headerHtml.push(
                 <TableCell
                     key={headerHtml.length}
@@ -205,32 +202,27 @@ class SchemaItem extends React.Component<{
                     component='th'
                     scope='row'
                 >
-                    <Tooltip title={'Add a new row before the first line'}>
-                        <IconButton disabled={!editing} onClick={this.addFieldRowAfter(-1)}>
-                            <AddCircleIcon />
-                        </IconButton>
-                    </Tooltip>
-                    {!editing ? (
-                        editPermission && (
-                            <Button onClick={this.toggleEdit(false, false)}>
-                                <EditIcon color='primary' />
-                                {'Edit'}
-                            </Button>
-                        )
-                    ) : (
+                    {
+                        <Tooltip title={'Add a new row before the first line'}>
+                            <IconButton onClick={this.addFieldRowAfter(-1)}>
+                                <AddCircleIcon />
+                            </IconButton>
+                        </Tooltip>
+                    }
+                    {
                         <Tooltip title={'Save all changes'}>
                             <IconButton onClick={this.toggleEdit(false, true)}>
-                                <CheckIcon />
+                                <SaveIcon />
                             </IconButton>
                         </Tooltip>
-                    )}
-                    {editing && (
-                        <Tooltip title={'Cancel all unsaved changes'}>
+                    }
+                    {
+                        <Tooltip title={'Revert all unsaved changes'}>
                             <IconButton onClick={this.toggleEdit(true, false)}>
-                                <ClearIcon />
+                                <RestoreIcon />
                             </IconButton>
                         </Tooltip>
-                    )}
+                    }
                 </TableCell>,
             );
         }
@@ -250,36 +242,37 @@ class SchemaItem extends React.Component<{
                                 multiline
                                 placeholder={'<none>'}
                                 value={rowItem[headerKey] || ''}
-                                disabled={!editing || rowItem.from_schema_name !== schema_name}
+                                disabled={
+                                    !editPermission || rowItem.from_schema_name !== schema_name
+                                }
                                 onChange={this.changeFieldValue(ind, headerKey)}
                             />
                         </TableCell>
                     );
                 });
-                if (rowItem.from_schema_name === schema_name) {
+
+                if (!editPermission) {
+                } else if (rowItem.from_schema_name === schema_name) {
                     rowCells.push(
                         <TableCell
                             key={rowCells.length}
-                            style={{ padding: '5' }}
+                            style={{ padding: '5', whiteSpace: 'nowrap' }}
                             component='th'
                             scope='row'
                         >
                             <Tooltip title={'Add a new row after this row'}>
-                                <IconButton
-                                    disabled={!editing}
-                                    onClick={this.addFieldRowAfter(ind)}
-                                >
+                                <IconButton onClick={this.addFieldRowAfter(ind)}>
                                     <AddCircleIcon />
                                 </IconButton>
                             </Tooltip>
                             <Tooltip title={'Delete this row'}>
-                                <IconButton disabled={!editing} onClick={this.removeFieldRow(ind)}>
+                                <IconButton onClick={this.removeFieldRow(ind)}>
                                     <DeleteSweepIcon />
                                 </IconButton>
                             </Tooltip>
                             <Tooltip title={'Move this row up'}>
                                 <IconButton
-                                    disabled={!editing || ind === 0}
+                                    disabled={ind === 0}
                                     onClick={this.moveFieldRow(ind, -1)}
                                 >
                                     <ArrowDropUpIcon />
@@ -287,7 +280,7 @@ class SchemaItem extends React.Component<{
                             </Tooltip>
                             <Tooltip title={'Move this row down'}>
                                 <IconButton
-                                    disabled={!editing || ind === rows.length - 1}
+                                    disabled={ind === rows.length - 1}
                                     onClick={this.moveFieldRow(ind, 1)}
                                 >
                                     <ArrowDropDownIcon />
@@ -298,7 +291,7 @@ class SchemaItem extends React.Component<{
                 } else {
                     rowCells.push(
                         <TableCell>
-                            Generated by another schema:{rowItem.from_schema_name}
+                            Generated by another schema: {rowItem.from_schema_name}
                         </TableCell>,
                     );
                 }
@@ -328,22 +321,12 @@ class SchemaItem extends React.Component<{
                 },
                 'keydown',
             );
-            Mousetrap.bind(
-                ['a+e'],
-                (e) => {
-                    e.preventDefault();
-                    this.setState({ editing: !editing });
-                },
-                'keydown',
-            );
             Mousetrap.bindGlobal(['ctrl+enter'], () => {
                 this.saveSchema();
-                this.setState({ editing: !editing });
                 Mousetrap.unbindGlobal(['ctrl+enter']);
             });
             Mousetrap.bindGlobal(['esc'], () => {
                 this.clearChanges();
-                this.setState({ editing: !editing });
                 Mousetrap.unbindGlobal(['esc']);
             });
         }
