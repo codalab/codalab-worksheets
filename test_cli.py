@@ -2008,11 +2008,22 @@ def test(ctx):
     )
 
 
+@TestModule.register('edit_user')
+def test(ctx):
+    # Can't both remove and grant access for a user
+    _run_command([cl, 'uedit', '--grant-access', '--remove-access'], 1)
+
+    # Can't change access in a non-protected instance
+    _run_command([cl, 'uedit', '--grant-access'], 1)
+
+
 @TestModule.register('protected_mode')
 def test(ctx):
-    # TODO
-    uuid = _run_command([cl, 'run', 'echo hello'])
-    _run_command([cl, 'logout'])
+    _run_command([cl, 'uinfo', 'codalab'])
+    _run_command([cl, 'run', 'should run'])
+    _run_command([cl, 'uedit', 'codalab', '--remove-access'])
+    _run_command([cl, 'uinfo', 'codalab'])
+    _run_command([cl, 'run', 'should not be able to run'], 1)
 
 
 if __name__ == '__main__':

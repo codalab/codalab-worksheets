@@ -180,7 +180,7 @@ def update_users():
         if os.environ.get('CODALAB_PROTECTED_MODE') != 'True':
             abort(http.client.BAD_REQUEST, "This CodaLab instance is not in protected mode")
 
-        # has_access can only be updated once a user verifies the account
+        # Only verified users can be given access to a protected instance
         if not local.model.is_verified(users[0]['user_id']):
             abort(
                 http.client.BAD_REQUEST,
