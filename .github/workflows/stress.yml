@@ -1,6 +1,8 @@
 name: Stress Test
 on:
   # workflow_dispatch:
+  push:
+    branches: [ stress ]
   pull_request:
     branches: [ master ]
 
