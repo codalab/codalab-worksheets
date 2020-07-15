@@ -322,6 +322,7 @@ worker = Table(
     Column(
         'exit_after_num_runs', Integer, nullable=False
     ),  # Number of jobs allowed to run on worker.
+    Column('is_terminating', Boolean, nullable=False),
 )
 
 # Store information about all sockets currently allocated to each worker.

@@ -23,12 +23,16 @@ DEFAULT_CONTAINER_RUNNING_TIME = 0
 # Docker Registry HTTP API v2 URI prefix
 URI_PREFIX = 'https://hub.docker.com/v2/repositories/'
 
-# This specific error happens when a user specifies an image with an incompatible version of Cuda
+# This specific error happens when a user specifies an image with an incompatible version of CUDA
 NVIDIA_MOUNT_ERROR_REGEX = (
     '[\s\S]*OCI runtime create failed[\s\S]*stderr:[\s\S]*nvidia-container-cli: '
     'mount error: file creation failed:[\s\S]*nvidia-smi'
 )
-
+# This error happens when the memory requested by user is not enough to start a docker container
+MEMORY_LIMIT_ERROR_REGEX = (
+    '[\s\S]*OCI runtime create failed[\s\S]*failed to write[\s\S]*'
+    'memory.limit_in_bytes: device or resource busy[\s\S]*'
+)
 
 logger = logging.getLogger(__name__)
 client = docker.from_env(timeout=DEFAULT_TIMEOUT)
@@ -43,6 +47,8 @@ def wrap_exception(message):
             def check_for_user_error(exception):
                 error_message = format_error_message(e)
                 if re.match(NVIDIA_MOUNT_ERROR_REGEX, str(exception)):
+                    raise DockerUserErrorException(error_message)
+                elif re.match(MEMORY_LIMIT_ERROR_REGEX, str(exception)):
                     raise DockerUserErrorException(error_message)
                 else:
                     raise DockerException(error_message)

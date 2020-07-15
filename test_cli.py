@@ -204,7 +204,7 @@ def _run_command(
     include_stderr=False,
     binary=False,
     force_subprocess=False,
-    request_memory="4m",
+    request_memory="10m",
     request_disk="1m",
     request_time=None,
     request_docker_image="python:3.6.10-slim-buster",
@@ -219,7 +219,7 @@ def _run_command(
         include_stderr (bool, optional): Include stderr in output. Defaults to False.
         binary (bool, optional): Whether output is binary. Defaults to False.
         force_subprocess (bool, optional): Force "cl" commands to run with subprocess, rather than running the CodaLab CLI directly through Python. Defaults to False.
-        request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "4m".
+        request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "10m".
         request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m".
         request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed).
         request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands. Defaults to "python:3.6.10-slim-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
@@ -496,7 +496,6 @@ def test(ctx):
     _run_command(['python3', os.path.join(base_path, 'scripts/gen-cli-docs.py'), '--docs', '/tmp'])
 
 
-# TODO: This test is failing in staging branch. Disable for now.
 @TestModule.register('gen-readthedocs')
 def test(ctx):
     """Generate the readthedocs site."""
