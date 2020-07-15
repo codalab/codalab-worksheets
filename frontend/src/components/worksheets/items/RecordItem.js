@@ -70,7 +70,10 @@ class RecordItem extends React.Component {
         let items = item.rows.map(function(item, index) {
             let ref = 'row' + index;
             let displayValue = JSON.stringify(item[v]); // stringify is needed to convert metadata objects
-            displayValue = displayValue.substr(1, displayValue.length - 2); // get rid of ""
+            if (displayValue) {
+                displayValue = displayValue.substr(1, displayValue.length - 2); // get rid of ""
+            }
+
             return (
                 <tr ref={ref} key={index}>
                     <th>{item[k]}</th>
