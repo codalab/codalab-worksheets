@@ -1,6 +1,7 @@
 from collections import namedtuple
 import http
 import logging
+import os
 import socket
 import time
 import traceback
@@ -111,8 +112,8 @@ class WorkerManager(object):
         # want to see their staged bundles.
         if os.environ.get('CODALAB_USERNAME') != "codalab":
             keywords += [".mine"]
-        if args.worker_tag_exclusive and args.worker_tag:
-            keywords += ["request_queue=" + args.worker_tag]
+        if self.args.worker_tag_exclusive and self.args.worker_tag:
+            keywords += ["request_queue=" + self.args.worker_tag]
 
         bundles = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
