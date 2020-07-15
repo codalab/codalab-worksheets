@@ -2019,11 +2019,12 @@ def test(ctx):
 
 @TestModule.register('protected_mode')
 def test(ctx):
-    _run_command([cl, 'uinfo', 'codalab'])
     _run_command([cl, 'run', 'should run'])
     _run_command([cl, 'uedit', 'codalab', '--remove-access'])
     _run_command([cl, 'uinfo', 'codalab'])
     _run_command([cl, 'run', 'should not be able to run'], 1)
+    _run_command([cl, 'uedit', 'codalab', '--grant-access'])
+    _run_command([cl, 'uinfo', 'codalab'])
 
 
 if __name__ == '__main__':
