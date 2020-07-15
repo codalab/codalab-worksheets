@@ -2011,21 +2011,23 @@ def test(ctx):
 @TestModule.register('edit_user')
 def test(ctx):
     # Can't both remove and grant access for a user
-    _run_command([cl, 'uedit', '--grant-access', '--remove-access'], 1)
+    _run_command([cl, 'uedit', 'codalab', '--grant-access', '--remove-access'], 1)
 
     # Can't change access in a non-protected instance
-    # TODO: reenable -Tony
-    # _run_command([cl, 'uedit', '--grant-access'], 1)
+    _run_command([cl, 'uedit', 'codalab', '--grant-access'], 1)
 
 
 @TestModule.register('protected_mode')
 def test(ctx):
-    _run_command([cl, 'run', 'should run'])
+    # Request to remove access and check that the user is denied access
     _run_command([cl, 'uedit', 'codalab', '--remove-access'])
-    _run_command([cl, 'uinfo', 'codalab'])
+    check_equals(_run_command([cl, 'uinfo', 'codalab' '-f' 'has_access']), 'False')
+
     _run_command([cl, 'run', 'should not be able to run'], 1)
+
+    # Request to grant access and check that the user now has access
     _run_command([cl, 'uedit', 'codalab', '--grant-access'])
-    _run_command([cl, 'uinfo', 'codalab'])
+    check_equals(_run_command([cl, 'uinfo', 'codalab' '-f' 'has_access']), 'True')
 
 
 if __name__ == '__main__':
