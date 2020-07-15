@@ -7,6 +7,7 @@ except ModuleNotFoundError:
     )
 import logging
 import os
+import re
 import uuid
 from .worker_manager import WorkerManager, WorkerJob
 
@@ -67,7 +68,7 @@ class AWSBatchWorkerManager(WorkerManager):
             response = self.batch_client.list_jobs(jobQueue=self.args.job_queue, jobStatus=status)
             # Only record jobs if a job regex filter isn't provided or if the job's name completely matches
             # a provided job regex filter.
-            if not args.job_filter or re.fullmatch(args.job_filter, response.get("jobName", "")):
+            if not self.args.job_filter or re.fullmatch(self.args.job_filter, response.get("jobName", "")):
                 jobs.extend(response['jobSummaryList'])
         logger.info(
             'Workers: {}'.format(
