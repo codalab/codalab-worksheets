@@ -407,10 +407,11 @@ class Worker:
         # We (re-)initialize the Docker networks here, in case they've been removed.
         # For any networks that exist, this is essentially a no-op.
         self.init_docker_networks(self.docker_network_prefix, verbose=False)
+        # TODO: uncomment out and test -Tony
         # In case the docker networks have changed, we also update them in the RunStateMachine
-        self.run_state_manager.worker_docker_network = self.worker_docker_network
-        self.run_state_manager.docker_network_external = self.docker_network_external
-        self.run_state_manager.docker_network_internal = self.docker_network_internal
+        # self.run_state_manager.worker_docker_network = self.worker_docker_network
+        # self.run_state_manager.docker_network_external = self.docker_network_external
+        # self.run_state_manager.docker_network_internal = self.docker_network_internal
 
         # 1. transition all runs
         for uuid in self.runs:
