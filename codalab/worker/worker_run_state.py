@@ -323,19 +323,6 @@ class RunStateMachine(StateTransitioner):
                     self.paths_to_remove.append(
                         os.path.join(run_state.bundle_path, first_element_of_path)
                     )
-            # raise Exception(to_mount)
-        
-        # doesn't even do this in a non-sharedfs. why?
-        # 'dependencies': [{'parent_name': 'a.txt', 'parent_path': '', 'parent_uuid': '0xbdc4d965c8b444439a04ac9c5f38311f', 'child_path': 'foo', 'child_uuid': '0xc205aa8fbcc04073a0792cb09aff7297', 'location': None}
-
-        # sharedfs
-        # 'dependencies': [{'parent_name': 'a.txt', 'parent_path': '', 'parent_uuid': '0xfa7667f296ed40d08c2a7c93ea2b46cb', 'child_path': 'foo', 'child_uuid': '0x273985f4bc854ff8bfd078c5639bc2d9', 'location': '/opt/codalab-worksheets/tests/files/a.txt'}]
-
-        # not sharedfs
-        # Exception: [DependencyToMount(docker_path='/0x9bcd440e69ec45f495b6dd440aa93cc7_dependencies/foo', child_path='/Users/epicfaace/codalab/codalab-worksheets/var/codalab/worker/runs/0x9bcd440e69ec45f495b6dd440aa93cc7/foo', parent_path='/Users/epicfaace/codalab/codalab-worksheets/var/codalab/worker/dependencies/0x04f96764d3da4d65b01e672b4fbf0c76')]
-
-        # sharedfs
-        # [DependencyToMount(docker_path='/0x8bd629b1c6f143d890a9e533926da99a/foo', child_path='/Users/epicfaace/codalab/codalab-worksheets/var/codalab/home/partitions/default/bundles/0x8bd629b1c6f143d890a9e533926da99a/foo', parent_path='/opt/codalab-worksheets/tests/files/a.txt')]
             for dependency in to_mount:
                 try:
                     mount_dependency(dependency, self.shared_file_system)

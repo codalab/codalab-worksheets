@@ -1182,7 +1182,9 @@ def test(ctx):
     # We create the file at /opt/codalab-worksheets-link-mounts/tmp because this test is running
     # inside a Docker container (so the host directory /tmp is mounted at /opt/codalab-worksheets-link-mounts/tmp).
 
-    with tempfile.NamedTemporaryFile(mode='w', dir='/opt/codalab-worksheets-link-mounts/tmp', suffix=".txt", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode='w', dir='/opt/codalab-worksheets-link-mounts/tmp', suffix=".txt", delete=False
+    ) as f:
         f.write("hello world!")
     _, host_filename = f.name.split("/opt/codalab-worksheets-link-mounts")
     uuid = _run_command([cl, 'upload', host_filename, '--link'])
@@ -1191,9 +1193,7 @@ def test(ctx):
     check_equals('raw', get_info(uuid, 'link_format'))
     check_equals("hello world!", _run_command([cl, 'cat', uuid]))
 
-    run_uuid = _run_command(
-        [cl, 'run', 'foo:{}'.format(uuid), 'cat foo']
-    )
+    run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo'])
     wait(run_uuid)
     check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
 
@@ -1203,23 +1203,17 @@ def test(ctx):
     with tempfile.TemporaryDirectory(dir='/opt/codalab-worksheets-link-mounts/tmp') as dirname:
         with open(os.path.join(dirname, "test.txt"), "w+") as f:
             f.write("hello world!")
-        
+
         _, host_dirname = dirname.split("/opt/codalab-worksheets-link-mounts")
         uuid = _run_command([cl, 'upload', host_dirname, '--link'])
         check_equals(State.READY, get_info(uuid, 'state'))
         check_equals(host_dirname, get_info(uuid, 'link_url'))
         check_equals('raw', get_info(uuid, 'link_format'))
-        check_equals(
-            "hello world!", _run_command([cl, 'cat', uuid + '/test.txt'])
-        )
+        check_equals("hello world!", _run_command([cl, 'cat', uuid + '/test.txt']))
 
-        run_uuid = _run_command(
-            [cl, 'run', 'foo:{}'.format(uuid), 'cat foo/test.txt']
-        )
+        run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo/test.txt'])
         wait(run_uuid)
-        check_equals(
-            "hello world!", _run_command([cl, 'cat', run_uuid + '/stdout'])
-        )
+        check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
 
 
 @TestModule.register('run2')

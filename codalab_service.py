@@ -526,14 +526,16 @@ class CodalabServiceManager(object):
                 compose_options = yaml.load(f)
             for mount_path in self.args.link_mounts.split(","):
                 mount_path = os.path.abspath(mount_path)
-                compose_options["x-codalab-server"]["volumes"].append(f"{mount_path}:/opt/codalab-worksheets-link-mounts{mount_path}")
+                compose_options["x-codalab-server"]["volumes"].append(
+                    f"{mount_path}:/opt/codalab-worksheets-link-mounts{mount_path}"
+                )
             with tempfile.NamedTemporaryFile(mode='w', suffix=".yml", delete=False) as f:
                 yaml.dump(compose_options, f)
                 self.compose_tempfile_name = f.name
             self.compose_files.append(self.compose_tempfile_name)
         else:
             self.compose_files.append('docker-compose.yml')
-        
+
         if self.args.dev:
             self.compose_files.append('docker-compose.dev.yml')
         if self.args.use_ssl:
