@@ -421,7 +421,7 @@ class Worksheet extends React.Component {
         });
     };
 
-    MoveFocusToBottom = () => {
+    moveFocusToBottom = () => {
         $('#worksheet_container').scrollTop($('#worksheet_container')[0].scrollHeight);
         this.setFocus(this.state.ws.info.blocks.length - 1, 'end');
     };
@@ -629,6 +629,7 @@ class Worksheet extends React.Component {
     };
 
     componentDidMount() {
+        window.addEventListener('scroll', this.handleScroll);
         this.fetch({
             brief: true,
             success: function(data) {
@@ -668,6 +669,10 @@ class Worksheet extends React.Component {
                 console.error(xhr.responseText);
             },
         });
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener('scroll', this.handleScroll);
     }
 
     canEdit() {
@@ -1661,7 +1666,7 @@ class Worksheet extends React.Component {
                                     </div>
                                 </div>
                                 <Button
-                                    onClick={this.MoveFocusToBottom}
+                                    onClick={this.moveFocusToBottom}
                                     color='primary'
                                     variant='contained'
                                     style={{
