@@ -2021,14 +2021,13 @@ def test(ctx):
 def test(ctx):
     # Request to remove access and check that the user is denied access
     _run_command([cl, 'uedit', 'codalab', '--remove-access'])
-    # check_equals(_run_command([cl, 'uinfo', 'codalab' '-f' 'has_access']), 'False')
-    _run_command([cl, 'uinfo', 'codalab'])
+    check_equals(_run_command([cl, 'uinfo', 'codalab', '-f', 'has_access']), 'False')
 
     _run_command([cl, 'run', 'should not be able to run'], 1)
 
     # Request to grant access and check that the user now has access
     _run_command([cl, 'uedit', 'codalab', '--grant-access'])
-    check_equals(_run_command([cl, 'uinfo', 'codalab' '-f' 'has_access']), 'True')
+    check_equals(_run_command([cl, 'uinfo', 'codalab', '-f', 'has_access']), 'True')
 
 
 if __name__ == '__main__':
