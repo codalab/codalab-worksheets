@@ -53,10 +53,10 @@ jobs:
     strategy:
       matrix:
         test:
-          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic edit_user status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
+          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
           - run
           - run2
-          - search read kill write mimic workers
+          - search read kill write mimic workers edit_user
           - resources
           - memoize
           - copy netcat netcurl
