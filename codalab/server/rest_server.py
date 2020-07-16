@@ -39,7 +39,6 @@ from codalab.server.oauth2_provider import oauth2_provider
 import codalab.rest.account
 import codalab.rest.bundle_actions
 import codalab.rest.bundles
-import codalab.rest.chats
 import codalab.rest.cli
 import codalab.rest.groups
 import codalab.rest.help
