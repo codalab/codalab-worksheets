@@ -26,7 +26,7 @@
     "material-ui-chip-input": "^1.0.0-beta.16",
     "query-string": "^6.13.1",
     "react": "^16.8.6",
-    "react-bootstrap": "^1.1.1",
+    "react-bootstrap": "^1.2.2",
     "react-circular-progressbar": "^2.0.3",
     "react-cookie": "^4.0.3",
     "react-copy-to-clipboard": "^5.0.2",
