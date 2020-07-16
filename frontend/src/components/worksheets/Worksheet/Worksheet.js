@@ -629,7 +629,6 @@ class Worksheet extends React.Component {
     };
 
     componentDidMount() {
-        window.addEventListener('scroll', this.handleScroll);
         this.fetch({
             brief: true,
             success: function(data) {
@@ -669,10 +668,6 @@ class Worksheet extends React.Component {
                 console.error(xhr.responseText);
             },
         });
-    }
-
-    componentWillUnmount() {
-        window.removeEventListener('scroll', this.handleScroll);
     }
 
     canEdit() {
