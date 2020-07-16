@@ -82,7 +82,7 @@ jobs:
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
-          CODALAB_LINK_ALLOWED_PATHS: /opt*
+          CODALAB_LINK_MOUNTS: /tmp
       - name: Save logs
         if: always()
         run: |
@@ -165,7 +165,7 @@ jobs:
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
-          CODALAB_LINK_ALLOWED_PATHS: /opt*
+          CODALAB_LINK_MOUNTS: /tmp
       - name: Save logs
         if: always()
         run: |
