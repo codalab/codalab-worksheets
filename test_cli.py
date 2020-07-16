@@ -339,6 +339,7 @@ class ModuleContext(object):
         print("[*][*] CLEANING UP")
         os.environ.clear()
         os.environ.update(self.original_environ)
+        return
 
         _run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
@@ -1181,28 +1182,32 @@ def test(ctx):
     # We create the file at /opt/codalab-worksheets-link-mounts/tmp because this test is running
     # inside a Docker container (so the host directory /tmp is mounted at /opt/codalab-worksheets-link-mounts/tmp).
 
-    with tempfile.NamedTemporaryFile(mode='w', dir='/opt/codalab-worksheets-link-mounts/tmp', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode='w', dir='/opt/codalab-worksheets-link-mounts/tmp', suffix=".txt", delete=False) as f:
         f.write("hello world!")
-        uuid = _run_command([cl, 'upload', f.name, '--link'])
-        check_equals(State.READY, get_info(uuid, 'state'))
-        check_equals(f.name, get_info(uuid, 'link_url'))
-        check_equals('raw', get_info(uuid, 'link_format'))
-        check_equals("hello world!", _run_command([cl, 'cat', uuid]))
+    _, host_filename = f.name.split("/opt/codalab-worksheets-link-mounts")
+    uuid = _run_command([cl, 'upload', host_filename, '--link'])
+    check_equals(State.READY, get_info(uuid, 'state'))
+    check_equals(host_filename, get_info(uuid, 'link_url'))
+    check_equals('raw', get_info(uuid, 'link_format'))
+    check_equals("hello world!", _run_command([cl, 'cat', uuid]))
 
-        run_uuid = _run_command(
-            [cl, 'run', 'foo:{}'.format(uuid), 'cat foo']
-        )
-        wait(run_uuid)
-        check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
+    run_uuid = _run_command(
+        [cl, 'run', 'foo:{}'.format(uuid), 'cat foo']
+    )
+    wait(run_uuid)
+    check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
+
+    os.remove(f.name)
 
     # Upload directory
     with tempfile.TemporaryDirectory(dir='/opt/codalab-worksheets-link-mounts/tmp') as dirname:
-        with open(os.path.join(dirname, "test.txt")) as f:
+        with open(os.path.join(dirname, "test.txt"), "w+") as f:
             f.write("hello world!")
         
-        uuid = _run_command([cl, 'upload', dirname, '--link'])
+        _, host_dirname = dirname.split("/opt/codalab-worksheets-link-mounts")
+        uuid = _run_command([cl, 'upload', host_dirname, '--link'])
         check_equals(State.READY, get_info(uuid, 'state'))
-        check_equals(dirname, get_info(uuid, 'link_url'))
+        check_equals(host_dirname, get_info(uuid, 'link_url'))
         check_equals('raw', get_info(uuid, 'link_format'))
         check_equals(
             "hello world!", _run_command([cl, 'cat', uuid + '/test.txt'])
