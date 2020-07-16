@@ -32,7 +32,7 @@
     "react-copy-to-clipboard": "^5.0.2",
     "react-dom": "^16.8.6",
     "react-responsive-embed": "^2.1.0",
-    "react-router-dom": "^4.3.1",
+    "react-router-dom": "^5.2.0",
     "react-select": "^3.1.0",
     "react-stickynode": "^3.0.3",
     "react-toastify": "^6.0.8",
