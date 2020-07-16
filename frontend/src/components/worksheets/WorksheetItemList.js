@@ -140,7 +140,7 @@ class WorksheetItemList extends React.Component {
             ['shift+g'],
             function() {
                 this.props.setFocus(this.props.ws.info.blocks.length - 1, 'end');
-                $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                $('#worksheet_container').scrollTop($('#worksheet_container')[0].scrollHeight);
             }.bind(this),
             'keydown',
         );
