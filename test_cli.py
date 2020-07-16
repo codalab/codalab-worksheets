@@ -31,6 +31,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 from datetime import datetime
@@ -1172,39 +1173,48 @@ def test(ctx):
 @TestModule.register('link')
 def test(ctx):
     # Upload fails
-    uuid = _run_command([cl, "upload", "/etc/shadow", '--link'])
+    uuid = _run_command([cl, "upload", "/etc/passwd", '--link'])
     check_equals(State.READY, get_info(uuid, 'state'))
     _run_command([cl, 'cat', uuid], 1)
 
     # Upload file
-    uuid = _run_command([cl, 'upload', test_path('a.txt'), '--link'])
-    check_equals(State.READY, get_info(uuid, 'state'))
-    check_equals(test_path('a.txt'), get_info(uuid, 'link_url'))
-    check_equals('raw', get_info(uuid, 'link_format'))
-    check_equals(test_path_contents('a.txt'), _run_command([cl, 'cat', uuid]))
+    # We create the file at /opt/codalab-worksheets-link-mounts/tmp because this test is running
+    # inside a Docker container (so the host directory /tmp is mounted at /opt/codalab-worksheets-link-mounts/tmp).
 
-    run_uuid = _run_command(
-        [cl, 'run', 'foo:{}'.format(uuid), 'cat foo', '--request-memory', '10m']
-    )
-    wait(run_uuid)
-    check_equals(test_path_contents('a.txt'), _run_command([cl, 'cat', run_uuid + '/stdout']))
+    with tempfile.NamedTemporaryFile(mode='w', dir='/opt/codalab-worksheets-link-mounts/tmp', delete=False) as f:
+        f.write("hello world!")
+        uuid = _run_command([cl, 'upload', f.name, '--link'])
+        check_equals(State.READY, get_info(uuid, 'state'))
+        check_equals(f.name, get_info(uuid, 'link_url'))
+        check_equals('raw', get_info(uuid, 'link_format'))
+        check_equals("hello world!", _run_command([cl, 'cat', uuid]))
+
+        run_uuid = _run_command(
+            [cl, 'run', 'foo:{}'.format(uuid), 'cat foo']
+        )
+        wait(run_uuid)
+        check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
 
     # Upload directory
-    uuid = _run_command([cl, 'upload', test_path('dir2'), '--link'])
-    check_equals(State.READY, get_info(uuid, 'state'))
-    check_equals(test_path('dir2'), get_info(uuid, 'link_url'))
-    check_equals('raw', get_info(uuid, 'link_format'))
-    check_equals(
-        test_path_contents('dir2/the-only-file'), _run_command([cl, 'cat', uuid + '/the-only-file'])
-    )
+    with tempfile.TemporaryDirectory(dir='/opt/codalab-worksheets-link-mounts/tmp') as dirname:
+        with open(os.path.join(dirname, "test.txt")) as f:
+            f.write("hello world!")
+        
+        uuid = _run_command([cl, 'upload', dirname, '--link'])
+        check_equals(State.READY, get_info(uuid, 'state'))
+        check_equals(dirname, get_info(uuid, 'link_url'))
+        check_equals('raw', get_info(uuid, 'link_format'))
+        check_equals(
+            "hello world!", _run_command([cl, 'cat', uuid + '/test.txt'])
+        )
 
-    run_uuid = _run_command(
-        [cl, 'run', 'foo:{}'.format(uuid), 'cat foo/the-only-file', '--request-memory', '10m']
-    )
-    wait(run_uuid)
-    check_equals(
-        test_path_contents('dir2/the-only-file'), _run_command([cl, 'cat', run_uuid + '/stdout'])
-    )
+        run_uuid = _run_command(
+            [cl, 'run', 'foo:{}'.format(uuid), 'cat foo/test.txt']
+        )
+        wait(run_uuid)
+        check_equals(
+            "hello world!", _run_command([cl, 'cat', run_uuid + '/stdout'])
+        )
 
 
 @TestModule.register('run2')
