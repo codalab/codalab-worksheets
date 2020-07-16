@@ -33,6 +33,8 @@ class SchemaItem extends React.Component<{
         this.state = {
             showSchemaDetail: false,
             rows: [...this.props.item.field_rows],
+            cur_schema_name: this.props.item.schema_name,
+            newAddedRow: -1,
         };
     }
 
@@ -48,14 +50,18 @@ class SchemaItem extends React.Component<{
     };
 
     clearChanges = () => {
-        this.setState({ rows: [...this.props.item.field_rows] });
+        this.setState({
+            rows: [...this.props.item.field_rows],
+            cur_schema_name: this.props.item.schema_name,
+            newAddedRow: -1,
+        });
     };
 
     saveSchema = () => {
         const { schema_name, field_rows } = this.props.item;
-        let updatedSchema = [];
+        let updatedSchema = ['% schema ' + this.state.cur_schema_name];
         let fromAddSchema = false;
-        let schemaBlockSourceLength = field_rows.length;
+        let schemaBlockSourceLength = field_rows.length + 1; // 1 for the schema name row
         this.state.rows.forEach((fields) => {
             if (!fields['field']) {
                 return;
@@ -103,7 +109,7 @@ class SchemaItem extends React.Component<{
         });
         let curRow = [...this.state.rows];
         curRow.splice(idx + 1, 0, newRow);
-        this.setState({ rows: curRow });
+        this.setState({ rows: curRow, newAddedRow: idx + 1 });
     };
 
     changeFieldValue = (idx, key) => (e) => {
@@ -112,6 +118,11 @@ class SchemaItem extends React.Component<{
         let copiedRows = [...rows];
         copiedRows.splice(idx, 1, { ...rows[idx], [key]: e.target.value });
         this.setState({ rows: [...copiedRows] });
+    };
+
+    changeSchemaName = (e) => {
+        if (!this.props.editPermission) return;
+        this.setState({ cur_schema_name: e.target.value });
     };
 
     moveFieldRow = (idx, direction) => () => {
@@ -148,9 +159,18 @@ class SchemaItem extends React.Component<{
         this.setState({ rows: copiedRows });
     };
 
-    componentDidUpdate(prevProps) {
-        if (prevProps.item.field_rows !== this.props.item.field_rows) {
-            this.setState({ rows: [...this.props.item.field_rows] });
+    componentDidUpdate(prevProps, prevState) {
+        if (
+            prevProps.item.field_rows !== this.props.item.field_rows ||
+            prevProps.item.schema_name !== this.props.item.schema_name
+        ) {
+            this.setState({
+                rows: [...this.props.item.field_rows],
+                cur_schema_name: this.props.item.schema_name,
+            });
+        }
+        if (this.state.newAddedRow !== -1 && this.state.rows.length === prevState.rows.length + 1) {
+            document.getElementById('textbox-' + this.state.newAddedRow + '-0').focus();
         }
     }
 
@@ -238,7 +258,7 @@ class SchemaItem extends React.Component<{
                             scope='row'
                         >
                             <TextField
-                                id='standard-multiline-static'
+                                id={'textbox-' + ind + '-' + col}
                                 multiline
                                 placeholder={'<none>'}
                                 value={rowItem[headerKey] || ''}
@@ -342,18 +362,34 @@ class SchemaItem extends React.Component<{
                         color='secondary'
                         variant='outlined'
                         onClick={() => this.setState({ showSchemaDetail: !showSchemaDetail })}
-                        style={{ paddingLeft: '20px' }}
+                        style={{ paddingLeft: '10px' }}
                         className={classNames(focused ? classes.highlight : '')}
                     >
-                        <ViewListIcon style={{ padding: '0px' }} />
-                        {schemaItem.schema_name}
                         {showSchemaDetail ? (
                             <ArrowDropDownRoundedIcon />
                         ) : (
                             <ArrowRightRoundedIcon />
                         )}
+                        <ViewListIcon style={{ padding: '0px' }} />
                     </Button>
                 </Tooltip>
+                {
+                    <TextField
+                        variant='outlined'
+                        id='standard-multiline-static'
+                        InputProps={{
+                            style: {
+                                padding: 8,
+                            },
+                        }}
+                        multiline
+                        size='small'
+                        disabled={!showSchemaDetail}
+                        value={this.state.cur_schema_name}
+                        style={{ paddingLeft: '20px' }}
+                        onChange={this.changeSchemaName}
+                    />
+                }
                 {schemaTable}
             </div>
         );
