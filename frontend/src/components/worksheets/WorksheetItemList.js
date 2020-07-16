@@ -32,7 +32,7 @@ export const BLOCK_TO_COMPONENT = {
 // - item: information about the table to display
 // - index: integer representing the index in the list of items
 // - focused: whether this item has the focus
-// - canEdit: whether we're allowed to edit this item
+// - editPermission: whether we have permission to edit this item
 // - setFocus: call back to select this item
 // - updateWorksheetSubFocusIndex: call back to notify parent of which row is selected (for tables)
 const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) {
@@ -215,7 +215,6 @@ class WorksheetItemList extends React.Component {
                         version: this.props.version,
                         active: this.props.active,
                         focused,
-                        canEdit: this.props.canEdit,
                         focusIndex: index,
                         subFocusIndex: this.props.subFocusIndex,
                         setFocus: this.props.setFocus,
