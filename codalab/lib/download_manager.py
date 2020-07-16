@@ -100,7 +100,7 @@ class DownloadManager(object):
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
         if bundle_link_url:
-            self._validate_path(bundle_link_url)
+            bundle_link_url = self._transform_link_path(bundle_link_url)
         # Raises NotFoundException if uuid is invalid
         if bundle_state == State.PREPARING:
             raise NotFoundError(
@@ -310,20 +310,19 @@ class DownloadManager(object):
             return self._bundle_model.get_bundle_worker(target.bundle_uuid)['shared_file_system']
         return True
 
-    def _validate_path(self, path):
-        """Whether the given path is valid.
-        Path is a glob expression taken from the CODALAB_LINK_ALLOWED_PATHS environment variable.
+    def _transform_link_path(self, path):
+        """Transforms a link file path to its properly mounted path.
+        Every file path is mounted to a path with "/opt/codalab-worksheets-link-mounts"
+        prepended to it.
         """
-        glob = os.getenv("CODALAB_LINK_ALLOWED_PATHS", "")
-        if not fnmatch.fnmatch(path, glob):
-            raise UsageError("Path {} does not match allowed paths: {}".format(path, glob))
+        return f"/opt/codalab-worksheets-link-mounts{path}"
 
     def _get_target_path(self, target):
         bundle_link_url = self._bundle_model.get_bundle_metadata(
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
         if bundle_link_url:
-            self._validate_path(bundle_link_url)
+            bundle_link_url = self._transform_link_path(bundle_link_url)
         bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(target.bundle_uuid)
         try:
             path = download_util.get_target_path(bundle_path, target)
