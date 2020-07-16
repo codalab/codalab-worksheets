@@ -39,7 +39,7 @@ import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import queryString from 'query-string';
-import { Dialog } from '@material-ui/core';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 
 /*
 Information about the current worksheet and its items.
@@ -421,6 +421,11 @@ class Worksheet extends React.Component {
         });
     };
 
+    moveFocusToBottom = () => {
+        $('#worksheet_container').scrollTop($('#worksheet_container')[0].scrollHeight);
+        this.setFocus(this.state.ws.info.blocks.length - 1, 'end');
+    };
+
     confirmBundleRowAction = (code) => {
         if (!(this.state.openedDialog || this.state.BulkBundleDialog)) {
             // no dialog is opened, open bundle row detail
@@ -624,6 +629,7 @@ class Worksheet extends React.Component {
     };
 
     componentDidMount() {
+        window.addEventListener('scroll', this.handleScroll);
         this.fetch({
             brief: true,
             success: function(data) {
@@ -663,6 +669,10 @@ class Worksheet extends React.Component {
                 console.error(xhr.responseText);
             },
         });
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener('scroll', this.handleScroll);
     }
 
     canEdit() {
@@ -1655,6 +1665,20 @@ class Worksheet extends React.Component {
                                         />
                                     </div>
                                 </div>
+                                <Button
+                                    onClick={this.moveFocusToBottom}
+                                    color='primary'
+                                    variant='contained'
+                                    style={{
+                                        borderRadius: '400px',
+                                        position: 'fixed',
+                                        bottom: '50px',
+                                        right: '30px',
+                                        backgroundColor: '00BFFF',
+                                    }}
+                                >
+                                    <ExpandMoreIcon size='medium' />
+                                </Button>
                             </div>
                         </div>
                     </div>
