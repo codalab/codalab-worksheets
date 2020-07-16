@@ -177,7 +177,6 @@ NOTIFICATIONS_NONE = 0x00  # Receive no notifications
 NOTIFICATIONS_IMPORTANT = 0x01  # Receive only important notifications
 NOTIFICATIONS_GENERAL = 0x02  # Receive general notifications (new features)
 
-
 # Store information about users.
 user = Table(
     'user',

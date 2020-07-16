@@ -6,11 +6,6 @@ from codalab.objects.user import PUBLIC_USER
 
 import os
 
-# TODO: delete later -tony
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 class AuthenticationPlugin(ABC):
     _NOT_AUTHENTICATED_ERROR = 'User is not authenticated'
@@ -50,11 +45,6 @@ class AuthenticationPlugin(ABC):
                 redirect_with_query('/account/login', {'next': request.url})
 
     def check_has_access(self):
-        # Only check if the user has access in protected mode
-        if not self.is_protected_mode():
-            return
-
-        self.check_user_authenticated()
         if not request.user.has_access:
             if request.is_ajax:
                 abort(httplib.UNAUTHORIZED, AuthenticationPlugin._ACCESS_DENIED_ERROR)
@@ -106,15 +96,6 @@ class AuthenticatedPlugin(AuthenticationPlugin):
 
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
-            # TODO: delete later -tony
-            logger.info(
-                'Tony - Inside AuthenticatedPlugin() - function={}, CODALAB_PROTECTED_MODE={}, authenticated={}, request.user={}'.format(
-                    callback.__name__,
-                    os.environ.get('CODALAB_PROTECTED_MODE'),
-                    self.user_is_authenticated(),
-                    str(request.user),
-                )
-            )
             self.check_user_authenticated()
             return callback(*args, **kwargs)
 
@@ -123,7 +104,7 @@ class AuthenticatedPlugin(AuthenticationPlugin):
 
 class AuthenticatedProtectedPlugin(AuthenticationPlugin):
     """
-    Fails the request if the user is not authenticated. It does not matter if the instance is protected or not.
+    Fails the request if the user is not authenticated. It doesn't matter if the instance is protected or not.
     Then checks if the user has access to the instance if the instance is protected.
 
     The handling of AJAX requests is the same as AuthenticatedPlugin.
@@ -132,7 +113,8 @@ class AuthenticatedProtectedPlugin(AuthenticationPlugin):
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
             self.check_user_authenticated()
-            self.check_has_access()
+            if self.is_protected_mode():
+                self.check_has_access()
             return callback(*args, **kwargs)
 
         return wrapper
@@ -147,16 +129,9 @@ class ProtectedPlugin(AuthenticationPlugin):
 
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
-            # TODO: delete later -tony
-            logger.info(
-                'Tony - Inside ProtectedPlugin() - function={}, CODALAB_PROTECTED_MODE={}, authenticated={}, request.user={}'.format(
-                    callback.__name__,
-                    os.environ.get('CODALAB_PROTECTED_MODE'),
-                    self.user_is_authenticated(),
-                    str(request.user),
-                )
-            )
-            self.check_has_access()
+            if self.is_protected_mode():
+                self.user_is_authenticated()
+                self.check_has_access()
             return callback(*args, **kwargs)
 
         return wrapper

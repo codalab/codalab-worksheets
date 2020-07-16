@@ -17,11 +17,6 @@ from codalab.rest.schemas import (
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
 from codalab.rest.util import get_resource_ids
 
-# TODO: delete later -tony
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def fetch_authenticated_user():
@@ -173,8 +168,6 @@ def update_users():
     if len(users) != 1:
         abort(http.client.BAD_REQUEST, "Users can only be updated one at a time.")
 
-    # TODO: remove later -tony
-    logger.info('Tony - In update_users(): users[0]={}'.format(str(users[0])))
     if 'has_access' in users[0]:
         # has_access can only be updated in protected mode
         if os.environ.get('CODALAB_PROTECTED_MODE') != 'True':

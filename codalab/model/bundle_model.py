@@ -2395,13 +2395,13 @@ class BundleModel(object):
         :return: boolean to indicate if the user is verified or not
         """
         with self.engine.begin() as connection:
-            verify_row = connection.execute(
+            verified_row = connection.execute(
                 cl_user.select()
                 .where(and_(cl_user.c.user_id == user_id, cl_user.c.is_verified))
                 .limit(1)
             ).fetchone()
 
-            return verify_row is not None
+            return verified_row is not None
 
     def new_user_reset_code(self, user_id):
         """
