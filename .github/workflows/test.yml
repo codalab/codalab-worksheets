@@ -88,6 +88,7 @@ jobs:
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-${{ matrix.test }}
