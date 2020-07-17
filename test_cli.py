@@ -542,6 +542,32 @@ def test(ctx):
     _run_command([cl, 'rm', uuid])
 
 
+@TestModule.register('auth')
+def test(ctx):
+    username = os.getenv("CODALAB_USERNAME")
+    password = os.getenv("CODALAB_PASSWORD")
+
+    # When environment variables set: should always stay logged in, even if running "cl logout"
+    check_contains("user: codalab", _run_command([cl, 'status']))
+    _run_command([cl, 'logout'])
+    check_contains("user: codalab", _run_command([cl, 'status']))
+
+    # When environment variables unset: should logout upon "cl logout"
+    del os.environ["CODALAB_USERNAME"]
+    del os.environ["CODALAB_PASSWORD"]
+    check_contains("user: codalab", _run_command([cl, 'status']))
+    _run_command([cl, 'logout'])
+
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = "wrongpassword"
+    _run_command([cl, 'status'], 1)
+
+    # Put back the environment variables.
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = password
+    check_contains("user: codalab", _run_command([cl, 'status']))
+
+
 @TestModule.register('upload1')
 def test(ctx):
     # Upload contents
