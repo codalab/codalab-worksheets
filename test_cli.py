@@ -329,10 +329,15 @@ class ModuleContext(object):
         else:
             print(Colorizer.green("[*] TEST PASSED"))
 
-        # Clean up and restore original worksheet
-        print("[*][*] CLEANING UP")
         os.environ.clear()
         os.environ.update(self.original_environ)
+        # Don't clean up when running on CI, for speed
+        if os.getenv("CI") == "true":
+            print("[*][*] SKIPPING CLEAN UP (CI)")
+            return True
+
+        # Clean up and restore original worksheet
+        print("[*][*] CLEANING UP")
 
         _run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
