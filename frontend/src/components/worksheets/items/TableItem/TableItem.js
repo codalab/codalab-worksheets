@@ -107,7 +107,6 @@ class TableItem extends React.Component<{
         this.props.addCopyBundleRowsCallback(this.props.itemID, this.copyCheckedBundleRows);
         var tableClassName = this.props.focused ? 'table focused' : 'table';
         var item = this.props.item;
-        var canEdit = this.props.canEdit;
         var bundleInfos = item.bundles_spec.bundle_infos;
         var headerItems = item.header;
         var headerHtml = headerItems.map((item, index) => {
@@ -155,7 +154,6 @@ class TableItem extends React.Component<{
                     bundleInfo={bundleInfo}
                     uuid={bundleInfo.uuid}
                     headerItems={headerItems}
-                    canEdit={canEdit}
                     updateRowIndex={this.updateRowIndex}
                     columnWithHyperlinks={columnWithHyperlinks}
                     reloadWorksheet={this.props.reloadWorksheet}
