@@ -15,6 +15,7 @@ user = User(
         "first_name": None,
         "last_name": None,
         "date_joined": datetime.datetime.now(),
+        "has_access": False,
         "is_verified": True,
         "is_superuser": False,
         "password": "",

@@ -198,6 +198,7 @@ user = Table(
     Column('first_name', String(30, convert_unicode=True)),
     Column('last_name', String(30, convert_unicode=True)),
     Column('date_joined', DateTime, nullable=False),
+    Column('has_access', Boolean, default=False, nullable=True),
     Column('is_verified', Boolean, nullable=False, default=False),
     Column('is_superuser', Boolean, nullable=False, default=False),
     Column('password', String(128), nullable=False),
