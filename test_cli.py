@@ -2039,6 +2039,75 @@ def test(ctx):
     )
 
 
+@TestModule.register('edit_user')
+def test(ctx):
+    # Can't both remove and grant access for a user
+    user_id, user_name = current_user()
+    _run_command([cl, 'uedit', user_name, '--grant-access', '--remove-access'], 1)
+
+    # Can't change access in a non-protected instance
+    _run_command([cl, 'uedit', user_name, '--grant-access'], 1)
+
+
+@TestModule.register('protected_mode')
+def test(ctx):
+    user_id, user_name = current_user()
+
+    worksheet_uuid = _run_command([cl, 'new', random_name()])
+    ctx.collect_worksheet(worksheet_uuid)
+    _run_command([cl, 'work', worksheet_uuid])
+
+    bundle_uuid = _run_command([cl, 'run', 'should be able to run'])
+    ctx.collect_bundle(bundle_uuid)
+
+    group_uuid = get_uuid(_run_command([cl, 'gnew', random_name()]))
+    ctx.collect_group(group_uuid)
+
+    # Request to remove access and check that the user is denied access
+    _run_command([cl, 'uedit', user_name, '--remove-access'])
+    check_equals(_run_command([cl, 'uinfo', user_name, '-f', 'has_access']), 'False')
+
+    # A user without access should not be able to run any of the following CLI commands
+    _run_command([cl, 'upload', test_path('dir1')], 1)
+    _run_command([cl, 'make', bundle_uuid, '--name', 'foo'], 1)
+    _run_command([cl, 'run', 'should not be able to run'], 1)
+    _run_command([cl, 'edit', bundle_uuid, '--tags', 'some_tag'], 1)
+    _run_command([cl, 'detach', bundle_uuid], 1)
+    _run_command([cl, 'rm', bundle_uuid], 1)
+    _run_command([cl, 'search', bundle_uuid, '-u'], 1)
+    _run_command([cl, 'ls'], 1)
+    _run_command([cl, 'info', bundle_uuid], 1)
+    _run_command([cl, 'cat', bundle_uuid], 1)
+    _run_command([cl, 'wait', bundle_uuid], 1)
+    _run_command([cl, 'download', bundle_uuid], 1)
+    _run_command([cl, 'write', bundle_uuid + '/', 'will not work'], 1)
+
+    _run_command([cl, 'new', 'worksheet_not_created'], 1)
+    _run_command([cl, 'add', 'text', 'text will not get added'], 1)
+    _run_command([cl, 'work', worksheet_uuid], 1)
+    _run_command([cl, 'print', worksheet_uuid], 1)
+    _run_command([cl, 'wedit', worksheet_uuid, '--title', 'no title'], 1)
+    _run_command([cl, 'wrm', worksheet_uuid], 1)
+    _run_command([cl, 'wls', '.shared'], 1)
+
+    _run_command([cl, 'gls'], 1)
+    _run_command([cl, 'gnew', 'no_group'], 1)
+    _run_command([cl, 'grm', group_uuid], 1)
+    _run_command([cl, 'ginfo', group_uuid], 1)
+    _run_command([cl, 'uadd', user_name, group_uuid], 1)
+    _run_command([cl, 'urm', user_name, group_uuid], 1)
+    _run_command([cl, 'perm', bundle_uuid, group_uuid, 'a'], 1)
+    _run_command([cl, 'wperm', worksheet_uuid, group_uuid, 'n'], 1)
+    _run_command([cl, 'chown', user_name, bundle_uuid, 'n'], 1)
+
+    _run_command([cl, 'workers'], 1)
+    _run_command([cl, 'status'], 1)
+
+    # Request to grant access and check that the user now has access
+    _run_command([cl, 'uedit', user_name, '--grant-access'])
+    check_equals(_run_command([cl, 'uinfo', user_name, '-f', 'has_access']), 'True')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'

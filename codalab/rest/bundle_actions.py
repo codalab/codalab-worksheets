@@ -4,11 +4,11 @@ from codalab.common import UsageError, precondition
 from codalab.lib.bundle_action import BundleAction
 from codalab.objects.permission import check_bundles_have_all_permission
 from codalab.rest.schemas import BundleActionSchema
-from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin
 from codalab.worker.bundle_state import State
 
 
-@post('/bundle-actions', apply=AuthenticatedPlugin())
+@post('/bundle-actions', apply=AuthenticatedProtectedPlugin())
 def create_bundle_actions():
     """
     Sends the message to the worker to do the bundle action, and adds the
