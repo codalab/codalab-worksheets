@@ -7,12 +7,10 @@ from codalab.objects.user import PUBLIC_USER
 import os
 
 
-class AuthenticationPlugin(ABC):
-    _NOT_AUTHENTICATED_ERROR = 'User is not authenticated'
-    _NOT_VERIFIED_ERROR = 'User is not verified'
-    _ACCESS_DENIED_ERROR = (
-        'User is not given access to this CodaLab instance. Please contact the admin for access.'
-    )
+class AuthPlugin(ABC):
+    _NOT_AUTHENTICATED_ERROR = 'User is not authenticated.'
+    _NOT_VERIFIED_ERROR = 'User is not verified.'
+    _ACCESS_DENIED_ERROR = 'User has not been given access to this CodaLab instance. Please contact the admin for access.'
 
     api = 2
 
@@ -33,28 +31,28 @@ class AuthenticationPlugin(ABC):
     def check_user_verified(self):
         if self.user_is_authenticated() and not request.user.is_verified:
             if request.is_ajax:
-                abort(httplib.UNAUTHORIZED, AuthenticationPlugin._NOT_VERIFIED_ERROR)
+                abort(httplib.UNAUTHORIZED, AuthPlugin._NOT_VERIFIED_ERROR)
             else:
                 redirect(url('resend_key'))
 
     def check_user_authenticated(self):
         if not self.user_is_authenticated():
             if request.is_ajax:
-                abort(httplib.UNAUTHORIZED, AuthenticationPlugin._NOT_AUTHENTICATED_ERROR)
+                abort(httplib.UNAUTHORIZED, AuthPlugin._NOT_AUTHENTICATED_ERROR)
             else:
                 redirect_with_query('/account/login', {'next': request.url})
 
     def check_has_access(self):
         if not request.user.has_access:
             if request.is_ajax:
-                abort(httplib.UNAUTHORIZED, AuthenticationPlugin._ACCESS_DENIED_ERROR)
+                abort(httplib.UNAUTHORIZED, AuthPlugin._ACCESS_DENIED_ERROR)
             else:
                 redirect_with_query('/account/login', {'next': request.url})
 
 
-class UserVerifiedPlugin(AuthenticationPlugin):
+class UserVerifiedPlugin(AuthPlugin):
     """
-    Fails the request if the user is authenticated but not verified.
+    In all modes, fails the request if the user is authenticated but not verified.
 
     The handling of AJAX requests is the same as AuthenticatedPlugin.
     """
@@ -67,7 +65,7 @@ class UserVerifiedPlugin(AuthenticationPlugin):
         return wrapper
 
 
-class PublicUserPlugin(AuthenticationPlugin):
+class PublicUserPlugin(AuthPlugin):
     """
     Sets request.user to PUBLIC_USER if none set yet.
     """
@@ -81,10 +79,9 @@ class PublicUserPlugin(AuthenticationPlugin):
         return wrapper
 
 
-class AuthenticatedPlugin(AuthenticationPlugin):
+class AuthenticatedPlugin(AuthPlugin):
     """
-    Fails the request if the user is not authenticated (i.e. request.user hasn't
-    been set).
+    In all modes, checks if the user is authenticated (i.e. request.user has been set).
 
     This method redirects the user to login unless the request is an AJAX request
     (i.e. has X-Requested-With header set to XMLHttpRequest). This header should
@@ -102,10 +99,10 @@ class AuthenticatedPlugin(AuthenticationPlugin):
         return wrapper
 
 
-class AuthenticatedProtectedPlugin(AuthenticationPlugin):
+class AuthenticatedProtectedPlugin(AuthPlugin):
     """
-    Fails the request if the user is not authenticated. It doesn't matter if the instance is protected or not.
-    Then checks if the user has access to the instance if the instance is protected.
+    In non-protected mode, checks if the user is authenticated.
+    In protected mode, checks if the user is authenticated and has access to the instance.
 
     The handling of AJAX requests is the same as AuthenticatedPlugin.
     """
@@ -120,9 +117,10 @@ class AuthenticatedProtectedPlugin(AuthenticationPlugin):
         return wrapper
 
 
-class ProtectedPlugin(AuthenticationPlugin):
+class ProtectedPlugin(AuthPlugin):
     """
-    Checks if the user is authenticated and has access to the instance only if the instance is in protected mode.
+    In non-protected mode, grants anonymous access.
+    In protected mode, checks if the user is authenticated and has access to the instance.
 
     The handling of AJAX requests is the same as AuthenticatedPlugin.
     """

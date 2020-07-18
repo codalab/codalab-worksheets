@@ -3728,12 +3728,12 @@ class BundleCLI(object):
             Commands.Argument(
                 '--grant-access',
                 action='store_true',
-                help='Grant access to the user when the CodaLab instance is in protected mode',
+                help='Grant access to the user if the CodaLab instance is in protected mode',
             ),
             Commands.Argument(
                 '--remove-access',
                 action='store_true',
-                help='Remove user\'s access when the CodaLab instance is in protected mode',
+                help='Remove the user\'s access if the CodaLab instance is in protected mode',
             ),
         ),
     )
@@ -3742,7 +3742,7 @@ class BundleCLI(object):
         Edit properties of users.
         """
         if args.grant_access and args.remove_access:
-            raise UsageError('Can\'t grant and remove access for a user.')
+            raise UsageError('Can\'t both grant and remove access for a user.')
 
         client = self.manager.current_client()
 

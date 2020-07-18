@@ -185,7 +185,6 @@ jobs:
         test:
           - basic status batch anonymous competition unicode rest1 upload1 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
           - run
-          - run2
           - search read kill write mimic workers
           - copy netcat
           - protected_mode
