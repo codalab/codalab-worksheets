@@ -329,10 +329,15 @@ class ModuleContext(object):
         else:
             print(Colorizer.green("[*] TEST PASSED"))
 
-        # Clean up and restore original worksheet
-        print("[*][*] CLEANING UP")
         os.environ.clear()
         os.environ.update(self.original_environ)
+        # Don't clean up when running on CI, for speed
+        if os.getenv("CI") == "true":
+            print("[*][*] SKIPPING CLEAN UP (CI)")
+            return True
+
+        # Clean up and restore original worksheet
+        print("[*][*] CLEANING UP")
 
         _run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
@@ -535,6 +540,32 @@ def test(ctx):
     _run_command([cl, 'rm', '--data-only', uuid])
     check_equals('None', get_info(uuid, 'data_hash'))
     _run_command([cl, 'rm', uuid])
+
+
+@TestModule.register('auth')
+def test(ctx):
+    username = os.getenv("CODALAB_USERNAME")
+    password = os.getenv("CODALAB_PASSWORD")
+
+    # When environment variables set: should always stay logged in, even if running "cl logout"
+    check_contains("user: codalab", _run_command([cl, 'status']))
+    _run_command([cl, 'logout'])
+    check_contains("user: codalab", _run_command([cl, 'status']))
+
+    # When environment variables unset: should logout upon "cl logout"
+    del os.environ["CODALAB_USERNAME"]
+    del os.environ["CODALAB_PASSWORD"]
+    check_contains("user: codalab", _run_command([cl, 'status']))
+    _run_command([cl, 'logout'])
+
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = "wrongpassword"
+    _run_command([cl, 'status'], 1)
+
+    # Put back the environment variables.
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = password
+    check_contains("user: codalab", _run_command([cl, 'status']))
 
 
 @TestModule.register('upload1')
