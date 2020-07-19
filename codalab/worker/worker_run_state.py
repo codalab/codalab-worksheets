@@ -108,9 +108,18 @@ RunState = namedtuple(
 
 """Dependency that is mounted.
 
-docker_path - path on the Docker container
+TODO(Ashwin): document this better
+
+docker_path - path on the Docker container where the dependency is mounted
+    example (shared file system):       /0x0fbb927dc0e54544bbc2d439a6805951/foo
+    example (non-shared file system):   .../codalab-worksheets/var/codalab/worker/dependencies/0x6b5bfdca99b6423ea36327102b19d0af
 child_path - path inside the bundle folder where the dependency is mounted
-parent_path = 
+    example (shared file system):       .../codalab-worksheets/var/codalab/home/partitions/default/bundles/0x0fbb927dc0e54544bbc2d439a6805951/foo
+    example (non-shared file system):   .../codalab-worksheets/var/codalab/home/partitions/default/bundles/0x0fbb927dc0e54544bbc2d439a6805951/foo
+parent_path - 
+    example (shared file system):       /opt/codalab-worksheets/tests/files/a.txt
+    example (non-shared file system):   .../codalab-worksheets/var/codalab/worker/dependencies/0x6b5bfdca99b6423ea36327102b19d0af
+
 """
 
 DependencyToMount = namedtuple('DependencyToMount', 'docker_path, child_path, parent_path')
@@ -194,9 +203,6 @@ class RunStateMachine(StateTransitioner):
                 os.symlink(dependency.docker_path, dependency.child_path)
             # The following will be converted into a Docker volume binding like:
             #   dependency_path:docker_dependency_path:ro
-            # raise Exception((dependency.parent_path, dependency))
-            # SFS: Exception: ('/opt/codalab-worksheets/tests/files/a.txt', DependencyToMount(docker_path='/0x0fbb927dc0e54544bbc2d439a6805951/foo', child_path='/Users/epicfaace/codalab/codalab-worksheets/var/codalab/home/partitions/default/bundles/0x0fbb927dc0e54544bbc2d439a6805951/foo', parent_path='/opt/codalab-worksheets/tests/files/a.txt'))
-            # non-SFS: Exception: ('/Users/epicfaace/codalab/codalab-worksheets/var/codalab/worker/dependencies/0x6b5bfdca99b6423ea36327102b19d0af', DependencyToMount(docker_path='/0x0fbb927dc0e54544bbc2d439a6805951_dependencies/foo', child_path='/Users/epicfaace/codalab/codalab-worksheets/var/codalab/home/partitions/default/bundles/0x0fbb927dc0e54544bbc2d439a6805951/foo', parent_path='/Users/epicfaace/codalab/codalab-worksheets/var/codalab/worker/dependencies/0x6b5bfdca99b6423ea36327102b19d0af'))
             docker_dependencies.append((dependency.parent_path, dependency.docker_path))
 
         if run_state.is_killed or run_state.is_restaged:
@@ -372,7 +378,7 @@ class RunStateMachine(StateTransitioner):
 
     def _get_dependency_path(self, run_state, dependency):
         if self.shared_file_system:
-            # TODO: make this not fs-specific.
+            # TODO(Ashwin): make this not fs-specific.
             # On a shared FS, we know where the dependency is stored and can get the contents directly
             return os.path.realpath(os.path.join(dependency.location, dependency.parent_path))
         else:

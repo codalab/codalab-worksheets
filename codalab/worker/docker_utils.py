@@ -173,10 +173,6 @@ def start_bundle_container(
 
     # Name the container with the UUID for readability
     container_name = 'codalab_run_%s' % uuid
-    # sfs: Exception: {'/opt/codalab-worksheets/tests/files/a.txt': {'bind': '/0x0fbb927dc0e54544bbc2d439a6805951/foo', 'mode': 'ro'}, '/Users/epicfaace/codalab/codalab-worksheets/var/codalab/home/partitions/default/bundles/0x0fbb927dc0e54544bbc2d439a6805951': {'bind': '/0x0fbb927dc0e54544bbc2d439a6805951', 'mode': 'rw'}}
-
-    # non-sfs: Exception: {'/Users/epicfaace/codalab/codalab-worksheets/var/codalab/worker/dependencies/0x6b5bfdca99b6423ea36327102b19d0af': {'bind': '/0x0fbb927dc0e54544bbc2d439a6805951_dependencies/foo', 'mode': 'ro'}, '/Users/epicfaace/codalab/codalab-worksheets/var/codalab/home/partitions/default/bundles/0x0fbb927dc0e54544bbc2d439a6805951': {'bind': '/0x0fbb927dc0e54544bbc2d439a6805951', 'mode': 'rw'}}
-    # raise Exception(volumes)
     container = client.containers.run(
         image=docker_image,
         command=docker_command,
