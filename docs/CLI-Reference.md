@@ -454,6 +454,8 @@ Usage: `cl <command> <arguments>`
       -t, --time-quota          Total amount of time allowed (e.g., 3, 3m, 3h, 3d)
       -p, --parallel-run-quota  Total amount of runs the user may have running at a time on shared public workers
       -d, --disk-quota          Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)
+      --grant-access            Grant access to the user if the CodaLab instance is in protected mode
+      --remove-access           Remove the user's access if the CodaLab instance is in protected mode
 
 ### ufarewell
     Delete user permanently. Root user only.
