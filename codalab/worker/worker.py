@@ -146,7 +146,10 @@ class Worker:
         # unused docker networks, or network creation might fail. We only prune docker networks
         # older than 1h, to avoid interfering with any newly-created (but still unused) networks
         # that might have been created by other workers.
-        self.docker.networks.prune(filters={"until": "1h"})
+        try:
+            self.docker.networks.prune(filters={"until": "1h"})
+        except docker.errors.APIError as e:
+            logger.error("Cannot prune docker networks: %s", str(e))
 
         # Right now the suffix to the general worker network is hardcoded to manually match the suffix
         # in the docker-compose file, so make sure any changes here are synced to there.
