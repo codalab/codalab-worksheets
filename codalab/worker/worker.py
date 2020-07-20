@@ -149,7 +149,7 @@ class Worker:
         try:
             self.docker.networks.prune(filters={"until": "1h"})
         except docker.errors.APIError as e:
-            logger.error("Cannot prune docker networks: %s", str(e))
+            logger.warning("Cannot prune docker networks: %s", str(e))
 
         # Right now the suffix to the general worker network is hardcoded to manually match the suffix
         # in the docker-compose file, so make sure any changes here are synced to there.
