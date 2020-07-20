@@ -2170,12 +2170,12 @@ class BundleModel(object):
             user_ids = [user_id]
         if username is not None:
             usernames = [username]
-        result = self.get_users(user_ids, usernames, check_active)
+        result = self.get_users(user_ids=user_ids, usernames=usernames, check_active=check_active)
         if result:
-            return result[0]
+            return result['results'][0]
         return None
 
-    def get_users(self, keywords, usernames=None):
+    def get_users(self, keywords=None, user_ids=None, usernames=None, check_active=None):
         """
         Get user stats.
 
@@ -2241,83 +2241,87 @@ class BundleModel(object):
                 return field == value
             return None
 
-        # if usernames is not None:
-        #     clauses.append(or_(cl_user.c.user_name.in_(usernames), cl_user.c.email.in_(usernames)))
+        if check_active:
+            clauses.append(cl_user.c.is_active)
+        if user_ids is not None:
+            clauses.append(cl_user.c.user_id.in_(user_ids))
+        if usernames is not None:
+            clauses.append(or_(cl_user.c.user_name.in_(usernames), cl_user.c.email.in_(usernames)))
+        if keywords is not None:
+            for keyword in keywords:
+                keyword = keyword.replace('.*', '%')
+                # Sugar
+                if keyword == '.count':
+                    count = True
+                    limit = None
+                    continue
+                elif keyword == '.last':
+                    keyword = 'id=.sort-'
 
-        for keyword in keywords:
-            keyword = keyword.replace('.*', '%')
-            # Sugar
-            if keyword == '.count':
-                count = True
-                limit = None
-                continue
-            elif keyword == '.last':
-                keyword = 'id=.sort-'
+                m = SEARCH_KEYWORD_REGEX.match(keyword)  # key=value
+                if m:
+                    key, value = m.group(1), m.group(2)
+                    if ',' in value:  # value is value1,value2
+                        value = value.split(',')
+                else:
+                    key, value = '', keyword
 
-            m = SEARCH_KEYWORD_REGEX.match(keyword)  # key=value
-            if m:
-                key, value = m.group(1), m.group(2)
-                if ',' in value:  # value is value1,value2
-                    value = value.split(',')
-            else:
-                key, value = '', keyword
+                clause = None
+                # Special functions
+                if key == '.offset':
+                    offset = int(value)
+                elif key == '.limit':
+                    limit = int(value)
+                elif key == '.format':
+                    format_func = value
+                # Bundle fields
+                elif key == 'id':
+                    clause = make_condition(key, cl_user.c.id, value)
+                elif key == 'user_id':
+                    clause = make_condition(key, cl_user.c.user_id, value)
+                elif key == 'user_name':
+                    clause = make_condition(key, cl_user.c.user_name, value)
+                elif key == 'email':
+                    clause = make_condition(key, cl_user.c.email, value)
+                elif key == 'last_login':
+                    clause = make_condition(key, cl_user.c.last_login, value)
+                elif key == 'first_name':
+                    clause = make_condition(key, cl_user.c.first_name, value)
+                elif key == 'last_name':
+                    clause = make_condition(key, cl_user.c.last_name, value)
+                elif key == 'affiliation':
+                    clause = make_condition(key, cl_user.c.affiliation, value)
+                elif key == 'time_quota':
+                    clause = make_condition(key, cl_user.c.time_quota, value)
+                elif key == 'parallel_run_quota':
+                    clause = make_condition(key, cl_user.c.parallel_run_quota, value)
+                elif key == 'time_used':
+                    clause = make_condition(key, cl_user.c.time_used, value)
+                elif key == 'disk_quota':
+                    clause = make_condition(key, cl_user.c.disk_quota, value)
+                elif key == 'disk_used':
+                    clause = make_condition(key, cl_user.c.disk_used, value)
+                elif key == '.joined_after':
+                        clause = cl_user.c.date_joined >= value
+                elif key == '.active_after':
+                        clause = cl_user.c.last_login >= value
+                elif key == '.joined_before':
+                        clause = cl_user.c.date_joined <= value
+                elif key == '.active_before':
+                        clause = cl_user.c.last_login <= value
+                elif key == '':  # Match any field
+                    clause = []
+                    clause.append(cl_user.c.user_id.like('%' + value + '%'))
+                    clause.append(cl_user.c.user_name.like('%' + value + '%'))
+                    clause.append(cl_user.c.first_name.like('%' + value + '%'))
+                    clause.append(cl_user.c.last_name.like('%' + value + '%'))
+                    clause = or_(*clause)
 
-            clause = None
-            # Special functions
-            if key == '.offset':
-                offset = int(value)
-            elif key == '.limit':
-                limit = int(value)
-            elif key == '.format':
-                format_func = value
-            # Bundle fields
-            elif key == 'id':
-                clause = make_condition(key, cl_user.c.id, value)
-            elif key == 'user_id':
-                clause = make_condition(key, cl_user.c.user_id, value)
-            elif key == 'user_name':
-                clause = make_condition(key, cl_user.c.user_name, value)
-            elif key == 'email':
-                clause = make_condition(key, cl_user.c.email, value)
-            elif key == 'last_login':
-                clause = make_condition(key, cl_user.c.last_login, value)
-            elif key == 'first_name':
-                clause = make_condition(key, cl_user.c.first_name, value)
-            elif key == 'last_name':
-                clause = make_condition(key, cl_user.c.last_name, value)
-            elif key == 'affiliation':
-                clause = make_condition(key, cl_user.c.affiliation, value)
-            elif key == 'time_quota':
-                clause = make_condition(key, cl_user.c.time_quota, value)
-            elif key == 'parallel_run_quota':
-                clause = make_condition(key, cl_user.c.parallel_run_quota, value)
-            elif key == 'time_used':
-                clause = make_condition(key, cl_user.c.time_used, value)
-            elif key == 'disk_quota':
-                clause = make_condition(key, cl_user.c.disk_quota, value)
-            elif key == 'disk_used':
-                clause = make_condition(key, cl_user.c.disk_used, value)
-            elif key == '.joined_after':
-                    clause = cl_user.c.date_joined >= value
-            elif key == '.active_after':
-                    clause = cl_user.c.last_login >= value
-            elif key == '.joined_before':
-                    clause = cl_user.c.date_joined <= value
-            elif key == '.active_before':
-                    clause = cl_user.c.last_login <= value
-            elif key == '':  # Match any field
-                clause = []
-                clause.append(cl_user.c.user_id.like('%' + value + '%'))
-                clause.append(cl_user.c.user_name.like('%' + value + '%'))
-                clause.append(cl_user.c.first_name.like('%' + value + '%'))
-                clause.append(cl_user.c.last_name.like('%' + value + '%'))
-                clause = or_(*clause)
+                else:
+                    raise UsageError('Unknown key: %s' % key)
 
-            else:
-                raise UsageError('Unknown key: %s' % key)
-
-            if clause is not None:
-                clauses.append(clause)
+                if clause is not None:
+                    clauses.append(clause)
 
         clause = and_(*clauses)
 

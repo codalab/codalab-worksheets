@@ -147,7 +147,6 @@ def fetch_users():
     - `name=<name>            ` : More targeted search of using metadata fields.
     - `date_joined=.sort             ` : Sort by a particular field.
     - `date_joined=.sort-            ` : Sort by a particular field in reverse.
-    - `size=.sum              ` : Compute total of a particular field.
     - `.count                 ` : Count the number of users.
     - `.limit=10              ` : Limit the number of results to the top 10.
     """
@@ -163,7 +162,7 @@ def fetch_users():
             "Request must include 'keywords' query parameter or usernames",
         )
     # Handle search keywords
-    users = local.model.get_users(keywords, usernames=(usernames or None))
+    users = local.model.get_users(keywords=(keywords or None), usernames=(usernames or None))
     # Return simple dict if scalar result (e.g. .sum or .count queries)
     if users.get('is_aggregate'):
 

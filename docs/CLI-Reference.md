@@ -442,7 +442,7 @@ Usage: `cl <command> <arguments>`
 ### uls
     Search for users on CodaLab (returns 10 results by default).
     search <keyword> ... <keyword>         : Username or id contains each <keyword>.
-    search user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., first_name).
+    search user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., email).
 
     search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
     search .offset=<offset>                : Return results starting at <offset>.
