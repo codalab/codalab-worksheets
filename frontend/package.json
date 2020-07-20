@@ -15,7 +15,7 @@
     "c3": "^0.6.12",
     "classnames": "^2.2.6",
     "dompurify": "^2.0.12",
-    "husky": "^2.7.0",
+    "husky": "^4.2.5",
     "jquery": "^3.5.1",
     "jquery.terminal": "^2.1.2",
     "jsonapi-datastore": "^0.4.0-beta",
