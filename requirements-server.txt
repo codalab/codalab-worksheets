@@ -8,7 +8,7 @@
 boto3==1.9.228
 
 # For style
-black==18.9b0
+black==19.10b0
 
 # For testing
 mock==4.0.2
