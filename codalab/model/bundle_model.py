@@ -2171,7 +2171,7 @@ class BundleModel(object):
         if username is not None:
             usernames = [username]
         result = self.get_users(user_ids=user_ids, usernames=usernames, check_active=check_active)
-        if result:
+        if result['results']:
             return result['results'][0]
         return None
 
@@ -2190,6 +2190,14 @@ class BundleModel(object):
         - .active_after=<datetime>: return users whose last login is after the datetime
         - .joined_before=<datetime>: return users who joined before the datetime
         - .joined_after=<datetime>: return users who joined after the datetime
+        - .disk_less_than=<percentage> or <float>: return users whose disk usage is
+            less than and equal to e.g., 70% or 0.3
+        - .disk_more_than=<percentage> or <float>: return users whose disk usage is
+            more than and equal to e.g., 70% or 0.3
+        - .time_less_than=<percentage> or <float>: return users whose disk usage is
+            less than and equal to e.g., 70% or 0.3
+        - .time_more_than=<percentage> or <float>: return users whose disk usage is
+            less than and equal to e.g., 70% or 0.3
         - .offset=<int>: return bundles starting at this offset
         - .limit=<int>: maximum number of bundles to return
         - .count: just return the number of bundles
@@ -2217,8 +2225,14 @@ class BundleModel(object):
             return clause.alias('q' + str(subquery_index[0]))
 
         def is_numeric(key):
-            return key in ('id', 'time_quota', 'parallel_run_quota', 'time_used',
-                'disk_quota', 'disk_used')
+            return key in (
+                'id',
+                'time_quota',
+                'parallel_run_quota',
+                'time_used',
+                'disk_quota',
+                'disk_used',
+            )
 
         def make_condition(key, field, value):
             # Special
@@ -2302,13 +2316,24 @@ class BundleModel(object):
                 elif key == 'disk_used':
                     clause = make_condition(key, cl_user.c.disk_used, value)
                 elif key == '.joined_after':
-                        clause = cl_user.c.date_joined >= value
+                    clause = cl_user.c.date_joined >= value
                 elif key == '.active_after':
-                        clause = cl_user.c.last_login >= value
+                    clause = cl_user.c.last_login >= value
                 elif key == '.joined_before':
-                        clause = cl_user.c.date_joined <= value
+                    clause = cl_user.c.date_joined <= value
                 elif key == '.active_before':
-                        clause = cl_user.c.last_login <= value
+                    clause = cl_user.c.last_login <= value
+                elif key in ('.disk_less_than', '.disk_more_than', '.time_less_than', '.time_more_than'):
+                    if '%' in value:
+                        value = float(value.strip('%')) / 100.0
+                    if key == '.disk_less_than':
+                        clause = cl_user.c.disk_used / cl_user.c.disk_quota <= value
+                    elif key == '.disk_more_than':
+                        clause = cl_user.c.disk_used / cl_user.c.disk_quota >= value
+                    elif key == '.time_less_than':
+                        clause = cl_user.c.time_used / cl_user.c.time_quota <= value
+                    elif key == '.time_more_than':
+                        clause = cl_user.c.time_used / cl_user.c.time_quota >= value
                 elif key == '':  # Match any field
                     clause = []
                     clause.append(cl_user.c.user_id.like('%' + value + '%'))
@@ -2325,13 +2350,7 @@ class BundleModel(object):
 
         clause = and_(*clauses)
 
-        query = (
-            select([cl_user] + aux_fields)
-            .distinct()
-            .where(clause)
-            .offset(offset)
-            .limit(limit)
-        )
+        query = select([cl_user] + aux_fields).distinct().where(clause).offset(offset).limit(limit)
 
         # Sort
         if sort_key[0] is not None:

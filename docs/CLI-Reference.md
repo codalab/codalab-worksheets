@@ -440,23 +440,28 @@ Usage: `cl <command> <arguments>`
       -f, --field  Print out these comma-separated fields.
 
 ### uls
-    Search for users on CodaLab (returns 10 results by default).
-    search <keyword> ... <keyword>         : Username or id contains each <keyword>.
-    search user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., email).
+    Lists users on CodaLab (returns 10 results by default).
+    uls <keyword> ... <keyword>         : Username or id contains each <keyword>.
+    uls user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., email).
 
-    search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
-    search .offset=<offset>                : Return results starting at <offset>.
+    uls .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
+    uls .offset=<offset>                : Return results starting at <offset>.
 
-    search .joined_before=<datetime>       : Returns users joined before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
-    search .joined_after=<datetime>        : Returns users joined after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
-    search .active_before=<datetime>       : Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
-    search .active_after=<datetime>        : Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
+    uls .joined_before=<datetime>       : Returns users joined before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
+    uls .joined_after=<datetime>        : Returns users joined after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
+    uls .active_before=<datetime>       : Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
+    uls .active_after=<datetime>        : Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
 
-    search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
-    search size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).
-    search .last                           : Sort in reverse chronological order (equivalent to id=.sort-).
-    search .count                          : Count the number of matching bundles.
-    search .format=<format>                : Apply <format> function (see worksheet markdown).
+    uls .disk_less_than=<percentage> or <float>       : Returns users whose disk usage less than (inclusive) given value (e.g., .disk_less_than=70% or 0.3).
+    uls .disk_more_than=<percentage> or <float>       : Returns users whose disk usage less than (inclusive) given value (e.g., .disk_more_than=70% or 0.3).
+    uls .time_less_than=<<percentage> or <float>      : Returns users whose time usage less than (inclusive) given value (e.g., .time_less_than=70% or 0.3).
+    uls .time_more_than=<percentage> or <float>       : Returns users whose time usage less than (inclusive) given value (e.g., .time_more_than=70% or 0.3).
+
+    uls size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
+    uls size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).
+    uls .last                           : Sort in reverse chronological order (equivalent to id=.sort-).
+    uls .count                          : Count the number of matching bundles.
+    uls .format=<format>                : Apply <format> function (see worksheet markdown).
     Arguments:
       keywords              Keywords to search for.
       -f, --field           Print out these comma-separated fields.

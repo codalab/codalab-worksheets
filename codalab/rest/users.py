@@ -130,6 +130,7 @@ def delete_user():
     # Return list of deleted id as meta
     return json_api_meta({}, {'ids': user_ids})
 
+
 @get('/users')
 def fetch_users():
     """
@@ -158,8 +159,7 @@ def fetch_users():
     keywords = query_get_list('keywords')
     if usernames == None and keywords == None:
         abort(
-            http.client.BAD_REQUEST,
-            "Request must include 'keywords' query parameter or usernames",
+            http.client.BAD_REQUEST, "Request must include 'keywords' query parameter or usernames"
         )
     # Handle search keywords
     users = local.model.get_users(keywords=(keywords or None), usernames=(usernames or None))
@@ -171,6 +171,7 @@ def fetch_users():
         users = users['results']
 
     return allowed_user_schema()(many=True).dump(users).data
+
 
 @patch('/users')
 def update_users():
