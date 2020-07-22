@@ -63,8 +63,8 @@ class Worksheet extends React.Component {
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
             activeComponent: 'list', // Where the focus is (action, list, or side_panel)
-            editMode: false, // Whether we're editing the worksheet
-            editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind editMode)
+            inSourceEditMode: false, // Whether we're editing the worksheet
+            editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind inSourceEditMode)
             showTerminal: false, // Whether the terminal is shown
             focusIndex: -1, // Which worksheet items to be on (-1 is none)
             subFocusIndex: 0, // For tables, which row in the table
@@ -675,15 +675,6 @@ class Worksheet extends React.Component {
         return info && info.edit_permission;
     }
 
-    viewMode = () => {
-        this.toggleEditMode(false, true);
-    };
-    discardChanges = () => {
-        this.toggleEditMode(false, false);
-    };
-    editMode = () => {
-        this.toggleEditMode(true);
-    };
     handleTerminalFocus = (event) => {
         this.setState({ activeComponent: 'action' });
         // just scroll to the top of the page.
@@ -768,11 +759,11 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
 
-            // Toggle edit mode
+            // Open source edit mode
             Mousetrap.bind(
                 ['shift+e'],
                 function(e) {
-                    this.toggleEditMode();
+                    this.toggleSourceEditMode();
                     return false;
                 }.bind(this),
             );
@@ -983,12 +974,14 @@ class Worksheet extends React.Component {
         //====================Bulk bundle operations===================
     }
 
-    toggleEditMode(editMode, saveChanges) {
-        if (editMode === undefined) editMode = !this.state.editMode; // Toggle by default
+    toggleSourceEditMode(openSourceEditMode, saveChanges) {
+        // openSourceEditMode: whether to open or close source mode, open if true, close if false, toggles to opposite if undefined
+        // saveChanges: whether to save or discard changes
+        if (openSourceEditMode === undefined) openSourceEditMode = !this.state.inSourceEditMode; // toggle by default
 
         if (saveChanges === undefined) saveChanges = true;
 
-        if (!editMode) {
+        if (!openSourceEditMode) {
             // Going out of raw mode - save the worksheet.
             if (this.hasEditPermission()) {
                 var editor = ace.edit('worksheet-editor');
@@ -997,7 +990,7 @@ class Worksheet extends React.Component {
                 }
                 var rawIndex = editor.getCursorPosition().row;
                 this.setState({
-                    editMode: editMode,
+                    inSourceEditMode: openSourceEditMode,
                     editorEnabled: false,
                 }); // Needs to be after getting the raw contents
                 if (saveChanges) {
@@ -1008,13 +1001,13 @@ class Worksheet extends React.Component {
             } else {
                 // Not allowed to edit the worksheet.
                 this.setState({
-                    editMode: editMode,
+                    inSourceEditMode: openSourceEditMode,
                     editorEnabled: false,
                 });
             }
         } else {
             // Go into edit mode.
-            this.setState({ editMode: editMode });
+            this.setState({ inSourceEditMode: openSourceEditMode });
             this.clearCheckedBundles();
             $('#worksheet-editor').focus(); // Needs to be before focusing
         }
@@ -1100,7 +1093,7 @@ class Worksheet extends React.Component {
     }
 
     componentDidUpdate(prevProps, prevState) {
-        if (this.state.editMode && !this.state.editorEnabled) {
+        if (this.state.inSourceEditMode && !this.state.editorEnabled) {
             this.setState({ editorEnabled: true });
             var editor = ace.edit('worksheet-editor');
             editor.$blockScrolling = Infinity;
@@ -1121,7 +1114,7 @@ class Worksheet extends React.Component {
                     name: 'save',
                     bindKey: { win: 'Ctrl-Enter', mac: 'Ctrl-Enter' },
                     exec: function() {
-                        this.toggleEditMode();
+                        this.toggleSourceEditMode();
                     }.bind(this),
                     readOnly: true,
                 });
@@ -1129,7 +1122,8 @@ class Worksheet extends React.Component {
                     name: 'exit',
                     bindKey: { win: 'Esc', mac: 'Esc' },
                     exec: function() {
-                        this.discardChanges();
+                        // discard changes in source mode
+                        this.toggleSourceEditMode(false, false);
                     }.bind(this),
                 });
                 editor.focus();
@@ -1377,7 +1371,7 @@ class Worksheet extends React.Component {
                     errorDialogMessage: xhr.responseText,
                 });
                 if (fromRaw) {
-                    this.toggleEditMode(true);
+                    this.toggleSourceEditMode(true);
                 }
             }.bind(this),
         });
@@ -1424,13 +1418,15 @@ class Worksheet extends React.Component {
         const editPermission = this.hasEditPermission();
 
         let searchClassName = this.state.showTerminal ? '' : 'search-hidden';
-        let editableClassName = editPermission && this.state.editMode ? 'editable' : '';
+        let editableClassName = editPermission && this.state.openSourceEditMode ? 'editable' : '';
         let disableWorksheetEditing = editPermission ? '' : 'disabled';
         let sourceStr = editPermission ? 'Edit Source' : 'View Source';
         let editFeatures = (
             <div style={{ display: 'inline-block' }}>
                 <Button
-                    onClick={this.editMode}
+                    onClick={() => {
+                        this.toggleSourceEditMode(true);
+                    }}
                     size='small'
                     color='inherit'
                     aria-label='Edit Source'
@@ -1482,7 +1478,10 @@ class Worksheet extends React.Component {
                 style={{ display: 'inline-block' }}
             >
                 <Button
-                    onClick={this.viewMode}
+                    onClick={() => {
+                        // save changes and exit source mode
+                        this.toggleSourceEditMode(false, true);
+                    }}
                     disabled={disableWorksheetEditing}
                     size='small'
                     color='inherit'
@@ -1492,7 +1491,10 @@ class Worksheet extends React.Component {
                     Save
                 </Button>
                 <Button
-                    onClick={this.discardChanges}
+                    onClick={() => {
+                        // discard changes
+                        this.toggleSourceEditMode(false, false);
+                    }}
                     size='small'
                     color='inherit'
                     aria-label='Discard Edit'
@@ -1532,7 +1534,9 @@ class Worksheet extends React.Component {
                 active={this.state.activeComponent === 'action'}
                 reloadWorksheet={this.reloadWorksheet}
                 openWorksheet={this.openWorksheet}
-                editMode={this.editMode}
+                editMode={() => {
+                    this.toggleSourceEditMode(true);
+                }}
                 setFocus={this.setFocus}
                 hidden={!this.state.showTerminal}
             />
@@ -1567,29 +1571,12 @@ class Worksheet extends React.Component {
             />
         );
 
-        var worksheet_display = this.state.editMode ? raw_display : items_display;
-        var editButtons = this.state.editMode ? editModeFeatures : editFeatures;
+        var worksheet_display = this.state.inSourceEditMode ? raw_display : items_display;
+        var editButtons = this.state.inSourceEditMode ? editModeFeatures : editFeatures;
         if (!this.state.isValid) {
             return <ErrorMessage message={"Not found: '/worksheets/" + this.state.ws.uuid + "'"} />;
         }
 
-        var worksheet_dialogs = (
-            <WorksheetDialogs
-                openedDialog={this.state.openedDialog}
-                closeDialog={() => {
-                    this.setState({ openedDialog: null });
-                }}
-                errorDialogMessage={this.state.errorDialogMessage}
-                toggleCmdDialog={this.toggleCmdDialog}
-                toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
-                toggleErrorMessageDialog={this.toggleErrorMessageDialog}
-                deleteWorksheetAction={this.deleteWorksheetAction}
-                executeBundleCommand={this.executeBundleCommand}
-                forceDelete={this.state.forceDelete}
-                handleForceDelete={this.handleForceDelete}
-                deleteItemCallback={this.state.deleteItemCallback}
-            />
-        );
         if (info && info.title) {
             document.title = info.title;
         }
@@ -1676,7 +1663,21 @@ class Worksheet extends React.Component {
                         </div>
                     </div>
                 </div>
-                {worksheet_dialogs}
+                <WorksheetDialogs
+                    openedDialog={this.state.openedDialog}
+                    closeDialog={() => {
+                        this.setState({ openedDialog: null });
+                    }}
+                    errorDialogMessage={this.state.errorDialogMessage}
+                    toggleCmdDialog={this.toggleCmdDialog}
+                    toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
+                    toggleErrorMessageDialog={this.toggleErrorMessageDialog}
+                    deleteWorksheetAction={this.deleteWorksheetAction}
+                    executeBundleCommand={this.executeBundleCommand}
+                    forceDelete={this.state.forceDelete}
+                    handleForceDelete={this.handleForceDelete}
+                    deleteItemCallback={this.state.deleteItemCallback}
+                />
                 <InformationModal
                     showInformationModal={this.state.showInformationModal}
                     toggleInformationModal={this.toggleInformationModal}
