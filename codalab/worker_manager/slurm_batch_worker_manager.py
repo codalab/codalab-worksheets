@@ -49,9 +49,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--gpus', type=int, default=1, help='Default number of GPUs for each worker'
         )
-        subparser.add_argument(
-            '--gpu-type', type=str, help='GPU type to requet from Slurm'
-        )
+        subparser.add_argument('--gpu-type', type=str, help='GPU type to requet from Slurm')
         subparser.add_argument(
             '--memory-mb', type=int, default=2048, help='Default memory (in MB) for each worker'
         )
@@ -370,8 +368,8 @@ class SlurmBatchWorkerManager(WorkerManager):
         slurm_args['partition'] = self.args.partition
         gpu_gres_value = "gpu"
         if self.args.gpu_type:
-            gpu_gres_value += (":" + self.args.gpu_type)
-        gpu_gres_value += (":" + str(self.args.gpus))
+            gpu_gres_value += ":" + self.args.gpu_type
+        gpu_gres_value += ":" + str(self.args.gpus)
         slurm_args['gres'] = gpu_gres_value
         # job-name is unique
         slurm_args['job-name'] = worker_id
