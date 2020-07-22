@@ -1421,7 +1421,7 @@ class Worksheet extends React.Component {
         let editableClassName = editPermission && this.state.openSourceEditMode ? 'editable' : '';
         let disableWorksheetEditing = editPermission ? '' : 'disabled';
         let sourceStr = editPermission ? 'Edit Source' : 'View Source';
-        let editFeatures = (
+        let blockViewButtons = (
             <div style={{ display: 'inline-block' }}>
                 <Button
                     onClick={() => {
@@ -1470,7 +1470,7 @@ class Worksheet extends React.Component {
             </div>
         );
 
-        var editModeFeatures = (
+        let sourceModeButtons = (
             <div
                 onMouseMove={(ev) => {
                     ev.stopPropagation();
@@ -1511,7 +1511,7 @@ class Worksheet extends React.Component {
             $('.empty-worksheet').fadeIn();
         }
 
-        var raw_display = (
+        let rawDisplay = (
             <div>
                 Press ctrl-enter to save. See{' '}
                 <a
@@ -1525,7 +1525,7 @@ class Worksheet extends React.Component {
             </div>
         );
 
-        var action_bar_display = (
+        let terminalDisplay = (
             <WorksheetTerminal
                 ref={'action'}
                 ws={this.state.ws}
@@ -1542,7 +1542,7 @@ class Worksheet extends React.Component {
             />
         );
 
-        var items_display = (
+        let itemsDisplay = (
             <WorksheetItemList
                 ref={'list'}
                 active={this.state.activeComponent === 'list'}
@@ -1571,8 +1571,8 @@ class Worksheet extends React.Component {
             />
         );
 
-        var worksheet_display = this.state.inSourceEditMode ? raw_display : items_display;
-        var editButtons = this.state.inSourceEditMode ? editModeFeatures : editFeatures;
+        let worksheetDisplay = this.state.inSourceEditMode ? rawDisplay : itemsDisplay;
+        let editButtons = this.state.inSourceEditMode ? sourceModeButtons : blockViewButtons;
         if (!this.state.isValid) {
             return <ErrorMessage message={"Not found: '/worksheets/" + this.state.ws.uuid + "'"} />;
         }
@@ -1610,7 +1610,7 @@ class Worksheet extends React.Component {
                     showPasteButton={this.state.showPasteButton}
                     toggleWorksheetSize={this.toggleWorksheetSize}
                 />
-                {action_bar_display}
+                {terminalDisplay}
                 <ToastContainer
                     newestOnTop={false}
                     transition={Zoom}
@@ -1636,7 +1636,7 @@ class Worksheet extends React.Component {
                                         id='worksheet_content'
                                         className={editableClassName + ' worksheet_content'}
                                     >
-                                        {worksheet_display}
+                                        {worksheetDisplay}
                                         {/* Show error dialog if bulk bundle execution failed*/}
                                         {this.state.BulkBundleDialog}
                                         <InformationModal
