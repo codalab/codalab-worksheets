@@ -77,7 +77,6 @@ class WorksheetItem extends React.Component {
 
         var self = this;
         var tableClassName = this.props.focused ? 'table focused' : 'table';
-        var canEdit = this.props.canEdit;
         var items = this._getItems();
 
         var body_rows_html = items.map(function(row_item, row_index) {
@@ -93,7 +92,6 @@ class WorksheetItem extends React.Component {
                     focused={row_focused}
                     url={url}
                     uuid={row_item.uuid}
-                    canEdit={canEdit}
                     updateRowIndex={self.updateRowIndex}
                 />
             );
