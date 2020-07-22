@@ -62,19 +62,22 @@ class RecordItem extends React.Component {
                 'keydown',
             );
         }
-        var className = 'table table-record' + (focused ? ' focused' : '');
-        var bundleInfo = item.bundles_spec.bundle_infos[0];
-        var header = item.header;
-        var k = header[0];
-        var v = header[1];
-        var items = item.rows.map(function(item, index) {
-            var ref = 'row' + index;
+        let className = 'table table-record' + (focused ? ' focused' : '');
+        let bundleInfo = item.bundles_spec.bundle_infos[0];
+        let header = item.header;
+        let k = header[0];
+        let v = header[1];
+        let items = item.rows.map(function(item, index) {
+            let ref = 'row' + index;
+            let displayValue = JSON.stringify(item[v]); // stringify is needed to convert metadata objects
+            if (displayValue) {
+                displayValue = displayValue.substr(1, displayValue.length - 2); // get rid of ""
+            }
+
             return (
                 <tr ref={ref} key={index}>
                     <th>{item[k]}</th>
-                    <td style={{ maxWidth: '500px', wordWrap: 'break-word' }}>
-                        {JSON.stringify(item[v])}
-                    </td>
+                    <td style={{ maxWidth: '500px', wordWrap: 'break-word' }}>{displayValue}</td>
                 </tr>
             );
         });
