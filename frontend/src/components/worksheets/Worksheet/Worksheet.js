@@ -179,13 +179,6 @@ class Worksheet extends React.Component {
         });
     }
 
-    _setfocusIndex(index) {
-        this.setState({ focusIndex: index });
-    }
-    _setWorksheetSubFocusIndex(index) {
-        this.setState({ subFocusIndex: index });
-    }
-
     // Return the number of rows occupied by this item.
     _numTableRows(item) {
         if (item) {
@@ -559,15 +552,6 @@ class Worksheet extends React.Component {
         if (subIndex === 'end') {
             subIndex = (this._numTableRows(info.blocks[index]) || 1) - 1;
         }
-        if (
-            index < -1 ||
-            index >= info.blocks.length ||
-            subIndex < -1 ||
-            subIndex >= (this._numTableRows(info.blocks[index]) || 1)
-        ) {
-            console.log('Out of bounds');
-            return; // Out of bounds (note index = -1 is okay)
-        }
         let focusedBundleUuidList = [];
         if (index !== -1) {
             // index !== -1 means something is selected.
@@ -585,6 +569,15 @@ class Worksheet extends React.Component {
                 }
             }
         }
+
+        // If we met a out of bound, we default it to the last item
+        if (index >= info.blocks.length) {
+            index = info.blocks.length - 1;
+            if (subIndex >= info.blocks[index].length || 1) {
+                subIndex = 0;
+            }
+        }
+
         // Change the focus - triggers updating of all descendants.
         this.setState({
             focusIndex: index,
@@ -1273,12 +1266,12 @@ class Worksheet extends React.Component {
                         numOfBundles > this.state.numOfBundles
                     ) {
                         // If the number of bundles increases then the focus should be on the new bundle.
-                        // if the current focus is not on a table
                         if (
                             blocks[focus] &&
                             blocks[focus].mode &&
                             blocks[focus].mode !== 'table_block'
                         ) {
+                            // if the current focus is not on a table
                             this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
                         } else if (this.state.subFocusIndex !== undefined) {
                             // Focus on the next bundle row
@@ -1287,14 +1280,20 @@ class Worksheet extends React.Component {
                             this.setFocus(focus >= 0 ? focus : 'end', 'end');
                         }
                     } else if (numOfBundles < this.state.numOfBundles) {
+                        // TODO: the following does not consider deleting multiple bundles and the case when
+                        // multiple bundle tables are entirely removed
+
+                        // The following only considers deleting one bundle at a time
                         // If the number of bundles decreases, then focus should be on the same bundle as before
                         // unless that bundle doesn't exist anymore, in which case we select the one above it.
-                        // the deleted bundle is the only item of the table
                         if (this.state.subFocusIndex === 0) {
-                            // the deleted item is the last item of the worksheet
-                            if (blocks.length === focus) {
+                            // the deleted bundle was the only bundle of the table, then the block is gone
+                            if (blocks.length <= focus) {
+                                // If the deleted table was the last block of the worksheet,
+                                // we set focus to the current last block
                                 this.setFocus(focus - 1, 0);
                             } else {
+                                // Otherwise we set to the next block of deleted bundle table
                                 this.setFocus(focus, 0);
                             }
                             // the deleted bundle is the last item of the table
