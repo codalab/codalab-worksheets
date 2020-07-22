@@ -22,6 +22,8 @@ from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
+from codalab.objects.user import User
+from codalab.model.tables import NOTIFICATIONS_IMPORTANT
 
 import argparse
 import json
@@ -914,6 +916,50 @@ def test(ctx):
     _run_command([cl, 'wedit', wname, '--tags'])
     check_contains(r'Tags:\s+###', _run_command([cl, 'ls', '-w', wuuid]))
 
+
+@TestModule.register('uls')
+def test(ctx):
+    prev_time = datetime.now().isoformat()
+    # Create new user
+    user = User(
+        {
+            "user_id": 1,
+            "user_name": "test",
+            "email": "test@test.com",
+            "notifications": NOTIFICATIONS_IMPORTANT,
+            "last_login": datetime.datetime.now(),
+            "is_active": True,
+            "first_name": None,
+            "last_name": None,
+            "date_joined": datetime.datetime.now(),
+            "has_access": False,
+            "is_verified": True,
+            "is_superuser": False,
+            "password": "",
+            "time_quota": 10,
+            "parallel_run_quota": 0,
+            "time_used": 1,
+            "disk_quota": 10,
+            "disk_used": 1,
+            "affiliation": None,
+            "url": None,
+        }
+    )
+
+    # check .joined_after
+    check_contains(['test'], _run_command([cl, 'uls', '.joined_after=' + prev_time]))
+
+    # check .count
+    check_equals('1', _run_command([cl, 'uls', 'joined_after=' + prev_time, '.count']))
+
+    # check .active_after
+    check_contains(['test'], _run_command([cl, 'uls', '.active_after=' + prev_time]))
+
+    # check .disk_used_more_than
+    check_contains(['test'], _run_command([cl, 'uls', '.disk_used_more_than=' + '10%']))
+
+    # check .time_used_more_than
+    check_contains(['test'], _run_command([cl, 'uls', '.time_used_more_than=' + '10%']))
 
 @TestModule.register('freeze')
 def test(ctx):

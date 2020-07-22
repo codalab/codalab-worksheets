@@ -2190,14 +2190,14 @@ class BundleModel(object):
         - .active_after=<datetime>: return users whose last login is after the datetime
         - .joined_before=<datetime>: return users who joined before the datetime
         - .joined_after=<datetime>: return users who joined after the datetime
-        - .disk_less_than=<percentage> or <float>: return users whose disk usage is
+        - .disk_used_less_than=<percentage> or <float>: return users whose disk usage is
             less than and equal to e.g., 70% or 0.3
-        - .disk_more_than=<percentage> or <float>: return users whose disk usage is
+        - .disk_used_more_than=<percentage> or <float>: return users whose disk usage is
             more than and equal to e.g., 70% or 0.3
-        - .time_less_than=<percentage> or <float>: return users whose disk usage is
+        - .time_used_less_than=<percentage> or <float>: return users whose disk usage is
             less than and equal to e.g., 70% or 0.3
-        - .time_more_than=<percentage> or <float>: return users whose disk usage is
-            less than and equal to e.g., 70% or 0.3
+        - .time_used_more_than=<percentage> or <float>: return users whose disk usage is
+            more than and equal to e.g., 70% or 0.3
         - .offset=<int>: return bundles starting at this offset
         - .limit=<int>: maximum number of bundles to return
         - .count: just return the number of bundles
@@ -2326,13 +2326,13 @@ class BundleModel(object):
                 elif key in ('.disk_less_than', '.disk_more_than', '.time_less_than', '.time_more_than'):
                     if '%' in value:
                         value = float(value.strip('%')) / 100.0
-                    if key == '.disk_less_than':
+                    if key == '.disk_used_less_than':
                         clause = cl_user.c.disk_used / cl_user.c.disk_quota <= value
-                    elif key == '.disk_more_than':
+                    elif key == '.disk_used_more_than':
                         clause = cl_user.c.disk_used / cl_user.c.disk_quota >= value
-                    elif key == '.time_less_than':
+                    elif key == '.time_used_less_than':
                         clause = cl_user.c.time_used / cl_user.c.time_quota <= value
-                    elif key == '.time_more_than':
+                    elif key == '.time_used_more_than':
                         clause = cl_user.c.time_used / cl_user.c.time_quota >= value
                 elif key == '':  # Match any field
                     clause = []

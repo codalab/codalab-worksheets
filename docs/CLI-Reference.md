@@ -452,10 +452,10 @@ Usage: `cl <command> <arguments>`
     uls .active_before=<datetime>       : Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
     uls .active_after=<datetime>        : Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
 
-    uls .disk_less_than=<percentage> or <float>       : Returns users whose disk usage less than (inclusive) given value (e.g., .disk_less_than=70% or 0.3).
-    uls .disk_more_than=<percentage> or <float>       : Returns users whose disk usage less than (inclusive) given value (e.g., .disk_more_than=70% or 0.3).
-    uls .time_less_than=<<percentage> or <float>      : Returns users whose time usage less than (inclusive) given value (e.g., .time_less_than=70% or 0.3).
-    uls .time_more_than=<percentage> or <float>       : Returns users whose time usage less than (inclusive) given value (e.g., .time_more_than=70% or 0.3).
+    uls .disk_used_less_than=<percentage> or <float>      : Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_less_than=70% or 0.3).
+    uls .disk_used_more_than=<percentage> or <float>      : Returns users whose disk usage more than (inclusive) given value (e.g., .disk_used_more_than=70% or 0.3).
+    uls .time_used_less_than=<percentage> or <float>      : Returns users whose time usage less than (inclusive) given value (e.g., .time_used_less_than=70% or 0.3).
+    uls .time_used_more_than=<percentage> or <float>      : Returns users whose time usage more than (inclusive) given value (e.g., .time_used_more_than=70% or 0.3).
 
     uls size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
     uls size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).
