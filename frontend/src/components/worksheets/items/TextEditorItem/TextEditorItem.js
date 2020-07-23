@@ -114,6 +114,7 @@ class TextEditorItem extends React.Component<{
 
         Mousetrap.bindGlobal(['esc'], () => {
             this.props.closeEditor();
+            this.text = defaultValue;
             Mousetrap.unbindGlobal(['esc']);
         });
 
