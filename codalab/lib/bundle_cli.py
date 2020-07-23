@@ -92,11 +92,11 @@ from codalab.lib.completers import (
     WorksheetsCompleter,
 )
 from codalab.lib.bundle_store import MultiDiskBundleStore
+from codalab.lib.interactive_session import InteractiveSession
 from codalab.lib.print_util import FileTransferProgress
+from codalab.lib.spec_util import generate_uuid
 from codalab.worker.file_util import un_tar_directory
 from codalab.worker.download_util import BundleTarget
-
-from codalab.lib.spec_util import generate_uuid
 from codalab.worker.docker_utils import get_available_runtime, start_bundle_container
 from codalab.worker.file_util import remove_path
 from codalab.worker.bundle_state import State
@@ -1612,6 +1612,9 @@ class BundleCLI(object):
                 help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
                 action='store_true',
             ),
+            Commands.Argument(
+                '--interactive', help='Run in interactive mode', action='store_true'
+            ),
         )
         + Commands.metadata_arguments([RunBundle])
         + EDIT_ARGUMENTS
@@ -1625,6 +1628,19 @@ class BundleCLI(object):
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
         params = {'worksheet': worksheet_uuid}
 
+        if args.interactive:
+            self._fail_if_headless(args)
+
+            docker_image = metadata.get('request_docker_image', None)
+            if not docker_image:
+                raise UsageError('--request-docker-image [docker-image] must be specified')
+
+            session = InteractiveSession(docker_image)
+            command = session.start()
+            session.cleanup()
+        else:
+            command = args.command
+
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
         if args.memoize:
@@ -1634,8 +1650,7 @@ class BundleCLI(object):
             ]
             # A list of matched uuids in the order they were created.
             memoized_bundles = client.fetch(
-                'bundles',
-                params={'command': args.command, 'dependencies': json.dumps(dependencies)},
+                'bundles', params={'command': command, 'dependencies': json.dumps(dependencies)}
             )
 
         if args.memoize and len(memoized_bundles) > 0:
@@ -1652,7 +1667,7 @@ class BundleCLI(object):
         else:
             new_bundle = client.create(
                 'bundles',
-                self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
+                self.derive_bundle(RunBundle.BUNDLE_TYPE, command, targets, metadata),
                 params=params,
             )
             print(new_bundle['uuid'], file=self.stdout)
