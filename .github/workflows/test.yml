@@ -228,6 +228,13 @@ jobs:
       - uses: actions/setup-python@v1
         with:
           python-version: 3.6
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-
+      - run: pip install -r requirements.txt
       - name: Setup tests
         run: |
           sudo service mysql stop
