@@ -18,7 +18,6 @@ export class FileBrowser extends React.Component<
         buildPayload: (string) => {},
         method: string,
         url: string,
-        canEdit?: boolean,
         onChange?: () => void,
     },
     {
@@ -34,7 +33,6 @@ export class FileBrowser extends React.Component<
     /** Prop default values. */
     static defaultProps = {
         method: 'POST',
-        canEdit: true,
     };
 
     constructor(props) {
