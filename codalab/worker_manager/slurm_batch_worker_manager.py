@@ -49,7 +49,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--gpus', type=int, default=1, help='Default number of GPUs for each worker'
         )
-        subparser.add_argument('--gpu-type', type=str, help='GPU type to requet from Slurm')
+        subparser.add_argument('--gpu-type', type=str, help='GPU type to request from Slurm')
         subparser.add_argument(
             '--memory-mb', type=int, default=2048, help='Default memory (in MB) for each worker'
         )
