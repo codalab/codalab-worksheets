@@ -146,7 +146,10 @@ class Worker:
         # unused docker networks, or network creation might fail. We only prune docker networks
         # older than 1h, to avoid interfering with any newly-created (but still unused) networks
         # that might have been created by other workers.
-        self.docker.networks.prune(filters={"until": "1h"})
+        try:
+            self.docker.networks.prune(filters={"until": "1h"})
+        except docker.errors.APIError as e:
+            logger.warning("Cannot prune docker networks: %s", str(e))
 
         # Right now the suffix to the general worker network is hardcoded to manually match the suffix
         # in the docker-compose file, so make sure any changes here are synced to there.
@@ -251,8 +254,28 @@ class Worker:
                     self.terminate = True
                 else:
                     # Sleep for a long time so we don't keep on failing.
+                    # We sleep in 5-second increments, itermittently checking
+                    # if the worker needs to terminate (say, if it's received
+                    # a SIGTERM signal).
                     logger.error('Sleeping for 1 hour due to exception...please help me!')
-                    time.sleep(1 * 60 * 60)
+                    for _ in range(12 * 60):
+                        # We run this here, instead of going through another iteration of the
+                        # while loop, to minimize the code that's run---the reason we ended up here
+                        # in the first place is because of an exception, so we don't want to
+                        # re-trigger that exception.
+                        if self.terminate_and_restage:
+                            # If self.terminate_and_restage is true, self.check_termination()
+                            # restages bundles. We surround this in a try-except block,
+                            # so we can still properly terminate and clean up
+                            # even if self.check_termination() fails for some reason.
+                            try:
+                                self.check_termination()
+                            except Exception:
+                                traceback.print_exc()
+                            self.terminate = True
+                        if self.terminate:
+                            break
+                        sleep(5)
         self.cleanup()
 
     def cleanup(self):
