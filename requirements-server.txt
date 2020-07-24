@@ -4,11 +4,11 @@
 # For generating readthedocs
 -r requirements.docs.txt
 
+# Only for development
+-r requirements.dev.txt
+
 # For worker manager
 boto3==1.9.228
-
-# For style
-black==18.9b0
 
 # For testing
 mock==4.0.2
