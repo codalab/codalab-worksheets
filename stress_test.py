@@ -289,13 +289,13 @@ def main():
     if args.heavy:
         print('Setting the heavy configuration...')
         args.large_file_size_gb = 20
-        args.bundle_upload_count = 1000
-        args.create_worksheet_count = 1000
+        args.bundle_upload_count = 500
+        args.create_worksheet_count = 500
         args.parallel_runs_count = 500
-        args.large_docker_runs_count = 2000
-        args.test_infinite_memory = True
-        args.test_infinite_gpu = True
-        args.infinite_gpu_runs_count = 100
+        args.large_docker_runs_count = 200
+        args.test_infinite_memory = False
+        args.test_infinite_gpu = False
+        args.infinite_gpu_runs_count = 0
         # TODO: It is a known issue that writing to disk with dd will cause the worker to go down.
         # Disable these tests until we can fix this problem.
         # Issue: https://github.com/codalab/codalab-worksheets/issues/1919
