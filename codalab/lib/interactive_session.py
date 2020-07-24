@@ -12,14 +12,10 @@ import sys
 class InteractiveSession:
     _CHOOSE_COMMAND_INSTRUCTIONS = (
         "\n\n@\n"
-        "@ Choose commands to use for cl run\n"
+        "@ Choose the commands to use for cl run:\n"
         "@\n"
-        "@ \tpick = use command\n"
-        "@ \tdrop = drop command\n"
-        "@\n"
-        "@ You can also add additional commands by appending a line:\n"
-        "@\n"
-        "@ \tpick <new command>\n"
+        "@ 1. Delete the lines of any unwanted commands.\n"
+        "@ 2. Add any additional commands on a new line above these instructions.\n"
         "@\n"
     )
 
@@ -98,7 +94,7 @@ class InteractiveSession:
         path = os.path.join(self._bundle_path, 'edit_commands.txt')
         with open(path, 'w') as f:
             for command in candidate_commands:
-                f.write('drop %s' % command)
+                f.write(command)
             f.write(InteractiveSession._CHOOSE_COMMAND_INSTRUCTIONS)
 
         # Use vi to allow users to choose commands
@@ -107,8 +103,8 @@ class InteractiveSession:
         # Extract out final commands
         commands = []
         for line in open(path).read().splitlines() :
-            if line.startswith('pick'):
-                command = line.replace('pick', '', 1).lstrip().rstrip()
+            command = line.lstrip().rstrip()
+            if command and not command.startswith('@'):
                 commands.append(command)
 
         final_command = '&&'.join(commands)
