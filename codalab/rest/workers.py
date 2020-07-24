@@ -10,12 +10,12 @@ from bottle import abort, get, local, post, put, request, response
 
 from codalab.lib import spec_util
 from codalab.objects.permission import check_bundle_have_run_permission
-from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin
 from codalab.worker.bundle_state import BundleCheckinState
 from codalab.worker.main import DEFAULT_EXIT_AFTER_NUM_RUNS
 
 
-@post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedPlugin())
+@post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedProtectedPlugin())
 def checkin(worker_id):
     """
     Checks in with the bundle service, storing information about the worker.
@@ -64,7 +64,7 @@ def check_reply_permission(worker_id, socket_id):
 @post(
     "/workers/<worker_id>/reply/<socket_id:int>",
     name="worker_reply_json",
-    apply=AuthenticatedPlugin(),
+    apply=AuthenticatedProtectedPlugin(),
 )
 def reply(worker_id, socket_id):
     """
@@ -77,7 +77,7 @@ def reply(worker_id, socket_id):
 @post(
     "/workers/<worker_id>/reply_data/<socket_id:int>",
     name="worker_reply_blob",
-    apply=AuthenticatedPlugin(),
+    apply=AuthenticatedProtectedPlugin(),
 )
 def reply_data(worker_id, socket_id):
     """
@@ -114,7 +114,7 @@ def check_run_permission(bundle):
 @post(
     "/workers/<worker_id>/start_bundle/<uuid:re:%s>" % spec_util.UUID_STR,
     name="worker_start_bundle",
-    apply=AuthenticatedPlugin(),
+    apply=AuthenticatedProtectedPlugin(),
 )
 def start_bundle(worker_id, uuid):
     """
@@ -137,7 +137,7 @@ def start_bundle(worker_id, uuid):
     return json.dumps(False)
 
 
-@get("/workers/info", name="workers_info", apply=AuthenticatedPlugin())
+@get("/workers/info", name="workers_info", apply=AuthenticatedProtectedPlugin())
 def workers_info():
     workers = local.worker_model.get_workers()
     if request.user.user_id != local.model.root_user_id:
