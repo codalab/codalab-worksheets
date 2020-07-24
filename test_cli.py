@@ -961,6 +961,7 @@ def test(ctx):
     # check .time_used_more_than
     check_contains(['test'], _run_command([cl, 'uls', '.time_used_more_than=' + '10%']))
 
+
 @TestModule.register('freeze')
 def test(ctx):
     _run_command([cl, 'work', '-u'])
