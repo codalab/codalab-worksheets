@@ -36,6 +36,7 @@ COPY docker/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
 RUN chmod a+rx /opt/wait-for-it.sh
 COPY requirements.txt requirements.txt
 COPY requirements.docs.txt requirements.docs.txt
+COPY requirements.dev.txt requirements.dev.txt
 COPY requirements-server.txt requirements-server.txt
 RUN python3 -m pip install -r requirements-server.txt
 

@@ -142,6 +142,29 @@ Name | Type
 `disk_quota` | Integer
 `disk_used` | Integer
 `last_login` | LocalDateTime
+`is_verified` | Boolean
+`has_access` | Boolean
+
+## users
+
+
+Name | Type
+--- | ---
+`id` | String
+`user_name` | String
+`first_name` | String
+`last_name` | String
+`affiliation` | String
+`url` | Url
+`date_joined` | LocalDateTime
+`email` | String
+`notifications` | Integer
+`time_quota` | Integer
+`parallel_run_quota` | Integer
+`time_used` | Integer
+`disk_quota` | Integer
+`disk_used` | Integer
+`last_login` | LocalDateTime
 
 ## bundle-actions
 
