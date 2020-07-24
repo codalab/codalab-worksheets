@@ -102,7 +102,7 @@ class InteractiveSession:
 
         # Extract out final commands
         commands = []
-        for line in open(path).read().splitlines() :
+        for line in open(path).read().splitlines():
             command = line.lstrip().rstrip()
             if command and not command.startswith('@'):
                 commands.append(command)

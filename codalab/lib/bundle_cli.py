@@ -1612,9 +1612,7 @@ class BundleCLI(object):
                 help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
                 action='store_true',
             ),
-            Commands.Argument(
-                '--interactive', help='Run in interactive mode', action='store_true'
-            ),
+            Commands.Argument('--interactive', help='Run in interactive mode', action='store_true'),
         )
         + Commands.metadata_arguments([RunBundle])
         + EDIT_ARGUMENTS
