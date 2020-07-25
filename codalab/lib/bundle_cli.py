@@ -669,8 +669,16 @@ class BundleCLI(object):
         """
         Pretty-print a list of columns from each row in the given list of dicts.
         """
-        # Get the contents of the table
         rows = [columns]
+        # display restricted fields if the server returns those fields - which suggests the user is root
+        try:
+            if row_dicts and row_dicts[0].get('last_login'):
+                columns += ('last_login', 'time', 'disk', 'parallel_run_quota')
+                rows = [columns]
+        except KeyError:
+            pass
+
+        # Get the contents of the table
         for row_dict in row_dicts:
             row = []
             for col in columns:
@@ -686,7 +694,8 @@ class BundleCLI(object):
                     else:
                         cell = row_dict.get(col)
                 except KeyError:
-                    return
+                    row.append(' ')
+                    continue
 
                 func = post_funcs.get(col)
                 if func:
@@ -3803,10 +3812,10 @@ class BundleCLI(object):
             '  uls .active_before=<datetime>       : Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).',
             '  uls .active_after=<datetime>        : Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).',
             '',
-            '  uls .disk_less_than=<percentage> or <float>       : Returns users whose disk usage less than (inclusive) given value (e.g., .disk_less_than=70% or 0.3).',
-            '  uls .disk_more_than=<percentage> or <float>       : Returns users whose disk usage less than (inclusive) given value (e.g., .disk_more_than=70% or 0.3).',
-            '  uls .time_less_than=<<percentage> or <float>      : Returns users whose time usage less than (inclusive) given value (e.g., .time_less_than=70% or 0.3).',
-            '  uls .time_more_than=<percentage> or <float>       : Returns users whose time usage less than (inclusive) given value (e.g., .time_more_than=70% or 0.3).',
+            '  uls .disk_used_less_than=<percentage> or <float>       : Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_less_than=70% or 0.3).',
+            '  uls .disk_used_more_than=<percentage> or <float>       : Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_more_than=70% or 0.3).',
+            '  uls .time_used_less_than=<<percentage> or <float>      : Returns users whose time usage less than (inclusive) given value (e.g., .time_used_less_than=70% or 0.3).',
+            '  uls .time_used_more_than=<percentage> or <float>       : Returns users whose time usage less than (inclusive) given value (e.g., .time_used_more_than=70% or 0.3).',
             '',
             '  uls size=.sort                      : Sort by a particular field (where `size` can be any metadata field).',
             '  uls size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).',
@@ -3841,10 +3850,6 @@ class BundleCLI(object):
                     'last_name',
                     'affiliation',
                     'date_joined',
-                    'last_login',
-                    'time',
-                    'disk',
-                    'parallel_run_quota',
                 )
             self.print_result_limit_info(len(users))
             self.print_table(columns, users)

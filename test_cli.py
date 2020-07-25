@@ -932,7 +932,7 @@ def test(ctx):
             "first_name": None,
             "last_name": None,
             "date_joined": datetime.datetime.now(),
-            "has_access": TRue,
+            "has_access": True,
             "is_verified": True,
             "is_superuser": True,
             "password": "",
@@ -947,19 +947,19 @@ def test(ctx):
     )
 
     # check .joined_after
-    check_contains(['test'], _run_command([cl, 'uls', '.joined_after=' + prev_time]))
+    check_contains('test', _run_command([cl, 'uls', '.joined_after=' + prev_time, '-f', 'user_name']))
 
     # check .count
     check_equals('1', _run_command([cl, 'uls', 'joined_after=' + prev_time, '.count']))
 
     # check .active_after
-    check_contains(['test'], _run_command([cl, 'uls', '.active_after=' + prev_time]))
+    check_contains('test', _run_command([cl, 'uls', '.active_after=' + prev_time, '-f', 'user_name']))
 
     # check .disk_used_more_than
-    check_contains(['test'], _run_command([cl, 'uls', '.disk_used_more_than=' + '10%']))
+    check_contains(['test'], _run_command([cl, 'uls', '.disk_used_more_than=' + '10%', '-f', 'user_name']))
 
     # check .time_used_more_than
-    check_contains(['test'], _run_command([cl, 'uls', '.time_used_more_than=' + '10%']))
+    check_contains(['test'], _run_command([cl, 'uls', '.time_used_more_than=' + '10%', '-f', 'user_name']))
 
 
 @TestModule.register('freeze')

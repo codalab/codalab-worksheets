@@ -161,6 +161,12 @@ def fetch_users():
         abort(
             http.client.BAD_REQUEST, "Request must include 'keywords' query parameter or usernames"
         )
+
+    if request.user.user_id != local.model.root_user_id:
+        for key in keywords:
+            if any(unaccessed_field in key for unaccessed_field in ['time', 'disk', 'active', 'email']):
+                abort(http.client.FORBIDDEN, "You don't have access to search for these fields")
+
     # Handle search keywords
     users = local.model.get_users(keywords=(keywords or None), usernames=(usernames or None))
     # Return simple dict if scalar result (e.g. .sum or .count queries)

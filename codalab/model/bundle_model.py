@@ -2323,12 +2323,7 @@ class BundleModel(object):
                     clause = cl_user.c.date_joined <= value
                 elif key == '.active_before':
                     clause = cl_user.c.last_login <= value
-                elif key in (
-                    '.disk_less_than',
-                    '.disk_more_than',
-                    '.time_less_than',
-                    '.time_more_than',
-                ):
+                elif any(kw in key for kw in ['.disk', '.time']):
                     if '%' in value:
                         value = float(value.strip('%')) / 100.0
                     if key == '.disk_used_less_than':
