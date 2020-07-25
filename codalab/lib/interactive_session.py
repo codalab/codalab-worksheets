@@ -1,6 +1,5 @@
 from codalab.lib.spec_util import generate_uuid
 from codalab.lib.codalab_manager import CodaLabManager
-from codalab.worker.docker_utils import client, get_available_runtime, start_bundle_container
 
 import argparse
 import os
@@ -9,7 +8,25 @@ import shutil
 import sys
 
 
+"""
+TODO: delete later
+
+DependencyManager logic
+
+- connect_to_codalab_server
+    - args.server
+    - args.password_file
+    - returns bundle_service
+- DependencyManager
+    - os.path.join(args.work_dir, 'dependencies-state.json')
+    - bundle_service
+    - args.work_dir
+    - args.max_work_dir_size
+"""
+
+
 class InteractiveSession:
+    _BASH_HISTORY_CONTAINER_PATH = '/root/.bash_history'
     _CHOOSE_COMMAND_INSTRUCTIONS = (
         "\n\n@\n"
         "@ Choose the commands to use for cl run:\n"
@@ -22,12 +39,12 @@ class InteractiveSession:
     _MAX_SESSION_TIMEOUT = 60 * 60  # 1 hour in seconds
     _NULL_BYTE = '\x00'
 
-    def __init__(self, docker_image, stdout=sys.stdout, stderr=sys.stderr):
-        self._client = docker.from_env(timeout=InteractiveSession._MAX_SESSION_TIMEOUT)
+    def __init__(self, manager, docker_image, stdout=sys.stdout, stderr=sys.stderr):
+        # Instantiate a CodaLabManager if one is not passed in
+        self._manager = manager if manager else CodaLabManager()
+        self._docker_client = docker.from_env(timeout=InteractiveSession._MAX_SESSION_TIMEOUT)
         self._session_uuid = generate_uuid()
         self._docker_image = docker_image
-        # TODO: pass in manager later
-        self._manager = CodaLabManager()
         self._stdout = stdout
         self._stderr = stderr
 
@@ -43,8 +60,9 @@ class InteractiveSession:
         print('\nStarting an interactive session...\n', file=self._stdout)
         print('=' * 150, file=self._stdout)
         print('Session UUID: ', self._session_uuid, file=self._stdout)
+        print('Instance: ', self._manager.current_client().address, file=self._stdout)
         print('Container Name: ', self._get_container_name(), file=self._stdout)
-        print('You can find local bundle contents in: ', self._bundle_path, file=self._stdout)
+        print('You can find local bundle contents at: ', self._bundle_path, file=self._stdout)
         print('=' * 150 + '\n', file=self._stdout)
 
         # self._container= start_bundle_container(
@@ -79,16 +97,24 @@ class InteractiveSession:
             'bash'
         )
         os.system(command)
-        containers = self._client.containers.list(all=True, filters={'name': name})
+        containers = self._docker_client.containers.list(all=True, filters={'name': name})
         if len(containers) == 0:
-            raise RuntimeError('Could not find interactive session container with name: %s' % name)
+            raise RuntimeError('Could not find interactive session container with name: %s.' % name)
         return containers[0]
 
     def _get_container_name(self):
         return 'interactive-session-%s' % self._session_uuid
 
     def _construct_final_command(self):
-        candidate_commands = self._get_bash_history()
+        try:
+            candidate_commands = self._get_bash_history()
+        except:
+            print(
+                'The history of bash commands could not be retrieved at path: %s.'
+                % InteractiveSession._BASH_HISTORY_CONTAINER_PATH,
+                file=self._stderr,
+            )
+            return ''
 
         # Write out commands to choose from plus the instructions out to a file
         path = os.path.join(self._bundle_path, 'edit_commands.txt')
@@ -115,8 +141,8 @@ class InteractiveSession:
         # Copies .bash_history from the container to a new file .bash_history in bundle_path
         path = os.path.join(self._bundle_path, '.bash_history')
         f = open(path, 'wb')
-        bits, _ = self._container.get_archive('/root/.bash_history')
-        for chunk in bits:
+        stream, _ = self._container.get_archive(InteractiveSession._BASH_HISTORY_CONTAINER_PATH)
+        for chunk in stream:
             f.write(chunk)
         f.close()
 
@@ -135,7 +161,8 @@ class InteractiveSession:
 
 
 def main():
-    session = InteractiveSession(args.docker_image)
+    # Example usage of InteractiveSession:
+    session = InteractiveSession(None, args.docker_image)
     session.start()
     session.cleanup()
 

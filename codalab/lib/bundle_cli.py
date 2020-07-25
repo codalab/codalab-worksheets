@@ -1595,6 +1595,7 @@ class BundleCLI(object):
                 'command',
                 metavar='[---] command',
                 help='Arbitrary Linux command to execute.',
+                nargs='?',
                 completer=NullCompleter,
             ),
             Commands.Argument(
@@ -1633,11 +1634,14 @@ class BundleCLI(object):
             if not docker_image:
                 raise UsageError('--request-docker-image [docker-image] must be specified')
 
-            session = InteractiveSession(docker_image)
+            session = InteractiveSession(self.manager, docker_image)
             command = session.start()
             session.cleanup()
         else:
             command = args.command
+
+        if not command:
+            raise UsageError('The command cannot be emtpy.')
 
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
