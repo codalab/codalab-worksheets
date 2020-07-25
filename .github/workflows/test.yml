@@ -24,7 +24,13 @@ jobs:
         working-directory: ./frontend
         env:
           CI: true
-      - run: pip install --upgrade black==18.9b0
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.dev.txt') }}
+          restore-keys: |
+            pip-
+      - run: pip install -r requirements.dev.txt
       - run: black . --check --diff
   build:
     name: Build
