@@ -118,6 +118,8 @@ class StressTestRunner:
         self._start_heartbeat()
         self._test_large_bundle()
         self.cleanup()
+        self._test_many_gpu_runs()
+        self.cleanup()
         self._test_many_bundle_uploads()
         self.cleanup()
         self._test_many_worksheet_copies()
@@ -159,6 +161,11 @@ class StressTestRunner:
         large_file = TestFile('large_file', self._args.large_file_size_gb * 1000)
         self._run_bundle([self._cl, 'upload', large_file.name()])
         large_file.delete()
+
+    def _test_many_gpu_runs(self):
+        self._set_worksheet('many_gpu_runs')
+        for _ in range(self._args.gpu_runs_count):
+            self._run_bundle([self._cl, 'run', 'echo running with a gpu...', '--request-gpus=1'])
 
     def _test_many_bundle_uploads(self):
         self._set_worksheet('many_bundle_uploads')
@@ -289,7 +296,8 @@ def main():
 
     if args.heavy:
         print('Setting the heavy configuration...')
-        args.large_file_size_gb = 20
+        args.large_file_size_gb = 10
+        args.gpu_runs_count = 100
         args.bundle_upload_count = 500
         args.create_worksheet_count = 500
         args.parallel_runs_count = 500
@@ -355,6 +363,12 @@ if __name__ == '__main__':
         '--large-file-size-gb',
         type=int,
         help='Size of large file in GB for single upload (defaults to 1)',
+        default=1,
+    )
+    parser.add_argument(
+        '--gpu-runs-count',
+        type=int,
+        help='Number of runs that request a GPU (defaults to 1)',
         default=1,
     )
     parser.add_argument(
