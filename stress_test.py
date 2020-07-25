@@ -145,14 +145,14 @@ class StressTestRunner:
     def _heartbeat(self):
         while True:
             # Run a search in a separate thread and check if it times out or not.
-            t = Thread(target=StressTestRunner._search_failed_runs, args=(self._cl,))
+            t = Thread(target=StressTestRunner._heartbeat_cl_commands, args=(self._cl,))
             t.start()
             t.join(timeout=10)
             if t.is_alive():
                 print('Heartbeat failed. Exiting...')
                 sys.exit(1)
-            # Have heartbeat run every 5 seconds
-            time.sleep(5)
+            # Have heartbeat run every 30 seconds
+            time.sleep(30)
 
     def _test_large_bundle(self):
         self._set_worksheet('large_bundles')
@@ -276,8 +276,9 @@ class StressTestRunner:
         run_command([cl, 'run', 'echo stress testing...', '--tags=%s' % StressTestRunner._TAG])
 
     @staticmethod
-    def _search_failed_runs(cl):
+    def _heartbeat_cl_commands(cl):
         run_command([cl, 'search', 'state=failed', 'created=.sort-'])
+        run_command([cl, 'workers'])
 
 
 def main():
