@@ -149,9 +149,6 @@ def desugar_command(orig_target_spec, command):
     for spec in orig_target_spec:
         get(spec)
 
-    if not command:
-        return (target_spec, '')
-
     while True:
         match = pattern.match(command)
         if not match:

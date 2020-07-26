@@ -1,3 +1,4 @@
+from codalab.lib.cli_util import parse_key_target
 from codalab.lib.spec_util import generate_uuid
 from codalab.lib.codalab_manager import CodaLabManager
 
@@ -28,23 +29,27 @@ DependencyManager logic
 class InteractiveSession:
     _BASH_HISTORY_CONTAINER_PATH = '/root/.bash_history'
     _CHOOSE_COMMAND_INSTRUCTIONS = (
-        "\n\n@\n"
-        "@ Choose the commands to use for cl run:\n"
-        "@\n"
-        "@ 1. Delete the lines of any unwanted commands.\n"
-        "@ 2. Add any additional commands on a new line above these instructions.\n"
-        "@\n"
+        "\n\n@@\n"
+        "@@ Choose the commands to use for cl run:\n"
+        "@@\n"
+        "@@ 1. Delete the lines of any unwanted commands.\n"
+        "@@ 2. Add any additional commands on a new line above these instructions.\n"
+        "@@\n"
     )
-
+    _INSTRUCTIONS_DELIMITER = '@@'
     _MAX_SESSION_TIMEOUT = 60 * 60  # 1 hour in seconds
     _NULL_BYTE = '\x00'
 
-    def __init__(self, manager, docker_image, stdout=sys.stdout, stderr=sys.stderr):
+    def __init__(
+        self, docker_image, manager=None, targets=[], stdout=sys.stdout, stderr=sys.stderr
+    ):
         # Instantiate a CodaLabManager if one is not passed in
         self._manager = manager if manager else CodaLabManager()
+        self._docker_image = docker_image
+        self._targets = targets
+
         self._docker_client = docker.from_env(timeout=InteractiveSession._MAX_SESSION_TIMEOUT)
         self._session_uuid = generate_uuid()
-        self._docker_image = docker_image
         self._stdout = stdout
         self._stderr = stderr
 
@@ -54,28 +59,31 @@ class InteractiveSession:
         )
         os.makedirs(self._bundle_path)
 
-        # TODO: handle dependencies later
-        dependencies = []
+        # Mount dependencies on to the session container
+        target_specs = [parse_key_target(spec) for spec in self._targets]
+        dependencies = [
+            ('{}'.format(key), '/{}_dependencies/{}'.format(self._session_uuid, key))
+            for key, _ in target_specs
+        ]
+        # TODO: remove later -tony
+        print(
+            'self._targets: {}\ntarget_specs:{}\ndependencies:{}\n'.format(
+                self._targets, target_specs, dependencies
+            ),
+            file=self._stdout,
+        )
+        # TODO: handle dependencies here -tony
+        # e.g. -v local_path/some_folder:/0x707e903500e54bcf9b072ac7e3f5ed36_dependencies/foo
 
         print('\nStarting an interactive session...\n', file=self._stdout)
         print('=' * 150, file=self._stdout)
         print('Session UUID: ', self._session_uuid, file=self._stdout)
-        print('Instance: ', self._manager.current_client().address, file=self._stdout)
-        print('Container Name: ', self._get_container_name(), file=self._stdout)
+        print('CodaLab instance: ', self._manager.current_client().address, file=self._stdout)
+        print('Container name: ', self._get_container_name(), file=self._stdout)
+        print('Container Docker image: ', self._docker_image, file=self._stdout)
         print('You can find local bundle contents at: ', self._bundle_path, file=self._stdout)
         print('=' * 150 + '\n', file=self._stdout)
 
-        # self._container= start_bundle_container(
-        #     self._bundle_path,
-        #     session_uuid,
-        #     dependencies,
-        #     # 'tail -f /dev/null',
-        #     'bash',
-        #     self._docker_image,
-        #     detach=True,
-        #     tty=True,
-        #     runtime=get_available_runtime(),
-        # )
         self._container = self._start_session()
         return self._construct_final_command()
 
@@ -87,6 +95,7 @@ class InteractiveSession:
         print('Done.\n\n', file=self._stdout)
 
     def _start_session(self):
+        # Create a Docker container for this interactive session
         name = self._get_container_name()
         command = (
             'docker run '
@@ -99,7 +108,7 @@ class InteractiveSession:
         os.system(command)
         containers = self._docker_client.containers.list(all=True, filters={'name': name})
         if len(containers) == 0:
-            raise RuntimeError('Could not find interactive session container with name: %s.' % name)
+            raise RuntimeError('Could not find interactive session container with name: %s' % name)
         return containers[0]
 
     def _get_container_name(self):
@@ -110,7 +119,7 @@ class InteractiveSession:
             candidate_commands = self._get_bash_history()
         except:
             print(
-                'The history of bash commands could not be retrieved at path: %s.'
+                'The history of bash commands could not be retrieved at path: %s'
                 % InteractiveSession._BASH_HISTORY_CONTAINER_PATH,
                 file=self._stderr,
             )
@@ -126,11 +135,11 @@ class InteractiveSession:
         # Use vi to allow users to choose commands
         os.system('vi %s' % path)
 
-        # Extract out final commands
+        # Extract out final commands minus the instructions
         commands = []
         for line in open(path).read().splitlines():
             command = line.lstrip().rstrip()
-            if command and not command.startswith('@'):
+            if command and not command.startswith(InteractiveSession._INSTRUCTIONS_DELIMITER):
                 commands.append(command)
 
         final_command = '&&'.join(commands)
@@ -146,7 +155,7 @@ class InteractiveSession:
             f.write(chunk)
         f.close()
 
-        # Get list of commands
+        # Extract a list of commands from the .bash_history file that was copied out of the container
         commands = []
         with open(path) as f:
             for i, line in enumerate(f):
@@ -162,7 +171,7 @@ class InteractiveSession:
 
 def main():
     # Example usage of InteractiveSession:
-    session = InteractiveSession(None, args.docker_image)
+    session = InteractiveSession(args.docker_image)
     session.start()
     session.cleanup()
 
@@ -175,7 +184,7 @@ if __name__ == '__main__':
         '--docker-image',
         type=str,
         help='Docker image used to create a container for the interactive session.',
-        default='codalab/worker:latest',
+        default='codalab/default-cpu:latest',
     )
 
     # Parse args and run this script

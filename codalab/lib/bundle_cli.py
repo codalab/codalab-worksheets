@@ -1595,7 +1595,6 @@ class BundleCLI(object):
                 'command',
                 metavar='[---] command',
                 help='Arbitrary Linux command to execute.',
-                nargs='?',
                 completer=NullCompleter,
             ),
             Commands.Argument(
@@ -1624,24 +1623,26 @@ class BundleCLI(object):
         args.target_spec, args.command = desugar_command(args.target_spec, args.command)
         metadata = self.get_missing_metadata(RunBundle, args)
 
-        targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
-        params = {'worksheet': worksheet_uuid}
-
         if args.interactive:
+            # Disable cl run --interactive on headless systems
             self._fail_if_headless(args)
 
             docker_image = metadata.get('request_docker_image', None)
             if not docker_image:
-                raise UsageError('--request-docker-image [docker-image] must be specified')
+                docker_image = self.manager.config['workers']['default_cpu_image']
 
-            session = InteractiveSession(self.manager, docker_image)
+            # Start an interactive session to allow users to figure out the command to run
+            session = InteractiveSession(docker_image, self.manager, args.target_spec)
             command = session.start()
             session.cleanup()
         else:
             command = args.command
 
         if not command:
-            raise UsageError('The command cannot be emtpy.')
+            raise UsageError('The command cannot be empty.')
+
+        targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
+        params = {'worksheet': worksheet_uuid}
 
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
