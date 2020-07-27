@@ -297,11 +297,11 @@ def main():
     if args.heavy:
         print('Setting the heavy configuration...')
         args.large_file_size_gb = 10
-        args.gpu_runs_count = 100
+        args.gpu_runs_count = 50
         args.bundle_upload_count = 500
         args.create_worksheet_count = 500
         args.parallel_runs_count = 500
-        args.large_docker_runs_count = 200
+        args.large_docker_runs_count = 100
         args.test_infinite_memory = False
         args.test_infinite_gpu = False
         args.infinite_gpu_runs_count = 0
