@@ -1612,7 +1612,11 @@ class BundleCLI(object):
                 help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
                 action='store_true',
             ),
-            Commands.Argument('--interactive', help='Run in interactive mode', action='store_true'),
+            Commands.Argument(
+                '--interactive',
+                help='Beta feature. Run an interactive session to construct your run command.',
+                action='store_true',
+            ),
         )
         + Commands.metadata_arguments([RunBundle])
         + EDIT_ARGUMENTS
@@ -1624,6 +1628,7 @@ class BundleCLI(object):
         metadata = self.get_missing_metadata(RunBundle, args)
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
 
+        # TODO: check if shared filesystem -Tony
         if args.interactive:
             # Disable cl run --interactive on headless systems
             self._fail_if_headless(args)
