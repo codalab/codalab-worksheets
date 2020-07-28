@@ -1611,7 +1611,7 @@ class BundleCLI(object):
             ),
             Commands.Argument(
                 '--interactive',
-                help='Beta feature. Run an interactive session to construct your run command.',
+                help='Beta feature - Start an interactive session to construct your run command.',
                 action='store_true',
             ),
         )
