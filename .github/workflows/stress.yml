@@ -1,8 +1,6 @@
 name: Stress Test
 on:
   workflow_dispatch:
-  push:
-    branches: [ stress ]
 
 jobs:
   stress:
