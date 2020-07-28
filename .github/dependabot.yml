@@ -2,20 +2,24 @@ version: 2
 updates:
   - package-ecosystem: "pip"
     directory: "/"
+    rebase-strategy: "disabled"
     schedule:
       interval: "daily"
 
   - package-ecosystem: "npm"
     directory: "frontend"
+    rebase-strategy: "disabled"
     schedule:
       interval: "daily"
 
   - package-ecosystem: "docker"
     directory: "docker/dockerfiles"
+    rebase-strategy: "disabled"
     schedule:
       interval: "daily"
       
   - package-ecosystem: "github-actions"
     directory: ".github/workflows"
+    rebase-strategy: "disabled"
     schedule:
       interval: "daily"
