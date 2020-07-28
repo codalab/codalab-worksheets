@@ -1,32 +1,22 @@
-from codalab.lib.cli_util import parse_key_target
 from codalab.lib.spec_util import generate_uuid
 from codalab.lib.codalab_manager import CodaLabManager
 
 import argparse
-import os
 import docker
+import os
 import shutil
 import sys
 
 
-"""
-TODO: delete later
-
-DependencyManager logic
-
-- connect_to_codalab_server
-    - args.server
-    - args.password_file
-    - returns bundle_service
-- DependencyManager
-    - os.path.join(args.work_dir, 'dependencies-state.json')
-    - bundle_service
-    - args.work_dir
-    - args.max_work_dir_size
-"""
-
-
 class InteractiveSession:
+    """
+    Creates an interactive session by launching a Docker container with the dependencies mounted. Users can run
+    commands and interact with the environment. When the user exits the interactive session, an editor pops up
+    with the list of all the commands that were ran during the interactive session. The user can delete any
+    extraneous commands and do any editing (e.g., remove commands that causes errors or diagnostic commands).
+    When the editing is done, the official command for the bundle gets constructed.
+    """
+
     _BASH_HISTORY_CONTAINER_PATH = '/root/.bash_history'
     _CHOOSE_COMMAND_INSTRUCTIONS = (
         "\n\n@@\n"
@@ -37,7 +27,7 @@ class InteractiveSession:
         "@@\n"
     )
     _INSTRUCTIONS_DELIMITER = '@@'
-    _MAX_SESSION_TIMEOUT = 60 * 60  # 1 hour in seconds
+    _MAX_SESSION_TIMEOUT = 8 * 60 * 60  # 8 hours in seconds
     _NULL_BYTE = '\x00'
 
     def __init__(
@@ -59,23 +49,9 @@ class InteractiveSession:
         )
         os.makedirs(self._bundle_path)
 
-        # Mount dependencies on to the session container
-        target_specs = [parse_key_target(spec) for spec in self._targets]
-        dependencies = [
-            ('{}'.format(key), '/{}_dependencies/{}'.format(self._session_uuid, key))
-            for key, _ in target_specs
-        ]
-        # TODO: remove later -tony
-        print(
-            'self._targets: {}\ntarget_specs:{}\ndependencies:{}\n'.format(
-                self._targets, target_specs, dependencies
-            ),
-            file=self._stdout,
-        )
-        # TODO: handle dependencies here -tony
-        # e.g. -v local_path/some_folder:/0x707e903500e54bcf9b072ac7e3f5ed36_dependencies/foo
-
-        print('\nStarting an interactive session...\n', file=self._stdout)
+        run_command = self.get_docker_run_command()
+        print('\nStarting an interactive session...', file=self._stdout)
+        print('%s\n' % run_command, file=self._stdout)
         print('=' * 150, file=self._stdout)
         print('Session UUID: ', self._session_uuid, file=self._stdout)
         print('CodaLab instance: ', self._manager.current_client().address, file=self._stdout)
@@ -84,8 +60,29 @@ class InteractiveSession:
         print('You can find local bundle contents at: ', self._bundle_path, file=self._stdout)
         print('=' * 150 + '\n', file=self._stdout)
 
-        self._container = self._start_session()
+        self._container = self._start_session(run_command)
         return self._construct_final_command()
+
+    def get_docker_run_command(self):
+        bundle_store = self._manager.bundle_store()
+        dependencies_arguments = []
+        for key, bundle_target in self._targets:
+            dependency_path_local = os.path.join(
+                bundle_store.get_bundle_location(bundle_target.bundle_uuid), bundle_target.subpath
+            )
+            dependency_path_on_docker = os.path.sep + os.path.join(self._session_uuid, key)
+            dependencies_arguments.append(
+                # Example: -v local_path/some_folder:/0x707e903500e54bcf9b072ac7e3f5ed36_dependencies/foo:ro
+                '-v {}:{}:ro'.format(dependency_path_local, dependency_path_on_docker)
+            )
+
+        # Create a Docker container for this interactive session
+        name = self._get_container_name()
+        command = ['docker run', '-it', f'--name {name}', f'-w {os.path.sep}{self._session_uuid}']
+        command.extend(dependencies_arguments)
+        command.append(self._docker_image)
+        command.append('bash')
+        return ' '.join(command)
 
     def cleanup(self):
         print('\nCleaning up the session...', file=self._stdout)
@@ -94,18 +91,12 @@ class InteractiveSession:
         shutil.rmtree(self._bundle_path, ignore_errors=True)
         print('Done.\n\n', file=self._stdout)
 
-    def _start_session(self):
-        # Create a Docker container for this interactive session
+    def _start_session(self, docker_command):
+        # Runs the Docker command
+        os.system(docker_command)
+
+        # Find the newly created Docker container by name and return it
         name = self._get_container_name()
-        command = (
-            'docker run '
-            '-it '
-            f'--name {name} '
-            f'-w /{self._session_uuid} '
-            f'{self._docker_image} '
-            'bash'
-        )
-        os.system(command)
         containers = self._docker_client.containers.list(all=True, filters={'name': name})
         if len(containers) == 0:
             raise RuntimeError('Could not find interactive session container with name: %s' % name)
@@ -170,8 +161,8 @@ class InteractiveSession:
 
 
 def main():
-    # Example usage of InteractiveSession:
-    session = InteractiveSession(args.docker_image)
+    # Example usage of InteractiveSession
+    session = InteractiveSession(args.docker_image, targets=[])
     session.start()
     session.cleanup()
 

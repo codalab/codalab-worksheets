@@ -1622,6 +1622,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         args.target_spec, args.command = desugar_command(args.target_spec, args.command)
         metadata = self.get_missing_metadata(RunBundle, args)
+        targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
 
         if args.interactive:
             # Disable cl run --interactive on headless systems
@@ -1629,10 +1630,11 @@ class BundleCLI(object):
 
             docker_image = metadata.get('request_docker_image', None)
             if not docker_image:
+                # If a Docker image is not specified, use the default CPU worker image for the interactive session
                 docker_image = self.manager.config['workers']['default_cpu_image']
 
             # Start an interactive session to allow users to figure out the command to run
-            session = InteractiveSession(docker_image, self.manager, args.target_spec)
+            session = InteractiveSession(docker_image, self.manager, targets)
             command = session.start()
             session.cleanup()
         else:
@@ -1641,9 +1643,7 @@ class BundleCLI(object):
         if not command:
             raise UsageError('The command cannot be empty.')
 
-        targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
         params = {'worksheet': worksheet_uuid}
-
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
         if args.memoize:
@@ -1675,72 +1675,6 @@ class BundleCLI(object):
             )
             print(new_bundle['uuid'], file=self.stdout)
             self.wait(client, args, new_bundle['uuid'])
-
-    @Commands.command(
-        'docker',
-        help='Beta feature. Simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.',
-        arguments=(
-            Commands.Argument(
-                'target_spec', help=RUN_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter
-            ),
-            Commands.Argument(
-                'command',
-                metavar='[---] command',
-                help='Arbitrary Linux command to execute.',
-                completer=NullCompleter,
-            ),
-            Commands.Argument(
-                '-w',
-                '--worksheet-spec',
-                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
-                completer=WorksheetsCompleter,
-            ),
-        )
-        + Commands.metadata_arguments([RunBundle])
-        + EDIT_ARGUMENTS
-        + WAIT_ARGUMENTS,
-    )
-    def do_docker_command(self, args):
-        self._fail_if_headless(args)  # Disable on headless systems
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        args.target_spec, args.command = desugar_command(args.target_spec, args.command)
-        metadata = self.get_missing_metadata(RunBundle, args)
-
-        docker_image = metadata.get('request_docker_image', None)
-        if not docker_image:
-            raise UsageError('--request-docker-image [docker-image] must be specified')
-
-        uuid = generate_uuid()
-        bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
-        target_specs = [parse_key_target(spec) for spec in args.target_spec]
-        dependencies = [
-            ('{}'.format(key), '/{}_dependencies/{}'.format(uuid, key)) for key, _ in target_specs
-        ]
-
-        # Set up a directory to store the bundle.
-        remove_path(bundle_path)
-        os.makedirs(bundle_path)
-
-        for dependency_path, docker_dependency_path in dependencies:
-            child_path = os.path.join(bundle_path, dependency_path)
-            os.symlink(docker_dependency_path, child_path)
-
-        container_id = start_bundle_container(
-            bundle_path,
-            uuid,
-            dependencies,
-            args.command,
-            docker_image,
-            detach=False,
-            tty=True,
-            runtime=get_available_runtime(),
-        ).id
-        print('====', file=self.stdout)
-        print('Container ID: ', container_id[:12], file=self.stdout)
-        print('Local Bundle UUID: ', uuid, file=self.stdout)
-        print('You can find local bundle contents in: ', bundle_path, file=self.stdout)
-        print('====', file=self.stdout)
-        os.system('docker attach {}'.format(container_id))
 
     @Commands.command(
         'edit',
