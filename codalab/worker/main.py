@@ -23,6 +23,9 @@ from codalab.worker.docker_image_manager import DockerImageManager
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_EXIT_AFTER_NUM_RUNS = 999999999
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
     parser.add_argument('--tag', help='Tag that allows for scheduling runs on specific workers.')
@@ -144,8 +147,13 @@ def parse_args():
     parser.add_argument(
         '--exit-after-num-runs',
         type=int,
-        default=sys.maxsize,
+        default=DEFAULT_EXIT_AFTER_NUM_RUNS,
         help='The worker quits after this many jobs assigned to this worker',
+    )
+    parser.add_argument(
+        '--exit-on-exception',
+        action='store_true',
+        help="Exit the worker if it encounters an exception (rather than sleeping).",
     )
     return parser.parse_args()
 
@@ -240,6 +248,7 @@ def main():
         docker_network_prefix=args.network_prefix,
         pass_down_termination=args.pass_down_termination,
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,
+        exit_on_exception=args.exit_on_exception,
     )
 
     # Register a signal handler to ensure safe shutdown.

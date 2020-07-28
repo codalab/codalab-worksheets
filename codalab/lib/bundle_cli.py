@@ -325,7 +325,7 @@ class Commands(object):
             if verbose:
                 if markdown:
                     name = HEADING_LEVEL_3 + name
-                return '%s%s:\n%s\n%s' % (
+                return '%s%s\n%s\n%s' % (
                     # This is to make GitHub Markdown format compatible with the Read the Docs theme.
                     ' ' * indent if not markdown else '',
                     name,
@@ -354,22 +354,22 @@ class Commands(object):
                 """
         Usage: {inline_code}cl <command> <arguments>{inline_code}
 
-        {heading}Commands for bundles:
+        {heading}Commands for bundles
         {bundle_commands}
 
-        {heading}Commands for worksheets:
+        {heading}Commands for worksheets
         {worksheet_commands}
 
-        {heading}Commands for groups and permissions:
+        {heading}Commands for groups and permissions
         {group_and_permission_commands}
 
-        {heading}Commands for users:
+        {heading}Commands for users
         {user_commands}
 
-        {heading}Commands for managing server:
+        {heading}Commands for managing server
         {server_commands}
 
-        {heading}Other commands:
+        {heading}Other commands
         {other_commands}
         """
             )
@@ -1105,6 +1105,7 @@ class BundleCLI(object):
             'shared_file_system',
             'tag_exclusive',
             'exit_after_num_runs',
+            'is_terminating',
         ]
 
         data = []
@@ -1125,6 +1126,7 @@ class BundleCLI(object):
                     'shared_file_system': worker['shared_file_system'],
                     'tag_exclusive': worker['tag_exclusive'],
                     'exit_after_num_runs': worker['exit_after_num_runs'],
+                    'is_terminating': worker['is_terminating'],
                 }
             )
 
@@ -3723,12 +3725,25 @@ class BundleCLI(object):
             Commands.Argument(
                 '-d', '--disk-quota', help='Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)'
             ),
+            Commands.Argument(
+                '--grant-access',
+                action='store_true',
+                help='Grant access to the user if the CodaLab instance is in protected mode',
+            ),
+            Commands.Argument(
+                '--remove-access',
+                action='store_true',
+                help='Remove the user\'s access if the CodaLab instance is in protected mode',
+            ),
         ),
     )
     def do_uedit_command(self, args):
         """
         Edit properties of users.
         """
+        if args.grant_access and args.remove_access:
+            raise UsageError('Can\'t both grant and remove access for a user.')
+
         client = self.manager.current_client()
 
         # Build user info
@@ -3743,6 +3758,10 @@ class BundleCLI(object):
             user_info['parallel_run_quota'] = args.parallel_run_quota
         if args.disk_quota is not None:
             user_info['disk_quota'] = formatting.parse_size(args.disk_quota)
+        if args.grant_access:
+            user_info['has_access'] = True
+        if args.remove_access:
+            user_info['has_access'] = False
         if not user_info:
             raise UsageError("No fields to update.")
 
@@ -3783,7 +3802,15 @@ class BundleCLI(object):
         def print_attribute(key, user, should_pretty_print):
             # These fields will not be returned by the server if the
             # authenticated user is not root, so don't crash if you can't read them
-            if key in ('last_login', 'email', 'time', 'disk', 'parallel_run_quota'):
+            if key in (
+                'last_login',
+                'email',
+                'time',
+                'disk',
+                'parallel_run_quota',
+                'is_verified',
+                'has_access',
+            ):
                 try:
                     if key == 'time':
                         value = formatting.ratio_str(
@@ -3808,6 +3835,8 @@ class BundleCLI(object):
         default_fields = (
             'id',
             'user_name',
+            'is_verified',
+            'has_access',
             'first_name',
             'last_name',
             'affiliation',

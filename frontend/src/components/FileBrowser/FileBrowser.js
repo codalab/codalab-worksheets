@@ -18,7 +18,6 @@ export class FileBrowser extends React.Component<
         buildPayload: (string) => {},
         method: string,
         url: string,
-        canEdit?: boolean,
         onChange?: () => void,
     },
     {
@@ -34,7 +33,6 @@ export class FileBrowser extends React.Component<
     /** Prop default values. */
     static defaultProps = {
         method: 'POST',
-        canEdit: true,
     };
 
     constructor(props) {
@@ -219,7 +217,7 @@ export class FileBrowser extends React.Component<
             );
             header = (
                 <div className='collapsible-header inline-block'>
-                    <a href={url} target='_blank'>
+                    <a href={url} target='_blank' rel='noopener noreferrer'>
                         {this.props.bundle_name}({short_uuid})
                     </a>
                     &nbsp;{arrow}
@@ -334,7 +332,9 @@ export class FileBrowserItem extends React.Component<{
                     onClick={() => this.props.updateFileBrowser(file_location)}
                 >
                     <span className='glyphicon-folder-open glyphicon' alt='More' />
-                    <a target='_blank'>{this.props.index}</a>
+                    <a target='_blank' rel='noopener noreferrer'>
+                        {this.props.index}
+                    </a>
                     <span className='pull-right'>{size}</span>
                 </span>
             );
@@ -347,7 +347,7 @@ export class FileBrowserItem extends React.Component<{
             item = (
                 <span className={this.props.type}>
                     <span className='glyphicon-file glyphicon' alt='More' />
-                    <a href={file_link} target='_blank'>
+                    <a href={file_link} target='_blank' rel='noopener noreferrer'>
                         {this.props.index}
                     </a>
                     <span className='pull-right'>{size}</span>
@@ -412,7 +412,9 @@ class FileBrowserItemLite extends React.Component<{
                     <TableCell>
                         <div style={rowCenter}>
                             <FolderIcon style={iconStyle} />
-                            <a target='_blank'>{this.props.index}</a>
+                            <a target='_blank' rel='noopener noreferrer'>
+                                {this.props.index}
+                            </a>
                         </div>
                     </TableCell>
                     <TableCell align='right'>{size}</TableCell>
@@ -427,7 +429,7 @@ class FileBrowserItemLite extends React.Component<{
                     <TableCell>
                         <div style={rowCenter}>
                             <FileIcon style={iconStyle} />
-                            <a href={file_link} target='_blank'>
+                            <a href={file_link} target='_blank' rel='noopener noreferrer'>
                                 {this.props.index}
                             </a>
                         </div>

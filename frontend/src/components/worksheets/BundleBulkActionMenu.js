@@ -40,16 +40,6 @@ class BundleBulkActionMenu extends React.Component {
                 <Button
                     size='small'
                     color='inherit'
-                    aria-label='Detach'
-                    disabled={!this.props.editPermission}
-                    onClick={this.props.toggleCmdDialog('detach')}
-                >
-                    <ExitToAppIcon fontSize='small' />
-                    <Typography variant='inherit'>Detach</Typography>
-                </Button>
-                <Button
-                    size='small'
-                    color='inherit'
                     aria-label='Kill'
                     disabled={!this.props.editPermission}
                     onClick={this.props.toggleCmdDialog('kill')}

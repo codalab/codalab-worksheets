@@ -39,7 +39,6 @@ class WorksheetItem extends React.Component {
                 $('#command_line')
                     .terminal()
                     .insert(uuid + ' ');
-                //this.props.focusActionBar();
             }.bind(this),
             'keydown',
         );
@@ -65,7 +64,7 @@ class WorksheetItem extends React.Component {
         if (item.mode === 'subworksheets_block') {
             return item.subworksheet_infos;
         } else {
-            throw 'Invalid: ' + item.mode;
+            throw new Error('Invalid: ' + item.mode);
         }
     }
 
@@ -78,7 +77,6 @@ class WorksheetItem extends React.Component {
 
         var self = this;
         var tableClassName = this.props.focused ? 'table focused' : 'table';
-        var canEdit = this.props.canEdit;
         var items = this._getItems();
 
         var body_rows_html = items.map(function(row_item, row_index) {
@@ -94,7 +92,6 @@ class WorksheetItem extends React.Component {
                     focused={row_focused}
                     url={url}
                     uuid={row_item.uuid}
-                    canEdit={canEdit}
                     updateRowIndex={self.updateRowIndex}
                 />
             );
@@ -146,7 +143,7 @@ class TableWorksheetRow extends React.Component {
             <tr className={className}>
                 <td>
                     <div onClick={this.handleRowClick}>
-                        <a href='javascript:void(0)' onClick={this.handleTextClick}>
+                        <a href='#' onClick={this.handleTextClick}>
                             {`${item.title + ' '}[${item.name}]`}
                         </a>
                     </div>

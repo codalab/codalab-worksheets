@@ -147,6 +147,14 @@ CODALAB_ARGUMENTS = [
         default='codalab',
     ),
     CodalabArg(
+        name='protected_mode',
+        env_var='CODALAB_PROTECTED_MODE',
+        help='Whether to run the instance in protected mode',
+        type=bool,
+        default=False,
+        flag='-p',
+    ),
+    CodalabArg(
         name='worker_network_prefix',
         help='Network name for the worker',
         default=lambda args: args.instance_name + '-worker-network',
@@ -564,10 +572,15 @@ class CodalabServiceManager(object):
         else:
             cache_args = ''
 
+        if self.args.dev:
+            build_args = ' --build-arg dev=true'
+        else:
+            build_args = ''
+
         # Build the image using the cache
         self._run_docker_cmd(
-            'build%s -t %s -f docker/dockerfiles/Dockerfile.%s .'
-            % (cache_args, docker_image, image)
+            'build%s %s -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            % (cache_args, build_args, docker_image, image)
         )
 
     def push_image(self, image):
@@ -620,21 +633,13 @@ class CodalabServiceManager(object):
                     stdout_line = popen.stdout.readline()
                     if not stdout_line:
                         break
-                    print(
-                        "process: "
-                        + stdout_line.decode('utf-8').encode('ascii', errors='replace').decode(),
-                        end="",
-                    )
+                    print("process: " + stdout_line.decode('utf-8'), end="")
                 popen.wait()
                 success = popen.returncode == 0
                 if not success:
                     raise Exception('Command exited with code {}'.format(popen.returncode))
             except subprocess.CalledProcessError as e:
-                print(
-                    "CalledProcessError: {}, {}".format(
-                        str(e), e.output.decode('utf-8').encode('ascii', errors='replace').decode()
-                    )
-                )
+                print("CalledProcessError: {}, {}".format(str(e), e.output.decode('utf-8')))
                 raise e
         print('')
         return success
@@ -670,6 +675,8 @@ class CodalabServiceManager(object):
         return self.wait('rest-server', self.args.rest_port, cmd)
 
     def start_services(self):
+        if self.args.protected_mode:
+            print_header('Starting CodaLab services in protected mode...')
 
         mysql_url = 'mysql://{}:{}@{}:{}/{}'.format(
             self.args.mysql_username,

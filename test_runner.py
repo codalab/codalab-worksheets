@@ -17,10 +17,11 @@ import time
 class TestRunner(object):
     _CODALAB_SERVICE_SCRIPT = 'codalab_service.py'
     _TEMP_INSTANCE_NEEDED_TESTS = ['all', 'default', 'copy']
+    _FRONTEND_MODULE = 'frontend'
 
     @staticmethod
     def _docker_exec(command):
-        return 'docker exec -it codalab_rest-server_1 /bin/bash -c "{}"'.format(command)
+        return 'docker exec codalab_rest-server_1 /bin/bash -c "{}"'.format(command)
 
     @staticmethod
     def _create_temp_instance(name, version):
@@ -83,14 +84,20 @@ class TestRunner(object):
     def run(self):
         success = True
         try:
-            # Run backend tests using test_cli
-            test_command = 'python3 test_cli.py --instance %s ' % self.instance
-            if self.temp_instance_required:
-                test_command += '--second-instance %s ' % self.temp_instance
-            test_command += ' '.join(list(filter(lambda test: test != 'frontend', self.tests)))
 
-            print('Running backend tests with command: %s' % test_command)
-            subprocess.check_call(TestRunner._docker_exec(test_command), shell=True)
+            non_frontend_tests = list(
+                filter(lambda test: test != TestRunner._FRONTEND_MODULE, self.tests)
+            )
+
+            if len(non_frontend_tests):
+                # Run backend tests using test_cli
+                test_command = 'python3 test_cli.py --instance %s ' % self.instance
+                if self.temp_instance_required:
+                    test_command += '--second-instance %s ' % self.temp_instance
+
+                test_command += ' '.join(non_frontend_tests)
+                print('Running backend tests with command: %s' % test_command)
+                subprocess.check_call(TestRunner._docker_exec(test_command), shell=True)
 
             # Run frontend tests
             self._run_frontend_tests()
@@ -103,7 +110,7 @@ class TestRunner(object):
         return success
 
     def _run_frontend_tests(self):
-        if 'frontend' not in self.tests:
+        if TestRunner._FRONTEND_MODULE not in self.tests:
             return
 
         # Execute front end tests here

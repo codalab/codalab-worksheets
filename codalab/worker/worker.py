@@ -68,6 +68,8 @@ class Worker:
         pass_down_termination=False,  # type: bool
         # A flag indicating if the work_dir will be deleted when the worker exits.
         delete_work_dir_on_exit=False,  # type: bool
+        # A flag indicating if the worker will exit if it encounters an exception
+        exit_on_exception=False,  # type: bool
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -101,11 +103,13 @@ class Worker:
         self.terminate = False
         self.terminate_and_restage = False
         self.pass_down_termination = pass_down_termination
+        self.exit_on_exception = exit_on_exception
 
         self.last_checkin_successful = False
         self.last_time_ran = None  # type: Optional[bool]
 
         self.runs = {}  # type: Dict[str, RunState]
+        self.docker_network_prefix = docker_network_prefix
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
             docker_image_manager=self.image_manager,
@@ -119,24 +123,45 @@ class Worker:
             shared_file_system=self.shared_file_system,
         )
 
-    def init_docker_networks(self, docker_network_prefix):
+    def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
         Set up docker networks for runs: one with external network access and one without
         """
 
-        def create_or_get_network(name, internal):
+        def create_or_get_network(name, internal, verbose):
             try:
-                logger.debug('Creating docker network %s', name)
-                return self.docker.networks.create(name, internal=internal, check_duplicate=True)
+                if verbose:
+                    logger.debug('Creating docker network %s', name)
+                network = self.docker.networks.create(name, internal=internal, check_duplicate=True)
+                # This logging statement is only run if a network is created.
+                logger.debug('Created docker network %s', name)
+                return network
             except docker.errors.APIError:
-                logger.debug('Network %s already exists, reusing', name)
+                if verbose:
+                    logger.debug('Network %s already exists, reusing', name)
                 return self.docker.networks.list(names=[name])[0]
+
+        # Docker's default local bridge network only supports 30 different networks
+        # (each one of them uniquely identifiable by their name), so we prune old,
+        # unused docker networks, or network creation might fail. We only prune docker networks
+        # older than 1h, to avoid interfering with any newly-created (but still unused) networks
+        # that might have been created by other workers.
+        try:
+            self.docker.networks.prune(filters={"until": "1h"})
+        except docker.errors.APIError as e:
+            logger.warning("Cannot prune docker networks: %s", str(e))
 
         # Right now the suffix to the general worker network is hardcoded to manually match the suffix
         # in the docker-compose file, so make sure any changes here are synced to there.
-        self.worker_docker_network = create_or_get_network(docker_network_prefix + "_general", True)
-        self.docker_network_external = create_or_get_network(docker_network_prefix + "_ext", False)
-        self.docker_network_internal = create_or_get_network(docker_network_prefix + "_int", True)
+        self.worker_docker_network = create_or_get_network(
+            docker_network_prefix + "_general", internal=True, verbose=verbose
+        )
+        self.docker_network_external = create_or_get_network(
+            docker_network_prefix + "_ext", internal=False, verbose=verbose
+        )
+        self.docker_network_internal = create_or_get_network(
+            docker_network_prefix + "_int", internal=True, verbose=verbose
+        )
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved
@@ -165,6 +190,23 @@ class Worker:
                 resources=RunResources.from_dict(run_state.resources),
             )
 
+    def sync_state(self):
+        """
+        Sync worker run state by matching the fields that are read from worker-state.json with the RunState object.
+        """
+        for uuid, run_state in self.runs.items():
+            if run_state._fields == RunState._fields:
+                continue
+            values = []
+            for field in RunState._fields:
+                # When there are additional new fields or missing fields detected, recreate the run_state
+                # object to include or delete those fields specified from the RunState object
+                if field in run_state._fields:
+                    values.append(getattr(run_state, field))
+                else:
+                    values.append(None)
+            self.runs[uuid] = RunState(*values)
+
     def check_idle_stop(self):
         """
         Checks whether the worker is idle (ie if it hasn't had runs for longer than the configured
@@ -191,6 +233,7 @@ class Worker:
     def start(self):
         """Return whether we ran anything."""
         self.load_state()
+        self.sync_state()
         self.image_manager.start()
         if not self.shared_file_system:
             self.dependency_manager.start()
@@ -206,9 +249,33 @@ class Worker:
             except Exception:
                 self.last_checkin_successful = False
                 traceback.print_exc()
-                # Sleep for a long time so we don't keep on failing.
-                logger.error('Sleeping for 1 hour due to exception...please help me!')
-                time.sleep(1 * 60 * 60)
+                if self.exit_on_exception:
+                    logger.error('Encountered exception, terminating the worker...')
+                    self.terminate = True
+                else:
+                    # Sleep for a long time so we don't keep on failing.
+                    # We sleep in 5-second increments, itermittently checking
+                    # if the worker needs to terminate (say, if it's received
+                    # a SIGTERM signal).
+                    logger.error('Sleeping for 1 hour due to exception...please help me!')
+                    for _ in range(12 * 60):
+                        # We run this here, instead of going through another iteration of the
+                        # while loop, to minimize the code that's run---the reason we ended up here
+                        # in the first place is because of an exception, so we don't want to
+                        # re-trigger that exception.
+                        if self.terminate_and_restage:
+                            # If self.terminate_and_restage is true, self.check_termination()
+                            # restages bundles. We surround this in a try-except block,
+                            # so we can still properly terminate and clean up
+                            # even if self.check_termination() fails for some reason.
+                            try:
+                                self.check_termination()
+                            except Exception:
+                                traceback.print_exc()
+                            self.terminate = True
+                        if self.terminate:
+                            break
+                        sleep(5)
         self.cleanup()
 
     def cleanup(self):
@@ -315,6 +382,7 @@ class Worker:
             'shared_file_system': self.shared_file_system,
             'tag_exclusive': self.tag_exclusive,
             'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
+            'is_terminating': self.terminate or self.terminate_and_restage,
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
@@ -359,6 +427,14 @@ class Worker:
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
+        # We (re-)initialize the Docker networks here, in case they've been removed.
+        # For any networks that exist, this is essentially a no-op.
+        self.init_docker_networks(self.docker_network_prefix, verbose=False)
+        # In case the docker networks have changed, we also update them in the RunStateMachine
+        self.run_state_manager.worker_docker_network = self.worker_docker_network
+        self.run_state_manager.docker_network_external = self.docker_network_external
+        self.run_state_manager.docker_network_internal = self.docker_network_internal
+
         # 1. transition all runs
         for uuid in self.runs:
             run_state = self.runs[uuid]

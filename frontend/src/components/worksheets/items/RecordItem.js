@@ -2,7 +2,9 @@ import * as React from 'react';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import BundleDetail from '../BundleDetail';
 import NewRun from '../NewRun';
-import { worksheetItemPropsChanged } from '../../../util/worksheet_utils';
+import { useEffect } from 'react';
+import { fetchAsyncBundleContents } from '../../../util/async_loading_utils';
+import { FETCH_STATUS_SCHEMA } from '../../../constants';
 
 class RecordItem extends React.Component {
     /** Constructor. */
@@ -27,13 +29,6 @@ class RecordItem extends React.Component {
         bundleInfoUpdates = { ...bundleInfoUpdates, ...update };
         this.setState({ bundleInfoUpdates: { ...bundleInfoUpdates, ...update } });
     };
-
-    shouldComponentUpdate(nextProps, nextState) {
-        return (
-            worksheetItemPropsChanged(this.props, nextProps) ||
-            this.state.showDetail !== nextState.showDetail
-        );
-    }
 
     rerunItem = (runProp) => {
         this.setState({
@@ -67,19 +62,22 @@ class RecordItem extends React.Component {
                 'keydown',
             );
         }
-        var className = 'table table-record' + (focused ? ' focused' : '');
-        var bundleInfo = item.bundles_spec.bundle_infos[0];
-        var header = item.header;
-        var k = header[0];
-        var v = header[1];
-        var items = item.rows.map(function(item, index) {
-            var ref = 'row' + index;
+        let className = 'table table-record' + (focused ? ' focused' : '');
+        let bundleInfo = item.bundles_spec.bundle_infos[0];
+        let header = item.header;
+        let k = header[0];
+        let v = header[1];
+        let items = item.rows.map(function(item, index) {
+            let ref = 'row' + index;
+            let displayValue = JSON.stringify(item[v]); // stringify is needed to convert metadata objects
+            if (displayValue) {
+                displayValue = displayValue.substr(1, displayValue.length - 2); // get rid of ""
+            }
+
             return (
                 <tr ref={ref} key={index}>
                     <th>{item[k]}</th>
-                    <td style={{ maxWidth: '500px', wordWrap: 'break-word' }}>
-                        {JSON.stringify(item[v])}
-                    </td>
+                    <td style={{ maxWidth: '500px', wordWrap: 'break-word' }}>{displayValue}</td>
                 </tr>
             );
         });
@@ -130,4 +128,33 @@ class RecordItem extends React.Component {
     }
 }
 
-export default RecordItem;
+const RecordWrapper = (props) => {
+    const { item, onAsyncItemLoad } = props;
+    useEffect(() => {
+        (async function() {
+            if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
+                try {
+                    const { contents } = await fetchAsyncBundleContents({ contents: item.rows });
+                    onAsyncItemLoad({
+                        ...item,
+                        rows: contents,
+                        status: {
+                            code: FETCH_STATUS_SCHEMA.READY,
+                            error_message: '',
+                        },
+                    });
+                } catch (e) {
+                    console.error(e);
+                    // TODO: better error message handling here.
+                }
+            }
+        })();
+        // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [item.rows, item.status]);
+    return <RecordItem {...props} />;
+};
+
+export default RecordWrapper;
+
+// export default RecordItem;
