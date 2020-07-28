@@ -1,0 +1,19 @@
+name: Stress Test
+on:
+  workflow_dispatch:
+
+jobs:
+  stress:
+    name: Stress test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - run: pip install -e .
+      - name: Run tests
+        run: python stress_test.py --instance https://worksheets-dev.codalab.org --heavy
+        env:
+          CODALAB_USERNAME: ${{ secrets.CODALAB_DEV_USERNAME }}
+          CODALAB_PASSWORD: ${{ secrets.CODALAB_DEV_PASSWORD }}
