@@ -39,6 +39,7 @@ from codalab.lib.worksheet_util import (
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
+from codalab.server.authenticated_plugin import ProtectedPlugin
 from codalab.rest.worksheets import get_worksheet_info, search_worksheets
 from codalab.rest.worksheet_block_schemas import (
     BlockModes,
@@ -49,7 +50,7 @@ from codalab.rest.worksheet_block_schemas import (
 from codalab.worker.download_util import BundleTarget
 
 
-@post('/interpret/search')
+@post('/interpret/search', apply=ProtectedPlugin())
 def _interpret_search():
     """
     Returns worksheet items given a search query for bundles.
@@ -69,7 +70,7 @@ def _interpret_search():
     return interpret_search(request.json)
 
 
-@post('/interpret/wsearch')
+@post('/interpret/wsearch', apply=ProtectedPlugin())
 def _interpret_wsearch():
     """
     Returns worksheets information given a search query for worksheets.
@@ -110,7 +111,7 @@ def _interpret_wsearch():
     return {'response': interpret_wsearch(query['keywords'])}
 
 
-@post('/interpret/file-genpaths')
+@post('/interpret/file-genpaths', apply=ProtectedPlugin())
 def _interpret_file_genpaths():
     """
     Interpret a file genpath.
@@ -144,7 +145,7 @@ def _interpret_file_genpaths():
     return {'data': results}
 
 
-@post('/interpret/genpath-table-contents')
+@post('/interpret/genpath-table-contents', apply=ProtectedPlugin())
 def _interpret_genpath_table_contents():
     """
     Takes a table and fills in unresolved genpath specifications.
@@ -182,7 +183,7 @@ def _interpret_genpath_table_contents():
     return {'contents': new_contents}
 
 
-@get('/interpret/worksheet/<uuid:re:%s>' % spec_util.UUID_STR)
+@get('/interpret/worksheet/<uuid:re:%s>' % spec_util.UUID_STR, apply=ProtectedPlugin())
 def fetch_interpreted_worksheet(uuid):
     """
     Return information about a worksheet. Calls

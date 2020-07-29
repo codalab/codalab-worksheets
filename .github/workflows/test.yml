@@ -24,7 +24,13 @@ jobs:
         working-directory: ./frontend
         env:
           CI: true
-      - run: pip install --upgrade black==18.9b0
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.dev.txt') }}
+          restore-keys: |
+            pip-
+      - run: pip install -r requirements.dev.txt
       - run: black . --check --diff
   build:
     name: Build
@@ -53,10 +59,10 @@ jobs:
     strategy:
       matrix:
         test:
-          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
+          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
           - run
           - run2
-          - search read kill write mimic workers
+          - search read kill write mimic workers edit_user
           - resources
           - memoize
           - copy netcat netcurl
@@ -88,6 +94,7 @@ jobs:
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-${{ matrix.test }}
@@ -174,6 +181,52 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-sharedfs-${{ matrix.test }}
+          path: /tmp/logs
+
+  test_backend_protected_mode:
+    name: Test backend - protected mode
+    runs-on: ubuntu-latest
+    needs: [build]
+    strategy:
+      matrix:
+        test:
+          - basic status batch anonymous competition unicode rest1 upload1 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
+          - run
+          - search read kill write mimic workers
+          - copy netcat
+          - protected_mode
+    steps:
+      - name: Clear free space
+        run: |
+          sudo rm -rf /opt/ghc
+          df -h
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - name: Setup tests
+        run: |
+          sudo service mysql stop
+          python3 codalab_service.py build services --version ${VERSION} --pull
+        env:
+          VERSION: ${{ github.head_ref || 'master' }}
+      - name: Run tests
+        run: |
+          python3 codalab_service.py start --services default --version ${VERSION} --protected-mode
+          python3 test_runner.py --version ${VERSION} ${TEST}
+        env:
+          TEST: ${{ matrix.test }}
+          VERSION: ${{ github.head_ref || 'master' }}
+      - name: Save logs
+        if: always()
+        run: |
+          mkdir /tmp/logs
+          for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v1
+        with:
+          name: logs-test-protectedmode-${{ matrix.test }}
           path: /tmp/logs
 
   test_frontend:

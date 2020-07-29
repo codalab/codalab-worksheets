@@ -39,7 +39,7 @@ import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import queryString from 'query-string';
-import { Dialog } from '@material-ui/core';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 
 /*
 Information about the current worksheet and its items.
@@ -421,6 +421,11 @@ class Worksheet extends React.Component {
         });
     };
 
+    moveFocusToBottom = () => {
+        $('#worksheet_container').scrollTop($('#worksheet_container')[0].scrollHeight);
+        this.setFocus(this.state.ws.info.blocks.length - 1, 'end');
+    };
+
     confirmBundleRowAction = (code) => {
         if (!(this.state.openedDialog || this.state.BulkBundleDialog)) {
             // no dialog is opened, open bundle row detail
@@ -677,7 +682,7 @@ class Worksheet extends React.Component {
         });
     }
 
-    canEdit() {
+    hasEditPermission() {
         var info = this.state.ws.info;
         return info && info.edit_permission;
     }
@@ -997,7 +1002,7 @@ class Worksheet extends React.Component {
 
         if (!editMode) {
             // Going out of raw mode - save the worksheet.
-            if (this.canEdit()) {
+            if (this.hasEditPermission()) {
                 var editor = ace.edit('worksheet-editor');
                 if (saveChanges) {
                     this.state.ws.info.source = editor.getValue().split('\n');
@@ -1116,7 +1121,7 @@ class Worksheet extends React.Component {
             editor.session.setMode('ace/mode/markdown', function() {
                 editor.session.$mode.blockComment = { start: '//', end: '' };
             });
-            if (!this.canEdit()) {
+            if (!this.hasEditPermission()) {
                 editor.setOptions({
                     readOnly: true,
                     highlightActiveLine: false,
@@ -1426,16 +1431,15 @@ class Worksheet extends React.Component {
         const { anchorEl, uploadAnchor } = this.state;
 
         this.setupEventHandlers();
-        var info = this.state.ws.info;
-        var rawWorksheet = info && info.source.join('\n');
-        var editPermission = info && info.edit_permission;
-        var canEdit = this.canEdit() && this.state.editMode;
+        let info = this.state.ws.info;
+        let rawWorksheet = info && info.source.join('\n');
+        const editPermission = this.hasEditPermission();
 
-        var searchClassName = this.state.showTerminal ? '' : 'search-hidden';
-        var editableClassName = canEdit ? 'editable' : '';
-        var disableWorksheetEditing = this.canEdit() ? '' : 'disabled';
-        var sourceStr = editPermission ? 'Edit Source' : 'View Source';
-        var editFeatures = (
+        let searchClassName = this.state.showTerminal ? '' : 'search-hidden';
+        let editableClassName = editPermission && this.state.editMode ? 'editable' : '';
+        let disableWorksheetEditing = editPermission ? '' : 'disabled';
+        let sourceStr = editPermission ? 'Edit Source' : 'View Source';
+        let editFeatures = (
             <div style={{ display: 'inline-block' }}>
                 <Button
                     onClick={this.editMode}
@@ -1552,7 +1556,6 @@ class Worksheet extends React.Component {
                 active={this.state.activeComponent === 'list'}
                 ws={this.state.ws}
                 version={this.state.version}
-                canEdit={canEdit}
                 focusIndex={this.state.focusIndex}
                 subFocusIndex={this.state.subFocusIndex}
                 setFocus={this.setFocus}
@@ -1608,7 +1611,7 @@ class Worksheet extends React.Component {
             <React.Fragment>
                 <WorksheetHeader
                     showTerminal={this.state.showTerminal}
-                    canEdit={this.canEdit()}
+                    editPermission={editPermission}
                     info={info}
                     classes={classes}
                     renderPermissions={renderPermissions}
@@ -1668,6 +1671,20 @@ class Worksheet extends React.Component {
                                         />
                                     </div>
                                 </div>
+                                <Button
+                                    onClick={this.moveFocusToBottom}
+                                    color='primary'
+                                    variant='contained'
+                                    style={{
+                                        borderRadius: '400px',
+                                        position: 'fixed',
+                                        bottom: '50px',
+                                        right: '30px',
+                                        backgroundColor: '00BFFF',
+                                    }}
+                                >
+                                    <ExpandMoreIcon size='medium' />
+                                </Button>
                             </div>
                         </div>
                     </div>
