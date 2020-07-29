@@ -33,7 +33,7 @@ class SchemaItem extends React.Component<{
         this.state = {
             showSchemaDetail: false,
             rows: [...this.props.item.field_rows],
-            cur_schema_name: this.props.item.schema_name,
+            curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
         };
     }
@@ -52,14 +52,14 @@ class SchemaItem extends React.Component<{
     clearChanges = () => {
         this.setState({
             rows: [...this.props.item.field_rows],
-            cur_schema_name: this.props.item.schema_name,
+            curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
         });
     };
 
     saveSchema = () => {
         const { schema_name, field_rows } = this.props.item;
-        let updatedSchema = ['% schema ' + this.state.cur_schema_name];
+        let updatedSchema = ['% schema ' + this.state.curSchemaName];
         let fromAddSchema = false;
         let schemaBlockSourceLength = field_rows.length + 1; // 1 for the schema name row
         this.state.rows.forEach((fields) => {
@@ -116,13 +116,29 @@ class SchemaItem extends React.Component<{
         if (!this.props.editPermission) return;
         const { rows } = this.state;
         let copiedRows = [...rows];
-        copiedRows.splice(idx, 1, { ...rows[idx], [key]: e.target.value });
+        copiedRows.splice(idx, 1, { ...rows[idx], [key]: e.target.value.replace(/\s/g, '') });
         this.setState({ rows: [...copiedRows] });
     };
 
     changeSchemaName = (e) => {
         if (!this.props.editPermission) return;
-        this.setState({ cur_schema_name: e.target.value });
+        this.setState({ curSchemaName: e.target.value.replace(/\s/g, '') });
+    };
+
+    checkIfTextChanged = () => {
+        // checks whether any of the textfields in the rows changed compared with the original values
+        let originalRows = this.props.item.field_rows;
+        if (this.state.rows.length !== originalRows.length) return true;
+        const headerKeys = this.props.item.header;
+        let textFieldChanged = false;
+        for (let ind = 0; ind < originalRows.length; ind++) {
+            headerKeys.forEach((key) => {
+                if (originalRows[ind][key] !== this.state.rows[ind][key]) {
+                    textFieldChanged = true;
+                }
+            });
+        }
+        return textFieldChanged;
     };
 
     moveFieldRow = (idx, direction) => () => {
@@ -166,7 +182,7 @@ class SchemaItem extends React.Component<{
         ) {
             this.setState({
                 rows: [...this.props.item.field_rows],
-                cur_schema_name: this.props.item.schema_name,
+                curSchemaName: this.props.item.schema_name,
             });
         }
         if (this.state.newAddedRow !== -1 && this.state.rows.length === prevState.rows.length + 1) {
@@ -179,14 +195,20 @@ class SchemaItem extends React.Component<{
         const { showSchemaDetail, rows } = this.state;
         const schemaItem = item;
         const schemaHeaders = schemaItem.header;
-        const schema_name = schemaItem.schema_name;
+        const schemaName = schemaItem.schema_name;
         let headerHtml, bodyRowsHtml;
         const explanations = {
-            field: 'Name of the field. ',
+            field: 'Column name that is displayed.',
             'generalized-path':
-                "Either a field of bundle's metadata (like uuid, name) or a file path inside the bundle prefixed by / (like '/stdout').\n",
+                'Either a bundle metadata field (e.g., uuid, name, time, state) or a file path inside the bundle (e.g., /stdout, /stats.json).',
             'post-processor':
-                'Optional, a function that transforms the string value result of generalized-path, for example uuid uuid [0:8] will keep the first 8 digits of the uuid. ',
+                '(Optional) How to render the value (e.g., %.3f renders 3 decimal points, [0:8] takes the first 8 characters, duration renders seconds, size renders bytes).',
+        };
+
+        const placeholderText = {
+            field: '<column name to display>',
+            'generalized-path': '<path to retrieve value>',
+            'post-processor': '<how to render value>',
         };
         headerHtml =
             showSchemaDetail &&
@@ -201,7 +223,7 @@ class SchemaItem extends React.Component<{
                         <Tooltip
                             title={
                                 explanations[header] +
-                                'Click for more information and examples on schemas'
+                                ' Click for more information and examples on schemas.'
                             }
                         >
                             <IconButton
@@ -231,14 +253,29 @@ class SchemaItem extends React.Component<{
                     }
                     {
                         <Tooltip title={'Save all changes'}>
-                            <IconButton onClick={this.toggleEdit(false, true)}>
+                            <IconButton
+                                onClick={this.toggleEdit(false, true)}
+                                disabled={
+                                    /* disable if no textField value has changed compared with the initial state*/
+                                    this.state.curSchemaName === '' ||
+                                    (this.state.curSchemaName === schemaName &&
+                                        !this.checkIfTextChanged())
+                                }
+                            >
                                 <SaveIcon />
                             </IconButton>
                         </Tooltip>
                     }
                     {
                         <Tooltip title={'Revert all unsaved changes'}>
-                            <IconButton onClick={this.toggleEdit(true, false)}>
+                            <IconButton
+                                onClick={this.toggleEdit(true, false)}
+                                disabled={
+                                    /* disable if no textField value has changed compared with the initial state*/
+                                    this.state.curSchemaName === schemaName &&
+                                    !this.checkIfTextChanged()
+                                }
+                            >
                                 <RestoreIcon />
                             </IconButton>
                         </Tooltip>
@@ -259,11 +296,19 @@ class SchemaItem extends React.Component<{
                         >
                             <TextField
                                 id={'textbox-' + ind + '-' + col}
-                                multiline
-                                placeholder={'<none>'}
+                                error={
+                                    headerKey === 'field' && this.state.rows[ind]['field'] === ''
+                                }
+                                placeholder={editPermission ? placeholderText[headerKey] : '<none>'}
+                                helperText={
+                                    headerKey === 'field' &&
+                                    this.state.rows[ind]['field'] === '' &&
+                                    'Fields with empty names will not be saved'
+                                }
                                 value={rowItem[headerKey] || ''}
+                                multiline
                                 disabled={
-                                    !editPermission || rowItem.from_schema_name !== schema_name
+                                    !editPermission || rowItem.from_schema_name !== schemaName
                                 }
                                 onChange={this.changeFieldValue(ind, headerKey)}
                             />
@@ -272,7 +317,7 @@ class SchemaItem extends React.Component<{
                 });
 
                 if (!editPermission) {
-                } else if (rowItem.from_schema_name === schema_name) {
+                } else if (rowItem.from_schema_name === schemaName) {
                     rowCells.push(
                         <TableCell
                             key={rowCells.length}
@@ -342,6 +387,7 @@ class SchemaItem extends React.Component<{
                 'keydown',
             );
             Mousetrap.bindGlobal(['ctrl+enter'], () => {
+                if (this.state.curSchemaName === '') return;
                 this.saveSchema();
                 Mousetrap.unbindGlobal(['ctrl+enter']);
             });
@@ -357,7 +403,10 @@ class SchemaItem extends React.Component<{
                     this.props.setFocus(this.props.focusIndex, 0);
                 }}
             >
-                <Tooltip title={showSchemaDetail ? '' : 'Click to view schema'} placement='right'>
+                <Tooltip
+                    title={showSchemaDetail ? '' : 'Click to view schema: ' + schemaName}
+                    placement='right'
+                >
                     <Button
                         color='secondary'
                         variant='outlined'
@@ -373,7 +422,7 @@ class SchemaItem extends React.Component<{
                         <ViewListIcon style={{ padding: '0px' }} />
                     </Button>
                 </Tooltip>
-                {
+                {showSchemaDetail && (
                     <TextField
                         variant='outlined'
                         id='standard-multiline-static'
@@ -383,13 +432,17 @@ class SchemaItem extends React.Component<{
                             },
                         }}
                         multiline
+                        error={this.state.curSchemaName === ''}
+                        helperText={
+                            this.state.curSchemaName === '' ? 'Schema name can not be empty' : ''
+                        }
                         size='small'
-                        disabled={!showSchemaDetail}
-                        value={this.state.cur_schema_name}
+                        disabled={!editPermission}
+                        value={this.state.curSchemaName}
                         style={{ paddingLeft: '20px' }}
                         onChange={this.changeSchemaName}
                     />
-                }
+                )}
                 {schemaTable}
             </div>
         );
