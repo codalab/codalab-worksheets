@@ -387,7 +387,7 @@ class SchemaItem extends React.Component<{
                 'keydown',
             );
             Mousetrap.bindGlobal(['ctrl+enter'], () => {
-                if (this.state.curSchemaName === '') return;
+                if (this.state.curSchemaName === '' || !this.checkIfTextChanged()) return;
                 this.saveSchema();
                 Mousetrap.unbindGlobal(['ctrl+enter']);
             });
