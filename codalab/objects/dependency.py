@@ -10,7 +10,7 @@ from codalab.model.orm_object import ORMObject
 
 class Dependency(ORMObject):
     COLUMNS = ('child_uuid', 'child_path', 'parent_uuid', 'parent_path')
-    CHILD_PATH_REGEX = re.compile('^[a-zA-Z0-9_\-.]*\Z')
+    CHILD_PATH_REGEX = re.compile('^[a-zA-Z0-9_\-./]*\Z')
 
     def validate(self, require_child_path=False):
         """

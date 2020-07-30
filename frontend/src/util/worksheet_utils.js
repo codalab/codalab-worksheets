@@ -7,6 +7,7 @@ export function renderDuration(s) {
     // s: number of seconds
     // Return a human-readable string.
     // Example: 100 => "1m40s", 10000 => "2h46m"
+    // Checking s == null here will cover two cases: 1) s is undefined 2) s is null
     if (s == null) {
         return '<none>';
     }
@@ -194,7 +195,7 @@ export function worksheetItemPropsChanged(props, nextProps) {
 export function buildTerminalCommand(args) {
     var ret = [];
     args.forEach(function(s) {
-        if (/[^A-Za-z0-9_\/:=-]/.test(s)) {
+        if (/[^A-Za-z0-9_s/:=-]/.test(s)) {
             s = "'" + s.replace(/'/g, "'\\''") + "'";
             s = s
                 .replace(/^(?:'')+/g, '') // unduplicate single-quote at the beginning
@@ -218,7 +219,7 @@ export function createAlertText(requestURL, responseText, solution) {
 
 // the five functions below are used for uplading files on the web. Some of them are the same as some functions on the CLI.
 export const ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip', '.gz'];
-export const NOT_NAME_CHAR_REGEX = /[^a-zA-Z0-9_\.\-]/gi;
+export const NOT_NAME_CHAR_REGEX = /[^a-zA-Z0-9_.-]/gi;
 export const BEGIN_NAME_REGEX = /[a-zA-Z_]/gi;
 
 // same as shorten_name in /lib/spec_util.py
@@ -263,7 +264,7 @@ export function getArchiveExt(name) {
 export function createDefaultBundleName(name) {
     name = stripArchiveExt(name);
     name = name.replace(NOT_NAME_CHAR_REGEX, '-');
-    name = name.replace(/\-+/gi, '-'); // Collapse '---' => '-'
+    name = name.replace(/-+/gi, '-'); // Collapse '---' => '-'
     var beginChar = name.charAt(0);
     if (!beginChar.match(BEGIN_NAME_REGEX)) {
         name = '_' + name;
@@ -307,7 +308,10 @@ export function createHandleRedirectFn(worksheetUuid) {
 export function getAfterSortKey(item, subFocusIndex) {
     if (!item) return 0;
     const sort_keys = item.sort_keys || [];
-    return sort_keys[subFocusIndex] || Math.max(...sort_keys);
+    if (sort_keys[subFocusIndex] || sort_keys[subFocusIndex] === 0) {
+        return sort_keys[subFocusIndex];
+    }
+    return Math.max(...sort_keys);
 }
 
 export function getIds(item) {

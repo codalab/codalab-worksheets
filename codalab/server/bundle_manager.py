@@ -388,6 +388,12 @@ class BundleManager(object):
             workers.user_owned_workers(self._model.root_user_id), running_bundles_info
         )
 
+        workers_list = []
+        # We store a running record of the workers that go offline while we're dispatching
+        # bundles, so if they come back online, we continue to ignore them in order in order to
+        # respect bundle prioritization. Such workers will be assigned bundles in the BundleManager's
+        # next iteration.
+        offline_workers = set()
         # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
             if user_parallel_run_quota_left[bundle.owner_id] > 0:
@@ -397,6 +403,35 @@ class BundleManager(object):
                 )
             else:
                 workers_list = resource_deducted_user_owned_workers[bundle.owner_id]
+            # Although we pre-compute the available workers, workers might go offline.
+            # As a result, we refresh the currently-online workers (by cleaning up the
+            # dead workers), and filter out the precomputed workers that are no longer online.
+            # If we don't do this, the workers might appear otherwise-eligible for runs, and we'll
+            # attempt to start every bundle on every such worker. This can take a long time (if there
+            # are many staged bundles, over an hour), and new bundles cannot be assigned to workers
+            # in the meantime.
+            self._cleanup_dead_workers(workers)
+            online_worker_ids = set(
+                worker["worker_id"]
+                for worker in (
+                    workers.user_owned_workers(bundle.owner_id)
+                    + workers.user_owned_workers(self._model.root_user_id)
+                )
+            )
+            # Store the worker IDs for workers that have gone offline.
+            offline_workers.update(
+                [
+                    worker["worker_id"]
+                    for worker in workers_list
+                    if worker["worker_id"] not in online_worker_ids
+                ]
+            )
+            # Filter worker that have gone offline. Note that we can't just use
+            # online_worker_ids here, since we want to also exclude workers that go
+            # offline, and then later come back online while we're still dispatching bundles.
+            workers_list = [
+                worker for worker in workers_list if worker["worker_id"] not in offline_workers
+            ]
 
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
             # Try starting bundles on the workers that have enough computing resources
@@ -412,7 +447,23 @@ class BundleManager(object):
                     worker['cpus'] -= bundle_resources.cpus
                     worker['gpus'] -= bundle_resources.gpus
                     worker['memory_bytes'] -= bundle_resources.memory
+                    worker['exit_after_num_runs'] -= 1
                     break
+
+        # To avoid the potential race condition between bundle manager's dispatch frequency and
+        # worker's checkin frequency, update the column "exit_after_num_runs" in worker table
+        # before bundle manager's next scheduling loop
+        for worker in workers_list:
+            # Update workers that have "exit_after_num_runs" manually set from CLI.
+            if (
+                worker['exit_after_num_runs']
+                < workers._workers[worker['worker_id']]['exit_after_num_runs']
+            ):
+                self._worker_model.update_workers(
+                    worker["user_id"],
+                    worker['worker_id'],
+                    {'exit_after_num_runs': worker['exit_after_num_runs']},
+                )
 
     def _deduct_worker_resources(self, workers_list, running_bundles_info):
         """
@@ -472,6 +523,9 @@ class BundleManager(object):
         workers_list = [
             worker for worker in workers_list if worker['memory_bytes'] >= bundle_resources.memory
         ]
+
+        # Filter by the number of jobs allowed to run on this worker.
+        workers_list = [worker for worker in workers_list if worker['exit_after_num_runs'] > 0]
 
         # Sort workers list according to these keys in the following succession:
         #  - whether the worker is a CPU-only worker, if the bundle doesn't request GPUs

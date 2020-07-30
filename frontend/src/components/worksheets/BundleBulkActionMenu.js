@@ -40,16 +40,6 @@ class BundleBulkActionMenu extends React.Component {
                 <Button
                     size='small'
                     color='inherit'
-                    aria-label='Detach'
-                    disabled={!this.props.editPermission}
-                    onClick={this.props.toggleCmdDialog('detach')}
-                >
-                    <ExitToAppIcon fontSize='small' />
-                    <Typography variant='inherit'>Detach</Typography>
-                </Button>
-                <Button
-                    size='small'
-                    color='inherit'
                     aria-label='Kill'
                     disabled={!this.props.editPermission}
                     onClick={this.props.toggleCmdDialog('kill')}
@@ -66,6 +56,16 @@ class BundleBulkActionMenu extends React.Component {
                 >
                     <FileCopyOutlinedIcon className={classes.buttonIcon} />
                     <Typography variant='inherit'>Copy</Typography>
+                </Button>
+                <Button
+                    size='small'
+                    color='inherit'
+                    aria-label='Cut'
+                    disabled={!this.props.editPermission}
+                    onClick={this.props.toggleCmdDialog('cut')}
+                >
+                    <FileCopyOutlinedIcon className={classes.buttonIcon} />
+                    <Typography variant='inherit'>Cut</Typography>
                 </Button>
             </div>
         );

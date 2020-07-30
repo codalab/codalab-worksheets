@@ -173,6 +173,7 @@ class BundleRow extends Component {
                         href={url}
                         className='bundle-link'
                         target='_blank'
+                        rel='noopener noreferrer'
                         style={{ display: 'inline-block', width: 60 }}
                     >
                         {rowContent}
@@ -325,7 +326,7 @@ class BundleRow extends Component {
                                         this.setState({ showNewRun: 0, showDetail: false });
                                         onHideNewRerun();
                                     }}
-                                    after_sort_key={bundleInfo.sort_key}
+                                    after_sort_key={this.props.after_sort_key}
                                     reloadWorksheet={reloadWorksheet}
                                     defaultRun={runProp}
                                 />

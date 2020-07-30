@@ -44,6 +44,7 @@ class BundleManagerTest(unittest.TestCase):
                 'cpus': 4,
                 'gpus': 2,
                 'memory_bytes': 4 * 1000,
+                'exit_after_num_runs': 1000,
                 'tag': None,
                 'run_uuids': [1, 2],
                 'dependencies': [(1, ''), (2, '')],
@@ -57,6 +58,7 @@ class BundleManagerTest(unittest.TestCase):
                 'cpus': 4,
                 'gpus': 1,
                 'memory_bytes': 4 * 1000,
+                'exit_after_num_runs': 1000,
                 'tag': None,
                 'run_uuids': [1, 2, 3],
                 'dependencies': [(1, ''), (2, ''), (3, ''), (4, '')],
@@ -70,6 +72,7 @@ class BundleManagerTest(unittest.TestCase):
                 'cpus': 4,
                 'gpus': 0,
                 'memory_bytes': 4 * 1000,
+                'exit_after_num_runs': 1000,
                 'tag': None,
                 'run_uuids': [],
                 'dependencies': [(1, ''), (2, ''), (3, ''), (4, '')],
@@ -82,6 +85,7 @@ class BundleManagerTest(unittest.TestCase):
                 'cpus': 6,
                 'gpus': 0,
                 'memory_bytes': 4 * 1000,
+                'exit_after_num_runs': 1000,
                 'tag': None,
                 'run_uuids': [1],
                 'dependencies': [(1, '')],
@@ -94,6 +98,7 @@ class BundleManagerTest(unittest.TestCase):
                 'cpus': 6,
                 'gpus': 0,
                 'memory_bytes': 4 * 1000,
+                'exit_after_num_runs': 1000,
                 'tag': None,
                 'run_uuids': [1, 2],
                 'dependencies': [(1, '')],
@@ -107,6 +112,7 @@ class BundleManagerTest(unittest.TestCase):
                 'cpus': 6,
                 'gpus': 0,
                 'memory_bytes': 2 * 1000,
+                'exit_after_num_runs': 1000,
                 'tag': 'worker_X',
                 'run_uuids': [],
                 'dependencies': [],
@@ -119,6 +125,20 @@ class BundleManagerTest(unittest.TestCase):
                 'cpus': 6,
                 'gpus': 0,
                 'memory_bytes': 2 * 1000,
+                'exit_after_num_runs': 1000,
+                'tag': 'worker_X',
+                'run_uuids': [],
+                'dependencies': [],
+                'shared_file_system': False,
+                'tag_exclusive': True,
+                'has_gpus': False,
+            },
+            {
+                'worker_id': 7,
+                'cpus': 6,
+                'gpus': 1,
+                'memory_bytes': 2 * 1000,
+                'exit_after_num_runs': 0,
                 'tag': 'worker_X',
                 'run_uuids': [],
                 'dependencies': [],
@@ -175,7 +195,7 @@ class BundleManagerTest(unittest.TestCase):
         matched_workers = BundleManager._get_matched_workers(
             self.bundle.metadata.request_queue, self.workers_list
         )
-        self.assertEqual(len(matched_workers), 2)
+        self.assertEqual(len(matched_workers), 3)
         self.assertEqual(matched_workers[0]['worker_id'], 5)
         self.assertEqual(matched_workers[1]['worker_id'], 6)
 
@@ -191,7 +211,7 @@ class BundleManagerTest(unittest.TestCase):
         matched_workers = BundleManager._get_matched_workers(
             self.bundle.metadata.request_queue, self.workers_list
         )
-        self.assertEqual(len(matched_workers), 2)
+        self.assertEqual(len(matched_workers), 3)
         self.assertEqual(matched_workers[0]['worker_id'], 5)
         self.assertEqual(matched_workers[1]['worker_id'], 6)
 

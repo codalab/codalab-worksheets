@@ -189,8 +189,8 @@ class Bundle extends React.Component<
             // Still loading
             return (
                 <div id='bundle-message' className='bundle-detail'>
-                    <img src={`${process.env.PUBLIC_URL}/img/Preloader_Small.gif`} /> Loading
-                    bundle...
+                    <img alt='Loading' src={`${process.env.PUBLIC_URL}/img/Preloader_Small.gif`} />{' '}
+                    Loading bundle...
                 </div>
             );
         }
@@ -476,7 +476,7 @@ function renderContents(bundleInfo, fileContents, stdout, stderr) {
         stdoutHtml = (
             <div>
                 <span>
-                    <a href={stdoutUrl} target='_blank'>
+                    <a href={stdoutUrl} target='_blank' rel='noopener noreferrer'>
                         stdout
                     </a>
                 </span>
@@ -495,7 +495,7 @@ function renderContents(bundleInfo, fileContents, stdout, stderr) {
         stderrHtml = (
             <div>
                 <span>
-                    <a href={stderrUrl} target='_blank'>
+                    <a href={stderrUrl} target='_blank' rel='noopener noreferrer'>
                         stderr
                     </a>
                 </span>

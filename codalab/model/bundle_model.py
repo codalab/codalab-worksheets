@@ -845,6 +845,16 @@ class BundleModel(object):
                 # The user deleted the bundle.
                 return False
 
+            # Check if the designated worker is going to be terminated soon
+            row = connection.execute(
+                cl_worker.select().where(
+                    and_(cl_worker.c.worker_id == worker_id, cl_worker.c.is_terminating == False)
+                )
+            ).fetchone()
+            # If the worker is going to be terminated soon, stop starting bundle on this worker
+            if not row:
+                return False
+
             bundle_update = {
                 'state': State.STARTING,
                 'metadata': {'last_updated': int(time.time())},
@@ -871,11 +881,12 @@ class BundleModel(object):
                 raise IntegrityError('Missing bundle with UUID %s' % bundle.uuid)
 
             # Reset all metadata fields that aren't input by user from RunBundle class to be None.
-            # Excluding all the fields that can be set by users, which for now is just the action field.
+            # Excluding all the fields that can be set by users, which for now is just the "actions" field.
+            # Excluding the "created" field to keep track of the original date when the bundle is created
             metadata_update = {
                 spec.key: None
                 for spec in RunBundle.METADATA_SPECS
-                if spec.generated and spec.key != 'action'
+                if spec.generated and spec.key not in ['actions', 'created']
             }
             bundle_update = {'state': State.STAGED, 'metadata': metadata_update}
             self.update_bundle(bundle, bundle_update, connection)
@@ -2222,6 +2233,7 @@ class BundleModel(object):
         notifications=NOTIFICATIONS_GENERAL,
         user_id=None,
         is_verified=False,
+        has_access=False,
     ):
         """
         Create a brand new unverified user.
@@ -2249,6 +2261,7 @@ class BundleModel(object):
                         "first_name": first_name,
                         "last_name": last_name,
                         "date_joined": now,
+                        "has_access": has_access,
                         "is_verified": is_verified,
                         "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
@@ -2384,6 +2397,21 @@ class BundleModel(object):
             )
 
         return True
+
+    def is_verified(self, user_id):
+        """
+        Checks if the user is verified or not.
+        :param user_id: id of the user
+        :return: boolean to indicate if the user is verified or not
+        """
+        with self.engine.begin() as connection:
+            verified_row = connection.execute(
+                cl_user.select()
+                .where(and_(cl_user.c.user_id == user_id, cl_user.c.is_verified))
+                .limit(1)
+            ).fetchone()
+
+            return verified_row is not None
 
     def new_user_reset_code(self, user_id):
         """

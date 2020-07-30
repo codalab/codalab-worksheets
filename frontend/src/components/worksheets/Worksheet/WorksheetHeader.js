@@ -26,7 +26,7 @@ export default ({
     showUploadMenu,
     closeUploadMenu,
     uploadAnchor,
-    canEdit,
+    editPermission,
     info,
     classes,
     renderPermissions,
@@ -38,7 +38,7 @@ export default ({
     showBundleOperationButtons,
     toggleCmdDialog,
     toggleCmdDialogNoEvent,
-    toggleGlossaryModal,
+    toggleInformationModal,
     copiedBundleIds,
     showPasteButton,
     toggleWorksheetSize,
@@ -58,8 +58,8 @@ export default ({
                         <h5 className='worksheet-title'>
                             {/*TODO: use html contenteditable*/}
                             <WorksheetEditableField
-                                key={'title' + canEdit}
-                                canEdit={canEdit}
+                                key={'title' + editPermission}
+                                canEdit={editPermission}
                                 fieldName='title'
                                 value={info ? info.title : 'Loading...'}
                                 uuid={info && info.uuid}
@@ -71,7 +71,7 @@ export default ({
                             {info && (
                                 <React.Fragment>
                                     <WorksheetEditableField
-                                        canEdit={canEdit}
+                                        canEdit={editPermission}
                                         fieldName='name'
                                         value={info && info.name}
                                         uuid={info && info.uuid}
@@ -117,7 +117,7 @@ export default ({
                                     &nbsp;tags:&nbsp;
                                     <div style={{ display: 'inline-block' }}>
                                         <WorksheetEditableField
-                                            canEdit={canEdit}
+                                            canEdit={editPermission}
                                             dataType='list'
                                             fieldName='tags'
                                             value={info.tags.join(' ')}
@@ -162,7 +162,11 @@ export default ({
                                 title='Shortcuts'
                                 aria-label='keyboard shortcuts'
                             >
-                                <IconButton color='inherit' href='#' onClick={toggleGlossaryModal}>
+                                <IconButton
+                                    color='inherit'
+                                    href='#'
+                                    onClick={toggleInformationModal}
+                                >
                                     <InfoIcon fontSize='small' />
                                 </IconButton>
                             </Tooltip>

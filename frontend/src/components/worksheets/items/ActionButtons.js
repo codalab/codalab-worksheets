@@ -154,7 +154,7 @@ class ActionButtons extends React.Component<{
                         toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
                     />
                 ) : null}
-                <Tooltip title='Paste copied bundles to this worksheet'>
+                <Tooltip title='Paste cut/copied bundles to this worksheet'>
                     <Button
                         size='small'
                         color='inherit'

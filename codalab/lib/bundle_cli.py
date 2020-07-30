@@ -325,7 +325,7 @@ class Commands(object):
             if verbose:
                 if markdown:
                     name = HEADING_LEVEL_3 + name
-                return '%s%s:\n%s\n%s' % (
+                return '%s%s\n%s\n%s' % (
                     # This is to make GitHub Markdown format compatible with the Read the Docs theme.
                     ' ' * indent if not markdown else '',
                     name,
@@ -354,22 +354,22 @@ class Commands(object):
                 """
         Usage: {inline_code}cl <command> <arguments>{inline_code}
 
-        {heading}Commands for bundles:
+        {heading}Commands for bundles
         {bundle_commands}
 
-        {heading}Commands for worksheets:
+        {heading}Commands for worksheets
         {worksheet_commands}
 
-        {heading}Commands for groups and permissions:
+        {heading}Commands for groups and permissions
         {group_and_permission_commands}
 
-        {heading}Commands for users:
+        {heading}Commands for users
         {user_commands}
 
-        {heading}Commands for managing server:
+        {heading}Commands for managing server
         {server_commands}
 
-        {heading}Other commands:
+        {heading}Other commands
         {other_commands}
         """
             )
@@ -600,20 +600,33 @@ class BundleCLI(object):
         Helper: target_specs is a list of strings which are [<key>]:<target>
         Returns: [(key, worker.download_util.BundleTarget), ...]
         """
-        keys = set()
+
+        def is_ancestor_or_descendant(path1, path2):
+            """
+            Return whether path1 is an ancestor of path2 or vice versa.
+            """
+            return path2.startswith(path1 + '/') or path1.startswith(path2 + '/')
+
+        keys = []
         targets = []
         target_keys_values = [parse_key_target(spec) for spec in target_specs]
         for key, target_spec in target_keys_values:
-            if key in keys:
-                if key:
-                    raise UsageError('Duplicate key: %s' % (key,))
-                else:
-                    raise UsageError('Must specify keys when packaging multiple targets!')
+            for other_key in keys:
+                if key == other_key:
+                    if key:
+                        raise UsageError('Duplicate key: %s' % (key,))
+                    else:
+                        raise UsageError('Must specify keys when packaging multiple targets!')
+                elif is_ancestor_or_descendant(key, other_key):
+                    raise UsageError(
+                        'A key cannot be an ancestor of another: {} {}'.format(key, other_key)
+                    )
+
             _, worksheet_uuid, target = self.resolve_target(
                 client, worksheet_uuid, target_spec, allow_remote=False
             )
             targets.append((key, target))
-            keys.add(key)
+            keys.append(key)
         return targets
 
     @staticmethod
@@ -1091,6 +1104,8 @@ class BundleCLI(object):
             'runs',
             'shared_file_system',
             'tag_exclusive',
+            'exit_after_num_runs',
+            'is_terminating',
         ]
 
         data = []
@@ -1110,6 +1125,8 @@ class BundleCLI(object):
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
                     'tag_exclusive': worker['tag_exclusive'],
+                    'exit_after_num_runs': worker['exit_after_num_runs'],
+                    'is_terminating': worker['is_terminating'],
                 }
             )
 
@@ -2286,7 +2303,7 @@ class BundleCLI(object):
     def print_permissions(self, info):
         print('permission: %s' % permission_str(info['permission']), file=self.stdout)
         print('group_permissions:', file=self.stdout)
-        print('  %s' % group_permissions_str(info['group_permissions']), file=self.stdout)
+        print('  %s' % group_permissions_str(info.get('group_permissions', [])), file=self.stdout)
 
     def print_contents(self, client, info):
         def wrap(string):
@@ -3329,6 +3346,7 @@ class BundleCLI(object):
         help=[
             'Append all the items of the source worksheet to the destination worksheet.',
             'Bundles that do not yet exist on the destination service will be copied over.',
+            'Bundles in non-terminal states (READY or FAILED) will not be copied over to destination worksheet.',
             'The existing items on the destination worksheet are not affected unless the -r/--replace flag is set.',
         ],
         arguments=(
@@ -3360,17 +3378,29 @@ class BundleCLI(object):
             args.dest_worksheet_spec
         )
 
+        valid_source_items = []
         # Save all items to the destination worksheet
         for item in source_items:
+            if item['type'] == worksheet_util.TYPE_BUNDLE:
+                if item['bundle']['state'] not in [State.READY, State.FAILED]:
+                    print(
+                        'Skipping bundle {} because it has non-final state {}'.format(
+                            item['bundle']['id'], item['bundle']['state']
+                        ),
+                        file=self.stdout,
+                    )
+                    continue
             item['worksheet'] = JsonApiRelationship('worksheets', dest_worksheet_uuid)
+            valid_source_items.append(item)
+
         dest_client.create(
             'worksheet-items',
-            source_items,
+            valid_source_items,
             params={'replace': args.replace, 'uuid': dest_worksheet_uuid},
         )
 
         # Copy over the bundles
-        for item in source_items:
+        for item in valid_source_items:
             if item['type'] == worksheet_util.TYPE_BUNDLE:
                 self.copy_bundle(
                     source_client,
@@ -3382,7 +3412,7 @@ class BundleCLI(object):
                 )
 
         print(
-            'Copied %s worksheet items to %s.' % (len(source_items), dest_worksheet_uuid),
+            'Copied %s worksheet items to %s.' % (len(valid_source_items), dest_worksheet_uuid),
             file=self.stdout,
         )
 
@@ -3713,12 +3743,25 @@ class BundleCLI(object):
             Commands.Argument(
                 '-d', '--disk-quota', help='Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)'
             ),
+            Commands.Argument(
+                '--grant-access',
+                action='store_true',
+                help='Grant access to the user if the CodaLab instance is in protected mode',
+            ),
+            Commands.Argument(
+                '--remove-access',
+                action='store_true',
+                help='Remove the user\'s access if the CodaLab instance is in protected mode',
+            ),
         ),
     )
     def do_uedit_command(self, args):
         """
         Edit properties of users.
         """
+        if args.grant_access and args.remove_access:
+            raise UsageError('Can\'t both grant and remove access for a user.')
+
         client = self.manager.current_client()
 
         # Build user info
@@ -3733,6 +3776,10 @@ class BundleCLI(object):
             user_info['parallel_run_quota'] = args.parallel_run_quota
         if args.disk_quota is not None:
             user_info['disk_quota'] = formatting.parse_size(args.disk_quota)
+        if args.grant_access:
+            user_info['has_access'] = True
+        if args.remove_access:
+            user_info['has_access'] = False
         if not user_info:
             raise UsageError("No fields to update.")
 
@@ -3773,7 +3820,15 @@ class BundleCLI(object):
         def print_attribute(key, user, should_pretty_print):
             # These fields will not be returned by the server if the
             # authenticated user is not root, so don't crash if you can't read them
-            if key in ('last_login', 'email', 'time', 'disk', 'parallel_run_quota'):
+            if key in (
+                'last_login',
+                'email',
+                'time',
+                'disk',
+                'parallel_run_quota',
+                'is_verified',
+                'has_access',
+            ):
                 try:
                     if key == 'time':
                         value = formatting.ratio_str(
@@ -3798,6 +3853,8 @@ class BundleCLI(object):
         default_fields = (
             'id',
             'user_name',
+            'is_verified',
+            'has_access',
             'first_name',
             'last_name',
             'affiliation',

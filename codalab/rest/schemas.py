@@ -54,7 +54,7 @@ def validate_name(name):
 
 def validate_sub_path(path):
     if not SUB_PATH_REGEX.match(path):
-        raise ValidationError('Child path must match %s, was %s' % (NAME_REGEX.pattern, path))
+        raise ValidationError('Child path must match %s, was %s' % (SUB_PATH_REGEX.pattern, path))
 
 
 def validate_ascii(value):
@@ -282,11 +282,17 @@ class AuthenticatedUserSchema(UserSchema):
     last_login = fields.LocalDateTime("%c")
 
 
+class AdminUserSchema(AuthenticatedUserSchema):
+    is_verified = fields.Bool()
+    has_access = fields.Bool()
+
+
 # Email must be updated through the /account/changeemail interface.
 # We cannot use the `dump_only` arguments to specify these filters, since
 # some users (i.e. the admin) CAN use the API to update some of these fields.
 USER_READ_ONLY_FIELDS = (
     'email',
+    'has_access',
     'time_quota',
     'parallel_run_quota',
     'time_used',

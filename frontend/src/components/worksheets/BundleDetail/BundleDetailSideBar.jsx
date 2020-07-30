@@ -27,7 +27,7 @@ class Dependency extends React.PureComponent<
   render() {
     const { bundleInfo } = this.props;
     let dependencies_table = [];
-    if (!bundleInfo.dependencies || bundleInfo.dependencies.length == 0) return <div />;
+    if (!bundleInfo.dependencies || bundleInfo.dependencies.length === 0) return <div />;
 
     bundleInfo.dependencies.forEach((dep, i) => {
         let dep_bundle_url = '/bundles/' + dep.parent_uuid;
@@ -71,7 +71,7 @@ class BundleDetailSideBar extends React.Component<
         const { bundleInfo, classes, onUpdate } = this.props;
         const { metadata, editableMetadataFields=[], metadataType } = bundleInfo;
         const hasEditPermission = bundleInfo.permission > 1;
-        const bundleState = (bundleInfo.state == 'running' &&
+        const bundleState = (bundleInfo.state === 'running' &&
 							bundleInfo.metadata.run_status != 'Running')
 					? bundleInfo.metadata.run_status
 					: bundleInfo.state;
