@@ -105,7 +105,6 @@ BUNDLE_COMMANDS = (
     'upload',
     'make',
     'run',
-    'docker',
     'edit',
     'detach',
     'rm',
