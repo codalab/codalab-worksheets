@@ -203,21 +203,6 @@ def build_bundles_document(bundle_uuids):
     return document
 
 
-@get('/bundles/locations', apply=AuthenticatedProtectedPlugin())
-def _fetch_locations():
-    """
-    Fetch locations of bundles.
-
-    Query parameters:
-    - `uuids`: List of bundle UUID's to get the locations for
-    """
-    bundle_uuids = query_get_list('uuids')
-    uuids_to_locations = {
-        uuid: local.bundle_store.get_bundle_location(uuid) for uuid in bundle_uuids
-    }
-    return dict(data=uuids_to_locations)
-
-
 @post('/bundles', apply=AuthenticatedProtectedPlugin())
 def _create_bundles():
     """
@@ -391,6 +376,21 @@ def _set_bundle_permissions():
     new_permissions = BundlePermissionSchema(strict=True, many=True).load(request.json).data
     set_bundle_permissions(new_permissions)
     return BundlePermissionSchema(many=True).dump(new_permissions).data
+
+
+@get('/bundles/locations', apply=AuthenticatedProtectedPlugin())
+def _fetch_locations():
+    """
+    Fetch locations of bundles.
+
+    Query parameters:
+    - `uuids`: List of bundle UUID's to get the locations for
+    """
+    bundle_uuids = query_get_list('uuids')
+    uuids_to_locations = {
+        uuid: local.bundle_store.get_bundle_location(uuid) for uuid in bundle_uuids
+    }
+    return dict(data=uuids_to_locations)
 
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
