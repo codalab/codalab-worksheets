@@ -206,7 +206,7 @@ def build_bundles_document(bundle_uuids):
 @get('/bundles/locations', apply=AuthenticatedProtectedPlugin())
 def _fetch_locations():
     """
-    Fetch bundle locations.
+    Fetch locations of bundles.
 
     Query parameters:
     - `uuids`: List of bundle UUID's to get the locations for
