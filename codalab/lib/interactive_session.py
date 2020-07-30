@@ -13,7 +13,7 @@ class InteractiveSession:
     Creates an interactive session by launching a Docker container with the dependencies mounted. Users can run
     commands and interact with the environment. When the user exits the interactive session, an editor pops up
     with the list of all the commands that were ran during the interactive session. The user can delete any
-    extraneous commands and do any editing (e.g., remove commands that causes errors or diagnostic commands).
+    extraneous commands and do any editing (e.g., remove commands that causes errors or add additional commands).
     When the editing is done, the official command for the bundle gets constructed.
     """
 
@@ -30,11 +30,19 @@ class InteractiveSession:
     _MAX_SESSION_TIMEOUT = 8 * 60 * 60  # 8 hours in seconds
     _NULL_BYTE = '\x00'
 
+    @staticmethod
+    def _validate_bundle_locations(bundle_locations, dependencies):
+        for _, bundle_target in dependencies:
+            if bundle_target.bundle_uuid not in bundle_locations:
+                raise RuntimeError(
+                    'Missing bundle location for bundle uuid: %s' % bundle_target.bundle_uuid
+                )
+
     def __init__(
         self,
         docker_image,
         manager=None,
-        targets=[],
+        dependencies=[],
         bundle_locations={},
         stdout=sys.stdout,
         stderr=sys.stderr,
@@ -42,7 +50,9 @@ class InteractiveSession:
         # Instantiate a CodaLabManager if one is not passed in
         self._manager = manager if manager else CodaLabManager()
         self._docker_image = docker_image
-        self._targets = targets
+
+        InteractiveSession._validate_bundle_locations(bundle_locations, dependencies)
+        self._dependencies = dependencies
         self._bundle_locations = bundle_locations
 
         self._docker_client = docker.from_env(timeout=InteractiveSession._MAX_SESSION_TIMEOUT)
@@ -76,7 +86,7 @@ class InteractiveSession:
 
         # Use a dict to keep track of volumes to mount. The key is the path on Docker and the value is the local path.
         volumes = {}
-        for key, bundle_target in self._targets:
+        for key, bundle_target in self._dependencies:
             dependency_local_path = os.path.realpath(
                 os.path.join(
                     self._bundle_locations[bundle_target.bundle_uuid], bundle_target.subpath
@@ -185,7 +195,9 @@ class InteractiveSession:
 
 def main():
     # Example usage of InteractiveSession
-    session = InteractiveSession(args.docker_image, targets=[], bundle_locations={})
+    session = InteractiveSession(
+        args.docker_image, manager=CodaLabManager(), dependencies=[], bundle_locations={}
+    )
     session.start()
     session.cleanup()
 
