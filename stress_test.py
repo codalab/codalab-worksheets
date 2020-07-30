@@ -112,9 +112,13 @@ class StressTestRunner:
         subprocess.call([self._cl, 'work', '%s::' % args.instance])
 
     def run(self):
+        print('Cleaning up stress test files from other runs...')
+        cleanup(self._cl, StressTestRunner._TAG, should_wait=False)
         print('Running stress tests...')
         self._start_heartbeat()
         self._test_large_bundle()
+        self.cleanup()
+        self._test_many_gpu_runs()
         self.cleanup()
         self._test_many_bundle_uploads()
         self.cleanup()
@@ -143,20 +147,25 @@ class StressTestRunner:
     def _heartbeat(self):
         while True:
             # Run a search in a separate thread and check if it times out or not.
-            t = Thread(target=StressTestRunner._search_failed_runs, args=(self._cl,))
+            t = Thread(target=StressTestRunner._heartbeat_cl_commands, args=(self._cl,))
             t.start()
             t.join(timeout=10)
             if t.is_alive():
                 print('Heartbeat failed. Exiting...')
                 sys.exit(1)
-            # Have heartbeat run every 5 seconds
-            time.sleep(5)
+            # Have heartbeat run every 30 seconds
+            time.sleep(30)
 
     def _test_large_bundle(self):
         self._set_worksheet('large_bundles')
         large_file = TestFile('large_file', self._args.large_file_size_gb * 1000)
         self._run_bundle([self._cl, 'upload', large_file.name()])
         large_file.delete()
+
+    def _test_many_gpu_runs(self):
+        self._set_worksheet('many_gpu_runs')
+        for _ in range(self._args.gpu_runs_count):
+            self._run_bundle([self._cl, 'run', 'echo running with a gpu...', '--request-gpus=1'])
 
     def _test_many_bundle_uploads(self):
         self._set_worksheet('many_bundle_uploads')
@@ -274,8 +283,9 @@ class StressTestRunner:
         run_command([cl, 'run', 'echo stress testing...', '--tags=%s' % StressTestRunner._TAG])
 
     @staticmethod
-    def _search_failed_runs(cl):
+    def _heartbeat_cl_commands(cl):
         run_command([cl, 'search', 'state=failed', 'created=.sort-'])
+        run_command([cl, 'workers'])
 
 
 def main():
@@ -286,14 +296,15 @@ def main():
 
     if args.heavy:
         print('Setting the heavy configuration...')
-        args.large_file_size_gb = 20
-        args.bundle_upload_count = 1000
-        args.create_worksheet_count = 1000
+        args.large_file_size_gb = 10
+        args.gpu_runs_count = 50
+        args.bundle_upload_count = 500
+        args.create_worksheet_count = 500
         args.parallel_runs_count = 500
-        args.large_docker_runs_count = 2000
-        args.test_infinite_memory = True
-        args.test_infinite_gpu = True
-        args.infinite_gpu_runs_count = 100
+        args.large_docker_runs_count = 100
+        args.test_infinite_memory = False
+        args.test_infinite_gpu = False
+        args.infinite_gpu_runs_count = 0
         # TODO: It is a known issue that writing to disk with dd will cause the worker to go down.
         # Disable these tests until we can fix this problem.
         # Issue: https://github.com/codalab/codalab-worksheets/issues/1919
@@ -352,6 +363,12 @@ if __name__ == '__main__':
         '--large-file-size-gb',
         type=int,
         help='Size of large file in GB for single upload (defaults to 1)',
+        default=1,
+    )
+    parser.add_argument(
+        '--gpu-runs-count',
+        type=int,
+        help='Number of runs that request a GPU (defaults to 1)',
         default=1,
     )
     parser.add_argument(
