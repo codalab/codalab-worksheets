@@ -1,4 +1,5 @@
 import http.client
+import json
 import logging
 import mimetypes
 import os
@@ -200,6 +201,21 @@ def build_bundles_document(bundle_uuids):
             json_api_include(document, WorksheetSchema(), bundle.get('host_worksheets', []))
 
     return document
+
+
+@get('/bundles/locations', apply=AuthenticatedProtectedPlugin())
+def _fetch_locations():
+    """
+    Fetch bundle locations.
+
+    Query parameters:
+    - `uuids`: List of bundle UUID's to get the locations for
+    """
+    bundle_uuids = query_get_list('uuids')
+    uuids_to_locations = {
+        uuid: local.bundle_store.get_bundle_location(uuid) for uuid in bundle_uuids
+    }
+    return dict(data=uuids_to_locations)
 
 
 @post('/bundles', apply=AuthenticatedProtectedPlugin())

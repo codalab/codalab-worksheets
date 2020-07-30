@@ -1625,10 +1625,13 @@ class BundleCLI(object):
         metadata = self.get_missing_metadata(RunBundle, args)
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
 
-        # TODO: check if shared filesystem -Tony
         if args.interactive:
             # Disable cl run --interactive on headless systems
             self._fail_if_headless(args)
+
+            # Fetch bundle locations from the server
+            bundle_uuids = [bundle_target.bundle_uuid for _, bundle_target in targets]
+            bundles_locations = client.get_bundles_locations(bundle_uuids)
 
             docker_image = metadata.get('request_docker_image', None)
             if not docker_image:
@@ -1636,7 +1639,7 @@ class BundleCLI(object):
                 docker_image = self.manager.config['workers']['default_cpu_image']
 
             # Start an interactive session to allow users to figure out the command to run
-            session = InteractiveSession(docker_image, self.manager, targets)
+            session = InteractiveSession(docker_image, self.manager, targets, bundles_locations)
             command = session.start()
             session.cleanup()
         else:

@@ -31,12 +31,19 @@ class InteractiveSession:
     _NULL_BYTE = '\x00'
 
     def __init__(
-        self, docker_image, manager=None, targets=[], stdout=sys.stdout, stderr=sys.stderr
+        self,
+        docker_image,
+        manager=None,
+        targets=[],
+        bundle_locations={},
+        stdout=sys.stdout,
+        stderr=sys.stderr,
     ):
         # Instantiate a CodaLabManager if one is not passed in
         self._manager = manager if manager else CodaLabManager()
         self._docker_image = docker_image
         self._targets = targets
+        self._bundle_locations = bundle_locations
 
         self._docker_client = docker.from_env(timeout=InteractiveSession._MAX_SESSION_TIMEOUT)
         self._session_uuid = generate_uuid()
@@ -64,22 +71,38 @@ class InteractiveSession:
         return self._construct_final_command()
 
     def get_docker_run_command(self):
-        bundle_store = self._manager.bundle_store()
-        dependencies_arguments = []
-        for key, bundle_target in self._targets:
-            dependency_path_local = os.path.join(
-                bundle_store.get_bundle_location(bundle_target.bundle_uuid), bundle_target.subpath
-            )
-            dependency_path_on_docker = os.path.sep + os.path.join(self._session_uuid, key)
-            dependencies_arguments.append(
-                # Example: -v local_path/some_folder:/0x707e903500e54bcf9b072ac7e3f5ed36_dependencies/foo:ro
-                '-v {}:{}:ro'.format(dependency_path_local, dependency_path_on_docker)
-            )
+        def get_docker_path(sub_path):
+            return os.path.sep + os.path.join(self._session_uuid, sub_path)
 
-        # Create a Docker container for this interactive session
+        # Use a dict to keep track of volumes to mount. The key is the path on Docker and the value is the local path.
+        volumes = {}
+        for key, bundle_target in self._targets:
+            dependency_local_path = os.path.realpath(
+                os.path.join(
+                    self._bundle_locations[bundle_target.bundle_uuid], bundle_target.subpath
+                )
+            )
+            if key == '.':
+                if not os.path.isdir(dependency_local_path):
+                    raise RuntimeError(
+                        'Key value . is not compatible with non-directories: %s'
+                        % dependency_local_path
+                    )
+
+                for child in os.listdir(dependency_local_path):
+                    volumes[get_docker_path(child)] = os.path.join(dependency_local_path, child)
+            else:
+                volumes[get_docker_path(key)] = dependency_local_path
+
         name = self._get_container_name()
         command = ['docker run', '-it', f'--name {name}', f'-w {os.path.sep}{self._session_uuid}']
-        command.extend(dependencies_arguments)
+        command.extend(
+            [
+                # Example: -v local_path/some_folder:/0x707e903500e54bcf9b072ac7e3f5ed36_dependencies/foo:ro
+                '-v {}:{}:ro'.format(local_path, docker_path)
+                for docker_path, local_path in volumes.items()
+            ]
+        )
         command.append(self._docker_image)
         command.append('bash')
         return ' '.join(command)
@@ -89,10 +112,10 @@ class InteractiveSession:
         self._container.stop()
         self._container.remove()
         shutil.rmtree(self._bundle_path, ignore_errors=True)
-        print('Done.\n\n', file=self._stdout)
+        print('Done.\n', file=self._stdout)
 
     def _start_session(self, docker_command):
-        # Runs the Docker command
+        # Create a Docker container for this interactive session
         os.system(docker_command)
 
         # Find the newly created Docker container by name and return it
@@ -162,7 +185,7 @@ class InteractiveSession:
 
 def main():
     # Example usage of InteractiveSession
-    session = InteractiveSession(args.docker_image, targets=[])
+    session = InteractiveSession(args.docker_image, targets=[], bundle_locations={})
     session.start()
     session.cleanup()
 
