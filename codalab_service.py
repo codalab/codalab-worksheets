@@ -297,7 +297,7 @@ CODALAB_ARGUMENTS = [
     ),
     CodalabArg(
         name='link_mounts',
-        help='Comma-separated list of directories that are mounted on the CodaLab server, allowing their contents to be used in the --link argument.',
+        help='Comma-separated list of directories that are mounted on the REST server, allowing their contents to be used in the --link argument.',
     ),
     ### Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
