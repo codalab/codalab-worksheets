@@ -22,6 +22,7 @@ from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
+from codalab_service import var_path
 
 import argparse
 import json
@@ -1209,11 +1210,16 @@ def test(ctx):
     _run_command([cl, 'cat', uuid], 1)
 
     # Upload file
-    # We create the file at /opt/codalab-worksheets-link-mounts/tmp because this test is running
-    # inside a Docker container (so the host directory /tmp is mounted at /opt/codalab-worksheets-link-mounts/tmp).
+    # var_path('link-mounts') is the absolute path of the link mounts folder on the host. By default, it is mounted
+    # when no other argument for CODALAB_LINK_MOUNTS is specified. For example, it might be equal to
+    # /Users/epicfaace/codalab/codalab-worksheets/var/codalab/link-mounts.
+    # 
+    # We create the temporary file at /opt/codalab-worksheets-link-mounts/{var_path('link-mounts')} because
+    # this test is running inside a Docker container (so the host directory /{var_path('link-mounts')} is
+    # mounted at /opt/codalab-worksheets-link-mounts/{var_path('link-mounts')}).
 
     with tempfile.NamedTemporaryFile(
-        mode='w', dir='/opt/codalab-worksheets-link-mounts/tmp', suffix=".txt", delete=False
+        mode='w', dir='/opt/codalab-worksheets-link-mounts/' + var_path('link-mounts'), suffix=".txt", delete=False
     ) as f:
         f.write("hello world!")
     _, host_filename = f.name.split("/opt/codalab-worksheets-link-mounts")
@@ -1230,7 +1236,7 @@ def test(ctx):
     os.remove(f.name)
 
     # Upload directory
-    with tempfile.TemporaryDirectory(dir='/opt/codalab-worksheets-link-mounts/tmp') as dirname:
+    with tempfile.TemporaryDirectory(dir='/opt/codalab-worksheets-link-mounts/' + var_path('link-mounts')) as dirname:
         with open(os.path.join(dirname, "test.txt"), "w+") as f:
             f.write("hello world!")
 

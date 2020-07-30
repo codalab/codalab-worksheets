@@ -30,7 +30,7 @@ cl upload /u/nlp/data/a.txt
 
 ### Server setup
 
-For security reasons, the `--link` argument is not enabled by default on CodaLab installations. In order to enable it, set either the `CODALAB_LINK_MOUNTS` environment variable or the `--link_mounts` command-line parameter to `codalab_service.py` on the server.
+In order to use `--link` with an existing filesystem, set either the `CODALAB_LINK_MOUNTS` environment variable or the `--link_mounts` command-line parameter to `codalab_service.py` on the server.
 
 This variable must be equal to a file path on the server that will be mounted onto the CodaLab server Docker container so it can access them. To specify multiple file paths to be mounted, separate these file paths with a comma.
 
@@ -39,6 +39,8 @@ For example, in order to restrict all possible linked paths to files inside the 
 ```bash
 CODALAB_LINK_MOUNTS=/u/nlp/data,/u/nlp/output python codalab_service.py
 ```
+
+If this argument is not specified, the `link-mounts` directory in `var_path` (for example, `var/codalab/link-mounts`) will be mounted by default.
 
 ### Design
 
