@@ -120,35 +120,30 @@ include the worker too for uniformity).
 
 ## Website
 
-Note (2019-07-08): we are in the process of a major frontend refactor.  The
-real frontend is on the [frontend
-branch](https://github.com/codalab/codalab-worksheets/tree/frontend).  The
-frontend is in React and [Material UI](https://material-ui.com/).
+The frontend is what is actually deployed to [https://worksheets.codalab.org](https://worksheets.codalab.org). It uses React and [Material UI](https://material-ui.com/).
 
-Notes: we are still using CSS and jquery due to unfortunate legacy issues, but the plan is to get rid of this.
-The components are in
-[src/components](https://github.com/codalab/codalab-worksheets/tree/frontend/frontend/src/components).
+The major components are in
+[src/components](https://github.com/codalab/codalab-worksheets/tree/master/frontend/src/components).
+
 The main pages are:
 
 - Home page
   ([HomePage.js](https://github.com/codalab/codalab-worksheets/blob/master/frontend/src/routes/HomePage.js)):
   landing page.
 - Worksheet view
-  ([Worksheet.js](https://github.com/codalab/codalab-worksheets/blob/master/frontend/src/components/worksheets/Worksheet.js)):
-  this is by far the most complicated and most of the time the user is on this
-  page.  This page has to allow you to render and edit worksheets as well as
-  the bundles inside them.
+  ([Worksheet.js](https://github.com/codalab/codalab-worksheets/blob/master/frontend/src/components/worksheets/Worksheet/Worksheet.js)): the page that allows users to render and edit worksheets as well as
+  the bundles inside them. Most of the time the user spends is on this page.
 - Bundle view
-  ([Bundle.js](https://github.com/codalab/codalab-worksheets/blob/master/frontend/src/components/Bundle.js)):
-  just show information about a bundle.
+  ([Bundle.js](https://github.com/codalab/codalab-worksheets/blob/master/frontend/src/components/Bundle/Bundle.js)): refers
+  to the page that shows information about a bundle
 
 Many of the calls from the website to the REST server are through a mega REST
 endpoint
 ([rest/cli.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/rest/cli.py)).
-This seems a bit roundabout, but the rationale is to have a common way
+This seems a bit roundabout, but the rationale is to have a common way of
 performing actions on CodaLab, and this gives the opportunity for people using
 the frontend to be educated about the CLI (since commands for creating new
-worksheets, runs, etc.) are converted into CLI commands.
+worksheets, runs, etc. are converted into CLI commands).
 
 # Worker system
 
