@@ -658,7 +658,7 @@ class JsonApiClient(RestClient):
                 progress_callback=progress_callback,
             )
 
-    @wrap_exception('Unable to get location of bundles')
+    @wrap_exception('Unable to get the locations of bundles')
     def get_bundles_locations(self, bundle_uuids):
         response = self._make_request(
             method='GET',
