@@ -15,6 +15,20 @@ class InteractiveSession:
     with the list of all the commands that were ran during the interactive session. The user can delete any
     extraneous commands and do any editing (e.g., remove commands that causes errors or add additional commands).
     When the editing is done, the official command for the bundle gets constructed.
+
+    Workflow:
+
+        1. The user starts an interactive session with the desired Docker image and dependencies.
+        2. Create a Docker container with the specified image on the client machine for the interactive session.
+        3. Mount the dependencies as read-only.
+        4. Set working directory to some arbitrary path: `/<session uuid>`
+        5. The user will interact with this container and try out different commands. Once satisfied the user will
+           exit the bash session. All the commands the user tried out will be stored at path `/root/.bash_history`
+           in the container.
+        6. Copy `.bash_history` out to the host machine.
+        7. Open an editor and allow the user to select and edit commands for the official run.
+        8. Return the final command.
+        9. Stop and remove the interactive session container.
     """
 
     _BASH_HISTORY_CONTAINER_PATH = '/root/.bash_history'
@@ -179,7 +193,7 @@ class InteractiveSession:
             f.write(chunk)
         f.close()
 
-        # Extract out a list of commands from the .bash_history file
+        # Extract out a list of commands from .bash_history
         commands = []
         with open(path) as f:
             for i, line in enumerate(f):
