@@ -529,6 +529,43 @@ class Worksheet extends React.Component {
         });
     };
 
+    updateBundleBlockSchema = (newSchemaName, mode, firstBundleSourceIndex) => {
+        // newSchemaName: new schema name to be used
+        // mode: table or record mode
+        // firstBundleSourceIndex: the source index of the first bundle of the block
+        //     It should be 1 for the following example
+        //                  0 % display table abc
+        //                  1 []{0x1234}
+        let source = this.state.ws.info.source;
+        let newDisplay = '% display ' + mode + ' ' + newSchemaName;
+        // First check if the line above firstBundleSourceIndex is a % display directive.
+        // If it is, we replace that line with % display <mode> <schema name>
+        // otherwise we add % display <mode> <schema name> above the firstBundleSourceIndex
+        let lineAbove = firstBundleSourceIndex > 0 ? source[firstBundleSourceIndex - 1] : '';
+        let updatedSource = [];
+        if (lineAbove.startsWith('% display')) {
+            // replace the line above
+            Object.assign(updatedSource, source, { [firstBundleSourceIndex - 1]: newDisplay });
+        } else {
+            // insert above firstBundleSourceIndex
+            Object.assign(updatedSource, source.slice(0, firstBundleSourceIndex));
+            updatedSource.push(newDisplay);
+            updatedSource.push(...source.slice(firstBundleSourceIndex));
+        }
+        this.setState(
+            {
+                ws: {
+                    ...this.state.ws,
+                    info: {
+                        ...this.state.ws.info,
+                        source: updatedSource,
+                    },
+                },
+            },
+            this.saveAndUpdateWorksheet,
+        );
+    };
+
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
         // prevent multiple clicking from resetting the index
@@ -1564,6 +1601,7 @@ class Worksheet extends React.Component {
                 addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
                 onAsyncItemLoad={this.onAsyncItemLoad}
                 itemHeights={this.state.itemHeights}
+                updateBundleBlockSchema={this.updateBundleBlockSchema}
             />
         );
 

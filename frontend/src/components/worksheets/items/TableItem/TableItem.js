@@ -9,6 +9,11 @@ import BundleRow from './BundleRow';
 import { getIds } from '../../../../util/worksheet_utils';
 import { fetchAsyncBundleContents } from '../../../../util/async_loading_utils';
 import { FETCH_STATUS_SCHEMA } from '../../../../constants';
+import ViewListIcon from '@material-ui/icons/ViewList';
+import IconButton from '@material-ui/core/IconButton';
+import SaveIcon from '@material-ui/icons/Save';
+import RestoreIcon from '@material-ui/icons/Restore';
+import TextField from '@material-ui/core/TextField';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -28,6 +33,8 @@ class TableItem extends React.Component<{
             childrenCheckState: new Array(this.props.item.rows.length).fill(false),
             numSelectedChild: 0,
             indeterminateCheckState: false,
+            curSchemaNames: this.props.item.using_schemas.join(' '),
+            openSchemaTextBox: false,
         };
         this.copyCheckedBundleRows = this.copyCheckedBundleRows.bind(this);
     }
@@ -56,6 +63,14 @@ class TableItem extends React.Component<{
                 childrenCheckState: childrenStatus,
                 indeterminateCheckState: false,
                 checked: false,
+            });
+        }
+        // If the schema was changed through editing source
+        let prevSchemas = prevProps.item.using_schemas.join(' ');
+        let newSchemas = this.props.item.using_schemas.join(' ');
+        if (prevSchemas !== newSchemas) {
+            this.setState({
+                curSchemaNames: newSchemas,
             });
         }
     }
@@ -101,33 +116,50 @@ class TableItem extends React.Component<{
         this.props.setFocus(this.props.focusIndex, rowIndex);
     };
 
+    changeSchemaName = (e) => {
+        this.setState({ curSchemaNames: e.target.value.replace(/\n/g, ' ') });
+    };
+
     render() {
         const { worksheetUUID, setFocus, editPermission } = this.props;
+
         // Provide copy data callback
         this.props.addCopyBundleRowsCallback(this.props.itemID, this.copyCheckedBundleRows);
-        var tableClassName = this.props.focused ? 'table focused' : 'table';
-        var item = this.props.item;
-        var bundleInfos = item.bundles_spec.bundle_infos;
-        var headerItems = item.header;
-        var headerHtml = headerItems.map((item, index) => {
+        let tableClassName = this.props.focused ? 'table focused' : 'table';
+        let item = this.props.item;
+        let bundleInfos = item.bundles_spec.bundle_infos;
+        let headerItems = item.header;
+        let headerHtml = headerItems.map((item, index) => {
             return (
                 <TableCell
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
-                    style={index === 0 ? { paddingLeft: '70px' } : {}}
+                    style={index === 0 ? { paddingLeft: editPermission ? '30px' : '70px' } : {}}
                 >
+                    {editPermission && index === 0 && (
+                        <IconButton>
+                            <ViewListIcon
+                                style={{ padding: '0px' }}
+                                onClick={() => {
+                                    this.setState({
+                                        openSchemaTextBox: !this.state.openSchemaTextBox,
+                                    });
+                                }}
+                            />
+                        </IconButton>
+                    )}
                     {item}
                 </TableCell>
             );
         });
-        var rowItems = item.rows; // Array of {header: value, ...} objects
-        var columnWithHyperlinks = [];
+        let rowItems = item.rows; // Array of {header: value, ...} objects
+        let columnWithHyperlinks = [];
         Object.keys(rowItems[0]).forEach(function(x) {
             if (rowItems[0][x] && rowItems[0][x]['path']) columnWithHyperlinks.push(x);
         });
-        var bodyRowsHtml = rowItems.map((rowItem, rowIndex) => {
+        let bodyRowsHtml = rowItems.map((rowItem, rowIndex) => {
             let bundleInfo = bundleInfos[rowIndex];
             let rowRef = 'row' + rowIndex;
             let rowFocused = this.props.focused && rowIndex === this.props.subFocusIndex;
@@ -199,6 +231,56 @@ class TableItem extends React.Component<{
                                 {headerHtml}
                             </TableRow>
                         </TableHead>
+                        {this.state.openSchemaTextBox && (
+                            <TableRow
+                                style={{
+                                    borderBottom: '2px solid #DEE2E6',
+                                }}
+                            >
+                                <TableCell colSpan='100%'>
+                                    <TextField
+                                        variant='outlined'
+                                        multiline
+                                        value={this.state.curSchemaNames || ''}
+                                        onChange={this.changeSchemaName}
+                                        placeholder={'Using default schema'}
+                                    ></TextField>
+                                    <IconButton
+                                        onClick={() => {
+                                            this.setState({ openSchemaTextBox: false });
+                                            this.props.updateBundleBlockSchema(
+                                                this.state.curSchemaNames,
+                                                'table',
+                                                this.props.item.first_bundle_source_index,
+                                            );
+                                        }}
+                                        disabled={
+                                            this.state.curSchemaNames ===
+                                            this.props.item.using_schemas.join(' ')
+                                        }
+                                        style={{ marginTop: '10px' }}
+                                    >
+                                        <SaveIcon />
+                                    </IconButton>
+                                    <IconButton
+                                        onClick={() => {
+                                            this.setState({
+                                                curSchemaNames: this.props.item.using_schemas.join(
+                                                    ' ',
+                                                ),
+                                            });
+                                        }}
+                                        disabled={
+                                            this.state.curSchemaNames ===
+                                            this.props.item.using_schemas.join(' ')
+                                        }
+                                        style={{ marginTop: '10px' }}
+                                    >
+                                        <RestoreIcon />
+                                    </IconButton>
+                                </TableCell>
+                            </TableRow>
+                        )}
                         {bodyRowsHtml}
                     </Table>
                 </TableContainer>
