@@ -149,7 +149,7 @@ class InteractiveSession:
             )
             return ''
 
-        # Write out commands to choose from plus the instructions out to a file
+        # Write out the commands to choose from and the instructions out to a file
         path = os.path.join(self._bundle_path, 'edit_commands.txt')
         with open(path, 'w') as f:
             for command in candidate_commands:
@@ -159,7 +159,7 @@ class InteractiveSession:
         # Use vi to allow users to choose commands
         os.system('vi %s' % path)
 
-        # Extract out final commands minus the instructions
+        # Extract out the final commands minus the instructions
         commands = []
         for line in open(path).read().splitlines():
             command = line.lstrip().rstrip()
@@ -171,7 +171,7 @@ class InteractiveSession:
         return final_command
 
     def _get_bash_history(self):
-        # Copies .bash_history from the container to a new file .bash_history in bundle_path
+        # Copies out .bash_history from the container to bundle_path
         path = os.path.join(self._bundle_path, '.bash_history')
         f = open(path, 'wb')
         stream, _ = self._container.get_archive(InteractiveSession._BASH_HISTORY_CONTAINER_PATH)
@@ -179,7 +179,7 @@ class InteractiveSession:
             f.write(chunk)
         f.close()
 
-        # Extract a list of commands from the .bash_history file that was copied out of the container
+        # Extract out a list of commands from the .bash_history file
         commands = []
         with open(path) as f:
             for i, line in enumerate(f):
