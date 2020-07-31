@@ -148,11 +148,14 @@ class InteractiveSession:
         return ' '.join(command)
 
     def cleanup(self):
-        print('\nCleaning up the session...', file=self._stdout)
+        if self._verbose:
+            print('\nCleaning up the session...', file=self._stdout)
+
         self._container.stop()
         self._container.remove()
         shutil.rmtree(self._bundle_path, ignore_errors=True)
-        print('Done.\n', file=self._stdout)
+        if self._verbose:
+            print('Done.\n', file=self._stdout)
 
     def _start_session(self, docker_command):
         # Create a Docker container for this interactive session
@@ -197,7 +200,8 @@ class InteractiveSession:
                 commands.append(command)
 
         final_command = '\n'.join(commands)
-        print('\nFinal constructed command:\n%s' % final_command, file=self._stdout)
+        if final_command:
+            print('\nFinal constructed command:\n%s' % final_command, file=self._stdout)
         return final_command
 
     def _get_bash_history(self):
