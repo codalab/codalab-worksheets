@@ -1639,7 +1639,9 @@ class BundleCLI(object):
                 docker_image = self.manager.config['workers']['default_cpu_image']
 
             # Start an interactive session to allow users to figure out the command to run
-            session = InteractiveSession(docker_image, self.manager, targets, bundles_locations)
+            session = InteractiveSession(
+                docker_image, self.manager, targets, bundles_locations, args.verbose
+            )
             command = session.start()
             session.cleanup()
         else:

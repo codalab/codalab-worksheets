@@ -59,6 +59,7 @@ class InteractiveSession:
         manager=None,
         dependencies=[],
         bundle_locations={},
+        verbose=False,
         stdout=sys.stdout,
         stderr=sys.stderr,
     ):
@@ -72,6 +73,8 @@ class InteractiveSession:
 
         self._docker_client = docker.from_env(timeout=InteractiveSession._MAX_SESSION_TIMEOUT)
         self._session_uuid = generate_uuid()
+
+        self._verbose = verbose
         self._stdout = stdout
         self._stderr = stderr
 
@@ -82,15 +85,17 @@ class InteractiveSession:
         os.makedirs(self._bundle_path)
 
         run_command = self.get_docker_run_command()
-        print('\nStarting an interactive session...', file=self._stdout)
-        print('%s\n' % run_command, file=self._stdout)
-        print('=' * 150, file=self._stdout)
-        print('Session UUID:', self._session_uuid, file=self._stdout)
-        print('CodaLab instance:', self._manager.current_client().address, file=self._stdout)
-        print('Container name:', self._get_container_name(), file=self._stdout)
-        print('Container Docker image:', self._docker_image, file=self._stdout)
-        print('You can find local bundle contents at:', self._bundle_path, file=self._stdout)
-        print('=' * 150 + '\n', file=self._stdout)
+
+        if self._verbose:
+            print('\nStarting an interactive session...', file=self._stdout)
+            print('%s\n' % run_command, file=self._stdout)
+            print('=' * 150, file=self._stdout)
+            print('Session UUID:', self._session_uuid, file=self._stdout)
+            print('CodaLab instance:', self._manager.current_client().address, file=self._stdout)
+            print('Container name:', self._get_container_name(), file=self._stdout)
+            print('Container Docker image:', self._docker_image, file=self._stdout)
+            print('You can find local bundle contents at:', self._bundle_path, file=self._stdout)
+            print('=' * 150 + '\n', file=self._stdout)
 
         self._container = self._start_session(run_command)
         return self._construct_final_command()
