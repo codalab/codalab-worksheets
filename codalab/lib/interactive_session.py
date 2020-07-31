@@ -101,6 +101,16 @@ class InteractiveSession:
         return self._construct_final_command()
 
     def get_docker_run_command(self):
+        """
+        Constructs the Docker run command used to start the interactive session.
+
+        TODO: The logic in this method is similar to the dependencies mounting logic in worker_run_state.py.
+              This code needs to be updated if there are any changes to the mounting logic in the worker code.
+              Also, we should refactor in order to reduce the redundancy with the worker code.
+
+        :return: The command as a string
+        """
+
         def get_docker_path(sub_path):
             return os.path.sep + os.path.join(self._session_uuid, sub_path)
 
