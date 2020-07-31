@@ -68,7 +68,7 @@ Usage: `cl <command> <arguments>`
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
       -v, --verbose                Display verbose output.
-      --interactive                Beta feature - Start an interactive session to construct your run command.
+      -i, --interactive            Beta feature - Start an interactive session to construct your run command.
 
 ### edit (e)
     Edit an existing bundle's metadata.

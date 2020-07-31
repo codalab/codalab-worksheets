@@ -1,3 +1,4 @@
+from codalab.lib.editor_util import find_default_editor
 from codalab.lib.spec_util import generate_uuid
 from codalab.lib.codalab_manager import CodaLabManager
 
@@ -33,14 +34,14 @@ class InteractiveSession:
 
     _BASH_HISTORY_CONTAINER_PATH = '/root/.bash_history'
     _CHOOSE_COMMAND_INSTRUCTIONS = (
-        "\n\n@@\n"
-        "@@ Choose the commands to use for cl run:\n"
-        "@@\n"
-        "@@ 1. Delete the lines of any unwanted commands.\n"
-        "@@ 2. Add any additional commands on a new line above these instructions.\n"
-        "@@\n"
+        "\n\n#\n"
+        "# Choose the commands to use for cl run:\n"
+        "#\n"
+        "# 1. Delete the lines of any unwanted commands.\n"
+        "# 2. Add any additional commands on a new line above these instructions.\n"
+        "#\n"
     )
-    _INSTRUCTIONS_DELIMITER = '@@'
+    _INSTRUCTIONS_DELIMITER = '#'
     _MAX_SESSION_TIMEOUT = 8 * 60 * 60  # 8 hours in seconds
     _NULL_BYTE = '\x00'
 
@@ -84,11 +85,11 @@ class InteractiveSession:
         print('\nStarting an interactive session...', file=self._stdout)
         print('%s\n' % run_command, file=self._stdout)
         print('=' * 150, file=self._stdout)
-        print('Session UUID: ', self._session_uuid, file=self._stdout)
-        print('CodaLab instance: ', self._manager.current_client().address, file=self._stdout)
-        print('Container name: ', self._get_container_name(), file=self._stdout)
-        print('Container Docker image: ', self._docker_image, file=self._stdout)
-        print('You can find local bundle contents at: ', self._bundle_path, file=self._stdout)
+        print('Session UUID:', self._session_uuid, file=self._stdout)
+        print('CodaLab instance:', self._manager.current_client().address, file=self._stdout)
+        print('Container name:', self._get_container_name(), file=self._stdout)
+        print('Container Docker image:', self._docker_image, file=self._stdout)
+        print('You can find local bundle contents at:', self._bundle_path, file=self._stdout)
         print('=' * 150 + '\n', file=self._stdout)
 
         self._container = self._start_session(run_command)
@@ -170,8 +171,8 @@ class InteractiveSession:
                 f.write(command)
             f.write(InteractiveSession._CHOOSE_COMMAND_INSTRUCTIONS)
 
-        # Use vi to allow users to choose commands
-        os.system('vi %s' % path)
+        # Open an editor to allow users to choose commands
+        os.system('{} {}'.format(find_default_editor(), path))
 
         # Extract out the final commands minus the instructions
         commands = []
@@ -180,7 +181,7 @@ class InteractiveSession:
             if command and not command.startswith(InteractiveSession._INSTRUCTIONS_DELIMITER):
                 commands.append(command)
 
-        final_command = '&&'.join(commands)
+        final_command = '\n'.join(commands)
         print('\nFinal constructed command:\n%s' % final_command, file=self._stdout)
         return final_command
 
