@@ -56,6 +56,7 @@ class InteractiveSession:
     def __init__(
         self,
         docker_image,
+        initial_command="",
         manager=None,
         dependencies=[],
         bundle_locations={},
@@ -66,6 +67,7 @@ class InteractiveSession:
         # Instantiate a CodaLabManager if one is not passed in
         self._manager = manager if manager else CodaLabManager()
         self._docker_image = docker_image
+        self._initial_command = initial_command
 
         InteractiveSession._validate_bundle_locations(bundle_locations, dependencies)
         self._dependencies = dependencies
@@ -181,6 +183,10 @@ class InteractiveSession:
                 file=self._stderr,
             )
             return ''
+
+        # If a user passed in an initial command, prepend it to list of possible commands to choose from
+        if self._initial_command:
+            candidate_commands.insert(0, self._initial_command + '\n')
 
         # Write out the commands to choose from and the instructions out to a file
         path = os.path.join(self._bundle_path, 'edit_commands.txt')

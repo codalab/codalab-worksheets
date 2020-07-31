@@ -1640,7 +1640,7 @@ class BundleCLI(object):
 
             # Start an interactive session to allow users to figure out the command to run
             session = InteractiveSession(
-                docker_image, self.manager, targets, bundles_locations, args.verbose
+                docker_image, args.command, self.manager, targets, bundles_locations, args.verbose
             )
             command = session.start()
             session.cleanup()
