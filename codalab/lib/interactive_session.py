@@ -207,7 +207,7 @@ class InteractiveSession:
 
         final_command = '\n'.join(commands)
         if final_command:
-            print('\nFinal constructed command:\n%s\n' % final_command, file=self._stdout)
+            print('\nFinal constructed command:\n{}\n'.format(final_command), file=self._stdout)
         return final_command
 
     def _get_bash_history(self):
