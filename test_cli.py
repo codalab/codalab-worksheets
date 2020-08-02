@@ -18,7 +18,7 @@ Things not tested:
 
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
-from typing import Dict, Any
+from typing import Dict
 
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
@@ -388,7 +388,7 @@ class TestModule(object):
     a decorator to register new modules and a class method to run modules by name.
     """
 
-    modules: Dict[str, Any] = OrderedDict()
+    modules = OrderedDict()  # type: Dict[str, 'TestModule']
 
     def __init__(self, name, func, description, default):
         self.name = name

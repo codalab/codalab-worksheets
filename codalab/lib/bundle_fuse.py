@@ -8,7 +8,7 @@ import time
 from collections import OrderedDict
 
 from contextlib import closing
-from typing import Dict, Any
+from typing import Dict
 
 from codalab.worker.download_util import BundleTarget
 
