@@ -8,13 +8,16 @@ import traceback
 import socket
 import http.client
 import sys
+from typing import Optional, Set, Dict
 
 import psutil
 
 import docker
 import codalab.worker.docker_utils as docker_utils
 
-from .bundle_service_client import BundleServiceException
+from .bundle_service_client import BundleServiceException, BundleServiceClient
+from .dependency_manager import DependencyManager
+from .docker_image_manager import DockerImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
 from .bundle_state import BundleInfo, RunResources, BundleCheckinState
