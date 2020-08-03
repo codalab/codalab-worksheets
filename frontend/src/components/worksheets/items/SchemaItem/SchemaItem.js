@@ -79,17 +79,17 @@ class SchemaItem extends React.Component<{
                 fromAddSchema = false;
             }
 
-            let curRow = '% add ' + fields['field'];
+            let curRow = "% add '" + fields['field'] + "'";
             if (!fields['generalized-path']) {
                 updatedSchema.push(curRow);
                 return;
             }
-            curRow = curRow + ' ' + fields['generalized-path'];
+            curRow = curRow + " '" + fields['generalized-path'] + "'";
             if (!fields['post-processor']) {
                 updatedSchema.push(curRow);
                 return;
             }
-            curRow = curRow + ' ' + fields['post-processor'];
+            curRow = curRow + " '" + fields['post-processor'] + "'";
             updatedSchema.push(curRow);
         });
         this.props.updateSchemaItem(
@@ -116,13 +116,18 @@ class SchemaItem extends React.Component<{
         if (!this.props.editPermission) return;
         const { rows } = this.state;
         let copiedRows = [...rows];
-        copiedRows.splice(idx, 1, { ...rows[idx], [key]: e.target.value.replace(/\s/g, '') });
+        // replace new line with space, remove single quotes since we use that to quote fields with space when saving
+        copiedRows.splice(idx, 1, {
+            ...rows[idx],
+            [key]: e.target.value.replace(/\n/g, ' ').replace("'", ''),
+        });
         this.setState({ rows: [...copiedRows] });
     };
 
     changeSchemaName = (e) => {
         if (!this.props.editPermission) return;
-        this.setState({ curSchemaName: e.target.value.replace(/\s/g, '') });
+        // replace new line with space, remove single quotes since we use that to quote fields with space when saving
+        this.setState({ curSchemaName: e.target.value.replace(/\n/g, ' ').replace("'", '') });
     };
 
     checkIfTextChanged = () => {
@@ -387,7 +392,11 @@ class SchemaItem extends React.Component<{
                 'keydown',
             );
             Mousetrap.bindGlobal(['ctrl+enter'], () => {
-                if (this.state.curSchemaName === '' || !this.checkIfTextChanged()) return;
+                if (
+                    this.state.curSchemaName === '' ||
+                    (!this.checkIfTextChanged() && this.state.curSchemaName === schemaName)
+                )
+                    return;
                 this.saveSchema();
                 Mousetrap.unbindGlobal(['ctrl+enter']);
             });
