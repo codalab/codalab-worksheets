@@ -18,6 +18,8 @@ Things not tested:
 
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
+from typing import Dict, Any
+
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
@@ -386,7 +388,7 @@ class TestModule(object):
     a decorator to register new modules and a class method to run modules by name.
     """
 
-    modules = OrderedDict()
+    modules: Dict[str, Any] = OrderedDict()
 
     def __init__(self, name, func, description, default):
         self.name = name

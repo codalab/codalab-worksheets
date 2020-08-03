@@ -30,6 +30,7 @@ from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
 from shlex import quote
+from typing import Dict
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -227,8 +228,6 @@ class Commands(object):
     for building parsers and actions etc.
     """
 
-    commands = {}
-
     class Argument(object):
         """
         Dummy container class to hold the arguments that we will eventually pass into
@@ -253,6 +252,8 @@ class Commands(object):
             self.help = help if isinstance(help, list) else [help]
             self.arguments = arguments
             self.function = function
+
+    commands: Dict[str, Command] = {}
 
     @classmethod
     def command(cls, name, aliases=(), help='', arguments=()):
