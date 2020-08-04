@@ -22,6 +22,7 @@ import ViewListIcon from '@material-ui/icons/ViewList';
 import ArrowRightRoundedIcon from '@material-ui/icons/ArrowRightRounded';
 import Tooltip from '@material-ui/core/Tooltip';
 import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
+import { getAfterSortKey } from '../../../../util/worksheet_utils';
 
 class SchemaItem extends React.Component<{
     worksheetUUID: string,
@@ -58,10 +59,11 @@ class SchemaItem extends React.Component<{
     };
 
     saveSchema = () => {
-        const { schema_name, field_rows } = this.props.item;
-        let updatedSchema = ['% schema ' + this.state.curSchemaName];
+        const { schema_name, field_rows, ids } = this.props.item;
+        let updatedSchema = ['schema ' + this.state.curSchemaName];
         let fromAddSchema = false;
-        let schemaBlockSourceLength = field_rows.length + 1; // 1 for the schema name row
+        // Note: When using the add-item end point,
+        // we do not need to add % before the actual directive for the items
         this.state.rows.forEach((fields) => {
             if (!fields['field']) {
                 return;
@@ -69,17 +71,16 @@ class SchemaItem extends React.Component<{
             if (!fromAddSchema && fields.from_schema_name !== schema_name) {
                 // these rows correspond to addschema
                 fromAddSchema = true;
-                updatedSchema.push('% addschema ' + fields.from_schema_name);
+                updatedSchema.push('addschema ' + fields.from_schema_name);
                 return;
             } else if (fromAddSchema && fields.from_schema_name !== schema_name) {
                 // These rows doesn't occupy any source lines
-                schemaBlockSourceLength -= 1;
                 return;
             } else {
                 fromAddSchema = false;
             }
 
-            let curRow = "% add '" + fields['field'] + "'";
+            let curRow = "add '" + fields['field'] + "'";
             if (!fields['generalized-path']) {
                 updatedSchema.push(curRow);
                 return;
@@ -92,11 +93,9 @@ class SchemaItem extends React.Component<{
             curRow = curRow + " '" + fields['post-processor'] + "'";
             updatedSchema.push(curRow);
         });
-        this.props.updateSchemaItem(
-            updatedSchema,
-            this.props.item.start_index,
-            schemaBlockSourceLength,
-        );
+        // TODO: Comparing with TextEditorItem, unclear why the after sort key is wrong here, but if we don't -1
+        //       we will move one line below the desired one
+        this.props.updateSchemaItem(updatedSchema, ids, getAfterSortKey(this.props.item) - 1);
     };
 
     addFieldRowAfter = (idx) => (e) => {
@@ -201,6 +200,7 @@ class SchemaItem extends React.Component<{
         const schemaItem = item;
         const schemaHeaders = schemaItem.header;
         const schemaName = schemaItem.schema_name;
+        // console.log("Schema:", item.ids, item.sort_keys, this.props.after_sort_key)
         let headerHtml, bodyRowsHtml;
         const explanations = {
             field: 'Column name that is displayed.',

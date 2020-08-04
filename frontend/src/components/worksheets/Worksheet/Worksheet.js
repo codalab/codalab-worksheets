@@ -529,16 +529,32 @@ class Worksheet extends React.Component {
         });
     };
 
-    updateSchemaItem = (rows, start_index, original_length) => {
+    updateSchemaItem = (rows, ids, after_sort_key) => {
         // rows: list of string representing the new schema:
         //      % schema example
         //      % add uuid uuid [0:8]
-        // start_index: the index in source corresponding to % schema example
-        // original_length: how many source lines the original schema fields occupied, 2 for the example (starting from schema example)
-        let source = this.state.ws.info.source;
-        // replace with the new fields, start index is the source line index of % schema example
-        source.splice(start_index, original_length, ...rows);
-        this.saveAndUpdateWorksheet();
+        // ids: ids of the row items
+        // after_sort_key: used for add-items
+        let worksheetUUID = this.state.ws.uuid;
+        let url = `/rest/worksheets/${worksheetUUID}/add-items`;
+        let actualData = { items: rows };
+        actualData['item_type'] = 'directive';
+        actualData['ids'] = ids;
+        actualData['after_sort_key'] = after_sort_key;
+        $.ajax({
+            url,
+            data: JSON.stringify(actualData),
+            contentType: 'application/json',
+            type: 'POST',
+            success: () => {
+                const moveIndex = false;
+                const param = { moveIndex };
+                this.reloadWorksheet(undefined, undefined, param);
+            },
+            error: (jqHXR) => {
+                alert(createAlertText(this.url, jqHXR.responseText));
+            },
+        });
     };
 
     setFocus = (index, subIndex, shouldScroll = true) => {

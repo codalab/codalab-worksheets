@@ -144,7 +144,8 @@ def get_worksheet_lines(worksheet_info):
             lines.append(value_obj)
         elif item_type == TYPE_DIRECTIVE:
             if len(value_obj) > 0 and value_obj[0] == DIRECTIVE_CHAR:
-                # A comment directive
+                # A comment
+                # TODO: figure out why this form is consider a comment...
                 lines.append('//' + ' '.join(value_obj[1:]))
             else:
                 # A normal directive
@@ -900,17 +901,16 @@ def interpret_items(schemas, raw_items, db_model=None):
     # Go through all the raw items...
     last_was_empty_line = False
     current_schema_name = None
-    start_schema_index = None
+    current_schema_ids = []
     for raw_index, item in enumerate(raw_items):
         new_last_was_empty_line = True
         try:
-            (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = item
+            (bundle_info, subworksheet_info, value_obj, item_type, item_id, sort_key) = item
 
             is_bundle = item_type == TYPE_BUNDLE
             is_search = item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search'
             is_directive = item_type == TYPE_DIRECTIVE
             is_worksheet = item_type == TYPE_WORKSHEET
-
             if not is_bundle:
                 flush_bundles()
 
@@ -940,13 +940,14 @@ def interpret_items(schemas, raw_items, db_model=None):
                                     }
                                     for name, path, post, from_schema_name in current_schema
                                 ],
-                                'start_index': start_schema_index,
                                 'sort_keys': [sort_key],
+                                'ids': current_schema_ids,
                             }
                         )
                         .data
                     )
                 current_schema = None
+                current_schema_ids = []
 
             if item_type == TYPE_BUNDLE:
                 bundle_info = dict(bundle_info, sort_key=sort_key)
@@ -968,7 +969,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                     blocks[-1]['text'] += '\n' + value_obj
                     # Ids
                     blocks[-1]['ids'] = blocks[-1].get('ids', [])
-                    blocks[-1]['ids'].append(id)
+                    blocks[-1]['ids'].append(item_id)
                     blocks[-1]['sort_keys'] = blocks[-1].get('sort_keys', [])
                     blocks[-1]['sort_keys'].append(sort_key)
                 elif not new_last_was_empty_line:
@@ -978,7 +979,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                             {
                                 'id': len(blocks),
                                 'text': value_obj,
-                                'ids': [id],
+                                'ids': [item_id],
                                 'sort_keys': [sort_key],
                             }
                         )
@@ -997,10 +998,10 @@ def interpret_items(schemas, raw_items, db_model=None):
                     pass
                 elif command == 'schema':
                     # Start defining new schema
-                    start_schema_index = raw_index
                     if len(value_obj) < 2:
                         raise UsageError("`schema` missing name")
                     name = value_obj[1]
+                    current_schema_ids.append(item_id)
                     current_schema_name = name
                     schemas[name] = current_schema = []
                 elif command == 'addschema':
@@ -1010,11 +1011,13 @@ def interpret_items(schemas, raw_items, db_model=None):
                     if len(value_obj) < 2:
                         raise UsageError("`addschema` missing name")
                     name = value_obj[1]
+                    current_schema_ids.append(item_id)
                     current_schema += schemas[name]
                 elif command == 'add':
                     # Add to schema
                     if current_schema is None:
                         raise UsageError("`add` must be preceded by `schema` directive")
+                    current_schema_ids.append(item_id)
                     schema_item = canonicalize_schema_item(value_obj[1:], current_schema_name)
                     current_schema.append(schema_item)
                 elif command == 'display':
@@ -1041,10 +1044,33 @@ def interpret_items(schemas, raw_items, db_model=None):
             else:
                 raise RuntimeError('Unknown worksheet item type: %s' % item_type)
 
-            # Flush bundles once more at the end
+            # Flush bundles, subworksheets and schema items once more at the end
             if raw_index == len(raw_items) - 1:
                 flush_bundles()
                 flush_worksheets()
+                if current_schema is not None:
+                    blocks.append(
+                        SchemaBlockSchema()
+                        .load(
+                            {
+                                'status': FetchStatusSchema.get_unknown_status(),
+                                'header': ["field", "generalized-path", "post-processor"],
+                                'schema_name': current_schema_name,
+                                'field_rows': [
+                                    {
+                                        "field": name,
+                                        "generalized-path": path,
+                                        "post-processor": post,
+                                        "from_schema_name": from_schema_name,
+                                    }
+                                    for name, path, post, from_schema_name in current_schema
+                                ],
+                                'sort_keys': [sort_key],
+                                'ids': current_schema_ids,
+                            }
+                        )
+                        .data
+                    )
 
         except UsageError as e:
             current_schema = None

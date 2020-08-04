@@ -160,8 +160,8 @@ class SchemaBlockSchema(WorksheetBlockSchema):
     schema_name = fields.String(required=True)
     header = fields.List(fields.String(), required=True)
     field_rows = fields.List(fields.Dict(), required=True)
-    start_index = fields.Integer()
     sort_keys = fields.List(fields.Integer())
+    ids = fields.List(fields.Integer())
 
 
 class TableBlockSchema(WorksheetBlockSchema):
