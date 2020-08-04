@@ -529,6 +529,34 @@ class Worksheet extends React.Component {
         });
     };
 
+    updateSchemaItem = (rows, ids, after_sort_key) => {
+        // rows: list of string representing the new schema:
+        //      % schema example
+        //      % add uuid uuid [0:8]
+        // ids: ids of the row items
+        // after_sort_key: used for add-items
+        let worksheetUUID = this.state.ws.uuid;
+        let url = `/rest/worksheets/${worksheetUUID}/add-items`;
+        let actualData = { items: rows };
+        actualData['item_type'] = 'directive';
+        actualData['ids'] = ids;
+        actualData['after_sort_key'] = after_sort_key;
+        $.ajax({
+            url,
+            data: JSON.stringify(actualData),
+            contentType: 'application/json',
+            type: 'POST',
+            success: () => {
+                const moveIndex = false;
+                const param = { moveIndex };
+                this.reloadWorksheet(undefined, undefined, param);
+            },
+            error: (jqHXR) => {
+                alert(createAlertText(this.url, jqHXR.responseText));
+            },
+        });
+    };
+
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
         // prevent multiple clicking from resetting the index
@@ -1047,7 +1075,7 @@ class Worksheet extends React.Component {
                     startTime = endTime;
                 }
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: (xhr, status, err) => {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: xhr.responseText,
@@ -1568,6 +1596,7 @@ class Worksheet extends React.Component {
                 addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
                 onAsyncItemLoad={this.onAsyncItemLoad}
                 itemHeights={this.state.itemHeights}
+                updateSchemaItem={this.updateSchemaItem}
             />
         );
 
