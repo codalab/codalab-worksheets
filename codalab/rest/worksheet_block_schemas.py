@@ -17,6 +17,7 @@ class BlockModes:
     contents_block = 'contents_block'
     image_block = 'image_block'
     graph_block = 'graph_block'
+    schema_block = 'schema_block'
     subworksheets_block = 'subworksheets_block'
     placeholder_block = 'placeholder_block'
 
@@ -27,6 +28,7 @@ class BlockModes:
         contents_block,
         image_block,
         graph_block,
+        schema_block,
         subworksheets_block,
         placeholder_block,
     )
@@ -149,6 +151,19 @@ class BundleImageBlockSchema(BundleBlockSchema):
     width = fields.Integer()
 
 
+class SchemaBlockSchema(WorksheetBlockSchema):
+    """
+    Schema for user-defined schemas in worksheets
+    """
+
+    mode = fields.Constant(BlockModes.schema_block)
+    schema_name = fields.String(required=True)
+    header = fields.List(fields.String(), required=True)
+    field_rows = fields.List(fields.Dict(), required=True)
+    sort_keys = fields.List(fields.Integer())
+    ids = fields.List(fields.Integer())
+
+
 class TableBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.table_block)
     bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
@@ -157,6 +172,8 @@ class TableBlockSchema(WorksheetBlockSchema):
     header = fields.List(fields.String(), required=True)
     rows = fields.List(fields.Dict(), required=True)
     sort_keys = fields.List(fields.Integer())
+    first_bundle_source_index = fields.Integer()  # index for the first bundle in source
+    using_schemas = fields.List(fields.String())
 
 
 class RecordsRowSchema(PlainSchema):
@@ -172,6 +189,8 @@ class RecordsBlockSchema(BundleBlockSchema):
     header = fields.Constant(('key', 'value'))
     rows = fields.Nested(RecordsRowSchema, many=True, required=True)
     sort_keys = fields.List(fields.Integer())
+    first_bundle_source_index = fields.Integer()  # index for the first bundle in source
+    using_schemas = fields.List(fields.String())
 
 
 class GraphTrajectorySchema(PlainSchema):

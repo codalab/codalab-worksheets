@@ -492,6 +492,8 @@ def resolve_interpreted_blocks(interpreted_blocks, brief):
             elif mode == BlockModes.subworksheets_block:
                 # do nothing
                 pass
+            elif mode == BlockModes.schema_block:
+                pass
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
 
