@@ -20,11 +20,11 @@ class UploadedBundle(NamedBundle):
     )
 
     METADATA_SPECS.append(
-        MetadataSpec('link_url', str, 'Link URL of bundle.')
+        MetadataSpec('link_url', str, 'Link URL of bundle.', optional=True)
     )
     METADATA_SPECS.append(
         MetadataSpec('link_format', str, 'Link format of bundle. Can be equal to'
-            '"raw" or "zip" (only "raw" is supported as of now).')
+            '"raw" or "zip" (only "raw" is supported as of now).', optional=True)
     )
     # fmt: on
 
