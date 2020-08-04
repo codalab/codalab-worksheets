@@ -1055,7 +1055,7 @@ class Worksheet extends React.Component {
                 }
                 var rawIndex = editor.getCursorPosition().row;
                 this.setState({
-                    inSourceEditMode: openSourceEditMode,
+                    inSourceEditMode: false,
                     editorEnabled: false,
                 }); // Needs to be after getting the raw contents
                 if (saveChanges) {
@@ -1066,13 +1066,13 @@ class Worksheet extends React.Component {
             } else {
                 // Not allowed to edit the worksheet.
                 this.setState({
-                    inSourceEditMode: openSourceEditMode,
+                    inSourceEditMode: false,
                     editorEnabled: false,
                 });
             }
         } else {
             // Go into edit mode.
-            this.setState({ inSourceEditMode: openSourceEditMode });
+            this.setState({ inSourceEditMode: true });
             this.clearCheckedBundles();
             $('#worksheet-editor').focus(); // Needs to be before focusing
         }
