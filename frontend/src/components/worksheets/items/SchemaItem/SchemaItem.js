@@ -378,7 +378,15 @@ class SchemaItem extends React.Component<{
                 ['enter'],
                 (e) => {
                     e.preventDefault();
-                    this.setState({ showSchemaDetail: !showSchemaDetail });
+                    this.setState(
+                        { showSchemaDetail: !showSchemaDetail },
+                        () =>
+                            this.state.showSchemaDetail &&
+                            this.setState({
+                                rows: [...this.props.item.field_rows],
+                                curSchemaName: this.props.item.schema_name,
+                            }),
+                    );
                 },
                 'keydown',
             );
@@ -411,11 +419,14 @@ class SchemaItem extends React.Component<{
                         color='secondary'
                         variant='outlined'
                         onClick={() => {
-                            this.setState({ showSchemaDetail: !showSchemaDetail }, () =>
-                                this.setState({
-                                    rows: [...this.props.item.field_rows],
-                                    curSchemaName: this.props.item.schema_name,
-                                }),
+                            this.setState(
+                                { showSchemaDetail: !showSchemaDetail },
+                                () =>
+                                    this.state.showSchemaDetail &&
+                                    this.setState({
+                                        rows: [...this.props.item.field_rows],
+                                        curSchemaName: this.props.item.schema_name,
+                                    }),
                             );
                         }}
                         style={{ paddingLeft: '10px' }}
