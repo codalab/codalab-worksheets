@@ -1706,10 +1706,6 @@ class Worksheet extends React.Component {
                                         {worksheetDisplay}
                                         {/* Show error dialog if bulk bundle execution failed*/}
                                         {this.state.BulkBundleDialog}
-                                        <InformationModal
-                                            showInformationModal={this.state.showInformationModal}
-                                            toggleInformationModal={this.toggleInformationModal}
-                                        />
                                     </div>
                                 </div>
                                 <Button
