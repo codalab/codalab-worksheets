@@ -538,7 +538,11 @@ class CodalabServiceManager(object):
                 compose_options["x-codalab-server"]["volumes"].append(
                     f"{mount_path}:/opt/codalab-worksheets-link-mounts{mount_path}"
                 )
-            with open(os.path.join(self.args.codalab_home, 'docker-compose-custom.yml'), 'w+') as f:
+            docker_compose_custom_path = os.path.join(
+                self.args.codalab_home, 'docker-compose-custom.yml'
+            )
+            os.makedirs(os.path.dirname(docker_compose_custom_path), exist_ok=True)
+            with open(docker_compose_custom_path, 'w+') as f:
                 yaml.dump(compose_options, f)
                 self.compose_tempfile_name = f.name
             self.compose_files.append(self.compose_tempfile_name)
