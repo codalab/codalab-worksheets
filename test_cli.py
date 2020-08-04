@@ -1210,16 +1210,18 @@ def test(ctx):
     _run_command([cl, 'cat', uuid], 1)
 
     # Upload file
-    # var_path('link-mounts') is the absolute path of the link mounts folder on the host. By default, it is mounted
-    # when no other argument for CODALAB_LINK_MOUNTS is specified. For example, it might be equal to
-    # /Users/epicfaace/codalab/codalab-worksheets/var/codalab/link-mounts.
-    # 
-    # We create the temporary file at /opt/codalab-worksheets-link-mounts/{var_path('link-mounts')} because
-    # this test is running inside a Docker container (so the host directory /{var_path('link-mounts')} is
-    # mounted at /opt/codalab-worksheets-link-mounts/{var_path('link-mounts')}).
+    # /tmp/codalab/link-mounts is the absolute path of the default link mounts folder on the host. By default, it is mounted
+    # when no other argument for CODALAB_LINK_MOUNTS is specified.
+    #
+    # We create the temporary file at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts because
+    # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
+    # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
 
     with tempfile.NamedTemporaryFile(
-        mode='w', dir='/opt/codalab-worksheets-link-mounts/' + var_path('link-mounts'), suffix=".txt", delete=False
+        mode='w',
+        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts',
+        suffix=".txt",
+        delete=False,
     ) as f:
         f.write("hello world!")
     _, host_filename = f.name.split("/opt/codalab-worksheets-link-mounts")
@@ -1236,7 +1238,9 @@ def test(ctx):
     os.remove(f.name)
 
     # Upload directory
-    with tempfile.TemporaryDirectory(dir='/opt/codalab-worksheets-link-mounts/' + var_path('link-mounts')) as dirname:
+    with tempfile.TemporaryDirectory(
+        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts'
+    ) as dirname:
         with open(os.path.join(dirname, "test.txt"), "w+") as f:
             f.write("hello world!")
 
