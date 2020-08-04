@@ -106,6 +106,22 @@ RunState = namedtuple(
     ],
 )
 
+"""Dependency that is mounted.
+
+TODO(Ashwin): document this better
+
+docker_path - path on the Docker container where the dependency is mounted
+    example (shared file system):       /0x0fbb927dc0e54544bbc2d439a6805951/foo
+    example (non-shared file system):   .../codalab-worksheets/var/codalab/worker/dependencies/0x6b5bfdca99b6423ea36327102b19d0af
+child_path - path inside the bundle folder from where the dependency is mounted
+    example (shared file system):       .../codalab-worksheets/var/codalab/home/partitions/default/bundles/0x0fbb927dc0e54544bbc2d439a6805951/foo
+    example (non-shared file system):   .../codalab-worksheets/var/codalab/home/partitions/default/bundles/0x0fbb927dc0e54544bbc2d439a6805951/foo
+parent_path - path of the dependency
+    example (shared file system):       /opt/codalab-worksheets/tests/files/a.txt
+    example (non-shared file system):   .../codalab-worksheets/var/codalab/worker/dependencies/0x6b5bfdca99b6423ea36327102b19d0af
+
+"""
+
 DependencyToMount = namedtuple('DependencyToMount', 'docker_path, child_path, parent_path')
 
 
@@ -209,7 +225,8 @@ class RunStateMachine(StateTransitioner):
         status_messages = []
 
         if not self.shared_file_system:
-            # No need to download dependencies if we're in the shared FS since they're already in our FS
+            # No need to download dependencies if we're in the shared FS,
+            # since they're already in our FS
             for dep in run_state.bundle.dependencies:
                 dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
                 dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
@@ -268,7 +285,7 @@ class RunStateMachine(StateTransitioner):
                 )
         else:
             remove_path(run_state.bundle_path)
-            os.mkdir(run_state.bundle_path)
+            os.makedirs(run_state.bundle_path)
 
         # 2) Set up symlinks
         docker_dependencies = []
@@ -312,7 +329,6 @@ class RunStateMachine(StateTransitioner):
                     self.paths_to_remove.append(
                         os.path.join(run_state.bundle_path, first_element_of_path)
                     )
-
             for dependency in to_mount:
                 try:
                     mount_dependency(dependency, self.shared_file_system)
@@ -362,6 +378,7 @@ class RunStateMachine(StateTransitioner):
 
     def _get_dependency_path(self, run_state, dependency):
         if self.shared_file_system:
+            # TODO(Ashwin): make this not fs-specific.
             # On a shared FS, we know where the dependency is stored and can get the contents directly
             return os.path.realpath(os.path.join(dependency.location, dependency.parent_path))
         else:
