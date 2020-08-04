@@ -143,7 +143,7 @@ class TableItem extends React.Component<{
                     style={index === 0 ? { paddingLeft: editPermission ? '30px' : '70px' } : {}}
                 >
                     {editPermission && index === 0 && (
-                        <Tooltip title={'Click to change the schemas of this table'}>
+                        <Tooltip title={'Change the schemas of this table'}>
                             <IconButton>
                                 <ViewListIcon
                                     style={{ padding: '0px' }}
