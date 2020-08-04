@@ -2,7 +2,6 @@ from codalab.lib.editor_util import find_default_editor
 from codalab.lib.spec_util import generate_uuid
 from codalab.lib.codalab_manager import CodaLabManager
 
-import argparse
 import docker
 import os
 import shutil
@@ -231,28 +230,3 @@ class InteractiveSession:
                 if command:
                     commands.append(command)
         return commands
-
-
-def main():
-    # Example usage of InteractiveSession
-    session = InteractiveSession(
-        args.docker_image, manager=CodaLabManager(), dependencies=[], bundle_locations={}
-    )
-    session.start()
-    session.cleanup()
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Runs the specified CodaLab stress tests against the specified CodaLab instance (defaults to localhost).'
-    )
-    parser.add_argument(
-        '--docker-image',
-        type=str,
-        help='Docker image used to create a container for the interactive session.',
-        default='codalab/default-cpu:latest',
-    )
-
-    # Parse args and run this script
-    args = parser.parse_args()
-    main()
