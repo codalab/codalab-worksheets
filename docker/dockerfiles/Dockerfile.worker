@@ -7,7 +7,7 @@ RUN go get -u github.com/awslabs/amazon-ecr-credential-helper/ecr-login/cli/dock
 WORKDIR /root/go/src/github.com/awslabs/amazon-ecr-credential-helper
 RUN make
 
-FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
+FROM ubuntu:16.04
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
