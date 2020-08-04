@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.19_
+_version 0.5.20_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -121,6 +121,29 @@ target resource, or is otherwise invalid, the Bundle Service will respond with
 a `401 Unauthorized` or `403 Forbidden` status.
 
 # Resource Object Schemas
+
+## users
+
+
+Name | Type
+--- | ---
+`id` | String
+`user_name` | String
+`first_name` | String
+`last_name` | String
+`affiliation` | String
+`url` | Url
+`date_joined` | LocalDateTime
+`email` | String
+`notifications` | Integer
+`time_quota` | Integer
+`parallel_run_quota` | Integer
+`time_used` | Integer
+`disk_quota` | Integer
+`disk_used` | Integer
+`last_login` | LocalDateTime
+`is_verified` | Boolean
+`has_access` | Boolean
 
 ## users
 
