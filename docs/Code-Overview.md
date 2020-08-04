@@ -1,10 +1,10 @@
 This document provides an overview of the components of CodaLab and should be read by anyone who wants to contribute to CodaLab.
 
-# Core backend
+## Core backend
 
-## Database
+### Database
 
-### Schema ([tables.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/model/tables.py))
+#### Schema ([tables.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/model/tables.py))
 
 This is a good place to start to understand the underlying data model in CodaLab.
 
@@ -40,20 +40,20 @@ way.  Instead of having Python objects representing bundles and worksheets, we
 use dictionaries and write raw SQL queries.  See
 [bundle_model.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/model/bundle_model.py).
 
-### Migrations
+#### Migrations
 
 We use [alembic](https://alembic.sqlalchemy.org/en/latest/tutorial.html) to
 change the database schema.  Our migrations are in
 [alembic/versions](https://github.com/codalab/codalab-worksheets/tree/master/alembic).
 
-### Storage
+#### Storage
 
 The actual bundle contents are stored on the file system (later, Azure blob storage or Amazon S3)
 with a
 [bundle_store.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/lib/bundle_store.py)
 interface.
 
-## REST API
+### REST API
 
 Both the website and the CLI call the REST server to fetch information.
 The automatically generated documentation of the REST API.
@@ -74,7 +74,7 @@ The [marshmallow schemas](https://marshmallow.readthedocs.io/en/3.0/) are define
 and
 [worksheet_block_schemas.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/rest/worksheet_block_schemas.py).
 
-## Worksheets
+### Worksheets
 
 Recall that a worksheet is a list of worksheet items, where each item is
 markup, a bundle reference, a worksheet reference, or a **directive**.  It is this
@@ -99,9 +99,9 @@ row (bundle).
 Second, a table could be defined by a list of bundles (raw markdown items) or a
 search directive, which returns a list of bundles.
 
-# Frontend
+## Frontend
 
-## CLI
+### CLI
 
 The main entry point to performing actions on CodaLab
 ([bundle_cli.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/lib/bundle_cli.py)).
@@ -118,39 +118,34 @@ The CLI
 is the entry point for running the REST server and bundle manager (and should
 include the worker too for uniformity).
 
-## Website
+### Website
 
-Note (2019-07-08): we are in the process of a major frontend refactor.  The
-real frontend is on the [frontend
-branch](https://github.com/codalab/codalab-worksheets/tree/frontend).  The
-frontend is in React and [Material UI](https://material-ui.com/).
+The frontend is what is actually deployed to [https://worksheets.codalab.org](https://worksheets.codalab.org). It uses React and [Material UI](https://material-ui.com/).
 
-Notes: we are still using CSS and jquery due to unfortunate legacy issues, but the plan is to get rid of this.
-The components are in
-[src/components](https://github.com/codalab/codalab-worksheets/tree/frontend/frontend/src/components).
+The major components are in
+[src/components](https://github.com/codalab/codalab-worksheets/tree/master/frontend/src/components).
+
 The main pages are:
 
 - Home page
   ([HomePage.js](https://github.com/codalab/codalab-worksheets/blob/master/frontend/src/routes/HomePage.js)):
   landing page.
 - Worksheet view
-  ([Worksheet.js](https://github.com/codalab/codalab-worksheets/blob/master/frontend/src/components/worksheets/Worksheet.js)):
-  this is by far the most complicated and most of the time the user is on this
-  page.  This page has to allow you to render and edit worksheets as well as
-  the bundles inside them.
+  ([Worksheet.js](https://github.com/codalab/codalab-worksheets/blob/master/frontend/src/components/worksheets/Worksheet/Worksheet.js)): the page that allows users to render and edit worksheets as well as
+  the bundles inside them. Most of the time the user spends is on this page.
 - Bundle view
-  ([Bundle.js](https://github.com/codalab/codalab-worksheets/blob/master/frontend/src/components/Bundle.js)):
-  just show information about a bundle.
+  ([Bundle.js](https://github.com/codalab/codalab-worksheets/blob/master/frontend/src/components/Bundle/Bundle.js)): refers
+  to the page that shows information about a bundle
 
 Many of the calls from the website to the REST server are through a mega REST
 endpoint
 ([rest/cli.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/rest/cli.py)).
-This seems a bit roundabout, but the rationale is to have a common way
+This seems a bit roundabout, but the rationale is to have a common way of
 performing actions on CodaLab, and this gives the opportunity for people using
 the frontend to be educated about the CLI (since commands for creating new
-worksheets, runs, etc.) are converted into CLI commands.
+worksheets, runs, etc. are converted into CLI commands).
 
-# Worker system
+## Worker system
 
 A **worker** contacts the CodaLab server to get bundles to run.  The worker
 will download dependencies and Docker images and run bundles in Docker
@@ -159,7 +154,7 @@ containers, and periodically report on the status of the runs.
 A worker also has to respond to various commands such as reading files in the
 bundle while it's running, killing bundles, etc.
 
-## Bundle manager
+### Bundle manager
 
 When a **run bundle** is created, it transitions between states from
 **created** to **ready** or **failed**.
@@ -172,7 +167,7 @@ runs on the server in the background in a loop.  Its duties are:
 - Assign run bundles to workers based on resources and priorities (scheduling logic).
 - Create make bundles (trivial thing to do, but someone has to do it).
 
-## Worker
+### Worker
 
 The worker's main entry point is
 [codalab/worker/main.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/main.py).
@@ -192,7 +187,7 @@ Finally, the
 [RunStateMachine](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/worker_run_state.py)
 does most of the heavy lifting and transitions jobs between different states.
 
-# Deployment
+## Deployment
 
 There is one script
 [codalab_service.py](https://github.com/codalab/codalab-worksheets/blob/master/codalab_service.py)
@@ -206,15 +201,18 @@ Compose
 These compose files run the actual Docker images
 ([dockerfiles](https://github.com/codalab/codalab-worksheets/tree/master/docker/dockerfiles)).
 
-## Monitor script
+### Monitor script
 
 The monitor script
 ([monitor.py](https://github.com/codalab/codalab-worksheets/blob/master/monitor.py))
 runs in a loop to back up the database, gets some statistics about the bundles
 and workers, and emails out a report every day.
 
-## Tests
+### Tests
 
-We have very few unit tests, but one end-to-end integration script
-([test_cli.py](https://github.com/codalab/codalab-worksheets/blob/master/test_cli.py)).
-This provides examples of CLI usage.
+We have the following tests:
+
+- Unit tests for the backend in the [tests](https://github.com/codalab/codalab-worksheets/tree/master/tests) directory
+- One end-to-end integration script for the CLI in [test_cli.py](https://github.com/codalab/codalab-worksheets/blob/master/test_cli.py)
+- End-to-end UI tests for the web interface in [tests/ui](https://github.com/codalab/codalab-worksheets/tree/master/tests/ui)
+- Stress tests in [stress_test.py](https://github.com/codalab/codalab-worksheets/blob/master/stress_test.py)

@@ -49,6 +49,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--gpus', type=int, default=1, help='Default number of GPUs for each worker'
         )
+        subparser.add_argument('--gpu-type', type=str, help='GPU type to request from Slurm')
         subparser.add_argument(
             '--memory-mb', type=int, default=2048, help='Default memory (in MB) for each worker'
         )
@@ -340,6 +341,23 @@ class SlurmBatchWorkerManager(WorkerManager):
             else ''
         )
 
+        # Even though slurm does GPU isolation, Docker overrides this, so we need to
+        # manually specify the GPUs.
+        gpu_isolation = textwrap.dedent(
+            '''
+            GPUSET=$(nvidia-smi -L | grep -o 'UUID: [^)]*' | cut -d ' ' -f2 | tr '\n' ',')
+            GPUSET=${GPUSET::-1}
+            if [ -z "$GPUSET" ]; then
+                  echo "No GPUs on the machine"
+                  GPU_ARGS="--gpuset="
+            else
+                  echo "Using GPUs $GPUSET"
+                  GPU_ARGS="--gpuset $GPUSET"
+            fi
+            '''
+            + '\n\n'
+        )
+
         # Using the --unbuffered option with srun command will allow output
         # appear in the output file as soon as it is produced.
         srun_args = [self.SRUN, '--unbuffered'] + command
@@ -350,7 +368,10 @@ class SlurmBatchWorkerManager(WorkerManager):
             + '\n'.join(sbatch_args)
             + '\n\n'
             + worker_authentication
+            + gpu_isolation
             + ' '.join(srun_args)
+            + ' '
+            + '$GPU_ARGS'
         )
         logger.info("Slurm Batch Job Definition")
         logger.info(job_definition)
@@ -365,7 +386,11 @@ class SlurmBatchWorkerManager(WorkerManager):
         slurm_args['nodelist'] = self.args.nodelist
         slurm_args['mem'] = self.args.memory_mb
         slurm_args['partition'] = self.args.partition
-        slurm_args['gres'] = "gpu:" + str(self.args.gpus)
+        gpu_gres_value = "gpu"
+        if self.args.gpu_type:
+            gpu_gres_value += ":" + self.args.gpu_type
+        gpu_gres_value += ":" + str(self.args.gpus)
+        slurm_args['gres'] = gpu_gres_value
         # job-name is unique
         slurm_args['job-name'] = worker_id
         slurm_args['cpus-per-task'] = str(self.args.cpus)

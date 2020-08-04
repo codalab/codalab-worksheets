@@ -7,12 +7,12 @@
  */
 .terminal .terminal-output .format,
 .cmd .format,
-.cmd .prompt,
-.cmd .prompt div,
+.cmd .cmd-prompt,
+.cmd .cmd-prompt div,
 .terminal .terminal-output div div {
   display: inline-block;
 }
-.cmd .clipboard {
+.cmd .cmd-clipboard {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -21,7 +21,7 @@
   opacity: 0.01;
   width: 2px;
 }
-.cmd > .clipboard {
+.cmd > .cmd-clipboard {
   position: fixed;
 }
 .terminal {
@@ -34,7 +34,7 @@
   margin: 0;
   height: 1.3em;
 }
-.cmd .cursor.blink {
+.cmd .cmd-cursor.cmd-blink {
   -webkit-animation: blink 1s infinite steps(1, start);
   -o-animation: blink 1s infinite steps(1, start);
   animation: blink 1s infinite steps(1, start);
@@ -85,12 +85,12 @@
   }
 }
 .terminal .terminal-output div div,
-.cmd .prompt {
+.cmd .cmd-prompt {
   display: block;
   line-height: 14px;
   height: auto;
 }
-.cmd .prompt {
+.cmd .cmd-prompt {
   float: left;
 }
 .terminal,
@@ -113,7 +113,7 @@
 }
 .terminal .inverted,
 .cmd .inverted,
-.cmd .cursor.blink {
+.cmd .cmd-cursor.cmd-blink {
   background-color: #aaa;
   color: #000;
 }
@@ -127,7 +127,7 @@
 .terminal .terminal-output div div a::selection,
 .terminal .terminal-output div span::selection,
 .cmd > span::selection,
-.cmd .prompt span::selection {
+.cmd .cmd-prompt span::selection {
   background-color: #aaa;
   color: #000;
 }
