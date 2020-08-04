@@ -76,6 +76,7 @@ class Worksheet extends React.Component {
             anchorEl: null,
             showNewRun: false,
             showNewText: false,
+            showNewSchema: false,
             uploadAnchor: null,
             showRerun: false,
             isValid: true,
@@ -566,7 +567,7 @@ class Worksheet extends React.Component {
         );
     };
 
-    updateSchemaItem = (rows, ids, after_sort_key) => {
+    updateSchemaItem = (rows, ids, after_sort_key, create) => {
         // rows: list of string representing the new schema:
         //      % schema example
         //      % add uuid uuid [0:8]
@@ -576,7 +577,7 @@ class Worksheet extends React.Component {
         let url = `/rest/worksheets/${worksheetUUID}/add-items`;
         let actualData = { items: rows };
         actualData['item_type'] = 'directive';
-        actualData['ids'] = ids;
+        if (!create) actualData['ids'] = ids;
         actualData['after_sort_key'] = after_sort_key;
         $.ajax({
             url,
@@ -657,6 +658,7 @@ class Worksheet extends React.Component {
             focusedBundleUuidList: focusedBundleUuidList,
             showNewRun: false,
             showNewText: false,
+            showNewSchema: false,
             uploadAnchor: null,
             showNewRerun: false,
         });
@@ -1624,9 +1626,11 @@ class Worksheet extends React.Component {
                 showNewRun={this.state.showNewRun}
                 showNewText={this.state.showNewText}
                 showNewRerun={this.state.showNewRerun}
+                showNewSchema={this.state.showNewSchema}
                 onHideNewRun={() => this.setState({ showNewRun: false })}
                 onHideNewText={() => this.setState({ showNewText: false })}
                 onHideNewRerun={() => this.setState({ showNewRerun: false })}
+                onHideNewSchema={() => this.setState({ showNewSchema: false })}
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
                 setDeleteItemCallback={this.setDeleteItemCallback}
@@ -1662,6 +1666,7 @@ class Worksheet extends React.Component {
                     setAnchorEl={(e) => this.setState({ anchorEl: e })}
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
+                    onShowNewSchema={() => this.setState({ showNewSchema: true })}
                     uploadAnchor={uploadAnchor}
                     showUploadMenu={this.showUploadMenu}
                     closeUploadMenu={() => {

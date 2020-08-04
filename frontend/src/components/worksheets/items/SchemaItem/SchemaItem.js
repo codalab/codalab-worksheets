@@ -95,7 +95,13 @@ class SchemaItem extends React.Component<{
         });
         // TODO: Comparing with TextEditorItem, unclear why the after sort key is wrong here, but if we don't -1
         //       we will move one line below the desired one
-        this.props.updateSchemaItem(updatedSchema, ids, getAfterSortKey(this.props.item) - 1);
+        this.props.updateSchemaItem(
+            updatedSchema,
+            ids,
+            getAfterSortKey(this.props.item) - 1,
+            this.props.create,
+        );
+        if (this.props.create) this.props.onSubmit();
     };
 
     addFieldRowAfter = (idx) => (e) => {
@@ -126,7 +132,12 @@ class SchemaItem extends React.Component<{
     changeSchemaName = (e) => {
         if (!this.props.editPermission) return;
         // replace new line with space, remove single quotes since we use that to quote fields with space when saving
-        this.setState({ curSchemaName: e.target.value.replace(/\n/g, ' ').replace("'", '') });
+        this.setState({
+            curSchemaName: e.target.value
+                .replace(/\n/g, ' ')
+                .replace("'", '')
+                .replace(' ', '_'),
+        });
     };
 
     checkIfTextChanged = () => {
@@ -216,7 +227,7 @@ class SchemaItem extends React.Component<{
             'post-processor': '<how to render value>',
         };
         headerHtml =
-            showSchemaDetail &&
+            (showSchemaDetail || this.props.create) &&
             schemaHeaders.map((header, index) => {
                 return (
                     <TableCell
@@ -289,7 +300,7 @@ class SchemaItem extends React.Component<{
             );
         }
         bodyRowsHtml =
-            showSchemaDetail &&
+            (showSchemaDetail || this.props.create) &&
             rows.map((rowItem, ind) => {
                 let rowCells = schemaHeaders.map((headerKey, col) => {
                     return (
@@ -372,7 +383,7 @@ class SchemaItem extends React.Component<{
                 );
             });
         let schemaTable = null;
-        if (showSchemaDetail) {
+        if (showSchemaDetail || this.props.create) {
             schemaTable = (
                 <Table className={classNames(classes.fullTable)}>
                     <TableHead>
@@ -382,7 +393,7 @@ class SchemaItem extends React.Component<{
                 </Table>
             );
         }
-        if (focused) {
+        if (focused || this.props.create) {
             Mousetrap.bind(
                 ['enter'],
                 (e) => {
@@ -401,19 +412,27 @@ class SchemaItem extends React.Component<{
                 Mousetrap.unbindGlobal(['ctrl+enter']);
             });
             Mousetrap.bindGlobal(['esc'], () => {
+                if (this.props.create) {
+                    Mousetrap.unbindGlobal(['ctrl+enter']);
+                    this.props.onSubmit();
+                }
                 this.clearChanges();
                 Mousetrap.unbindGlobal(['esc']);
             });
         }
-
         return (
             <div
                 onClick={() => {
+                    if (this.props.create) return;
                     this.props.setFocus(this.props.focusIndex, 0);
                 }}
             >
                 <Tooltip
-                    title={showSchemaDetail ? '' : 'Click to view schema: ' + schemaName}
+                    title={
+                        showSchemaDetail || this.props.create
+                            ? ''
+                            : 'Click to view schema: ' + schemaName
+                    }
                     placement='right'
                 >
                     <Button
@@ -423,7 +442,7 @@ class SchemaItem extends React.Component<{
                         style={{ paddingLeft: '10px' }}
                         className={classNames(focused ? classes.highlight : '')}
                     >
-                        {showSchemaDetail ? (
+                        {showSchemaDetail || this.props.create ? (
                             <ArrowDropDownRoundedIcon />
                         ) : (
                             <ArrowRightRoundedIcon />
@@ -431,7 +450,7 @@ class SchemaItem extends React.Component<{
                         <ViewListIcon style={{ padding: '0px' }} />
                     </Button>
                 </Tooltip>
-                {showSchemaDetail && (
+                {(showSchemaDetail || this.props.create) && (
                     <TextField
                         variant='outlined'
                         id='standard-multiline-static'
