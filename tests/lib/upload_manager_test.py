@@ -36,6 +36,7 @@ class UploadManagerTest(unittest.TestCase):
         class FakeBundle(object):
             def __init__(self):
                 self.uuid = 'fake'
+                self.metadata = object()
 
         self.manager.upload_to_bundle_store(
             FakeBundle(),
