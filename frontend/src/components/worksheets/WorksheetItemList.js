@@ -9,6 +9,7 @@ import ImageItem from './items/ImageItem';
 import MarkdownItem from './items/MarkdownItem';
 import RecordItem from './items/RecordItem';
 import TableItem from './items/TableItem';
+import SchemaItem from './items/SchemaItem';
 import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
 import PlaceholderItem from './items/PlaceholderItem';
@@ -26,6 +27,7 @@ export const BLOCK_TO_COMPONENT = {
     image_block: ImageItem,
     graph_block: GraphItem,
     placeholder_block: PlaceholderItem,
+    schema_block: SchemaItem,
 };
 
 // Create a worksheet item based on props and add it to worksheet_items.
@@ -100,6 +102,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             subFocusIndex={props.subFocusIndex}
             after_sort_key={props.after_sort_key}
             ids={props.ids}
+            updateSchemaItem={props.updateSchemaItem}
         >
             {elem}
         </ItemWrapper>,
@@ -240,6 +243,7 @@ class WorksheetItemList extends React.Component {
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         itemHeights: this.props.itemHeights,
+                        updateSchemaItem: this.props.updateSchemaItem,
                     };
                     addWorksheetItems(
                         props,
