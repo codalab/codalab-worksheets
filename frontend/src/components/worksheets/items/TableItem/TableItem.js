@@ -14,6 +14,7 @@ import IconButton from '@material-ui/core/IconButton';
 import SaveIcon from '@material-ui/icons/Save';
 import RestoreIcon from '@material-ui/icons/Restore';
 import TextField from '@material-ui/core/TextField';
+import Tooltip from '@material-ui/core/Tooltip';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -55,7 +56,7 @@ class TableItem extends React.Component<{
         });
     };
 
-    componentDidUpdate(prevProps) {
+    componentDidUpdate(prevProps, prevState) {
         if (this.props.item.rows.length !== prevProps.item.rows.length) {
             let childrenStatus = new Array(this.props.item.rows.length).fill(false);
             this.setState({
@@ -72,6 +73,9 @@ class TableItem extends React.Component<{
             this.setState({
                 curSchemaNames: newSchemas,
             });
+        }
+        if (this.state.openSchemaTextBox && !prevState.openSchemaTextBox) {
+            document.getElementById('table-schema-' + this.props.itemID).focus();
         }
     }
 
@@ -139,16 +143,18 @@ class TableItem extends React.Component<{
                     style={index === 0 ? { paddingLeft: editPermission ? '30px' : '70px' } : {}}
                 >
                     {editPermission && index === 0 && (
-                        <IconButton>
-                            <ViewListIcon
-                                style={{ padding: '0px' }}
-                                onClick={() => {
-                                    this.setState({
-                                        openSchemaTextBox: !this.state.openSchemaTextBox,
-                                    });
-                                }}
-                            />
-                        </IconButton>
+                        <Tooltip title={'Click to change the schemas of this table'}>
+                            <IconButton>
+                                <ViewListIcon
+                                    style={{ padding: '0px' }}
+                                    onClick={() => {
+                                        this.setState({
+                                            openSchemaTextBox: !this.state.openSchemaTextBox,
+                                        });
+                                    }}
+                                />
+                            </IconButton>
+                        </Tooltip>
                     )}
                     {item}
                 </TableCell>
@@ -235,14 +241,22 @@ class TableItem extends React.Component<{
                             <TableRow
                                 style={{
                                     borderBottom: '2px solid #DEE2E6',
+                                    padding: '0px',
                                 }}
                             >
-                                <TableCell colSpan='100%'>
+                                <TableCell colSpan='100%' style={{ padding: '0px 0px 0px 30px' }}>
                                     <TextField
                                         variant='outlined'
+                                        InputProps={{
+                                            style: {
+                                                padding: '10px 10px',
+                                            },
+                                        }}
+                                        id={'table-schema-' + this.props.itemID}
                                         multiline
                                         value={this.state.curSchemaNames || ''}
                                         onChange={this.changeSchemaName}
+                                        size='small'
                                         placeholder={'Using default schema'}
                                     ></TextField>
                                     <IconButton
@@ -258,7 +272,7 @@ class TableItem extends React.Component<{
                                             this.state.curSchemaNames ===
                                             this.props.item.using_schemas.join(' ')
                                         }
-                                        style={{ marginTop: '10px' }}
+                                        style={{ marginTop: '5px' }}
                                     >
                                         <SaveIcon />
                                     </IconButton>
@@ -274,7 +288,7 @@ class TableItem extends React.Component<{
                                             this.state.curSchemaNames ===
                                             this.props.item.using_schemas.join(' ')
                                         }
-                                        style={{ marginTop: '10px' }}
+                                        style={{ marginTop: '5px' }}
                                     >
                                         <RestoreIcon />
                                     </IconButton>
