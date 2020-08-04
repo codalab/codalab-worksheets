@@ -224,6 +224,9 @@ def replace_items(worksheet_uuid):
         items = [worksheet_util.markup_item(item) for item in request.json.get('items', [])]
     elif item_type == "bundle":
         items = [worksheet_util.bundle_item(item) for item in request.json.get('items', [])]
+    elif item_type == "directive":
+        # Note: for directives, the item should not include the preceding "%" symbol
+        items = [worksheet_util.directive_item(item) for item in request.json.get('items', [])]
     local.model.add_worksheet_items(worksheet_uuid, items, after_sort_key, ids)
 
 

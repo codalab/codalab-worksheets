@@ -17,6 +17,7 @@ class BlockModes:
     contents_block = 'contents_block'
     image_block = 'image_block'
     graph_block = 'graph_block'
+    schema_block = 'schema_block'
     subworksheets_block = 'subworksheets_block'
     placeholder_block = 'placeholder_block'
 
@@ -27,6 +28,7 @@ class BlockModes:
         contents_block,
         image_block,
         graph_block,
+        schema_block,
         subworksheets_block,
         placeholder_block,
     )
@@ -147,6 +149,19 @@ class BundleImageBlockSchema(BundleBlockSchema):
     image_data = fields.String()
     height = fields.Integer()
     width = fields.Integer()
+
+
+class SchemaBlockSchema(WorksheetBlockSchema):
+    """
+    Schema for user-defined schemas in worksheets
+    """
+
+    mode = fields.Constant(BlockModes.schema_block)
+    schema_name = fields.String(required=True)
+    header = fields.List(fields.String(), required=True)
+    field_rows = fields.List(fields.Dict(), required=True)
+    sort_keys = fields.List(fields.Integer())
+    ids = fields.List(fields.Integer())
 
 
 class TableBlockSchema(WorksheetBlockSchema):
