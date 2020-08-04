@@ -71,31 +71,7 @@ Usage: `cl <command> <arguments>`
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
       -v, --verbose                Display verbose output.
-
-### docker
-    Beta feature. Simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.
-    Arguments:
-      target_spec                  [<key>]:[[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
-      command                      Arbitrary Linux command to execute.
-      -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
-      -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
-      -d, --description            Full description of the bundle.
-      --tags                       Space-separated list of tags used for search (e.g., machine-learning).
-      --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
-      --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.
-      --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.
-      --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.
-      --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.
-      --request-cpus               Number of CPUs allowed for this run.
-      --request-gpus               Number of GPUs allowed for this run.
-      --request-queue              Submit run to this job queue.
-      --request-priority           Job priority (higher is more important).
-      --request-network            Whether to allow network access.
-      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents.
-      -e, --edit                   Show an editor to allow editing of the bundle metadata.
-      -W, --wait                   Wait until run finishes.
-      -t, --tail                   Wait until run finishes, displaying stdout/stderr.
-      -v, --verbose                Display verbose output.
+      -i, --interactive            Beta feature - Start an interactive session to construct your run command.
 
 ### edit (e)
     Edit an existing bundle's metadata.
