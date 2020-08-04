@@ -19,3 +19,6 @@ venv/bin/mkdocs build || { rm -rf venv; exit 1; }  # Outputs to `site`
 # Fix Python and JavaScript style (mutates code!)
 venv/bin/black codalab scripts *.py || exit
 npm run --prefix frontend format
+
+# Check about mypy warnings
+mypy .
