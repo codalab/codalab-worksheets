@@ -1216,6 +1216,7 @@ def test(ctx):
     # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
     # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
 
+    os.makedirs('/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts', exist_ok=True)
     with tempfile.NamedTemporaryFile(
         mode='w',
         dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts',
