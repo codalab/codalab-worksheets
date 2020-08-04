@@ -186,7 +186,15 @@ class BundleModel(object):
     def get_bundle_names(self, uuids):
         """
         Fetch the bundle names of the given uuids.
-        Return {uuid: ..., name: ...}
+        Return {uuid: name}
+        """
+        return self.get_bundle_metadata(uuids, "name")
+
+    def get_bundle_metadata(self, uuids, metadata_key):
+        """
+        Fetch a single metadata value from the bundles referenced
+        by the given uuids.
+        Return {uuid: metadata_value}
         """
         if len(uuids) == 0:
             return []
@@ -196,7 +204,7 @@ class BundleModel(object):
                     [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
                 ).where(
                     and_(
-                        cl_bundle_metadata.c.metadata_key == 'name',
+                        cl_bundle_metadata.c.metadata_key == metadata_key,
                         cl_bundle_metadata.c.bundle_uuid.in_(uuids),
                     )
                 )
@@ -1019,6 +1027,7 @@ class BundleModel(object):
             self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
 
         if worker['shared_file_system']:
+            # TODO(Ashwin): fix for --link.
             self.update_disk_metadata(bundle, bundle_location)
 
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
@@ -1044,6 +1053,7 @@ class BundleModel(object):
         else:
             dirs_and_files = [], [bundle_location]
 
+        # TODO(Ashwin): make this non-fs specific
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
         data_size = path_util.get_size(bundle_location, dirs_and_files)
         if enforce_disk_quota:
@@ -2526,6 +2536,7 @@ class BundleModel(object):
         self.update_user_info({'user_id': user_id, 'last_login': datetime.datetime.utcnow()})
 
     def _get_disk_used(self, user_id):
+        # TODO(Ashwin): don't include linked bundles
         return (
             self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%'])[
                 'result'
