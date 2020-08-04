@@ -255,7 +255,10 @@ def _create_bundles():
         bundle_class = get_bundle_subclass(bundle['bundle_type'])
         bundle['owner_id'] = request.user.user_id
 
-        if issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
+        metadata = bundle.get("metadata", {})
+        if metadata.get("link_url"):
+            bundle['state'] = State.READY
+        elif issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
             bundle['state'] = State.UPLOADING
         else:
             bundle['state'] = State.CREATED
@@ -742,7 +745,8 @@ def _update_bundle_contents_blob(uuid):
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
             )  # See UploadManager for full explanation of 'simplify'
-            bundle_location = local.bundle_store.get_bundle_location(uuid)
+            bundle_link_url = getattr(bundle.metadata, "link_url", None)
+            bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
             local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
     except UsageError as err:
@@ -883,11 +887,17 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         local.model.update_user_disk_used(request.user.user_id)
 
     # Delete the data.
+    bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
     for uuid in relevant_uuids:
         # check first is needs to be deleted
-        bundle_location = local.bundle_store.get_bundle_location(uuid)
-        if os.path.lexists(bundle_location):
-            local.bundle_store.cleanup(uuid, dry_run)
+        bundle_link_url = bundle_link_urls.get(uuid)
+        if bundle_link_url:
+            # Don't physically delete linked bundles.
+            pass
+        else:
+            bundle_location = local.bundle_store.get_bundle_location(uuid)
+            if os.path.lexists(bundle_location):
+                local.bundle_store.cleanup(uuid, dry_run)
 
     return relevant_uuids
 
