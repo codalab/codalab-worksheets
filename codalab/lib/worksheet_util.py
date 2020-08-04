@@ -681,10 +681,11 @@ def interpret_items(schemas, raw_items, db_model=None):
         # strip off the leading / from genpath to create a subpath in the target.
         return (bundle_info['uuid'], genpath[1:])
 
-    def flush_bundles():
+    def flush_bundles(bundle_block_start_index):
         """
         Having collected bundles in |bundle_infos|, flush them into |blocks|,
         potentially as a single table depending on the mode.
+        bundle_block_start_index: The raw index for % display <mode> schema 
         """
         if len(bundle_infos) == 0:
             return
@@ -771,6 +772,8 @@ def interpret_items(schemas, raw_items, db_model=None):
                             'header': header,
                             'rows': rows,
                             'sort_keys': [bundle_info["sort_key"]],
+                            'first_bundle_source_index': bundle_block_start_index,
+                            'using_schemas': args if len(args) > 0 else ['default'],
                         }
                     )
                     .data
@@ -828,6 +831,8 @@ def interpret_items(schemas, raw_items, db_model=None):
                             processed_bundle_info["sort_key"]
                             for processed_bundle_info in processed_bundle_infos
                         ],
+                        'first_bundle_source_index': bundle_block_start_index,
+                        'using_schemas': args if len(args) > 0 else ['default'],
                     }
                 )
                 .data
@@ -900,6 +905,7 @@ def interpret_items(schemas, raw_items, db_model=None):
 
     # Go through all the raw items...
     last_was_empty_line = False
+    bundle_block_start_index = -1  # records line for
     current_schema_name = None
     current_schema_ids = []
     for raw_index, item in enumerate(raw_items):
@@ -912,7 +918,8 @@ def interpret_items(schemas, raw_items, db_model=None):
             is_directive = item_type == TYPE_DIRECTIVE
             is_worksheet = item_type == TYPE_WORKSHEET
             if not is_bundle:
-                flush_bundles()
+                flush_bundles(bundle_block_start_index)
+                bundle_block_start_index = -1
 
             if not is_worksheet:
                 flush_worksheets()
@@ -950,6 +957,8 @@ def interpret_items(schemas, raw_items, db_model=None):
                 current_schema_ids = []
 
             if item_type == TYPE_BUNDLE:
+                if bundle_block_start_index == -1:
+                    bundle_block_start_index = raw_index
                 bundle_info = dict(bundle_info, sort_key=sort_key)
                 raw_to_block.append((len(blocks), len(bundle_infos)))
                 bundle_infos.append((raw_index, bundle_info))
@@ -1046,7 +1055,8 @@ def interpret_items(schemas, raw_items, db_model=None):
 
             # Flush bundles, subworksheets and schema items once more at the end
             if raw_index == len(raw_items) - 1:
-                flush_bundles()
+                flush_bundles(bundle_block_start_index)
+                bundle_block_start_index = -1
                 flush_worksheets()
                 if current_schema is not None:
                     blocks.append(
