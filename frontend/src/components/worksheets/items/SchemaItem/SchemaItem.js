@@ -23,6 +23,11 @@ import ArrowRightRoundedIcon from '@material-ui/icons/ArrowRightRounded';
 import Tooltip from '@material-ui/core/Tooltip';
 import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 import { getAfterSortKey } from '../../../../util/worksheet_utils';
+import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
+import WarningIcon from '@material-ui/icons/Warning';
+import CancelIcon from '@material-ui/icons/Cancel';
+import Grid from '@material-ui/core/Grid';
+import Typography from '@material-ui/core/Typography';
 
 class SchemaItem extends React.Component<{
     worksheetUUID: string,
@@ -36,6 +41,7 @@ class SchemaItem extends React.Component<{
             rows: [...this.props.item.field_rows],
             curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
+            confirmingDeletion: false,
         };
     }
 
@@ -47,6 +53,7 @@ class SchemaItem extends React.Component<{
         }
         if (save) {
             this.saveSchema();
+            this.setState({ confirmingDeletion: false });
         }
     };
 
@@ -55,11 +62,12 @@ class SchemaItem extends React.Component<{
             rows: [...this.props.item.field_rows],
             curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
+            confirmingDeletion: false,
         });
     };
 
     saveSchema = () => {
-        const { schema_name, field_rows, ids } = this.props.item;
+        const { schema_name, ids } = this.props.item;
         let updatedSchema = ['schema ' + this.state.curSchemaName];
         let fromAddSchema = false;
         // Note: When using the add-item end point,
@@ -100,6 +108,7 @@ class SchemaItem extends React.Component<{
             ids,
             getAfterSortKey(this.props.item) - 1,
             this.props.create,
+            false,
         );
         if (this.props.create) this.props.onSubmit();
     };
@@ -188,6 +197,11 @@ class SchemaItem extends React.Component<{
         let copiedRows = [...rows];
         copiedRows.splice(idx, 1);
         this.setState({ rows: copiedRows });
+    };
+
+    deleteThisSchema = () => {
+        this.setState({ showSchemaDetail: false, confirmingDeletion: false });
+        this.props.updateSchemaItem([], this.props.item.ids, null, false, true);
     };
 
     componentDidUpdate(prevProps, prevState) {
@@ -293,6 +307,27 @@ class SchemaItem extends React.Component<{
                                 }
                             >
                                 <RestoreIcon />
+                            </IconButton>
+                        </Tooltip>
+                    }{' '}
+                    {
+                        <Tooltip
+                            title={
+                                'Deletes whole schema, bundle blocks using the schema will be affected'
+                            }
+                        >
+                            <IconButton
+                                outlined
+                                onClick={() => {
+                                    if (this.props.create) {
+                                        this.props.onSubmit();
+                                        return;
+                                    }
+                                    this.setState({ confirmingDeletion: true });
+                                }}
+                                disabled={this.state.confirmingDeletion}
+                            >
+                                <DeleteForeverIcon fontSize='small' />
                             </IconButton>
                         </Tooltip>
                     }
@@ -427,50 +462,77 @@ class SchemaItem extends React.Component<{
                     this.props.setFocus(this.props.focusIndex, 0);
                 }}
             >
-                <Tooltip
-                    title={
-                        showSchemaDetail || this.props.create
-                            ? ''
-                            : 'Click to view schema: ' + schemaName
-                    }
-                    placement='right'
-                >
-                    <Button
-                        color='secondary'
-                        variant='outlined'
-                        onClick={() => this.setState({ showSchemaDetail: !showSchemaDetail })}
-                        style={{ paddingLeft: '10px' }}
-                        className={classNames(focused ? classes.highlight : '')}
-                    >
-                        {showSchemaDetail || this.props.create ? (
-                            <ArrowDropDownRoundedIcon />
-                        ) : (
-                            <ArrowRightRoundedIcon />
+                <Grid container direction='row'>
+                    <Grid item xs={10} alignItems='flex-start'>
+                        <Tooltip
+                            title={
+                                showSchemaDetail || this.props.create
+                                    ? ''
+                                    : 'Click to view schema: ' + schemaName
+                            }
+                            placement='right'
+                        >
+                            <Button
+                                color='secondary'
+                                variant='outlined'
+                                onClick={() =>
+                                    this.setState({ showSchemaDetail: !showSchemaDetail })
+                                }
+                                style={{ paddingLeft: '10px' }}
+                                className={classNames(focused ? classes.highlight : '')}
+                            >
+                                {showSchemaDetail || this.props.create ? (
+                                    <ArrowDropDownRoundedIcon />
+                                ) : (
+                                    <ArrowRightRoundedIcon />
+                                )}
+                                <ViewListIcon style={{ padding: '0px' }} />
+                            </Button>
+                        </Tooltip>
+                        {(showSchemaDetail || this.props.create) && (
+                            <TextField
+                                variant='outlined'
+                                id='standard-multiline-static'
+                                InputProps={{
+                                    style: {
+                                        padding: 8,
+                                    },
+                                }}
+                                multiline
+                                error={this.state.curSchemaName === ''}
+                                helperText={
+                                    this.state.curSchemaName === ''
+                                        ? 'Schema name can not be empty'
+                                        : ''
+                                }
+                                size='small'
+                                disabled={!editPermission}
+                                value={this.state.curSchemaName}
+                                style={{ paddingLeft: '20px' }}
+                                onChange={this.changeSchemaName}
+                            />
                         )}
-                        <ViewListIcon style={{ padding: '0px' }} />
-                    </Button>
-                </Tooltip>
-                {(showSchemaDetail || this.props.create) && (
-                    <TextField
-                        variant='outlined'
-                        id='standard-multiline-static'
-                        InputProps={{
-                            style: {
-                                padding: 8,
-                            },
-                        }}
-                        multiline
-                        error={this.state.curSchemaName === ''}
-                        helperText={
-                            this.state.curSchemaName === '' ? 'Schema name can not be empty' : ''
-                        }
-                        size='small'
-                        disabled={!editPermission}
-                        value={this.state.curSchemaName}
-                        style={{ paddingLeft: '20px' }}
-                        onChange={this.changeSchemaName}
-                    />
-                )}
+                    </Grid>
+                    <Grid item xs={2} spacing={0}>
+                        {(showSchemaDetail || this.props.create) && this.state.confirmingDeletion && (
+                            <Tooltip title={'This action is not revertable'}>
+                                <IconButton onClick={this.deleteThisSchema}>
+                                    <WarningIcon outlined fontSize='small' color='error' />
+                                    <Typography color='error'>Confirm</Typography>
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                        {(showSchemaDetail || this.props.create) && this.state.confirmingDeletion && (
+                            <IconButton
+                                outlined
+                                onClick={() => this.setState({ confirmingDeletion: false })}
+                            >
+                                <CancelIcon fontSize='small' />
+                                <Typography>Cancel</Typography>
+                            </IconButton>
+                        )}
+                    </Grid>
+                </Grid>
                 {schemaTable}
             </div>
         );

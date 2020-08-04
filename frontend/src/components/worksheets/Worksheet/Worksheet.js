@@ -567,7 +567,7 @@ class Worksheet extends React.Component {
         );
     };
 
-    updateSchemaItem = (rows, ids, after_sort_key, create) => {
+    updateSchemaItem = (rows, ids, after_sort_key, create, deletion) => {
         // rows: list of string representing the new schema:
         //      % schema example
         //      % add uuid uuid [0:8]
@@ -585,9 +585,15 @@ class Worksheet extends React.Component {
             contentType: 'application/json',
             type: 'POST',
             success: () => {
-                const moveIndex = false;
-                const param = { moveIndex };
-                this.reloadWorksheet(undefined, undefined, param);
+                if (deletion) {
+                    const textDeleted = true;
+                    const param = { textDeleted };
+                    this.reloadWorksheet(undefined, undefined, param);
+                } else {
+                    const moveIndex = false;
+                    const param = { moveIndex };
+                    this.reloadWorksheet(undefined, undefined, param);
+                }
             },
             error: (jqHXR) => {
                 alert(createAlertText(this.url, jqHXR.responseText));
