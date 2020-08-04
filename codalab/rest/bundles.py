@@ -390,8 +390,10 @@ def _fetch_locations():
     - `uuids`: List of bundle UUID's to get the locations for
     """
     bundle_uuids = query_get_list('uuids')
+    bundle_link_urls = local.model.get_bundle_metadata(bundle_uuids, "link_url")
     uuids_to_locations = {
-        uuid: local.bundle_store.get_bundle_location(uuid) for uuid in bundle_uuids
+        uuid: bundle_link_urls.get("uuid") or local.bundle_store.get_bundle_location(uuid)
+        for uuid in bundle_uuids
     }
     return dict(data=uuids_to_locations)
 
