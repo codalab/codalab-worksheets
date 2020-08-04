@@ -38,7 +38,7 @@
     "react-toastify": "^6.0.8",
     "sass": "^1.26.10",
     "seamless-immutable": "^7.1.4",
-    "semantic-ui-react": "^0.88.2",
+    "semantic-ui-react": "^1.1.1",
     "underscore": "^1.10.2"
   },
   "devDependencies": {
