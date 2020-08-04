@@ -261,22 +261,22 @@ def fetch_interpreted_worksheet(uuid):
     elif directive:
         # Only expand the search item corresponding to the given directive.
         # Used in async loading to only load a single table.
-        new_items = []
+        items_to_show = []
         for i, item in enumerate(worksheet_info['items']):
             (bundle_info, subworksheet_info, value_obj, item_type, id, sort_key) = item
             if directive == formatting.tokens_to_string(value_obj):
                 search_results = perform_search_query(value_obj)
-                new_items.append(item)
+                items_to_show.append(item)
                 break
             elif item_type == TYPE_DIRECTIVE:
                 # We need to include previous directives
                 # so that the final search result can be properly
                 # rendered (it may depend on a schema defined earlier
                 # in the worksheet).
-                new_items.append(item)
+                items_to_show.append(item)
         # Make sure the search item is at the end of worksheet_info['items'],
         # so we can isolate it later after interpret_items is called.
-        worksheet_info['items'] = new_items
+        worksheet_info['items'] = items_to_show
         worksheet_info['items'].extend(search_results)
 
     # Set permissions
