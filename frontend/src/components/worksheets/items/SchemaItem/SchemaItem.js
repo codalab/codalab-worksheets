@@ -180,15 +180,6 @@ class SchemaItem extends React.Component<{
     };
 
     componentDidUpdate(prevProps, prevState) {
-        if (
-            prevProps.item.field_rows !== this.props.item.field_rows ||
-            prevProps.item.schema_name !== this.props.item.schema_name
-        ) {
-            this.setState({
-                rows: [...this.props.item.field_rows],
-                curSchemaName: this.props.item.schema_name,
-            });
-        }
         if (this.state.newAddedRow !== -1 && this.state.rows.length === prevState.rows.length + 1) {
             document.getElementById('textbox-' + this.state.newAddedRow + '-0').focus();
         }
@@ -419,7 +410,14 @@ class SchemaItem extends React.Component<{
                     <Button
                         color='secondary'
                         variant='outlined'
-                        onClick={() => this.setState({ showSchemaDetail: !showSchemaDetail })}
+                        onClick={() => {
+                            this.setState({ showSchemaDetail: !showSchemaDetail }, () =>
+                                this.setState({
+                                    rows: [...this.props.item.field_rows],
+                                    curSchemaName: this.props.item.schema_name,
+                                }),
+                            );
+                        }}
                         style={{ paddingLeft: '10px' }}
                         className={classNames(focused ? classes.highlight : '')}
                     >
