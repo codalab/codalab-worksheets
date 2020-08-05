@@ -44,7 +44,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             '--exclude',
             type=str,
             default='',
-            help='A comma-separated list of nodes to explicitly exclude from running jobs.'
+            help='A comma-separated list of nodes to explicitly exclude from running jobs.',
         )
         subparser.add_argument(
             '--partition', type=str, required=True, help='Name of batch job queue to use'
