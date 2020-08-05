@@ -323,6 +323,17 @@ class SlurmBatchWorkerManager(WorkerManager):
             for key in sorted(slurm_args.keys())
         ]
 
+        # Log the hostname of the node that the SlurmWorkerManager
+        # is running a worker on.
+        log_hostname = textwrap.dedent(
+            '''
+            echo "Worker is executing on host: $(hostname)" || true
+            '''
+            + '\n\n'
+            if not self.args.password_file
+            else ''
+        )
+
         # Check the existence of environment variables CODALAB_USERNAME and
         # CODALAB_PASSWORD when password_file is not given.
         worker_authentication = textwrap.dedent(
@@ -367,6 +378,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             '#!/usr/bin/env bash\n\n'
             + '\n'.join(sbatch_args)
             + '\n\n'
+            + log_hostname
             + worker_authentication
             + gpu_isolation
             + ' '.join(srun_args)
