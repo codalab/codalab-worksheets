@@ -658,6 +658,15 @@ class JsonApiClient(RestClient):
                 progress_callback=progress_callback,
             )
 
+    @wrap_exception('Unable to get the locations of bundles')
+    def get_bundles_locations(self, bundle_uuids):
+        response = self._make_request(
+            method='GET',
+            path='/bundles/locations',
+            query_params=self._pack_params({'uuids': bundle_uuids}),
+        )
+        return response['data']
+
     @wrap_exception('Unable to interpret file genpaths')
     def interpret_file_genpaths(self, queries):
         """
