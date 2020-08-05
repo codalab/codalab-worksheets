@@ -41,6 +41,12 @@ class SlurmBatchWorkerManager(WorkerManager):
             '--nodelist', type=str, default='', help='The worker node to run jobs in'
         )
         subparser.add_argument(
+            '--exclude',
+            type=str,
+            default='',
+            help='A comma-separated list of nodes to explicitly exclude from running jobs.',
+        )
+        subparser.add_argument(
             '--partition', type=str, required=True, help='Name of batch job queue to use'
         )
         subparser.add_argument(
@@ -394,6 +400,8 @@ class SlurmBatchWorkerManager(WorkerManager):
         """
         slurm_args = {}
         slurm_args['nodelist'] = self.args.nodelist
+        if self.args.exclude:
+            slurm_args['exclude'] = self.args.exclude
         slurm_args['mem'] = self.args.memory_mb
         slurm_args['partition'] = self.args.partition
         gpu_gres_value = "gpu"
