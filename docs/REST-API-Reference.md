@@ -422,8 +422,7 @@ Query parameters:
 Fetch locations of bundles.
 
 Query parameters:
-
-- `uuids`: List of bundle UUID's to get the locations for.
+- `uuids`: List of bundle UUID's to get the locations for
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
 
