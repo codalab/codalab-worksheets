@@ -8,6 +8,8 @@ When the bundle is executed, it symlinks the program target in to ./program,
 symlinks the input target in to ./input, and then streams output to ./stdout
 and ./stderr. The ./output directory may also be used to store output files.
 '''
+from typing import List, ClassVar
+
 from codalab.bundles.derived_bundle import DerivedBundle
 from codalab.common import UsageError
 
@@ -18,7 +20,7 @@ from codalab.worker.bundle_state import State
 
 class RunBundle(DerivedBundle):
     BUNDLE_TYPE = 'run'
-    METADATA_SPECS = list(DerivedBundle.METADATA_SPECS)
+    METADATA_SPECS = list(DerivedBundle.METADATA_SPECS)  # type: List[ClassVar]
     # Note that these are strings, which need to be parsed
     # Request a machine with this much resources and don't let run exceed these resources
     # Don't format metadata specs

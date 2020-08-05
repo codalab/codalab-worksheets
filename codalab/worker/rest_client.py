@@ -3,6 +3,7 @@ from io import StringIO
 import http.client
 import json
 import urllib.request, urllib.parse, urllib.error
+from typing import Dict, Any
 
 from .file_util import un_gzip_stream
 
@@ -27,7 +28,7 @@ class RestClient(object):
     """
     A dictionary of additional headers to send along with HTTP requests.
     """
-    _extra_headers = {}
+    _extra_headers: Dict[str, str] = {}
 
     def __init__(self, base_url):
         self._base_url = base_url
