@@ -113,7 +113,7 @@ class WorkerManager(object):
         if os.environ.get('CODALAB_USERNAME') != "codalab":
             keywords += [".mine"]
         if self.args.worker_tag_exclusive and self.args.worker_tag:
-            keywords += ["request_queue=" + self.args.worker_tag]
+            keywords += ["request_queue=%s,tag=%s" % (self.args.worker_tag, self.args.worker_tag)]
 
         bundles = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
