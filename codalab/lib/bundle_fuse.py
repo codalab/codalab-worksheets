@@ -8,6 +8,8 @@ import time
 from collections import OrderedDict
 
 from contextlib import closing
+from typing import Dict
+
 from codalab.worker.download_util import BundleTarget
 
 try:
@@ -99,8 +101,8 @@ if fuse_is_available:
         https://code.activestate.com/recipes/325905-memoize-decorator-with-timeout/
         """
 
-        _caches = {}
-        _timeouts = {}
+        _caches: Dict[int, Dict[int, Dict[int, float]]] = {}
+        _timeouts: Dict[int, float] = {}
 
         def __init__(self, timeout=2):
             self.timeout = timeout
