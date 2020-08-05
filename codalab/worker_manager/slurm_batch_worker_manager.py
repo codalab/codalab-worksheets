@@ -330,8 +330,6 @@ class SlurmBatchWorkerManager(WorkerManager):
             echo "Worker is executing on host: $(hostname)" || true
             '''
             + '\n\n'
-            if not self.args.password_file
-            else ''
         )
 
         # Check the existence of environment variables CODALAB_USERNAME and
