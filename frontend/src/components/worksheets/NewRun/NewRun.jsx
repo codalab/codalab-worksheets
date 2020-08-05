@@ -55,7 +55,7 @@ class _DependencyEditor extends React.Component<{
             style: {
                 fontSize: 14,
             },
-            disableUnderline: true 
+            disableUnderline: true  
         }
          
         return (
