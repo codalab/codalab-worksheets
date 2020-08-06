@@ -27,7 +27,7 @@ class FileUtilTest(unittest.TestCase):
         self.addCleanup(lambda: remove_path(temp_dir))
 
         output_dir = os.path.join(temp_dir, 'output')
-        un_tar_directory(tar_gzip_directory(dir, False, ['f2'], ['f1', 'b.txt']), output_dir, 'gz')
+        un_tar_directory(tar_gzip_directory(dir, False, ['f2'], ['b.txt']), output_dir, 'gz')
         output_dir_entries = os.listdir(output_dir)
         self.assertIn('dir1', output_dir_entries)
         self.assertIn('a.txt', output_dir_entries)
@@ -149,7 +149,7 @@ class FileUtilTest(unittest.TestCase):
             f.write(b"hello world")
             f.seek(0)
             results = get_path_size(dirname)
-            self.assertEqual(results, 4107)
+            self.assertEqual(results, 107)
 
     def test_get_path_size_nested_dir(self):
         with tempfile.TemporaryDirectory() as dirname, tempfile.NamedTemporaryFile(
@@ -162,7 +162,7 @@ class FileUtilTest(unittest.TestCase):
             f2.write(b"hello world")
             f2.seek(0)
             results = get_path_size(dirname)
-            self.assertEqual(results, 8215)
+            self.assertEqual(results, 150)
 
     def test_remove_path(self):
         with tempfile.NamedTemporaryFile(delete=False) as f:

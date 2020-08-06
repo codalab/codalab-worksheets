@@ -74,7 +74,6 @@ def tar_gzip_directory(
             args.append('--exclude=./' + name)
     # Add everything in the current directory
     args.append('.')
-
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
         return proc.stdout
@@ -105,7 +104,6 @@ def un_tar_directory(fileobj, directory_path, compression='', force=False):
             member_path = os.path.realpath(os.path.join(directory_path, member.name))
             if not member_path.startswith(directory_path):
                 raise tarfile.TarError('Archive member extracts outside the directory.')
-
             tar.extract(member, directory_path)
 
 
@@ -311,15 +309,13 @@ def get_path_size(path, exclude_names=[]):
     If path is a directory, any directory entries in exclude_names will be
     ignored.
     """
-    result = os.lstat(path).st_size
-    if not os.path.islink(path) and os.path.isdir(path):
-        for child in os.listdir(path):
-            if child not in exclude_names:
-                try:
-                    full_child_path = os.path.join(path, child)
-                except UnicodeDecodeError:
-                    full_child_path = os.path.join(path.decode('utf-8'), child.decode('utf-8'))
-                result += get_path_size(full_child_path)
+    result = get_file_size(path)
+    patterns = [
+        os.path.join(path, "", "**")
+    ]  # Adds trailing slash if not already there -- this is needed so that on somewhere like S3, we correctly match directory contents, not files starting with the same prefix.
+    for child in FileSystems.match(patterns)[0].metadata_list:
+        if child.path not in exclude_names:
+            result += child.size_in_bytes
     return result
 
 
