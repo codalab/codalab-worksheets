@@ -112,6 +112,11 @@ class WorkerManager(object):
         # want to see their staged bundles.
         if os.environ.get('CODALAB_USERNAME') != "codalab":
             keywords += [".mine"]
+        # Currently worker tags can be specified as either '<tag name>' or 'tag=<tag name>'
+        # If support for this is removed so that 'request_queue' is always set to be '<tag name>'
+        # this search query can again be simplified to only match 'request_queue=tag'.
+        # NOTE: server/bundle_manager.py has the server-side matching logic that should be synced
+        # with this search request.
         if self.args.worker_tag_exclusive and self.args.worker_tag:
             keywords += ["request_queue=%s,tag=%s" % (self.args.worker_tag, self.args.worker_tag)]
 
