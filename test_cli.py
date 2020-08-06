@@ -18,6 +18,8 @@ Things not tested:
 
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
+from typing import Dict
+
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
@@ -31,6 +33,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 from datetime import datetime
@@ -154,7 +157,12 @@ def wait_for_contents(uuid, substring, timeout_seconds=1000):
 
 
 def wait(uuid, expected_exit_code=0):
-    _run_command([cl, 'wait', uuid], expected_exit_code)
+    try:
+        _run_command([cl, 'wait', uuid], expected_exit_code)
+    except AssertionError as e:
+        _run_command([cl, 'info', uuid])
+        print(e)
+        raise e
 
 
 def check_equals(true_value, pred_value):
@@ -386,7 +394,7 @@ class TestModule(object):
     a decorator to register new modules and a class method to run modules by name.
     """
 
-    modules = OrderedDict()
+    modules = OrderedDict()  # type: Dict[str, 'TestModule']
 
     def __init__(self, name, func, description, default):
         self.name = name
@@ -1193,6 +1201,61 @@ def test(ctx):
     check_num_lines(
         2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
     )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
+
+
+@TestModule.register('link')
+def test(ctx):
+    # Upload fails
+    uuid = _run_command([cl, "upload", "/etc/passwd", '--link'])
+    check_equals(State.READY, get_info(uuid, 'state'))
+    _run_command([cl, 'cat', uuid], 1)
+
+    # Upload file
+    # /tmp/codalab/link-mounts is the absolute path of the default link mounts folder on the host. By default, it is mounted
+    # when no other argument for CODALAB_LINK_MOUNTS is specified.
+    #
+    # We create the temporary file at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts because
+    # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
+    # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
+
+    os.makedirs('/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts', exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode='w',
+        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts',
+        suffix=".txt",
+        delete=False,
+    ) as f:
+        f.write("hello world!")
+    _, host_filename = f.name.split("/opt/codalab-worksheets-link-mounts")
+    uuid = _run_command([cl, 'upload', host_filename, '--link'])
+    check_equals(State.READY, get_info(uuid, 'state'))
+    check_equals(host_filename, get_info(uuid, 'link_url'))
+    check_equals('raw', get_info(uuid, 'link_format'))
+    check_equals("hello world!", _run_command([cl, 'cat', uuid]))
+
+    run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo'])
+    wait(run_uuid)
+    check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
+
+    os.remove(f.name)
+
+    # Upload directory
+    with tempfile.TemporaryDirectory(
+        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts'
+    ) as dirname:
+        with open(os.path.join(dirname, "test.txt"), "w+") as f:
+            f.write("hello world!")
+
+        _, host_dirname = dirname.split("/opt/codalab-worksheets-link-mounts")
+        uuid = _run_command([cl, 'upload', host_dirname, '--link'])
+        check_equals(State.READY, get_info(uuid, 'state'))
+        check_equals(host_dirname, get_info(uuid, 'link_url'))
+        check_equals('raw', get_info(uuid, 'link_format'))
+        check_equals("hello world!", _run_command([cl, 'cat', uuid + '/test.txt']))
+
+        run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo/test.txt'])
+        wait(run_uuid)
+        check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
 
 
 @TestModule.register('run2')

@@ -2,13 +2,15 @@
 MakeBundle is a Bundle type that symlinks a number of targets in from other
 bundles to produce a new, packaged bundle.
 '''
+from typing import List, ClassVar
+
 from codalab.bundles.derived_bundle import DerivedBundle
 from codalab.worker.bundle_state import State
 
 
 class MakeBundle(DerivedBundle):
     BUNDLE_TYPE = 'make'
-    METADATA_SPECS = list(DerivedBundle.METADATA_SPECS)
+    METADATA_SPECS = list(DerivedBundle.METADATA_SPECS)  # type: List[ClassVar]
 
     @classmethod
     def construct(

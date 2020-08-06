@@ -23,6 +23,8 @@ import errno
 import os
 import socket
 import subprocess
+import yaml
+import tempfile
 
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
 
@@ -293,6 +295,11 @@ CODALAB_ARGUMENTS = [
         default=SERVICE_REQUEST_TIMEOUT_SECONDS,
         help='Docker client timeout (in seconds)',
     ),
+    CodalabArg(
+        name='link_mounts',
+        help='Comma-separated list of directories that are mounted on the REST server, allowing their contents to be used in the --link argument.',
+        default='/tmp/codalab/link-mounts',
+    ),
     ### Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
 ]
@@ -518,7 +525,30 @@ class CodalabServiceManager(object):
             self.args.version = clean_version(self.args.version)
         self.compose_cwd = os.path.join(BASE_DIR, 'docker', 'compose_files')
 
-        self.compose_files = ['docker-compose.yml']
+        self.compose_files = []
+        self.compose_tempfile_name = ""
+        if self.args.link_mounts:
+            # We want to be able to mount a variable number of folders to the Docker container,
+            # so we can't just use regular interpolation with environment variables. Instead,
+            # we create a temporary file with the modified docker-compose.yml and use that file instead.
+            with open(os.path.join(self.compose_cwd, 'docker-compose.yml')) as f:
+                compose_options = yaml.load(f)
+            for mount_path in self.args.link_mounts.split(","):
+                mount_path = os.path.abspath(mount_path)
+                compose_options["x-codalab-server"]["volumes"].append(
+                    f"{mount_path}:/opt/codalab-worksheets-link-mounts{mount_path}"
+                )
+            docker_compose_custom_path = os.path.join(
+                self.args.codalab_home, 'docker-compose-custom.yml'
+            )
+            os.makedirs(os.path.dirname(docker_compose_custom_path), exist_ok=True)
+            with open(docker_compose_custom_path, 'w+') as f:
+                yaml.dump(compose_options, f)
+                self.compose_tempfile_name = f.name
+            self.compose_files.append(self.compose_tempfile_name)
+        else:
+            self.compose_files.append('docker-compose.yml')
+
         if self.args.dev:
             self.compose_files.append('docker-compose.dev.yml')
         if self.args.use_ssl:
@@ -608,8 +638,9 @@ class CodalabServiceManager(object):
 
     def _run_compose_cmd(self, cmd):
         compose_files_str = ' '.join('-f ' + f for f in self.compose_files)
-        command_string = 'docker-compose -p %s %s %s' % (
+        command_string = 'docker-compose -p %s --project-directory %s %s %s' % (
             self.args.instance_name,
+            self.compose_cwd,
             compose_files_str,
             cmd,
         )
