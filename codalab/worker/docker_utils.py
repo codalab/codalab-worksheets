@@ -13,6 +13,7 @@ from dateutil import parser, tz
 import datetime
 import re
 import requests
+import secrets
 
 
 MIN_API_VERSION = '1.17'
@@ -172,7 +173,7 @@ def start_bundle_container(
         environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else 'all'
 
     # Name the container with the UUID for readability
-    container_name = 'codalab_run_%s' % uuid
+    container_name = f"codalab_run_{uuid}_{secrets.token_hex(5)}"
     container = client.containers.run(
         image=docker_image,
         command=docker_command,
