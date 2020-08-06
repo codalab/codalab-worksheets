@@ -1027,7 +1027,7 @@ class BundleModel(object):
             self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
 
         if worker['shared_file_system']:
-            # TODO: fix.
+            # TODO(Ashwin): fix for --link.
             self.update_disk_metadata(bundle, bundle_location)
 
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
@@ -1053,7 +1053,7 @@ class BundleModel(object):
         else:
             dirs_and_files = [], [bundle_location]
 
-        # TODO: make this non-fs specific
+        # TODO(Ashwin): make this non-fs specific
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
         data_size = path_util.get_size(bundle_location, dirs_and_files)
         if enforce_disk_quota:
@@ -2536,7 +2536,7 @@ class BundleModel(object):
         self.update_user_info({'user_id': user_id, 'last_login': datetime.datetime.utcnow()})
 
     def _get_disk_used(self, user_id):
-        # TODO: don't include linked bundles
+        # TODO(Ashwin): don't include linked bundles
         return (
             self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%'])[
                 'result'

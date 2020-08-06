@@ -1,4 +1,5 @@
 import http.client
+import json
 import logging
 import mimetypes
 import os
@@ -378,6 +379,23 @@ def _set_bundle_permissions():
     new_permissions = BundlePermissionSchema(strict=True, many=True).load(request.json).data
     set_bundle_permissions(new_permissions)
     return BundlePermissionSchema(many=True).dump(new_permissions).data
+
+
+@get('/bundles/locations', apply=AuthenticatedProtectedPlugin())
+def _fetch_locations():
+    """
+    Fetch locations of bundles.
+
+    Query parameters:
+    - `uuids`: List of bundle UUID's to get the locations for
+    """
+    bundle_uuids = query_get_list('uuids')
+    bundle_link_urls = local.model.get_bundle_metadata(bundle_uuids, "link_url")
+    uuids_to_locations = {
+        uuid: bundle_link_urls.get("uuid") or local.bundle_store.get_bundle_location(uuid)
+        for uuid in bundle_uuids
+    }
+    return dict(data=uuids_to_locations)
 
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
@@ -880,8 +898,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             # Don't physically delete linked bundles.
             pass
         else:
-            bundle_location = local.bundle_store.get_bundle_location(uuid=uuid)
-            # TODO: fix this.
+            bundle_location = local.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):
                 local.bundle_store.cleanup(uuid, dry_run)
 

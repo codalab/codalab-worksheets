@@ -1,6 +1,7 @@
 import logging
 import os
 from contextlib import closing
+import fnmatch
 
 from codalab.common import http_error_to_exception, precondition, UsageError, NotFoundError
 from codalab.worker import download_util
@@ -100,8 +101,9 @@ class DownloadManager(object):
         bundle_link_url = self._bundle_model.get_bundle_metadata(
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
+        if bundle_link_url:
+            bundle_link_url = self._transform_link_path(bundle_link_url)
         # Raises NotFoundException if uuid is invalid
-
         if bundle_state == State.PREPARING:
             raise NotFoundError(
                 "Bundle {} hasn't started running yet, files not available".format(
@@ -314,10 +316,23 @@ class DownloadManager(object):
             return self._bundle_model.get_bundle_worker(target.bundle_uuid)['shared_file_system']
         return True
 
+    def _transform_link_path(self, path):
+        """Transforms a link file path to its properly mounted path.
+        Every file path is mounted to a path with "/opt/codalab-worksheets-link-mounts"
+        prepended to it.
+        """
+        return f"/opt/codalab-worksheets-link-mounts{path}"
+
     def _get_target_path(self, target):
-        bundle_path = self._bundle_store.get_bundle_location(uuid=target.bundle_uuid)
+        bundle_link_url = self._bundle_model.get_bundle_metadata(
+            [target.bundle_uuid], "link_url"
+        ).get(target.bundle_uuid)
+        if bundle_link_url:
+            bundle_link_url = self._transform_link_path(bundle_link_url)
+        bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(target.bundle_uuid)
         try:
-            return download_util.get_target_path(bundle_path, target)
+            path = download_util.get_target_path(bundle_path, target)
+            return path
         except download_util.PathException as e:
             raise UsageError(str(e))
 
