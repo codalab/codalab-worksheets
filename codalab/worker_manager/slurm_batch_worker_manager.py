@@ -41,6 +41,12 @@ class SlurmBatchWorkerManager(WorkerManager):
             '--nodelist', type=str, default='', help='The worker node to run jobs in'
         )
         subparser.add_argument(
+            '--exclude',
+            type=str,
+            default='',
+            help='A comma-separated list of nodes to explicitly exclude from running jobs.',
+        )
+        subparser.add_argument(
             '--partition', type=str, required=True, help='Name of batch job queue to use'
         )
         subparser.add_argument(
@@ -323,6 +329,15 @@ class SlurmBatchWorkerManager(WorkerManager):
             for key in sorted(slurm_args.keys())
         ]
 
+        # Log the hostname of the node that the SlurmWorkerManager
+        # is running a worker on.
+        log_hostname = textwrap.dedent(
+            '''
+            echo "Worker is executing on host: $(hostname)" || true
+            '''
+            + '\n\n'
+        )
+
         # Check the existence of environment variables CODALAB_USERNAME and
         # CODALAB_PASSWORD when password_file is not given.
         worker_authentication = textwrap.dedent(
@@ -367,6 +382,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             '#!/usr/bin/env bash\n\n'
             + '\n'.join(sbatch_args)
             + '\n\n'
+            + log_hostname
             + worker_authentication
             + gpu_isolation
             + ' '.join(srun_args)
@@ -384,6 +400,8 @@ class SlurmBatchWorkerManager(WorkerManager):
         """
         slurm_args = {}
         slurm_args['nodelist'] = self.args.nodelist
+        if self.args.exclude:
+            slurm_args['exclude'] = self.args.exclude
         slurm_args['mem'] = self.args.memory_mb
         slurm_args['partition'] = self.args.partition
         gpu_gres_value = "gpu"

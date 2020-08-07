@@ -8,6 +8,7 @@ from email.mime.text import MIMEText
 import subprocess
 import time
 import argparse
+from typing import Dict
 
 BASE_DIR = os.path.dirname(__file__)
 
@@ -128,8 +129,8 @@ def logs(s):
         log(line)
 
 
-num_errors = defaultdict(int)
-last_sent = defaultdict(int)
+num_errors: Dict[str, int] = defaultdict(int)
+last_sent: Dict[str, float] = defaultdict(int)
 
 
 def error_logs(error_type, s):
@@ -147,7 +148,7 @@ def error_logs(error_type, s):
         last_sent[error_type] = t
 
 
-durations = defaultdict(list)  # Command => durations for that command
+durations: Dict[str, list] = defaultdict(list)  # Command => durations for that command
 
 
 def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=True):
