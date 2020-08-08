@@ -278,7 +278,7 @@ class Worker:
                             self.terminate = True
                         if self.terminate:
                             break
-                        sleep(5)
+                        time.sleep(5)
         self.cleanup()
 
     def cleanup(self):
