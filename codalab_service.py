@@ -235,6 +235,8 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='email_host', help='Send email by logging into this SMTP server'),
     CodalabArg(name='email_username', help='Username of email account for sending email'),
     CodalabArg(name='email_password', help='Password of email account for sending email'),
+    ### State Backend
+    CodalabArg(name='state_backend', help='Backend to use for managing the CodalabManager state.'),
     ### SSL
     CodalabArg(name='use_ssl', help='Use HTTPS instead of HTTP', type=bool, default=False),
     CodalabArg(name='ssl_cert_file', help='Path to the cert file for SSL'),
@@ -741,6 +743,7 @@ class CodalabServiceManager(object):
                     ('email/host', self.args.email_host),
                     ('email/username', self.args.email_username),
                     ('email/password', self.args.email_password),
+                    ('state_backend', self.args.state_backend),
                 ]
                 if value
             ]
