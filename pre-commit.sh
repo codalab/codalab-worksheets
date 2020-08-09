@@ -18,5 +18,5 @@ venv/bin/mkdocs build || { rm -rf venv; exit 1; }  # Outputs to `site`
 # Note: run `venv/bin/mkdocs serve` for a live preview
 
 # Fix Python and JavaScript style (mutates code!)
-venv/bin/black codalab scripts *.py || exit
-npm run --prefix frontend format
+venv/bin/black codalab scripts *.py || exit 1
+npm run --prefix frontend format || exit 1

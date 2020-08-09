@@ -258,7 +258,7 @@ class TableItem extends React.Component<{
                                         onChange={this.changeSchemaName}
                                         size='small'
                                         placeholder={'Using default schema'}
-                                    ></TextField>
+                                    />
                                     <IconButton
                                         onClick={() => {
                                             this.setState({ openSchemaTextBox: false });
@@ -324,28 +324,33 @@ const TableContainer = withStyles(styles)(_TableContainer);
 
 const TableWrapper = (props) => {
     const { item, onAsyncItemLoad } = props;
-    useEffect(() => {
-        (async function() {
-            if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
-                try {
-                    const { contents } = await fetchAsyncBundleContents({ contents: item.rows });
-                    onAsyncItemLoad({
-                        ...item,
-                        rows: contents,
-                        status: {
-                            code: FETCH_STATUS_SCHEMA.READY,
-                            error_message: '',
-                        },
-                    });
-                } catch (e) {
-                    console.error(e);
-                    // TODO: better error message handling here.
+    useEffect(
+        () => {
+            (async function() {
+                if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
+                    try {
+                        const { contents } = await fetchAsyncBundleContents({
+                            contents: item.rows,
+                        });
+                        onAsyncItemLoad({
+                            ...item,
+                            rows: contents,
+                            status: {
+                                code: FETCH_STATUS_SCHEMA.READY,
+                                error_message: '',
+                            },
+                        });
+                    } catch (e) {
+                        console.error(e);
+                        // TODO: better error message handling here.
+                    }
                 }
-            }
-        })();
-        // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [item.rows, item.status]);
+            })();
+            // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        },
+        [item.rows, item.status],
+    );
     return <TableItem {...props} />;
 };
 
