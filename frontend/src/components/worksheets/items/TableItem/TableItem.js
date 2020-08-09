@@ -133,6 +133,14 @@ class TableItem extends React.Component<{
         let item = this.props.item;
         let bundleInfos = item.bundles_spec.bundle_infos;
         let headerItems = item.header;
+        let dummyHeader = headerItems.map(() => {
+            return <TableCell />;
+        });
+        let dummyHeaderStyle = {
+            height: 36,
+            backgroundColor: '',
+        };
+        dummyHeaderStyle.backgroundColor = this.props.focused ? '#FFFFFF' : '#EDF7FF';
         let headerHtml = headerItems.map((item, index) => {
             return (
                 <TableCell
@@ -226,6 +234,7 @@ class TableItem extends React.Component<{
             <div className='ws-item'>
                 <TableContainer style={{ overflowX: 'auto' }}>
                     <Table className={tableClassName}>
+                        <TableHead style={dummyHeaderStyle}>{dummyHeader}</TableHead>
                         <TableHead>
                             <TableRow
                                 style={{
