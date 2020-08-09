@@ -514,10 +514,6 @@ class BundleCLI(object):
         return '%s(%s)' % (contents_str(nested_dict_get(info, 'metadata', 'name')), info['uuid'])
 
     @staticmethod
-    def simple_worksheet_str(info):
-        return '%s(%s)' % (contents_str(info.get('name')), info['uuid'])
-
-    @staticmethod
     def simple_user_str(user):
         """
         For a user matching output of UserSchema, return 'user_name(id)'
@@ -957,7 +953,7 @@ class BundleCLI(object):
             if 'username' in state:
                 print("username: %s" % state['username'], file=self.stdout)
 
-        print("current_worksheet: %s" % self.simple_worksheet_str(worksheet_info), file=self.stdout)
+        print("current_worksheet: %s" % self.worksheet_url(worksheet_info), file=self.stdout)
         print("user: %s" % self.simple_user_str(client.fetch('user')), file=self.stdout)
 
     @Commands.command(
@@ -2012,7 +2008,7 @@ class BundleCLI(object):
             )
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print(
-                'Added %d bundles to %s' % (len(bundles), self.worksheet_str(worksheet_info)),
+                'Added %d bundles to %s' % (len(bundles), self.worksheet_url(worksheet_info)),
                 file=self.stdout,
             )
 
@@ -2072,7 +2068,7 @@ class BundleCLI(object):
 
     def _worksheet_description(self, worksheet_info):
         fields = [
-            ('Worksheet', self.worksheet_str(worksheet_info)),
+            ('Worksheet', self.worksheet_url(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
             ('Tags', ' '.join(worksheet_info['tags'])),
             (
@@ -2258,7 +2254,7 @@ class BundleCLI(object):
     def print_host_worksheets(self, info):
         print('host_worksheets:', file=self.stdout)
         for host_worksheet_info in info['host_worksheets']:
-            print("  %s" % self.simple_worksheet_str(host_worksheet_info), file=self.stdout)
+            print("  %s" % self.worksheet_url(host_worksheet_info), file=self.stdout)
 
     def print_permissions(self, info):
         print('permission: %s' % permission_str(info['permission']), file=self.stdout)
@@ -2793,14 +2789,6 @@ class BundleCLI(object):
             worksheet_info['name'],
         )
 
-    def worksheet_str(self, worksheet_info):
-        return '%s%s%s(%s)' % (
-            self.manager.session()['address'],
-            INSTANCE_SEPARATOR,
-            worksheet_info['name'],
-            worksheet_info['uuid'],
-        )
-
     @Commands.command(
         'new',
         help='Create a new worksheet.',
@@ -3212,7 +3200,7 @@ class BundleCLI(object):
             elif mode == BlockModes.subworksheets_block:
                 for worksheet_info in block['subworksheet_infos']:
                     print(
-                        '[Worksheet ' + self.simple_worksheet_str(worksheet_info) + ']',
+                        '[Worksheet ' + self.worksheet_url(worksheet_info) + ']',
                         file=self.stdout,
                     )
             elif mode == BlockModes.placeholder_block:
@@ -3635,7 +3623,7 @@ class BundleCLI(object):
             % (
                 self.simple_group_str(group),
                 permission_str(new_permission),
-                self.simple_worksheet_str(worksheet),
+                self.worksheet_url(worksheet),
             ),
             file=self.stdout,
         )

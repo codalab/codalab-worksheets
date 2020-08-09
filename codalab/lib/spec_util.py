@@ -11,7 +11,9 @@ UUID_REGEX = re.compile('^' + UUID_STR + '$')
 UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}$')
 BEGIN_NAME_STR = '[a-zA-Z_]'
 NAME_STR = '[a-zA-Z_][a-zA-Z0-9_\.\-]*'
-NAME_PATTERN_STR = '[%\*a-zA-Z0-9_\.\-]+'  # Allow % for matching wildcard (SQL syntax), and * (regular expressions)
+NAME_PATTERN_STR = (
+    '[%\*a-zA-Z0-9_\.\-]+'
+)  # Allow % for matching wildcard (SQL syntax), and * (regular expressions)
 NAME_REGEX = re.compile('^' + NAME_STR + '$')  # Names (exact match)
 NAME_PATTERN_REGEX = re.compile('^(' + NAME_PATTERN_STR + ')$')  # Name pattern (loose match)
 NAME_PATTERN_HISTORY_REGEX = re.compile('^(' + NAME_PATTERN_STR + ')\^([0-9]*)$')
