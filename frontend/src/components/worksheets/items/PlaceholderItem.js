@@ -29,31 +29,28 @@ export default forwardRef((props, ref) => {
     const [error, setError] = useState(false);
     const { worksheetUUID, onAsyncItemLoad, itemHeight } = props;
     const { directive, sort_keys } = props.item;
-    useEffect(
-        () => {
-            (async function() {
-                try {
-                    const { blocks } = await fetchData({ directive, worksheetUUID });
-                    setItem(blocks.length === 0 ? null : blocks[0]);
-                    if (blocks.length > 0) {
-                        let actualBlock = blocks[0];
-                        // replace with existing sort keys if there is one
-                        if (sort_keys) {
-                            actualBlock['sort_keys'] = sort_keys;
-                        }
-                        actualBlock.loadedFromPlaceholder = true;
-                        onAsyncItemLoad(actualBlock);
+    useEffect(() => {
+        (async function() {
+            try {
+                const { blocks } = await fetchData({ directive, worksheetUUID });
+                setItem(blocks.length === 0 ? null : blocks[0]);
+                if (blocks.length > 0) {
+                    let actualBlock = blocks[0];
+                    // replace with existing sort keys if there is one
+                    if (sort_keys) {
+                        actualBlock['sort_keys'] = sort_keys;
                     }
-                } catch (e) {
-                    console.error(e);
-                    setError(e);
+                    actualBlock.loadedFromPlaceholder = true;
+                    onAsyncItemLoad(actualBlock);
                 }
-            })();
-            // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-        },
-        [directive, worksheetUUID],
-    );
+            } catch (e) {
+                console.error(e);
+                setError(e);
+            }
+        })();
+        // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [directive, onAsyncItemLoad, sort_keys, worksheetUUID]);
     if (error) {
         return <div ref={ref}>Error loading item.</div>;
     }
