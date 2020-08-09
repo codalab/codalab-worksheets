@@ -3200,8 +3200,7 @@ class BundleCLI(object):
             elif mode == BlockModes.subworksheets_block:
                 for worksheet_info in block['subworksheet_infos']:
                     print(
-                        '[Worksheet ' + self.worksheet_url(worksheet_info) + ']',
-                        file=self.stdout,
+                        '[Worksheet ' + self.worksheet_url(worksheet_info) + ']', file=self.stdout
                     )
             elif mode == BlockModes.placeholder_block:
                 print('[Placeholder]', block['directive'], file=self.stdout)
