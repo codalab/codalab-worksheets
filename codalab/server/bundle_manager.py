@@ -437,6 +437,8 @@ class BundleManager(object):
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
+                # TODO: should only start bundle if they have admin permission for it
+                # OR we can hold group sacred. -Tony
                 if self._try_start_bundle(workers, worker, bundle, bundle_resources):
                     # If we successfully started a bundle on a codalab-owned worker,
                     # decrement the parallel run quota left.

@@ -159,6 +159,7 @@ def check_worksheet_has_all_permission(model, user, worksheet):
 # We use a simpler permission model for running bundles. Only the root user
 # or the user who owns the bundle can run it.
 def check_bundle_have_run_permission(model, user_id, bundle):
+    # TODO: check all permissions -Tony
     return user_id in [model.root_user_id, bundle.owner_id]
 
 
