@@ -196,7 +196,7 @@ class SampleWorksheet:
 
     def _add_introduction(self):
         self._expected_lines.append(
-            f'### Worksheet: https?:\/\/[a-z\-.\d:]*cl_small_worksheet\({SampleWorksheet._FULL_UUID_REGEX}\)'
+            f'### Worksheet: https?:\/\/.*{SampleWorksheet._FULL_UUID_REGEX}.*cl_small_worksheet.*'
         )
         self._expected_lines.append('### Title: (Small|Large) Worksheet')
         self._expected_lines.append(f'### Tags: {SampleWorksheet.TAG}')
@@ -547,7 +547,7 @@ class SampleWorksheet:
     def _add_worksheets_pattern(self, worksheet_count):
         self._add_blank_line_pattern()
         for _ in range(worksheet_count):
-            self._expected_lines.append(f'\[Worksheet \S*\({SampleWorksheet._FULL_UUID_REGEX}\)\]')
+            self._expected_lines.append(f'\[Worksheet .*{SampleWorksheet._FULL_UUID_REGEX}.*\]')
 
     def _add_dash_pattern(self):
         self._expected_lines.append('\s\s[-]*')
