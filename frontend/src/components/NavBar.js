@@ -92,6 +92,15 @@ class NavBar extends React.Component<{
 
     createNewWorksheet() {
         this.resetDialog();
+        if (this.state.newWorksheetName.includes(' ')) {
+            this.setState({
+                snackbarShow: true,
+                snackbarMessage: `Worksheet name with name ${this.state.newWorksheetName} may not contain spaces`,
+                snackbarVariant: 'error',
+            });
+            return;
+        }
+
         executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`)
             .then((data) => {
                 if (data.structured_result && data.structured_result.ui_actions) {
