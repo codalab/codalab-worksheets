@@ -195,14 +195,20 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
-            bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+            bundle_link_url = getattr(bundle.metadata, "link_url", None)
+            bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
             path = os.path.normpath(bundle_location)
 
             deps = []
+            parent_bundle_link_urls = self._model.get_bundle_metadata(
+                [dep.parent_uuid for dep in bundle.dependencies], "link_url"
+            )
             for dep in bundle.dependencies:
-                parent_bundle_path = os.path.normpath(
+                parent_bundle_link_url = parent_bundle_link_urls.get(dep.parent_uuid)
+                parent_bundle_path = parent_bundle_link_url or os.path.normpath(
                     self._bundle_store.get_bundle_location(dep.parent_uuid)
                 )
+                # TODO(Ashwin): make this logic non-fs specific.
                 dependency_path = os.path.normpath(
                     os.path.join(parent_bundle_path, dep.parent_path)
                 )
@@ -229,6 +235,7 @@ class BundleManager(object):
                 for dependency_path, child_path in deps:
                     path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
+            # TODO(Ashwin): fix
             self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
@@ -290,6 +297,7 @@ class BundleManager(object):
                     )
                 )
                 bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+                # TODO(Ashwin): fix this -- bundle location could be linked.
                 self._model.transition_bundle_finished(bundle, bundle_location)
 
     def _bring_offline_stuck_running_bundles(self, workers):
@@ -572,6 +580,7 @@ class BundleManager(object):
             if worker['shared_file_system']:
                 # On a shared file system we create the path here to avoid NFS
                 # directory cache issues.
+                # TODO(Ashwin): fix for --link
                 path = self._bundle_store.get_bundle_location(bundle.uuid)
                 remove_path(path)
                 os.mkdir(path)
@@ -676,10 +685,18 @@ class BundleManager(object):
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
         if shared_file_system:
-            message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
+            bundle_link_url = getattr(bundle.metadata, "link_url", None)
+            message['bundle'][
+                'location'
+            ] = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
+            parent_bundle_link_urls = self._model.get_bundle_metadata(
+                [dep['parent_uuid'] for dep in message['bundle']['dependencies']], "link_url"
+            )
             for dependency in message['bundle']['dependencies']:
-                dependency['location'] = self._bundle_store.get_bundle_location(
-                    dependency['parent_uuid']
+                parent_bundle_link_url = parent_bundle_link_urls.get(dependency['parent_uuid'])
+                dependency['location'] = (
+                    parent_bundle_link_url
+                    or self._bundle_store.get_bundle_location(dependency['parent_uuid'])
                 )
 
         # Figure out the resource requirements.

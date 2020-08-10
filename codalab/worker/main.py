@@ -10,7 +10,6 @@ import logging
 import signal
 import socket
 import stat
-import subprocess
 import sys
 import psutil
 
@@ -253,6 +252,7 @@ def main():
         docker_network_prefix=args.network_prefix,
         pass_down_termination=args.pass_down_termination,
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,
+        exit_on_exception=args.exit_on_exception,
     )
 
     # Register a signal handler to ensure safe shutdown.
@@ -311,21 +311,8 @@ def parse_gpuset_args(arg):
         return set()
 
     try:
-        # We run nvidia-smi on the host directly, in order to respect
-        # environment variables like CUDA_VISIBLE_DEVICES or other restrictions
-        # that, for instance, might be placed by Slurm or a similar resource
-        # allocation system. Running nvidia-smi in Docker ignores these
-        # restrictions, hence why we don't just simply use
-        # docker_utils.get_nvidia_devices()
-        nvidia_command = ['nvidia-smi', '--query-gpu=index,uuid', '--format=csv,noheader']
-        output = subprocess.run(
-            nvidia_command, stdout=subprocess.PIPE, check=True, universal_newlines=True
-        ).stdout
-        print(output.split('\n')[:-1])
-        all_gpus = {
-            gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]
-        }
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
+    except docker_utils.DockerException:
         all_gpus = {}
 
     if arg == 'ALL':

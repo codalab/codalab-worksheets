@@ -1,6 +1,7 @@
 from collections import namedtuple
 import http
 import logging
+import os
 import socket
 import time
 import traceback
@@ -111,8 +112,13 @@ class WorkerManager(object):
         # want to see their staged bundles.
         if os.environ.get('CODALAB_USERNAME') != "codalab":
             keywords += [".mine"]
-        if args.worker_tag_exclusive and args.worker_tag:
-            keywords += ["request_queue=" + args.worker_tag]
+        # The keywords below search for `request_queue=<worker tag>` OR `request_queue=tag=<worker tag>`
+        # If support for this is removed so that 'request_queue' is always set to be '<worker tag>'
+        # (and not tag=<worker tag>) this search query can again be simplified.
+        # NOTE: server/bundle_manager.py has the server-side matching logic that should be synced
+        # with this search request.
+        if self.args.worker_tag_exclusive and self.args.worker_tag:
+            keywords += ["request_queue=%s,tag=%s" % (self.args.worker_tag, self.args.worker_tag)]
 
         bundles = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}

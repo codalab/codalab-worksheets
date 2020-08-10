@@ -9,6 +9,7 @@ import ImageItem from './items/ImageItem';
 import MarkdownItem from './items/MarkdownItem';
 import RecordItem from './items/RecordItem';
 import TableItem from './items/TableItem';
+import SchemaItem from './items/SchemaItem';
 import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
 import PlaceholderItem from './items/PlaceholderItem';
@@ -26,13 +27,14 @@ export const BLOCK_TO_COMPONENT = {
     image_block: ImageItem,
     graph_block: GraphItem,
     placeholder_block: PlaceholderItem,
+    schema_block: SchemaItem,
 };
 
 // Create a worksheet item based on props and add it to worksheet_items.
 // - item: information about the table to display
 // - index: integer representing the index in the list of items
 // - focused: whether this item has the focus
-// - canEdit: whether we're allowed to edit this item
+// - editPermission: whether we have permission to edit this item
 // - setFocus: call back to select this item
 // - updateWorksheetSubFocusIndex: call back to notify parent of which row is selected (for tables)
 const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) {
@@ -52,8 +54,10 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
     props.url = url;
     props.prevItem = prevItem;
     props.itemHeight = (props.itemHeights || {})[props.ref] || 100;
-
-    props.after_sort_key = getAfterSortKey(props.item, props.subFocusIndex);
+    props.after_sort_key = getAfterSortKey(
+        props.item,
+        props.item.mode === 'markup_block' ? undefined : props.subFocusIndex,
+    );
     props.ids = getIds(item);
     // showNewButtonsAfterEachBundleRow is set to true when we have a bundle table, because in this case,
     // we must show the new upload / new run buttons after each row in the table (in the BundleRow component)
@@ -98,6 +102,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             subFocusIndex={props.subFocusIndex}
             after_sort_key={props.after_sort_key}
             ids={props.ids}
+            updateSchemaItem={props.updateSchemaItem}
         >
             {elem}
         </ItemWrapper>,
@@ -140,7 +145,7 @@ class WorksheetItemList extends React.Component {
             ['shift+g'],
             function() {
                 this.props.setFocus(this.props.ws.info.blocks.length - 1, 'end');
-                $('html, body').animate({ scrollTop: $(document).height() }, 'fast');
+                $('#worksheet_container').scrollTop($('#worksheet_container')[0].scrollHeight);
             }.bind(this),
             'keydown',
         );
@@ -215,7 +220,6 @@ class WorksheetItemList extends React.Component {
                         version: this.props.version,
                         active: this.props.active,
                         focused,
-                        canEdit: this.props.canEdit,
                         focusIndex: index,
                         subFocusIndex: this.props.subFocusIndex,
                         setFocus: this.props.setFocus,
@@ -235,9 +239,11 @@ class WorksheetItemList extends React.Component {
                         editPermission: info && info.edit_permission,
                         addCopyBundleRowsCallback: this.props.addCopyBundleRowsCallback,
                         itemID: index,
+                        updateBundleBlockSchema: this.props.updateBundleBlockSchema,
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         itemHeights: this.props.itemHeights,
+                        updateSchemaItem: this.props.updateSchemaItem,
                     };
                     addWorksheetItems(
                         props,

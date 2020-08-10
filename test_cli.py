@@ -24,6 +24,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
+from typing import Dict
 
 import argparse
 import json
@@ -33,6 +34,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 
@@ -204,7 +206,12 @@ def wait_for_contents(uuid, substring, timeout_seconds=1000):
 
 
 def wait(uuid, expected_exit_code=0):
-    _run_command([cl, 'wait', uuid], expected_exit_code)
+    try:
+        _run_command([cl, 'wait', uuid], expected_exit_code)
+    except AssertionError as e:
+        _run_command([cl, 'info', uuid])
+        print(e)
+        raise e
 
 
 def check_equals(true_value, pred_value):
@@ -269,7 +276,7 @@ def _run_command(
         include_stderr (bool, optional): Include stderr in output. Defaults to False.
         binary (bool, optional): Whether output is binary. Defaults to False.
         force_subprocess (bool, optional): Force "cl" commands to run with subprocess, rather than running the CodaLab CLI directly through Python. Defaults to False.
-        request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "4m".
+        request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "10m".
         request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m".
         request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed).
         request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands. Defaults to "python:3.6.10-slim-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
@@ -381,10 +388,15 @@ class ModuleContext(object):
         else:
             print(Colorizer.green("[*] TEST PASSED"))
 
-        # Clean up and restore original worksheet
-        print("[*][*] CLEANING UP")
         os.environ.clear()
         os.environ.update(self.original_environ)
+        # Don't clean up when running on CI, for speed
+        if os.getenv("CI") == "true":
+            print("[*][*] SKIPPING CLEAN UP (CI)")
+            return True
+
+        # Clean up and restore original worksheet
+        print("[*][*] CLEANING UP")
 
         _run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
@@ -451,7 +463,7 @@ class TestModule(object):
     a decorator to register new modules and a class method to run modules by name.
     """
 
-    modules = OrderedDict()
+    modules = OrderedDict()  # type: Dict[str, 'TestModule']
 
     def __init__(self, name, func, description, default):
         self.name = name
@@ -605,6 +617,32 @@ def test(ctx):
     _run_command([cl, 'rm', '--data-only', uuid])
     check_equals('None', get_info(uuid, 'data_hash'))
     _run_command([cl, 'rm', uuid])
+
+
+@TestModule.register('auth')
+def test(ctx):
+    username = os.getenv("CODALAB_USERNAME")
+    password = os.getenv("CODALAB_PASSWORD")
+
+    # When environment variables set: should always stay logged in, even if running "cl logout"
+    check_contains("user: codalab", _run_command([cl, 'status']))
+    _run_command([cl, 'logout'])
+    check_contains("user: codalab", _run_command([cl, 'status']))
+
+    # When environment variables unset: should logout upon "cl logout"
+    del os.environ["CODALAB_USERNAME"]
+    del os.environ["CODALAB_PASSWORD"]
+    check_contains("user: codalab", _run_command([cl, 'status']))
+    _run_command([cl, 'logout'])
+
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = "wrongpassword"
+    _run_command([cl, 'status'], 1)
+
+    # Put back the environment variables.
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = password
+    check_contains("user: codalab", _run_command([cl, 'status']))
 
 
 @TestModule.register('upload1')
@@ -818,7 +856,7 @@ def test(ctx):
     # . is current worksheet
     check_contains(wuuid, _run_command([cl, 'ls', '-w', '.']))
     # / is home worksheet
-    check_contains('::home-', _run_command([cl, 'ls', '-w', '/']))
+    check_contains('home-', _run_command([cl, 'ls', '-w', '/']))
 
 
 @TestModule.register('binary')
@@ -1228,6 +1266,61 @@ def test(ctx):
     check_num_lines(
         2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
     )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
+
+
+@TestModule.register('link')
+def test(ctx):
+    # Upload fails
+    uuid = _run_command([cl, "upload", "/etc/passwd", '--link'])
+    check_equals(State.READY, get_info(uuid, 'state'))
+    _run_command([cl, 'cat', uuid], 1)
+
+    # Upload file
+    # /tmp/codalab/link-mounts is the absolute path of the default link mounts folder on the host. By default, it is mounted
+    # when no other argument for CODALAB_LINK_MOUNTS is specified.
+    #
+    # We create the temporary file at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts because
+    # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
+    # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
+
+    os.makedirs('/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts', exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode='w',
+        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts',
+        suffix=".txt",
+        delete=False,
+    ) as f:
+        f.write("hello world!")
+    _, host_filename = f.name.split("/opt/codalab-worksheets-link-mounts")
+    uuid = _run_command([cl, 'upload', host_filename, '--link'])
+    check_equals(State.READY, get_info(uuid, 'state'))
+    check_equals(host_filename, get_info(uuid, 'link_url'))
+    check_equals('raw', get_info(uuid, 'link_format'))
+    check_equals("hello world!", _run_command([cl, 'cat', uuid]))
+
+    run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo'])
+    wait(run_uuid)
+    check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
+
+    os.remove(f.name)
+
+    # Upload directory
+    with tempfile.TemporaryDirectory(
+        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts'
+    ) as dirname:
+        with open(os.path.join(dirname, "test.txt"), "w+") as f:
+            f.write("hello world!")
+
+        _, host_dirname = dirname.split("/opt/codalab-worksheets-link-mounts")
+        uuid = _run_command([cl, 'upload', host_dirname, '--link'])
+        check_equals(State.READY, get_info(uuid, 'state'))
+        check_equals(host_dirname, get_info(uuid, 'link_url'))
+        check_equals('raw', get_info(uuid, 'link_format'))
+        check_equals("hello world!", _run_command([cl, 'cat', uuid + '/test.txt']))
+
+        run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo/test.txt'])
+        wait(run_uuid)
+        check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
 
 
 @TestModule.register('run2')
@@ -2116,6 +2209,75 @@ def test(ctx):
             [cl, 'run', 'a:{}'.format(uuid1), 'b:{}'.format(uuid), 'echo b_a', '--memoize']
         ),
     )
+
+
+@TestModule.register('edit_user')
+def test(ctx):
+    # Can't both remove and grant access for a user
+    user_id, user_name = current_user()
+    _run_command([cl, 'uedit', user_name, '--grant-access', '--remove-access'], 1)
+
+    # Can't change access in a non-protected instance
+    _run_command([cl, 'uedit', user_name, '--grant-access'], 1)
+
+
+@TestModule.register('protected_mode')
+def test(ctx):
+    user_id, user_name = current_user()
+
+    worksheet_uuid = _run_command([cl, 'new', random_name()])
+    ctx.collect_worksheet(worksheet_uuid)
+    _run_command([cl, 'work', worksheet_uuid])
+
+    bundle_uuid = _run_command([cl, 'run', 'should be able to run'])
+    ctx.collect_bundle(bundle_uuid)
+
+    group_uuid = get_uuid(_run_command([cl, 'gnew', random_name()]))
+    ctx.collect_group(group_uuid)
+
+    # Request to remove access and check that the user is denied access
+    _run_command([cl, 'uedit', user_name, '--remove-access'])
+    check_equals(_run_command([cl, 'uinfo', user_name, '-f', 'has_access']), 'False')
+
+    # A user without access should not be able to run any of the following CLI commands
+    _run_command([cl, 'upload', test_path('dir1')], 1)
+    _run_command([cl, 'make', bundle_uuid, '--name', 'foo'], 1)
+    _run_command([cl, 'run', 'should not be able to run'], 1)
+    _run_command([cl, 'edit', bundle_uuid, '--tags', 'some_tag'], 1)
+    _run_command([cl, 'detach', bundle_uuid], 1)
+    _run_command([cl, 'rm', bundle_uuid], 1)
+    _run_command([cl, 'search', bundle_uuid, '-u'], 1)
+    _run_command([cl, 'ls'], 1)
+    _run_command([cl, 'info', bundle_uuid], 1)
+    _run_command([cl, 'cat', bundle_uuid], 1)
+    _run_command([cl, 'wait', bundle_uuid], 1)
+    _run_command([cl, 'download', bundle_uuid], 1)
+    _run_command([cl, 'write', bundle_uuid + '/', 'will not work'], 1)
+
+    _run_command([cl, 'new', 'worksheet_not_created'], 1)
+    _run_command([cl, 'add', 'text', 'text will not get added'], 1)
+    _run_command([cl, 'work', worksheet_uuid], 1)
+    _run_command([cl, 'print', worksheet_uuid], 1)
+    _run_command([cl, 'wedit', worksheet_uuid, '--title', 'no title'], 1)
+    _run_command([cl, 'wrm', worksheet_uuid], 1)
+    _run_command([cl, 'wls', '.shared'], 1)
+
+    _run_command([cl, 'gls'], 1)
+    _run_command([cl, 'gnew', 'no_group'], 1)
+    _run_command([cl, 'grm', group_uuid], 1)
+    _run_command([cl, 'ginfo', group_uuid], 1)
+    _run_command([cl, 'uadd', user_name, group_uuid], 1)
+    _run_command([cl, 'urm', user_name, group_uuid], 1)
+    _run_command([cl, 'perm', bundle_uuid, group_uuid, 'a'], 1)
+    _run_command([cl, 'wperm', worksheet_uuid, group_uuid, 'n'], 1)
+    _run_command([cl, 'chown', user_name, bundle_uuid, 'n'], 1)
+
+    _run_command([cl, 'workers'], 1)
+    _run_command([cl, 'status'], 1)
+
+    # Request to grant access and check that the user now has access
+    _run_command([cl, 'uedit', user_name, '--grant-access'])
+    check_equals(_run_command([cl, 'uinfo', user_name, '-f', 'has_access']), 'True')
 
 
 if __name__ == '__main__':

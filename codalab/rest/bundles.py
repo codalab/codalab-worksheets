@@ -1,4 +1,5 @@
 import http.client
+import json
 import logging
 import mimetypes
 import os
@@ -35,14 +36,14 @@ from codalab.rest.schemas import (
 )
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
-from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin, ProtectedPlugin
 from codalab.worker.bundle_state import State
 from codalab.worker.download_util import BundleTarget
 
 logger = logging.getLogger(__name__)
 
 
-@get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR)
+@get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR, apply=ProtectedPlugin())
 def _fetch_bundle(uuid):
     """
     Fetch bundle by UUID.
@@ -59,7 +60,7 @@ def _fetch_bundle(uuid):
     return document
 
 
-@get('/bundles')
+@get('/bundles', apply=ProtectedPlugin())
 def _fetch_bundles():
     """
     Fetch bundles in the following two ways:
@@ -202,7 +203,7 @@ def build_bundles_document(bundle_uuids):
     return document
 
 
-@post('/bundles', apply=AuthenticatedPlugin())
+@post('/bundles', apply=AuthenticatedProtectedPlugin())
 def _create_bundles():
     """
     Bulk create bundles.
@@ -254,7 +255,10 @@ def _create_bundles():
         bundle_class = get_bundle_subclass(bundle['bundle_type'])
         bundle['owner_id'] = request.user.user_id
 
-        if issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
+        metadata = bundle.get("metadata", {})
+        if metadata.get("link_url"):
+            bundle['state'] = State.READY
+        elif issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
             bundle['state'] = State.UPLOADING
         else:
             bundle['state'] = State.CREATED
@@ -303,7 +307,7 @@ def _create_bundles():
     return BundleSchema(many=True).dump(bundles).data
 
 
-@patch('/bundles', apply=AuthenticatedPlugin())
+@patch('/bundles', apply=AuthenticatedProtectedPlugin())
 def _update_bundles():
     """
     Bulk update bundles.
@@ -333,7 +337,7 @@ def _update_bundles():
     return BundleSchema(many=True).dump(updated_bundles).data
 
 
-@delete('/bundles', apply=AuthenticatedPlugin())
+@delete('/bundles', apply=AuthenticatedProtectedPlugin())
 def _delete_bundles():
     """
     Delete the bundles specified.
@@ -364,7 +368,7 @@ def _delete_bundles():
     return json_api_meta({}, {'ids': deleted_uuids})
 
 
-@post('/bundle-permissions', apply=AuthenticatedPlugin())
+@post('/bundle-permissions', apply=AuthenticatedProtectedPlugin())
 def _set_bundle_permissions():
     """
     Bulk set bundle permissions.
@@ -375,6 +379,23 @@ def _set_bundle_permissions():
     new_permissions = BundlePermissionSchema(strict=True, many=True).load(request.json).data
     set_bundle_permissions(new_permissions)
     return BundlePermissionSchema(many=True).dump(new_permissions).data
+
+
+@get('/bundles/locations', apply=AuthenticatedProtectedPlugin())
+def _fetch_locations():
+    """
+    Fetch locations of bundles.
+
+    Query parameters:
+    - `uuids`: List of bundle UUID's to get the locations for
+    """
+    bundle_uuids = query_get_list('uuids')
+    bundle_link_urls = local.model.get_bundle_metadata(bundle_uuids, "link_url")
+    uuids_to_locations = {
+        uuid: bundle_link_urls.get("uuid") or local.bundle_store.get_bundle_location(uuid)
+        for uuid in bundle_uuids
+    }
+    return dict(data=uuids_to_locations)
 
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
@@ -429,7 +450,11 @@ def _fetch_bundle_contents_info(uuid, path=''):
     return {'data': info}
 
 
-@put('/bundles/<uuid:re:%s>/netcat/<port:int>/' % spec_util.UUID_STR, name='netcat_bundle')
+@put(
+    '/bundles/<uuid:re:%s>/netcat/<port:int>/' % spec_util.UUID_STR,
+    name='netcat_bundle',
+    apply=ProtectedPlugin(),
+)
 def _netcat_bundle(uuid, port):
     """
     Send a raw bytestring into the specified port of the running bundle with uuid.
@@ -450,22 +475,27 @@ def _netcat_bundle(uuid, port):
 @post(
     '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
     name='netcurl_bundle',
+    apply=ProtectedPlugin(),
 )
 @put(
     '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
     name='netcurl_bundle',
+    apply=ProtectedPlugin(),
 )
 @delete(
     '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
     name='netcurl_bundle',
+    apply=ProtectedPlugin(),
 )
 @get(
     '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
     name='netcurl_bundle',
+    apply=ProtectedPlugin(),
 )
 @patch(
     '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
     name='netcurl_bundle',
+    apply=ProtectedPlugin(),
 )
 def _netcurl_bundle(uuid, port, path=''):
     """
@@ -517,10 +547,15 @@ def _netcurl_bundle(uuid, port, path=''):
         request.path_shift(-4)  # restore the URL
 
 
-@get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')
+@get(
+    '/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR,
+    name='fetch_bundle_contents_blob',
+    apply=ProtectedPlugin(),
+)
 @get(
     '/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR,
     name='fetch_bundle_contents_blob',
+    apply=ProtectedPlugin(),
 )
 def _fetch_bundle_contents_blob(uuid, path=''):
     """
@@ -646,7 +681,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
 @put(
     '/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR,
     name='update_bundle_contents_blob',
-    apply=AuthenticatedPlugin(),
+    apply=AuthenticatedProtectedPlugin(),
 )
 def _update_bundle_contents_blob(uuid):
     """
@@ -712,7 +747,8 @@ def _update_bundle_contents_blob(uuid):
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
             )  # See UploadManager for full explanation of 'simplify'
-            bundle_location = local.bundle_store.get_bundle_location(uuid)
+            bundle_link_url = getattr(bundle.metadata, "link_url", None)
+            bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
             local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
     except UsageError as err:
@@ -853,11 +889,17 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         local.model.update_user_disk_used(request.user.user_id)
 
     # Delete the data.
+    bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
     for uuid in relevant_uuids:
         # check first is needs to be deleted
-        bundle_location = local.bundle_store.get_bundle_location(uuid)
-        if os.path.lexists(bundle_location):
-            local.bundle_store.cleanup(uuid, dry_run)
+        bundle_link_url = bundle_link_urls.get(uuid)
+        if bundle_link_url:
+            # Don't physically delete linked bundles.
+            pass
+        else:
+            bundle_location = local.bundle_store.get_bundle_location(uuid)
+            if os.path.lexists(bundle_location):
+                local.bundle_store.cleanup(uuid, dry_run)
 
     return relevant_uuids
 

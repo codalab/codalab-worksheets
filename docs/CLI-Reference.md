@@ -22,11 +22,14 @@ Usage: `cl <command> <arguments>`
       -z, --force-compression  Always use compression (this may speed up single-file uploads over a slow network).
       -w, --worksheet-spec     Upload to this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
       -i, --ignore             Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
+      -l, --link               Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store.
       -n, --name               Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description        Full description of the bundle.
       --tags                   Space-separated list of tags used for search (e.g., machine-learning).
       --license                The license under which this program/dataset is released.
       --source-url             URL corresponding to the original source of this bundle.
+      --link-url               Link URL of bundle.
+      --link-format            Link format of bundle. Can be equal to"raw" or "zip" (only "raw" is supported as of now).
       -e, --edit               Show an editor to allow editing of the bundle metadata.
 
 ### make
@@ -50,31 +53,7 @@ Usage: `cl <command> <arguments>`
       -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
       -a, --after_sort_key         Insert after this sort_key
       -m, --memoize                If a bundle with the same command and dependencies already exists, return it instead of creating a new one.
-      -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
-      -d, --description            Full description of the bundle.
-      --tags                       Space-separated list of tags used for search (e.g., machine-learning).
-      --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
-      --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.
-      --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.
-      --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.
-      --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.
-      --request-cpus               Number of CPUs allowed for this run.
-      --request-gpus               Number of GPUs allowed for this run.
-      --request-queue              Submit run to this job queue.
-      --request-priority           Job priority (higher is more important).
-      --request-network            Whether to allow network access.
-      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents.
-      -e, --edit                   Show an editor to allow editing of the bundle metadata.
-      -W, --wait                   Wait until run finishes.
-      -t, --tail                   Wait until run finishes, displaying stdout/stderr.
-      -v, --verbose                Display verbose output.
-
-### docker
-    Beta feature. Simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.
-    Arguments:
-      target_spec                  [<key>]:[[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
-      command                      Arbitrary Linux command to execute.
-      -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+      -i, --interactive            Beta feature - Start an interactive session to construct your run command.
       -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description            Full description of the bundle.
       --tags                       Space-separated list of tags used for search (e.g., machine-learning).
@@ -451,6 +430,8 @@ Usage: `cl <command> <arguments>`
       -t, --time-quota          Total amount of time allowed (e.g., 3, 3m, 3h, 3d)
       -p, --parallel-run-quota  Total amount of runs the user may have running at a time on shared public workers
       -d, --disk-quota          Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)
+      --grant-access            Grant access to the user if the CodaLab instance is in protected mode
+      --remove-access           Remove the user's access if the CodaLab instance is in protected mode
 
 ### ufarewell
     Delete user permanently. Root user only.

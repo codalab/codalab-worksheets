@@ -179,7 +179,7 @@ class DockerImageManager:
                             # ignore this 404, since any extraneous tags will be removed during the next iteration.
                             logger.error(
                                 "Attempted to remove image %s from cache, but image was not found: %s",
-                                image_tag,
+                                tag,
                                 err,
                             )
 

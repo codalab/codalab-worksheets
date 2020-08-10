@@ -186,7 +186,15 @@ class BundleModel(object):
     def get_bundle_names(self, uuids):
         """
         Fetch the bundle names of the given uuids.
-        Return {uuid: ..., name: ...}
+        Return {uuid: name}
+        """
+        return self.get_bundle_metadata(uuids, "name")
+
+    def get_bundle_metadata(self, uuids, metadata_key):
+        """
+        Fetch a single metadata value from the bundles referenced
+        by the given uuids.
+        Return {uuid: metadata_value}
         """
         if len(uuids) == 0:
             return []
@@ -196,7 +204,7 @@ class BundleModel(object):
                     [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
                 ).where(
                     and_(
-                        cl_bundle_metadata.c.metadata_key == 'name',
+                        cl_bundle_metadata.c.metadata_key == metadata_key,
                         cl_bundle_metadata.c.bundle_uuid.in_(uuids),
                     )
                 )
@@ -1019,6 +1027,7 @@ class BundleModel(object):
             self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
 
         if worker['shared_file_system']:
+            # TODO(Ashwin): fix for --link.
             self.update_disk_metadata(bundle, bundle_location)
 
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
@@ -1044,6 +1053,7 @@ class BundleModel(object):
         else:
             dirs_and_files = [], [bundle_location]
 
+        # TODO(Ashwin): make this non-fs specific
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
         data_size = path_util.get_size(bundle_location, dirs_and_files)
         if enforce_disk_quota:
@@ -2227,6 +2237,7 @@ class BundleModel(object):
         notifications=NOTIFICATIONS_GENERAL,
         user_id=None,
         is_verified=False,
+        has_access=False,
     ):
         """
         Create a brand new unverified user.
@@ -2254,6 +2265,7 @@ class BundleModel(object):
                         "first_name": first_name,
                         "last_name": last_name,
                         "date_joined": now,
+                        "has_access": has_access,
                         "is_verified": is_verified,
                         "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
@@ -2390,6 +2402,21 @@ class BundleModel(object):
 
         return True
 
+    def is_verified(self, user_id):
+        """
+        Checks if the user is verified or not.
+        :param user_id: id of the user
+        :return: boolean to indicate if the user is verified or not
+        """
+        with self.engine.begin() as connection:
+            verified_row = connection.execute(
+                cl_user.select()
+                .where(and_(cl_user.c.user_id == user_id, cl_user.c.is_verified))
+                .limit(1)
+            ).fetchone()
+
+            return verified_row is not None
+
     def new_user_reset_code(self, user_id):
         """
         Generate a new password reset code.
@@ -2513,6 +2540,7 @@ class BundleModel(object):
         self.update_user_info({'user_id': user_id, 'last_login': datetime.datetime.utcnow()})
 
     def _get_disk_used(self, user_id):
+        # TODO(Ashwin): don't include linked bundles
         return (
             self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%'])[
                 'result'
