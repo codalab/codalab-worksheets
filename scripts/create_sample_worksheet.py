@@ -8,8 +8,8 @@ import time
 from scripts.test_util import cleanup, run_command
 
 """
-Script to create small and large sample worksheets in any instance to stress test the front end. The purpose of 
-the small worksheet is to test all features CodaLab offers on the front end. The large worksheet is a much bigger 
+Script to create small and large sample worksheets in any instance to stress test the front end. The purpose of
+the small worksheet is to test all features CodaLab offers on the front end. The large worksheet is a much bigger
 version of the small worksheet and its purpose is to push the limit and stress test the frontend rendering capabilities.
 """
 
@@ -484,7 +484,7 @@ class SampleWorksheet:
         self._add_blank_line_pattern()
         for uuid in worksheets:
             self._add_line('{{%s}}' % uuid)
-            self._expected_lines.append(f'\[Worksheet \S*\({SampleWorksheet._FULL_UUID_REGEX}\)\]')
+            self._expected_lines.append(f'\[Worksheet .*{SampleWorksheet._FULL_UUID_REGEX}.*\]')
 
     def _add_bundles(self, bundles):
         for uuid in bundles:
