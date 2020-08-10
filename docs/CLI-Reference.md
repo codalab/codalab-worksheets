@@ -22,7 +22,7 @@ Usage: `cl <command> <arguments>`
       -z, --force-compression  Always use compression (this may speed up single-file uploads over a slow network).
       -w, --worksheet-spec     Upload to this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
       -i, --ignore             Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
-      -l, --link               Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store. If this argument is used and a local file path is specified,the path must match a glob expression specified by the CODALAB_LINK_ALLOWED_PATHS environment variableor the --link_allowed_paths command-line parameter to codalab_service.py.
+      -l, --link               Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store.
       -n, --name               Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description        Full description of the bundle.
       --tags                   Space-separated list of tags used for search (e.g., machine-learning).
@@ -53,6 +53,7 @@ Usage: `cl <command> <arguments>`
       -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
       -a, --after_sort_key         Insert after this sort_key
       -m, --memoize                If a bundle with the same command and dependencies already exists, return it instead of creating a new one.
+      -i, --interactive            Beta feature - Start an interactive session to construct your run command.
       -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description            Full description of the bundle.
       --tags                       Space-separated list of tags used for search (e.g., machine-learning).
@@ -71,7 +72,6 @@ Usage: `cl <command> <arguments>`
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
       -v, --verbose                Display verbose output.
-      -i, --interactive            Beta feature - Start an interactive session to construct your run command.
 
 ### edit (e)
     Edit an existing bundle's metadata.

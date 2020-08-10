@@ -31,3 +31,6 @@ if [ ! -e "$codalabdir/venv/bin/register-python-argcomplete" ]; then
 else
     eval "$($codalabdir/venv/bin/register-python-argcomplete cl)"
 fi
+
+# Used the version of `cl` that's installed into `venv` by default.
+. venv/bin/activate
