@@ -50,7 +50,7 @@ export default forwardRef((props, ref) => {
         })();
         // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [directive, worksheetUUID]);
+    }, [directive, onAsyncItemLoad, sort_keys, worksheetUUID]);
     if (error) {
         return <div ref={ref}>Error loading item.</div>;
     }
@@ -59,10 +59,6 @@ export default forwardRef((props, ref) => {
         return <div ref={ref}>No results found.</div>;
     }
     return (
-        <div
-            ref={ref}
-            className='codalab-item-placeholder'
-            style={{ height: itemHeight || 100 }}
-        ></div>
+        <div ref={ref} className='codalab-item-placeholder' style={{ height: itemHeight || 100 }} />
     );
 });
