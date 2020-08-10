@@ -92,7 +92,7 @@ class NavBar extends React.Component<{
 
     createNewWorksheet() {
         this.resetDialog();
-        if (this.state.newWorksheetName.includes(' ')) {
+        if (/\s/.test(this.state.newWorksheetName)) {
             this.setState({
                 snackbarShow: true,
                 snackbarMessage: `Worksheet name with name ${this.state.newWorksheetName} may not contain spaces`,
