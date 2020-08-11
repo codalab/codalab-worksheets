@@ -1763,6 +1763,7 @@ class BundleCLI(object):
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
+            Commands.Argument('-f', '--field', help='Edit any specified bundle metadata field.', nargs=2),
         ),
     )
     def do_edit_command(self, args):
@@ -1784,6 +1785,8 @@ class BundleCLI(object):
             metadata_update['tags'] = args.tags
         if args.anonymous is not None:
             bundle_update['is_anonymous'] = args.anonymous
+        if args.field:
+            metadata_update[args.filed[0]] = args.field[1]
 
         # Prompt user for edits via an editor when no edits provided by command line options
         if not self.headless and not metadata_update and not bundle_update:
