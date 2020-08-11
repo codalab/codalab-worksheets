@@ -8,13 +8,17 @@ import traceback
 import socket
 import http.client
 import sys
+from typing import Optional, Set, Dict
 
 import psutil
 
 import docker
 import codalab.worker.docker_utils as docker_utils
+import requests
 
-from .bundle_service_client import BundleServiceException
+from .bundle_service_client import BundleServiceException, BundleServiceClient
+from .dependency_manager import DependencyManager
+from .docker_image_manager import DockerImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
 from .bundle_state import BundleInfo, RunResources, BundleCheckinState
@@ -148,7 +152,14 @@ class Worker:
         # that might have been created by other workers.
         try:
             self.docker.networks.prune(filters={"until": "1h"})
-        except docker.errors.APIError as e:
+        except (docker.errors.APIError, requests.exceptions.ReadTimeout) as e:
+            # docker.errors.APIError is raised when a prune is already running:
+            # https://github.com/codalab/codalab-worksheets/issues/2635
+            # docker.errors.APIError: 409 Client Error: Conflict ("a prune operation is already running").
+            # requests.exceptions.ReadTimeout is raised when the request to the Docker socket times out.
+            # https://github.com/docker/docker-py/issues/2266
+            # Since pruning is a relatively non-essential routine (i.e., it's ok if pruning fails
+            # on one or two iterations), we just ignore this issue.
             logger.warning("Cannot prune docker networks: %s", str(e))
 
         # Right now the suffix to the general worker network is hardcoded to manually match the suffix
@@ -275,7 +286,7 @@ class Worker:
                             self.terminate = True
                         if self.terminate:
                             break
-                        sleep(5)
+                        time.sleep(5)
         self.cleanup()
 
     def cleanup(self):

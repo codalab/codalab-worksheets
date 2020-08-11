@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.19_
+_version 0.5.21_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -416,6 +416,13 @@ Query parameters:
  - `dry-run`: 1 to just return list of bundles that would be deleted with
    the given parameters without actually deleting them, or 0 to perform
    the deletion. Default is 0.
+
+### `GET /bundles/locations`
+
+Fetch locations of bundles.
+
+Query parameters:
+- `uuids`: List of bundle UUID's to get the locations for
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
 
