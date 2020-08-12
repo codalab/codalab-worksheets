@@ -7,14 +7,6 @@ CODALAB_SENTRY_INGEST = os.getenv("CODALAB_SENTRY_INGEST_URL", None)
 logger = logging.getLogger(__name__)
 
 
-def run_if_sentry_ingest_provided(f):
-    def wrapper(*args, **kwargs):
-        if CODALAB_SENTRY_INGEST:
-            return f(*args, **kwargs)
-
-    return wrapper
-
-
 def run_once(f):
     def wrapper(*args, **kwargs):
         if not wrapper.has_run:
@@ -25,7 +17,10 @@ def run_once(f):
     return wrapper
 
 
-@run_if_sentry_ingest_provided
+def using_sentry():
+    return CODALAB_SENTRY_INGEST is not None
+
+
 def initialize_sentry():
     """
     Initialize the Sentry SDK if it hasn't already been initialized.
@@ -35,7 +30,6 @@ def initialize_sentry():
         print_sentry_warning()
 
 
-@run_if_sentry_ingest_provided
 def load_sentry_data(username=None, **kwargs):
     with sentry_sdk.configure_scope() as scope:
         if username:
@@ -44,12 +38,10 @@ def load_sentry_data(username=None, **kwargs):
             scope.set_tag(kwarg, value)
 
 
-@run_if_sentry_ingest_provided
 def capture_exception(exception=None):
     sentry_sdk.capture_exception(exception)
 
 
-@run_if_sentry_ingest_provided
 @run_once
 def print_sentry_warning():
     logger.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")

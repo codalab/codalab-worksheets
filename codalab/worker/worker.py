@@ -13,7 +13,7 @@ from typing import Optional, Set, Dict
 import psutil
 
 import docker
-from codalab.lib.telemetry_util import capture_exception, initialize_sentry, load_sentry_data
+from codalab.lib.telemetry_util import capture_exception, using_sentry
 import codalab.worker.docker_utils as docker_utils
 import requests
 
@@ -109,11 +109,6 @@ class Worker:
         self.terminate_and_restage = False
         self.pass_down_termination = pass_down_termination
         self.exit_on_exception = exit_on_exception
-
-        # Initialize sentry logging (this is a null-op if
-        # the CODALAB_SENTRY_INGEST_URL env var is not set).
-        initialize_sentry()
-        load_sentry_data(username=bundle_service._username)
 
         self.last_checkin_successful = False
         self.last_time_ran = None  # type: Optional[bool]
@@ -265,7 +260,8 @@ class Worker:
                     self.terminate = True
             except Exception:
                 self.last_checkin_successful = False
-                capture_exception()
+                if using_sentry():
+                    capture_exception()
                 traceback.print_exc()
                 if self.exit_on_exception:
                     logger.error(
