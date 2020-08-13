@@ -50,10 +50,9 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
         url = '/bundles/' + item.bundles_spec.bundle_infos[0].uuid;
     if (item.subworksheet_info) url = '/worksheets/' + item.subworksheet_info.uuid;
 
-    props.key = props.ref = 'item' + props.focusIndex;
+    props.key = props.id = 'codalab-worksheet-item-' + props.focusIndex;
     props.url = url;
     props.prevItem = prevItem;
-    props.itemHeight = (props.itemHeights || {})[props.ref] || 100;
     props.after_sort_key = getAfterSortKey(
         props.item,
         props.item.mode === 'markup_block' ? undefined : props.subFocusIndex,
@@ -103,6 +102,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             after_sort_key={props.after_sort_key}
             ids={props.ids}
             updateSchemaItem={props.updateSchemaItem}
+            id={props.id}
         >
             {elem}
         </ItemWrapper>,
@@ -242,7 +242,6 @@ class WorksheetItemList extends React.Component {
                         updateBundleBlockSchema: this.props.updateBundleBlockSchema,
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
-                        itemHeights: this.props.itemHeights,
                         updateSchemaItem: this.props.updateSchemaItem,
                     };
                     addWorksheetItems(

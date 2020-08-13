@@ -261,7 +261,7 @@ class BundleRow extends Component {
             Mousetrap.unbind('i');
         }
         return (
-            <TableBody classes={{ root: classes.tableBody }}>
+            <TableBody classes={{ root: classes.tableBody }} id={this.props.id}>
                 {/** ---------------------------------------------------------------------------------------------------
                  *  Main Content
                  */}
@@ -294,7 +294,6 @@ class BundleRow extends Component {
                             <BundleDetail
                                 uuid={bundleInfo.uuid}
                                 bundleMetadataChanged={this.props.reloadWorksheet}
-                                ref='bundleDetail'
                                 onUpdate={this.receiveBundleInfoUpdates}
                                 onClose={() => {
                                     this.setState({

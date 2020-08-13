@@ -167,7 +167,6 @@ class TableItem extends React.Component<{
         });
         let bodyRowsHtml = rowItems.map((rowItem, rowIndex) => {
             let bundleInfo = bundleInfos[rowIndex];
-            let rowRef = 'row' + rowIndex;
             let rowFocused = this.props.focused && rowIndex === this.props.subFocusIndex;
             let url = '/bundles/' + bundleInfo.uuid;
             let worksheet = bundleInfo.host_worksheet;
@@ -179,7 +178,7 @@ class TableItem extends React.Component<{
             return (
                 <BundleRow
                     key={rowIndex}
-                    ref={rowRef}
+                    id={`codalab-worksheet-item-${this.props.focusIndex}-subitem-${rowIndex}`}
                     worksheetUUID={worksheetUUID}
                     item={rowItem}
                     rowIndex={rowIndex}
