@@ -13,4 +13,4 @@ services:
   # of Docker into the `alembic` source directory)
   rest-server:
     volumes:
-      - ./../../alembic/:/opt/codalab-worksheets/alembic/
+      - ./../../:/opt/codalab-worksheets/
