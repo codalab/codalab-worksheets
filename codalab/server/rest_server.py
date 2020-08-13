@@ -215,6 +215,7 @@ def dummy_xmlrpc_app():
     app = Bottle()
     return app
 
+
 def create_rest_app(manager=CodaLabManager()):
     """Creates and returns a rest app."""
     install(SaveEnvironmentPlugin(manager))
