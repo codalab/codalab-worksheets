@@ -44,7 +44,7 @@
   "devDependencies": {
     "eslint": "^6.8.0",
     "prettier": "^1.19.1",
-    "react-scripts": "^3.4.1"
+    "react-scripts": "^3.4.2"
   },
   "browserslist": [
     ">0.2%",
