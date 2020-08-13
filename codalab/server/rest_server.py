@@ -199,7 +199,6 @@ class DatetimeEncoder(json.JSONEncoder):
 
 def error_handler(response):
     """Simple error handler that doesn't use the Bottle error template."""
-    print(response)
     if request.is_ajax:
         return HTTPResponse(body=response.body, status=response.status)
     else:
