@@ -224,7 +224,7 @@ npm test
 - Unit tests for the backend in the [tests/unit](https://github.com/codalab/codalab-worksheets/tree/master/tests/unit) directory. These tests mock out certain aspects of the backend to test backend classes / utilities.
 
 ```
-python3 test_runner.py default
+python3 -m unittest tests/unit/*/*_test.py
 ```
 
 #### End-to-end tests

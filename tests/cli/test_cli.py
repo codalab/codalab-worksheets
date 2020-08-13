@@ -493,8 +493,8 @@ class TestModule(object):
 
 @TestModule.register('unittest')
 def test(ctx):
-    """Run nose unit tests (exclude this file)."""
-    _run_command(['nosetests', '-e', 'test_cli.py'])
+    """Run backend unit tests."""
+    _run_command(['python3', '-m', 'unittest', os.path.join(base_path, 'tests/cli/test_cli.py')])
 
 
 @TestModule.register('gen-rest-docs')
