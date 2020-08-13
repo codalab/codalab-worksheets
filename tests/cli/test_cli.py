@@ -48,7 +48,7 @@ CodaLabInstance = namedtuple('CodaLabInstance', 'host home username password')
 
 def test_path(name):
     """Return the path to the test file ``name``."""
-    return os.path.join(base_path, 'tests', 'files', name)
+    return os.path.join(base_path, 'files', name)
 
 
 # Note: when we talk about contents, we always apply rstrip() even if it's a
