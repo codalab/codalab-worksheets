@@ -225,6 +225,12 @@ cd frontend
 npm test
 ```
 
+Sometimes, if the frontend UI changes and you need to update snapshots, run:
+
+```
+npm test -- -u
+```
+
 - Unit tests for the backend in the [tests/unit](https://github.com/codalab/codalab-worksheets/tree/master/tests/unit) directory. These tests mock out certain aspects of the backend to test backend classes / utilities.
 
 ```
