@@ -210,7 +210,11 @@ and workers, and emails out a report every day.
 
 ### Tests
 
-We have the following tests:
+#### Testing overview and philosophy
+
+When you add a new functionality or fix a bug in CodaLab, you **must** add unit / integration tests that test that functionality.
+
+End-to-end tests should be used sparingly and only to test critical functionality and flows. This is because they are much more time-expensive to create and run.
 
 #### Unit / Integration tests
 
