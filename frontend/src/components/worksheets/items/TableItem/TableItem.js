@@ -257,7 +257,7 @@ class TableItem extends React.Component<{
                                         onChange={this.changeSchemaName}
                                         size='small'
                                         placeholder={'Using default schema'}
-                                    ></TextField>
+                                    />
                                     <IconButton
                                         onClick={() => {
                                             this.setState({ openSchemaTextBox: false });
@@ -327,7 +327,9 @@ const TableWrapper = (props) => {
         (async function() {
             if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
                 try {
-                    const { contents } = await fetchAsyncBundleContents({ contents: item.rows });
+                    const { contents } = await fetchAsyncBundleContents({
+                        contents: item.rows,
+                    });
                     onAsyncItemLoad({
                         ...item,
                         rows: contents,
@@ -344,7 +346,7 @@ const TableWrapper = (props) => {
         })();
         // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [item.rows, item.status]);
+    }, [item, item.rows, item.status, onAsyncItemLoad]);
     return <TableItem {...props} />;
 };
 
