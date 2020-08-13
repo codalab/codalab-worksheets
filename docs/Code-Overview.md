@@ -243,6 +243,12 @@ To run specific tests, say, only the REST API tests, run:
 docker exec codalab_rest-server_1 /bin/bash -c "python3 -m unittest tests/unit/rest/*_test.py"
 ```
 
+To get test coverage, run:
+
+```
+docker exec codalab_rest-server_1 /bin/bash -c "coverage run --rcfile=tests/unit/.coveragerc -m unittest tests/unit/*/*_test.py && coverage report"
+```
+
 #### End-to-end tests
 
 - One end-to-end integration script for the CLI in [tests/cli/test_cli.py](https://github.com/codalab/codalab-worksheets/blob/master/tests/cli/test_cli.py). These tests run an entire CodaLab server and don't mock out anything.

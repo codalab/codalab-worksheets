@@ -1,0 +1,6 @@
+[run]
+source = .
+omit = tests/*
+
+[report]
+fail_under = 28
