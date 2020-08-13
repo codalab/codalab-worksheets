@@ -2188,7 +2188,9 @@ def test(ctx):
 
     # invalid field value
     try:
-        _run_command([cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1)
+        _run_command(
+            [cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1
+        )
     except UsageError:
         print("Expected UsageError for invalid field value.")
         pass
