@@ -20,6 +20,7 @@ from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
 from typing import Dict
 
+from codalab.common import UsageError, NotFoundError
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
@@ -2169,6 +2170,28 @@ def test(ctx):
     # Request to grant access and check that the user now has access
     _run_command([cl, 'uedit', user_name, '--grant-access'])
     check_equals(_run_command([cl, 'uinfo', user_name, '-f', 'has_access']), 'True')
+
+
+@TestModule.register('edit_arbitrary_field')
+def test(ctx):
+    uuid = _run_command([cl, 'run', 'echo hello'], request_memory='10m')
+    check_equals('10m', get_info(uuid, 'request_memory'))
+    _run_command([cl, 'edit', uuid, '--field', 'request_memory', '12m'])
+    check_equals('12m', get_info(uuid, 'request_memory'))
+
+    # invalid field name
+    try:
+        _run_command([cl, 'edit', uuid, '-f', 'invalid_field', 'value'], expected_exit_code=1)
+    except UsageError:
+        print("Expected UsageError for invalid field name.")
+        pass
+
+    # invalid field value
+    try:
+        _run_command([cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1)
+    except UsageError:
+        print("Expected UsageError for invalid field value.")
+        pass
 
 
 if __name__ == '__main__':
