@@ -501,7 +501,7 @@ def test(ctx):
             '--rcfile=tests/unit/.coveragerc',
             '-m',
             'unittest',
-            os.path.join(base_path, 'tests/cli/test_cli.py'),
+            os.path.join(base_path, 'tests/unit/*/*_test.py'),
         ]
     )
     _run_command(['coverage', 'report'])
