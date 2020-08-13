@@ -2,13 +2,7 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
-import {
-    keepPosInView,
-    renderPermissions,
-    getAfterSortKey,
-    createAlertText,
-    getIds,
-} from '../../../util/worksheet_utils';
+import { renderPermissions, getAfterSortKey, createAlertText } from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
@@ -95,6 +89,9 @@ class Worksheet extends React.Component {
         };
         this.copyCallbacks = [];
         this.bundleTableID = new Set();
+
+        // Throttle so that if keys are held down, we don't suffer a huge lag.
+        this.scrollToItem = _.throttle(this.__innerScrollToItem, 50).bind(this);
     }
 
     fetch(props) {
@@ -665,32 +662,13 @@ class Worksheet extends React.Component {
         }
     };
 
-    scrollToItem = (index, subIndex) => {
-        // scroll the window to keep the focused element in view if needed
-        var __innerScrollToItem = function(index, subIndex) {
-            // Compute the current position of the focused item.
-            var pos;
-            if (index === -1) {
-                pos = -1000000; // Scroll all the way to the top
-            } else {
-                var item = this.refs.list.refs['item' + index];
-                if (!item) {
-                    // Don't scroll to an item if it doesn't exist.
-                    return;
-                }
-                if (this._numTableRows(item.props.item)) {
-                    item = item.refs['row' + subIndex]; // Specifically, the row
-                }
-                var node = ReactDOM.findDOMNode(item);
-                pos = node.getBoundingClientRect().top;
-            }
-            keepPosInView(pos);
-        };
-
-        // Throttle so that if keys are held down, we don't suffer a huge lag.
-        if (this.throttledScrollToItem === undefined)
-            this.throttledScrollToItem = _.throttle(__innerScrollToItem, 50).bind(this);
-        this.throttledScrollToItem(index, subIndex);
+    __innerScrollToItem = (index, subIndex) => {
+        const node = subIndex
+            ? document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
+            : document.getElementById(`codalab-worksheet-item-${index}`);
+        if (node) {
+            node.scrollIntoView({ block: 'center' });
+        }
     };
 
     componentDidMount() {
@@ -1283,15 +1261,6 @@ class Worksheet extends React.Component {
         rawIndexAfterEditMode,
         { moveIndex = false, textDeleted = false } = {},
     ) => {
-        let itemHeights = {};
-        if (this.refs.list && this.refs.list.refs) {
-            for (let refName in this.refs.list.refs) {
-                itemHeights[refName] = ReactDOM.findDOMNode(
-                    this.refs.list.refs[refName],
-                ).clientHeight;
-            }
-        }
-        this.setState({ itemHeights });
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
             this.setState({ updating: true });
@@ -1632,7 +1601,6 @@ class Worksheet extends React.Component {
                 setDeleteItemCallback={this.setDeleteItemCallback}
                 addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
                 onAsyncItemLoad={this.onAsyncItemLoad}
-                itemHeights={this.state.itemHeights}
                 updateBundleBlockSchema={this.updateBundleBlockSchema}
                 updateSchemaItem={this.updateSchemaItem}
             />
