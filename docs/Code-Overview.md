@@ -224,7 +224,13 @@ npm test
 - Unit tests for the backend in the [tests/unit](https://github.com/codalab/codalab-worksheets/tree/master/tests/unit) directory. These tests mock out certain aspects of the backend to test backend classes / utilities.
 
 ```
-python3 -m unittest tests/unit/*/*_test.py
+docker exec codalab_rest-server_1 /bin/bash -c "python3 -m unittest tests/unit/*/*_test.py"
+```
+
+To run specific tests, say, only the REST API tests, run:
+
+```
+docker exec codalab_rest-server_1 /bin/bash -c "python3 -m unittest tests/unit/rest/*_test.py"
 ```
 
 #### End-to-end tests
