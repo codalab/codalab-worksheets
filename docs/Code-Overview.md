@@ -212,13 +212,15 @@ and workers, and emails out a report every day.
 
 #### Testing overview and philosophy
 
-When you add a new functionality or fix a bug in CodaLab, you **must** add unit / integration tests that test that functionality.
+When you add a new functionality or fix a bug in CodaLab, you **must** add unit tests that test that functionality. We have enforced this constraint by adding Code Coverage checks to CI.
 
-End-to-end tests should be used sparingly and only to test critical functionality and flows. This is because they are much more time-expensive to create and run.
+End-to-end tests should be used sparingly and only to test critical functionality and flows. This is because they are much more time-expensive to create and run. Code Coverage checks do not apply to E2E tests.
 
-#### Unit / Integration tests
+As we get more code coverage, we should gradually increase the thresholds until we reach 90-100%.
 
-- Frontend integration tests in the [frontend/src/__tests__](https://github.com/codalab/codalab-worksheets/tree/master/frontend/__tests__) directory. These tests only test React components and mock out all network calls.
+#### Unit tests
+
+- Frontend unit tests in the [frontend/src/__tests__](https://github.com/codalab/codalab-worksheets/tree/master/frontend/__tests__) directory. These tests only test React components and mock out all network calls.
 
 ```
 cd frontend
@@ -230,6 +232,8 @@ Sometimes, if the frontend UI changes and you need to update snapshots, run:
 ```
 npm test -- -u
 ```
+
+(Note: these are technically "integration tests" since they test multiple components' rendering at once, but let's call them unit tests for simplicity and to distinguish them from the E2E frontend tests).
 
 - Unit tests for the backend in the [tests/unit](https://github.com/codalab/codalab-worksheets/tree/master/tests/unit) directory. These tests mock out certain aspects of the backend to test backend classes / utilities.
 
