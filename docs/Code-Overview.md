@@ -212,7 +212,37 @@ and workers, and emails out a report every day.
 
 We have the following tests:
 
-- Unit tests for the backend in the [tests](https://github.com/codalab/codalab-worksheets/tree/master/tests) directory
-- One end-to-end integration script for the CLI in [test_cli.py](https://github.com/codalab/codalab-worksheets/blob/master/test_cli.py)
+#### Unit / Integration tests
+
+- Frontend integration tests in the [frontend/src/__tests__](https://github.com/codalab/codalab-worksheets/tree/master/frontend/__tests__) directory. These tests only test React components and mock out all network calls.
+
+```
+cd frontend
+npm test
+```
+
+- Unit tests for the backend in the [tests/unit](https://github.com/codalab/codalab-worksheets/tree/master/tests/unit) directory. These tests mock out certain aspects of the backend to test backend classes / utilities.
+
+```
+python3 test_runner.py default
+```
+
+#### End-to-end tests
+
+- One end-to-end integration script for the CLI in [tests/cli/test_cli.py](https://github.com/codalab/codalab-worksheets/blob/master/tests/cli/test_cli.py). These tests run an entire CodaLab server and don't mock out anything.
+
+```
+python3 test_runner.py default
+```
+
 - End-to-end UI tests for the web interface in [tests/ui](https://github.com/codalab/codalab-worksheets/tree/master/tests/ui)
-- Stress tests in [stress_test.py](https://github.com/codalab/codalab-worksheets/blob/master/stress_test.py)
+
+```
+python3 test_runner.py frontend
+```
+
+- Stress tests in [tests/stress_test.py](https://github.com/codalab/codalab-worksheets/blob/master/tests/stress_test.py)
+
+```
+python3 tests/stress_test.py --instance https://worksheets-dev.codalab.org --heavy
+```

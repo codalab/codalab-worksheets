@@ -91,7 +91,7 @@ class TestRunner(object):
 
             if len(non_frontend_tests):
                 # Run backend tests using test_cli
-                test_command = 'python3 test_cli.py --instance %s ' % self.instance
+                test_command = 'python3 tests/cli/test_cli.py --instance %s ' % self.instance
                 if self.temp_instance_required:
                     test_command += '--second-instance %s ' % self.temp_instance
 
