@@ -841,10 +841,7 @@ class BundleCLI(object):
 
         # Strip whitespace and parse according to shell escaping rules
         try:
-
-            def clean(s):
-                return shlex.split(s.strip())[0] if s else ''
-
+            clean = lambda s: shlex.split(s.strip())[0] if s else ''
         except ValueError as e:
             raise UsageError(str(e))
         return list(
@@ -875,8 +872,7 @@ class BundleCLI(object):
             args = parser.parse_args(argv)
 
         # Bind self (BundleCLI instance) and args to command function
-        def command_fn():
-            return args.function(self, args)
+        command_fn = lambda: args.function(self, args)
 
         if self.verbose >= 2:
             structured_result = command_fn()
@@ -1495,8 +1491,7 @@ class BundleCLI(object):
             dest_client.upload_contents_blob(
                 dest_bundle['id'],
                 params={
-                    # copy bundle state
-                    'state_on_success': source_info['state'],
+                    'state_on_success': source_info['state'],  # copy bundle state
                     'finalize_on_success': True,
                 },
             )
@@ -1522,8 +1517,7 @@ class BundleCLI(object):
                     'filename': filename,
                     'unpack': unpack,
                     'simplify': False,  # retain original bundle verbatim
-                    # copy bundle state
-                    'state_on_success': source_info['state'],
+                    'state_on_success': source_info['state'],  # copy bundle state
                     'finalize_on_success': True,
                 },
                 progress_callback=progress.update,

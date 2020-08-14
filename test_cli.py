@@ -20,7 +20,7 @@ from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
 from typing import Dict
 
-from codalab.common import UsageError, NotFoundError
+from codalab.common import UsageError
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
