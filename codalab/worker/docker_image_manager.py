@@ -137,7 +137,7 @@ class DockerImageManager:
                         # trying to remove images in 1st case. Since we can't do much for images in 1st case, we
                         # just continue with our lives, hoping it will get deleted once it's no longer in use and
                         # the cache becomes full again
-                        logger.error(
+                        logger.warning(
                             "Cannot forcibly remove image %s from cache: %s", image_tag, err
                         )
             logger.debug("Stopping docker image manager cleanup")
@@ -177,7 +177,7 @@ class DockerImageManager:
                             # It's possible that we get a 404 not found error here when removing the image,
                             # since another worker on the same system has already done so. We just
                             # ignore this 404, since any extraneous tags will be removed during the next iteration.
-                            logger.error(
+                            logger.warning(
                                 "Attempted to remove image %s from cache, but image was not found: %s",
                                 tag,
                                 err,
