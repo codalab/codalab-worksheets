@@ -68,14 +68,13 @@ class RecordItem extends React.Component {
         let k = header[0];
         let v = header[1];
         let items = item.rows.map(function(item, index) {
-            let ref = 'row' + index;
             let displayValue = JSON.stringify(item[v]); // stringify is needed to convert metadata objects
             if (displayValue) {
                 displayValue = displayValue.substr(1, displayValue.length - 2); // get rid of ""
             }
 
             return (
-                <tr ref={ref} key={index}>
+                <tr id={`codalab-worksheet-item-${focusIndex}-subitem-${index}`} key={index}>
                     <th>{item[k]}</th>
                     <td style={{ maxWidth: '500px', wordWrap: 'break-word' }}>{displayValue}</td>
                 </tr>
@@ -92,7 +91,6 @@ class RecordItem extends React.Component {
                 {this.state.showDetail && (
                     <BundleDetail
                         uuid={bundleInfo.uuid}
-                        ref='bundleDetail'
                         bundleMetadataChanged={reloadWorksheet}
                         onUpdate={this.receiveBundleInfoUpdates}
                         onClose={() => {
@@ -134,7 +132,9 @@ const RecordWrapper = (props) => {
         (async function() {
             if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
                 try {
-                    const { contents } = await fetchAsyncBundleContents({ contents: item.rows });
+                    const { contents } = await fetchAsyncBundleContents({
+                        contents: item.rows,
+                    });
                     onAsyncItemLoad({
                         ...item,
                         rows: contents,
@@ -151,7 +151,7 @@ const RecordWrapper = (props) => {
         })();
         // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [item.rows, item.status]);
+    }, [item, item.rows, item.status, onAsyncItemLoad]);
     return <RecordItem {...props} />;
 };
 

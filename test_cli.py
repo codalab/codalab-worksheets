@@ -789,7 +789,7 @@ def test(ctx):
     # . is current worksheet
     check_contains(wuuid, _run_command([cl, 'ls', '-w', '.']))
     # / is home worksheet
-    check_contains('::home-', _run_command([cl, 'ls', '-w', '/']))
+    check_contains('home-', _run_command([cl, 'ls', '-w', '/']))
 
 
 @TestModule.register('binary')

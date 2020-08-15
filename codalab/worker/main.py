@@ -14,6 +14,7 @@ import sys
 import psutil
 
 from codalab.lib.formatting import parse_size
+from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, using_sentry
 from .bundle_service_client import BundleServiceClient, BundleAuthException
 from . import docker_utils
 from .worker import Worker
@@ -193,12 +194,23 @@ def connect_to_codalab_server(server, password_file):
 
 def main():
     args = parse_args()
-    # This quits if connection unsuccessful
-    bundle_service = connect_to_codalab_server(args.server, args.password_file)
+
     # Configure logging
     logging.basicConfig(
         format='%(asctime)s %(message)s', level=(logging.DEBUG if args.verbose else logging.INFO)
     )
+
+    # Initialize sentry logging
+    if using_sentry():
+        initialize_sentry()
+
+    # This quits if connection unsuccessful
+    bundle_service = connect_to_codalab_server(args.server, args.password_file)
+
+    # Load some data into sentry
+    if using_sentry():
+        load_sentry_data(username=bundle_service._username, **vars(args))
+
     if args.shared_file_system:
         # No need to store bundles locally if filesystems are shared
         local_bundles_dir = None
