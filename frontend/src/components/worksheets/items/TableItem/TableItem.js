@@ -133,9 +133,6 @@ class TableItem extends React.Component<{
         let item = this.props.item;
         let bundleInfos = item.bundles_spec.bundle_infos;
         let headerItems = item.header;
-        let dummyHeader = headerItems.map(() => {
-            return <TableCell />;
-        });
         let dummyHeaderStyle = {
             height: 24,
             backgroundColor: '',
