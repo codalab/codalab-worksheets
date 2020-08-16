@@ -137,7 +137,7 @@ class TableItem extends React.Component<{
             return <TableCell />;
         });
         let dummyHeaderStyle = {
-            height: 36,
+            height: 24,
             backgroundColor: '',
         };
         dummyHeaderStyle.backgroundColor = this.props.focused ? '#FFFFFF' : '#EDF7FF';
@@ -232,9 +232,9 @@ class TableItem extends React.Component<{
         });
         return (
             <div className='ws-item'>
+                <div style={dummyHeaderStyle} />
                 <TableContainer style={{ overflowX: 'auto' }}>
                     <Table className={tableClassName}>
-                        <TableHead style={dummyHeaderStyle}>{dummyHeader}</TableHead>
                         <TableHead>
                             <TableRow
                                 style={{
