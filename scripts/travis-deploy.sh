@@ -7,6 +7,8 @@
 #   travis-deploy.sh master
 #   travis-deploy.sh 0.3.3   (for releases)
 
+set -e
+
 tag=$1
 
 # Check if ENV variable CODALAB_DOCKER_USERNAME is set. If not, it means this build was triggered

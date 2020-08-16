@@ -150,12 +150,9 @@ class NavBar extends React.Component<{
 
     resultRenderer = ({ title, description }) => (
         <div key='content' className='content'>
-            {title && <div dangerouslySetInnerHTML={{ __html: title }} className='title'></div>}
+            {title && <div dangerouslySetInnerHTML={{ __html: title }} className='title' />}
             {description && (
-                <div
-                    dangerouslySetInnerHTML={{ __html: description }}
-                    className='description'
-                ></div>
+                <div dangerouslySetInnerHTML={{ __html: description }} className='description' />
             )}
         </div>
     );
