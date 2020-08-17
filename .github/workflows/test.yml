@@ -30,8 +30,8 @@ jobs:
           key: pip-${{ hashFiles('requirements.dev.txt') }}
           restore-keys: |
             pip-
+      - run: ./pre-commit.sh && git diff --exit-code
       - run: pip install -r requirements.dev.txt
-      - run: black . --check --diff
   build:
     name: Build
     runs-on: ubuntu-latest
