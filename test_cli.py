@@ -2172,7 +2172,7 @@ def test(ctx):
     check_equals(_run_command([cl, 'uinfo', user_name, '-f', 'has_access']), 'True')
 
 
-@TestModule.register('edit_arbitrary_field')
+@TestModule.register('edit')
 def test(ctx):
     uuid = _run_command([cl, 'run', 'echo hello'], request_memory='10m')
     check_equals('10m', get_info(uuid, 'request_memory'))
@@ -2185,6 +2185,8 @@ def test(ctx):
     except UsageError:
         print("Expected UsageError for invalid field name.")
         pass
+    except Exception as e:
+        raise e
 
     # invalid field value
     try:
@@ -2194,6 +2196,8 @@ def test(ctx):
     except UsageError:
         print("Expected UsageError for invalid field value.")
         pass
+    except Exception as e:
+        raise e
 
 
 if __name__ == '__main__':

@@ -73,7 +73,7 @@ jobs:
           - resources
           - memoize
           - copy netcat netcurl
-          - edit_arbitrary_field
+          - edit
     steps:
       - name: Clear free space
         run: |
