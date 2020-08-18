@@ -494,12 +494,10 @@ class TestModule(object):
 @TestModule.register('unittest')
 def test(ctx):
     """Run backend unit tests."""
-    _run_command(['chown', '-R', '$USER', '.'])
-    _run_command(['touch', '.coverage'])
+    _run_command(['coverage', 'run', '--rcfile=tests/unit/.coveragerc', '-m', 'nose', 'tests.unit'])
     _run_command(
-        ['coverage', 'run', '--rcfile=tests/unit/.coveragerc', '-m', 'nose', 'tests.unit']
+        ['coverage', 'report', '--rcfile=tests/unit/.coveragerc'], max_output_chars=sys.maxsize
     )
-    _run_command(['coverage', 'report'], max_output_chars=sys.maxsize)
 
 
 @TestModule.register('gen-rest-docs')
