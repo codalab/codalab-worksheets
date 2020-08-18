@@ -13,6 +13,7 @@ from dateutil import parser, tz
 import datetime
 import re
 import requests
+import traceback
 
 
 MIN_API_VERSION = '1.17'
@@ -201,7 +202,8 @@ def start_bundle_container(
         try:
             container.remove(force=True)
         except Exception:
-            pass
+            logger.warning("Failed to clean up Docker container after failed launch.")
+            traceback.print_exc()
         raise
     return container
 
