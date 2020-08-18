@@ -495,16 +495,9 @@ class TestModule(object):
 def test(ctx):
     """Run backend unit tests."""
     _run_command(
-        [
-            'coverage',
-            'run',
-            '--rcfile=tests/unit/.coveragerc',
-            '-m',
-            'unittest',
-            os.path.join(os.path.dirname(base_path), 'unit/*/*_test.py'),
-        ]
+        ['coverage', 'run', '--rcfile=tests/unit/.coveragerc', '-m', 'nose', 'tests.unit',]
     )
-    _run_command(['coverage', 'report'])
+    _run_command(['coverage', 'report'], max_output_chars=sys.maxsize)
 
 
 @TestModule.register('gen-rest-docs')
