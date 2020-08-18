@@ -458,7 +458,21 @@ class Worker:
             run_state = self.runs[uuid]
             self.runs[uuid] = self.run_state_manager.transition(run_state)
 
-        # 2. reset runs for the current worker
+        # 2. filter out finished runs and clean up containers
+        finished_container_ids = [
+            run.container
+            for run in self.runs.values()
+            if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
+            and run.container_id is not None
+        ]
+        for container_id in finished_container_ids:
+            try:
+                container = self.docker.containers.get(container_id)
+                container.remove(force=True)
+            except (docker.errors.NotFound, docker.errors.NullResource):
+                pass
+
+        # 3. reset runs for the current worker
         self.runs = {
             uuid: run_state
             for uuid, run_state in self.runs.items()
