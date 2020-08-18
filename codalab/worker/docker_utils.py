@@ -196,9 +196,12 @@ def start_bundle_container(
     except docker.errors.APIError as e:
         # The container failed to start, so it's in the CREATED state
         # If we try to re-run the container again, we'll get a 409 CONFLICT
-        # because a container with the same name already exists. So, we remove
+        # because a container with the same name already exists. So, we try to remove
         # the container here.
-        container.remove(force=True)
+        try:
+            container.remove(force=True)
+        except Exception:
+            pass
         raise
     return container
 
