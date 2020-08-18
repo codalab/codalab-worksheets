@@ -43,6 +43,9 @@ class BundlesTest(BaseTestCase):
         response = self.app.post_json(f'/rest/bundles?worksheet={worksheet_id}', body)
         self.assertEqual(response.status_int, 200)
         bundle_id = response.json["data"][0]["id"]
+
+        status = response.json["data"][0]["attributes"].pop("status")
+        self.assertTrue(status in ("created", "staged",))
         self.assertEqual(
             response.json["data"],
             [
@@ -73,7 +76,6 @@ class BundlesTest(BaseTestCase):
                         },
                         "permission_spec": "all",
                         "is_anonymous": False,
-                        "state": "created",
                         "bundle_type": "run",
                         "command": "echo TEST",
                         "dependencies": [],

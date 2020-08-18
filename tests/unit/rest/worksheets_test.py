@@ -24,12 +24,12 @@ class WorksheetsTest(BaseTestCase):
                 {
                     "type": "worksheets",
                     "id": worksheet_id,
-                    "attributes": {"name": worksheet_name, "uuid": worksheet_id,},
+                    "attributes": {"name": worksheet_name, "uuid": worksheet_id},
                     "relationships": {
                         "items": {
                             "data": [
-                                {"type": "worksheet-items", "id": f"('name', '{worksheet_name}')",},
-                                {"type": "worksheet-items", "id": f"('uuid', '{worksheet_id}')",},
+                                {"type": "worksheet-items", "id": f"('name', '{worksheet_name}')"},
+                                {"type": "worksheet-items", "id": f"('uuid', '{worksheet_id}')"},
                             ]
                         }
                     },
