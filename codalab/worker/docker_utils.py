@@ -176,6 +176,7 @@ def start_bundle_container(
     container = client.containers.run(
         image=docker_image,
         command=docker_command,
+        auto_remove=True,
         name=container_name,
         network=network,
         mem_limit=memory_bytes,
