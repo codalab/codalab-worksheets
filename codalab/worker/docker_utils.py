@@ -173,25 +173,33 @@ def start_bundle_container(
 
     # Name the container with the UUID for readability
     container_name = 'codalab_run_%s' % uuid
-    container = client.containers.run(
-        image=docker_image,
-        command=docker_command,
-        name=container_name,
-        network=network,
-        mem_limit=memory_bytes,
-        shm_size='1G',
-        cpuset_cpus=cpuset_str,
-        environment=environment,
-        working_dir=working_dir,
-        entrypoint=entrypoint,
-        volumes=volumes,
-        user=user,
-        detach=detach,
-        runtime=runtime,
-        tty=tty,
-        stdin_open=tty,
-    )
-    logger.debug('Started Docker container for UUID %s, container ID %s,', uuid, container.id)
+    try:
+        container = client.containers.run(
+            image=docker_image,
+            command=docker_command,
+            name=container_name,
+            network=network,
+            mem_limit=memory_bytes,
+            shm_size='1G',
+            cpuset_cpus=cpuset_str,
+            environment=environment,
+            working_dir=working_dir,
+            entrypoint=entrypoint,
+            volumes=volumes,
+            user=user,
+            detach=detach,
+            runtime=runtime,
+            tty=tty,
+            stdin_open=tty,
+        )
+        logger.debug('Started Docker container for UUID %s, container ID %s,', uuid, container.id)
+    except docker.errors.APIError as e:
+        # The container failed to start, so it's in the CREATED state
+        # If we try to re-run the container again, we'll get a 409 CONFLICT
+        # because a container with the same name already exists. So, we remove
+        # the container here.
+        container.remove(force=True)
+        raise
     return container
 
 
