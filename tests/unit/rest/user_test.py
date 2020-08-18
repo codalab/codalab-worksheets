@@ -23,6 +23,8 @@ class UserTest(BaseTestCase):
         # These variables can change due to other tests.
         del data["attributes"]["disk_used"]
         del data["attributes"]["time_used"]
+        del data["attributes"]["date_joined"]
+        del data["attributes"]["last_login"]
         self.assertEqual(
             data,
             {
@@ -30,12 +32,10 @@ class UserTest(BaseTestCase):
                 "attributes": {
                     "email": "",
                     "first_name": "",
-                    "date_joined": "Tue Jul  7 22:10:30 2020",
                     "parallel_run_quota": 100,
                     "last_name": "",
                     "time_quota": 3153600000,
                     "disk_quota": 107374000000,
-                    "last_login": "Thu Jul 16 14:53:38 2020",
                     "url": None,
                     "notifications": 2,
                     "user_name": "codalab",

@@ -494,6 +494,7 @@ class TestModule(object):
 @TestModule.register('unittest')
 def test(ctx):
     """Run backend unit tests."""
+    _run_command(['touch', '.coverage'])
     _run_command(
         ['coverage', 'run', '--rcfile=tests/unit/.coveragerc', '-m', 'nose', 'tests.unit',]
     )
