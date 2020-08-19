@@ -102,7 +102,7 @@ class BundleServiceClient(RestClient):
             data=urllib.parse.urlencode(request_data).encode('utf-8'),
             headers=headers,
         )
-        with closing(urllib.request.urlopen(request)) as response:
+        with closing(urllib.request.urlopen(request, timeout=30)) as response:
             response_data = response.read().decode()
         try:
             token = json.loads(response_data)

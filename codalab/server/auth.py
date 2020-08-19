@@ -58,7 +58,7 @@ class RestOAuthHandler(object):
             data=urllib.parse.urlencode(data).encode('utf-8'),
         )
         try:
-            response = urllib.request.urlopen(request)
+            response = urllib.request.urlopen(request, timeout=30)
             result = json.loads(response.read().decode())
             return result
         except urllib.error.HTTPError as e:
