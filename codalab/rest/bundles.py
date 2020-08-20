@@ -646,7 +646,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         mimetype, encoding = mimetypes.guess_type(filename, strict=False)
         if encoding is not None:
             mimetype = 'application/octet-stream'
-
+        # TODO(Ashwin): support other kinds of file downloading.
         if byte_range and (head_lines or tail_lines):
             abort(http.client.BAD_REQUEST, 'Head and range not supported on the same request.')
         elif byte_range:

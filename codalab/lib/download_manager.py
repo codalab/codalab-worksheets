@@ -7,6 +7,7 @@ from codalab.common import http_error_to_exception, precondition, UsageError, No
 from codalab.worker import download_util
 from codalab.worker import file_util
 from codalab.worker.bundle_state import State
+from codalab.beam.filesystems import FileSystems
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ class DownloadManager(object):
         bundle_link_url = self._bundle_model.get_bundle_metadata(
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
-        if bundle_link_url:
+        if bundle_link_url and not bundle_link_url.startswith("azfs://"):
             bundle_link_url = self._transform_link_path(bundle_link_url)
         # Raises NotFoundException if uuid is invalid
         if bundle_state == State.PREPARING:
@@ -197,7 +198,7 @@ class DownloadManager(object):
             if gzipped:
                 return file_util.gzip_file(file_path)
             else:
-                return open(file_path, 'rb')
+                return FileSystems.open(file_path)
         else:
             worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
             response_socket_id = self._worker_model.allocate_socket(
@@ -303,6 +304,9 @@ class DownloadManager(object):
         return bytestring
 
     def _is_available_locally(self, target):
+        file_path = self._get_target_path(target)
+        if file_path.startswith("azfs://"):
+            return True
         if self._bundle_model.get_bundle_state(target.bundle_uuid) in [
             State.RUNNING,
             State.PREPARING,
@@ -321,7 +325,7 @@ class DownloadManager(object):
         bundle_link_url = self._bundle_model.get_bundle_metadata(
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
-        if bundle_link_url:
+        if bundle_link_url and not bundle_link_url.startswith("azfs://"):
             bundle_link_url = self._transform_link_path(bundle_link_url)
         bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(target.bundle_uuid)
         try:

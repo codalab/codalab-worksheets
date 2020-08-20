@@ -1,5 +1,5 @@
 import os
-
+from codalab.beam.filesystems import FileSystems
 
 class PathException(Exception):
     pass
@@ -60,7 +60,7 @@ def get_target_info(bundle_path, target, depth):
     """
     final_path = _get_normalized_target_path(bundle_path, target)
 
-    if not os.path.islink(final_path) and not os.path.exists(final_path):
+    if not os.path.islink(final_path) and not FileSystems.exists(final_path):
         raise PathException(
             'Path {} in bundle {} not found'.format(target.bundle_uuid, target.subpath)
         )
@@ -91,8 +91,10 @@ BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 
 
 def _get_normalized_target_path(bundle_path, target):
-    real_bundle_path = os.path.realpath(bundle_path)
-    normalized_target_path = os.path.normpath(_get_target_path(real_bundle_path, target.subpath))
+    real_bundle_path = bundle_path if bundle_path.startswith("azfs://") else os.path.realpath(bundle_path)
+    normalized_target_path = _get_target_path(real_bundle_path, target.subpath)
+    if not normalized_target_path.startswith("azfs://"):
+        normalized_target_path = os.path.normpath(normalized_target_path)
     error_path = _get_target_path(target.bundle_uuid, target.subpath)
 
     if not normalized_target_path.startswith(real_bundle_path):
@@ -111,6 +113,10 @@ def _get_target_path(bundle_path, path):
 
 
 def _compute_target_info(path, depth):
+    if path.startswith("azfs://"):
+        # TODO(Ashwin): support directories.
+        file = FileSystems.match([path])[0].metadata_list[0]
+        return { 'name': os.path.basename(file.path), 'type': 'file', 'size': file.size_in_bytes, 'perm': 0o777 }
     result = {}
     result['name'] = os.path.basename(path)
     stat = os.lstat(path)
