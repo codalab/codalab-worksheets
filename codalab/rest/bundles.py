@@ -751,10 +751,11 @@ def _update_bundle_contents_blob(uuid):
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
-        
         # Don't upload to bundle store if using --link with a URL that
-        # already exists.
-        if sources and ((bundle_link_url is None) or use_azure_blob_beta):
+        # already exists. If using the Azure Blob Storage backend,
+        # we do want to perform the upload to the URL specified in
+        # bundle.metadata.link_url.
+        if sources and (not bundle_link_url or use_azure_blob_beta):
             local.upload_manager.upload_to_bundle_store(
                 bundle,
                 sources=sources,
