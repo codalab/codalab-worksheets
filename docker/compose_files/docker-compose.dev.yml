@@ -14,3 +14,4 @@ services:
   rest-server:
     volumes:
       - ./../../alembic/:/opt/codalab-worksheets/alembic/
+      - ./../../codalab/:/opt/codalab-worksheets/codalab/

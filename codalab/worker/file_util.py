@@ -10,7 +10,7 @@ import bz2
 
 from codalab.common import BINARY_PLACEHOLDER
 from apache_beam.io.filesystem import CompressionTypes
-from apache_beam.io.filesystems import FileSystems
+from codalab.beam.filesystems import FileSystems
 
 NONE_PLACEHOLDER = '<none>'
 

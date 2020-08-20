@@ -4,6 +4,7 @@ import shutil
 
 from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
+from codalab.beam.filesystems import FileSystems
 
 # TODO: fix methods here.
 
@@ -63,9 +64,10 @@ class UploadManager(object):
             # Don't do anything for linked bundles.
             return
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
+        bundle_path = "azfs://storageclwsdev0/bundles/" + bundle.uuid
         try:
             # TODO: fix this
-            path_util.make_directory(bundle_path)
+            # path_util.make_directory(bundle_path)
             # Note that for uploads with a single source, the directory
             # structure is simplified at the end.
             for source in sources:
@@ -113,13 +115,13 @@ class UploadManager(object):
                             simplify_archive=simplify_archives,
                         )
                     else:
-                        with open(source_output_path, 'wb') as out:
+                        with FileSystems.create(source_output_path) as out:
                             shutil.copyfileobj(source[1], out)
 
             if len(sources) == 1:
                 self._simplify_directory(bundle_path)
         except:
-            if os.path.exists(bundle_path):
+            if FileSystems.exists(bundle_path):
                 path_util.remove(bundle_path)
             raise
 
