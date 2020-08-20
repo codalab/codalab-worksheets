@@ -13,6 +13,7 @@ from typing import Optional, Set, Dict
 import psutil
 
 import docker
+from codalab.lib.telemetry_util import capture_exception, using_sentry
 import codalab.worker.docker_utils as docker_utils
 import requests
 
@@ -261,13 +262,19 @@ class Worker:
                     self.terminate = True
             except Exception:
                 self.last_checkin_successful = False
+                if using_sentry():
+                    capture_exception()
                 traceback.print_exc()
                 if self.exit_on_exception:
-                    logger.error('Encountered exception, terminating the worker...')
+                    logger.error(
+                        'Encountered exception, terminating the worker after sleeping for 5 minutes...'
+                    )
                     self.terminate = True
+                    # Sleep for 5 minutes
+                    time.sleep(5 * 60)
                 else:
                     # Sleep for a long time so we don't keep on failing.
-                    # We sleep in 5-second increments, itermittently checking
+                    # We sleep in 5-second increments to check
                     # if the worker needs to terminate (say, if it's received
                     # a SIGTERM signal).
                     logger.error('Sleeping for 1 hour due to exception...please help me!')
