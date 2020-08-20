@@ -552,11 +552,13 @@ class BlobStorageIO(object):
     results = {}
 
     try:
-      response = container_client.delete_blobs(
-          *blobs, raise_on_any_failure=False)
+      response = []
+      # Workaround for https://github.com/Azure/azure-sdk-for-python/issues/13183
+      for blob in blobs:
+          response.append(container_client.delete_blob(blob))
 
       for blob, error in zip(blobs, response):
-        results[(container, blob)] = error.status_code
+          results[(container, blob)] = None  # error.status_code
 
     except BlobStorageError as e:
       for blob in blobs:
