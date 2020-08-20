@@ -48,7 +48,7 @@ CodaLabInstance = namedtuple('CodaLabInstance', 'host home username password')
 
 def test_path(name):
     """Return the path to the test file ``name``."""
-    return os.path.join(base_path, 'tests', 'files', name)
+    return os.path.join(base_path, 'files', name)
 
 
 # Note: when we talk about contents, we always apply rstrip() even if it's a
@@ -493,20 +493,37 @@ class TestModule(object):
 
 @TestModule.register('unittest')
 def test(ctx):
-    """Run nose unit tests (exclude this file)."""
-    _run_command(['nosetests', '-e', 'test_cli.py'])
+    """Run backend unit tests."""
+    _run_command(['coverage', 'run', '--rcfile=tests/unit/.coveragerc', '-m', 'nose', 'tests.unit'])
+    _run_command(
+        ['coverage', 'report', '--rcfile=tests/unit/.coveragerc'], max_output_chars=sys.maxsize
+    )
 
 
 @TestModule.register('gen-rest-docs')
 def test(ctx):
     """Generate REST API docs."""
-    _run_command(['python3', os.path.join(base_path, 'scripts/gen-rest-docs.py'), '--docs', '/tmp'])
+    _run_command(
+        [
+            'python3',
+            os.path.join(base_path, '..', '..', 'scripts', 'gen-rest-docs.py'),
+            '--docs',
+            '/tmp',
+        ]
+    )
 
 
 @TestModule.register('gen-cli-docs')
 def test(ctx):
     """Generate CLI docs."""
-    _run_command(['python3', os.path.join(base_path, 'scripts/gen-cli-docs.py'), '--docs', '/tmp'])
+    _run_command(
+        [
+            'python3',
+            os.path.join(base_path, '..', '..', 'scripts', 'gen-cli-docs.py'),
+            '--docs',
+            '/tmp',
+        ]
+    )
 
 
 @TestModule.register('gen-readthedocs')

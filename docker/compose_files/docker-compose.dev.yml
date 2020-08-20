@@ -1,7 +1,7 @@
 version: '3.5'
 
 services:
-  # 1) Hot load the React code
+  # Hot load the React code
   frontend:
     command: npm start
     volumes:
@@ -9,8 +9,8 @@ services:
     # Fix for https://github.com/facebook/create-react-app/issues/8688
     stdin_open: true
     tty: true
-  # 2) Hot load the alembic version files so that we can create new database migrations (which need to written out
-  # of Docker into the `alembic` source directory)
+  # Mount the CodaLab base volume, so that 1) we can create new database migrations with the alembic version files
+  # mounted and 2) we can modify / run backend unit tests without having to rebuild the Docker image.
   rest-server:
     volumes:
-      - ./../../alembic/:/opt/codalab-worksheets/alembic/
+      - ./../../:/opt/codalab-worksheets/
