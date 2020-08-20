@@ -24,7 +24,6 @@ import sys
 
 from codalab.common import precondition, UsageError
 from codalab.lib import file_util
-from codalab.beam.filesystems import FileSystems
 
 
 # Block sizes and canonical strings used when hashing files.
@@ -244,38 +243,34 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
     |exclude_patterns|: patterns to not copy
     Note: this only works in Linux.
     """
+    if os.path.exists(dest_path):
+        raise path_error('already exists', dest_path)
 
-    with FileSystems.create(dest_path) as f:
-        f.write(b'hello world!')
-    return
-    # if os.path.exists(dest_path):
-    #     raise path_error('already exists', dest_path)
-
-    # if source_path == '/dev/stdin':
-    #     with open(dest_path, 'wb') as dest:
-    #         file_util.copy(
-    #             sys.stdin,
-    #             dest,
-    #             autoflush=False,
-    #             print_status='Copying %s to %s' % (source_path, dest_path),
-    #         )
-    # else:
-    #     if not follow_symlinks and os.path.islink(source_path):
-    #         raise path_error('not following symlinks', source_path)
-    #     if not os.path.exists(source_path):
-    #         raise path_error('does not exist', source_path)
-    #     command = [
-    #         'rsync',
-    #         '-pr%s' % ('L' if follow_symlinks else 'l'),
-    #         source_path
-    #         + ('/' if not os.path.islink(source_path) and os.path.isdir(source_path) else ''),
-    #         dest_path,
-    #     ]
-    #     if exclude_patterns is not None:
-    #         for pattern in exclude_patterns:
-    #             command.extend(['--exclude', pattern])
-    #     if subprocess.call(command) != 0:
-    #         raise path_error('Unable to copy %s to' % source_path, dest_path)
+    if source_path == '/dev/stdin':
+        with open(dest_path, 'wb') as dest:
+            file_util.copy(
+                sys.stdin,
+                dest,
+                autoflush=False,
+                print_status='Copying %s to %s' % (source_path, dest_path),
+            )
+    else:
+        if not follow_symlinks and os.path.islink(source_path):
+            raise path_error('not following symlinks', source_path)
+        if not os.path.exists(source_path):
+            raise path_error('does not exist', source_path)
+        command = [
+            'rsync',
+            '-pr%s' % ('L' if follow_symlinks else 'l'),
+            source_path
+            + ('/' if not os.path.islink(source_path) and os.path.isdir(source_path) else ''),
+            dest_path,
+        ]
+        if exclude_patterns is not None:
+            for pattern in exclude_patterns:
+                command.extend(['--exclude', pattern])
+        if subprocess.call(command) != 0:
+            raise path_error('Unable to copy %s to' % source_path, dest_path)
 
 
 def make_directory(path):
@@ -307,20 +302,19 @@ def remove(path):
     """
     Remove the given path, whether it is a directory, file, or link.
     """
-    FileSystems.delete([path])
-    # check_isvalid(path, 'remove')
-    # set_write_permissions(path)  # Allow permissions
-    # if os.path.islink(path):
-    #     os.unlink(path)
-    # elif os.path.isdir(path):
-    #     try:
-    #         shutil.rmtree(path)
-    #     except shutil.Error:
-    #         pass
-    # else:
-    #     os.remove(path)
-    # if os.path.exists(path):
-    #     print('Failed to remove %s' % path)
+    check_isvalid(path, 'remove')
+    set_write_permissions(path)  # Allow permissions
+    if os.path.islink(path):
+        os.unlink(path)
+    elif os.path.isdir(path):
+        try:
+            shutil.rmtree(path)
+        except shutil.Error:
+            pass
+    else:
+        os.remove(path)
+    if os.path.exists(path):
+        print('Failed to remove %s' % path)
 
 
 def soft_link(source, path):

@@ -613,7 +613,6 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     except Exception as e:
         abort(http.client.BAD_REQUEST, str(e))
 
-    # TODO: get this to work.
     # Figure out the file name.
     bundle_name = local.model.get_bundle(target.bundle_uuid).metadata.name
     if not path and bundle_name:
@@ -750,10 +749,10 @@ def _update_bundle_contents_blob(uuid):
             )  # See UploadManager for full explanation of 'simplify'
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
-            # local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
+            local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
     except UsageError as err:
-        # This is a user error (most likely disk quota overuse) so raise a client HTTP error
+        # This is a user error (most likely disk quota overuser) so raise a client HTTP error
         if local.upload_manager.has_contents(bundle):
             local.upload_manager.cleanup_existing_contents(bundle)
         msg = "Upload failed: %s" % err

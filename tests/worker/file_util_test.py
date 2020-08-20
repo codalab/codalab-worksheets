@@ -2,7 +2,6 @@ import os
 import tempfile
 import unittest
 import bz2
-import gzip
 
 from codalab.worker.file_util import (
     gzip_file,
@@ -13,10 +12,6 @@ from codalab.worker.file_util import (
     un_bz2_file,
     un_gzip_bytestring,
     un_tar_directory,
-    read_file_section,
-    summarize_file,
-    get_path_size,
-    get_path_exists,
 )
 
 
@@ -27,7 +22,7 @@ class FileUtilTest(unittest.TestCase):
         self.addCleanup(lambda: remove_path(temp_dir))
 
         output_dir = os.path.join(temp_dir, 'output')
-        un_tar_directory(tar_gzip_directory(dir, False, ['f2'], ['b.txt']), output_dir, 'gz')
+        un_tar_directory(tar_gzip_directory(dir, False, ['f2'], ['f1', 'b.txt']), output_dir, 'gz')
         output_dir_entries = os.listdir(output_dir)
         self.assertIn('dir1', output_dir_entries)
         self.assertIn('a.txt', output_dir_entries)
@@ -99,82 +94,3 @@ class FileUtilTest(unittest.TestCase):
         self.assertNotIn('__MACOSX', output_dir_entries)
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', '__MACOSX')))
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', '._ignored2')))
-
-    def test_gzip_file(self):
-        with tempfile.NamedTemporaryFile() as f:
-            f.write(b"hello world")
-            f.seek(0)
-            gzipped_file = gzip_file(f.name)
-            with gzip.GzipFile(fileobj=gzipped_file) as gzf:
-                self.assertEqual(gzf.read(), b"hello world")
-
-    def test_read_file_section(self):
-        with tempfile.NamedTemporaryFile() as f:
-            f.write(b"hello world")
-            f.seek(0)
-            results = read_file_section(f.name, 2, 5)
-            self.assertEqual(results, b"llo w")
-
-    def test_summarize_file(self):
-        with tempfile.NamedTemporaryFile() as f:
-            f.write(b"1\n2\n3\n4\n5\n6\n7\n8\n9\n10 loooooooooong line\n11")
-            f.seek(0)
-            results = summarize_file(f.name, 2, 4, 9, "...")
-            self.assertEqual(results, "1\n2\n...8\n9\n10 loooooooooong line\n11\n")
-
-    def test_summarize_file_binary(self):
-        with tempfile.NamedTemporaryFile() as f:
-            with gzip.GzipFile(fileobj=f, mode="wb") as gzf:
-                gzf.write(b"hello world")
-            f.seek(0)
-            results = summarize_file(f.name, 2, 4, 9, "...")
-            self.assertEqual(results, "<binary>")
-
-    def test_summarize_file_notfound(self):
-        results = summarize_file("invalid file name", 2, 4, 9, "...")
-        self.assertEqual(results, "<none>")
-
-    def test_get_path_size(self):
-        with tempfile.NamedTemporaryFile() as f:
-            with gzip.GzipFile(fileobj=f, mode="wb") as gzf:
-                gzf.write(b"hello world")
-            f.seek(0)
-            results = get_path_size(f.name)
-            self.assertEqual(results, 43)
-
-    def test_get_path_size_dir(self):
-        with tempfile.TemporaryDirectory() as dirname, tempfile.NamedTemporaryFile(
-            dir=dirname
-        ) as f:
-            f.write(b"hello world")
-            f.seek(0)
-            results = get_path_size(dirname)
-            self.assertEqual(results, 107)
-
-    def test_get_path_size_nested_dir(self):
-        with tempfile.TemporaryDirectory() as dirname, tempfile.NamedTemporaryFile(
-            dir=dirname
-        ) as f, tempfile.TemporaryDirectory(dir=dirname) as dirname2, tempfile.NamedTemporaryFile(
-            dir=dirname2
-        ) as f2:
-            f.write(b"hello world")
-            f.seek(0)
-            f2.write(b"hello world")
-            f2.seek(0)
-            results = get_path_size(dirname)
-            self.assertEqual(results, 150)
-
-    def test_remove_path(self):
-        with tempfile.NamedTemporaryFile(delete=False) as f:
-            self.assertEqual(get_path_exists(f.name), True)
-            remove_path(f.name)
-            self.assertEqual(get_path_exists(f.name), False)
-
-    def test_remove_path_dir(self):
-        dirname = tempfile.mkdtemp()
-        with tempfile.NamedTemporaryFile(dir=dirname, delete=False) as f:
-            self.assertEqual(get_path_exists(dirname), True)
-            self.assertEqual(get_path_exists(f.name), True)
-            remove_path(dirname)
-            self.assertEqual(get_path_exists(dirname), False)
-            self.assertEqual(get_path_exists(f.name), False)
