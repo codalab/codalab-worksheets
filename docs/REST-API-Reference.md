@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.20_
+_version 0.5.21_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -422,8 +422,7 @@ Query parameters:
 Fetch locations of bundles.
 
 Query parameters:
-
-- `uuids`: List of bundle UUID's to get the locations for.
+- `uuids`: List of bundle UUID's to get the locations for
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
 

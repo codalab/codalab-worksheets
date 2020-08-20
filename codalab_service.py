@@ -239,6 +239,13 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='use_ssl', help='Use HTTPS instead of HTTP', type=bool, default=False),
     CodalabArg(name='ssl_cert_file', help='Path to the cert file for SSL'),
     CodalabArg(name='ssl_key_file', help='Path to the key file for SSL'),
+    ### Sentry
+    CodalabArg(
+        name='sentry_ingest_url',
+        help=(
+            'Ingest URL for logging exceptions with Sentry. If not provided, Sentry is not used.'
+        ),
+    ),
     ### Worker manager
     CodalabArg(
         name='worker_manager_type',

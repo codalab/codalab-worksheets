@@ -16,7 +16,16 @@ class ConfigTextInput extends React.Component<{
     autoFocus?: boolean,
 }> {
     render() {
-        const { classes, placeholder, multiline, maxRows, value, onValueChange, disabled, autoFocus } = this.props;
+        const { classes, placeholder, multiline, maxRows, value, onValueChange, disabled, autoFocus, customInputProps } = this.props;
+
+        const defaultInputProps = {
+            classes: {
+                root: classes.inputRoot,
+                input: classes.inputNative,
+            },
+            rowsMax: maxRows,
+        }
+
         return (
             <TextField
                 className={classes.textInput}
@@ -28,16 +37,10 @@ class ConfigTextInput extends React.Component<{
                 disabled={disabled}
                 margin="none"
                 fullWidth
-                InputProps={{
-                    classes: {
-                        root: classes.inputRoot,
-                        input: classes.inputNative,
-                    },
-                    rowsMax: maxRows,
-                }}
+                InputProps={customInputProps ? customInputProps : defaultInputProps}
             />
         );
-    }
+    } 
 }
 
 
