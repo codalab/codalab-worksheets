@@ -37,7 +37,7 @@ import { executeCommand } from '../util/cli_utils';
 import DOMPurify from 'dompurify';
 
 const kDefaultWorksheetName = 'unnamed';
-const NAME_STR_REGEX = new RegExp('^[a-zA-Z_][a-zA-Z0-9_.-]*$'); // matches regex on the backend in spec_util.py
+const NAME_STR_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/; // matches regex on the backend in spec_util.py
 
 class NavBar extends React.Component<{
     auth: {
