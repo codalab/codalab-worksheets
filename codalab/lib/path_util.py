@@ -24,6 +24,7 @@ import sys
 
 from codalab.common import precondition, UsageError
 from codalab.lib import file_util
+from codalab.beam.filesystems import FileSystems
 
 
 # Block sizes and canonical strings used when hashing files.
@@ -302,6 +303,9 @@ def remove(path):
     """
     Remove the given path, whether it is a directory, file, or link.
     """
+    if path.startswith("azfs://"):
+        FileSystems.remove(path)
+        return
     check_isvalid(path, 'remove')
     set_write_permissions(path)  # Allow permissions
     if os.path.islink(path):

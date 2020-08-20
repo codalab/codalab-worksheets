@@ -71,3 +71,11 @@ of `--link` (applied to the dependency) and `--shared-file-system`:
 -------| ----------|------------------------------|
  --shared-file-system        | Server sends worker just the bundle path (`/u/nlp/data`) | Server sends worker just the bundle path (which must be in CodaLab bundle store `/u/codalab/bundles/...`)
  no --shared-file-system     | Server sends worker the bundle contents (reading from the path - `/u/nlp/data`)   | Server sends worker the bundle contents (reading from the path in the CodaLab bundle store - `/u/codalab/bundles/...`)
+
+## Azure Blob Storage
+
+To upload a file with Azure Blob Storage, use `cl upload` with the `--use_azure_blob_storage_beta` option (or `-a`):
+
+```bash
+cl upload test.txt -a
+```

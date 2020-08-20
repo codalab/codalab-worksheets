@@ -37,7 +37,7 @@ from codalab.rest.schemas import (
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
 from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin, ProtectedPlugin
-from codalab.worker.bundle_state import State
+from codalab.worker.bundle_state import State, LinkFormat
 from codalab.worker.download_util import BundleTarget
 
 logger = logging.getLogger(__name__)
@@ -707,6 +707,8 @@ def _update_bundle_contents_blob(uuid):
     - `state_on_success`: (optional) Update the bundle state to this state if
       the upload completes successfully. Must be either 'ready' or 'failed'.
       Default is 'ready'.
+    - `use_azure_blob_beta`: (optional) Use Azure Blob Storage to store the bundle.
+      Default is False.
     """
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
@@ -716,6 +718,7 @@ def _update_bundle_contents_blob(uuid):
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
     finalize_on_success = query_get_bool('finalize_on_success', default=True)
+    use_azure_blob_beta = query_get_bool('use_azure_blob_beta', default=False)
     final_state = request.query.get('state_on_success', default=State.READY)
     if finalize_on_success and final_state not in State.FINAL_STATES:
         abort(
@@ -730,13 +733,28 @@ def _update_bundle_contents_blob(uuid):
     # Store the data.
     try:
         sources = None
+        if use_azure_blob_beta:
+            local.model.update_bundle(
+                bundle,
+                {
+                    'metadata': {
+                        'link_url': f"azfs://storageclwsdev0/bundles/{bundle.uuid}",
+                        'link_format': LinkFormat.RAW,
+                    },
+                },
+            )
+            bundle = local.model.get_bundle(uuid)
         if request.query.urls:
             sources = query_get_list('urls')
         # request without "filename" doesn't need to upload to bundle store
         if request.query.filename:
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
-        if sources:
+        bundle_link_url = getattr(bundle.metadata, "link_url", None)
+        
+        # Don't upload to bundle store if using --link with a URL that
+        # already exists.
+        if sources and ((bundle_link_url is None) or use_azure_blob_beta):
             local.upload_manager.upload_to_bundle_store(
                 bundle,
                 sources=sources,
@@ -747,7 +765,6 @@ def _update_bundle_contents_blob(uuid):
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
             )  # See UploadManager for full explanation of 'simplify'
-            bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
             local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 

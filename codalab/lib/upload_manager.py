@@ -8,6 +8,7 @@ from codalab.beam.filesystems import FileSystems
 
 # TODO: fix methods here.
 
+
 class UploadManager(object):
     """
     Contains logic for uploading bundle data to the bundle store and updating
@@ -60,14 +61,10 @@ class UploadManager(object):
             else self._default_exclude_patterns
         )
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
-        if bundle_link_url:
-            # Don't do anything for linked bundles.
-            return
-        bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
-        bundle_path = "azfs://storageclwsdev0/bundles/" + bundle.uuid
+        bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
         try:
-            # TODO: fix this
-            # path_util.make_directory(bundle_path)
+            if not bundle_path.startswith("azfs://"):
+                path_util.make_directory(bundle_path)
             # Note that for uploads with a single source, the directory
             # structure is simplified at the end.
             for source in sources:
@@ -175,9 +172,14 @@ class UploadManager(object):
         Modifies |path| in place: If the |path| directory contains exactly
         one file / directory, then replace |path| with that file / directory.
         """
+        if path.startswith("azfs://"):
+            if child_path is None:
+                child_path = FileSystems.match([path + "/*"])[0].metadata_list[0].path
+            FileSystems.rename([child_path], [path])
+            return
+        
         if child_path is None:
             child_path = os.listdir(path)[0]
-
         temp_path = path + crypt_util.get_random_string()
         path_util.rename(path, temp_path)
         child_path = os.path.join(temp_path, child_path)
@@ -186,7 +188,7 @@ class UploadManager(object):
 
     def has_contents(self, bundle):
         # TODO: make this non-fs-specific.
-        return os.path.exists(self._bundle_store.get_bundle_location(bundle.uuid))
+        return FileSystems.exists(self._bundle_store.get_bundle_location(bundle.uuid))
 
     def cleanup_existing_contents(self, bundle):
         self._bundle_store.cleanup(bundle.uuid, dry_run=False)

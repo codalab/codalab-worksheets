@@ -16,6 +16,7 @@ from uuid import uuid4
 from sqlalchemy import and_, or_, not_, select, union, desc, func
 from sqlalchemy.sql.expression import literal, true
 
+from codalab.beam.filesystems import FileSystems
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.run_bundle import RunBundle
 from codalab.common import IntegrityError, NotFoundError, precondition, UsageError
@@ -1047,15 +1048,21 @@ class BundleModel(object):
         Computes the disk use and data hash of the given bundle.
         Updates the database rows for the bundle and user with the new disk use
         """
-        dirs_and_files = None
-        if os.path.isdir(bundle_location):
-            dirs_and_files = path_util.recursive_ls(bundle_location)
+        if bundle_location.startswith("azfs://"):
+            # TODO(Ashwin): add a FileSystems.size() method to Apache Beam to make this less verbose.
+            size = FileSystems.get_filesystem(bundle_location).size(bundle_location)
+            # TODO(Ashwin): use an actual hash instead of the size in the future.
+            data_hash = size
+            data_size = size
         else:
-            dirs_and_files = [], [bundle_location]
-
-        # TODO(Ashwin): make this non-fs specific
-        data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
-        data_size = path_util.get_size(bundle_location, dirs_and_files)
+            dirs_and_files = None
+            if os.path.isdir(bundle_location):
+                dirs_and_files = path_util.recursive_ls(bundle_location)
+            else:
+                dirs_and_files = [], [bundle_location]
+            data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
+            data_size = path_util.get_size(bundle_location, dirs_and_files)
+        
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
             if data_size > disk_left:
