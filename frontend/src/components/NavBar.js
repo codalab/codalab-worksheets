@@ -35,9 +35,9 @@ import Search from 'semantic-ui-react/dist/commonjs/modules/Search';
 import _ from 'lodash';
 import { executeCommand } from '../util/cli_utils';
 import DOMPurify from 'dompurify';
+import { NAME_REGEX } from '../constants';
 
 const kDefaultWorksheetName = 'unnamed';
-const NAME_STR_REGEX = new RegExp('^[a-zA-Z_][a-zA-Z0-9_.-]*$'); // matches regex on the backend in spec_util.py
 
 class NavBar extends React.Component<{
     auth: {
@@ -93,10 +93,10 @@ class NavBar extends React.Component<{
 
     createNewWorksheet() {
         this.resetDialog();
-        if (!NAME_STR_REGEX.test(this.state.newWorksheetName)) {
+        if (!NAME_REGEX.test(this.state.newWorksheetName)) {
             this.setState({
                 snackbarShow: true,
-                snackbarMessage: `Worksheet name with name ${this.state.newWorksheetName} may not contain spaces`,
+                snackbarMessage: `Names must match ${NAME_REGEX}, was ${this.state.newWorksheetName}`,
                 snackbarVariant: 'error',
             });
             return;
