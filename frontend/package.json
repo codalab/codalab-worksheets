@@ -21,7 +21,7 @@
     "jsonapi-datastore": "^0.4.0-beta",
     "jszip": "^3.5.0",
     "lint-staged": "^10.2.11",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.20",
     "marked": "^1.1.1",
     "material-ui-chip-input": "^1.1.0",
     "query-string": "^6.13.1",
@@ -44,7 +44,7 @@
   "devDependencies": {
     "eslint": "^6.8.0",
     "prettier": "^1.19.1",
-    "react-scripts": "^3.4.1"
+    "react-scripts": "^3.4.2"
   },
   "browserslist": [
     ">0.2%",
