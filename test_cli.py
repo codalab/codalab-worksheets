@@ -2183,9 +2183,7 @@ def test(ctx):
     _run_command([cl, 'edit', uuid, '-f', 'invalid_field', 'value'], expected_exit_code=1)
 
     # invalid field value
-    _run_command(
-        [cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1
-    )
+    _run_command([cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1)
 
 
 if __name__ == '__main__':
