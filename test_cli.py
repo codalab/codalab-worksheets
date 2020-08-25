@@ -2180,24 +2180,12 @@ def test(ctx):
     check_equals('12m', get_info(uuid, 'request_memory'))
 
     # invalid field name
-    try:
-        _run_command([cl, 'edit', uuid, '-f', 'invalid_field', 'value'], expected_exit_code=1)
-    except UsageError:
-        print("Expected UsageError for invalid field name.")
-        pass
-    except Exception as e:
-        raise e
+    _run_command([cl, 'edit', uuid, '-f', 'invalid_field', 'value'], expected_exit_code=1)
 
     # invalid field value
-    try:
-        _run_command(
-            [cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1
-        )
-    except UsageError:
-        print("Expected UsageError for invalid field value.")
-        pass
-    except Exception as e:
-        raise e
+    _run_command(
+        [cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1
+    )
 
 
 if __name__ == '__main__':
