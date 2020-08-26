@@ -46,7 +46,7 @@ class Metadata(object):
                         'Metadata value for %s should be of type %s, was %s (type %s)'
                         % (spec.key, spec.type.__name__, value, type(value).__name__)
                     )
-            elif not spec.generated:
+            elif not spec.generated and not spec.optional:
                 raise UsageError('Missing metadata key: %s' % (spec.key,))
 
     def set_metadata_key(self, key, value):

@@ -2,6 +2,8 @@
 DerivedBundle is an abstract Bundle supertype for bundles that need to be
 run by CodaLab and that have dependencies (i.e. make and run bundles).
 '''
+from typing import List, ClassVar
+
 from codalab.bundles.named_bundle import NamedBundle
 from codalab.common import UsageError
 from codalab.lib import spec_util
@@ -9,7 +11,7 @@ from codalab.objects.metadata_spec import MetadataSpec
 
 
 class DerivedBundle(NamedBundle):
-    METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
+    METADATA_SPECS = list(NamedBundle.METADATA_SPECS)  # type: List[ClassVar]
     # Don't format specs
     # fmt: off
     METADATA_SPECS.append(

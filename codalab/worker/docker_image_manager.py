@@ -5,6 +5,7 @@ import traceback
 import logging
 
 import docker
+from codalab.lib.telemetry_util import capture_exception, using_sentry
 import codalab.worker.docker_utils as docker_utils
 
 from codalab.worker.fsm import DependencyStage
@@ -137,7 +138,7 @@ class DockerImageManager:
                         # trying to remove images in 1st case. Since we can't do much for images in 1st case, we
                         # just continue with our lives, hoping it will get deleted once it's no longer in use and
                         # the cache becomes full again
-                        logger.error(
+                        logger.warning(
                             "Cannot forcibly remove image %s from cache: %s", image_tag, err
                         )
             logger.debug("Stopping docker image manager cleanup")
@@ -173,13 +174,13 @@ class DockerImageManager:
                     if tag_label == self.CACHE_TAG and timestamp != new_timestamp:
                         try:
                             self._docker.images.remove(tag)
-                        except docker.errors.ImageNotFound as err:
+                        except docker.errors.NotFound as err:
                             # It's possible that we get a 404 not found error here when removing the image,
                             # since another worker on the same system has already done so. We just
                             # ignore this 404, since any extraneous tags will be removed during the next iteration.
-                            logger.error(
+                            logger.warning(
                                 "Attempted to remove image %s from cache, but image was not found: %s",
-                                image_tag,
+                                tag,
                                 err,
                             )
 
@@ -187,6 +188,8 @@ class DockerImageManager:
                     digest=digest, stage=DependencyStage.READY, message=success_message
                 )
             except Exception as ex:
+                if using_sentry():
+                    capture_exception()
                 return ImageAvailabilityState(
                     digest=None, stage=DependencyStage.FAILED, message=failure_message % ex
                 )

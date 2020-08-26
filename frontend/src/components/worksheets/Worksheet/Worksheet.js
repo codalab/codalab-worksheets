@@ -2,13 +2,7 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
-import {
-    keepPosInView,
-    renderPermissions,
-    getAfterSortKey,
-    createAlertText,
-    getIds,
-} from '../../../util/worksheet_utils';
+import { renderPermissions, getAfterSortKey, createAlertText } from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import ReactDOM from 'react-dom';
@@ -63,8 +57,8 @@ class Worksheet extends React.Component {
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
             activeComponent: 'list', // Where the focus is (action, list, or side_panel)
-            editMode: false, // Whether we're editing the worksheet
-            editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind editMode)
+            inSourceEditMode: false, // Whether we're editing the worksheet
+            editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind inSourceEditMode)
             showTerminal: false, // Whether the terminal is shown
             focusIndex: -1, // Which worksheet items to be on (-1 is none)
             subFocusIndex: 0, // For tables, which row in the table
@@ -95,6 +89,9 @@ class Worksheet extends React.Component {
         };
         this.copyCallbacks = [];
         this.bundleTableID = new Set();
+
+        // Throttle so that if keys are held down, we don't suffer a huge lag.
+        this.scrollToItem = _.throttle(this.__innerScrollToItem, 50).bind(this);
     }
 
     fetch(props) {
@@ -522,6 +519,71 @@ class Worksheet extends React.Component {
         });
     };
 
+    updateBundleBlockSchema = (newSchemaName, mode, firstBundleSourceIndex) => {
+        // newSchemaName: new schema name to be used
+        // mode: table or record mode
+        // firstBundleSourceIndex: the source index of the first bundle of the block
+        //     It should be 1 for the following example
+        //                  0 % display table abc
+        //                  1 []{0x1234}
+        let source = this.state.ws.info.source;
+        let newDisplay = '% display ' + mode + ' ' + newSchemaName;
+        // First check if the line above firstBundleSourceIndex is a % display directive.
+        // If it is, we replace that line with % display <mode> <schema name>
+        // otherwise we add % display <mode> <schema name> above the firstBundleSourceIndex
+        let lineAbove = firstBundleSourceIndex > 0 ? source[firstBundleSourceIndex - 1] : '';
+        let updatedSource = [];
+        if (lineAbove.startsWith('% display')) {
+            // replace the line above
+            Object.assign(updatedSource, source, { [firstBundleSourceIndex - 1]: newDisplay });
+        } else {
+            // insert above firstBundleSourceIndex
+            Object.assign(updatedSource, source.slice(0, firstBundleSourceIndex));
+            updatedSource.push(newDisplay);
+            updatedSource.push(...source.slice(firstBundleSourceIndex));
+        }
+        this.setState(
+            {
+                ws: {
+                    ...this.state.ws,
+                    info: {
+                        ...this.state.ws.info,
+                        source: updatedSource,
+                    },
+                },
+            },
+            this.saveAndUpdateWorksheet,
+        );
+    };
+
+    updateSchemaItem = (rows, ids, after_sort_key) => {
+        // rows: list of string representing the new schema:
+        //      % schema example
+        //      % add uuid uuid [0:8]
+        // ids: ids of the row items
+        // after_sort_key: used for add-items
+        let worksheetUUID = this.state.ws.uuid;
+        let url = `/rest/worksheets/${worksheetUUID}/add-items`;
+        let actualData = { items: rows };
+        actualData['item_type'] = 'directive';
+        actualData['ids'] = ids;
+        actualData['after_sort_key'] = after_sort_key;
+        $.ajax({
+            url,
+            data: JSON.stringify(actualData),
+            contentType: 'application/json',
+            type: 'POST',
+            success: () => {
+                const moveIndex = false;
+                const param = { moveIndex };
+                this.reloadWorksheet(undefined, undefined, param);
+            },
+            error: (jqHXR) => {
+                alert(createAlertText(this.url, jqHXR.responseText));
+            },
+        });
+    };
+
     setFocus = (index, subIndex, shouldScroll = true) => {
         var info = this.state.ws.info;
         // prevent multiple clicking from resetting the index
@@ -593,32 +655,13 @@ class Worksheet extends React.Component {
         }
     };
 
-    scrollToItem = (index, subIndex) => {
-        // scroll the window to keep the focused element in view if needed
-        var __innerScrollToItem = function(index, subIndex) {
-            // Compute the current position of the focused item.
-            var pos;
-            if (index === -1) {
-                pos = -1000000; // Scroll all the way to the top
-            } else {
-                var item = this.refs.list.refs['item' + index];
-                if (!item) {
-                    // Don't scroll to an item if it doesn't exist.
-                    return;
-                }
-                if (this._numTableRows(item.props.item)) {
-                    item = item.refs['row' + subIndex]; // Specifically, the row
-                }
-                var node = ReactDOM.findDOMNode(item);
-                pos = node.getBoundingClientRect().top;
-            }
-            keepPosInView(pos);
-        };
-
-        // Throttle so that if keys are held down, we don't suffer a huge lag.
-        if (this.throttledScrollToItem === undefined)
-            this.throttledScrollToItem = _.throttle(__innerScrollToItem, 50).bind(this);
-        this.throttledScrollToItem(index, subIndex);
+    __innerScrollToItem = (index, subIndex) => {
+        const node = subIndex
+            ? document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
+            : document.getElementById(`codalab-worksheet-item-${index}`);
+        if (node) {
+            node.scrollIntoView({ block: 'center' });
+        }
     };
 
     componentDidMount() {
@@ -668,15 +711,6 @@ class Worksheet extends React.Component {
         return info && info.edit_permission;
     }
 
-    viewMode = () => {
-        this.toggleEditMode(false, true);
-    };
-    discardChanges = () => {
-        this.toggleEditMode(false, false);
-    };
-    editMode = () => {
-        this.toggleEditMode(true);
-    };
     handleTerminalFocus = (event) => {
         this.setState({ activeComponent: 'action' });
         // just scroll to the top of the page.
@@ -761,11 +795,11 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
 
-            // Toggle edit mode
+            // Open source edit mode
             Mousetrap.bind(
                 ['shift+e'],
                 function(e) {
-                    this.toggleEditMode();
+                    this.toggleSourceEditMode();
                     return false;
                 }.bind(this),
             );
@@ -976,12 +1010,14 @@ class Worksheet extends React.Component {
         //====================Bulk bundle operations===================
     }
 
-    toggleEditMode(editMode, saveChanges) {
-        if (editMode === undefined) editMode = !this.state.editMode; // Toggle by default
+    toggleSourceEditMode(openSourceEditMode, saveChanges) {
+        // openSourceEditMode: whether to open or close source mode, open if true, close if false, toggles to opposite if undefined
+        // saveChanges: whether to save or discard changes
+        if (openSourceEditMode === undefined) openSourceEditMode = !this.state.inSourceEditMode; // toggle by default
 
         if (saveChanges === undefined) saveChanges = true;
 
-        if (!editMode) {
+        if (!openSourceEditMode) {
             // Going out of raw mode - save the worksheet.
             if (this.hasEditPermission()) {
                 var editor = ace.edit('worksheet-editor');
@@ -990,7 +1026,7 @@ class Worksheet extends React.Component {
                 }
                 var rawIndex = editor.getCursorPosition().row;
                 this.setState({
-                    editMode: editMode,
+                    inSourceEditMode: false,
                     editorEnabled: false,
                 }); // Needs to be after getting the raw contents
                 if (saveChanges) {
@@ -1001,13 +1037,13 @@ class Worksheet extends React.Component {
             } else {
                 // Not allowed to edit the worksheet.
                 this.setState({
-                    editMode: editMode,
+                    inSourceEditMode: false,
                     editorEnabled: false,
                 });
             }
         } else {
             // Go into edit mode.
-            this.setState({ editMode: editMode });
+            this.setState({ inSourceEditMode: true });
             this.clearCheckedBundles();
             $('#worksheet-editor').focus(); // Needs to be before focusing
         }
@@ -1047,7 +1083,7 @@ class Worksheet extends React.Component {
                     startTime = endTime;
                 }
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: (xhr, status, err) => {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: xhr.responseText,
@@ -1093,7 +1129,7 @@ class Worksheet extends React.Component {
     }
 
     componentDidUpdate(prevProps, prevState) {
-        if (this.state.editMode && !this.state.editorEnabled) {
+        if (this.state.inSourceEditMode && !this.state.editorEnabled) {
             this.setState({ editorEnabled: true });
             var editor = ace.edit('worksheet-editor');
             editor.$blockScrolling = Infinity;
@@ -1114,7 +1150,7 @@ class Worksheet extends React.Component {
                     name: 'save',
                     bindKey: { win: 'Ctrl-Enter', mac: 'Ctrl-Enter' },
                     exec: function() {
-                        this.toggleEditMode();
+                        this.toggleSourceEditMode();
                     }.bind(this),
                     readOnly: true,
                 });
@@ -1122,7 +1158,8 @@ class Worksheet extends React.Component {
                     name: 'exit',
                     bindKey: { win: 'Esc', mac: 'Esc' },
                     exec: function() {
-                        this.discardChanges();
+                        // discard changes in source mode
+                        this.toggleSourceEditMode(false, false);
                     }.bind(this),
                 });
                 editor.focus();
@@ -1217,15 +1254,6 @@ class Worksheet extends React.Component {
         rawIndexAfterEditMode,
         { moveIndex = false, textDeleted = false } = {},
     ) => {
-        let itemHeights = {};
-        if (this.refs.list && this.refs.list.refs) {
-            for (let refName in this.refs.list.refs) {
-                itemHeights[refName] = ReactDOM.findDOMNode(
-                    this.refs.list.refs[refName],
-                ).clientHeight;
-            }
-        }
-        this.setState({ itemHeights });
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
             this.setState({ updating: true });
@@ -1379,7 +1407,7 @@ class Worksheet extends React.Component {
                     errorDialogMessage: xhr.responseText,
                 });
                 if (fromRaw) {
-                    this.toggleEditMode(true);
+                    this.toggleSourceEditMode(true);
                 }
             }.bind(this),
         });
@@ -1426,13 +1454,15 @@ class Worksheet extends React.Component {
         const editPermission = this.hasEditPermission();
 
         let searchClassName = this.state.showTerminal ? '' : 'search-hidden';
-        let editableClassName = editPermission && this.state.editMode ? 'editable' : '';
+        let editableClassName = editPermission && this.state.openSourceEditMode ? 'editable' : '';
         let disableWorksheetEditing = editPermission ? '' : 'disabled';
         let sourceStr = editPermission ? 'Edit Source' : 'View Source';
-        let editFeatures = (
+        let blockViewButtons = (
             <div style={{ display: 'inline-block' }}>
                 <Button
-                    onClick={this.editMode}
+                    onClick={() => {
+                        this.toggleSourceEditMode(true);
+                    }}
                     size='small'
                     color='inherit'
                     aria-label='Edit Source'
@@ -1476,7 +1506,7 @@ class Worksheet extends React.Component {
             </div>
         );
 
-        var editModeFeatures = (
+        let sourceModeButtons = (
             <div
                 onMouseMove={(ev) => {
                     ev.stopPropagation();
@@ -1484,7 +1514,10 @@ class Worksheet extends React.Component {
                 style={{ display: 'inline-block' }}
             >
                 <Button
-                    onClick={this.viewMode}
+                    onClick={() => {
+                        // save changes and exit source mode
+                        this.toggleSourceEditMode(false, true);
+                    }}
                     disabled={disableWorksheetEditing}
                     size='small'
                     color='inherit'
@@ -1494,7 +1527,10 @@ class Worksheet extends React.Component {
                     Save
                 </Button>
                 <Button
-                    onClick={this.discardChanges}
+                    onClick={() => {
+                        // discard changes
+                        this.toggleSourceEditMode(false, false);
+                    }}
                     size='small'
                     color='inherit'
                     aria-label='Discard Edit'
@@ -1511,7 +1547,7 @@ class Worksheet extends React.Component {
             $('.empty-worksheet').fadeIn();
         }
 
-        var raw_display = (
+        let rawDisplay = (
             <div>
                 Press ctrl-enter to save. See{' '}
                 <a
@@ -1525,7 +1561,7 @@ class Worksheet extends React.Component {
             </div>
         );
 
-        var action_bar_display = (
+        let terminalDisplay = (
             <WorksheetTerminal
                 ref={'action'}
                 ws={this.state.ws}
@@ -1534,13 +1570,15 @@ class Worksheet extends React.Component {
                 active={this.state.activeComponent === 'action'}
                 reloadWorksheet={this.reloadWorksheet}
                 openWorksheet={this.openWorksheet}
-                editMode={this.editMode}
+                editMode={() => {
+                    this.toggleSourceEditMode(true);
+                }}
                 setFocus={this.setFocus}
                 hidden={!this.state.showTerminal}
             />
         );
 
-        var items_display = (
+        let itemsDisplay = (
             <WorksheetItemList
                 ref={'list'}
                 active={this.state.activeComponent === 'list'}
@@ -1565,33 +1603,17 @@ class Worksheet extends React.Component {
                 setDeleteItemCallback={this.setDeleteItemCallback}
                 addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
                 onAsyncItemLoad={this.onAsyncItemLoad}
-                itemHeights={this.state.itemHeights}
+                updateBundleBlockSchema={this.updateBundleBlockSchema}
+                updateSchemaItem={this.updateSchemaItem}
             />
         );
 
-        var worksheet_display = this.state.editMode ? raw_display : items_display;
-        var editButtons = this.state.editMode ? editModeFeatures : editFeatures;
+        let worksheetDisplay = this.state.inSourceEditMode ? rawDisplay : itemsDisplay;
+        let editButtons = this.state.inSourceEditMode ? sourceModeButtons : blockViewButtons;
         if (!this.state.isValid) {
             return <ErrorMessage message={"Not found: '/worksheets/" + this.state.ws.uuid + "'"} />;
         }
 
-        var worksheet_dialogs = (
-            <WorksheetDialogs
-                openedDialog={this.state.openedDialog}
-                closeDialog={() => {
-                    this.setState({ openedDialog: null });
-                }}
-                errorDialogMessage={this.state.errorDialogMessage}
-                toggleCmdDialog={this.toggleCmdDialog}
-                toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
-                toggleErrorMessageDialog={this.toggleErrorMessageDialog}
-                deleteWorksheetAction={this.deleteWorksheetAction}
-                executeBundleCommand={this.executeBundleCommand}
-                forceDelete={this.state.forceDelete}
-                handleForceDelete={this.handleForceDelete}
-                deleteItemCallback={this.state.deleteItemCallback}
-            />
-        );
         if (info && info.title) {
             document.title = info.title;
         }
@@ -1625,7 +1647,7 @@ class Worksheet extends React.Component {
                     showPasteButton={this.state.showPasteButton}
                     toggleWorksheetSize={this.toggleWorksheetSize}
                 />
-                {action_bar_display}
+                {terminalDisplay}
                 <ToastContainer
                     newestOnTop={false}
                     transition={Zoom}
@@ -1651,13 +1673,9 @@ class Worksheet extends React.Component {
                                         id='worksheet_content'
                                         className={editableClassName + ' worksheet_content'}
                                     >
-                                        {worksheet_display}
+                                        {worksheetDisplay}
                                         {/* Show error dialog if bulk bundle execution failed*/}
                                         {this.state.BulkBundleDialog}
-                                        <InformationModal
-                                            showInformationModal={this.state.showInformationModal}
-                                            toggleInformationModal={this.toggleInformationModal}
-                                        />
                                     </div>
                                 </div>
                                 <Button
@@ -1678,7 +1696,21 @@ class Worksheet extends React.Component {
                         </div>
                     </div>
                 </div>
-                {worksheet_dialogs}
+                <WorksheetDialogs
+                    openedDialog={this.state.openedDialog}
+                    closeDialog={() => {
+                        this.setState({ openedDialog: null });
+                    }}
+                    errorDialogMessage={this.state.errorDialogMessage}
+                    toggleCmdDialog={this.toggleCmdDialog}
+                    toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
+                    toggleErrorMessageDialog={this.toggleErrorMessageDialog}
+                    deleteWorksheetAction={this.deleteWorksheetAction}
+                    executeBundleCommand={this.executeBundleCommand}
+                    forceDelete={this.state.forceDelete}
+                    handleForceDelete={this.handleForceDelete}
+                    deleteItemCallback={this.state.deleteItemCallback}
+                />
                 <InformationModal
                     showInformationModal={this.state.showInformationModal}
                     toggleInformationModal={this.toggleInformationModal}
