@@ -1,5 +1,5 @@
 import os
-from codalab.beam.filesystems import FileSystems
+from codalab.lib.beam.filesystems import FileSystems
 
 class PathException(Exception):
     pass

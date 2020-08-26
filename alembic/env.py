@@ -13,7 +13,6 @@ sys.path.append(CODALAB_CLI_ROOT)
 from codalab.model import tables
 from codalab.lib.codalab_manager import CodaLabManager
 
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

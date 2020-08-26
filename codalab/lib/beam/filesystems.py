@@ -1,6 +1,6 @@
 import os
 from apache_beam.io.filesystems import FileSystems
-from codalab.beam.blobstoragefilesystem import BlobStorageFileSystem
+from codalab.lib.beam.blobstoragefilesystem import BlobStorageFileSystem
 
 """
 Modifies Beam to add support for Azure Blob Storage filesystems.

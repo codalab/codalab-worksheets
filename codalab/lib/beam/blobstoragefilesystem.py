@@ -23,7 +23,7 @@ from __future__ import absolute_import
 
 from future.utils import iteritems
 
-import codalab.beam.blobstorageio as blobstorageio
+import codalab.lib.beam.blobstorageio as blobstorageio
 from apache_beam.io.filesystem import BeamIOError
 from apache_beam.io.filesystem import CompressedFile
 from apache_beam.io.filesystem import CompressionTypes

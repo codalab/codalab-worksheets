@@ -4,7 +4,7 @@ import shutil
 
 from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
-from codalab.beam.filesystems import FileSystems
+from codalab.lib.beam.filesystems import FileSystems
 
 # TODO: fix methods here.
 
