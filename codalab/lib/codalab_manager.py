@@ -212,17 +212,17 @@ class CodaLabManager(object):
 
         return config
 
-    @property
+    @property  # type: ignore
     @cached
     def config_path(self):
         return os.getenv('CODALAB_CONFIG', os.path.join(self.codalab_home, 'config.json'))
 
-    @property
+    @property  # type: ignore
     @cached
     def state_path(self):
         return os.getenv('CODALAB_STATE', os.path.join(self.codalab_home, 'state.json'))
 
-    @property
+    @property  # type: ignore
     @cached
     def codalab_home(self):
         from codalab.lib import path_util
@@ -234,7 +234,7 @@ class CodaLabManager(object):
         path_util.make_directory(home)
         return home
 
-    @property
+    @property  # type: ignore
     @cached
     def worker_socket_dir(self):
         from codalab.lib import path_util
@@ -372,7 +372,7 @@ class CodaLabManager(object):
     def rest_extra_headers(self, address):
         return self.config.get('cli', {}).get('extra_headers', {}).get(address, {})
 
-    @property
+    @property  # type: ignore
     @cached
     def emailer(self):
         if 'email' in self.config:
