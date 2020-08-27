@@ -4,7 +4,7 @@ new metadata key, architectures.
 
 When a RunBundle is constructed, its program_target must be in a ProgramBundle.
 '''
-from typing import List, ClassVar
+from typing import List
 
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.objects.metadata_spec import MetadataSpec
@@ -13,4 +13,4 @@ from codalab.objects.metadata_spec import MetadataSpec
 # This class will eventually be deprecated.
 class ProgramBundle(UploadedBundle):
     BUNDLE_TYPE = 'program'
-    METADATA_SPECS = list(UploadedBundle.METADATA_SPECS)  # type: List[ClassVar]
+    METADATA_SPECS = list(UploadedBundle.METADATA_SPECS)  # type: List

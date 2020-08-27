@@ -23,3 +23,6 @@ venv/bin/mkdocs build  # Outputs to `site`
 # Fix Python and JavaScript style (mutates code!)
 venv/bin/black codalab scripts *.py
 npm run --prefix frontend format
+
+# Check if there are any mypy errors
+mypy .
