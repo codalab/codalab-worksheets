@@ -9,6 +9,7 @@ import re
 import time
 import logging
 import json
+from typing import Dict, Union, List, Set, Tuple
 
 from dateutil import parser
 from uuid import uuid4
@@ -46,7 +47,9 @@ from codalab.model.tables import (
     worker as cl_worker,
     worker_run as cl_worker_run,
     db_metadata,
+    worksheet,
 )
+from codalab.objects.bundle import Bundle
 from codalab.objects.worksheet import item_sort_key, Worksheet
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Client, OAuth2Token
 from codalab.objects.user import User
@@ -60,7 +63,7 @@ SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 SEARCH_RESULTS_LIMIT = 10
 
 
-def str_key_dict(row):
+def str_key_dict(row) -> Dict[str, Dict]:
     """
     row comes out of an element of a database query.
     For some versions of SqlAlchemy, the keys are of type sqlalchemy.sql.elements.quoted_name,
@@ -90,13 +93,13 @@ class BundleModel(object):
     # been converted to the appropriate types that perform automatic encoding.
     # (See tables.py for more details.)
 
-    def encode_str(self, value):
+    def encode_str(self, value) -> None:
         raise NotImplementedError
 
-    def decode_str(self, value):
+    def decode_str(self, value) -> None:
         raise NotImplementedError
 
-    def _reset(self):
+    def _reset(self) -> None:
         """
         Do a drop / create table to clear and reset the schema of all tables.
         """
@@ -104,7 +107,7 @@ class BundleModel(object):
         db_metadata.drop_all(self.engine)
         self.create_tables()
 
-    def create_tables(self):
+    def create_tables(self) -> None:
         """
         Create all CodaLab bundle tables if they do not already exist.
         """
@@ -113,7 +116,7 @@ class BundleModel(object):
         self._create_default_clients()
 
     @staticmethod
-    def do_multirow_insert(connection, table, values):
+    def do_multirow_insert(connection, table, values) -> None:
         """
         Insert multiple rows into the given table.
         This method may be overridden by models that use more powerful SQL dialects.
@@ -128,7 +131,7 @@ class BundleModel(object):
                 connection.execute(table.insert(), values)
 
     @staticmethod
-    def make_clause(key, value):
+    def make_clause(key, value) -> bool:
         if isinstance(value, (list, set, tuple)):
             if not value:
                 return False
@@ -137,7 +140,7 @@ class BundleModel(object):
             return key.like(value)
         return key == value
 
-    def make_kwargs_clause(self, table, kwargs):
+    def make_kwargs_clause(self, table, kwargs) -> List:
         """
         Return a list of bundles given a dict mapping table columns to values.
         If a value is a list, set, or tuple, produce an IN clause on that column.
@@ -149,7 +152,7 @@ class BundleModel(object):
         return and_(*clauses)
 
     @staticmethod
-    def _render_query(query):
+    def _render_query(query) -> str:
         """
         Return string representing SQL query.
         """
@@ -159,7 +162,7 @@ class BundleModel(object):
             s = s.replace(':' + k, str(v))
         return s
 
-    def _execute_query(self, query):
+    def _execute_query(self, query) -> List:
         """
         Execute the given query and return the first matching row
         """
@@ -171,7 +174,7 @@ class BundleModel(object):
     # Bundle info accessor methods
     # ==========================================================================
 
-    def get_bundle(self, uuid):
+    def get_bundle(self, uuid) -> Bundle:
         """
         Retrieve a bundle from the database given its uuid.
         Assume it's unique.
@@ -183,21 +186,21 @@ class BundleModel(object):
             raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
         return bundles[0]
 
-    def get_bundle_names(self, uuids):
+    def get_bundle_names(self, uuids) -> Dict:
         """
         Fetch the bundle names of the given uuids.
         Return {uuid: name}
         """
         return self.get_bundle_metadata(uuids, "name")
 
-    def get_bundle_metadata(self, uuids, metadata_key):
+    def get_bundle_metadata(self, uuids, metadata_key) -> Dict:
         """
         Fetch a single metadata value from the bundles referenced
         by the given uuids.
         Return {uuid: metadata_value}
         """
         if len(uuids) == 0:
-            return []
+            return {}
         with self.engine.begin() as connection:
             rows = connection.execute(
                 select(
@@ -211,26 +214,26 @@ class BundleModel(object):
             ).fetchall()
             return dict((row.bundle_uuid, row.metadata_value) for row in rows)
 
-    def get_owner_ids(self, table, uuids):
+    def get_owner_ids(self, table, uuids) -> Dict:
         """
         Fetch the owners of the given uuids (for either bundles or worksheets).
         Return {uuid: ..., owner_id: ...}
         """
         if len(uuids) == 0:
-            return []
+            return {}
         with self.engine.begin() as connection:
             rows = connection.execute(
                 select([table.c.uuid, table.c.owner_id]).where(table.c.uuid.in_(uuids))
             ).fetchall()
             return dict((row.uuid, row.owner_id) for row in rows)
 
-    def get_bundle_owner_ids(self, uuids):
+    def get_bundle_owner_ids(self, uuids) -> Dict:
         return self.get_owner_ids(cl_bundle, uuids)
 
-    def get_worksheet_owner_ids(self, uuids):
+    def get_worksheet_owner_ids(self, uuids) -> Dict:
         return self.get_owner_ids(cl_worksheet, uuids)
 
-    def get_bundle_worker(self, uuid):
+    def get_bundle_worker(self, uuid) -> Union[None, Dict[str, str]]:
         """
         Returns information about the worker that the given bundle is running
         on. This method should be called only for bundles that are running.
@@ -256,7 +259,7 @@ class BundleModel(object):
                 'socket_id': worker_row.socket_id,
             }
 
-    def get_children_uuids(self, uuids):
+    def get_children_uuids(self, uuids) -> Dict[str, List]:
         """
         Get all bundles that depend on the bundle with the given uuids.
         Return {parent_uuid: [child_uuid, ...], ...}
@@ -272,7 +275,7 @@ class BundleModel(object):
             result[row.parent_uuid].append(row.child_uuid)
         return result
 
-    def get_host_worksheet_uuids(self, bundle_uuids, max_worksheets):
+    def get_host_worksheet_uuids(self, bundle_uuids, max_worksheets) -> Dict[str, List]:
         """
         Get up to n host_worksheet uuids per bundle uuid. n of 0 will return an empty dictionary.
         bundle_uuids: list of bundle uuid's (e.g. ['0x12345', '0x23456'])
@@ -301,7 +304,7 @@ class BundleModel(object):
             ).fetchall()
         return dict((row.bundle_uuid, row.worksheet_uuids.split(',')) for row in rows)
 
-    def get_all_host_worksheet_uuids(self, bundle_uuids):
+    def get_all_host_worksheet_uuids(self, bundle_uuids) -> Dict[str, List[Set[str]]]:
         """
         Return list of all worksheet uuids that contain the given bundle_uuids.
         bundle_uuids: list of bundle uuid's (e.g. ['0x12345', '0x23456']
@@ -321,7 +324,7 @@ class BundleModel(object):
             result[uuid] = list(set(result[uuid]))
         return result
 
-    def get_self_and_descendants(self, uuids, depth):
+    def get_self_and_descendants(self, uuids, depth) -> List:
         """
         Get all bundles that depend on bundles with the given uuids.
         depth = 1 gets only children
@@ -342,7 +345,7 @@ class BundleModel(object):
             depth -= 1
         return visited
 
-    def search_bundles(self, user_id, keywords):
+    def search_bundles(self, user_id, keywords) -> Dict:
         """
         Returns a bundle search result dict where:
             result: list of bundle uuids matching search criteria in order
@@ -385,10 +388,10 @@ class BundleModel(object):
             subquery_index[0] += 1
             return clause.alias('q' + str(subquery_index[0]))
 
-        def is_numeric(key):
+        def is_numeric(key) -> bool:
             return key != 'name'
 
-        def make_condition(key, field, value):
+        def make_condition(key, field, value) -> Union[bool, None]:
             # Special
             if value == '.sort':
                 aux_fields.append(field)
@@ -658,7 +661,7 @@ class BundleModel(object):
             return {'result': result, 'is_aggregate': True}
         return {'result': result, 'is_aggregate': False}
 
-    def get_bundle_uuids(self, conditions, max_results):
+    def get_bundle_uuids(self, conditions, max_results) -> List:
         """
         Returns a list of bundle_uuids that have match the conditions.
         Possible conditions on bundles: uuid, name, worksheet_uuid
@@ -708,7 +711,7 @@ class BundleModel(object):
 
         return self._execute_query(query)
 
-    def get_memoized_bundles(self, user_id, command, dependencies):
+    def get_memoized_bundles(self, user_id, command, dependencies) -> List:
         """
         Get a list of bundle UUIDs that match with input command and dependencies in the order of they were created.
         :param user_id: a string that specifies the current user id.
@@ -784,7 +787,7 @@ class BundleModel(object):
 
         return self._execute_query(query)
 
-    def batch_get_bundles(self, **kwargs):
+    def batch_get_bundles(self, **kwargs) -> List:
         """
         Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.
         """
@@ -830,7 +833,7 @@ class BundleModel(object):
     # Server-side bundle state machine methods
     # ==========================================================================
 
-    def transition_bundle_starting(self, bundle, user_id, worker_id):
+    def transition_bundle_starting(self, bundle, user_id, worker_id) -> bool:
         """
         Transitions bundle to STARTING state:
             Updates the last_updated metadata.
@@ -866,7 +869,7 @@ class BundleModel(object):
 
             return True
 
-    def transition_bundle_staged(self, bundle):
+    def transition_bundle_staged(self, bundle) -> bool:
         """
         Transitions bundle to STAGED state:
             Returns False if the bundle was not in STARTING state.
@@ -895,7 +898,7 @@ class BundleModel(object):
             )
             return True
 
-    def transition_bundle_preparing(self, bundle, user_id, worker_id, start_time, remote):
+    def transition_bundle_preparing(self, bundle, user_id, worker_id, start_time, remote) -> bool:
         """
         Transitions bundle to PREPARING state:
             Only if the bundle is still scheduled to run on the given worker
@@ -918,7 +921,9 @@ class BundleModel(object):
 
         return True
 
-    def transition_bundle_running(self, bundle, worker_run, row, user_id, worker_id, connection):
+    def transition_bundle_running(
+        self, bundle, worker_run, row, user_id, worker_id, connection
+    ) -> bool:
         """
         Transitions bundle to RUNNING state:
             If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
@@ -955,7 +960,7 @@ class BundleModel(object):
 
         return True
 
-    def transition_bundle_worker_offline(self, bundle):
+    def transition_bundle_worker_offline(self, bundle) -> bool:
         """
         Transitions bundle to WORKER_OFFLINE state:
             Updates the last_updated metadata.
@@ -985,7 +990,7 @@ class BundleModel(object):
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finalizing(self, bundle, worker_run, connection):
+    def transition_bundle_finalizing(self, bundle, worker_run, connection) -> bool:
         """
         Transitions bundle to FINALIZING state:
             Saves the failure message and exit code from the worker
@@ -1007,7 +1012,7 @@ class BundleModel(object):
         self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finished(self, bundle, bundle_location):
+    def transition_bundle_finished(self, bundle, bundle_location) -> None:
         """
         Transitions bundle to READY or FAILED state:
             The final state is determined by whether a failure message or exitcode
@@ -1042,7 +1047,7 @@ class BundleModel(object):
     # Bundle state machine helper functions
     # ==========================================================================
 
-    def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False):
+    def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False) -> None:
         """
         Computes the disk use and data hash of the given bundle.
         Updates the database rows for the bundle and user with the new disk use
@@ -1068,7 +1073,7 @@ class BundleModel(object):
         self.update_bundle(bundle, bundle_update)
         self.update_user_disk_used(bundle.owner_id)
 
-    def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
+    def bundle_checkin(self, bundle, worker_run, user_id, worker_id) -> bool:
         """
         Updates the database tables with the most recent bundle information from worker
         """
@@ -1099,7 +1104,7 @@ class BundleModel(object):
             # State isn't one we can check in for
             return False
 
-    def save_bundle(self, bundle):
+    def save_bundle(self, bundle) -> None:
         """
         Save a bundle. On success, sets the Bundle object's id from the result.
         """
@@ -1117,7 +1122,7 @@ class BundleModel(object):
             self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
             bundle.id = result.lastrowid
 
-    def update_bundle(self, bundle, update, connection=None, delete=False):
+    def update_bundle(self, bundle, update, connection=None, delete=False) -> None:
         """
         For each key-value pair in the update dictionary, add or update key-value pair. Note
         that metadata keys not in the update dictionary are not affected in the update operation.
@@ -1168,7 +1173,7 @@ class BundleModel(object):
             )
 
         # Perform the actual updates and deletes.
-        def do_update(connection):
+        def do_update(connection) -> None:
             try:
                 if update:
                     connection.execute(cl_bundle.update().where(clause).values(update))
@@ -1186,7 +1191,7 @@ class BundleModel(object):
             with self.engine.begin() as connection:
                 do_update(connection)
 
-    def get_bundle_dependencies(self, uuid):
+    def get_bundle_dependencies(self, uuid) -> List:
         with self.engine.begin() as connection:
             dependency_rows = connection.execute(
                 cl_bundle_dependency.select()
@@ -1195,13 +1200,13 @@ class BundleModel(object):
             ).fetchall()
         return [Dependency(dep_val) for dep_val in dependency_rows]
 
-    def get_bundle_state(self, uuid):
+    def get_bundle_state(self, uuid) -> State:
         result_dict = self.get_bundle_states([uuid])
         if uuid not in result_dict:
             raise NotFoundError('Could not find bundle with uuid %s' % uuid)
         return result_dict[uuid]
 
-    def get_bundle_states(self, uuids):
+    def get_bundle_states(self, uuids) -> Dict:
         """
         Return {uuid: state, ...}
         """
@@ -1211,7 +1216,7 @@ class BundleModel(object):
             ).fetchall()
             return dict((r.uuid, r.state) for r in rows)
 
-    def delete_bundles(self, uuids):
+    def delete_bundles(self, uuids) -> None:
         """
         Delete bundles with the given uuids.
         """
@@ -1236,7 +1241,7 @@ class BundleModel(object):
             connection.execute(cl_worker_run.delete().where(cl_worker_run.c.run_uuid.in_(uuids)))
             connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
 
-    def remove_data_hash_references(self, uuids):
+    def remove_data_hash_references(self, uuids) -> None:
         with self.engine.begin() as connection:
             connection.execute(
                 cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None})
@@ -1246,7 +1251,7 @@ class BundleModel(object):
     # Worksheet-related model methods follow!
     # ==========================================================================
 
-    def get_worksheet(self, uuid, fetch_items):
+    def get_worksheet(self, uuid, fetch_items) -> Worksheet:
         """
         Get a worksheet given its uuid.
         :rtype: Worksheet
@@ -1258,7 +1263,7 @@ class BundleModel(object):
             raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
         return worksheets[0]
 
-    def batch_get_worksheets(self, fetch_items, **kwargs):
+    def batch_get_worksheets(self, fetch_items, **kwargs) -> List:
         """
         Get a list of worksheets, all of which satisfy the clause given by kwargs.
         :rtype: list[Worksheet]
@@ -1314,7 +1319,7 @@ class BundleModel(object):
                 worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
         return [Worksheet(value) for value in worksheet_values.values()]
 
-    def search_worksheets(self, user_id, keywords):
+    def search_worksheets(self, user_id, keywords) -> List[Worksheet]:
         """
         Return a list of row dicts, one per worksheet. These dicts do NOT contain
         ALL worksheet items; this method is meant to make it easy for a user to see
@@ -1333,7 +1338,7 @@ class BundleModel(object):
             subquery_index[0] += 1
             return clause.alias('q' + str(subquery_index[0]))
 
-        def make_condition(field, value):
+        def make_condition(field, value) -> Union[bool, None]:
             # Special
             if value == '.sort':
                 sort_key[0] = field
@@ -1524,7 +1529,7 @@ class BundleModel(object):
             row_dicts.append(row)
         return row_dicts
 
-    def new_worksheet(self, worksheet):
+    def new_worksheet(self, worksheet) -> None:
         """
         Save the given (empty) worksheet to the database. On success, set its id.
         """
@@ -1539,7 +1544,7 @@ class BundleModel(object):
             result = connection.execute(cl_worksheet.insert().values(worksheet_value))
             worksheet.id = result.lastrowid
 
-    def add_worksheet_items(self, worksheet_uuid, items, after_sort_key=None, replace=[]):
+    def add_worksheet_items(self, worksheet_uuid, items, after_sort_key=None, replace=[]) -> None:
         """
         Add worksheet items *items* to the position *after_sort_key* to the worksheet,
         removing items specified by *replace* if necessary.
@@ -1605,7 +1610,7 @@ class BundleModel(object):
             ]
             self.do_multirow_insert(connection, cl_worksheet_item, items_to_insert)
 
-    def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):
+    def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid) -> None:
         """
         For each occurrence of old_bundle_uuid in any worksheet, add
         new_bundle_uuid right after it (a shadow).
@@ -1631,7 +1636,7 @@ class BundleModel(object):
                 new_items.append(new_item)
                 connection.execute(cl_worksheet_item.insert().values(new_item))
 
-    def update_worksheet_item_value(self, id, value):
+    def update_worksheet_item_value(self, id, value) -> None:
         """
         Update the value of a worksheet item, aka updating a markdown item.
         When the value is falsy, delete this item.
@@ -1646,7 +1651,7 @@ class BundleModel(object):
             else:
                 connection.execute(cl_worksheet_item.delete().where(cl_worksheet_item.c.id == id))
 
-    def update_worksheet_items(self, worksheet_uuid, last_item_id, length, new_items):
+    def update_worksheet_items(self, worksheet_uuid, last_item_id, length, new_items) -> None:
         """
         Updates the worksheet with the given uuid. If there were exactly
         `last_length` items with database id less than `last_id`, replaces them all
@@ -1687,7 +1692,7 @@ class BundleModel(object):
                 raise UsageError('Worksheet %s was updated concurrently!' % (worksheet_uuid,))
             self.do_multirow_insert(connection, cl_worksheet_item, new_item_values)
 
-    def update_worksheet_metadata(self, worksheet, info):
+    def update_worksheet_metadata(self, worksheet, info) -> None:
         """
         Update the given worksheet's metadata.
         """
@@ -1719,7 +1724,7 @@ class BundleModel(object):
                     cl_worksheet.update().where(cl_worksheet.c.uuid == worksheet.uuid).values(info)
                 )
 
-    def delete_worksheet(self, worksheet_uuid):
+    def delete_worksheet(self, worksheet_uuid) -> None:
         """
         Delete the worksheet with the given uuid.
         """
@@ -1748,7 +1753,7 @@ class BundleModel(object):
     # Group and permission-related methods
     # ===========================================================================
 
-    def _create_default_groups(self):
+    def _create_default_groups(self) -> None:
         """
         Create system-defined groups. This is called by create_tables.
         """
@@ -1766,7 +1771,7 @@ class BundleModel(object):
             group_dict = groups[0]
         self.public_group_uuid = group_dict['uuid']
 
-    def create_group(self, group_dict):
+    def create_group(self, group_dict) -> Dict:
         """
         Create the group specified by the given row dict.
         """
@@ -1776,7 +1781,7 @@ class BundleModel(object):
             group_dict['id'] = result.lastrowid
         return group_dict
 
-    def batch_get_groups(self, **kwargs):
+    def batch_get_groups(self, **kwargs) -> List:
         """
         Get a list of groups, all of which satisfy the clause given by kwargs.
         """
@@ -1788,7 +1793,7 @@ class BundleModel(object):
         values = {row.uuid: str_key_dict(row) for row in rows}
         return [value for value in values.values()]
 
-    def batch_get_all_groups(self, spec_filters, group_filters, user_group_filters):
+    def batch_get_all_groups(self, spec_filters, group_filters, user_group_filters) -> List:
         """
         Get a list of groups by querying the group table and/or the user_group table.
         Take the union of the two results.  This method performs the general query:
@@ -1853,7 +1858,7 @@ class BundleModel(object):
             values = {row['uuid']: row for row in rows}
             return [value for value in values.values()]
 
-    def delete_group(self, uuid):
+    def delete_group(self, uuid) -> None:
         """
         Delete the group with the given uuid.
         """
@@ -1871,7 +1876,7 @@ class BundleModel(object):
             connection.execute(cl_user_group.delete().where(cl_user_group.c.group_uuid == uuid))
             connection.execute(cl_group.delete().where(cl_group.c.uuid == uuid))
 
-    def add_user_in_group(self, user_id, group_uuid, is_admin):
+    def add_user_in_group(self, user_id, group_uuid, is_admin) -> Dict:
         """
         Add user as a member of a group.
         """
@@ -1881,7 +1886,7 @@ class BundleModel(object):
             row['id'] = result.lastrowid
         return row
 
-    def delete_user_in_group(self, user_id, group_uuid):
+    def delete_user_in_group(self, user_id, group_uuid) -> None:
         """
         Add user as a member of a group.
         """
@@ -1892,7 +1897,7 @@ class BundleModel(object):
                 .where(cl_user_group.c.group_uuid == group_uuid)
             )
 
-    def update_user_in_group(self, user_id, group_uuid, is_admin):
+    def update_user_in_group(self, user_id, group_uuid, is_admin) -> None:
         """
         Update user role in group.
         """
@@ -1904,7 +1909,7 @@ class BundleModel(object):
                 .values({'is_admin': is_admin})
             )
 
-    def batch_get_user_in_group(self, **kwargs):
+    def batch_get_user_in_group(self, **kwargs) -> List:
         """
         Return list of user-group entries matching the specified |kwargs|.
         Can be used to get groups for a user or users in a group.
@@ -1918,13 +1923,13 @@ class BundleModel(object):
         return [str_key_dict(row) for row in rows]
 
     # Helper function: return list of group uuids that |user_id| is in.
-    def _get_user_groups(self, user_id):
+    def _get_user_groups(self, user_id) -> List:
         groups = [self.public_group_uuid]  # Everyone is in the public group implicitly.
         if user_id is not None:
             groups += [row['group_uuid'] for row in self.batch_get_user_in_group(user_id=user_id)]
         return groups
 
-    def set_group_permission(self, table, group_uuid, object_uuid, new_permission):
+    def set_group_permission(self, table, group_uuid, object_uuid, new_permission) -> None:
         """
         Atomically set group permission on object. Does NOT check for user
         permissions on the bundle or the group.
@@ -1971,17 +1976,17 @@ class BundleModel(object):
                         .where(table.c.object_uuid == object_uuid)
                     )
 
-    def set_group_bundle_permission(self, group_uuid, bundle_uuid, new_permission):
+    def set_group_bundle_permission(self, group_uuid, bundle_uuid, new_permission) -> None:
         return self.set_group_permission(
             cl_group_bundle_permission, group_uuid, bundle_uuid, new_permission
         )
 
-    def set_group_worksheet_permission(self, group_uuid, worksheet_uuid, new_permission):
+    def set_group_worksheet_permission(self, group_uuid, worksheet_uuid, new_permission) -> None:
         return self.set_group_permission(
             cl_group_worksheet_permission, group_uuid, worksheet_uuid, new_permission
         )
 
-    def batch_get_group_permissions(self, table, user_id, object_uuids):
+    def batch_get_group_permissions(self, table, user_id, object_uuids) -> Dict:
         """
         Return map from object_uuid to list of {group_uuid: ..., group_name: ..., permission: ...}
         Note: if user_id is not None, only involve groups that user_id is in. If user_id is None (i.e.
@@ -2014,28 +2019,28 @@ class BundleModel(object):
                 )
             return result
 
-    def batch_get_group_bundle_permissions(self, user_id, bundle_uuids):
+    def batch_get_group_bundle_permissions(self, user_id, bundle_uuids) -> Dict:
         return self.batch_get_group_permissions(cl_group_bundle_permission, user_id, bundle_uuids)
 
-    def batch_get_group_worksheet_permissions(self, user_id, worksheet_uuids):
+    def batch_get_group_worksheet_permissions(self, user_id, worksheet_uuids) -> Dict:
         return self.batch_get_group_permissions(
             cl_group_worksheet_permission, user_id, worksheet_uuids
         )
 
-    def get_group_permissions(self, table, user_id, object_uuid):
+    def get_group_permissions(self, table, user_id, object_uuid) -> Dict:
         """
         Return list of {group_uuid: ..., group_name: ..., permission: ...} entries for the given object.
         Restrict to groups that user_id is a part of.
         """
         return self.batch_get_group_permissions(table, user_id, [object_uuid])[object_uuid]
 
-    def get_group_bundle_permissions(self, user_id, bundle_uuid):
+    def get_group_bundle_permissions(self, user_id, bundle_uuid) -> Dict:
         return self.get_group_permissions(cl_group_bundle_permission, user_id, bundle_uuid)
 
-    def get_group_worksheet_permissions(self, user_id, worksheet_uuid):
+    def get_group_worksheet_permissions(self, user_id, worksheet_uuid) -> Dict:
         return self.get_group_permissions(cl_group_worksheet_permission, user_id, worksheet_uuid)
 
-    def get_user_permissions(self, table, user_id, object_uuids, owner_ids):
+    def get_user_permissions(self, table, user_id, object_uuids, owner_ids) -> Dict:
         """
         Gets the set of permissions granted to the given user on the given objects.
         owner_ids: map from object_uuid to owner_id.
@@ -2068,25 +2073,25 @@ class BundleModel(object):
                         )
         return object_permissions
 
-    def get_user_bundle_permissions(self, user_id, bundle_uuids, owner_ids):
+    def get_user_bundle_permissions(self, user_id, bundle_uuids, owner_ids) -> Dict:
         return self.get_user_permissions(
             cl_group_bundle_permission, user_id, bundle_uuids, owner_ids
         )
 
-    def get_user_worksheet_permissions(self, user_id, worksheet_uuids, owner_ids):
+    def get_user_worksheet_permissions(self, user_id, worksheet_uuids, owner_ids) -> Dict:
         return self.get_user_permissions(
             cl_group_worksheet_permission, user_id, worksheet_uuids, owner_ids
         )
 
     # Operations on the query log
     @staticmethod
-    def date_handler(obj):
+    def date_handler(obj) -> Union[None, str]:
         """
         Helper function to serialize DataTime
         """
         return obj.isoformat() if isinstance(obj, (datetime.date, datetime.datetime)) else None
 
-    def add_chat_log_info(self, query_info):
+    def add_chat_log_info(self, query_info) -> Union[None, List]:
         """
         Add the given chat into the database
         Return a list of chats that the sender have had
@@ -2109,7 +2114,7 @@ class BundleModel(object):
         result = self.get_chat_log_info({'user_id': sender_user_id})
         return result
 
-    def get_chat_log_info(self, query_info):
+    def get_chat_log_info(self, query_info) -> Union[None, List]:
         """
         |query_info| specifies the user_id of the user that you are querying about.
         Example: query_info = {
@@ -2160,13 +2165,13 @@ class BundleModel(object):
     # User-related methods follow!
     # ===========================================================================
 
-    def find_user(self, user_spec, check_active=True):
+    def find_user(self, user_spec, check_active=True) -> User:
         user = self.get_user(user_id=user_spec, username=user_spec, check_active=check_active)
         if user is None:
             raise NotFoundError("User matching %r not found" % user_spec)
         return user
 
-    def get_user(self, user_id=None, username=None, check_active=True):
+    def get_user(self, user_id=None, username=None, check_active=True) -> Union[None, User]:
         """
         Get user.
 
@@ -2185,7 +2190,7 @@ class BundleModel(object):
             return result[0]
         return None
 
-    def get_users(self, user_ids=None, usernames=None, check_active=True):
+    def get_users(self, user_ids=None, usernames=None, check_active=True) -> List:
         """
         Get users.
 
@@ -2206,7 +2211,7 @@ class BundleModel(object):
 
         return [User(row) for row in rows]
 
-    def user_exists(self, username, email):
+    def user_exists(self, username, email) -> bool:
         """
         Check whether user with given username or email exists.
         :param username: username
@@ -2234,7 +2239,7 @@ class BundleModel(object):
         user_id=None,
         is_verified=False,
         has_access=False,
-    ):
+    ) -> Tuple[str, str]:
         """
         Create a brand new unverified user.
         :param username:
@@ -2293,7 +2298,7 @@ class BundleModel(object):
 
         return user_id, verification_key
 
-    def delete_user(self, user_id=None):
+    def delete_user(self, user_id=None) -> None:
         """
         Delete the user with the given uuid.
         Delete all items in the database with a
@@ -2334,7 +2339,7 @@ class BundleModel(object):
             # Delete User
             connection.execute(cl_user.delete().where(cl_user.c.user_id == user_id))
 
-    def get_verification_key(self, user_id):
+    def get_verification_key(self, user_id) -> str:
         """
         Get verification key for given user.
         If one does not exist yet, create one and return it.
@@ -2369,7 +2374,7 @@ class BundleModel(object):
 
         return key
 
-    def verify_user(self, key):
+    def verify_user(self, key) -> bool:
         """
         Verify user with given verification key.
         :param key: verification key
@@ -2398,7 +2403,7 @@ class BundleModel(object):
 
         return True
 
-    def is_verified(self, user_id):
+    def is_verified(self, user_id) -> bool:
         """
         Checks if the user is verified or not.
         :param user_id: id of the user
@@ -2413,7 +2418,7 @@ class BundleModel(object):
 
             return verified_row is not None
 
-    def new_user_reset_code(self, user_id):
+    def new_user_reset_code(self, user_id) -> str:
         """
         Generate a new password reset code.
         :param user_id: user_id of user for whom to reset password
@@ -2431,7 +2436,7 @@ class BundleModel(object):
 
         return code
 
-    def get_reset_code_user_id(self, code, delete=False):
+    def get_reset_code_user_id(self, code, delete=False) -> Union[None, str]:
         """
         Check if reset code is valid.
         :param code: reset code
@@ -2458,7 +2463,7 @@ class BundleModel(object):
 
         return user_id
 
-    def get_user_info(self, user_id, fetch_extra=False):
+    def get_user_info(self, user_id, fetch_extra=False) -> Dict:
         """
         Return the user info corresponding to |user_id|.
         If a user doesn't exist, create a new one and set sane defaults.
@@ -2486,7 +2491,7 @@ class BundleModel(object):
                 del user_info['last_login']
         return user_info
 
-    def update_user_info(self, user_info):
+    def update_user_info(self, user_info) -> None:
         """
         Update the given user's info with |user_info|.
         """
@@ -2495,7 +2500,7 @@ class BundleModel(object):
                 cl_user.update().where(cl_user.c.user_id == user_info['user_id']).values(user_info)
             )
 
-    def increment_user_time_used(self, user_id, amount):
+    def increment_user_time_used(self, user_id, amount) -> None:
         """
         User used some time.
         """
@@ -2503,14 +2508,14 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
-    def get_user_time_quota_left(self, user_id, user_info=None):
+    def get_user_time_quota_left(self, user_id, user_info=None) -> int:
         if not user_info:
             user_info = self.get_user_info(user_id)
         time_quota = user_info['time_quota']
         time_used = user_info['time_used']
         return time_quota - time_used
 
-    def get_user_parallel_run_quota_left(self, user_id, user_info=None):
+    def get_user_parallel_run_quota_left(self, user_id, user_info=None) -> int:
         if not user_info:
             user_info = self.get_user_info(user_id)
         parallel_run_quota = user_info['parallel_run_quota']
@@ -2529,13 +2534,17 @@ class BundleModel(object):
             ).fetchall()
         return parallel_run_quota - len(active_runs)
 
-    def update_user_last_login(self, user_id):
+    def update_user_last_login(self, user_id) -> None:
         """
         Update user's last login date to now.
         """
         self.update_user_info({'user_id': user_id, 'last_login': datetime.datetime.utcnow()})
 
-    def _get_disk_used(self, user_id):
+    def _get_disk_used(
+        self, user_id
+    ) -> Union[
+        int,
+    ]:
         # TODO(Ashwin): don't include linked bundles
         return (
             self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%'])[
@@ -2544,12 +2553,12 @@ class BundleModel(object):
             or 0
         )
 
-    def get_user_disk_quota_left(self, user_id, user_info=None):
+    def get_user_disk_quota_left(self, user_id, user_info=None) -> int:
         if not user_info:
             user_info = self.get_user_info(user_id)
         return user_info['disk_quota'] - user_info['disk_used']
 
-    def update_user_disk_used(self, user_id):
+    def update_user_disk_used(self, user_id) -> None:
         user_info = self.get_user_info(user_id)
         # Compute from scratch for simplicity
         user_info['disk_used'] = self._get_disk_used(user_id)
@@ -2559,7 +2568,7 @@ class BundleModel(object):
     # OAuth-related methods follow!
     # ===========================================================================
 
-    def _create_default_clients(self):
+    def _create_default_clients(self) -> None:
         DEFAULT_CLIENTS = [
             ('codalab_cli_client', 'CodaLab CLI'),
             ('codalab_worker_client', 'CodaLab Worker'),
@@ -2581,7 +2590,7 @@ class BundleModel(object):
                     )
                 )
 
-    def get_oauth2_client(self, client_id):
+    def get_oauth2_client(self, client_id) -> Union[OAuth2Client, None]:
         with self.engine.begin() as connection:
             row = connection.execute(
                 select([oauth2_client]).where(oauth2_client.c.client_id == client_id).limit(1)
@@ -2592,13 +2601,13 @@ class BundleModel(object):
 
         return OAuth2Client(self, **row)
 
-    def save_oauth2_client(self, client):
+    def save_oauth2_client(self, client) -> OAuth2Client:
         with self.engine.begin() as connection:
             result = connection.execute(oauth2_client.insert().values(client.columns))
             client.id = result.lastrowid
         return client
 
-    def get_oauth2_token(self, access_token=None, refresh_token=None):
+    def get_oauth2_token(self, access_token=None, refresh_token=None) -> Union[None, OAuth2Token]:
         if access_token is not None:
             clause = oauth2_token.c.access_token == access_token
         elif refresh_token is not None:
@@ -2614,7 +2623,7 @@ class BundleModel(object):
 
         return OAuth2Token(self, **row)
 
-    def find_oauth2_token(self, client_id, user_id, expires_after):
+    def find_oauth2_token(self, client_id, user_id, expires_after) -> OAuth2Token:
         with self.engine.begin() as connection:
             row = connection.execute(
                 select([oauth2_token])
@@ -2633,13 +2642,13 @@ class BundleModel(object):
 
         return OAuth2Token(self, **row)
 
-    def save_oauth2_token(self, token):
+    def save_oauth2_token(self, token) -> OAuth2Token:
         with self.engine.begin() as connection:
             result = connection.execute(oauth2_token.insert().values(token.columns))
             token.id = result.lastrowid
         return token
 
-    def clear_oauth2_tokens(self, client_id, user_id):
+    def clear_oauth2_tokens(self, client_id, user_id) -> None:
         with self.engine.begin() as connection:
             connection.execute(
                 oauth2_token.delete().where(
@@ -2651,11 +2660,11 @@ class BundleModel(object):
                 )
             )
 
-    def delete_oauth2_token(self, token_id):
+    def delete_oauth2_token(self, token_id) -> None:
         with self.engine.begin() as connection:
             connection.execute(oauth2_auth_code.delete().where(oauth2_token.c.id == token_id))
 
-    def get_oauth2_auth_code(self, client_id, code):
+    def get_oauth2_auth_code(self, client_id, code) -> Union[OAuth2AuthCode, None]:
         with self.engine.begin() as connection:
             row = connection.execute(
                 select([oauth2_auth_code])
@@ -2670,13 +2679,13 @@ class BundleModel(object):
 
         return OAuth2AuthCode(self, **row)
 
-    def save_oauth2_auth_code(self, grant):
+    def save_oauth2_auth_code(self, grant) -> OAuth2AuthCode:
         with self.engine.begin() as connection:
             result = connection.execute(oauth2_auth_code.insert().values(grant.columns))
             grant.id = result.lastrowid
         return grant
 
-    def delete_oauth2_auth_code(self, auth_code_id):
+    def delete_oauth2_auth_code(self, auth_code_id) -> None:
         with self.engine.begin() as connection:
             connection.execute(
                 oauth2_auth_code.delete().where(oauth2_auth_code.c.id == auth_code_id)

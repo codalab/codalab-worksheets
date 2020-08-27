@@ -32,6 +32,7 @@ import re
 import sys
 from typing import Union, Dict, Tuple, Optional, List
 
+from regex import split
 
 from codalab.common import PermissionError, UsageError
 from codalab.lib import canonicalize, editor_util, formatting

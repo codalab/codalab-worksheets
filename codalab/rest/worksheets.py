@@ -318,7 +318,7 @@ def get_worksheets_landing() -> None:
 #############################################################
 
 
-def get_worksheet_info(uuid, fetch_items=False, fetch_permissions=True):
+def get_worksheet_info(uuid, fetch_items=False, fetch_permissions=True) -> Dict:
     """
     The returned info object contains items which are (bundle_info, subworksheet_info, value_obj, type).
     """

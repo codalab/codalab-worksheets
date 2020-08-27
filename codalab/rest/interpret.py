@@ -15,6 +15,8 @@ from contextlib import closing
 from itertools import chain
 import json
 import sys
+from typing import List, Union, Tuple, Dict, Optional, Any
+
 import requests
 import urllib.request, urllib.parse, urllib.error
 import yaml
@@ -37,7 +39,7 @@ from codalab.lib.worksheet_util import (
     subworksheet_item,
     get_command,
 )
-from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
+from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL, worksheet
 from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
 from codalab.server.authenticated_plugin import ProtectedPlugin
@@ -52,7 +54,7 @@ from codalab.worker.download_util import BundleTarget
 
 
 @post('/interpret/search', apply=ProtectedPlugin())
-def _interpret_search():
+def _interpret_search() -> worksheet:
     """
     Returns worksheet items given a search query for bundles.
 
@@ -72,7 +74,7 @@ def _interpret_search():
 
 
 @post('/interpret/wsearch', apply=ProtectedPlugin())
-def _interpret_wsearch():
+def _interpret_wsearch() -> Dict:
     """
     Returns worksheets information given a search query for worksheets.
 
@@ -113,7 +115,7 @@ def _interpret_wsearch():
 
 
 @post('/interpret/file-genpaths', apply=ProtectedPlugin())
-def _interpret_file_genpaths():
+def _interpret_file_genpaths() -> Dict:
     """
     Interpret a file genpath.
 
@@ -147,7 +149,7 @@ def _interpret_file_genpaths():
 
 
 @post('/interpret/genpath-table-contents', apply=ProtectedPlugin())
-def _interpret_genpath_table_contents():
+def _interpret_genpath_table_contents() -> Dict:
     """
     Takes a table and fills in unresolved genpath specifications.
 
@@ -185,7 +187,7 @@ def _interpret_genpath_table_contents():
 
 
 @get('/interpret/worksheet/<uuid:re:%s>' % spec_util.UUID_STR, apply=ProtectedPlugin())
-def fetch_interpreted_worksheet(uuid):
+def fetch_interpreted_worksheet(uuid) -> Dict:
     """
     Return information about a worksheet. Calls
     - get_worksheet_info: get basic info
@@ -375,7 +377,7 @@ def cat_target(target):
 MAX_BYTES_PER_LINE = 1024
 
 
-def head_target(target, max_num_lines):
+def head_target(target, max_num_lines) -> List[str]:
     """
     Return the first max_num_lines of target as a list of strings.
 
@@ -401,7 +403,7 @@ def head_target(target, max_num_lines):
 DEFAULT_GRAPH_MAX_LINES = 100
 
 
-def resolve_interpreted_blocks(interpreted_blocks, brief):
+def resolve_interpreted_blocks(interpreted_blocks, brief) -> Dict:
     """
     Called by the web interface.  Takes a list of interpreted worksheet
     items (returned by worksheet_util.interpret_items) and fetches the
@@ -409,7 +411,7 @@ def resolve_interpreted_blocks(interpreted_blocks, brief):
     The result can be serialized via JSON.
     """
 
-    def set_error_data(block_index, message):
+    def set_error_data(block_index, message) -> None:
         interpreted_blocks[block_index] = (
             MarkupBlockSchema().load({'id': block_index, 'text': 'ERROR: ' + message}).data
         )
@@ -511,7 +513,7 @@ def resolve_interpreted_blocks(interpreted_blocks, brief):
     return interpreted_blocks
 
 
-def interpret_wsearch(keywords):
+def interpret_wsearch(keywords) -> List[worksheet]:
     """
     Return a list of row dicts, one per worksheet. These dicts do NOT contain
     ALL worksheet items; this method is meant to make it easy for a user to see
@@ -541,14 +543,14 @@ def interpret_wsearch(keywords):
     return search_worksheets(keywords)
 
 
-def is_bundle_genpath_triple(value):
+def is_bundle_genpath_triple(value) -> bool:
     # if called after an RPC call tuples may become lists
     need_gen_types = (tuple, list)
 
     return isinstance(value, need_gen_types) and len(value) == 3
 
 
-def get_genpaths_table_contents_requests(contents):
+def get_genpaths_table_contents_requests(contents) -> List[Union[str, Tuple[str, str, str]]]:
     """
     Get genpath requests to fill in values for a table.
 
@@ -566,7 +568,7 @@ def get_genpaths_table_contents_requests(contents):
     return requests
 
 
-def interpret_genpath_table_contents(contents):
+def interpret_genpath_table_contents(contents) -> List[Dict]:
     """
     contents represents a table, but some of the elements might not be
     interpreted yet, so fill them in.
@@ -590,7 +592,7 @@ def interpret_genpath_table_contents(contents):
     return new_contents
 
 
-def interpret_file_genpaths(requests):
+def interpret_file_genpaths(requests) -> List[str]:
     """
     Helper function.
     requests: list of (bundle_uuid, genpath, post-processing-func)
@@ -604,7 +606,7 @@ def interpret_file_genpaths(requests):
     return responses
 
 
-def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
+def interpret_file_genpath(target_cache, bundle_uuid, genpath, post) -> str:
     """
     |cache| is a mapping from target (bundle_uuid, subpath) to the info map,
     which is to be read/written to avoid reading/parsing the same file many
@@ -679,7 +681,9 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
     return apply_func(post, info)
 
 
-def resolve_items_into_infos(items):
+def resolve_items_into_infos(
+    items,
+) -> List[Tuple[Optional[dict], Union[Optional[Dict[str, Any]], Any], Any, Any, Any, Any]]:
     """
     Helper function.
     {'bundle_uuid': '...', 'subworksheet_uuid': '...', 'value': '...', 'type': '...')
@@ -724,7 +728,7 @@ def resolve_items_into_infos(items):
     return new_items
 
 
-def perform_search_query(value_obj):
+def perform_search_query(value_obj) -> Union[List, None]:
     """
     Perform a search query and return the resulting raw items.
     Input: directive that is tokenized by formatting.string_to_tokens(),
@@ -762,7 +766,7 @@ def perform_search_query(value_obj):
         return []
 
 
-def expand_search_item(raw_item):
+def expand_search_item(raw_item) -> List:
     """
     Raw items that include searches must be expanded into more raw items.
     Input: Raw item.

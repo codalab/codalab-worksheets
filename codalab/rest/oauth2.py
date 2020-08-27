@@ -42,7 +42,7 @@ def get_grant(client_id, code):
 
 
 @oauth2_provider.grantsetter
-def set_grant(client_id, code, _request, *args, **kwargs):
+def set_grant(client_id, code, _request, *args, **kwargs) -> OAuth2AuthCode:
     # Grant expires in 100 seconds
     expires = datetime.utcnow() + timedelta(seconds=100)
     grant = OAuth2AuthCode(
@@ -63,7 +63,7 @@ def get_token(access_token=None, refresh_token=None):
 
 
 @oauth2_provider.tokensetter
-def set_token(token, _request, *args, **kwargs):
+def set_token(token, _request, *args, **kwargs) -> OAuth2Token:
     # _request.user only available for "password" grant types,
     # while request.user is available on views with @require_login,
     # i.e. the authorize view
