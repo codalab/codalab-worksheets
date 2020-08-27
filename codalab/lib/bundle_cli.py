@@ -1295,6 +1295,7 @@ class BundleCLI(object):
                 exclude_patterns=args.exclude_patterns,
                 force_compression=args.force_compression,
                 ignore_file=args.ignore,
+                use_azure_blob_beta=args.use_azure_blob_beta
             )
 
             # Create bundle.

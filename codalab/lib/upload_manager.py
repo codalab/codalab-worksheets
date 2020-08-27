@@ -112,6 +112,8 @@ class UploadManager(object):
                             simplify_archive=simplify_archives,
                         )
                     else:
+                        # Uploading zip files from Azure (in which case unpack is False),
+                        # or uploading a single file.
                         with FileSystems.create(source_output_path) as out:
                             shutil.copyfileobj(source[1], out)
 

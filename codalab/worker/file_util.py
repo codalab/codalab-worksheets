@@ -80,6 +80,46 @@ def tar_gzip_directory(
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
 
+def zip_directory(
+    directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[], ignore_file=None
+):
+    """
+    Returns a file-like object containing a zipped archive of the given directory.
+
+    follow_symlinks: Whether symbolic links should be followed.
+    exclude_names: Any top-level directory entries with names in exclude_names
+                   are not included.
+    exclude_patterns: Any directory entries with the given names at any depth in
+                      the directory structure are excluded.
+    ignore_file: Name of the file where exclusion patterns are read from.
+    """
+    # zip needs to be used with relative paths, so that the final directory structure
+    # is correct -- https://stackoverflow.com/questions/11249624/zip-stating-absolute-paths-but-only-keeping-part-of-them.
+    args = ['zip', '-rq', '-', '.']
+
+    if ignore_file:
+        # Ignore entries specified by the ignore file (e.g. .gitignore)
+        args.append('-x@' + ignore_file)
+    if not follow_symlinks:
+        args.append('-y')
+    if not exclude_patterns:
+        exclude_patterns = []
+
+    exclude_patterns.extend(ALWAYS_IGNORE_PATTERNS)
+    for pattern in exclude_patterns:
+        args.append('-x ' + pattern)
+
+    if exclude_names:
+        for name in exclude_names:
+            # Exclude top-level entries provided by exclude_names
+            args.append('-x ./' + name)
+
+    try:
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, cwd=directory_path)
+        return proc.stdout
+    except subprocess.CalledProcessError as e:
+        raise IOError(e.output)
+
 
 def un_tar_directory(fileobj, directory_path, compression='', force=False):
     """

@@ -629,6 +629,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         gzipped_stream = False  # but don't set the encoding to 'gzip'
         mimetype = 'application/gzip'
         filename += '.tar.gz'
+        # TODO(Ashwin): fix to work with zip.
         fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
     elif target_info['type'] == 'file':
         # Let's gzip to save bandwidth.
@@ -646,7 +647,6 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         mimetype, encoding = mimetypes.guess_type(filename, strict=False)
         if encoding is not None:
             mimetype = 'application/octet-stream'
-        # TODO(Ashwin): support other kinds of file downloading.
         if byte_range and (head_lines or tail_lines):
             abort(http.client.BAD_REQUEST, 'Head and range not supported on the same request.')
         elif byte_range:
@@ -733,23 +733,26 @@ def _update_bundle_contents_blob(uuid):
     # Store the data.
     try:
         sources = None
-        if use_azure_blob_beta:
-            local.model.update_bundle(
-                bundle,
-                {
-                    'metadata': {
-                        'link_url': f"azfs://storageclwsdev0/bundles/{bundle.uuid}",
-                        'link_format': LinkFormat.RAW,
-                    },
-                },
-            )
-            bundle = local.model.get_bundle(uuid)
         if request.query.urls:
             sources = query_get_list('urls')
         # request without "filename" doesn't need to upload to bundle store
         if request.query.filename:
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
+
+        if use_azure_blob_beta:
+            local.model.update_bundle(
+                bundle,
+                {
+                    'metadata': {
+                        # TODO(Ashwin): don't hardcode storage account name.
+                        'link_url': f"azfs://storageclwsdev0/bundles/{bundle.uuid}/contents.zip",
+                        'link_format': LinkFormat.ZIP if filename.endswith('.zip') else LinkFormat.RAW,
+                    },
+                },
+            )
+            bundle = local.model.get_bundle(uuid)
+
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
         # Don't upload to bundle store if using --link with a URL that
         # already exists. If using the Azure Blob Storage backend,
