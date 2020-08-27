@@ -2022,6 +2022,9 @@ def test(ctx):
     check_workers('userC', [])
     check_workers('userD', ['worker2'])
 
+    # Switch back to the root user for proper cleanup
+    switch_user('codalab')
+
 
 @TestModule.register('rest1')
 def test(ctx):
