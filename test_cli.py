@@ -116,7 +116,7 @@ def create_user(context, username, password='codalab'):
 
 def switch_user(username, password='codalab'):
     _run_command([cl, 'logout'])
-    _run_command(["export CODALAB_HOME=%s" % username])
+    subprocess.call("export CODALAB_HOME=%s" % username, shell=True)
     _run_command([cl, 'uinfo'])
     env = {'CODALAB_USERNAME': username, 'CODALAB_PASSWORD': password}
     _run_command([cl, 'work'], env=env)
