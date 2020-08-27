@@ -2280,6 +2280,20 @@ def test(ctx):
     check_equals(_run_command([cl, 'uinfo', user_name, '-f', 'has_access']), 'True')
 
 
+@TestModule.register('edit')
+def test(ctx):
+    uuid = _run_command([cl, 'run', 'echo hello'], request_memory='10m')
+    check_equals('10m', get_info(uuid, 'request_memory'))
+    _run_command([cl, 'edit', uuid, '--field', 'request_memory', '12m'])
+    check_equals('12m', get_info(uuid, 'request_memory'))
+
+    # invalid field name
+    _run_command([cl, 'edit', uuid, '-f', 'invalid_field', 'value'], expected_exit_code=1)
+
+    # invalid field value
+    _run_command([cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
