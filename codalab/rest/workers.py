@@ -9,7 +9,7 @@ from datetime import datetime
 from bottle import abort, get, local, post, put, request, response
 
 from codalab.lib import spec_util
-from codalab.objects.permission import check_bundle_have_run_permission
+from codalab.objects.permission import check_bundles_have_all_permission
 from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin
 from codalab.worker.bundle_state import BundleCheckinState
 from codalab.worker.main import DEFAULT_EXIT_AFTER_NUM_RUNS
@@ -104,12 +104,15 @@ def reply_data(worker_id, socket_id):
     local.worker_model.send_stream(socket_id, request["wsgi.input"], 60)
 
 
-def check_run_permission(bundle):
+def check_run_permission(bundle_uuid):
     """
     Checks whether the current user can run the bundle.
     """
-    if not check_bundle_have_run_permission(local.model, request.user.user_id, bundle):
-        abort(http.client.FORBIDDEN, "User does not have permission to run bundle.")
+    if not check_bundles_have_all_permission(local.model, request.user.user_id, [bundle_uuid]):
+        abort(
+            http.client.FORBIDDEN,
+            "User does not have permission to run bundle {}.".format(bundle_uuid),
+        )
 
 
 @post(
@@ -124,7 +127,7 @@ def start_bundle(worker_id, uuid):
     Otherwise, returns False, meaning the worker shouldn't run the bundle.
     """
     bundle = local.model.get_bundle(uuid)
-    check_run_permission(bundle)
+    check_run_permission(uuid)
     response.content_type = "application/json"
     if local.model.transition_bundle_preparing(
         bundle,

@@ -10,7 +10,10 @@ import threading
 import time
 import traceback
 
-from codalab.objects.permission import check_bundles_have_read_permission
+from codalab.objects.permission import (
+    check_bundles_have_all_permission,
+    check_bundles_have_read_permission,
+)
 from codalab.common import NotFoundError, PermissionError
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
@@ -437,14 +440,12 @@ class BundleManager(object):
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
-                # TODO: should only start bundle if they have admin permission for it
-                # OR we can hold group sacred. -Tony
                 if self._try_start_bundle(workers, worker, bundle, bundle_resources):
                     # If we successfully started a bundle on a codalab-owned worker,
                     # decrement the parallel run quota left.
                     if worker["user_id"] == self._model.root_user_id:
                         user_parallel_run_quota_left[bundle.owner_id] -= 1
-                    # Update available worker resoures. This is a lower-bound,
+                    # Update available worker resources. This is a lower-bound,
                     # since resources released by jobs that finish are not used until
                     # the next call to _schedule_run_bundles_on_workers.
                     worker['cpus'] -= bundle_resources.cpus
@@ -577,29 +578,33 @@ class BundleManager(object):
         Tries to start running the bundle on the given worker, returning False
         if that failed.
         """
-        if self._model.transition_bundle_starting(bundle, worker['user_id'], worker['worker_id']):
-            workers.set_starting(bundle.uuid, worker['worker_id'])
-            if worker['shared_file_system']:
-                # On a shared file system we create the path here to avoid NFS
-                # directory cache issues.
-                # TODO(Ashwin): fix for --link
-                path = self._bundle_store.get_bundle_location(bundle.uuid)
-                remove_path(path)
-                os.mkdir(path)
-            if self._worker_model.send_json_message(
-                worker['socket_id'],
-                self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
-                0.2,
-            ):
-                logger.info(
-                    'Starting run bundle {} on worker {}'.format(bundle.uuid, worker['worker_id'])
-                )
-                return True
-            else:
-                self._model.transition_bundle_staged(bundle)
-                workers.restage(bundle.uuid)
-                return False
+        if not check_bundles_have_all_permission(
+            self._model, worker["user_id"], bundle["uuid"]
+        ) or not self._model.transition_bundle_starting(
+            bundle, worker['user_id'], worker['worker_id']
+        ):
+            return False
+
+        workers.set_starting(bundle.uuid, worker['worker_id'])
+        if worker['shared_file_system']:
+            # On a shared file system we create the path here to avoid NFS
+            # directory cache issues.
+            # TODO(Ashwin): fix for --link
+            path = self._bundle_store.get_bundle_location(bundle.uuid)
+            remove_path(path)
+            os.mkdir(path)
+        if self._worker_model.send_json_message(
+            worker['socket_id'],
+            self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
+            0.2,
+        ):
+            logger.info(
+                'Starting run bundle {} on worker {}'.format(bundle.uuid, worker['worker_id'])
+            )
+            return True
         else:
+            self._model.transition_bundle_staged(bundle)
+            workers.restage(bundle.uuid)
             return False
 
     @staticmethod

@@ -111,19 +111,16 @@ def create_user(context, username, password='codalab'):
     )
     context.collect_user(username)
     switch_user(username, password)
-    # TODO: keep only one of these -tony
     _run_command([cl, 'uinfo'])
-    _run_command([cl, 'status'])
 
 
 def switch_user(username, password='codalab'):
     _run_command([cl, 'logout'])
+    _run_command(["export CODALAB_HOME=%s" % username])
     _run_command([cl, 'uinfo'])
     env = {'CODALAB_USERNAME': username, 'CODALAB_PASSWORD': password}
     _run_command([cl, 'work'], env=env)
-    # TODO: keep only one of these -tony
     _run_command([cl, 'uinfo'])
-    _run_command([cl, 'status'])
 
 
 def create_group(context, name):
@@ -1991,17 +1988,13 @@ def test(ctx):
         switch_user(user)
         result = _run_command([cl, 'workers'])
 
-        # TODO: Currently test_cli does not support switching between users. Disable this check for now.
         # Subtract 2 for the headers that is included in the output of `cl workers`
         # and 1 for the existing public worker
-        # actual_number_of_workers = len(result.split('\n')) - 3
-        # check_equals(actual_number_of_workers, len(expected_workers))
+        actual_number_of_workers = len(result.split('\n')) - 3
+        check_equals(actual_number_of_workers, len(expected_workers))
 
         for worker in expected_workers:
             assert worker in result
-
-    # TODO: delete later -tony
-    _run_command([cl, 'status'])
 
     # userA will not start a worker, but will be granted access to one
     create_user(ctx, 'userA')

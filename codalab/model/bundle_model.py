@@ -720,7 +720,7 @@ class BundleModel(object):
         """
         # Decode json formatted dependencies string to a list of key value pairs
         dependencies = json.loads(dependencies)
-        # When there is no dependency to be matched, the target memozied bundle
+        # When there is no dependency to be matched, the target memoized bundle
         # should only exist in the bundle table but not in the bundle_dependency table.
         if len(dependencies) == 0:
             query = (
@@ -1255,7 +1255,7 @@ class BundleModel(object):
         if not worksheets:
             raise NotFoundError('Could not find worksheet with uuid %s' % (uuid,))
         if len(worksheets) > 1:
-            raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
+            raise IntegrityError('Found multiple worksheets with uuid %s' % (uuid,))
         return worksheets[0]
 
     def batch_get_worksheets(self, fetch_items, **kwargs):
