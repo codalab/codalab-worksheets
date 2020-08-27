@@ -1990,8 +1990,7 @@ def test(ctx):
         result = _run_command([cl, 'workers'])
 
         # Subtract 2 for the headers that is included in the output of `cl workers`
-        # and 1 for the existing public worker
-        actual_number_of_workers = len(result.split('\n')) - 3
+        actual_number_of_workers = len(result.split('\n')) - 2
         check_equals(actual_number_of_workers, len(expected_workers))
 
         for worker in expected_workers:
