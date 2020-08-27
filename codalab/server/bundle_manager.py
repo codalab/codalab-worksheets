@@ -11,8 +11,8 @@ import time
 import traceback
 
 from codalab.objects.permission import (
-    check_bundles_have_all_permission,
     check_bundles_have_read_permission,
+    check_bundle_have_run_permission,
 )
 from codalab.common import NotFoundError, PermissionError
 from codalab.lib import bundle_util, formatting, path_util
@@ -578,8 +578,8 @@ class BundleManager(object):
         Tries to start running the bundle on the given worker, returning False
         if that failed.
         """
-        if not check_bundles_have_all_permission(
-            self._model, worker["user_id"], bundle["uuid"]
+        if not check_bundle_have_run_permission(
+            self._model, self._model.get_user(worker['user_id']), bundle
         ) or not self._model.transition_bundle_starting(
             bundle, worker['user_id'], worker['worker_id']
         ):

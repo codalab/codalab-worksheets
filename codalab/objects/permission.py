@@ -156,6 +156,14 @@ def check_worksheet_has_all_permission(model, user, worksheet):
     )
 
 
+def check_bundle_have_run_permission(model, user, bundle):
+    try:
+        check_bundles_have_all_permission(model, user, [bundle.uuid])
+        return True
+    except PermissionError:
+        return False
+
+
 ############################################################
 # Parsing functions for permissions.
 

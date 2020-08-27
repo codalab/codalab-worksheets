@@ -50,9 +50,6 @@ class WorkerInfoAccessor(object):
                 if m['user_id'] != owner_id:
                     self._user_id_to_workers[m['user_id']].append(worker)
 
-            # TODO: remove later -Tony
-            logger.info("fetch_workers - {}".format(str(self._user_id_to_workers)))
-
             # 'gpus' field contains the number of free GPUs that comes with each worker. Adding an additional
             # 'has_gpus' flag here to indicate if the current worker has GPUs or not.
             worker['has_gpus'] = True if worker['gpus'] > 0 else False
@@ -70,7 +67,10 @@ class WorkerInfoAccessor(object):
         """
         # TODO: remove later -Tony
         workers = list(worker for worker in self._user_id_to_workers[user_id])
-        logger.info("get_user_workers - user_id={} workers={}".format(user_id, str(workers)))
+        for worker in workers:
+            logger.info(
+                "get_user_workers - user_id={} worker={}".format(user_id, str(worker["worker_id"]))
+            )
         return list(worker for worker in self._user_id_to_workers[user_id])
 
     @refresh_cache
