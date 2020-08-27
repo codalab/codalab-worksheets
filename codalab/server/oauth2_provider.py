@@ -389,8 +389,8 @@ class OAuth2Provider(object):
 
             if not rv:
                 # denied by user
-                e = oauth2.AccessDeniedError()
-                return redirect(e.in_uri(redirect_uri))
+                error = oauth2.AccessDeniedError()
+                return redirect(error.in_uri(redirect_uri))
 
             return self.confirm_authorization_request()
 
