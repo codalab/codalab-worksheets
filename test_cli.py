@@ -115,12 +115,12 @@ def create_user(context, username, password='codalab'):
 
 
 def switch_user(username, password='codalab'):
+    del os.environ["CODALAB_USERNAME"]
+    del os.environ["CODALAB_PASSWORD"]
     _run_command([cl, 'logout'])
-    subprocess.call("export CODALAB_HOME=%s" % username, shell=True)
-    _run_command([cl, 'uinfo'])
-    env = {'CODALAB_USERNAME': username, 'CODALAB_PASSWORD': password}
-    _run_command([cl, 'work'], env=env)
-    _run_command([cl, 'uinfo'])
+
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = password
 
 
 def create_group(context, name):
