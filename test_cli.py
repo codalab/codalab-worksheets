@@ -16,15 +16,16 @@ Things not tested:
 - Permissions
 """
 
-from codalab.lib.codalab_manager import CodaLabManager
-from codalab.worker.download_util import BundleTarget
-from codalab.worker.bundle_state import State
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
 from datetime import datetime
+from typing import Dict
+
+from codalab.lib.codalab_manager import CodaLabManager
+from codalab.worker.download_util import BundleTarget
+from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
-from typing import Dict
 
 import argparse
 import json
@@ -111,7 +112,6 @@ def create_user(context, username, password='codalab'):
     )
     context.collect_user(username)
     switch_user(username, password)
-    _run_command([cl, 'uinfo'])
 
 
 def switch_user(username, password='codalab'):
@@ -121,6 +121,7 @@ def switch_user(username, password='codalab'):
 
     os.environ["CODALAB_USERNAME"] = username
     os.environ["CODALAB_PASSWORD"] = password
+    _run_command([cl, 'uinfo'])
 
 
 def create_group(context, name):

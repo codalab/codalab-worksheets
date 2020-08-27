@@ -144,7 +144,7 @@ def start_bundle(worker_id, uuid):
 def workers_info():
     workers = local.worker_model.get_workers()
     if request.user.user_id != local.model.root_user_id:
-        # Filter to only the workers that the user owns or has access to
+        # Filter to only include the workers that the user owns or has access to
         user_groups = local.model.get_user_groups(request.user.user_id)
         workers = [
             worker

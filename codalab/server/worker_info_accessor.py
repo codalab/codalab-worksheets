@@ -2,11 +2,6 @@ from collections import defaultdict
 
 import datetime
 
-# TODO: remove later -Tony
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 class WorkerInfoAccessor(object):
     """
@@ -65,12 +60,6 @@ class WorkerInfoAccessor(object):
         :param user_id: ID of the user
         :return: List of workers
         """
-        # TODO: remove later -Tony
-        workers = list(worker for worker in self._user_id_to_workers[user_id])
-        for worker in workers:
-            logger.info(
-                "get_user_workers - user_id={} worker={}".format(user_id, str(worker["worker_id"]))
-            )
         return list(worker for worker in self._user_id_to_workers[user_id])
 
     @refresh_cache

@@ -92,7 +92,6 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Setup tests
         run: |
-          pip install -r requirements.txt
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
@@ -142,7 +141,6 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Setup tests
         run: |
-          pip install -r requirements.txt
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
@@ -192,7 +190,6 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Setup tests
         run: |
-          pip install -r requirements.txt
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
@@ -296,7 +293,6 @@ jobs:
       - name: Setup tests
         run: |
           sudo ./scripts/test-setup.sh
-          pip install -r requirements.txt
           export PATH=$PATH:$PWD/geckodriver
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
