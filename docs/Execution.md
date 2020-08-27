@@ -85,6 +85,8 @@ You should see that the run finished, and if you look at the `remote` metadata f
 You can also share your worker with other users within a group, by simply starting a worker with a valid group name specified: 
 
     cl-worker --group <group name>
+    
+Your worker will only execute bundles that you have admin permissions for.
 
 **Controlling where runs happen with tags**.
 
