@@ -5,6 +5,7 @@ import base64
 import json
 import threading
 import urllib.request, urllib.parse, urllib.error
+from codalab.common import URLOPEN_TIMEOUT
 
 
 # TODO(sckoo): clean up auth logic across:
@@ -58,7 +59,7 @@ class RestOAuthHandler(object):
             data=urllib.parse.urlencode(data).encode('utf-8'),
         )
         try:
-            response = urllib.request.urlopen(request, timeout=30)
+            response = urllib.request.urlopen(request, timeout=URLOPEN_TIMEOUT)
             result = json.loads(response.read().decode())
             return result
         except urllib.error.HTTPError as e:

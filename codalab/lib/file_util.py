@@ -8,6 +8,7 @@ import sys
 from . import formatting
 import urllib.request, urllib.error, urllib.parse
 import subprocess
+from codalab.common import URLOPEN_TIMEOUT
 
 
 def tracked(fileobj, progress_callback):
@@ -62,7 +63,7 @@ def download_url(source_url, target_path, print_status=False):
     """
     Download the file at |source_url| and write it to |target_path|.
     """
-    in_file = urllib.request.urlopen(source_url, timeout=30)
+    in_file = urllib.request.urlopen(source_url, timeout=URLOPEN_TIMEOUT)
     total_bytes = in_file.info().get('Content-Length')
     if total_bytes:
         total_bytes = int(total_bytes)
