@@ -2,6 +2,7 @@
 
 import os, sys
 import datetime
+from builtins import _PathLike
 from collections import defaultdict
 from smtplib import SMTP
 from email.mime.text import MIMEText
@@ -26,7 +27,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     '--codalab-home',
     help='where the CodaLab instance lives',
-    default=os.getenv('CODALAB_HOME', os.path.join(os.getenv('HOME'), '.codalab')),
+    default=os.getenv('CODALAB_HOME', os.path.join(os.getenv('HOME', default="..."), '.codalab')),
 )
 
 # Where to write out information

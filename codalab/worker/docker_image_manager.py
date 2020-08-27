@@ -5,6 +5,7 @@ import traceback
 import logging
 
 import docker
+from codalab.lib.telemetry_util import capture_exception, using_sentry
 import codalab.worker.docker_utils as docker_utils
 
 from codalab.worker.fsm import DependencyStage
@@ -173,7 +174,7 @@ class DockerImageManager:
                     if tag_label == self.CACHE_TAG and timestamp != new_timestamp:
                         try:
                             self._docker.images.remove(tag)
-                        except docker.errors.ImageNotFound as err:
+                        except docker.errors.NotFound as err:
                             # It's possible that we get a 404 not found error here when removing the image,
                             # since another worker on the same system has already done so. We just
                             # ignore this 404, since any extraneous tags will be removed during the next iteration.
@@ -187,6 +188,8 @@ class DockerImageManager:
                     digest=digest, stage=DependencyStage.READY, message=success_message
                 )
             except Exception as ex:
+                if using_sentry():
+                    capture_exception()
                 return ImageAvailabilityState(
                     digest=None, stage=DependencyStage.FAILED, message=failure_message % ex
                 )
