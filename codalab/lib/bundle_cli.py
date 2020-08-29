@@ -1797,8 +1797,13 @@ class BundleCLI(object):
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
-            Commands.Argument('-f', '--field', help='Edit any specified bundle metadata field.',
-                              nargs=2, metavar=('FIELD', 'VALUE')),
+            Commands.Argument(
+                '-f',
+                '--field',
+                help='Edit any specified bundle metadata field.',
+                nargs=2,
+                metavar=('FIELD', 'VALUE'),
+            ),
         ),
     )
     def do_edit_command(self, args):
