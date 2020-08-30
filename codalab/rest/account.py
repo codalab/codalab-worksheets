@@ -164,7 +164,7 @@ def css():
 
 
 @get('/account/reset', apply=AuthenticatedPlugin())
-def request_reset():
+def request_reset_get():
     """
     Password reset endpoint for authenticated users.
     """
@@ -188,7 +188,7 @@ def request_reset():
 
 
 @post('/account/reset')
-def request_reset():
+def request_reset_post():
     """
     Password reset form POST endpoint.
     """
@@ -268,7 +268,7 @@ def reset_password():
 
 
 @post('/account/changeemail', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
-def request_reset():
+def request_change_email():
     """
     Email change form POST endpoint.
     """
