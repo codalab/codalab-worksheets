@@ -47,13 +47,13 @@ const KeyboardShortcutModal = ({ show, toggle }) => (
                         <td>
                             <kbd>shift+enter</kbd>
                         </td>
-                        <td>Start editing markdown</td>
+                        <td>Add a new line in markdown</td>
                     </tr>
                     <tr>
                         <td>
                             <kbd>enter</kbd>
                         </td>
-                        <td>Save edits to markdown</td>
+                        <td>Start editing and save edits to markdown</td>
                     </tr>
                     <tr>
                         <td>
