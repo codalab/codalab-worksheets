@@ -1,5 +1,6 @@
 import json
 import unittest
+from typing import List
 
 from codalab.model.tables import bundle as cl_bundle
 from codalab.objects.bundle import Bundle
@@ -8,11 +9,11 @@ from codalab.objects.metadata_spec import MetadataSpec
 
 class MockBundle(Bundle):
     BUNDLE_TYPE = 'mock'
-    METADATA_SPECS = (
+    METADATA_SPECS = [
         MetadataSpec('str_metadata', str, 'test str metadata'),
         MetadataSpec('int_metadata', int, 'test int metadata'),
         MetadataSpec('list_metadata', list, 'test list metadata'),
-    )
+    ]  # type: List
 
     @classmethod
     def construct(cls, **kwargs):

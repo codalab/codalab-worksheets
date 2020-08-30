@@ -1,23 +1,31 @@
 from collections import defaultdict
 
 import datetime
+from typing import Callable, Any, Optional, Union
+
+
+def refresh_cache(
+    f: Union[
+        Callable[['WorkerInfoAccessor'], list],
+        Callable[['WorkerInfoAccessor', str], Union[list, None, bool]],
+        Callable[['WorkerInfoAccessor', str, str], None],
+    ]
+):
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        if datetime.datetime.utcnow() - self._last_fetch >= datetime.timedelta(
+            seconds=self._timeout_seconds
+        ):
+            self._fetch_workers()
+        return f(*args, **kwargs)
+
+    return wrapper
 
 
 class WorkerInfoAccessor(object):
     """
     Helps with accessing the list of workers returned by the worker model.
     """
-
-    def refresh_cache(f):
-        def wrapper(*args, **kwargs):
-            self = args[0]
-            if datetime.datetime.utcnow() - self._last_fetch >= datetime.timedelta(
-                seconds=self._timeout_seconds
-            ):
-                self._fetch_workers()
-            return f(*args, **kwargs)
-
-        return wrapper
 
     def __init__(self, model, worker_model, timeout_seconds):
         self._model = model
