@@ -1665,7 +1665,9 @@ class Worksheet extends React.Component {
                             >
                                 {this.state.focusIndex === -1 ? (
                                     <div className={classes.worksheetDummyHeader} />
-                                ) : null}
+                                ) : (
+                                    <div style={{ height: 8 }} />
+                                )}
                                 <div
                                     className={classes.worksheetInner}
                                     onClick={this.handleClickForDeselect}
@@ -1738,10 +1740,11 @@ const styles = (theme) => ({
         padding: '0px 30px', // Horizonal padding, no vertical
         height: '100%',
         position: 'relative',
+        marginTop: -theme.spacing.large, // Offset DummyHeader height
     },
     worksheetDummyHeader: {
         backgroundColor: '#F1F8FE',
-        height: theme.spacing.larger,
+        height: theme.spacing.large,
     },
     uuid: {
         fontFamily: theme.typography.fontFamilyMonospace,
