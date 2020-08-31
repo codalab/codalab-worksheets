@@ -118,19 +118,19 @@ class BundleManager(object):
         for bundle in bundles:
             parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
 
+            missing_uuids = parent_uuids - all_parent_uuids
+            if missing_uuids:
+                bundles_to_fail.append(
+                    (bundle, 'Missing parent bundles: %s' % ', '.join(missing_uuids))
+                )
+                continue
+
             try:
                 check_bundles_have_read_permission(
                     self._model, self._model.get_user(bundle.owner_id), parent_uuids
                 )
             except PermissionError as e:
                 bundles_to_fail.append((bundle, str(e)))
-                continue
-
-            missing_uuids = parent_uuids - all_parent_uuids
-            if missing_uuids:
-                bundles_to_fail.append(
-                    (bundle, 'Missing parent bundles: %s' % ', '.join(missing_uuids))
-                )
                 continue
 
             parent_states = {uuid: all_parent_states[uuid] for uuid in parent_uuids}

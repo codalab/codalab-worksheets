@@ -3,13 +3,19 @@ from mock import Mock
 
 from codalab.objects.metadata_spec import MetadataSpec
 from codalab.server.bundle_manager import BundleManager
-from codalab.worker.bundle_state import RunResources
-from codalab.bundles import RunBundle
+from codalab.worker.bundle_state import RunResources, State, Dependency
+from codalab.objects.dependency import Dependency
+from codalab.bundles.run_bundle import RunBundle
 from codalab.lib.codalab_manager import CodaLabManager
+from codalab.lib.spec_util import generate_uuid
 from collections import namedtuple
 
 
-class BundleManagerTest(unittest.TestCase):
+class BundleManagerMockedManagerTest(unittest.TestCase):
+    """
+    Unit tests with a mocked-out CodalabManager.
+    """
+
     def setUp(self):
         self.codalab_manager = Mock(CodaLabManager)
         self.codalab_manager.config = {
@@ -149,6 +155,23 @@ class BundleManagerTest(unittest.TestCase):
         ]
         return workers_list
 
+    def test_init_should_parse_config(self):
+        self.codalab_manager.config = {
+            'workers': {
+                'default_cpu_image': 'codalab/default-cpu:latest',
+                'default_gpu_image': 'codalab/default-gpu:latest',
+                'max_request_time': '50s',
+                'max_request_memory': '100m',
+                'min_request_memory': '10m',
+                'max_request_disk': '10m',
+            }
+        }
+        self.bundle_manager = BundleManager(self.codalab_manager)
+        self.assertEqual(self.bundle_manager._max_request_time, 50)
+        self.assertEqual(self.bundle_manager._max_request_memory, 100 * 1024 * 1024)
+        self.assertEqual(self.bundle_manager._min_request_memory, 10 * 1024 * 1024)
+        self.assertEqual(self.bundle_manager._max_request_disk, 10 * 1024 * 1024)
+
     def test_filter_and_sort_workers_gpus(self):
         # Only GPU workers should appear from the returning sorted worker list
         self.bundle_resources.gpus = 1
@@ -228,3 +251,255 @@ class BundleManagerTest(unittest.TestCase):
             self.bundle.metadata.request_queue, self.workers_list
         )
         self.assertEqual(len(matched_workers), 0)
+
+
+BASE_METADATA = {
+    "docker_image": "sckoo/bird-brain@sha256:5076a236533caf8bea3410dcfaa10ef2dab506a3505cd33bce5190951d99af84",
+    "time": 1830.8628242,
+    "started": 1495784349,
+    "request_network": False,
+    "request_cpus": 0,
+    "request_priority": 0,
+    "description": "",
+    "request_queue": "",
+    "name": "run-python",
+    "exitcode": 137,
+    "data_size": 601111,
+    "created": 1495784349,
+    "allow_failed_dependencies": False,
+    "actions": ["kill"],
+    "request_docker_image": "sckoo/bird-brain:v3",
+    "memory_max": 0,
+    "tags": [],
+    "run_status": "Finished",
+    "request_memory": "",
+    "request_time": "",
+    "last_updated": 1495786180,
+    "failure_message": "Kill requested",
+    "request_disk": "",
+    "request_gpus": 0,
+    "remote": "vm-clws-prod-worker-3",
+    "exclude_patterns": [],
+}
+
+
+class BundleManagerRealManagerTest(unittest.TestCase):
+    """
+    Integration tests with a CodaLab Manager hitting a real, in-memory database.
+    """
+
+    def setUp(self):
+        self.codalab_manager = CodaLabManager()
+        self.codalab_manager.config['server']['class'] = 'SQLiteModel'
+        self.codalab_manager.config['server']['engine_url'] = 'sqlite:///:memory:'
+        self.bundle_manager = BundleManager(self.codalab_manager)
+        self.user_id = generate_uuid()
+        self.bundle_manager._model.add_user(
+            "username",
+            "email@email.com",
+            "first name",
+            "last name",
+            "password",
+            "affiliation",
+            user_id=self.user_id,
+        )
+
+    def test_stage_no_bundles(self):
+        self.bundle_manager._stage_bundles()
+
+    def test_stage_single_bundle(self):
+        bundle = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
+            owner_id='id1',
+            uuid=generate_uuid(),
+            state=State.CREATED,
+        )
+        self.bundle_manager._model.save_bundle(bundle)
+
+        self.bundle_manager._stage_bundles()
+
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.STAGED)
+
+    def test_stage_bundle_with_dependency(self):
+        parent = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=State.READY,
+        )
+        bundle = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=State.CREATED,
+        )
+        bundle.dependencies = [
+            Dependency(
+                {
+                    "parent_uuid": parent.uuid,
+                    "parent_path": "",
+                    "child_uuid": bundle.uuid,
+                    "child_path": "src",
+                }
+            )
+        ]
+
+        self.bundle_manager._model.save_bundle(parent)
+        self.bundle_manager._model.save_bundle(bundle)
+
+        self.bundle_manager._stage_bundles()
+
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.STAGED)
+
+    def test_not_stage_bundle_with_failed_dependency(self):
+        for state in (State.FAILED, State.KILLED):
+            with self.subTest(state=state):
+                parent = RunBundle.construct(
+                    targets=[],
+                    command='',
+                    metadata=BASE_METADATA,
+                    owner_id=self.user_id,
+                    uuid=generate_uuid(),
+                    state=state,
+                )
+                bundle = RunBundle.construct(
+                    targets=[],
+                    command='',
+                    metadata=BASE_METADATA,
+                    owner_id=self.user_id,
+                    uuid=generate_uuid(),
+                    state=State.CREATED,
+                )
+                bundle.dependencies = [
+                    Dependency(
+                        {
+                            "parent_uuid": parent.uuid,
+                            "parent_path": "",
+                            "child_uuid": bundle.uuid,
+                            "child_path": "src",
+                        }
+                    )
+                ]
+
+                self.bundle_manager._model.save_bundle(parent)
+                self.bundle_manager._model.save_bundle(bundle)
+
+                self.bundle_manager._stage_bundles()
+
+                bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+                self.assertEqual(bundle.state, State.FAILED)
+                self.assertIn(
+                    "Please use the --allow-failed-dependencies flag",
+                    bundle.metadata.failure_message,
+                )
+
+    def test_stage_bundle_allow_failed_dependencies(self):
+        for state in (State.FAILED, State.KILLED):
+            with self.subTest(state=state):
+                parent = RunBundle.construct(
+                    targets=[],
+                    command='',
+                    metadata=BASE_METADATA,
+                    owner_id=self.user_id,
+                    uuid=generate_uuid(),
+                    state=state,
+                )
+                bundle = RunBundle.construct(
+                    targets=[],
+                    command='',
+                    metadata=dict(BASE_METADATA, allow_failed_dependencies=True),
+                    owner_id=self.user_id,
+                    uuid=generate_uuid(),
+                    state=State.CREATED,
+                )
+                bundle.dependencies = [
+                    Dependency(
+                        {
+                            "parent_uuid": parent.uuid,
+                            "parent_path": "",
+                            "child_uuid": bundle.uuid,
+                            "child_path": "src",
+                        }
+                    )
+                ]
+
+                self.bundle_manager._model.save_bundle(parent)
+                self.bundle_manager._model.save_bundle(bundle)
+
+                self.bundle_manager._stage_bundles()
+
+                bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+                self.assertEqual(bundle.state, State.STAGED)
+
+    def test_stage_bundle_missing_parent(self):
+        bundle = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=State.CREATED,
+        )
+        bundle.dependencies = [
+            Dependency(
+                {
+                    "parent_uuid": generate_uuid(),
+                    "parent_path": "",
+                    "child_uuid": bundle.uuid,
+                    "child_path": "src",
+                }
+            )
+        ]
+
+        self.bundle_manager._model.save_bundle(bundle)
+
+        self.bundle_manager._stage_bundles()
+
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.FAILED)
+        self.assertIn("Missing parent bundles", bundle.metadata.failure_message)
+
+    def test_stage_bundle_no_permission_parents(self):
+        parent = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
+            owner_id=generate_uuid(),
+            uuid=generate_uuid(),
+            state=State.READY,
+        )
+        bundle = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=State.CREATED,
+        )
+        bundle.dependencies = [
+            Dependency(
+                {
+                    "parent_uuid": parent.uuid,
+                    "parent_path": "",
+                    "child_uuid": bundle.uuid,
+                    "child_path": "src",
+                }
+            )
+        ]
+
+        self.bundle_manager._model.save_bundle(parent)
+        self.bundle_manager._model.save_bundle(bundle)
+
+        self.bundle_manager._stage_bundles()
+
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.FAILED)
+        self.assertIn("does not have sufficient permissions", bundle.metadata.failure_message)
