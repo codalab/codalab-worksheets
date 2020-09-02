@@ -176,6 +176,7 @@ class BundleManager(object):
                 logger.info('Re-staging make bundle %s', bundle.uuid)
                 self._model.update_bundle(bundle, {'state': State.STAGED})
 
+        threads = []
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='make'):
             logger.info('Making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.MAKING})
@@ -183,7 +184,10 @@ class BundleManager(object):
                 self._make_uuids.add(bundle.uuid)
             # Making a bundle could take time, so do the work in a separate
             # thread to ensure quick scheduling.
-            threading.Thread(target=BundleManager._make_bundle, args=[self, bundle]).start()
+            t = threading.Thread(target=BundleManager._make_bundle, args=[self, bundle])
+            threads.append(t)
+            t.start()
+        return threads
 
     def _is_making_bundles(self):
         with self._make_uuids_lock:
@@ -513,6 +517,7 @@ class BundleManager(object):
         workers_list = [
             worker for worker in workers_list if worker['cpus'] >= bundle_resources.cpus
         ]
+        print("cpus", bundle_resources.cpus)
 
         # Filter by GPUs.
         if bundle_resources.gpus:
@@ -604,10 +609,11 @@ class BundleManager(object):
     def _compute_request_cpus(bundle):
         """
         Compute the CPU limit used for scheduling the run.
-        The default of 1 is for backwards compatibility for
-        runs from before when we added client-side defaults
+        The default of 1 (if no GPUs specified)
+        is for backwards compatibility for runs from before
+        when we added client-side defaults
         """
-        if not bundle.metadata.request_cpus:
+        if not bundle.metadata.request_cpus and not bundle.metadata.request_gpus:
             return 1
         return bundle.metadata.request_cpus
 
