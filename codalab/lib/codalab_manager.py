@@ -347,7 +347,6 @@ class CodaLabManager(object):
             from codalab.model.sqlite_model import SQLiteModel
 
             model = SQLiteModel(
-                engine_url=self.config['server']['engine_url'],
                 default_user_info=self.default_user_info(),
                 root_user_id=self.root_user_id(),
                 system_user_id=self.system_user_id(),
