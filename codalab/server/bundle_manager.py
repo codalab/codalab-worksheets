@@ -517,7 +517,6 @@ class BundleManager(object):
         workers_list = [
             worker for worker in workers_list if worker['cpus'] >= bundle_resources.cpus
         ]
-        print("cpus", bundle_resources.cpus)
 
         # Filter by GPUs.
         if bundle_resources.gpus:
