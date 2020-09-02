@@ -3,7 +3,7 @@ from mock import Mock
 
 from codalab.objects.metadata_spec import MetadataSpec
 from codalab.server.bundle_manager import BundleManager, BUNDLE_TIMEOUT_DAYS, SECONDS_PER_DAY
-from codalab.worker.bundle_state import RunResources, State, Dependency
+from codalab.worker.bundle_state import RunResources, State, Dependency, BundleCheckinState
 from codalab.objects.dependency import Dependency
 from codalab.bundles.run_bundle import RunBundle
 from codalab.bundles.make_bundle import MakeBundle
@@ -328,9 +328,10 @@ class BaseBundleManagerTest(unittest.TestCase):
             user_id=self.user_id,
         )
 
-    def create_mock_worker(
+    def mock_worker_checkin(
         self, cpus=0, gpus=0, memory_bytes=0, free_disk_bytes=0, tag=None, user_id=None
     ):
+        """Mock check-in a new worker."""
         # codalab-owned worker
         worker_id = generate_uuid()
         self.bundle_manager._worker_model.worker_checkin(
@@ -350,6 +351,25 @@ class BaseBundleManagerTest(unittest.TestCase):
         # Mock a reply from the worker
         self.bundle_manager._worker_model.send_json_message = Mock(return_value=True)
         return worker_id
+
+    def mock_bundle_checkin(self, bundle, worker_id, user_id=None):
+        """Mock a worker checking in with the latest status of a bundle."""
+        worker_run = BundleCheckinState(
+            uuid=bundle.uuid,
+            run_status="",
+            bundle_start_time=0,
+            container_time_total=0,
+            container_time_user=0,
+            container_time_system=0,
+            docker_image="",
+            state=bundle.state,
+            remote="",
+            exitcode=0,
+            failure_message="",
+        )
+        self.bundle_manager._model.bundle_checkin(
+            bundle, worker_run, user_id or self.user_id, worker_id
+        )
 
 
 class BundleManagerStageBundlesTest(BaseBundleManagerTest):
@@ -845,7 +865,7 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
         )
         self.bundle_manager._model.save_bundle(bundle)
 
-        self.create_mock_worker(cpus=1)
+        self.mock_worker_checkin(cpus=1)
         self.bundle_manager._schedule_run_bundles()
 
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
@@ -856,7 +876,7 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
     @freeze_time("2020-02-01", as_arg=True)
     def test_cleanup_dead_workers(frozen_time, self):
         # Workers should be removed after they don't check in for a long enough time period.
-        self.create_mock_worker(cpus=1)
+        self.mock_worker_checkin(cpus=1)
 
         self.assertEqual(len(self.bundle_manager._worker_model.get_workers()), 1)
 
@@ -898,6 +918,49 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
 
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
         self.assertEqual(bundle.state, State.WORKER_OFFLINE)
+
+    def test_finalizing_bundle_goes_offline_if_no_worker_claims(self):
+        bundle = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=State.FINALIZING,
+        )
+        self.bundle_manager._model.save_bundle(bundle)
+
+        self.bundle_manager._schedule_run_bundles()
+
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.WORKER_OFFLINE)
+
+    def test_finalizing_bundle_gets_finished(self):
+        bundle = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=State.STAGED,
+        )
+        self.bundle_manager._model.save_bundle(bundle)
+        worker_id = self.mock_worker_checkin(cpus=1)
+
+        # Bundle is assigned to worker
+        self.bundle_manager._schedule_run_bundles()
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.STARTING)
+
+        # Worker sends back a "finalizing" message
+        bundle.state = State.FINALIZING
+        self.mock_bundle_checkin(bundle, worker_id)
+
+        # Bundle is finished
+        self.bundle_manager._schedule_run_bundles()
+
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.READY)
 
 
 class BundleManagerFailUnresponsiveBundlesTest(BaseBundleManagerTest):
