@@ -50,7 +50,7 @@ jobs:
           restore-keys: |
             pip-
       - run: pip install -r requirements.txt
-      - run: python3 codalab_service.py build --pull --version ${VERSION} -s ${SERVICE} $([ -z "${CODALAB_DOCKER_USERNAME}" ] || echo "--push")
+      - run: python3 codalab_service.py build --version ${VERSION} -s ${SERVICE} $([ -z "${CODALAB_DOCKER_USERNAME}" ] || echo "--push")
         env:
           CODALAB_DOCKER_USERNAME: ${{ secrets.CODALAB_DOCKER_USERNAME }}
           CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}
@@ -93,7 +93,7 @@ jobs:
       - name: Setup tests
         run: |
           sudo service mysql stop
-          python3 codalab_service.py build services --version ${VERSION} --pull
+          python3 codalab_service.py build services --version ${VERSION}
         env:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
@@ -142,7 +142,7 @@ jobs:
       - name: Setup tests
         run: |
           sudo service mysql stop
-          python3 codalab_service.py build services --version ${VERSION} --pull
+          python3 codalab_service.py build services --version ${VERSION}
         env:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
@@ -191,7 +191,7 @@ jobs:
       - name: Setup tests
         run: |
           sudo service mysql stop
-          python3 codalab_service.py build services --version ${VERSION} --pull
+          python3 codalab_service.py build services --version ${VERSION}
         env:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run shared filesystem tests
@@ -245,7 +245,7 @@ jobs:
       - name: Setup tests
         run: |
           sudo service mysql stop
-          python3 codalab_service.py build services --version ${VERSION} --pull
+          python3 codalab_service.py build services --version ${VERSION}
         env:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
@@ -295,7 +295,7 @@ jobs:
           sudo ./scripts/test-setup.sh
           export PATH=$PATH:$PWD/geckodriver
           sudo service mysql stop
-          python3 codalab_service.py build services --version ${VERSION} --pull
+          python3 codalab_service.py build services --version ${VERSION}
           pip install --upgrade diffimg==0.2.3
           pip install --upgrade selenium==3.141.0
         env:
