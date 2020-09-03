@@ -2,7 +2,6 @@
 
 import os, sys
 import datetime
-from builtins import _PathLike
 from collections import defaultdict
 from smtplib import SMTP
 from email.mime.text import MIMEText
@@ -74,10 +73,19 @@ sender_password = os.environ['CODALAB_EMAIL_PASSWORD']
 if not os.path.exists(args.backup_path):
     os.mkdir(args.backup_path)
 
-# Comma-separated list of worker ids to monitor. Example: vm-clws-prod-worker-0,vm-clws-prod-worker-1
-public_workers = set([worker.strip() for worker in os.environ['CODALAB_PUBLIC_WORKERS'].split(',')])
-
 report = []  # Build up the current report to send in an email
+
+
+def get_public_workers():
+    # Comma-separated list of worker ids to monitor. Example: vm-clws-prod-worker-0,vm-clws-prod-worker-1
+    return set(
+        [
+            worker.strip()
+            for worker in os.environ['CODALAB_PUBLIC_WORKERS'].split(',')
+            if worker.rstrip()
+        ]
+    )
+
 
 # message is a list
 def send_email(subject, message):
@@ -258,10 +266,9 @@ def check_disk_space(paths):
 
 
 def poll_online_workers():
+    public_workers = get_public_workers()
     if len(public_workers) == 0:
-        error_logs(
-            'worker check failed', 'Missing value for environment variable CODALAB_PUBLIC_WORKERS.'
-        )
+        log("Environment variable CODALAB_PUBLIC_WORKERS was not configured.")
         return
     lines = run_command(['cl', 'workers']).split('\n')
     workers_info = lines[2:]
