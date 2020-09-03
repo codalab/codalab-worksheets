@@ -1,6 +1,9 @@
 import os
 from codalab.lib.beam.filesystems import FileSystems
-
+from codalab.worker.bundle_state import LinkFormat
+from zipfile import ZipFile
+from codalab.lib.path_util import parse_azure_url
+from pydash.objects import set_
 class PathException(Exception):
     pass
 
@@ -114,9 +117,7 @@ def _get_target_path(bundle_path, path):
 
 def _compute_target_info(path, depth):
     if path.startswith("azfs://"):
-        # TODO(Ashwin): support directories.
-        file = FileSystems.match([path])[0].metadata_list[0]
-        return { 'name': os.path.basename(file.path), 'type': 'file', 'size': file.size_in_bytes, 'perm': 0o777 }
+        return _compute_target_info_beam(path, depth)
     result = {}
     result['name'] = os.path.basename(path)
     stat = os.lstat(path)
@@ -137,3 +138,33 @@ def _compute_target_info(path, depth):
     if result is None:
         raise PathException()
     return result
+
+def _compute_target_info_beam(path, depth):
+    bundle_uuid, zip_path, zip_subpath = parse_azure_url(path)
+    if zip_path is None:
+        # Single file
+        file = FileSystems.match([path])[0].metadata_list[0]
+        return { 'name': os.path.basename(file.path), 'type': 'file', 'size': file.size_in_bytes, 'perm': 0o777 }
+    # dir_structure = {}
+    with ZipFile(FileSystems.open(zip_path)) as f:
+        zipinfo = f.getinfo(zip_subpath)
+    if not zipinfo.is_dir():
+        return {
+            'name': zipinfo.filename,
+            'type': 'file',
+            'size': zipinfo.file_size,
+            'perm': 0o777
+        }
+    return {
+        'name': zipinfo.filename,
+        'type': 'directory',
+        'size': zipinfo.file_size,
+        'perm': 0o777,
+        # TODO: support previewing nested directories.
+        'contents': [{
+            'name': zipinfo.filename,
+            'type': 'file',
+            'size': zipinfo.file_size,
+            'perm': 0o777
+        } for zipinfo in f.infolist() if zipinfo.filename.startswith(zip_subpath)]
+    }

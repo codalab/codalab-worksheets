@@ -8,6 +8,7 @@ import sys
 import time
 from io import BytesIO
 from http.client import HTTPResponse
+from codalab.lib import path_util
 
 from bottle import abort, get, post, put, delete, local, request, response
 from codalab.bundles import get_bundle_subclass, UploadedBundle
@@ -746,7 +747,7 @@ def _update_bundle_contents_blob(uuid):
                 {
                     'metadata': {
                         # TODO(Ashwin): don't hardcode storage account name.
-                        'link_url': f"azfs://storageclwsdev0/bundles/{bundle.uuid}/contents.zip",
+                        'link_url': f"azfs://storageclwsdev0/bundles/{bundle.uuid}{'/contents.zip' if filename.endswith('.zip') else '/contents'}",
                         'link_format': LinkFormat.ZIP if filename.endswith('.zip') else LinkFormat.RAW,
                     },
                 },
@@ -915,8 +916,9 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         # check first is needs to be deleted
         bundle_link_url = bundle_link_urls.get(uuid)
         if bundle_link_url:
-            # Don't physically delete linked bundles.
-            pass
+            # Don't physically delete linked bundles, unless they're from Azure.
+            if bundle_link_url.startswith("azfs://"):
+                path_util.remove(bundle_link_url)
         else:
             bundle_location = local.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):

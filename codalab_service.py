@@ -26,7 +26,7 @@ import subprocess
 import yaml
 import tempfile
 
-DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
+DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'azurite', 'rest-server', 'bundle-manager', 'worker', 'init']
 
 ALL_SERVICES = DEFAULT_SERVICES + ['monitor', 'worker-manager-cpu', 'worker-manager-gpu']
 
@@ -596,7 +596,7 @@ class CodalabServiceManager(object):
     def build_image(self, image):
         print_header('Building {} image'.format(image))
         master_docker_image = 'codalab/{}:{}'.format(image, 'master')
-        docker_image = 'codalab/{}:{}'.format(image, self.args.version)
+        docker_image = 'codalab/{}:{}'.format(image, 'master')
 
         # Pull the previous image on this version (branch) if we have it.  Otherwise, use master.
         if self.args.pull:
@@ -772,6 +772,7 @@ class CodalabServiceManager(object):
                 'if [ $(alembic current | wc -l) -eq 0 ]; then echo stamp; alembic stamp head; fi'
             )
 
+        self.bring_up_service('azurite')
         self.bring_up_service('rest-server')
 
         if should_run_service(self.args, 'init'):

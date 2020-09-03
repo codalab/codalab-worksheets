@@ -96,6 +96,15 @@ services:
     networks:
       - rest-server
 
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.8.0
+    <<: *codalab-base
+    <<: *codalab-server
+    networks:
+      - rest-server
+    expose:
+      - 10000
+
   worker-manager-cpu:
     image: codalab/server:${CODALAB_VERSION}
     command: |

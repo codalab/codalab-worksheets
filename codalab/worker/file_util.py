@@ -7,10 +7,12 @@ import subprocess
 import tarfile
 import zlib
 import bz2
+from zipfile import ZipFile
 
 from codalab.common import BINARY_PLACEHOLDER
 from apache_beam.io.filesystem import CompressionTypes
 from codalab.lib.beam.filesystems import FileSystems
+from codalab.lib.path_util import parse_azure_url
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -146,13 +148,24 @@ def un_tar_directory(fileobj, directory_path, compression='', force=False):
                 raise tarfile.TarError('Archive member extracts outside the directory.')
             tar.extract(member, directory_path)
 
+def open_file(file_path, mode='r'):
+    """
+    Opens the given file. Can be in a directory.
+    """
+    if file_path.startswith("azfs://"):
+        bundle_uuid, zip_path, zip_subpath = parse_azure_url(file_path)
+        if zip_subpath is not None:
+            with ZipFile(FileSystems.open(zip_path)) as f:
+                return f.open(zip_subpath, 'r') # zipfile.open only supports 'r', not 'rb'
+    return FileSystems.open(file_path, mode)
+
 
 def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
     """
     try:
-        data = FileSystems.open(file_path, compression_type=CompressionTypes.UNCOMPRESSED).read()
+        data = open_file(file_path, compression_type=CompressionTypes.UNCOMPRESSED).read()
         return BytesIO(gzip.compress(data))
     except Exception as e:
         raise IOError(e)
@@ -263,7 +276,7 @@ def read_file_section(file_path, offset, length):
     """
     if offset >= get_file_size(file_path):
         return b''
-    with FileSystems.open(file_path, 'rb') as fileobj:
+    with open_file(file_path, 'rb') as fileobj:
         fileobj.seek(offset, os.SEEK_SET)
         return fileobj.read(length)
 
@@ -289,7 +302,7 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
     except FileNotFoundError:
         return NONE_PLACEHOLDER
 
-    with TextIOWrapper(FileSystems.open(file_path)) as fileobj:
+    with TextIOWrapper(open_file(file_path)) as fileobj:
         if file_size > (num_head_lines + num_tail_lines) * max_line_length:
             if num_head_lines > 0:
                 # To ensure that the last line is a whole line, we remove the

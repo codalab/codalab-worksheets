@@ -9,4 +9,7 @@ Based on work from https://github.com/apache/beam/pull/12581. Once that PR is ad
 we will switch to using a Beam library instead.
 """
 
-os.environ['AZURE_STORAGE_CONNECTION_STRING'] = '...'
+# Test key for Azurite (local development)
+os.environ[
+    'AZURE_STORAGE_CONNECTION_STRING'
+] = 'DefaultEndpointsProtocol=https;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=https://127.0.0.1:10000/devstoreaccount1;'
