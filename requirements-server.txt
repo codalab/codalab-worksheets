@@ -8,7 +8,7 @@
 -r requirements.dev.txt
 
 # For worker manager
-boto3==1.14.54
+boto3==1.14.55
 
 # For testing
 mock==4.0.2
