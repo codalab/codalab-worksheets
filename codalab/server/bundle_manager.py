@@ -1,3 +1,4 @@
+import copy
 from collections import defaultdict
 import datetime
 import logging
@@ -469,6 +470,7 @@ class BundleManager(object):
         """
         From each worker, subtract resources used by running bundles.
         """
+        workers_list = copy.deepcopy(workers_list)
         for worker in workers_list:
             for uuid in worker['run_uuids']:
                 # Verify if the current bundle exists in both the worker table and the bundle table
