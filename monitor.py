@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from builtins import _PathLike
 from collections import defaultdict
 from email.mime.text import MIMEText
 from smtplib import SMTP
@@ -271,7 +270,7 @@ def check_disk_space(paths):
 def poll_online_workers():
     public_workers = get_public_workers()
     if len(public_workers) == 0:
-        log("Environment variable CODALAB_PUBLIC_WORKERS was not configured.")
+        log("Environment variable CODALAB_PUBLIC_WORKERS is empty.")
         return
     lines = run_command(['cl', 'workers']).split('\n')
     workers_info = lines[2:]
