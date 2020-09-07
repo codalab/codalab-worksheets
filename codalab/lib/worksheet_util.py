@@ -30,6 +30,7 @@ import copy
 import os
 import re
 import sys
+from typing import Union, Dict, Tuple, Optional, List
 
 
 from codalab.common import PermissionError, UsageError
@@ -74,19 +75,19 @@ DIRECTIVE_REGEX = re.compile(r'^\s*' + DIRECTIVE_CHAR + '\s*(.*)\s*$')
 DEFAULT_CONTENTS_MAX_LINES = 10
 
 
-def markup_item(x):
-    return (None, None, x, TYPE_MARKUP)
+def markup_item(x) -> Tuple:
+    return None, None, x, TYPE_MARKUP
 
 
-def directive_item(x):
-    return (None, None, x, TYPE_DIRECTIVE)
+def directive_item(x) -> Tuple:
+    return None, None, x, TYPE_DIRECTIVE
 
 
-def bundle_item(x):
-    return (x, None, '', TYPE_BUNDLE)  # TODO: replace '' with None when tables.py schema is updated
+def bundle_item(x) -> Tuple:
+    return x, None, '', TYPE_BUNDLE  # TODO: replace '' with None when tables.py schema is updated
 
 
-def subworksheet_item(x):
+def subworksheet_item(x) -> Tuple:
     return (
         None,
         x,
@@ -95,18 +96,18 @@ def subworksheet_item(x):
     )  # TODO: replace '' with None when tables.py schema is updated
 
 
-def bundle_line(description, uuid):
+def bundle_line(description, uuid) -> str:
     return '[%s]{%s}' % (description, uuid)
 
 
-def worksheet_line(description, uuid):
+def worksheet_line(description, uuid) -> str:
     return '[%s]{{%s}}' % (description, uuid)
 
 
 ############################################################
 
 
-def get_worksheet_info_edit_command(raw_command_map):
+def get_worksheet_info_edit_command(raw_command_map) -> Union[None, str]:
     """
     Return a cli-command for editing worksheet-info. Return None if raw_command_map contents are invalid.
     Input:
@@ -120,7 +121,7 @@ def get_worksheet_info_edit_command(raw_command_map):
     return 'wedit -{k[0]} "{v}"'.format(**raw_command_map)
 
 
-def convert_item_to_db(item):
+def convert_item_to_db(item) -> Tuple:
     (bundle_info, subworksheet_info, value_obj, item_type) = item
     return (
         bundle_info['uuid'] if bundle_info else None,
@@ -132,7 +133,7 @@ def convert_item_to_db(item):
     )
 
 
-def get_worksheet_lines(worksheet_info):
+def get_worksheet_lines(worksheet_info) -> List:
     """
     Generator that returns pretty-printed lines of text for the given worksheet.
     """
@@ -186,7 +187,7 @@ def get_worksheet_lines(worksheet_info):
     return lines
 
 
-def get_formatted_metadata(cls, metadata, raw=False):
+def get_formatted_metadata(cls, metadata, raw=False) -> List:
     """
     Input:
         cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
@@ -211,7 +212,7 @@ def get_formatted_metadata(cls, metadata, raw=False):
     return result
 
 
-def get_editable_metadata_fields(cls):
+def get_editable_metadata_fields(cls) -> List:
     """
     Input:
         cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
@@ -226,7 +227,7 @@ def get_editable_metadata_fields(cls):
     return result
 
 
-def get_metadata_types(cls):
+def get_metadata_types(cls) -> Dict:
     """
     Return map from key -> type for the metadata fields in the given bundle class.
     e.g.
@@ -246,7 +247,7 @@ def get_metadata_types(cls):
     }
 
 
-def request_lines(worksheet_info):
+def request_lines(worksheet_info) -> List[Tuple]:
     """
     Input: worksheet_info
     Popup an editor, populated with the current worksheet contents.
@@ -264,13 +265,13 @@ def request_lines(worksheet_info):
     return form_result
 
 
-def parse_worksheet_form(form_result, model, user, worksheet_uuid):
+def parse_worksheet_form(form_result, model, user, worksheet_uuid) -> List:
     """
     Input: form_result is a list of lines.
     Return (list of (bundle_info, subworksheet_info, value, type) tuples, commands to execute)
     """
 
-    def get_line_type(line):
+    def get_line_type(line) -> str:
         if line.startswith('//'):
             return 'comment'
         elif BUNDLE_REGEX.match(line) is not None:
@@ -335,7 +336,7 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
     return items
 
 
-def is_file_genpath(genpath):
+def is_file_genpath(genpath) -> bool:
     """
     Determine whether the genpath is a file (e.g., '/stdout') or not (e.g., 'command')
     :param genpath: a generalized path
@@ -344,7 +345,9 @@ def is_file_genpath(genpath):
     return genpath.startswith('/')
 
 
-def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
+def interpret_genpath(
+    bundle_info, genpath, db_model=None, owner_cache=None
+) -> Union[None, str, Tuple]:
     """
     Quickly interpret the genpaths (generalized path) that only require looking
     bundle_info (e.g., 'time', 'command').  The interpretation of generalized
@@ -364,7 +367,7 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
     deps = bundle_info.get('dependencies', [])
     anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
 
-    def render_dep(dep, show_key=True, show_uuid=False):
+    def render_dep(dep, show_key=True, show_uuid=False) -> str:
         if show_key and not anonymous:
             if show_uuid or dep['child_path'] != dep['parent_name']:
                 a = dep['child_path'] + ':'
@@ -470,7 +473,7 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
     return None
 
 
-def format_metadata(metadata):
+def format_metadata(metadata) -> None:
     """
     Format worksheet item metadata based on field type specified in the schema.
     """
@@ -483,27 +486,27 @@ def format_metadata(metadata):
                 metadata[name] = apply_func(func, metadata[name])
 
 
-def canonicalize_schema_item(args, from_schema_name=None):
+def canonicalize_schema_item(args, from_schema_name=None) -> Tuple:
     """
     Users who type in schema items can specify a partial argument list.
     Return the canonicalize version (four items in a tuple).
     from_schema_name: which schema this item belongs to, used to identify items added from addschema
     """
     if len(args) == 1:  # genpath
-        return (os.path.basename(args[0]).split(":")[-1], args[0], None, from_schema_name)
+        return os.path.basename(args[0]).split(":")[-1], args[0], None, from_schema_name
     elif len(args) == 2:  # name genpath
-        return (args[0], args[1], None, from_schema_name)
+        return args[0], args[1], None, from_schema_name
     elif len(args) == 3:  # name genpath post-processing
-        return (args[0], args[1], args[2], from_schema_name)
+        return args[0], args[1], args[2], from_schema_name
     else:
         raise UsageError('Invalid number of arguments: %s' % (args,))
 
 
-def canonicalize_schema_items(items):
+def canonicalize_schema_items(items) -> List:
     return [canonicalize_schema_item(item) for item in items]
 
 
-def apply_func(func, arg):
+def apply_func(func, arg) -> Union[str, Dict, Tuple[Optional[Dict], ...]]:
     """
     Apply post-processing function |func| to |arg|.
     |func| is a string representing a list of functions (which are to be
@@ -567,7 +570,7 @@ def apply_func(func, arg):
         return arg
 
 
-def get_default_schemas():
+def get_default_schemas() -> Dict[str, List]:
     # Single fields
     uuid = ['uuid[0:8]', 'uuid', '[0:8]']
     name = ['name']
@@ -603,12 +606,12 @@ def get_default_schemas():
     return schemas
 
 
-def get_command(value_obj):  # For directives only
+def get_command(value_obj) -> Union[str, None]:  # For directives only
 
     return value_obj[0] if len(value_obj) > 0 else None
 
 
-def interpret_items(schemas, raw_items, db_model=None):
+def interpret_items(schemas, raw_items, db_model=None) -> Dict:
     """
     Interpret different items based on their types.
     :param schemas: initial mapping from name to list of schema items (columns of a table)
@@ -654,7 +657,7 @@ def interpret_items(schemas, raw_items, db_model=None):
     bundle_infos = []
     worksheet_infos = []
 
-    def get_schema(args):  # args is a list of schema names
+    def get_schema(args) -> List:  # args is a list of schema names
         args = args if len(args) > 0 else ['default']
         schema = []
         for arg in args:
@@ -662,10 +665,10 @@ def interpret_items(schemas, raw_items, db_model=None):
             schema += schemas.get(arg, canonicalize_schema_items([arg.split(':', 2)]))
         return schema
 
-    def is_missing(info):
+    def is_missing(info) -> bool:
         return 'metadata' not in info
 
-    def parse_properties(args):
+    def parse_properties(args) -> Dict:
         properties = {}
         for item in args:
             if '=' not in item:
@@ -674,14 +677,14 @@ def interpret_items(schemas, raw_items, db_model=None):
             properties[key] = value
         return properties
 
-    def genpath_to_target(bundle_info, genpath):
+    def genpath_to_target(bundle_info, genpath) -> Tuple:
         # bundle_info, '/stdout' => target = (uuid, 'stdout')
         if not is_file_genpath(genpath):
             raise UsageError('Not file genpath: %s' % genpath)
         # strip off the leading / from genpath to create a subpath in the target.
-        return (bundle_info['uuid'], genpath[1:])
+        return bundle_info['uuid'], genpath[1:]
 
-    def flush_bundles(bundle_block_start_index):
+    def flush_bundles(bundle_block_start_index) -> None:
         """
         Having collected bundles in |bundle_infos|, flush them into |blocks|,
         potentially as a single table depending on the mode.
@@ -690,7 +693,7 @@ def interpret_items(schemas, raw_items, db_model=None):
         if len(bundle_infos) == 0:
             return
 
-        def raise_genpath_usage_error():
+        def raise_genpath_usage_error() -> None:
             raise UsageError(
                 'Expected \'% display '
                 + mode
@@ -886,7 +889,7 @@ def interpret_items(schemas, raw_items, db_model=None):
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
 
-    def flush_worksheets():
+    def flush_worksheets() -> None:
         if len(worksheet_infos) == 0:
             return
 
@@ -1145,7 +1148,7 @@ def interpret_items(schemas, raw_items, db_model=None):
     return result
 
 
-def check_worksheet_not_frozen(worksheet):
+def check_worksheet_not_frozen(worksheet) -> None:
     if worksheet.frozen:
         raise PermissionError(
             'Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name)
