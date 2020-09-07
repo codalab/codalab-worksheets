@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 
-import os, sys
-import datetime
+from builtins import _PathLike
 from collections import defaultdict
-from smtplib import SMTP
 from email.mime.text import MIMEText
-import subprocess
-import time
-import argparse
+from smtplib import SMTP
 from typing import Dict
+
+import argparse
+import datetime
+import os
+import subprocess
+import sys
+import time
 
 BASE_DIR = os.path.dirname(__file__)
 
