@@ -35,7 +35,7 @@ MEMORY_LIMIT_ERROR_REGEX = (
 )
 
 logger = logging.getLogger(__name__)
-client = docker.from_env(timeout=DEFAULT_TIMEOUT)
+client = docker.from_env(version="1.35", timeout=DEFAULT_TIMEOUT)
 
 
 def wrap_exception(message):
