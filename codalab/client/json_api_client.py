@@ -1,6 +1,8 @@
 import http.client
 import socket
 import sys
+from typing import Dict
+
 import six
 import urllib.request, urllib.parse, urllib.error
 
@@ -559,7 +561,7 @@ class JsonApiClient(RestClient):
         )
 
     @wrap_exception('Unable to update authenticated user')
-    def update_authenticated_user(self, data, params=None):
+    def update_authenticated_user(self, data, params=None) -> Dict:
         """
         Request to update the authenticated user.
         Uses special /user endpoint, but keeps the 'users' resource type.
@@ -578,13 +580,13 @@ class JsonApiClient(RestClient):
         )
 
     @wrap_exception('Unable to fetch contents info of bundle {1}')
-    def fetch_interpreted_worksheet(self, worksheet_uuid):
+    def fetch_interpreted_worksheet(self, worksheet_uuid) -> Dict:
         request_path = '/interpret/worksheet/%s' % worksheet_uuid
         response = self._make_request('GET', request_path)
         return response
 
     @wrap_exception('Unable to fetch contents info of bundle {1}')
-    def fetch_contents_info(self, target, depth=0):
+    def fetch_contents_info(self, target, depth=0) -> str:
         """
         Calls download_manager.get_target_info server-side and returns the target_info.
         For details on return value look at worker.download_util.get_target_info
@@ -602,7 +604,9 @@ class JsonApiClient(RestClient):
         return response['data']
 
     @wrap_exception('Unable to fetch contents blob of bundle {1}')
-    def fetch_contents_blob(self, target, range_=None, head=None, tail=None, truncation_text=None):
+    def fetch_contents_blob(
+        self, target, range_=None, head=None, tail=None, truncation_text=None
+    ) -> Dict:
         """
         Returns a file-like object for the target on the given bundle.
 
@@ -631,7 +635,9 @@ class JsonApiClient(RestClient):
         )
 
     @wrap_exception('Unable to upload contents of bundle {1}')
-    def upload_contents_blob(self, bundle_id, fileobj=None, params=None, progress_callback=None):
+    def upload_contents_blob(
+        self, bundle_id, fileobj=None, params=None, progress_callback=None
+    ) -> None:
         """
         Uploads the contents of the given fileobj as the contents of specified
         bundle.
@@ -659,7 +665,7 @@ class JsonApiClient(RestClient):
             )
 
     @wrap_exception('Unable to get the locations of bundles')
-    def get_bundles_locations(self, bundle_uuids):
+    def get_bundles_locations(self, bundle_uuids) -> str:
         response = self._make_request(
             method='GET',
             path='/bundles/locations',
@@ -668,7 +674,7 @@ class JsonApiClient(RestClient):
         return response['data']
 
     @wrap_exception('Unable to interpret file genpaths')
-    def interpret_file_genpaths(self, queries):
+    def interpret_file_genpaths(self, queries) -> str:
         """
         :param queries: list of (bundle_uuid, genpath, post) tuples
         :return: list of strings
@@ -685,7 +691,7 @@ class JsonApiClient(RestClient):
         )['data']
 
     @wrap_exception('Unable to interpret genpath table contents')
-    def interpret_genpath_table_contents(self, contents):
+    def interpret_genpath_table_contents(self, contents) -> str:
         return self._make_request(
             method='POST', path='/interpret/genpath-table-contents', data={'contents': contents}
         )['contents']

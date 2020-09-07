@@ -3,7 +3,9 @@ from io import StringIO
 import http.client
 import json
 import urllib.request, urllib.parse, urllib.error
-from typing import Dict, Any
+from typing import Dict, Any, Union
+
+from typed_ast._ast3 import Bytes
 
 from .file_util import un_gzip_stream
 
@@ -49,7 +51,7 @@ class RestClient(object):
         data=None,
         return_response=False,
         authorized=True,
-    ):
+    ) -> Union[Bytes, str, Dict]:
         """
         `data` can be one of the following:
         - bytes
