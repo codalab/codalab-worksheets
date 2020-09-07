@@ -31,7 +31,7 @@ class UploadedBundle(NamedBundle):
     # fmt: on
 
     @classmethod
-    def construct(cls, metadata, owner_id, uuid=None):
+    def construct(cls, metadata, owner_id, uuid=None) -> None:
         row = {
             'bundle_type': cls.BUNDLE_TYPE,
             'command': None,
@@ -45,5 +45,5 @@ class UploadedBundle(NamedBundle):
             row['uuid'] = uuid
         return super(UploadedBundle, cls).construct(row)
 
-    def run(self, bundle_store, parent_dict):
+    def run(self, bundle_store, parent_dict) -> None:
         assert False, '%ss should never be run!' % (self.__class__.__name__,)

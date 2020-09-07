@@ -5,7 +5,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.server.bundle_manager import BundleManager
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--sleep-time',

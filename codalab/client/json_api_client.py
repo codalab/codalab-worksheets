@@ -691,7 +691,7 @@ class JsonApiClient(RestClient):
         )['contents']
 
     @wrap_exception('Unable to update worksheet')
-    def update_worksheet_raw(self, worksheet_id, lines):
+    def update_worksheet_raw(self, worksheet_id, lines) -> None:
         self._make_request(
             method='POST',
             path='/worksheets/%s/raw' % worksheet_id,
@@ -700,7 +700,7 @@ class JsonApiClient(RestClient):
         )
 
     @wrap_exception('Unable to fetch worker information')
-    def get_workers_info(self):
+    def get_workers_info(self) -> str:
         request_path = '/workers/info'
         response = self._make_request('GET', request_path)
         return response['data']

@@ -5,6 +5,7 @@ bundles to produce a new, packaged bundle.
 from typing import List
 
 from codalab.bundles.derived_bundle import DerivedBundle
+from codalab.bundles.named_bundle import NamedBundle
 from codalab.worker.bundle_state import State
 
 
@@ -15,7 +16,7 @@ class MakeBundle(DerivedBundle):
     @classmethod
     def construct(
         cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED
-    ):
+    ) -> NamedBundle:
         return super(MakeBundle, cls).construct(
             targets, command, metadata, owner_id, uuid, data_hash, state
         )

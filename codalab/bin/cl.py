@@ -4,7 +4,7 @@ from codalab.lib.bundle_cli import BundleCLI
 from codalab.lib.codalab_manager import CodaLabManager
 
 
-def main():
+def main() -> None:
     cli = BundleCLI(CodaLabManager())
     try:
         cli.do_command(sys.argv[1:])

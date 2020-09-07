@@ -34,7 +34,7 @@ class NamedBundle(Bundle):
         row['metadata'] = dict(row['metadata'], created=int(time.time()))
         return cls(row)
 
-    def validate(self):
+    def validate(self) -> None:
         super(NamedBundle, self).validate()
         bundle_type = self.bundle_type.title()
         if not self.metadata.name:
@@ -48,5 +48,5 @@ class NamedBundle(Bundle):
             str(self.metadata.name),
         )
 
-    def simple_str(self):
+    def simple_str(self) -> str:
         return self.metadata.name + '(' + self.uuid + ')'

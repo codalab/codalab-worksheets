@@ -13,18 +13,18 @@ from codalab.lib.codalab_manager import CodaLabManager
 class ClFileWatcherEventHandler(FileSystemEventHandler):
     SERVER_PROCESS = None
 
-    def __init__(self, argv):
+    def __init__(self, argv) -> None:
         super(ClFileWatcherEventHandler, self).__init__()
         self.argv = argv
         self.restart()
 
-    def restart(self):
+    def restart(self) -> None:
         if self.SERVER_PROCESS:
             self.SERVER_PROCESS.kill()
 
         self.SERVER_PROCESS = subprocess.Popen(self.argv)
 
-    def on_any_event(self, event):
+    def on_any_event(self, event) -> None:
         extensions_to_watch = ('.js', '.py', '.html', '.css', '.tpl')
         file_extension = os.path.splitext(event.src_path)[1]
 
@@ -33,7 +33,7 @@ class ClFileWatcherEventHandler(FileSystemEventHandler):
             self.restart()
 
 
-def run_server_with_watch():
+def run_server_with_watch() -> None:
     modified_argv = list(sys.argv)
     modified_argv[0] = 'cl'
     modified_argv.remove('--watch')
@@ -51,7 +51,7 @@ def run_server_with_watch():
     observer.join()
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--watch', help='Restart the server on code changes.', action='store_true')
     parser.add_argument(

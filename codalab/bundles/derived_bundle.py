@@ -20,7 +20,7 @@ class DerivedBundle(NamedBundle):
     # fmt: on
 
     @classmethod
-    def construct(cls, targets, command, metadata, owner_id, uuid, data_hash, state):
+    def construct(cls, targets, command, metadata, owner_id, uuid, data_hash, state) -> NamedBundle:
         if not uuid:
             uuid = spec_util.generate_uuid()
         # Check that targets does not include both keyed and anonymous targets.

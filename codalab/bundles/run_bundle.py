@@ -11,6 +11,7 @@ and ./stderr. The ./output directory may also be used to store output files.
 from typing import List
 
 from codalab.bundles.derived_bundle import DerivedBundle
+from codalab.bundles.named_bundle import NamedBundle
 from codalab.common import UsageError
 
 from codalab.lib.completers import DockerImagesCompleter
@@ -60,14 +61,14 @@ class RunBundle(DerivedBundle):
     @classmethod
     def construct(
         cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED
-    ):
+    ) -> NamedBundle:
         if not isinstance(command, str):
             raise UsageError('%r is not a valid command!' % (command,))
         return super(RunBundle, cls).construct(
             targets, command, metadata, owner_id, uuid, data_hash, state
         )
 
-    def validate(self):
+    def validate(self) -> None:
         super(RunBundle, self).validate()
         for dep in self.dependencies:
             dep.validate(require_child_path=True)

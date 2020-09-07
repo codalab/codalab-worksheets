@@ -11,7 +11,7 @@ they may override a number of methods of the base class:
   validate: bundle subclasses may require additional validation
   run: bundle subclasses that must be executed must override this method
 '''
-from typing import List
+from typing import List, Dict
 
 from codalab.common import precondition
 from codalab.lib import spec_util
@@ -29,10 +29,10 @@ class Bundle(ORMObject):
     METADATA_SPECS: list
 
     @classmethod
-    def construct(cls, *args, **kwargs):
+    def construct(cls, *args, **kwargs) -> None:
         raise NotImplementedError
 
-    def validate(self):
+    def validate(self) -> None:
         '''
         Check a number of basic conditions that would indicate serious errors if
         they do not hold. Subclasses may override this method for further
@@ -48,10 +48,10 @@ class Bundle(ORMObject):
         for dep in self.dependencies:
             dep.validate()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(uuid=%r)' % (self.__class__.__name__, str(self.uuid))
 
-    def update_in_memory(self, row, strict=False):
+    def update_in_memory(self, row, strict=False) -> None:
         metadata = row.pop('metadata', None)
         dependencies = row.pop('dependencies', None)
         if strict:
@@ -65,7 +65,7 @@ class Bundle(ORMObject):
         if dependencies is not None:
             self.dependencies = [Dependency(dep) for dep in dependencies]
 
-    def to_dict(self, strict=True):
+    def to_dict(self, strict=True) -> Dict:
         result = super(Bundle, self).to_dict(strict=strict)
         result['metadata'] = self.metadata.to_dicts(self.METADATA_SPECS)
         for metadata_row in result['metadata']:
@@ -74,7 +74,7 @@ class Bundle(ORMObject):
         return result
 
     @classmethod
-    def get_user_defined_metadata(cls):
+    def get_user_defined_metadata(cls) -> List:
         '''
         Return a list of metadata specs for metadata that must be input by the user.
         '''
