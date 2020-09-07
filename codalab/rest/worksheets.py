@@ -3,6 +3,8 @@ import os
 import random
 
 import datetime
+from typing import Dict, List
+
 from bottle import get, post, put, delete, response, local, redirect, request
 
 from codalab.common import PermissionError, UsageError, NotFoundError
@@ -163,7 +165,7 @@ def create_worksheets():
 
 @put('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR, apply=ProtectedPlugin())
 @post('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR, apply=ProtectedPlugin())
-def update_worksheet_raw(uuid):
+def update_worksheet_raw(uuid) -> None:
     """
     Request body contains the raw lines of the worksheet.
     """
@@ -190,7 +192,7 @@ def update_worksheets():
 
 
 @delete('/worksheets', apply=AuthenticatedProtectedPlugin())
-def delete_worksheets():
+def delete_worksheets() -> None:
     """
     Delete the bundles specified.
     If |force|, allow deletion of bundles that have descendants or that appear across multiple worksheets.
@@ -208,7 +210,7 @@ def delete_worksheets():
     '/worksheets/<worksheet_uuid:re:%s>/add-items' % spec_util.UUID_STR,
     apply=AuthenticatedProtectedPlugin(),
 )
-def replace_items(worksheet_uuid):
+def replace_items(worksheet_uuid) -> None:
     """
     Replace worksheet items with 'ids' with new 'items'.
     The new items will be inserted after the after_sort_key
@@ -278,7 +280,7 @@ def set_worksheet_permissions():
 
 
 @get('/worksheets/sample/', apply=ProtectedPlugin())
-def get_sample_worksheets():
+def get_sample_worksheets() -> json:
     """
     Get worksheets to display on the front page.
     Keep only |worksheet_uuids|.
@@ -305,7 +307,7 @@ def get_sample_worksheets():
 
 
 @get('/worksheets/', apply=ProtectedPlugin())
-def get_worksheets_landing():
+def get_worksheets_landing() -> None:
     requested_ws = request.query.get('uuid', request.query.get('name', 'home'))
     uuid = get_worksheet_uuid_or_create(None, requested_ws)
     redirect('/worksheets/%s/' % uuid)
@@ -350,7 +352,7 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permissions=True):
     return result
 
 
-def update_worksheet_items(worksheet_info, new_items, convert_items=True):
+def update_worksheet_items(worksheet_info, new_items, convert_items=True) -> None:
     """
     Set the worksheet to have items |new_items|.
     """
@@ -369,7 +371,7 @@ def update_worksheet_items(worksheet_info, new_items, convert_items=True):
         raise UsageError('%s was updated concurrently!' % (worksheet,))
 
 
-def update_worksheet_metadata(uuid, info):
+def update_worksheet_metadata(uuid, info) -> None:
     """
     Change the metadata of the worksheet |uuid| to |info|,
     where |info| specifies name, title, owner, etc.
@@ -388,7 +390,7 @@ def update_worksheet_metadata(uuid, info):
     local.model.update_worksheet_metadata(worksheet, metadata)
 
 
-def set_worksheet_permission(worksheet, group_uuid, permission):
+def set_worksheet_permission(worksheet, group_uuid, permission) -> None:
     """
     Give the given |group_uuid| the desired |permission| on |worksheet_uuid|.
     """
@@ -396,7 +398,7 @@ def set_worksheet_permission(worksheet, group_uuid, permission):
     local.model.set_group_worksheet_permission(group_uuid, worksheet.uuid, permission)
 
 
-def populate_worksheet(worksheet, name, title):
+def populate_worksheet(worksheet, name, title) -> None:
     file_path = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws'
     )
@@ -407,7 +409,7 @@ def populate_worksheet(worksheet, name, title):
     update_worksheet_metadata(worksheet.uuid, {'title': title})
 
 
-def ensure_unused_worksheet_name(name):
+def ensure_unused_worksheet_name(name) -> None:
     """
     Ensure worksheet names are unique.
     Note: for simplicity, we are ensuring uniqueness across the system, even on
@@ -429,7 +431,7 @@ def ensure_unused_worksheet_name(name):
         pass  # all good!
 
 
-def new_worksheet(name):
+def new_worksheet(name) -> str:
     """
     Create a new worksheet with the given |name|.
     """
@@ -452,7 +454,7 @@ def new_worksheet(name):
     return worksheet.uuid
 
 
-def get_worksheet_uuid_or_create(base_worksheet_uuid, worksheet_spec):
+def get_worksheet_uuid_or_create(base_worksheet_uuid, worksheet_spec) -> str:
     """
     Return the uuid of the specified worksheet if it exists.
     If not, create a new worksheet if the specified worksheet is home_worksheet
@@ -472,7 +474,7 @@ def get_worksheet_uuid_or_create(base_worksheet_uuid, worksheet_spec):
             raise
 
 
-def add_worksheet_item(worksheet_uuid, item):
+def add_worksheet_item(worksheet_uuid, item) -> None:
     """
     Add the given item to the worksheet.
     """
@@ -482,7 +484,7 @@ def add_worksheet_item(worksheet_uuid, item):
     local.model.add_worksheet_items(worksheet_uuid, [item])
 
 
-def delete_worksheet(uuid, force):
+def delete_worksheet(uuid, force) -> None:
     worksheet = local.model.get_worksheet(uuid, fetch_items=True)
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     if not force:
@@ -499,14 +501,14 @@ def delete_worksheet(uuid, force):
     local.model.delete_worksheet(uuid)
 
 
-def search_worksheets(keywords):
+def search_worksheets(keywords) -> List:
     keywords = resolve_owner_in_keywords(keywords)
     results = local.model.search_worksheets(request.user.user_id, keywords)
     _set_owner_names(results)
     return results
 
 
-def _set_owner_names(results):
+def _set_owner_names(results) -> None:
     """
     Helper function: Set owner_name given owner_id of each item in results.
     """
