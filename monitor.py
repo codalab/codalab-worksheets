@@ -328,7 +328,7 @@ while True:
             run_command(['cl', 'search', '.last', '.limit=5'])
 
         # Try uploading, downloading and running a job with a dependency.
-        if run_time():
+        if run_time() and get_public_workers():
             upload_uuid = run_command(
                 ['cl', 'upload', os.path.join(BASE_DIR, 'scripts', 'stress-test.pl')]
             )
