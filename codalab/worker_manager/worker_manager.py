@@ -12,7 +12,6 @@ from codalab.client.json_api_client import JsonApiException
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.bundle_state import State
 
-
 logger = logging.getLogger(__name__)
 
 # Represents a AWS/Azure job that runs a single cl-worker.
@@ -143,7 +142,8 @@ class WorkerManager(object):
 
         # Print status
         logger.info(
-            '{} staged bundles ({} removed since last time), {} worker jobs (min={}, max={}) ({} active, {} pending)'.format(
+            '{} staged bundles ({} removed since last time), '
+            '{} worker jobs (min={}, max={}) ({} active, {} pending)'.format(
                 len(self.staged_uuids),
                 len(removed_uuids),
                 len(worker_jobs),

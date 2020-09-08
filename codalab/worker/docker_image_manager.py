@@ -152,7 +152,8 @@ class DockerImageManager:
         When the requested image in the following states:
         1. If it's not available on the platform, we download the image and return DOWNLOADING status.
         2. If another thread is actively downloading it, we return DOWNLOADING status.
-        3. If another thread was downloading it but not active by the time the request was sent, we return the following status:
+        3. If another thread was downloading it but not active by the time the request was sent,
+        we return the following status:
             * READY if the image was downloaded successfully.
             * FAILED if the image wasn't able to be downloaded due to any reason.
         :param image_spec: Repo image_spec of docker image being requested
@@ -207,7 +208,8 @@ class DockerImageManager:
             # will fail since the `latest` tag won't be found on the system.
             # We don't want to assume what tag the user wanted so we want the pull step to fail if no tag is specified
             # and there's no latest tag on dockerhub.
-            # Hence, we append the latest tag to the image spec if there's no tag specified otherwise at the very beginning
+            # Hence, we append the latest tag to the image spec if there's no tag specified otherwise at the very
+            # beginning
             image_spec += ':latest'
         try:
             if image_spec in self._downloading:

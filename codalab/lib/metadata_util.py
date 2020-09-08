@@ -1,4 +1,4 @@
-'''
+"""
 metadata_util contains methods for dealing with command-line metadata input.
 
 The add_arguments function takes an ArgumentParser and adds arguments for
@@ -6,23 +6,28 @@ the metadata for a given bundle type. After parsing these arguments, all
 of which are optional on the CLI but some of which are required for the
 bundle itself, call request_missing_metadata to pop up an editor to get the
 missing metadata values.
-'''
+"""
 import os
 
 from codalab.common import UsageError
 from codalab.lib.metadata_defaults import MetadataDefaults
 from codalab.lib import editor_util, unicode_util
 
-metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
-metadata_argument_to_key = lambda arg_key: arg_key[3:]
+
+def metadata_key_to_argument(metadata_key):
+    return 'md_%s' % (metadata_key,)
+
+
+def metadata_argument_to_key(arg_key):
+    return arg_key[3:]
 
 
 def fill_missing_metadata(bundle_subclass, args, initial_metadata):
-    '''
+    """
     Return metadata for bundles by filling in the missing metadata with default values.
     args: Namespace object created from attributes parsed out of the command line. See
         `argparse` for more information
-    '''
+    """
     # Fill in default values for all unsupplied metadata keys.
     new_initial_metadata = {}
     for spec in bundle_subclass.get_user_defined_metadata():
@@ -44,9 +49,9 @@ def fill_missing_metadata(bundle_subclass, args, initial_metadata):
 
 
 def request_missing_metadata(bundle_subclass, initial_metadata):
-    '''
+    """
     Pop up an editor and request data from the user.
-    '''
+    """
     # Construct a form template with the required keys, prefilled with the
     # command-line metadata options.
     template_lines = []
@@ -74,9 +79,9 @@ def request_missing_metadata(bundle_subclass, initial_metadata):
 
 
 def parse_metadata_form(bundle_subclass, form_result):
-    '''
+    """
     Parse the result of a form template produced out request_missing_metadata.
-    '''
+    """
     metadata_specs = bundle_subclass.get_user_defined_metadata()
     metadata_types = {spec.key: spec.type for spec in metadata_specs}
     result = {}

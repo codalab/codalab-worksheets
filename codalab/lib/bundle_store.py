@@ -156,7 +156,8 @@ class MultiDiskBundleStore(object):
             Prevent foot-shooting
             """
             print(
-                "Error, cannot remove last partition. If you really wish to delete CodaLab, please run the following command:",
+                "Error, cannot remove last partition. "
+                "If you really wish to delete CodaLab, please run the following command:",
                 file=sys.stderr,
             )
             print("      rm -rf %s" % self.codalab_home, file=sys.stderr)
@@ -223,9 +224,10 @@ class MultiDiskBundleStore(object):
                directory. If they are then delete the dependencies.
             5. For bundle <UUID> marked READY or FAILED, <UUID>.cid or <UUID>.status, or the <UUID>(-internal).sh files
                should not exist.
-        |force|: Perform any destructive operations on the bundle store the health check determines are necessary. False by default
-        |compute_data_hash|: If True, compute the data_hash for every single bundle ourselves and see if it's consistent with what's in
-                             the database. False by default.
+        |force|: Perform any destructive operations on the bundle store the health check determines are necessary.
+                 False by default
+        |compute_data_hash|: If True, compute the data_hash for every single bundle ourselves and see if it's
+                             consistent with what's in the database. False by default.
         """
         UUID_REGEX = re.compile(r'^(%s)' % spec_util.UUID_STR)
 

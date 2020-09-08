@@ -5,7 +5,7 @@ a list of CodaLab bundle system command-line arguments and executes them.
 Each of the supported commands corresponds to a method on this class.
 This function takes an argument list and does the action.
 
-For example: 
+For example:
   cl upload foo
 
 results in the following:
@@ -99,7 +99,6 @@ from codalab.worker.file_util import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
-
 
 # Command groupings
 BUNDLE_COMMANDS = (
@@ -533,8 +532,8 @@ class BundleCLI(object):
     ):
         """
         Wrapper for resolve_target that takes a list of target specs and returns a list of bundle uuids.
-        Supports the new worksheet//bundle notation, doesn't support the old worksheet/bundle notation that was only partially
-        supported
+        Supports the new worksheet//bundle notation, doesn't support the old worksheet/bundle notation that was only
+        partially supported
         """
         return [
             self.resolve_target(default_client, default_worksheet_uuid, spec, allow_remote)[
@@ -552,8 +551,8 @@ class BundleCLI(object):
             where <bundle_spec> is required and the rest are optional.
 
         Returns:
-            - client: A client connected to the instance the target is from if allow_remote is True and an instance is specified,
-                otherwise default_client
+            - client: A client connected to the instance the target is from if allow_remote is True and an instance is
+                specified, otherwise default_client
             - worksheet_uuid: The uuid of the worksheet the target bundle is from,
                 a new uuid if the target spec includes a worksheet spec
                 same as default_worksheet_uuid otherwise
@@ -567,7 +566,8 @@ class BundleCLI(object):
                 raise UsageError('Cannot use alias on web CLI')
             if not allow_remote:
                 raise UsageError(
-                    'Cannot execute command on a target on a remote instance. Please remove the instance reference (i.e. "prod::" in prod::worksheet//bundle)'
+                    'Cannot execute command on a target on a remote instance. Please remove the instance reference '
+                    '(i.e. "prod::" in prod::worksheet//bundle)'
                 )
             aliases = self.manager.config['aliases']
             if instance in aliases:
@@ -805,7 +805,8 @@ class BundleCLI(object):
         Commands.Argument(
             '-m',
             '--memoize',
-            help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
+            help='If a bundle with the same command and dependencies already exists, '
+            'return it instead of creating a new one.',
             action='store_true',
         ),
     ) + WAIT_ARGUMENTS
@@ -841,7 +842,13 @@ class BundleCLI(object):
 
         # Strip whitespace and parse according to shell escaping rules
         try:
-            clean = lambda s: shlex.split(s.strip())[0] if s else ''
+
+            def clean(s):
+                if s:
+                    return shlex.split(s.strip())[0]
+                else:
+                    return ''
+
         except ValueError as e:
             raise UsageError(str(e))
         return list(
@@ -872,7 +879,8 @@ class BundleCLI(object):
             args = parser.parse_args(argv)
 
         # Bind self (BundleCLI instance) and args to command function
-        command_fn = lambda: args.function(self, args)
+        def command_fn():
+            return args.function(self, args)
 
         if self.verbose >= 2:
             structured_result = command_fn()
@@ -1331,7 +1339,8 @@ class BundleCLI(object):
             Commands.Argument(
                 '-o',
                 '--output-path',
-                help='Path to download bundle to.  By default, the bundle or subpath name in the current directory is used.',
+                help='Path to download bundle to. '
+                'By default, the bundle or subpath name in the current directory is used.',
             ),
             Commands.Argument(
                 '-f',
@@ -1530,7 +1539,8 @@ class BundleCLI(object):
         help=[
             'Create a bundle by combining parts of existing bundles.',
             '  make <bundle>/<subpath>                : New bundle\'s contents are copied from <subpath> in <bundle>.',
-            '  make <key>:<bundle> ... <key>:<bundle> : New bundle contains file/directories <key> ... <key>, whose contents are given.',
+            '  make <key>:<bundle> ... <key>:<bundle> : '
+            'New bundle contains file/directories <key> ... <key>, whose contents are given.',
         ],
         arguments=(
             Commands.Argument(
@@ -1622,7 +1632,8 @@ class BundleCLI(object):
             Commands.Argument(
                 '-m',
                 '--memoize',
-                help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
+                help='If a bundle with the same command and dependencies already exists, '
+                'return it instead of creating a new one.',
                 action='store_true',
             ),
             Commands.Argument(
@@ -1722,7 +1733,8 @@ class BundleCLI(object):
             Commands.Argument('-d', '--description', help='New bundle description.'),
             Commands.Argument(
                 '--anonymous',
-                help='Set bundle to be anonymous (identity of the owner will NOT be visible to users without \'all\' permission on the bundle).',
+                help='Set bundle to be anonymous '
+                '(identity of the owner will NOT be visible to users without \'all\' permission on the bundle).',
                 dest='anonymous',
                 action='store_true',
                 default=None,
@@ -2289,7 +2301,8 @@ class BundleCLI(object):
     @Commands.command(
         'mount',
         help=[
-            'Beta feature: this command may change in a future release. Mount the contents of a bundle at a read-only mountpoint.'
+            'Beta feature: this command may change in a future release. '
+            'Mount the contents of a bundle at a read-only mountpoint.'
         ],
         arguments=(
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=TargetsCompleter),
@@ -2481,7 +2494,8 @@ class BundleCLI(object):
                 '-t',
                 '--tail',
                 action='store_true',
-                help='Print out the tail of the file or bundle and block until the run bundle has finished running.',
+                help='Print out the tail of the file or bundle and '
+                'block until the run bundle has finished running.',
             ),
             Commands.Argument(
                 '-w',
@@ -2601,7 +2615,8 @@ class BundleCLI(object):
             'Creates a set of bundles based on analogy with another set.',
             '  mimic <run>      : Rerun the <run> bundle.',
             '  mimic A B        : For all run bundles downstream of A, rerun with B instead.',
-            '  mimic A X B -n Y : For all run bundles used to produce X depending on A, rerun with B instead to produce Y.',
+            '  mimic A X B -n Y : For all run bundles used to produce X depending on A, '
+            'rerun with B instead to produce Y.',
             'Any provided metadata arguments will override the original metadata in mimicked bundles.',
         ],
         arguments=(
@@ -2628,11 +2643,13 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument(
                 'macro_name',
-                help='Name of the macro (look for <macro_name>-in1, <macro_name>-in-<name>, ..., and <macro_name>-out bundles).',
+                help='Name of the macro (look for <macro_name>-in1, <macro_name>-in-<name>, ..., '
+                'and <macro_name>-out bundles).',
             ),
             Commands.Argument(
                 'bundles',
-                help='Bundles: new_input_1 ... new_input_n named_input_name:named_input_bundle other_named_input_name:other_named_input_bundle (%s)'
+                help='Bundles: new_input_1 ... new_input_n named_input_name:'
+                'named_input_bundle other_named_input_name:other_named_input_bundle (%s)'
                 % BUNDLE_SPEC_FORMAT,
                 nargs='+',
                 completer=BundlesCompleter,
@@ -3036,7 +3053,8 @@ class BundleCLI(object):
             ),
             Commands.Argument(
                 '--anonymous',
-                help='Set worksheet to be anonymous (identity of the owner will NOT be visible to users without \'all\' permission on the worksheet).',
+                help='Set worksheet to be anonymous (identity of the owner will NOT be visible to users '
+                'without \'all\' permission on the worksheet).',
                 dest='anonymous',
                 action='store_true',
                 default=None,
@@ -3319,7 +3337,8 @@ class BundleCLI(object):
             Commands.Argument(
                 '-r',
                 '--replace',
-                help='Replace everything on the destination worksheet with the items from the source worksheet, instead of appending (does not delete old bundles, just detaches).',
+                help='Replace everything on the destination worksheet with the items from the source worksheet, '
+                'instead of appending (does not delete old bundles, just detaches).',
                 action='store_true',
             ),
         ),
@@ -3990,7 +4009,8 @@ class BundleCLI(object):
 
     @Commands.command(
         'bs-health-check',
-        help='Perform a health check on the bundle store, garbage collecting bad files in the store. Performs a dry run by default, use -f to force removal.',
+        help='Perform a health check on the bundle store, garbage collecting bad files in the store. '
+        'Performs a dry run by default, use -f to force removal.',
         arguments=(
             Commands.Argument(
                 '-f',

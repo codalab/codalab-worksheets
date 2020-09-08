@@ -168,7 +168,7 @@ def redirect_with_query(redirect_uri, params):
     """Return a Bottle redirect to the given target URI with query parameters
     encoded from the params dict.
     """
-    return redirect(redirect_uri + '?' + urllib.parse.urlencode(params))
+    return redirect(redirect_uri + '?' + parse.urlencode(params))
 
 
 """

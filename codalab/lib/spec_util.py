@@ -10,19 +10,19 @@ UUID_STR = '0x[0-9a-f]{32}'
 UUID_REGEX = re.compile('^' + UUID_STR + '$')
 UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}$')
 BEGIN_NAME_STR = '[a-zA-Z_]'
-NAME_STR = '[a-zA-Z_][a-zA-Z0-9_\.\-]*'
-NAME_PATTERN_STR = '[%\*a-zA-Z0-9_\.\-]+'  # Allow % for matching wildcard (SQL syntax), and * (regular expressions)
+NAME_STR = '[a-zA-Z_][a-zA-Z0-9_\\.\\-]*'
+NAME_PATTERN_STR = '[%\\*a-zA-Z0-9_\\.\\-]+'  # Allow % for matching wildcard (SQL syntax), and * (regular expressions)
 NAME_REGEX = re.compile('^' + NAME_STR + '$')  # Names (exact match)
 NAME_PATTERN_REGEX = re.compile('^(' + NAME_PATTERN_STR + ')$')  # Name pattern (loose match)
-NAME_PATTERN_HISTORY_REGEX = re.compile('^(' + NAME_PATTERN_STR + ')\^([0-9]*)$')
-HISTORY_REGEX = re.compile('^\^([0-9]*)$')
+NAME_PATTERN_HISTORY_REGEX = re.compile('^(' + NAME_PATTERN_STR + ')\\^([0-9]*)$')
+HISTORY_REGEX = re.compile('^\\^([0-9]*)$')
 ID_REGEX = re.compile('^[0-9]+$')
-NOT_NAME_CHAR_REGEX = re.compile('[^a-zA-Z0-9_\.\-]')
+NOT_NAME_CHAR_REGEX = re.compile('[^a-zA-Z0-9_\\.\\-]')
 HISTORY_RANGE_REGEX = re.compile(
-    '(.*\^)([0-9]+)-([0-9]+)'
+    '(.*\\^)([0-9]+)-([0-9]+)'
 )  # Allow ranges foo^1-3 => foo^1 foo^2 foo^3
-BASIC_EMAIL_REGEX = re.compile(r'^[^@]+@[^@]+\.[^@]+$')
-SUB_PATH_REGEX = re.compile('^[a-zA-Z0-9_\-.]*\Z')
+BASIC_EMAIL_REGEX = re.compile(r'^[^@]+@[^@]+\\.[^@]+$')
+SUB_PATH_REGEX = re.compile('^[a-zA-Z0-9_\\-.]*\\Z')
 
 
 def expand_specs(specs):
@@ -78,7 +78,7 @@ def create_default_name(bundle_type, raw_material):
     if bundle_type == 'run':
         raw_material = raw_material.split(' ')[0]
     name = (bundle_type + '-' if bundle_type else '') + NOT_NAME_CHAR_REGEX.sub('-', raw_material)
-    name = re.compile('\-+').sub('-', name)  # Collapse '---' => '-'
+    name = re.compile('\\-+').sub('-', name)  # Collapse '---' => '-'
     if not re.match(BEGIN_NAME_STR, name):
         name = '_' + name
     name = shorten_name(name)  # Shorten

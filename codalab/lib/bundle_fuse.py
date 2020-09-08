@@ -169,7 +169,8 @@ if fuse_is_available:
             if info['type'] == 'file':
                 self.single_file_bundle = True
                 print(
-                    'Note: specified bundle is a single file; mountpoint will look like a directory that contains that single file.'
+                    'Note: specified bundle is a single file; '
+                    'mountpoint will look like a directory that contains that single file.'
                 )
 
         # Helpers

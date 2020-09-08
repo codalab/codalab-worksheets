@@ -33,7 +33,7 @@ def wrap_exception(message):
                     else:
                         raise BundleServiceException(
                             message + ': ' + http.client.responses[e.code] + ' - ' + client_error,
-                            e.code >= 400 and e.code < 500,
+                            400 <= e.code < 500,
                         )
                 except json.decoder.JSONDecodeError as e:
                     raise BundleServiceException(message + ': ' + str(e), False)

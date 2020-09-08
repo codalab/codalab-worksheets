@@ -4,10 +4,13 @@ memory-efficent ways.
 """
 
 import sys
-from . import formatting
 import urllib.request, urllib.parse, urllib.error
 import subprocess
+
 from codalab.common import URLOPEN_TIMEOUT_SECONDS
+from . import formatting
+
+BUFFER_SIZE = 2 * 1024 * 1024
 
 BUFFER_SIZE = 2 * 1024 * 1024
 

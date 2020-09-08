@@ -254,7 +254,8 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                         )[0]
                     else:
                         logger.info(
-                            'Dependency quota full but there are only downloading dependencies, not cleaning up until downloads are over'
+                            'Dependency quota full but there are only downloading dependencies, '
+                            'not cleaning up until downloads are over'
                         )
                         self._release_all_locks()
                         break

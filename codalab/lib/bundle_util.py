@@ -312,7 +312,6 @@ def mimic_bundles(
                                 params={'uuid': worksheet_uuid},
                             )
                             new_bundle_uuids_added.add(new_bundle_uuid)
-                            just_added = True
 
                 if (item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or item[
                     'type'

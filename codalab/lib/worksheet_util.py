@@ -64,11 +64,11 @@ TYPE_WORKSHEET = 'worksheet'
 WORKSHEET_ITEM_TYPES = (TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET)
 
 
-BUNDLE_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{([^{]*)\}\s*$')
-SUBWORKSHEET_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{\{(.*)\}\}\s*$')
+BUNDLE_REGEX = re.compile('^\\s*(\\[(.*)\\])?\\s*\\{([^{]*)\\}\\s*$')
+SUBWORKSHEET_REGEX = re.compile('^\\s*(\\[(.*)\\])?\\s*\\{\\{(.*)\\}\\}\\s*$')
 
 DIRECTIVE_CHAR = '%'
-DIRECTIVE_REGEX = re.compile(r'^\s*' + DIRECTIVE_CHAR + '\s*(.*)\s*$')
+DIRECTIVE_REGEX = re.compile(r'^\\s*' + DIRECTIVE_CHAR + '\\s*(.*)\\s*$')
 
 # Default number of lines to pull for each display mode.
 DEFAULT_CONTENTS_MAX_LINES = 10
@@ -349,8 +349,10 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
     Quickly interpret the genpaths (generalized path) that only require looking
     bundle_info (e.g., 'time', 'command').  The interpretation of generalized
     paths that require reading files is done by interpret_file_genpath.
-    If genpath is referring to a file, then just returns instructions for fetching that file rather than actually doing it.
-    :param bundle_info: dictionary which contains metadata of current bundle's information, e.g. uuid, bundle_type, owner_id, etc.
+    If genpath is referring to a file,
+    then just returns instructions for fetching that file rather than actually doing it.
+    :param bundle_info: dictionary which contains metadata of current bundle's information,
+    e.g. uuid, bundle_type, owner_id, etc.
     :param genpath: a generalized path, e.g. column names(summary, owner, etc.), args.
     :param db_model (optional): database model which is used to query database
     :param owner_cache (optional): a dictionary stores mappings from owner_id to owner
@@ -542,7 +544,7 @@ def apply_func(func, arg):
                 t = tokens[2].replace(esc_slash, '/')
                 arg = re.sub(s, t, arg)
             elif f.startswith('['):  # substring
-                m = re.match('\[(.*):(.*)\]', f)
+                m = re.match('\\[(.*):(.*)\\]', f)
                 if m:
                     start = int(m.group(1) or 0)
                     end = int(m.group(2) or len(arg))
@@ -685,7 +687,7 @@ def interpret_items(schemas, raw_items, db_model=None):
         """
         Having collected bundles in |bundle_infos|, flush them into |blocks|,
         potentially as a single table depending on the mode.
-        bundle_block_start_index: The raw index for % display <mode> schema 
+        bundle_block_start_index: The raw index for % display <mode> schema
         """
         if len(bundle_infos) == 0:
             return

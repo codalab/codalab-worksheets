@@ -1,4 +1,4 @@
-'''
+"""
 Bundle is the ORM class for an individual bundle in the bundle system.
 This class overrides the ORMObject serialization methods, because a single
 bundle is stored in the database as one row in in the bundle table, plus
@@ -10,7 +10,7 @@ they may override a number of methods of the base class:
   construct: different bundle subclass might take different parameters
   validate: bundle subclasses may require additional validation
   run: bundle subclasses that must be executed must override this method
-'''
+"""
 from codalab.common import precondition
 from codalab.lib import spec_util
 from codalab.model.orm_object import ORMObject
@@ -31,11 +31,11 @@ class Bundle(ORMObject):
         raise NotImplementedError
 
     def validate(self):
-        '''
+        """
         Check a number of basic conditions that would indicate serious errors if
         they do not hold. Subclasses may override this method for further
         validation, but they should always call the super's method.
-        '''
+        """
         spec_util.check_uuid(self.uuid)
         abstract_init = 'init-ed abstract bundle: %s' % (self.__class__.__name__,)
         precondition(self.BUNDLE_TYPE, abstract_init)
@@ -73,7 +73,7 @@ class Bundle(ORMObject):
 
     @classmethod
     def get_user_defined_metadata(cls):
-        '''
+        """
         Return a list of metadata specs for metadata that must be input by the user.
-        '''
+        """
         return [spec for spec in cls.METADATA_SPECS if not spec.generated]

@@ -1,6 +1,6 @@
-'''
+"""
 AuthHandler encapsulates the logic to authenticate users on the server-side.
-'''
+"""
 import base64
 import json
 import urllib.request, urllib.parse, urllib.error
@@ -18,11 +18,13 @@ class RestOAuthHandler(object):
     other user records from the local database.
     """
 
-    def __init__(self, address, extra_headers={}):
+    def __init__(self, address, extra_headers=None):
         """
         address: the address of the server
         model: BundleModel instance
         """
+        if extra_headers is None:
+            extra_headers = {}
         self._address = address
         self._extra_headers = extra_headers
 

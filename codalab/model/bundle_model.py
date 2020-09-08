@@ -56,7 +56,7 @@ from codalab.worker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 
-SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
+SEARCH_KEYWORD_REGEX = re.compile('^([.\\w/]*)=(.*)$')
 SEARCH_RESULTS_LIMIT = 10
 
 
@@ -2118,7 +2118,8 @@ class BundleModel(object):
         |query_info| specifies the user_id of the user that you are querying about.
         Example: query_info = {
             user_id: 2,   // get the chats sent by and received by the user with user_id 2
-            limit: 20,   // get the most recent 20 chats related to this user. This is optional, as by default it will get all the chats.
+            limit: 20,   // get the most recent 20 chats related to this user.
+            This is optional, as by default it will get all the chats.
         }
         Return a list of chats that the user have had given the user_id
         """

@@ -1,6 +1,6 @@
-'''
+"""
 Defines ORM classes for groups and permissions.
-'''
+"""
 from codalab.common import NotFoundError, UsageError, PermissionError, IntegrityError
 from codalab.lib import spec_util
 from codalab.model.tables import (
@@ -17,7 +17,7 @@ from codalab.model.util import LikeQuery
 
 
 def unique_group(model, group_spec, user_id):
-    '''
+    """
     Return a group_info corresponding to |group_spec|.
     If |user_id| is given, only search only group that the user is involved in
     (either as an owner or just as a regular member).
@@ -29,7 +29,7 @@ def unique_group(model, group_spec, user_id):
 
     TODO: function returning different columns based on a flag is not good design
 
-    '''
+    """
 
     def search_all(model, **spec_filters):
         return model.batch_get_groups(**spec_filters)
@@ -47,11 +47,11 @@ def unique_group(model, group_spec, user_id):
 
 
 def get_single_group(model, group_spec, search_fn):
-    '''
+    """
     Helper function.
     Resolve a string group_spec to a unique group for the given |search_fn|.
     Throw an error if zero or more than one group matches.
-    '''
+    """
     if not group_spec:
         raise UsageError('Tried to expand empty group_spec!')
     if spec_util.UUID_REGEX.match(group_spec):

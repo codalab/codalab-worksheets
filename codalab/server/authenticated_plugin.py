@@ -10,7 +10,10 @@ import os
 class AuthPlugin(ABC):
     _NOT_AUTHENTICATED_ERROR = 'User is not authenticated.'
     _NOT_VERIFIED_ERROR = 'User is not verified.'
-    _ACCESS_DENIED_ERROR = 'User has not been given access to this CodaLab instance. Please contact the admin for access.'
+    _ACCESS_DENIED_ERROR = (
+        'User has not been given access to this CodaLab instance. '
+        'Please contact the admin for access.'
+    )
 
     api = 2
 
