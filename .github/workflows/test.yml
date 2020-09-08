@@ -31,7 +31,6 @@ jobs:
           restore-keys: |
             pip-
       - run: ./pre-commit.sh && git diff --exit-code
-      - run: pip install -r requirements.dev.txt
   build:
     name: Build
     runs-on: ubuntu-latest
