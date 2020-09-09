@@ -1,6 +1,6 @@
 apache-beam==2.21.0
 bottle==0.12.18
-docker==4.2.2
+docker==4.3.0
 marshmallow-jsonapi==0.15.1
 marshmallow==2.15.1
 setuptools>=40.0.0
@@ -18,4 +18,4 @@ selenium==3.141.0
 requests==2.24.0
 azure-storage-blob==12.4.0
 azure-core==1.8.0
-sentry-sdk==0.17.0
+sentry-sdk==0.17.3

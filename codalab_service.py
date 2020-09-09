@@ -539,7 +539,7 @@ class CodalabServiceManager(object):
             # so we can't just use regular interpolation with environment variables. Instead,
             # we create a temporary file with the modified docker-compose.yml and use that file instead.
             with open(os.path.join(self.compose_cwd, 'docker-compose.yml')) as f:
-                compose_options = yaml.load(f)
+                compose_options = yaml.safe_load(f)
             for mount_path in self.args.link_mounts.split(","):
                 mount_path = os.path.abspath(mount_path)
                 compose_options["x-codalab-server"]["volumes"].append(
