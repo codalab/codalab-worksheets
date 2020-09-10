@@ -9,8 +9,11 @@ services:
     # Fix for https://github.com/facebook/create-react-app/issues/8688
     stdin_open: true
     tty: true
-  # Mount the CodaLab base volume, so that 1) we can create new database migrations with the alembic version files
-  # mounted and 2) we can modify / run backend unit tests without having to rebuild the Docker image.
+  # Mount the alembic and tests directories within the CodaLab base volume, so that
+  # 1) we can create new database migrations with the alembic version files
+  # mounted and 2) we can modify / run backend unit tests without having to
+  # rebuild the Docker image.
   rest-server:
     volumes:
-      - ./../../:/opt/codalab-worksheets/
+      - ./../../alembic/:/opt/codalab-worksheets/alembic/
+      - ./../../tests/:/opt/codalab-worksheets/tests/
