@@ -3,7 +3,7 @@ Script to run both frontend and backend tests for CodaLab. Depending on the test
 will also create a second instance of CodaLab to test against.
 """
 
-from tests.cli.test_cli import TestModule
+from tests.cli.test_cli import TestModule  # type: ignore
 
 import argparse
 import random
