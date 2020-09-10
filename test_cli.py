@@ -1984,7 +1984,7 @@ def test_workers(ctx):
 
 
 @TestModule.register('sharing_workers')
-def test(ctx):
+def test_sharing_workers(ctx):
     def check_workers(user, expected_workers):
         switch_user(user)
         result = _run_command([cl, 'workers'])
@@ -2277,7 +2277,7 @@ def test_protected_mode(ctx):
 
 
 @TestModule.register('edit')
-def test(ctx):
+def test_edit(ctx):
     uuid = _run_command([cl, 'run', 'echo hello'], request_memory='10m')
     check_equals('10m', get_info(uuid, 'request_memory'))
     _run_command([cl, 'edit', uuid, '--field', 'request_memory', '12m'])
