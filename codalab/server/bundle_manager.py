@@ -380,12 +380,15 @@ class BundleManager(object):
         # are attempting to run each staged bundle will respect the ordering of
         # staged_bundles_to_run (i.e., they won't be used immediately, and will be instead
         # assigned bundles on the next run of _run_iteration).
-        resource_deducted_user_owned_workers = {}
+        resource_deducted_user_owned_workers = defaultdict(list)
         user_parallel_run_quota_left = {}
         for user in user_queue_positions.keys():
-            resource_deducted_user_owned_workers[user] = self._deduct_worker_resources(
-                workers.user_owned_workers(user), running_bundles_info
-            )
+            # Skip for the root user as the user-owned workers will be the public CodaLab workers,
+            # which are accounted for after this loop.
+            if user != self._model.root_user_id:
+                resource_deducted_user_owned_workers[user] = self._deduct_worker_resources(
+                    workers.user_owned_workers(user), running_bundles_info
+                )
             user_parallel_run_quota_left[user] = self._model.get_user_parallel_run_quota_left(
                 user, user_info_cache[user]
             )

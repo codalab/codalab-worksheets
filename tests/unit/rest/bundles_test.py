@@ -45,7 +45,7 @@ class BundlesTest(BaseTestCase):
         data = response.json["data"]
         bundle_id = data[0]["id"]
         state = data[0]["attributes"].pop("state")
-        failure_message = data[0]["attributes"]["metadata"].pop("failure_message")
+        failure_message = data[0]["attributes"]["metadata"].pop("failure_message", None)
         # self.assertTrue(state in ("created", "staged",))
         self.assertEqual(
             data,
