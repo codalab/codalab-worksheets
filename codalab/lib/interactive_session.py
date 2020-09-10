@@ -36,13 +36,9 @@ class InteractiveSession:
         "\n\n#\n"
         "# Choose the commands to use for cl run:\n"
         "#\n"
-        "# 1. Delete the lines of any unwanted commands. Removing all commands will not create a bundle.\n"
+        "# 1. Delete the lines of any unwanted commands. If you don't want to create the bundle, just remove all commands.\n"
         "# 2. Add any additional commands on a new line above these instructions.\n"
         "#\n"
-        "# To quit without creating a bundle, run:\n"
-        "#\n"
-        "#\t:%d | wq\n"
-        "#"
     )
     _INSTRUCTIONS_DELIMITER = '#'
     _MAX_SESSION_TIMEOUT = 8 * 60 * 60  # 8 hours in seconds
