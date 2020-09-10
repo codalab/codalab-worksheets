@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from bottle import abort, httplib, redirect, request, url
+from bottle import abort, httplib, local, redirect, request, url
 
 from codalab.lib.server_util import redirect_with_query
 from codalab.objects.user import PUBLIC_USER
@@ -22,6 +22,9 @@ class AuthPlugin(ABC):
         return os.environ.get('CODALAB_PROTECTED_MODE') == 'True'
 
     def user_is_authenticated(self):
+        if os.getenv("CODALAB_TEST_USER"):
+            # Only used for testing
+            request.user = local.model.get_user(username=os.getenv("CODALAB_TEST_USER"))
         return (
             hasattr(request, 'user')
             and request.user is not None
