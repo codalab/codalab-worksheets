@@ -148,14 +148,14 @@ def un_tar_directory(fileobj, directory_path, compression='', force=False):
                 raise tarfile.TarError('Archive member extracts outside the directory.')
             tar.extract(member, directory_path)
 
-def open_file(file_path, mode='r'):
+def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSED):
     """
     Opens the given file. Can be in a directory.
     """
     if file_path.startswith("azfs://"):
         bundle_uuid, zip_path, zip_subpath = parse_azure_url(file_path)
         if zip_subpath is not None:
-            with ZipFile(FileSystems.open(zip_path)) as f:
+            with ZipFile(FileSystems.open(zip_path, compression_type)) as f:
                 return f.open(zip_subpath, 'r') # zipfile.open only supports 'r', not 'rb'
     return FileSystems.open(file_path, mode)
 
@@ -165,7 +165,7 @@ def gzip_file(file_path):
     Returns a file-like object containing the gzipped version of the given file.
     """
     try:
-        data = open_file(file_path, compression_type=CompressionTypes.UNCOMPRESSED).read()
+        data = open_file(file_path).read()
         return BytesIO(gzip.compress(data))
     except Exception as e:
         raise IOError(e)
