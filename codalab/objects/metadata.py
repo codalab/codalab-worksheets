@@ -118,5 +118,5 @@ class Metadata(object):
         Serialize this metadata to human-readable JSON format. This format is NOT
         an appropriate one to save to a database.
         '''
-        items = [(key, getattr(self, key)) for key in self._metadata_keys]
+        items = sorted([(key, getattr(self, key)) for key in self._metadata_keys])
         return {key: value for (key, value) in items}
