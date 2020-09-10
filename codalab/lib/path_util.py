@@ -302,7 +302,7 @@ def parse_azure_url(url):
     # file in directory: "azfs://storageclwsdev0/bundles/uuid/contents.zip/file1"
     # single file: "azfs://storageclwsdev0/bundles/uuid/contents"
     # Returns bundle_uuid, zip_path, zip_subpath
-    _bundles, bundle_uuid, _contents_file, zip_subpath = url.lstrip("azfs://").split(",")
+    _bundles, bundle_uuid, _contents_file, zip_subpath = url.lstrip("azfs://").split("/")
     if _contents_file.endswith(".zip"):
         return bundle_uuid, f"azfs://{_bundles}/{bundle_uuid}/{_contents_file}", zip_subpath
     return bundle_uuid, None, None
