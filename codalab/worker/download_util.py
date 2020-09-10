@@ -63,7 +63,7 @@ def get_target_info(bundle_path, target, depth):
     """
     final_path = _get_normalized_target_path(bundle_path, target)
 
-    if not os.path.islink(final_path) and not FileSystems.exists(final_path):
+    if not final_path.startswith("azfs://") and not os.path.islink(final_path) and not FileSystems.exists(final_path):
         raise PathException(
             'Path {} in bundle {} not found'.format(target.bundle_uuid, target.subpath)
         )
@@ -145,26 +145,38 @@ def _compute_target_info_beam(path, depth):
         # Single file
         file = FileSystems.match([path])[0].metadata_list[0]
         return { 'name': os.path.basename(file.path), 'type': 'file', 'size': file.size_in_bytes, 'perm': 0o777 }
-    # dir_structure = {}
-    with ZipFile(FileSystems.open(zip_path)) as f:
-        zipinfo = f.getinfo(zip_subpath)
-    if not zipinfo.is_dir():
-        return {
+    elif not zip_subpath:
+        # We want the entire zip file, not a subpath within it.
+        with ZipFile(FileSystems.open(zip_path)) as f:
+            base = {
+                'name': bundle_uuid,
+                'type': 'directory',
+                'size': sum([zipinfo.file_size for zipinfo in f.infolist()]),
+                'perm': 0o777
+            }
+    else:
+        with ZipFile(FileSystems.open(zip_path)) as f:
+            zipinfo = f.getinfo(zip_subpath)
+        if not zipinfo.is_dir():
+            return {
+                'name': zipinfo.filename,
+                'type': 'file',
+                'size': zipinfo.file_size,
+                'perm': 0o777,
+                'fs': 'azure'
+            }
+        base = {
             'name': zipinfo.filename,
-            'type': 'file',
+            'type': 'directory',
             'size': zipinfo.file_size,
             'perm': 0o777
         }
-    return {
+    base['contents'] = [{
+    # TODO: support previewing nested directories.
         'name': zipinfo.filename,
-        'type': 'directory',
+        'type': 'file',
         'size': zipinfo.file_size,
-        'perm': 0o777,
-        # TODO: support previewing nested directories.
-        'contents': [{
-            'name': zipinfo.filename,
-            'type': 'file',
-            'size': zipinfo.file_size,
-            'perm': 0o777
-        } for zipinfo in f.infolist() if zipinfo.filename.startswith(zip_subpath)]
-    }
+        'perm': 0o777
+    } for zipinfo in f.infolist() if zipinfo.filename.startswith(zip_subpath)]
+    base['fs'] = 'azure'
+    return base

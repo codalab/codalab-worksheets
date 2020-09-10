@@ -166,6 +166,9 @@ class DownloadManager(object):
             )
         elif bundle_state != State.RUNNING:
             directory_path = self._get_target_path(target)
+            if directory_path.startswith("azfs://"):
+                # The file should already be zipped on Azure Blob Storage.
+                return file_util.open_file(directory_path)
             return file_util.tar_gzip_directory(directory_path)
         else:
             # stream_tarred_gzipped_directory calls are sent to the worker even

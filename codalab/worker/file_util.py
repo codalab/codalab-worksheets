@@ -154,7 +154,7 @@ def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSE
     """
     if file_path.startswith("azfs://"):
         bundle_uuid, zip_path, zip_subpath = parse_azure_url(file_path)
-        if zip_subpath is not None:
+        if zip_subpath:
             with ZipFile(FileSystems.open(zip_path, compression_type)) as f:
                 return f.open(zip_subpath, 'r') # zipfile.open only supports 'r', not 'rb'
     return FileSystems.open(file_path, mode)
