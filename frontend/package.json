@@ -42,9 +42,13 @@
     "underscore": "^1.11.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^5.11.3",
+    "@testing-library/react": "^10.4.8",
     "eslint": "^6.8.0",
+    "jest-environment-jsdom-fifteen": "^1.0.2",
+    "nock": "^13.0.4",
     "prettier": "^1.19.1",
-    "react-scripts": "^3.4.2"
+    "react-scripts": "^3.4.3"
   },
   "browserslist": [
     ">0.2%",
@@ -55,7 +59,7 @@
   "scripts": {
     "start": "PORT=2700 react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
+    "test": "react-scripts test --env=jsdom-fifteen --coverage",
     "eject": "react-scripts eject",
     "check-ci": "CI=true eslint src && prettier --config ./.prettierrc --check 'src/**/*.js'",
     "format": "CI=true eslint src --fix && prettier --config ./.prettierrc --check 'src/**/*.js' --write"
@@ -71,5 +75,12 @@
       "prettier --config ./.prettierrc --write",
       "git add"
     ]
+  },
+  "jest": {
+    "coverageThreshold": {
+      "global": {
+        "branches": 10
+      }
+    }
   }
 }
