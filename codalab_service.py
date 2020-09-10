@@ -596,7 +596,7 @@ class CodalabServiceManager(object):
     def build_image(self, image):
         print_header('Building {} image'.format(image))
         master_docker_image = 'codalab/{}:{}'.format(image, 'master')
-        docker_image = 'codalab/{}:{}'.format(image, 'master')
+        docker_image = 'codalab/{}:{}'.format(image, self.args.version)
 
         # Pull the previous image on this version (branch) if we have it.  Otherwise, use master.
         if self.args.pull:
