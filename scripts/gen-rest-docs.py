@@ -2,23 +2,22 @@
 """
 Generate REST docs.
 """
-import sys
 
-sys.path.append('.')
 import argparse
-from inspect import isclass
-from collections import defaultdict, namedtuple
 import os
+import sys
+from collections import defaultdict, namedtuple
+from inspect import isclass
+from textwrap import dedent
 
 from bottle import default_app, template
 from marshmallow import Schema
 from marshmallow_jsonapi import Schema as JsonApiSchema
-from textwrap import dedent
 
 from codalab.common import CODALAB_VERSION
 
+sys.path.append('.')
 # Ensure all REST modules are loaded
-from codalab.server import rest_server
 
 
 EXCLUDED_APIS = {'account', 'api', 'static', 'chats', 'faq', 'help'}
@@ -94,7 +93,8 @@ We use the JSON API v1.0 specification with the Bulk extension.
 - http://jsonapi.org/format/
 - https://github.com/json-api/json-api/blob/9c7a03dbc37f80f6ca81b16d444c960e96dd7a57/extensions/bulk/index.md
 
-The following specification will not provide the verbose JSON formats of the API requests and responses, as those can be found in the JSON API specification. Instead:
+The following specification will not provide the verbose JSON formats of the API requests and responses, as those can be
+found in the JSON API specification. Instead:
 - Each resource type below (worksheets, bundles, etc.) specifies a list of
   attributes with their respective data types and semantics, along with a list
   of relationships.
@@ -104,19 +104,31 @@ The following specification will not provide the verbose JSON formats of the API
 
 ## How we use JSON API
 
-Using the JSON API specification allows us to avoid redesigning the wheel when designing our request and response formats. This also means that we will not specify all the details of the API (for example, Content-Type headers, the fact that POST requests should contain a single resource object, etc.) in this document at this time, while we may choose to continue copying in more details as we go in the design and implementation process. However, since there are many optional features of the JSON API specification, we will document on a best-effort basis the ways in which we will use the specification that are specific to our API, as well as which parts of the specification we use, and which parts we do not.
+Using the JSON API specification allows us to avoid redesigning the wheel when designing our request and response
+formats. This also means that we will not specify all the details of the API (for example, Content-Type headers, the
+fact that POST requests should contain a single resource object, etc.) in this document at this time, while we may
+choose to continue copying in more details as we go in the design and implementation process. However, since there are
+many optional features of the JSON API specification, we will document on a best-effort basis the ways in which we will
+use the specification that are specific to our API, as well as which parts of the specification we use, and which parts
+we do not.
 
 ## Top-level JSON structure
 
-Every JSON request or response will have at its root a JSON object containing either a “data” field or an “error” field, but not both. Thus the presence of an “error” field will unambiguously indicate an error state.
+Every JSON request or response will have at its root a JSON object containing either a “data” field or an “error” field,
+but not both. Thus the presence of an “error” field will unambiguously indicate an error state.
 
-Response documents may also contain a top-level "meta" field, containing additional constructed data that are not strictly resource objects, such as summations in a search query.
+Response documents may also contain a top-level "meta" field, containing additional constructed data that are not
+strictly resource objects, such as summations in a search query.
 
 Response documents may also contain a top-level "included" field, discussed below.
 
 ## Primary Data
 
-The JSON API standard specifies that the “data” field will contain either a [resource object](http://jsonapi.org/format/#document-resource-objects) or an array of resource objects, depending on the nature of the request. More specfically, if the client is fetching a single specific resource (e.g. GET /bundles/0x1d09b495), the “data” field will have a single JSON object at its root. If the client intends to fetch a variable number of resources, then the “data” field will have at its root an array of zero or more JSON objects.
+The JSON API standard specifies that the “data” field will contain either a [resource object]
+(http://jsonapi.org/format/#document-resource-objects) or an array of resource objects, depending on the nature of the
+request. More specfically, if the client is fetching a single specific resource (e.g. GET /bundles/0x1d09b495), the
+“data” field will have a single JSON object at its root. If the client intends to fetch a variable number of resources,
+then the “data” field will have at its root an array of zero or more JSON objects.
 
 The structure of a JSON response with a single resource object will typically look like this:
 
@@ -135,9 +147,13 @@ The structure of a JSON response with a single resource object will typically lo
 }
 ```
 
-Note that we use UUIDs as the "id" of a resource when available (i.e. for worksheets, bundles, and groups) and some other unique key for those resources to which we have not prescribed a UUID scheme.
+Note that we use UUIDs as the "id" of a resource when available (i.e. for worksheets, bundles, and groups) and some
+other unique key for those resources to which we have not prescribed a UUID scheme.
 
-For each of the resource types available in the Worksheets API, we define the schema for its **attributes**, as well as list what **relationships** each instance may have defined. Relationships are analogous to relationships in relational databases and ORMs—some may be to-one (such as the "owner" of a bundle) and some may be to-many (such as the "permissions" of a bundle).
+For each of the resource types available in the Worksheets API, we define the schema for its **attributes**, as well as
+list what **relationships** each instance may have defined. Relationships are analogous to relationships in relational
+databases and ORMs—some may be to-one (such as the "owner" of a bundle) and some may be to-many (such as the
+"permissions" of a bundle).
 
 We will use the following subset of the relationship object schema for our Worksheets API (Orderly schema):
 
@@ -155,14 +171,17 @@ object {
 
 ## Query Parameters
 
-The client may provide additional parameters for requests as query parameters in the request URL. Available parameters will be listed under each API route. In general:
+The client may provide additional parameters for requests as query parameters in the request URL. Available parameters
+will be listed under each API route. In general:
 - Boolean query parameters are encoded as 1 for "true" and 0 for "false".
 - Some query parameters take multiple values, which can be passed by simply listing
   the parameter multiple times in the query, e.g. `GET /bundles?keywords=hello&keywords=world`
 
 ## Includes
 
-The client will often want to fetch data for resources related to the primary resource(s) in the same request: for example, client may want to fetch a worksheet along with all of its items, as well as data about the bundles and worksheets referenced in the items.
+The client will often want to fetch data for resources related to the primary resource(s) in the same request: for
+example, client may want to fetch a worksheet along with all of its items, as well as data about the bundles and
+worksheets referenced in the items.
 
 Currently, most of the API endpoints will include related resources automatically.
 For example, fetching a "worksheet" will also include the "bundles" referenced
@@ -171,7 +190,9 @@ included in an array in the top-level "included" field of the response object.
 
 ## Non-JSON API Endpoints
 
-The JSON API specification is not all-encompassing, and there are some cases in our API that fall outside of the specification. We will indicate this explicitly where it applies, and provide an alternative schema for the JSON format where necessary.
+The JSON API specification is not all-encompassing, and there are some cases in our API that fall outside of the
+specification. We will indicate this explicitly where it applies, and provide an alternative schema for the JSON format
+where necessary.
 
 ## Authorization and Authentication
 
