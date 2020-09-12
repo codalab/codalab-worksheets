@@ -152,7 +152,7 @@ def error_logs(error_type, s):
         last_sent[error_type] = t
 
 
-durations: Dict[str, list] = defaultdict(list)  # Command => durations for that command
+args_to_durations: Dict[str, list] = defaultdict(list)  # Command => durations for that command
 
 
 def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=True):
@@ -166,12 +166,12 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
 
     # Add to the list
     duration = end_time - start_time
-    l = durations[str(args)]
-    l.append(duration)
-    while len(l) > 1000:  # Keep the list bounded
-        l.pop(0)
-    average_duration = sum(l) // len(l)
-    max_duration = max(l)
+    durations = args_to_durations[str(args)]
+    durations.append(duration)
+    while len(durations) > 1000:  # Keep the list bounded
+        durations.pop(0)
+    average_duration = sum(durations) // len(durations)
+    max_duration = max(durations)
 
     # Abstract away the concrete uuids
     simple_args = ['0x*' if arg.startswith('0x') else arg for arg in args]
