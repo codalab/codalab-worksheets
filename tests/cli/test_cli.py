@@ -2018,7 +2018,7 @@ def test_sharing_workers(ctx):
 
     # userB will start a worker and be granted access to another one
     create_user(ctx, 'userB')
-    switch_user(ctx, 'userB')
+    switch_user('userB')
     create_group(ctx, 'group1')
     create_worker(ctx, 'userB', 'worker1', group_name='group1')
 
@@ -2027,7 +2027,7 @@ def test_sharing_workers(ctx):
 
     # userD will start a worker
     create_user(ctx, 'userD')
-    switch_user(ctx, 'userD')
+    switch_user('userD')
     create_group(ctx, 'group2')
     add_user_to_group('group2', 'userA')
     create_worker(ctx, 'userD', 'worker2', group_name='group2')
