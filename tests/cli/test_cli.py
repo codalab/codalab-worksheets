@@ -111,7 +111,6 @@ def create_user(context, username, password='codalab'):
         username, random_name(), '', '', password, '', user_id=username, is_verified=True
     )
     context.collect_user(username)
-    switch_user(username, password)
 
 
 def switch_user(username, password='codalab'):
@@ -361,6 +360,7 @@ class ModuleContext(object):
         """Prepares clean environment for test module."""
         print("[*][*] SWITCHING TO TEMPORARY WORKSHEET")
 
+        switch_user('codalab')  # root user
         self.original_environ = os.environ.copy()
         self.original_worksheet = _run_command([cl, 'work', '-u'])
         temp_worksheet = _run_command([cl, 'new', random_name()])
@@ -2018,6 +2018,7 @@ def test_sharing_workers(ctx):
 
     # userB will start a worker and be granted access to another one
     create_user(ctx, 'userB')
+    switch_user(ctx, 'userB')
     create_group(ctx, 'group1')
     create_worker(ctx, 'userB', 'worker1', group_name='group1')
 
@@ -2026,6 +2027,7 @@ def test_sharing_workers(ctx):
 
     # userD will start a worker
     create_user(ctx, 'userD')
+    switch_user(ctx, 'userD')
     create_group(ctx, 'group2')
     add_user_to_group('group2', 'userA')
     create_worker(ctx, 'userD', 'worker2', group_name='group2')
@@ -2038,9 +2040,6 @@ def test_sharing_workers(ctx):
     check_workers('userB', ['worker1', 'worker2'])
     check_workers('userC', [])
     check_workers('userD', ['worker2'])
-
-    # Switch back to the root user for proper cleanup
-    switch_user('codalab')
 
 
 @TestModule.register('rest1')
