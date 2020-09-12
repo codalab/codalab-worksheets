@@ -9,6 +9,7 @@
 
 # For worker manager
 boto3==1.14.57
+azure-batch==9.0.0
 
 # For testing
 mock==4.0.2
