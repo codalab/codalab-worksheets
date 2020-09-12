@@ -210,9 +210,62 @@ and workers, and emails out a report every day.
 
 ### Tests
 
-We have the following tests:
+#### Testing overview and philosophy
 
-- Unit tests for the backend in the [tests](https://github.com/codalab/codalab-worksheets/tree/master/tests) directory
-- One end-to-end integration script for the CLI in [test_cli.py](https://github.com/codalab/codalab-worksheets/blob/master/test_cli.py)
+When you add a new functionality or fix a bug in CodaLab, you **must** add unit tests that test that functionality. We have enforced this constraint by adding Code Coverage checks to CI.
+
+End-to-end tests should be used sparingly and only to test critical functionality and flows. This is because they are much more time-expensive to create and run. Code Coverage checks do not apply to E2E tests.
+
+As we get more code coverage, we should gradually increase the thresholds until we reach 90-100%.
+
+#### Unit tests
+
+- Frontend unit tests in the [frontend/src/__tests__](https://github.com/codalab/codalab-worksheets/tree/master/frontend/__tests__) directory. These tests only test React components and mock out all network calls.
+
+```
+cd frontend
+npm test
+```
+
+Sometimes, if the frontend UI changes and you need to update snapshots, run:
+
+```
+npm test -- -u
+```
+
+(Note: these are technically "integration tests" since they test multiple components' rendering at once, but let's call them unit tests for simplicity and to distinguish them from the E2E frontend tests).
+
+- Unit tests for the backend in the [tests/unit](https://github.com/codalab/codalab-worksheets/tree/master/tests/unit) directory. These tests mock out certain aspects of the backend to test backend classes / utilities.
+
+To run all tests in the Docker container, run:
+
+```
+python3 test_runner.py unittest
+```
+
+If you would only like to run specific tests, for example the REST API tests,
+on your host machine (for faster iteration), you can run:
+
+```
+nosetests tests.unit.rest
+```
+
+#### End-to-end tests
+
+- One end-to-end integration script for the CLI in [tests/cli/test_cli.py](https://github.com/codalab/codalab-worksheets/blob/master/tests/cli/test_cli.py). These tests run an entire CodaLab server and don't mock out anything.
+
+```
+python3 test_runner.py default
+```
+
 - End-to-end UI tests for the web interface in [tests/ui](https://github.com/codalab/codalab-worksheets/tree/master/tests/ui)
-- Stress tests in [stress_test.py](https://github.com/codalab/codalab-worksheets/blob/master/stress_test.py)
+
+```
+python3 test_runner.py frontend
+```
+
+- Stress tests in [tests/stress_test.py](https://github.com/codalab/codalab-worksheets/blob/master/tests/stress_test.py)
+
+```
+python3 tests/stress_test.py --instance https://worksheets-dev.codalab.org --heavy
+```
