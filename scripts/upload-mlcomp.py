@@ -6,7 +6,9 @@
 
 # Usage: directories to upload
 
-import sys, os, yaml
+import sys
+import os
+import yaml
 
 for path in sys.argv[1:]:
     info = yaml.safe_load(open(os.path.join(path, 'metadata')))
