@@ -38,7 +38,7 @@ class TestFile:
 
     def __init__(self, file_name, size_mb=1, content=None):
         self._file_name = file_name
-        if content == None:
+        if content is None:
             self._size_mb = size_mb
             self._make_random_file()
         else:
