@@ -173,12 +173,12 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
 
     # Add to the list
     duration = end_time - start_time
-    l = durations[str(args)]
-    l.append(duration)
-    while len(l) > 1000:  # Keep the list bounded
-        l.pop(0)
-    average_duration = sum(l) // len(l)
-    max_duration = max(l)
+    list_of_args = durations[str(args)]
+    list_of_args.append(duration)
+    while len(list_of_args) > 1000:  # Keep the list bounded
+        list_of_args.pop(0)
+    average_duration = sum(list_of_args) // len(list_of_args)
+    max_duration = max(list_of_args)
 
     # Abstract away the concrete uuids
     simple_args = ['0x*' if arg.startswith('0x') else arg for arg in args]
