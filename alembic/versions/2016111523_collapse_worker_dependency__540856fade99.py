@@ -6,10 +6,6 @@ Create Date: 2016-11-15 23:51:29.445143
 
 """
 
-# revision identifiers, used by Alembic.
-revision = '540856fade99'
-down_revision = '309cf9c796b9'
-
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.mysql import MEDIUMBLOB
@@ -17,9 +13,14 @@ from sqlalchemy.sql import table, column
 from sqlalchemy import String
 import json
 
+# revision identifiers, used by Alembic.
+revision = '540856fade99'
+down_revision = '309cf9c796b9'
+
 
 def serialize_dependencies(dependencies):
     return json.dumps(dependencies, separators=(',', ':'))
+
 
 # ad-hoc table for insert statement
 worker_dependency = table(
@@ -66,7 +67,8 @@ def downgrade():
     op.drop_constraint('worker_dependency_ibfk_1', 'worker_dependency', type_='foreignkey')
     op.drop_constraint('worker_dependency_ibfk_2', 'worker_dependency', type_='foreignkey')
     op.execute("ALTER TABLE `worker_dependency` DROP PRIMARY KEY;")
-    op.create_foreign_key('worker_dependency_ibfk_1', 'worker_dependency', 'worker', ['user_id', 'worker_id'], ['user_id', 'worker_id'])
+    op.create_foreign_key('worker_dependency_ibfk_1', 'worker_dependency', 'worker', ['user_id', 'worker_id'],
+                          ['user_id', 'worker_id'])
     op.create_foreign_key('worker_dependency_ibfk_2', 'worker_dependency', 'user', ['user_id'], ['user_id'])
 
     # Add back old columns, though we can't get back old data. But it's okay, the data is transient anyway.
