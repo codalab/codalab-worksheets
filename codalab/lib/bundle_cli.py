@@ -1522,8 +1522,7 @@ class BundleCLI(object):
                     'filename': filename,
                     'unpack': unpack,
                     'simplify': False,  # retain original bundle verbatim
-                    # copy bundle state
-                    'state_on_success': source_info['state'],
+                    'state_on_success': source_info['state'],  # copy bundle state
                     'finalize_on_success': True,
                 },
                 progress_callback=progress.update,
