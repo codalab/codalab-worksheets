@@ -1,6 +1,3 @@
-import unittest
-from mock import Mock
-from bottle import request
 import os
 from .base import BaseTestCase
 
