@@ -1,4 +1,4 @@
-from codalab.server.rest_server import request, create_rest_app
+from codalab.server.rest_server import create_rest_app
 from webtest import TestApp
 import unittest
 import uuid
