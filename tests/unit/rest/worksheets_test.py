@@ -1,12 +1,4 @@
-import unittest
-from mock import Mock
-from bottle import local, request
-from codalab.server.rest_server import request, create_rest_app
-from webtest import TestApp
-import os
-import json
 import uuid
-from codalab.objects.worksheet import Worksheet
 from .base import BaseTestCase
 
 
