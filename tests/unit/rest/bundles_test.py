@@ -1,9 +1,3 @@
-import unittest
-from mock import Mock
-from bottle import local, request
-import os
-import json
-import uuid
 from .base import BaseTestCase
 from freezegun import freeze_time
 
