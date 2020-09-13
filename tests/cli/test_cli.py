@@ -2202,6 +2202,11 @@ def test(ctx):
     _run_command([cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1)
 
 
+@TestModule.register('work')
+def test(ctx):
+    uuid = _run_command([cl, 'work', 'stanford::'], expected_exit_code=1)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
