@@ -244,7 +244,6 @@ class TableItem extends React.Component<{
                                 style={{
                                     height: 36,
                                     borderTop: '0px solid #DEE2E6',
-                                    backgroundColor: '#F8F9FA',
                                 }}
                             >
                                 {headerHtml}
