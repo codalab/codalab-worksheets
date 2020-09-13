@@ -1,9 +1,3 @@
-import unittest
-from mock import Mock
-from bottle import local, request
-import os
-import json
-import uuid
 from .base import BaseTestCase
 from freezegun import freeze_time
 
@@ -44,9 +38,8 @@ class BundlesTest(BaseTestCase):
         self.assertEqual(response.status_int, 200)
         data = response.json["data"]
         bundle_id = data[0]["id"]
-        state = data[0]["attributes"].pop("state")
-        failure_message = data[0]["attributes"]["metadata"].pop("failure_message", None)
-        # self.assertTrue(state in ("created", "staged",))
+        data[0]["attributes"].pop("state")
+        data[0]["attributes"]["metadata"].pop("failure_message", None)
         self.assertEqual(
             data,
             [
