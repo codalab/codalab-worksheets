@@ -144,9 +144,7 @@ class TableWorksheetRow extends React.Component {
             <tr className={className} id={this.props.id}>
                 <td>
                     <div onClick={this.handleRowClick}>
-                        <a href='#' onClick={this.handleTextClick}>
-                            {`${item.title + ' '}[${item.name}]`}
-                        </a>
+                        <a onClick={this.handleTextClick}>{`${item.title + ' '}[${item.name}]`}</a>
                     </div>
                 </td>
             </tr>
