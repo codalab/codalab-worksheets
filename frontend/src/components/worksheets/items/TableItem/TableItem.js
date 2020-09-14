@@ -307,7 +307,6 @@ class TableItem extends React.Component<{
                                 </TableCell>
                             </TableRow>
                         )}
-
                         {bodyRowsHtml}
                     </Table>
                 </TableContainer>
