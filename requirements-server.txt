@@ -18,7 +18,7 @@ freezegun==1.0.0
 coverage==5.3
 
 # Server-specific
-alembic==1.4.2
+alembic==1.4.3
 gunicorn==20.0.4
 oauthlib==2.1.0
 mysqlclient==1.4.1
