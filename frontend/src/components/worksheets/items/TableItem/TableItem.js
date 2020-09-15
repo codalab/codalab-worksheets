@@ -153,6 +153,7 @@ class TableItem extends React.Component<{
                                   position: 'sticky',
                                   top: 0,
                                   backgroundColor: '#F8F9FA',
+                                  zIndex: 1,
                               }
                     }
                 >
