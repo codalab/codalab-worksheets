@@ -147,7 +147,7 @@ To run the tests against an instance that you've already set up:
 
 Or to run a specific test (e.g., basic):
 
-    docker exec codalab_rest-server_1 python3 test_cli.py basic
+    docker exec codalab_rest-server_1 python3 tests/cli/test_cli.py basic
 
 In sum, to start an instance and run tests on it:
 

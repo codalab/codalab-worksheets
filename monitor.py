@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 
-import os, sys
-import datetime
 from collections import defaultdict
-from smtplib import SMTP
 from email.mime.text import MIMEText
-import subprocess
-import time
-import argparse
+from smtplib import SMTP
 from typing import Dict
+
+import argparse
+import datetime
+import os
+import subprocess
+import sys
+import time
 
 BASE_DIR = os.path.dirname(__file__)
 
@@ -26,7 +28,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     '--codalab-home',
     help='where the CodaLab instance lives',
-    default=os.getenv('CODALAB_HOME', os.path.join(os.getenv('HOME'), '.codalab')),
+    default=os.getenv('CODALAB_HOME', os.path.join(os.getenv('HOME', default="..."), '.codalab')),
 )
 
 # Where to write out information
@@ -73,10 +75,19 @@ sender_password = os.environ['CODALAB_EMAIL_PASSWORD']
 if not os.path.exists(args.backup_path):
     os.mkdir(args.backup_path)
 
-# Comma-separated list of worker ids to monitor. Example: vm-clws-prod-worker-0,vm-clws-prod-worker-1
-public_workers = set([worker.strip() for worker in os.environ['CODALAB_PUBLIC_WORKERS'].split(',')])
-
 report = []  # Build up the current report to send in an email
+
+
+def get_public_workers():
+    # Comma-separated list of worker ids to monitor. Example: vm-clws-prod-worker-0,vm-clws-prod-worker-1
+    return set(
+        [
+            worker.strip()
+            for worker in os.environ['CODALAB_PUBLIC_WORKERS'].split(',')
+            if worker.rstrip()
+        ]
+    )
+
 
 # message is a list
 def send_email(subject, message):
@@ -257,10 +268,9 @@ def check_disk_space(paths):
 
 
 def poll_online_workers():
+    public_workers = get_public_workers()
     if len(public_workers) == 0:
-        error_logs(
-            'worker check failed', 'Missing value for environment variable CODALAB_PUBLIC_WORKERS.'
-        )
+        log("Environment variable CODALAB_PUBLIC_WORKERS is empty.")
         return
     lines = run_command(['cl', 'workers']).split('\n')
     workers_info = lines[2:]
@@ -320,7 +330,7 @@ while True:
             run_command(['cl', 'search', '.last', '.limit=5'])
 
         # Try uploading, downloading and running a job with a dependency.
-        if run_time():
+        if run_time() and get_public_workers():
             upload_uuid = run_command(
                 ['cl', 'upload', os.path.join(BASE_DIR, 'scripts', 'stress-test.pl')]
             )
