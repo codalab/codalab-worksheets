@@ -7,7 +7,6 @@ When a RunBundle is constructed, its program_target must be in a ProgramBundle.
 from typing import List
 
 from codalab.bundles.uploaded_bundle import UploadedBundle
-from codalab.objects.metadata_spec import MetadataSpec
 
 
 # This class will eventually be deprecated.

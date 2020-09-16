@@ -280,7 +280,6 @@ def mimic_bundles(
 
             prelude_items = []  # The prelude that we're building up
             for item in worksheet_info['items']:
-                just_added = False
 
                 if item['type'] == worksheet_util.TYPE_BUNDLE:
                     old_bundle_uuid = item['bundle']['id']

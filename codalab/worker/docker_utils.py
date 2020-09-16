@@ -45,7 +45,7 @@ def wrap_exception(message):
                 return '{}: {}'.format(message, exception)
 
             def check_for_user_error(exception):
-                error_message = format_error_message(e)
+                error_message = format_error_message(exception)
                 if re.match(NVIDIA_MOUNT_ERROR_REGEX, str(exception)):
                     raise DockerUserErrorException(error_message)
                 elif re.match(MEMORY_LIMIT_ERROR_REGEX, str(exception)):

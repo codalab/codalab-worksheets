@@ -38,7 +38,11 @@ class RunBundle(DerivedBundle):
 
     METADATA_SPECS.append(MetadataSpec('actions', list, 'Actions (e.g., kill) that were performed on this run.', generated=True))
 
-    METADATA_SPECS.append(MetadataSpec('time', float, 'Amount of wall clock time (seconds) used by this run in total. [Runtime of the Docker container excluding CodaLab related steps such as preparing/uploading results]', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time', float, 'Amount of wall clock time (seconds) used by this run in total. '
+                                                      '[Runtime of the Docker container excluding CodaLab related '
+                                                      'steps such as preparing/uploading results]',
+                                       generated=True,
+                                       formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_user', float, 'Amount of user time (seconds) used by this run.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_system', float, 'Amount of system time (seconds) used by this run.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('memory', float, 'Amount of memory (bytes) used by this run.', generated=True, formatting='size'))
@@ -48,7 +52,6 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('last_updated', int, 'Time when information about this bundle was last updated.', generated=True, formatting='date'))
     METADATA_SPECS.append(MetadataSpec('run_status', str, 'Execution status of the bundle.', generated=True))
     METADATA_SPECS.append(MetadataSpec('staged_status', str, 'Information about the status of the staged bundle.', generated=True))
-
 
     # Information about running
     METADATA_SPECS.append(MetadataSpec('docker_image', str, 'Which docker image was used to run the process.', generated=True, hide_when_anonymous=True))
