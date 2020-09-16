@@ -11,8 +11,6 @@ they may override a number of methods of the base class:
   validate: bundle subclasses may require additional validation
   run: bundle subclasses that must be executed must override this method
 '''
-from typing import List
-
 from codalab.common import precondition
 from codalab.lib import spec_util
 from codalab.model.orm_object import ORMObject

@@ -26,13 +26,13 @@ URI_PREFIX = 'https://hub.docker.com/v2/repositories/'
 
 # This specific error happens when a user specifies an image with an incompatible version of CUDA
 NVIDIA_MOUNT_ERROR_REGEX = (
-    '[\s\S]*OCI runtime create failed[\s\S]*stderr:[\s\S]*nvidia-container-cli: '
-    'mount error: file creation failed:[\s\S]*nvidia-smi'
-)
+    '[\s\S]*OCI runtime create failed[\s\S]*stderr:[\s\S]*nvidia-container-cli: '  # NOQA
+    'mount error: file creation failed:[\s\S]*nvidia-smi'  # NOQA
+)  # Modifying escapes here could cause unit test failure.
 # This error happens when the memory requested by user is not enough to start a docker container
 MEMORY_LIMIT_ERROR_REGEX = (
-    '[\s\S]*OCI runtime create failed[\s\S]*failed to write[\s\S]*'
-    'memory.limit_in_bytes: device or resource busy[\s\S]*'
+    r'[\s\S]*OCI runtime create failed[\s\S]*failed to write[\s\S]*'
+    r'memory.limit_in_bytes: device or resource busy[\s\S]*'
 )
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ def wrap_exception(message):
                 return '{}: {}'.format(message, exception)
 
             def check_for_user_error(exception):
-                error_message = format_error_message(e)
+                error_message = format_error_message(exception)
                 if re.match(NVIDIA_MOUNT_ERROR_REGEX, str(exception)):
                     raise DockerUserErrorException(error_message)
                 elif re.match(MEMORY_LIMIT_ERROR_REGEX, str(exception)):
@@ -194,7 +194,7 @@ def start_bundle_container(
             stdin_open=tty,
         )
         logger.debug('Started Docker container for UUID %s, container ID %s,', uuid, container.id)
-    except docker.errors.APIError as e:
+    except docker.errors.APIError:
         # The container failed to start, so it's in the CREATED state
         # If we try to re-run the container again, we'll get a 409 CONFLICT
         # because a container with the same name already exists. So, we try to remove
