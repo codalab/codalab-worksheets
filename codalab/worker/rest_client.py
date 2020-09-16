@@ -3,7 +3,7 @@ from io import StringIO
 import http.client
 import json
 import urllib.request, urllib.parse, urllib.error
-from typing import Dict, Any
+from typing import Dict
 
 from .file_util import un_gzip_stream
 from codalab.common import URLOPEN_TIMEOUT_SECONDS

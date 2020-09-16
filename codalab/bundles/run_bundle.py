@@ -49,7 +49,6 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('run_status', str, 'Execution status of the bundle.', generated=True))
     METADATA_SPECS.append(MetadataSpec('staged_status', str, 'Information about the status of the staged bundle.', generated=True))
 
-
     # Information about running
     METADATA_SPECS.append(MetadataSpec('docker_image', str, 'Which docker image was used to run the process.', generated=True, hide_when_anonymous=True))
     METADATA_SPECS.append(MetadataSpec('exitcode', int, 'Exitcode of the process.', generated=True))

@@ -97,12 +97,14 @@ class BundleServiceClient(RestClient):
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest',
         }
-        request = urllib.request.Request(
+        the_request = urllib.request.Request(
             self._base_url + '/oauth2/token',
             data=urllib.parse.urlencode(request_data).encode('utf-8'),
             headers=headers,
         )
-        with closing(urllib.request.urlopen(request, timeout=URLOPEN_TIMEOUT_SECONDS)) as response:
+        with closing(
+            urllib.request.urlopen(the_request, timeout=URLOPEN_TIMEOUT_SECONDS)
+        ) as response:
             response_data = response.read().decode()
         try:
             token = json.loads(response_data)

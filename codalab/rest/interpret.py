@@ -10,13 +10,9 @@ worksheet_util does not make any calls to the model, they are kind of just like
 static helper functions.
 """
 import base64
-import types
 from contextlib import closing
 from itertools import chain
 import json
-import sys
-import requests
-import urllib.request, urllib.parse, urllib.error
 import yaml
 from bottle import get, post, local, request, abort, httplib
 
@@ -24,7 +20,6 @@ from codalab.common import UsageError, NotFoundError
 from codalab.lib import formatting, spec_util
 from codalab.lib.worksheet_util import (
     TYPE_DIRECTIVE,
-    TYPE_MARKUP,
     format_metadata,
     get_default_schemas,
     get_worksheet_lines,
@@ -32,7 +27,6 @@ from codalab.lib.worksheet_util import (
     interpret_items,
     is_file_genpath,
     markup_item,
-    directive_item,
     bundle_item,
     subworksheet_item,
     get_command,
@@ -68,7 +62,7 @@ def _interpret_search():
     }
     ```
     """
-    return interpret_search(request.json)
+    return _interpret_search(request.json)
 
 
 @post('/interpret/wsearch', apply=ProtectedPlugin())
@@ -466,7 +460,7 @@ def resolve_interpreted_blocks(interpreted_blocks, brief):
                             block['lines'] = None
                         elif mode == BlockModes.image_block:
                             block['image_data'] = None
-                except NotFoundError as e:
+                except NotFoundError:
                     block['status']['code'] = FetchStatusCodes.not_found
                     if mode == BlockModes.contents_block:
                         block['lines'] = None
@@ -480,7 +474,7 @@ def resolve_interpreted_blocks(interpreted_blocks, brief):
                     target = BundleTarget(info['bundle_uuid'], info['target_genpath'])
                     try:
                         target_info = rest_util.get_target_info(target, 0)
-                    except NotFoundError as e:
+                    except NotFoundError:
                         continue
                     if target_info['type'] == 'file':
                         contents = head_target(target_info['resolved_target'], block['max_lines'])
@@ -554,7 +548,7 @@ def get_genpaths_table_contents_requests(contents):
 
     contents represents a table, but some of the elements might not be
     interpreted yet, so fill them in.
-    
+
     Returns requests: list of (bundle_uuid, genpath, post-processing-func)
     """
     requests = []
@@ -598,8 +592,8 @@ def interpret_file_genpaths(requests):
     """
     target_cache = {}
     responses = []
-    for (bundle_uuid, genpath, post) in requests:
-        value = interpret_file_genpath(target_cache, bundle_uuid, genpath, post)
+    for (bundle_uuid, genpath, post_in_request) in requests:
+        value = interpret_file_genpath(target_cache, bundle_uuid, genpath, post_in_request)
         responses.append(value)
     return responses
 
@@ -708,7 +702,7 @@ def resolve_items_into_infos(items):
                 subworksheet_info = local.model.get_worksheet(
                     i['subworksheet_uuid'], fetch_items=False
                 ).to_dict()
-            except UsageError as e:
+            except UsageError:
                 # If can't get the subworksheet, it's probably invalid, so just replace it with an error
                 # type = worksheet_util.TYPE_MARKUP
                 subworksheet_info = {'uuid': i['subworksheet_uuid']}

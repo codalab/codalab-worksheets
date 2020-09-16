@@ -289,7 +289,7 @@ class JsonApiClient(RestClient):
             for key, relationship in obj_data.get('relationships', {}).items():
                 linkage = relationship['data']
                 if isinstance(linkage, list):
-                    obj[key] = [unpack_linkage(l) for l in linkage]
+                    obj[key] = [unpack_linkage(v) for v in linkage]
                 else:
                     obj[key] = unpack_linkage(linkage)
             return obj

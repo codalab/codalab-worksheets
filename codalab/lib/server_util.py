@@ -9,7 +9,6 @@ import sys
 import threading
 import time
 import urllib.request, urllib.parse, urllib.error
-import re
 
 from bottle import abort, request, HTTPResponse, redirect, app
 from oauthlib.common import to_unicode

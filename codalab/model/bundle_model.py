@@ -332,8 +332,8 @@ class BundleModel(object):
             # Get children of all nodes in frontier
             result = self.get_children_uuids(frontier)
             new_frontier = []
-            for l in result.values():
-                for uuid in l:
+            for v in result.values():
+                for uuid in v:
                     if uuid in visited:
                         continue
                     new_frontier.append(uuid)
@@ -1563,7 +1563,7 @@ class BundleModel(object):
                     or_(
                         cl_worksheet_item.c.sort_key > after_sort_key,
                         and_(
-                            cl_worksheet_item.c.sort_key == None,
+                            cl_worksheet_item.c.sort_key is None,
                             cl_worksheet_item.c.id > after_sort_key,
                         ),
                     ),
