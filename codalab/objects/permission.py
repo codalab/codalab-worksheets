@@ -1,7 +1,7 @@
 '''
 Defines ORM classes for groups and permissions.
 '''
-from codalab.common import NotFoundError, precondition, UsageError, PermissionError, IntegrityError
+from codalab.common import NotFoundError, UsageError, PermissionError, IntegrityError
 from codalab.lib import spec_util
 from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_ALL,
@@ -39,7 +39,7 @@ def unique_group(model, group_spec, user_id):
             spec_filters, {'owner_id': user_id, 'user_defined': True}, {'user_id': user_id}
         )
 
-    if user_id == None:
+    if user_id is None:
         search = search_all
     else:
         search = search_user

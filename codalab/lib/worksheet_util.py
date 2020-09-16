@@ -64,11 +64,11 @@ TYPE_WORKSHEET = 'worksheet'
 WORKSHEET_ITEM_TYPES = (TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET)
 
 
-BUNDLE_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{([^{]*)\}\s*$')
-SUBWORKSHEET_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{\{(.*)\}\}\s*$')
+BUNDLE_REGEX = re.compile('^\s*(\\[(.*)\\])?\s*\\{([^{]*)\\}\s*$')
+SUBWORKSHEET_REGEX = re.compile('^\s*(\\[(.*)\\])?\s*\\{\\{(.*)\\}\\}\s*$')
 
 DIRECTIVE_CHAR = '%'
-DIRECTIVE_REGEX = re.compile(r'^\s*' + DIRECTIVE_CHAR + '\s*(.*)\s*$')
+DIRECTIVE_REGEX = re.compile(r'^\\s*' + DIRECTIVE_CHAR + '\s*(.*)\s*$')
 
 # Default number of lines to pull for each display mode.
 DEFAULT_CONTENTS_MAX_LINES = 10
@@ -542,7 +542,7 @@ def apply_func(func, arg):
                 t = tokens[2].replace(esc_slash, '/')
                 arg = re.sub(s, t, arg)
             elif f.startswith('['):  # substring
-                m = re.match('\[(.*):(.*)\]', f)
+                m = re.match('\\[(.*):(.*)\\]', f)
                 if m:
                     start = int(m.group(1) or 0)
                     end = int(m.group(2) or len(arg))
@@ -562,7 +562,7 @@ def apply_func(func, arg):
             else:
                 return '<invalid function: %s>' % f
         return arg
-    except:
+    except Exception:
         # Applying the function failed, so just return the arg.
         return arg
 
@@ -685,7 +685,7 @@ def interpret_items(schemas, raw_items, db_model=None):
         """
         Having collected bundles in |bundle_infos|, flush them into |blocks|,
         potentially as a single table depending on the mode.
-        bundle_block_start_index: The raw index for % display <mode> schema 
+        bundle_block_start_index: The raw index for % display <mode> schema
         """
         if len(bundle_infos) == 0:
             return
@@ -1096,7 +1096,7 @@ def interpret_items(schemas, raw_items, db_model=None):
 
             raw_to_block.append((len(blocks) - 1, 0))
 
-        except Exception as e:
+        except Exception:
             current_schema = None
             bundle_infos[:] = []
             worksheet_infos[:] = []

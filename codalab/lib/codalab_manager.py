@@ -33,11 +33,9 @@ import os
 import psutil
 import re
 import sys
-import tempfile
 import textwrap
 import time
 from distutils.util import strtobool
-from urllib.parse import urlparse
 
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import CODALAB_VERSION, PermissionError, UsageError

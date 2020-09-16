@@ -945,14 +945,14 @@ class BundleManager(object):
 
     def _get_running_bundles_info(self, workers, staged_bundles_to_run):
         """
-        Build a nested dictionary to store information (bundle and bundle_resources) including 
+        Build a nested dictionary to store information (bundle and bundle_resources) including
         the current running bundles and staged bundles.
-        Note that the primary usage of this function is to improve efficiency when calling 
-        self._compute_bundle_resources(), e.g. reusing constants (gpus, cpus, memory) from 
+        Note that the primary usage of this function is to improve efficiency when calling
+        self._compute_bundle_resources(), e.g. reusing constants (gpus, cpus, memory) from
         the returning values of self._compute_bundle_resources() as they don't change over time.
-        However, be careful when using this function to improve efficiency for returning values 
-        like disk and time from self._compute_bundle_resources() as they do depend on the number 
-        of jobs that are running during the time of computation. Accuracy might be affected 
+        However, be careful when using this function to improve efficiency for returning values
+        like disk and time from self._compute_bundle_resources() as they do depend on the number
+        of jobs that are running during the time of computation. Accuracy might be affected
         without considering this factor.
         :param workers: a WorkerInfoAccessor object containing worker related information e.g. running uuid.
         :return: a nested dictionary structured as follows:
