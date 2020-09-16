@@ -140,7 +140,22 @@ class TableItem extends React.Component<{
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
-                    style={index === 0 ? { paddingLeft: editPermission ? '30px' : '70px' } : {}}
+                    style={
+                        index === 0
+                            ? {
+                                  paddingLeft: editPermission ? '30px' : '70px',
+                                  position: 'sticky',
+                                  top: 0,
+                                  backgroundColor: '#F8F9FA',
+                                  zIndex: 1,
+                              }
+                            : {
+                                  position: 'sticky',
+                                  top: 0,
+                                  backgroundColor: '#F8F9FA',
+                                  zIndex: 1,
+                              }
+                    }
                 >
                     {editPermission && index === 0 && (
                         <Tooltip title={'Change the schemas of this table'}>
@@ -223,14 +238,13 @@ class TableItem extends React.Component<{
         });
         return (
             <div className='ws-item'>
-                <TableContainer style={{ overflowX: 'auto' }}>
+                <TableContainer style={{ overflowX: 'auto', maxHeight: 500 }}>
                     <Table className={tableClassName}>
                         <TableHead>
                             <TableRow
                                 style={{
                                     height: 36,
-                                    borderTop: '2px solid #DEE2E6',
-                                    backgroundColor: '#F8F9FA',
+                                    borderTop: '0px solid #DEE2E6',
                                 }}
                             >
                                 {headerHtml}
