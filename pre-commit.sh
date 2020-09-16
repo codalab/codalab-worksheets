@@ -6,7 +6,8 @@
 set -e
 
 if ! [ -e venv ]; then
-  virtualenv -p python3 venv
+  python3 -m pip install virtualenv
+  python3 -m virtualenv -p python3 venv
 fi
 venv/bin/pip install -r requirements-server.txt
 venv/bin/pip install -r requirements.docs.txt
@@ -23,3 +24,6 @@ venv/bin/mkdocs build  # Outputs to `site`
 # Fix Python and JavaScript style (mutates code!)
 venv/bin/black codalab scripts *.py
 npm run --prefix frontend format
+
+# Check if there are any mypy errors
+venv/bin/mypy .

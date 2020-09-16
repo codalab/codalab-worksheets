@@ -1,0 +1,7 @@
+[run]
+source = .
+omit = tests/*
+data_file = /tmp/codalab/.coverage
+
+[report]
+fail_under = 28
