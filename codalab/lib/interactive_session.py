@@ -36,7 +36,7 @@ class InteractiveSession:
         "\n\n#\n"
         "# Choose the commands to use for cl run:\n"
         "#\n"
-        "# 1. Delete the lines of any unwanted commands.\n"
+        "# 1. Delete the lines of any unwanted commands. If you don't want to create the bundle, just remove all commands.\n"
         "# 2. Add any additional commands on a new line above these instructions.\n"
         "#\n"
     )

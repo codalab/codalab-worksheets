@@ -3,9 +3,9 @@ import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import Button from '../Button';
 import { createHandleRedirectFn, buildTerminalCommand } from '../../util/worksheet_utils';
+import { NAME_REGEX } from '../../constants';
 
 var SAMPLE_WORKSHEET_TEXT = '-worksheetname';
-var NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
 
 type Props = {
     clickAction: 'DEFAULT' | 'SIGN_IN_REDIRECT' | 'DISABLED',
