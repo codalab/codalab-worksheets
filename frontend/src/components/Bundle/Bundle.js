@@ -420,21 +420,7 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
             <span className={bundleStateClass}>{bundleInfo.state}</span>,
         ),
     );
-    if (
-        bundleInfo.bundle_type === 'run' &&
-        !typeof bundleInfo.metadata.staged_status === 'undefined'
-    ) {
-        rows.push(
-            createRow(
-                bundleInfo,
-                bundleMetadataChanged,
-                'staged_status',
-                bundleInfo.metadata.staged_status,
-            ),
-        );
-    }
     let bundleHeader;
-    console.log(bundleInfo);
     // TODO: don't use the fact that there is a bundle-content element in lgoic
     if (document.getElementById('bundle-content')) {
         let bundle_name = <h3 className='bundle-name'>{bundleInfo.metadata.name}</h3>;
