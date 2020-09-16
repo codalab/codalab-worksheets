@@ -2,13 +2,16 @@
 file_util provides helpers for dealing with file handles in robust,
 memory-efficent ways.
 """
-BUFFER_SIZE = 2 * 1024 * 1024
 
 import sys
 from . import formatting
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
+import urllib.parse
+import urllib.error
 import subprocess
 from codalab.common import URLOPEN_TIMEOUT_SECONDS
+
+BUFFER_SIZE = 2 * 1024 * 1024
 
 
 def tracked(fileobj, progress_callback):
