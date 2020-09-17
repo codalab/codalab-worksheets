@@ -11,6 +11,7 @@ from sqlalchemy import and_, select
 from codalab.common import precondition
 from codalab.model.tables import (
     worker as cl_worker,
+    group as cl_group,
     worker_socket as cl_worker_socket,
     worker_run as cl_worker_run,
     worker_dependency as cl_worker_dependency,
@@ -41,6 +42,7 @@ class WorkerModel(object):
         user_id,
         worker_id,
         tag,
+        group_name,
         cpus,
         gpus,
         memory_bytes,
@@ -68,6 +70,14 @@ class WorkerModel(object):
                 'exit_after_num_runs': exit_after_num_runs,
                 'is_terminating': is_terminating,
             }
+
+            # Populate the group for this worker, if group_name is valid
+            group_row = conn.execute(
+                cl_group.select().where(cl_group.c.name == group_name)
+            ).fetchone()
+            if group_row:
+                worker_row['group_uuid'] = group_row.uuid
+
             existing_row = conn.execute(
                 cl_worker.select().where(
                     and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
@@ -106,6 +116,7 @@ class WorkerModel(object):
                         user_id=user_id, worker_id=worker_id, dependencies=blob
                     )
                 )
+
         return socket_id
 
     @staticmethod
@@ -179,6 +190,7 @@ class WorkerModel(object):
             (row.user_id, row.worker_id): {
                 'user_id': row.user_id,
                 'worker_id': row.worker_id,
+                'group_uuid': row.group_uuid,
                 'tag': row.tag,
                 'cpus': row.cpus,
                 'gpus': row.gpus,
