@@ -73,11 +73,11 @@ class BaseBundleManagerTest(unittest.TestCase):
             "last name",
             "password",
             "affiliation",
-            user_id=self.user_id,
+            user_id=self.user_id
         )
 
     def mock_worker_checkin(
-        self, cpus=0, gpus=0, memory_bytes=0, free_disk_bytes=0, tag=None, user_id=None
+        self, cpus=0, gpus=0, memory_bytes=0, free_disk_bytes=0, tag=None, user_id=None,
     ):
         """Mock check-in a new worker."""
         # codalab-owned worker
@@ -86,6 +86,7 @@ class BaseBundleManagerTest(unittest.TestCase):
             user_id=user_id or self.bundle_manager._model.root_user_id,  # codalab-owned worker
             worker_id=worker_id,
             tag=tag,
+            group_name=None,
             cpus=cpus,
             gpus=gpus,
             memory_bytes=memory_bytes,

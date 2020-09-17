@@ -38,7 +38,7 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
         )
         self.bundle_manager._model.save_bundle(bundle)
 
-        self.mock_worker_checkin(cpus=1)
+        self.mock_worker_checkin(cpus=1, user_id=self.user_id)
         self.bundle_manager._schedule_run_bundles()
 
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
@@ -49,7 +49,7 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
     @freeze_time("2020-02-01", as_arg=True)
     def test_cleanup_dead_workers(frozen_time, self):
         # Workers should be removed after they don't check in for a long enough time period.
-        self.mock_worker_checkin(cpus=1)
+        self.mock_worker_checkin(cpus=1, user_id=self.user_id)
 
         self.assertEqual(len(self.bundle_manager._worker_model.get_workers()), 1)
 
@@ -118,7 +118,7 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
             state=State.STAGED,
         )
         self.bundle_manager._model.save_bundle(bundle)
-        worker_id = self.mock_worker_checkin(cpus=1)
+        worker_id = self.mock_worker_checkin(cpus=1, user_id=self.user_id)
 
         # Bundle is assigned to worker
         self.bundle_manager._schedule_run_bundles()
