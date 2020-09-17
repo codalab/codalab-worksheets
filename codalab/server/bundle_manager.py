@@ -619,10 +619,10 @@ class BundleManager(object):
         """
         Compute the CPU limit used for scheduling the run.
         The default of 1 (if no GPUs specified)
-        is for backwards compatibility for runs from before
-        when we added client-side defaults
+        is for backwards compatibility for
+        runs from before when we added client-side defaults
         """
-        if not bundle.metadata.request_cpus and not bundle.metadata.request_gpus:
+        if not bundle.metadata.request_cpus:
             return 1
         return bundle.metadata.request_cpus
 
