@@ -239,6 +239,13 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='use_ssl', help='Use HTTPS instead of HTTP', type=bool, default=False),
     CodalabArg(name='ssl_cert_file', help='Path to the cert file for SSL'),
     CodalabArg(name='ssl_key_file', help='Path to the key file for SSL'),
+    ### Sentry
+    CodalabArg(
+        name='sentry_ingest_url',
+        help=(
+            'Ingest URL for logging exceptions with Sentry. If not provided, Sentry is not used.'
+        ),
+    ),
     ### Worker manager
     CodalabArg(
         name='worker_manager_type',
@@ -532,7 +539,7 @@ class CodalabServiceManager(object):
             # so we can't just use regular interpolation with environment variables. Instead,
             # we create a temporary file with the modified docker-compose.yml and use that file instead.
             with open(os.path.join(self.compose_cwd, 'docker-compose.yml')) as f:
-                compose_options = yaml.load(f)
+                compose_options = yaml.safe_load(f)
             for mount_path in self.args.link_mounts.split(","):
                 mount_path = os.path.abspath(mount_path)
                 compose_options["x-codalab-server"]["volumes"].append(

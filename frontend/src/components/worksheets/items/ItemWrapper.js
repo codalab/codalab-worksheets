@@ -19,7 +19,7 @@ class ItemWrapper extends React.Component {
             after_sort_key,
             worksheetUUID,
             reloadWorksheet,
-            saveAndUpdateWorksheet,
+            id,
         } = this.props;
         const { showNewRun, showNewText, showNewSchema } = this.props;
         if (!item) {
@@ -28,7 +28,7 @@ class ItemWrapper extends React.Component {
 
         const { isDummyItem } = item;
         return (
-            <div className={isDummyItem ? '' : classes.container}>
+            <div className={isDummyItem ? '' : classes.container} id={id}>
                 {!isDummyItem && <div className={classes.main}>{children}</div>}
                 {showNewRun && (
                     <div className={classes.insertBox}>

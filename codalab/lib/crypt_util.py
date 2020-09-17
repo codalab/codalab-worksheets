@@ -32,14 +32,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import binascii
 import hashlib
 import hmac
-import random
+from random import SystemRandom
 import struct
 import six
 import time
 
 # Use the system PRNG if possible
 try:
-    random = random.SystemRandom()
+    random = SystemRandom()
     using_sysrandom = True
 except NotImplementedError:
     import warnings

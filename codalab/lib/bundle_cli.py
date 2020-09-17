@@ -30,6 +30,7 @@ from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
 from shlex import quote
+from typing import Dict
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -92,13 +93,10 @@ from codalab.lib.completers import (
     WorksheetsCompleter,
 )
 from codalab.lib.bundle_store import MultiDiskBundleStore
+from codalab.lib.interactive_session import InteractiveSession
 from codalab.lib.print_util import FileTransferProgress
 from codalab.worker.file_util import un_tar_directory
 from codalab.worker.download_util import BundleTarget
-
-from codalab.lib.spec_util import generate_uuid
-from codalab.worker.docker_utils import get_available_runtime, start_bundle_container
-from codalab.worker.file_util import remove_path
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
 
@@ -108,7 +106,6 @@ BUNDLE_COMMANDS = (
     'upload',
     'make',
     'run',
-    'docker',
     'edit',
     'detach',
     'rm',
@@ -227,8 +224,6 @@ class Commands(object):
     for building parsers and actions etc.
     """
 
-    commands = {}
-
     class Argument(object):
         """
         Dummy container class to hold the arguments that we will eventually pass into
@@ -253,6 +248,8 @@ class Commands(object):
             self.help = help if isinstance(help, list) else [help]
             self.arguments = arguments
             self.function = function
+
+    commands: Dict[str, Command] = {}
 
     @classmethod
     def command(cls, name, aliases=(), help='', arguments=()):
@@ -515,10 +512,6 @@ class BundleCLI(object):
     @staticmethod
     def simple_bundle_str(info):
         return '%s(%s)' % (contents_str(nested_dict_get(info, 'metadata', 'name')), info['uuid'])
-
-    @staticmethod
-    def simple_worksheet_str(info):
-        return '%s(%s)' % (contents_str(info.get('name')), info['uuid'])
 
     @staticmethod
     def simple_user_str(user):
@@ -960,7 +953,7 @@ class BundleCLI(object):
             if 'username' in state:
                 print("username: %s" % state['username'], file=self.stdout)
 
-        print("current_worksheet: %s" % self.simple_worksheet_str(worksheet_info), file=self.stdout)
+        print("current_worksheet: %s" % self.worksheet_url(worksheet_info), file=self.stdout)
         print("user: %s" % self.simple_user_str(client.fetch('user')), file=self.stdout)
 
     @Commands.command(
@@ -1100,6 +1093,7 @@ class BundleCLI(object):
             'memory',
             'free_disk',
             'last_checkin',
+            'group',
             'tag',
             'runs',
             'shared_file_system',
@@ -1121,6 +1115,7 @@ class BundleCLI(object):
                     'last_checkin': '{} ago'.format(
                         formatting.duration_str(int(time.time()) - worker['checkin_time'])
                     ),
+                    'group': worker['group_uuid'],
                     'tag': worker['tag'],
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
@@ -1630,6 +1625,12 @@ class BundleCLI(object):
                 help='If a bundle with the same command and dependencies already exists, return it instead of creating a new one.',
                 action='store_true',
             ),
+            Commands.Argument(
+                '-i',
+                '--interactive',
+                help='Beta feature - Start an interactive session to construct your run command.',
+                action='store_true',
+            ),
         )
         + Commands.metadata_arguments([RunBundle])
         + EDIT_ARGUMENTS
@@ -1639,10 +1640,34 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         args.target_spec, args.command = desugar_command(args.target_spec, args.command)
         metadata = self.get_missing_metadata(RunBundle, args)
-
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
-        params = {'worksheet': worksheet_uuid}
 
+        if args.interactive:
+            # Disable cl run --interactive on headless systems
+            self._fail_if_headless(args)
+
+            # Fetch bundle locations from the server
+            bundle_uuids = [bundle_target.bundle_uuid for _, bundle_target in targets]
+            bundles_locations = client.get_bundles_locations(bundle_uuids)
+
+            docker_image = metadata.get('request_docker_image', None)
+            if not docker_image:
+                # If a Docker image is not specified, use the default CPU worker image for the interactive session
+                docker_image = self.manager.config['workers']['default_cpu_image']
+
+            # Start an interactive session to allow users to figure out the command to run
+            session = InteractiveSession(
+                docker_image, args.command, self.manager, targets, bundles_locations, args.verbose
+            )
+            command = session.start()
+            session.cleanup()
+        else:
+            command = args.command
+
+        if not command:
+            raise UsageError('The command cannot be empty.')
+
+        params = {'worksheet': worksheet_uuid}
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
         if args.memoize:
@@ -1652,8 +1677,7 @@ class BundleCLI(object):
             ]
             # A list of matched uuids in the order they were created.
             memoized_bundles = client.fetch(
-                'bundles',
-                params={'command': args.command, 'dependencies': json.dumps(dependencies)},
+                'bundles', params={'command': command, 'dependencies': json.dumps(dependencies)}
             )
 
         if args.memoize and len(memoized_bundles) > 0:
@@ -1670,77 +1694,11 @@ class BundleCLI(object):
         else:
             new_bundle = client.create(
                 'bundles',
-                self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
+                self.derive_bundle(RunBundle.BUNDLE_TYPE, command, targets, metadata),
                 params=params,
             )
             print(new_bundle['uuid'], file=self.stdout)
             self.wait(client, args, new_bundle['uuid'])
-
-    @Commands.command(
-        'docker',
-        help='Beta feature. Simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.',
-        arguments=(
-            Commands.Argument(
-                'target_spec', help=RUN_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter
-            ),
-            Commands.Argument(
-                'command',
-                metavar='[---] command',
-                help='Arbitrary Linux command to execute.',
-                completer=NullCompleter,
-            ),
-            Commands.Argument(
-                '-w',
-                '--worksheet-spec',
-                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
-                completer=WorksheetsCompleter,
-            ),
-        )
-        + Commands.metadata_arguments([RunBundle])
-        + EDIT_ARGUMENTS
-        + WAIT_ARGUMENTS,
-    )
-    def do_docker_command(self, args):
-        self._fail_if_headless(args)  # Disable on headless systems
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        args.target_spec, args.command = desugar_command(args.target_spec, args.command)
-        metadata = self.get_missing_metadata(RunBundle, args)
-
-        docker_image = metadata.get('request_docker_image', None)
-        if not docker_image:
-            raise UsageError('--request-docker-image [docker-image] must be specified')
-
-        uuid = generate_uuid()
-        bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
-        target_specs = [parse_key_target(spec) for spec in args.target_spec]
-        dependencies = [
-            ('{}'.format(key), '/{}_dependencies/{}'.format(uuid, key)) for key, _ in target_specs
-        ]
-
-        # Set up a directory to store the bundle.
-        remove_path(bundle_path)
-        os.makedirs(bundle_path)
-
-        for dependency_path, docker_dependency_path in dependencies:
-            child_path = os.path.join(bundle_path, dependency_path)
-            os.symlink(docker_dependency_path, child_path)
-
-        container_id = start_bundle_container(
-            bundle_path,
-            uuid,
-            dependencies,
-            args.command,
-            docker_image,
-            detach=False,
-            tty=True,
-            runtime=get_available_runtime(),
-        ).id
-        print('====', file=self.stdout)
-        print('Container ID: ', container_id[:12], file=self.stdout)
-        print('Local Bundle UUID: ', uuid, file=self.stdout)
-        print('You can find local bundle contents in: ', bundle_path, file=self.stdout)
-        print('====', file=self.stdout)
-        os.system('docker attach {}'.format(container_id))
 
     @Commands.command(
         'edit',
@@ -1781,6 +1739,13 @@ class BundleCLI(object):
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
+            Commands.Argument(
+                '-f',
+                '--field',
+                help='Edit any specified bundle metadata field.',
+                nargs=2,
+                metavar=('FIELD', 'VALUE'),
+            ),
         ),
     )
     def do_edit_command(self, args):
@@ -1802,6 +1767,8 @@ class BundleCLI(object):
             metadata_update['tags'] = args.tags
         if args.anonymous is not None:
             bundle_update['is_anonymous'] = args.anonymous
+        if args.field:
+            metadata_update[args.field[0]] = args.field[1]
 
         # Prompt user for edits via an editor when no edits provided by command line options
         if not self.headless and not metadata_update and not bundle_update:
@@ -2052,7 +2019,7 @@ class BundleCLI(object):
             )
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print(
-                'Added %d bundles to %s' % (len(bundles), self.worksheet_str(worksheet_info)),
+                'Added %d bundles to %s' % (len(bundles), self.worksheet_url(worksheet_info)),
                 file=self.stdout,
             )
 
@@ -2112,7 +2079,7 @@ class BundleCLI(object):
 
     def _worksheet_description(self, worksheet_info):
         fields = [
-            ('Worksheet', self.worksheet_str(worksheet_info)),
+            ('Worksheet', self.worksheet_url(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
             ('Tags', ' '.join(worksheet_info['tags'])),
             (
@@ -2298,7 +2265,7 @@ class BundleCLI(object):
     def print_host_worksheets(self, info):
         print('host_worksheets:', file=self.stdout)
         for host_worksheet_info in info['host_worksheets']:
-            print("  %s" % self.simple_worksheet_str(host_worksheet_info), file=self.stdout)
+            print("  %s" % self.worksheet_url(host_worksheet_info), file=self.stdout)
 
     def print_permissions(self, info):
         print('permission: %s' % permission_str(info['permission']), file=self.stdout)
@@ -2833,14 +2800,6 @@ class BundleCLI(object):
             worksheet_info['name'],
         )
 
-    def worksheet_str(self, worksheet_info):
-        return '%s%s%s(%s)' % (
-            self.manager.session()['address'],
-            INSTANCE_SEPARATOR,
-            worksheet_info['name'],
-            worksheet_info['uuid'],
-        )
-
     @Commands.command(
         'new',
         help='Create a new worksheet.',
@@ -3252,8 +3211,7 @@ class BundleCLI(object):
             elif mode == BlockModes.subworksheets_block:
                 for worksheet_info in block['subworksheet_infos']:
                     print(
-                        '[Worksheet ' + self.simple_worksheet_str(worksheet_info) + ']',
-                        file=self.stdout,
+                        '[Worksheet ' + self.worksheet_url(worksheet_info) + ']', file=self.stdout
                     )
             elif mode == BlockModes.placeholder_block:
                 print('[Placeholder]', block['directive'], file=self.stdout)
@@ -3675,7 +3633,7 @@ class BundleCLI(object):
             % (
                 self.simple_group_str(group),
                 permission_str(new_permission),
-                self.simple_worksheet_str(worksheet),
+                self.worksheet_url(worksheet),
             ),
             file=self.stdout,
         )

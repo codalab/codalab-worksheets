@@ -155,25 +155,6 @@ export function shorten_uuid(uuid) {
     return uuid.slice(0, 8);
 }
 
-export function keepPosInView(pos) {
-    var navbarHeight = parseInt($('body').css('padding-top'));
-    const worksheetContainerEl = $('#worksheet_container');
-    var viewportHeight = Math.max(worksheetContainerEl.innerHeight() || 0);
-
-    // How far is the pos from top of viewport?
-    var distanceFromTopViewPort = pos - navbarHeight;
-
-    if (distanceFromTopViewPort < 100 || distanceFromTopViewPort > viewportHeight * 0.8) {
-        // If pos is off the top of the screen or it is more than 80% down the screen,
-        // then scroll so that it is at 50% down the screen.
-        // Where is the top of the element on the page and does it fit in the
-        // the upper half of the page?
-        var scrollTo =
-            worksheetContainerEl.scrollTop() + distanceFromTopViewPort - viewportHeight * 0.5;
-        worksheetContainerEl.stop(true).animate({ scrollTop: scrollTo }, 50);
-    }
-}
-
 // Whether an interpreted item changed - used in shouldComponentUpdate.
 export function worksheetItemPropsChanged(props, nextProps) {
     /*console.log('worksheetItemPropsChanged',

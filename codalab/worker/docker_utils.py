@@ -95,7 +95,7 @@ def get_available_runtime():
             raise DockerException("nvidia-docker runtime available but no NVIDIA devices detected")
         return NVIDIA_RUNTIME
     except DockerException as e:
-        logger.error("Cannot initialize NVIDIA runtime, no GPU support: %s", e)
+        logger.warning("Cannot initialize NVIDIA runtime, no GPU support: %s", e)
         return DEFAULT_RUNTIME
 
 
