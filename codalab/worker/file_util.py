@@ -285,7 +285,7 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
     return ''.join(lines)
 
 
-def get_path_size(path, exclude_names=[], ignore_nonexistent_path = False):
+def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
     """
     Returns the size of the contents of the given path, in bytes.
 
