@@ -285,14 +285,24 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
     return ''.join(lines)
 
 
-def get_path_size(path, exclude_names=[]):
+def get_path_size(path, exclude_names=[], ignore_nonexistent_path = False):
     """
     Returns the size of the contents of the given path, in bytes.
 
     If path is a directory, any directory entries in exclude_names will be
     ignored.
+
+    If ignore_nonexistent_path is True and the input path is nonexistent, the value
+    0 is returned. Else, an exception is raised (FileNotFoundError).
     """
-    result = os.lstat(path).st_size
+    try:
+        result = os.lstat(path).st_size
+    except FileNotFoundError:
+        if ignore_nonexistent_path:
+            # If we are to ignore nonexistent paths, return the size of this path as 0
+            return 0
+        # Raise the FileNotFoundError
+        raise
     if not os.path.islink(path) and os.path.isdir(path):
         for child in os.listdir(path):
             if child not in exclude_names:
@@ -300,7 +310,7 @@ def get_path_size(path, exclude_names=[]):
                     full_child_path = os.path.join(path, child)
                 except UnicodeDecodeError:
                     full_child_path = os.path.join(path.decode('utf-8'), child.decode('utf-8'))
-                result += get_path_size(full_child_path)
+                result += get_path_size(full_child_path, ignore_nonexistent_path=True)
     return result
 
 
