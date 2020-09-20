@@ -128,6 +128,10 @@ class BundleDetailSideBar extends React.Component<
                     <span className={ `${ classes.stateBox } ${ classes[stateSpecClass] }`} style={{ display: 'inline' }}>
                         <Typography inline color='inherit'>{bundleState}</Typography>
                     </span>
+                    {(bundleInfo.bundle_type === 'run'
+                        && typeof bundleInfo.metadata.staged_status !== 'undefined')
+                        ? bundleInfo.metadata.staged_status
+                        : null}
                     {metadata.failure_message  
                         &&  <div className={classes.wrappableText} style={{ color: 'red', display: 'inline'}}>      
                                 ({metadata.failure_message})

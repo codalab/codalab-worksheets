@@ -29,6 +29,7 @@ def checkin(worker_id):
         request.user.user_id,
         worker_id,
         request.json.get("tag"),
+        request.json.get("group_name"),
         request.json.get("cpus"),
         request.json.get("gpus"),
         request.json.get("memory_bytes"),
@@ -107,8 +108,10 @@ def check_run_permission(bundle):
     """
     Checks whether the current user can run the bundle.
     """
-    if not check_bundle_have_run_permission(local.model, request.user.user_id, bundle):
-        abort(http.client.FORBIDDEN, "User does not have permission to run bundle.")
+    if not check_bundle_have_run_permission(local.model, request.user, bundle):
+        abort(
+            http.client.FORBIDDEN, "User does not have permission to run bundle.",
+        )
 
 
 @post(
@@ -141,10 +144,15 @@ def start_bundle(worker_id, uuid):
 def workers_info():
     workers = local.worker_model.get_workers()
     if request.user.user_id != local.model.root_user_id:
-        # Filter to workers that only this user owns.
-        workers = [worker for worker in workers if worker['user_id'] == request.user.user_id]
+        # Filter to only include the workers that the user owns or has access to
+        user_groups = local.model.get_user_groups(request.user.user_id)
+        workers = [
+            worker
+            for worker in workers
+            if worker['user_id'] == request.user.user_id or worker['group_uuid'] in user_groups
+        ]
 
-    # edit entries in data to make them suitable for human reading
+    # Edit entries in the data to make them suitable for human reading
     for worker in workers:
         # checkin_time: seconds since epoch
         worker["checkin_time"] = int(

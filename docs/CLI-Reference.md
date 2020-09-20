@@ -86,6 +86,7 @@ Usage: `cl <command> <arguments>`
       --anonymous           Set bundle to be anonymous (identity of the owner will NOT be visible to users without 'all' permission on the bundle).
       --not-anonymous       Set bundle to be NOT anonymous.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+      -f, --field           Edit any specified bundle metadata field.
 
 ### detach (de)
     Detach a bundle from this worksheet, but doesn't remove the bundle.
