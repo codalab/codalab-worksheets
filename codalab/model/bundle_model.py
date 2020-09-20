@@ -1388,7 +1388,7 @@ class BundleModel(object):
                         'name',
                         'title',
                         'owner_id',
-                        :
+                        ):
                 clause = make_condition(getattr(cl_worksheet.c, key), value)
             elif key == 'group':  # shared with group with read or all permissions?
                 group_uuid = get_group_info(value, False)['uuid']
@@ -2391,6 +2391,8 @@ class BundleModel(object):
         user_id=None,
         is_verified=False,
         has_access=False,
+        time_used=0,
+        disk_used=0,
     ):
         """
         Create a brand new unverified user.
@@ -2424,9 +2426,9 @@ class BundleModel(object):
                         "password": User.encode_password(password, crypt_util.get_random_string()),
                         "time_quota": self.default_user_info['time_quota'],
                         "parallel_run_quota": self.default_user_info['parallel_run_quota'],
-                        "time_used": 0,
+                        "time_used": time_used,
                         "disk_quota": self.default_user_info['disk_quota'],
-                        "disk_used": 0,
+                        "disk_used": disk_used,
                         "affiliation": affiliation,
                         "url": None,
                     }
