@@ -364,7 +364,8 @@ class BundleManager(object):
             sorted_user_staged_bundles = sorted(
                 user_staged_bundles,
                 key=lambda b: (
-                    b[0].metadata.request_priority is not None and b[0].metadata.request_priority >= 0,
+                    b[0].metadata.request_priority is not None
+                    and b[0].metadata.request_priority >= 0,
                     b[0].metadata.request_priority is None,
                     b[0].metadata.request_priority,
                     b[0].metadata.request_queue is not None,
