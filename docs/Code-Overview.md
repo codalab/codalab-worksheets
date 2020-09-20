@@ -264,8 +264,8 @@ python3 test_runner.py default
 python3 test_runner.py frontend
 ```
 
-- Stress tests in [tests/stress_test.py](https://github.com/codalab/codalab-worksheets/blob/master/tests/stress_test.py)
+- Stress tests in [tests/stress/stress_test.py](https://github.com/codalab/codalab-worksheets/blob/master/tests/stress/stress_test.py)
 
 ```
-python3 tests/stress_test.py --instance https://worksheets-dev.codalab.org --heavy
+python3 tests/stress/stress_test.py --instance https://worksheets-dev.codalab.org --heavy
 ```
