@@ -355,14 +355,17 @@ class BundleManager(object):
             user_staged_bundles = [
                 staged_bundles_to_run[queue_position] for queue_position in queue_positions
             ]
-            # Sort the staged bundles for this user, according to
-            # (1) their priority (larger values indicate higher priority) and
-            # (2) whether it requested to run on a specific worker (bundles with a specified
-            # worker have higher priority).
+            # Sort the staged bundles for this user, according to (1) their
+            # priority. Larger values indicate higher priority (i.e., at the
+            # start of the sorted list). Negative priority bundles should be
+            # queued behind bundles with no specified priority (None priority)
+            # and (2) whether it requested to run on a specific worker (bundles
+            # with a specified worker have higher priority).
             sorted_user_staged_bundles = sorted(
                 user_staged_bundles,
                 key=lambda b: (
-                    b[0].metadata.request_priority is not None,
+                    b[0].metadata.request_priority is not None and b[0].metadata.request_priority >= 0,
+                    b[0].metadata.request_priority is None,
                     b[0].metadata.request_priority,
                     b[0].metadata.request_queue is not None,
                 ),
