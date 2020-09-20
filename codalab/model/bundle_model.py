@@ -447,20 +447,14 @@ class BundleModel(object):
             elif key == '.format':
                 format_func = value
             # Bundle fields
-            elif key == 'bundle_type':
-                clause = make_condition(key, cl_bundle.c.bundle_type, value)
-            elif key == 'id':
-                clause = make_condition(key, cl_bundle.c.id, value)
-            elif key == 'uuid':
-                clause = make_condition(key, cl_bundle.c.uuid, value)
-            elif key == 'data_hash':
-                clause = make_condition(key, cl_bundle.c.data_hash, value)
-            elif key == 'state':
-                clause = make_condition(key, cl_bundle.c.state, value)
-            elif key == 'command':
-                clause = make_condition(key, cl_bundle.c.command, value)
-            elif key == 'owner_id':
-                clause = make_condition(key, cl_bundle.c.owner_id, value)
+            elif key in ('bundle_type',
+                        'id',
+                        'uuid',
+                        'data_hash',
+                        'state',
+                        'command',
+                        'owner_id'):
+                clause = make_condition(key, getattr(cl_bundle.c, key), value)
             elif key == '.shared':  # shared with any group I am in with read permission
                 clause = cl_bundle.c.uuid.in_(
                     select([cl_group_bundle_permission.c.object_uuid]).where(
@@ -1379,16 +1373,13 @@ class BundleModel(object):
                     )
                 )
             # Bundle fields
-            elif key == 'id':
-                clause = make_condition(cl_worksheet.c.id, value)
-            elif key == 'uuid':
-                clause = make_condition(cl_worksheet.c.uuid, value)
-            elif key == 'name':
-                clause = make_condition(cl_worksheet.c.name, value)
-            elif key == 'title':
-                clause = make_condition(cl_worksheet.c.title, value)
-            elif key == 'owner_id':
-                clause = make_condition(cl_worksheet.c.owner_id, value)
+            elif key in ('id',
+                        'uuid',
+                        'name',
+                        'title',
+                        'owner_id',
+                        :
+                clause = make_condition(getattr(cl_worksheet.c, key), value)
             elif key == 'group':  # shared with group with read or all permissions?
                 group_uuid = get_group_info(value, False)['uuid']
                 clause = cl_worksheet.c.uuid.in_(
@@ -2289,32 +2280,20 @@ class BundleModel(object):
                 elif key == '.format':
                     format_func = value
                 # Bundle fields
-                elif key == 'id':
-                    clause = make_condition(key, cl_user.c.id, value)
-                elif key == 'user_id':
-                    clause = make_condition(key, cl_user.c.user_id, value)
-                elif key == 'user_name':
-                    clause = make_condition(key, cl_user.c.user_name, value)
-                elif key == 'email':
-                    clause = make_condition(key, cl_user.c.email, value)
-                elif key == 'last_login':
-                    clause = make_condition(key, cl_user.c.last_login, value)
-                elif key == 'first_name':
-                    clause = make_condition(key, cl_user.c.first_name, value)
-                elif key == 'last_name':
-                    clause = make_condition(key, cl_user.c.last_name, value)
-                elif key == 'affiliation':
-                    clause = make_condition(key, cl_user.c.affiliation, value)
-                elif key == 'time_quota':
-                    clause = make_condition(key, cl_user.c.time_quota, value)
-                elif key == 'parallel_run_quota':
-                    clause = make_condition(key, cl_user.c.parallel_run_quota, value)
-                elif key == 'time_used':
-                    clause = make_condition(key, cl_user.c.time_used, value)
-                elif key == 'disk_quota':
-                    clause = make_condition(key, cl_user.c.disk_quota, value)
-                elif key == 'disk_used':
-                    clause = make_condition(key, cl_user.c.disk_used, value)
+                elif key in ('id',
+                            'user_id',
+                            'user_name',
+                            'email',
+                            'last_login',
+                            'first_name',
+                            'last_name',
+                            'affiliation',
+                            'time_quota',
+                            'parallel_run_quota',
+                            'time_used',
+                            'disk_quota',
+                            'disk_used'):
+                    clause = make_condition(key, getattr(cl_user.c, key), value)
                 elif key == '.joined_after':
                     clause = cl_user.c.date_joined >= value
                 elif key == '.active_after':

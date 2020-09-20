@@ -969,6 +969,11 @@ def test(ctx):
         ['test'], _run_command([cl, 'uls', '.time_used_more_than=' + '10%', '-f', 'user_name'])
     )
 
+        # check .time_used_more_than
+    check_contains(
+        [10], _run_command([cl, 'uls', '.time_used_more_than=' + '10%', '-f', 'disk_quota'])
+    )
+
 
 @TestModule.register('freeze')
 def test(ctx):
