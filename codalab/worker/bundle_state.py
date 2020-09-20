@@ -1,4 +1,5 @@
 from collections import namedtuple
+from typing import Any, Dict, List, Optional
 
 
 class State(object):
@@ -44,6 +45,18 @@ DependencyKey = namedtuple('DependencyKey', 'parent_uuid parent_path')
 Dependency = namedtuple(
     'Dependency', 'parent_name parent_path parent_uuid child_path child_uuid location'
 )
+
+
+class LinkFormat(object):
+    """
+    An enumeration of link formats that a bundle supports in the
+    metadata.link_format field.
+    """
+
+    RAW = 'raw'
+    ZIP = 'zip'
+
+    OPTIONS = {RAW, ZIP}
 
 
 class BundleInfo(object):

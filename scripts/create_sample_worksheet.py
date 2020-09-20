@@ -8,8 +8,8 @@ import time
 from scripts.test_util import cleanup, run_command
 
 """
-Script to create small and large sample worksheets in any instance to stress test the front end. The purpose of 
-the small worksheet is to test all features CodaLab offers on the front end. The large worksheet is a much bigger 
+Script to create small and large sample worksheets in any instance to stress test the front end. The purpose of
+the small worksheet is to test all features CodaLab offers on the front end. The large worksheet is a much bigger
 version of the small worksheet and its purpose is to push the limit and stress test the frontend rendering capabilities.
 """
 
@@ -43,6 +43,7 @@ class SampleWorksheet:
     _SIZE_REGEX = '[0-9.]{0,10}[tkgmb]{0,2}'
     _IMAGE_REGEX = '\[Image\]'
     _GRAPH_REGEX = '\[Graph\]'
+    _SCHEMA_REGEX = '\[SchemaBlock\]'
 
     def __init__(self, cl, large=False, preview_mode=False):
         # For simplicity, reference a set number of entities for each section of the small and large worksheet.
@@ -195,7 +196,7 @@ class SampleWorksheet:
 
     def _add_introduction(self):
         self._expected_lines.append(
-            f'### Worksheet: https?:\/\/[a-z\-.\d:]*cl_small_worksheet\({SampleWorksheet._FULL_UUID_REGEX}\)'
+            f'### Worksheet: https?:\/\/.*{SampleWorksheet._FULL_UUID_REGEX}.*cl_small_worksheet.*'
         )
         self._expected_lines.append('### Title: (Small|Large) Worksheet')
         self._expected_lines.append(f'### Tags: {SampleWorksheet.TAG}')
@@ -225,7 +226,6 @@ class SampleWorksheet:
         self._add_subheader('Valid Bundle References')
         self._add_bundles(self._valid_bundles)
         self._add_default_table_pattern(len(self._valid_bundles))
-
         self._add_subheader('Private Bundle References')
         self._add_bundles(self._private_bundles)
         self._add_default_table_pattern(len(self._private_bundles))
@@ -241,6 +241,8 @@ class SampleWorksheet:
         self._add_line('% add permission')
         self._add_line('% add group_permissions')
         self._add_line('% display table valid_schema')
+        self._add_blank_line_pattern()
+        self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)
         self._add_bundles(self._valid_bundles)
         self._add_table_pattern(
             ['uuid', 'name', 'summary', 'metadata', 'permission', 'group_permissions'],
@@ -262,6 +264,8 @@ class SampleWorksheet:
         self._add_line('% add size data_size size')
         self._add_line('% add uuid uuid "[0:8]"')
         self._add_line('% display table post_processor_schema')
+        self._add_blank_line_pattern()
+        self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)
         self._add_bundles(self._valid_bundles)
         self._add_table_pattern(
             ['duration', 'time', 'updated', 'size', 'uuid'], len(self._valid_bundles)
@@ -271,6 +275,8 @@ class SampleWorksheet:
         self._add_line('% schema combined_schema')
         self._add_line('% addschema valid_schema')
         self._add_line('% addschema post_processor_schema')
+        self._add_blank_line_pattern()
+        self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)
         self._add_line('% display table combined_schema')
         self._add_bundles(self._valid_bundles)
         self._add_table_pattern(
@@ -309,6 +315,8 @@ class SampleWorksheet:
         self._add_line('% add time time duration2')
         self._add_line('% add updated last_updated date2')
         self._add_line('% add size data_size size2')
+        self._add_blank_line_pattern()
+        self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)
         self._add_line('% display table invalid_functions_schema')
         self._add_bundles(self._valid_bundles)
         self._add_table_pattern(['time', 'updated', 'size'], 0)
@@ -401,6 +409,8 @@ class SampleWorksheet:
         self._add_line('% add created created date')
         self._add_line('% display table recently_created_schema')
         self._add_line('% search .mine .limit={}'.format(self._entities_count))
+        self._add_blank_line_pattern()
+        self._expected_lines.append(SampleWorksheet._SCHEMA_REGEX)
         self._add_table_pattern(['name', 'owner', 'created'], self._entities_count)
 
     def _add_invalid_directives(self):
@@ -474,7 +484,7 @@ class SampleWorksheet:
         self._add_blank_line_pattern()
         for uuid in worksheets:
             self._add_line('{{%s}}' % uuid)
-            self._expected_lines.append(f'\[Worksheet \S*\({SampleWorksheet._FULL_UUID_REGEX}\)\]')
+            self._expected_lines.append(f'\[Worksheet .*{SampleWorksheet._FULL_UUID_REGEX}.*\]')
 
     def _add_bundles(self, bundles):
         for uuid in bundles:
@@ -537,7 +547,7 @@ class SampleWorksheet:
     def _add_worksheets_pattern(self, worksheet_count):
         self._add_blank_line_pattern()
         for _ in range(worksheet_count):
-            self._expected_lines.append(f'\[Worksheet \S*\({SampleWorksheet._FULL_UUID_REGEX}\)\]')
+            self._expected_lines.append(f'\[Worksheet .*{SampleWorksheet._FULL_UUID_REGEX}.*\]')
 
     def _add_dash_pattern(self):
         self._expected_lines.append('\s\s[-]*')

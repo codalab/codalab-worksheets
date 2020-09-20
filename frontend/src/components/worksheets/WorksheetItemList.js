@@ -9,6 +9,7 @@ import ImageItem from './items/ImageItem';
 import MarkdownItem from './items/MarkdownItem';
 import RecordItem from './items/RecordItem';
 import TableItem from './items/TableItem';
+import SchemaItem from './items/SchemaItem';
 import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
 import PlaceholderItem from './items/PlaceholderItem';
@@ -26,6 +27,7 @@ export const BLOCK_TO_COMPONENT = {
     image_block: ImageItem,
     graph_block: GraphItem,
     placeholder_block: PlaceholderItem,
+    schema_block: SchemaItem,
 };
 
 // Create a worksheet item based on props and add it to worksheet_items.
@@ -48,10 +50,9 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
         url = '/bundles/' + item.bundles_spec.bundle_infos[0].uuid;
     if (item.subworksheet_info) url = '/worksheets/' + item.subworksheet_info.uuid;
 
-    props.key = props.ref = 'item' + props.focusIndex;
+    props.key = props.id = 'codalab-worksheet-item-' + props.focusIndex;
     props.url = url;
     props.prevItem = prevItem;
-    props.itemHeight = (props.itemHeights || {})[props.ref] || 100;
     props.after_sort_key = getAfterSortKey(
         props.item,
         props.item.mode === 'markup_block' ? undefined : props.subFocusIndex,
@@ -100,6 +101,8 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             subFocusIndex={props.subFocusIndex}
             after_sort_key={props.after_sort_key}
             ids={props.ids}
+            updateSchemaItem={props.updateSchemaItem}
+            id={props.id}
         >
             {elem}
         </ItemWrapper>,
@@ -236,9 +239,10 @@ class WorksheetItemList extends React.Component {
                         editPermission: info && info.edit_permission,
                         addCopyBundleRowsCallback: this.props.addCopyBundleRowsCallback,
                         itemID: index,
+                        updateBundleBlockSchema: this.props.updateBundleBlockSchema,
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
-                        itemHeights: this.props.itemHeights,
+                        updateSchemaItem: this.props.updateSchemaItem,
                     };
                     addWorksheetItems(
                         props,

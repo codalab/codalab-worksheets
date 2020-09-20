@@ -1,6 +1,11 @@
+import logging
+import os
 import tempfile
 import shutil
 from . import pyjson
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseStateCommitter(object):
@@ -15,6 +20,7 @@ class BaseStateCommitter(object):
 
 class JsonStateCommitter(BaseStateCommitter):
     def __init__(self, json_path):
+        self.temp_file = None
         self._state_file = json_path
 
     def load(self, default=None):
@@ -26,7 +32,18 @@ class JsonStateCommitter(BaseStateCommitter):
 
     def commit(self, state):
         """ Write out the state in JSON format to a temporary file and rename it into place """
-        with tempfile.NamedTemporaryFile() as f:
-            f.write(pyjson.dumps(state).encode())
-            f.flush()
-            shutil.copyfile(f.name, self._state_file)
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            try:
+                self.temp_file = f.name
+                f.write(pyjson.dumps(state).encode())
+                f.flush()
+                shutil.copyfile(self.temp_file, self._state_file)
+            finally:
+                try:
+                    os.unlink(self.temp_file)
+                except FileNotFoundError:
+                    logger.error(
+                        "Problem occurred in deleting temp file {} via os.unlink".format(
+                            self.temp_file
+                        )
+                    )
