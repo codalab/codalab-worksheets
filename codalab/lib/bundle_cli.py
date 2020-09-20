@@ -657,13 +657,14 @@ class BundleCLI(object):
         return worksheet_uuid
 
     def print_table(
-        self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''
+        self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent='', user_defined_fields=True,
     ):
         """
         Pretty-print a list of columns from each row in the given list of dicts.
         """
         rows = [columns]
         # display restricted fields if the server returns those fields - which suggests the user is root
+        #
         try:
             if row_dicts and row_dicts[0].get('last_login'):
                 columns += ('last_login', 'time', 'disk', 'parallel_run_quota')
@@ -3830,7 +3831,7 @@ class BundleCLI(object):
                     'date_joined',
                 )
             self.print_result_limit_info(len(users))
-            self.print_table(columns, users)
+            self.print_table(columns, users, user_defined_fields=args.field)
         else:
             print(NO_RESULTS_FOUND, file=self.stderr)
 

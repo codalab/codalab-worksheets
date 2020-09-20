@@ -1046,6 +1046,11 @@ def test(ctx):
         'non_root_user', _run_command([cl, 'uls', '.time_used_less_than=' + '1%', '-f', 'user_name'])
     )
 
+    # check user defined fields
+    check_contains(
+        '3', _run_command([cl, 'uls', '.time_used_less_than=' + '1%', '-f', 'parallel_run_quota'])
+    )
+
 
 @TestModule.register('freeze')
 def test_freeze(ctx):

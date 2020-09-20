@@ -455,13 +455,7 @@ class BundleModel(object):
             elif key == '.format':
                 format_func = value
             # Bundle fields
-            elif key in ('bundle_type',
-                        'id',
-                        'uuid',
-                        'data_hash',
-                        'state',
-                        'command',
-                        'owner_id'):
+            elif key in ('bundle_type', 'id', 'uuid', 'data_hash', 'state', 'command', 'owner_id'):
                 clause = make_condition(key, getattr(cl_bundle.c, key), value)
             elif key == '.shared':  # shared with any group I am in with read permission
                 clause = cl_bundle.c.uuid.in_(
@@ -1383,12 +1377,7 @@ class BundleModel(object):
                     )
                 )
             # Bundle fields
-            elif key in ('id',
-                        'uuid',
-                        'name',
-                        'title',
-                        'owner_id',
-                        ):
+            elif key in ('id', 'uuid', 'name', 'title', 'owner_id',):
                 clause = make_condition(getattr(cl_worksheet.c, key), value)
             elif key == 'group':  # shared with group with read or all permissions?
                 group_uuid = get_group_info(value, False)['uuid']
@@ -2294,19 +2283,21 @@ class BundleModel(object):
                 elif key == '.format':
                     format_func = value
                 # Bundle fields
-                elif key in ('id',
-                            'user_id',
-                            'user_name',
-                            'email',
-                            'last_login',
-                            'first_name',
-                            'last_name',
-                            'affiliation',
-                            'time_quota',
-                            'parallel_run_quota',
-                            'time_used',
-                            'disk_quota',
-                            'disk_used'):
+                elif key in (
+                    'id',
+                    'user_id',
+                    'user_name',
+                    'email',
+                    'last_login',
+                    'first_name',
+                    'last_name',
+                    'affiliation',
+                    'time_quota',
+                    'parallel_run_quota',
+                    'time_used',
+                    'disk_quota',
+                    'disk_used',
+                ):
                     clause = make_condition(key, getattr(cl_user.c, key), value)
                 elif key == '.joined_after':
                     clause = cl_user.c.date_joined >= value
