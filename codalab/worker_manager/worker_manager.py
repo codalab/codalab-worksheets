@@ -114,6 +114,8 @@ class WorkerManager(object):
             command.extend(['--exit-on-exception'])
         if self.args.worker_tag_exclusive:
             command.extend(['--tag-exclusive'])
+        if self.args.worker_pass_down_termination:
+            command.extend(['--pass-down-termination'])
 
         return command
 

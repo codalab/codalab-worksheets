@@ -91,9 +91,6 @@ class AWSBatchWorkerManager(WorkerManager):
         work_dir = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
         command = self.build_command(worker_id, work_dir)
 
-        if self.args.worker_pass_down_termination:
-            command.append('--pass-down-termination')
-
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-batch-jobdefinition.html
         # Need to mount:
         # - docker.sock to enable us to start docker in docker

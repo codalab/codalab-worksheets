@@ -20,6 +20,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             worker_delete_work_dir_on_exit=False,
             worker_exit_on_exception=False,
             worker_tag_exclusive=False,
+            worker_pass_down_termination=False,
             password_file=None,
         )
 
