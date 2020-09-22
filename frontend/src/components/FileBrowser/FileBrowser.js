@@ -50,16 +50,18 @@ export class FileBrowser extends React.Component<
         }
     }
 
-    componentWillReceiveProps(nextProps) {
-        if (nextProps.isRunBundleUIVisible === false && this.state.isVisible) {
-            this.setState({ isVisible: false });
-            this.getDOMNode()
-                .getElementsByClassName('file-browser-arrow')[0]
-                .click();
+    static getDerivedStateFromProps(nextProps, prevState) {
+        if (nextProps.isRunBundleUIVisible === false && prevState.isVisible) {
+            return { isVisible: false };
         }
     }
 
     componentDidUpdate(prevProps, prevState) {
+        if (this.props.isRunBundleUIVisible === false && prevState.isVisible) {
+            this.getDOMNode()
+                .getElementsByClassName('file-browser-arrow')[0]
+                .click();
+        }
         if (prevProps.uuid !== this.props.uuid) {
             // Reset and fire off an asynchronous fetch for new data
             this.setState({ fileBrowserData: {} });
