@@ -27,6 +27,7 @@ A genpath (generalized path) is either:
 See get_worksheet_lines for documentation on the specification of the directives.
 """
 import copy
+import logging
 import os
 import re
 import sys
@@ -73,6 +74,8 @@ DIRECTIVE_REGEX = re.compile(r'^\s*' + DIRECTIVE_CHAR + '\s*(.*)\s*$')
 # Default number of lines to pull for each display mode.
 DEFAULT_CONTENTS_MAX_LINES = 10
 
+
+logger = logging.getLogger(__name__)
 
 def markup_item(x):
     return (None, None, x, TYPE_MARKUP)
@@ -271,6 +274,10 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
     """
 
     def get_line_type(line):
+        logger.info("Yibo: line is " + line)
+        logger.info("Yibo: matching Bundle_regex is " + str(BUNDLE_REGEX.match(line)))
+        logger.info("Yibo: matching SUBWORKSHEET_REGEX is " + str(SUBWORKSHEET_REGEX.match(line)))
+        logger.info("Yibo: matching is DIRECTIVE_REGEX is " + str(DIRECTIVE_REGEX.match(line)))
         if line.startswith('//'):
             return 'comment'
         elif BUNDLE_REGEX.match(line) is not None:
@@ -313,6 +320,8 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
             }  # info doesn't need anything other than uuid
             items.append(bundle_item(bundle_info))
         elif line_type == TYPE_WORKSHEET:
+            logger.info("Yibo: SUBWORKSHEET_REGEX.match(line) is " + str(SUBWORKSHEET_REGEX.match(line)))
+            logger.info("Yibo: line is " + line)
             subworksheet_spec = SUBWORKSHEET_REGEX.match(line).group(3)
             try:
                 subworksheet_uuid = canonicalize.get_worksheet_uuid(
@@ -325,6 +334,8 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
             except UsageError as e:
                 items.append(markup_item(str(e) + ': ' + line))
         elif line_type == TYPE_DIRECTIVE:
+            logger.info("Yibo: DIRECTIVE_REGEX.match(line) is " + str(DIRECTIVE_REGEX.match(line)))
+            logger.info("Yibo: line is " + line)
             directive = DIRECTIVE_REGEX.match(line).group(1)
             items.append(directive_item(formatting.string_to_tokens(directive)))
         elif line_type == TYPE_MARKUP:

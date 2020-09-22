@@ -276,7 +276,8 @@ def _run_command(
         request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "10m".
         request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m".
         request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed).
-        request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands. Defaults to "python:3.6.10-slim-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
+        request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands.
+                                              Defaults to "python:3.6.10-slim-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
 
     Returns:
         str: Command output.
@@ -1649,7 +1650,8 @@ def test_resources(ctx):
     # Too much memory
     # TODO(klopyrev): CircleCI doesn't seem to support cgroups, so we can't get
     # the memory usage of a Docker container.
-    # stress(use_time=2, request_time=10, use_memory=1000, request_memory=50, use_disk=10, request_disk=100, expected_exit_code=1, expected_failure_message='Memory limit 50mb exceeded.')
+    # stress(use_time=2, request_time=10, use_memory=1000, request_memory=50, use_disk=10, request_disk=100,
+    # expected_exit_code=1, expected_failure_message='Memory limit 50mb exceeded.')
 
     # Too much disk
     stress(
