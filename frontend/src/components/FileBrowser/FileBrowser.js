@@ -461,7 +461,6 @@ export class FileBrowserLite extends React.Component<
     {
         currentDirectory: string,
         fileBrowserData: {},
-        isVisible: boolean,
     },
 > {
     constructor(props) {
@@ -469,7 +468,6 @@ export class FileBrowserLite extends React.Component<
         this.state = {
             currentWorkingDirectory: '',
             fileBrowserData: {},
-            isVisible: !this.props.startCollapsed,
         };
     }
 
