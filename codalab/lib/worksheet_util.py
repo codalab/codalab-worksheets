@@ -77,6 +77,7 @@ DEFAULT_CONTENTS_MAX_LINES = 10
 
 logger = logging.getLogger(__name__)
 
+
 def markup_item(x):
     return (None, None, x, TYPE_MARKUP)
 
@@ -320,7 +321,9 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
             }  # info doesn't need anything other than uuid
             items.append(bundle_item(bundle_info))
         elif line_type == TYPE_WORKSHEET:
-            logger.info("Yibo: SUBWORKSHEET_REGEX.match(line) is " + str(SUBWORKSHEET_REGEX.match(line)))
+            logger.info(
+                "Yibo: SUBWORKSHEET_REGEX.match(line) is " + str(SUBWORKSHEET_REGEX.match(line))
+            )
             logger.info("Yibo: line is " + line)
             subworksheet_spec = SUBWORKSHEET_REGEX.match(line).group(3)
             try:
