@@ -1436,6 +1436,7 @@ class Worksheet extends React.Component {
 
         Mousetrap(form).bind(['enter'], function(e) {
             e.stopImmediatePropagation();
+            e.preventDefault();
             document.querySelector('label[for=' + e.target.firstElementChild.htmlFor + ']').click();
             Mousetrap(form).unbind(['enter']);
         });
