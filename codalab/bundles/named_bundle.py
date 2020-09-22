@@ -4,6 +4,7 @@ It requires name, description, and tags metadata for all of its subclasses.
 TODO: merge into bundle.py.
 '''
 import time
+from typing import List
 
 from codalab.common import UsageError
 from codalab.lib import spec_util
@@ -16,14 +17,14 @@ class NamedBundle(Bundle):
 
     # Don't format specs
     # fmt: off
-    METADATA_SPECS = (
+    METADATA_SPECS = [
         MetadataSpec('name', str, 'Short variable name (not necessarily unique); must conform to %s.' % spec_util.NAME_REGEX.pattern, short_key='n',),
         MetadataSpec('description', str, 'Full description of the bundle.', short_key='d'),
         MetadataSpec('tags', list, 'Space-separated list of tags used for search (e.g., machine-learning).', metavar='TAG',),
         MetadataSpec('created', int, 'Time when this bundle was created.', generated=True, formatting='date'),
         MetadataSpec('data_size', int, 'Size of this bundle (in bytes).', generated=True, formatting='size'),
         MetadataSpec('failure_message', str, 'Error message if this run bundle failed.', generated=True,),
-    )
+    ]  # type: List
     # fmt: on
 
     @classmethod

@@ -26,6 +26,7 @@ from bottle import (
 
 from codalab.common import exception_to_http_error
 from codalab.lib import formatting, server_util
+from codalab.lib.codalab_manager import CodaLabManager
 from codalab.server.authenticated_plugin import PublicUserPlugin, UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
@@ -214,13 +215,8 @@ def dummy_xmlrpc_app():
     return app
 
 
-def run_rest_server(manager, debug, num_processes, num_threads):
-    """Runs the REST server."""
-    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
-
-    host = manager.config['server']['rest_host']
-    port = manager.config['server']['rest_port']
-
+def create_rest_app(manager=CodaLabManager()):
+    """Creates and returns a rest app."""
     install(SaveEnvironmentPlugin(manager))
     install(CheckJsonPlugin())
     install(oauth2_provider.check_oauth())
@@ -253,6 +249,15 @@ def run_rest_server(manager, debug, num_processes, num_threads):
 
     # Increase the request body size limit to 8 MiB
     bottle.BaseRequest.MEMFILE_MAX = 8 * 1024 * 1024
+    return root_app
+
+
+def run_rest_server(manager, debug, num_processes, num_threads):
+    """Runs the REST server."""
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+
+    host = manager.config['server']['rest_host']
+    port = manager.config['server']['rest_port']
 
     # We use gunicorn to create a server with multiple processes, since in
     # Python a single process uses at most 1 CPU due to the Global Interpreter
@@ -261,7 +266,7 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     # bug. None of the arguments to cl should go to
     # Gunicorn.
     run(
-        app=root_app,
+        app=create_rest_app(manager),
         host=host,
         port=port,
         debug=debug,

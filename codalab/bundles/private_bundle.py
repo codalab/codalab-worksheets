@@ -1,6 +1,8 @@
 '''
 DatasetBundle is a Bundle type that simply inherits from UploadedBundle.
 '''
+from typing import List
+
 from codalab.objects.bundle import Bundle
 
 
@@ -10,7 +12,7 @@ class PrivateBundle(Bundle):
     """
 
     BUNDLE_TYPE = 'private'
-    METADATA_SPECS = ()
+    METADATA_SPECS = []  # type: List
 
     @classmethod
     def construct(cls, uuid):

@@ -545,8 +545,8 @@ class NewRun extends React.Component<{
                     placeholder="python train.py --data mydataset.txt"
                     maxRows={4}
                     onKeyDown={(e) => {
-                        if (e.keyCode === 13 && (e.ctrlKey || e.shiftKey || e.metaKey)) {
-                            // Press control enter
+                        if (e.keyCode === 13 && !(e.shiftKey)) {
+                            // if strictly enter key is pressed
                             e.preventDefault();
                             this.runCommand();
                             this.props.onSubmit();

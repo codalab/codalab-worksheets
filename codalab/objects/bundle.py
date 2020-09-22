@@ -11,6 +11,8 @@ they may override a number of methods of the base class:
   validate: bundle subclasses may require additional validation
   run: bundle subclasses that must be executed must override this method
 '''
+from typing import List
+
 from codalab.common import precondition
 from codalab.lib import spec_util
 from codalab.model.orm_object import ORMObject
@@ -23,8 +25,8 @@ class Bundle(ORMObject):
     # Bundle subclasses should have the following class-level attributes:
     #   - BUNDLE_TYPE: a string bundle type
     #   - METADATA_SPECS: a list of MetadataSpec objects
-    BUNDLE_TYPE = None
-    METADATA_SPECS = None
+    BUNDLE_TYPE: str
+    METADATA_SPECS: list
 
     @classmethod
     def construct(cls, *args, **kwargs):

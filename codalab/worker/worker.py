@@ -67,6 +67,7 @@ class Worker:
         bundle_service,  # type: BundleServiceClient
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
+        group_name,  # type: str
         docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.
@@ -92,6 +93,7 @@ class Worker:
         )
 
         self.id = worker_id
+        self.group_name = group_name
         self.tag = tag
         self.tag_exclusive = tag_exclusive
 
@@ -264,7 +266,7 @@ class Worker:
                     capture_exception()
                 traceback.print_exc()
                 if self.exit_on_exception:
-                    logger.error(
+                    logger.warning(
                         'Encountered exception, terminating the worker after sleeping for 5 minutes...'
                     )
                     self.terminate = True
@@ -275,7 +277,7 @@ class Worker:
                     # We sleep in 5-second increments to check
                     # if the worker needs to terminate (say, if it's received
                     # a SIGTERM signal).
-                    logger.error('Sleeping for 1 hour due to exception...please help me!')
+                    logger.warning('Sleeping for 1 hour due to exception...please help me!')
                     for _ in range(12 * 60):
                         # We run this here, instead of going through another iteration of the
                         # while loop, to minimize the code that's run---the reason we ended up here
@@ -314,7 +316,7 @@ class Worker:
             self.docker_network_internal.remove()
             self.docker_network_external.remove()
         except docker.errors.APIError as e:
-            logger.error("Cannot clear docker networks: %s", str(e))
+            logger.warning("Cannot clear docker networks: %s", str(e))
 
         logger.info("Stopped Worker. Exiting")
 
@@ -390,6 +392,7 @@ class Worker:
         """
         request = {
             'tag': self.tag,
+            'group_name': self.group_name,
             'cpus': len(self.cpuset),
             'gpus': len(self.gpuset),
             'memory_bytes': self.max_memory,
@@ -408,7 +411,7 @@ class Worker:
                 logger.info('Connected! Successful check in!')
             self.last_checkin_successful = True
         except BundleServiceException as ex:
-            logger.error("Disconnected from server! Failed check in: %s", ex)
+            logger.warning("Disconnected from server! Failed check in: %s", ex)
             if not self.last_checkin_successful:
                 logger.info(
                     "Checkin failed twice in a row, sleeping %d seconds", self.CHECKIN_COOLDOWN
