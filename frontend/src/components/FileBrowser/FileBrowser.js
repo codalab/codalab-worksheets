@@ -40,30 +40,31 @@ export class FileBrowser extends React.Component<
         this.state = {
             currentWorkingDirectory: '',
             fileBrowserData: {},
-            isVisible: false,
+            isVisible: !this.props.startCollapsed,
         };
     }
 
-    componentWillReceiveProps(nextProps) {
-        if (nextProps.isRunBundleUIVisible === false && this.state.isVisible) {
-            this.setState({ isVisible: false });
-            this.getDOMNode()
-                .getElementsByClassName('file-browser-arrow')[0]
-                .click();
-        }
-    }
-
-    componentDidUpdate(prevProps, prevState) {
-        if (prevProps.uuid !== this.props.uuid) {
-            // Reset and fire off an asynchronous fetch for new data
-            this.setState({ fileBrowserData: {} });
+    componentDidMount() {
+        if (!this.props.startCollapsed) {
             this.updateFileBrowser('');
         }
     }
 
-    componentWillMount() {
-        if (!this.props.startCollapsed) {
-            this.setState({ isVisible: true });
+    static getDerivedStateFromProps(nextProps, prevState) {
+        if (nextProps.isRunBundleUIVisible === false && prevState.isVisible) {
+            return { isVisible: false };
+        }
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        if (this.props.isRunBundleUIVisible === false && prevState.isVisible) {
+            this.getDOMNode()
+                .getElementsByClassName('file-browser-arrow')[0]
+                .click();
+        }
+        if (prevProps.uuid !== this.props.uuid) {
+            // Reset and fire off an asynchronous fetch for new data
+            this.setState({ fileBrowserData: {} });
             this.updateFileBrowser('');
         }
     }
@@ -462,7 +463,6 @@ export class FileBrowserLite extends React.Component<
     {
         currentDirectory: string,
         fileBrowserData: {},
-        isVisible: boolean,
     },
 > {
     constructor(props) {
@@ -482,6 +482,10 @@ export class FileBrowserLite extends React.Component<
     }
 
     componentDidMount() {
+        if (!this.props.startCollapsed) {
+            this.updateFileBrowser('');
+        }
+
         if (this.props.isRunningBundle) {
             this.timer = setInterval(() => {
                 if (!this.props.isRunningBundle) {
@@ -491,13 +495,6 @@ export class FileBrowserLite extends React.Component<
                 }
                 this.updateFileBrowser('');
             }, 4000);
-        }
-    }
-
-    componentWillMount() {
-        if (!this.props.startCollapsed) {
-            this.setState({ isVisible: true });
-            this.updateFileBrowser('');
         }
     }
 
