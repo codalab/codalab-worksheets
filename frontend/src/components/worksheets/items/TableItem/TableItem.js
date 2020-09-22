@@ -148,12 +148,20 @@ class TableItem extends React.Component<{
                                   top: 0,
                                   backgroundColor: '#F8F9FA',
                                   zIndex: 1,
+                                  color: '#000000',
+                                  paddingBottom: 0,
+                                  paddingTop: 0,
+                                  height: 26,
                               }
                             : {
                                   position: 'sticky',
                                   top: 0,
                                   backgroundColor: '#F8F9FA',
                                   zIndex: 1,
+                                  color: '#000000',
+                                  paddingBottom: 0,
+                                  paddingTop: 0,
+                                  height: 26,
                               }
                     }
                 >
@@ -161,7 +169,7 @@ class TableItem extends React.Component<{
                         <Tooltip title={'Change the schemas of this table'}>
                             <IconButton>
                                 <ViewListIcon
-                                    style={{ padding: '0px' }}
+                                    style={{ padding: '0px', height: 15 }}
                                     onClick={() => {
                                         this.setState({
                                             openSchemaTextBox: !this.state.openSchemaTextBox,
@@ -243,7 +251,7 @@ class TableItem extends React.Component<{
                         <TableHead>
                             <TableRow
                                 style={{
-                                    height: 36,
+                                    height: 32,
                                     borderTop: '0px solid #DEE2E6',
                                 }}
                             >
