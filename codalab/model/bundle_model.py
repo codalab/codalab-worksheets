@@ -846,6 +846,10 @@ class BundleModel(object):
                 return False
 
             # Check if the designated worker is going to be terminated soon
+            logger.info("Yibo: cl_worker.c.is_terminating is " + str(cl_worker.c.is_terminating))
+            logger.info(
+                "Yibo: cl_worker.c.is_terminating is  of " + str(type(cl_worker.c.is_terminating))
+            )
             row = connection.execute(
                 cl_worker.select().where(
                     and_(cl_worker.c.worker_id == worker_id, cl_worker.c.is_terminating == False)
