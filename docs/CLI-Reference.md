@@ -65,7 +65,7 @@ Usage: `cl <command> <arguments>`
       --request-cpus               Number of CPUs allowed for this run.
       --request-gpus               Number of GPUs allowed for this run.
       --request-queue              Submit run to this job queue.
-      --request-priority           Job priority (higher is more important).
+      --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority.
       --request-network            Whether to allow network access.
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
@@ -86,6 +86,7 @@ Usage: `cl <command> <arguments>`
       --anonymous           Set bundle to be anonymous (identity of the owner will NOT be visible to users without 'all' permission on the bundle).
       --not-anonymous       Set bundle to be NOT anonymous.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+      -f, --field           Edit any specified bundle metadata field.
 
 ### detach (de)
     Detach a bundle from this worksheet, but doesn't remove the bundle.
@@ -200,7 +201,7 @@ Usage: `cl <command> <arguments>`
       --request-cpus               Number of CPUs allowed for this run. (for runs)
       --request-gpus               Number of GPUs allowed for this run. (for runs)
       --request-queue              Submit run to this job queue. (for runs)
-      --request-priority           Job priority (higher is more important). (for runs)
+      --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)
       --request-network            Whether to allow network access. (for runs)
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
@@ -229,7 +230,7 @@ Usage: `cl <command> <arguments>`
       --request-cpus               Number of CPUs allowed for this run. (for runs)
       --request-gpus               Number of GPUs allowed for this run. (for runs)
       --request-queue              Submit run to this job queue. (for runs)
-      --request-priority           Job priority (higher is more important). (for runs)
+      --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)
       --request-network            Whether to allow network access. (for runs)
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.

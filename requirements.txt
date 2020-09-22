@@ -1,5 +1,5 @@
 bottle==0.12.18
-docker==4.2.2
+docker==4.3.0
 marshmallow-jsonapi==0.15.1
 marshmallow==2.15.1
 setuptools>=40.0.0
@@ -14,4 +14,4 @@ python-dateutil==2.8.1
 diffimg==0.2.3
 selenium==3.141.0
 requests==2.24.0
-sentry-sdk==0.16.3
+sentry-sdk==0.17.6

@@ -3,7 +3,7 @@ Script to run both frontend and backend tests for CodaLab. Depending on the test
 will also create a second instance of CodaLab to test against.
 """
 
-from test_cli import TestModule
+from tests.cli.test_cli import TestModule  # type: ignore
 
 import argparse
 import random
@@ -91,7 +91,7 @@ class TestRunner(object):
 
             if len(non_frontend_tests):
                 # Run backend tests using test_cli
-                test_command = 'python3 test_cli.py --instance %s ' % self.instance
+                test_command = 'python3 tests/cli/test_cli.py --instance %s ' % self.instance
                 if self.temp_instance_required:
                     test_command += '--second-instance %s ' % self.temp_instance
 
