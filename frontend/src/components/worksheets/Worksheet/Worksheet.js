@@ -1443,8 +1443,10 @@ class Worksheet extends React.Component {
         let form = document.querySelector('#upload-menu');
 
         Mousetrap(form).bind(['enter'], function(e) {
-            e.stopPropagation();
+            e.stopImmediatePropagation();
+            e.preventDefault();
             document.querySelector('label[for=' + e.target.firstElementChild.htmlFor + ']').click();
+            Mousetrap(form).unbind(['enter']);
         });
 
         this.setState({ uploadAnchor: e.currentTarget });
