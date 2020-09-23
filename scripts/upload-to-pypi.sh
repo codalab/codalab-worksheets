@@ -8,6 +8,7 @@ usage()
 }
 
 VER=$1
+set -e
 
 echo "==> Packaging codalab"
 python3 setup.py sdist

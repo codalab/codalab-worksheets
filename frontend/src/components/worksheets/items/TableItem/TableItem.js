@@ -140,7 +140,22 @@ class TableItem extends React.Component<{
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
-                    style={index === 0 ? { paddingLeft: editPermission ? '30px' : '70px' } : {}}
+                    style={
+                        index === 0
+                            ? {
+                                  paddingLeft: editPermission ? '30px' : '70px',
+                                  position: 'sticky',
+                                  top: 0,
+                                  backgroundColor: '#F8F9FA',
+                                  zIndex: 1,
+                              }
+                            : {
+                                  position: 'sticky',
+                                  top: 0,
+                                  backgroundColor: '#F8F9FA',
+                                  zIndex: 1,
+                              }
+                    }
                 >
                     {editPermission && index === 0 && (
                         <Tooltip title={'Change the schemas of this table'}>
@@ -167,7 +182,6 @@ class TableItem extends React.Component<{
         });
         let bodyRowsHtml = rowItems.map((rowItem, rowIndex) => {
             let bundleInfo = bundleInfos[rowIndex];
-            let rowRef = 'row' + rowIndex;
             let rowFocused = this.props.focused && rowIndex === this.props.subFocusIndex;
             let url = '/bundles/' + bundleInfo.uuid;
             let worksheet = bundleInfo.host_worksheet;
@@ -179,7 +193,7 @@ class TableItem extends React.Component<{
             return (
                 <BundleRow
                     key={rowIndex}
-                    ref={rowRef}
+                    id={`codalab-worksheet-item-${this.props.focusIndex}-subitem-${rowIndex}`}
                     worksheetUUID={worksheetUUID}
                     item={rowItem}
                     rowIndex={rowIndex}
@@ -224,14 +238,13 @@ class TableItem extends React.Component<{
         });
         return (
             <div className='ws-item'>
-                <TableContainer style={{ overflowX: 'auto' }}>
+                <TableContainer style={{ overflowX: 'auto', maxHeight: 500 }}>
                     <Table className={tableClassName}>
                         <TableHead>
                             <TableRow
                                 style={{
                                     height: 36,
-                                    borderTop: '2px solid #DEE2E6',
-                                    backgroundColor: '#F8F9FA',
+                                    borderTop: '0px solid #DEE2E6',
                                 }}
                             >
                                 {headerHtml}
@@ -258,7 +271,7 @@ class TableItem extends React.Component<{
                                         onChange={this.changeSchemaName}
                                         size='small'
                                         placeholder={'Using default schema'}
-                                    ></TextField>
+                                    />
                                     <IconButton
                                         onClick={() => {
                                             this.setState({ openSchemaTextBox: false });
@@ -328,7 +341,9 @@ const TableWrapper = (props) => {
         (async function() {
             if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
                 try {
-                    const { contents } = await fetchAsyncBundleContents({ contents: item.rows });
+                    const { contents } = await fetchAsyncBundleContents({
+                        contents: item.rows,
+                    });
                     onAsyncItemLoad({
                         ...item,
                         rows: contents,
@@ -345,7 +360,7 @@ const TableWrapper = (props) => {
         })();
         // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [item.rows, item.status]);
+    }, [item, item.rows, item.status, onAsyncItemLoad]);
     return <TableItem {...props} />;
 };
 

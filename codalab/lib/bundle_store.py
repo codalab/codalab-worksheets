@@ -2,10 +2,36 @@ import os
 import re
 import sys
 from collections import OrderedDict
+from typing import Callable, Any
 
 from codalab.lib import path_util, spec_util
 from codalab.worker.bundle_state import State
 from functools import reduce
+
+
+def require_partitions(f: Callable[['MultiDiskBundleStore', Any], Any]):
+    """Decorator added to MultiDiskBundleStore methods that require a disk to
+    be added to the deployment for tasks to succeed. Prints a helpful error
+    message prompting the user to add a new disk.
+    """
+
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        if len(self.nodes) < 1:
+            print(
+                """
+Error: No partitions available.
+To use MultiDiskBundleStore, you must add at least one partition. Try the following:
+
+    $ cl help bs-add-partition
+""",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        else:
+            return f(*args, **kwargs)
+
+    return wrapper
 
 
 class MultiDiskBundleStore(object):
@@ -21,30 +47,6 @@ class MultiDiskBundleStore(object):
     # Location where MultiDiskBundleStore data and temp data is kept relative to CODALAB_HOME
     DATA_SUBDIRECTORY = 'bundles'
     CACHE_SIZE = 1 * 1000 * 1000  # number of entries to cache
-
-    def require_partitions(f):
-        """Decorator added to MultiDiskBundleStore methods that require a disk to
-        be added to the deployment for tasks to succeed. Prints a helpful error
-        message prompting the user to add a new disk.
-        """
-
-        def wrapper(*args, **kwargs):
-            self = args[0]
-            if len(self.nodes) < 1:
-                print(
-                    """
-    Error: No partitions available.
-    To use MultiDiskBundleStore, you must add at least one partition. Try the following:
-
-        $ cl help bs-add-partition
-    """,
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-            else:
-                return f(*args, **kwargs)
-
-        return wrapper
 
     def __init__(self, codalab_home):
         self.codalab_home = path_util.normalize(codalab_home)

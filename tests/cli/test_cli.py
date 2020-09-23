@@ -18,6 +18,10 @@ Things not tested:
 
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
+from datetime import datetime
+from typing import Dict
+
+from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
@@ -34,7 +38,6 @@ import sys
 import tempfile
 import time
 import traceback
-from datetime import datetime
 
 
 global cl
@@ -46,7 +49,7 @@ CodaLabInstance = namedtuple('CodaLabInstance', 'host home username password')
 
 def test_path(name):
     """Return the path to the test file ``name``."""
-    return os.path.join(base_path, 'tests', 'files', name)
+    return os.path.join(base_path, 'files', name)
 
 
 # Note: when we talk about contents, we always apply rstrip() even if it's a
@@ -96,6 +99,51 @@ def current_user():
     user_id = _run_command([cl, 'uinfo', '-f', 'id'])
     user_name = _run_command([cl, 'uinfo', '-f', 'user_name'])
     return user_id, user_name
+
+
+def create_user(context, username, password='codalab'):
+    # Currently there isn't a method for creating a user with the CLI. Use CodaLabManager instead.
+    manager = CodaLabManager()
+    model = manager.model()
+
+    # Creates a user without going through the full sign-up process
+    model.add_user(
+        username, random_name(), '', '', password, '', user_id=username, is_verified=True
+    )
+    context.collect_user(username)
+
+
+def switch_user(username, password='codalab'):
+    del os.environ["CODALAB_USERNAME"]
+    del os.environ["CODALAB_PASSWORD"]
+    _run_command([cl, 'logout'])
+
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = password
+    _run_command([cl, 'uinfo'])
+
+
+def create_group(context, name):
+    group_uuid_line = _run_command([cl, 'gnew', name])
+    group_uuid = get_uuid(group_uuid_line)
+    context.collect_group(group_uuid)
+    return group_uuid
+
+
+def create_worker(context, user_id, worker_id, tag=None, group_name=None):
+    manager = CodaLabManager()
+    worker_model = manager.worker_model()
+
+    # Creating a worker through cl-worker on the same instance can cause conflicts with existing workers, so instead
+    # mimic the behavior of cl-worker --id [worker_id] --group [group_name], by leveraging the worker check-in.
+    worker_model.worker_checkin(
+        user_id, worker_id, tag, group_name, 1, 0, 1000, 1000, {}, False, False, 100, False
+    )
+    context.collect_worker(user_id, worker_id)
+
+
+def add_user_to_group(group, user_name):
+    _run_command([cl, 'uadd', user_name, group])
 
 
 def get_uuid(line):
@@ -298,18 +346,21 @@ class ModuleContext(object):
         self.worksheets = []
         self.bundles = []
         self.groups = []
+        self.users = []
+        self.worker_to_user = {}
         self.error = None
 
         # Allow for making REST calls
         from codalab.lib.codalab_manager import CodaLabManager
 
-        manager = CodaLabManager()
-        self.client = manager.current_client()
+        self.manager = CodaLabManager()
+        self.client = self.manager.current_client()
 
     def __enter__(self):
         """Prepares clean environment for test module."""
         print("[*][*] SWITCHING TO TEMPORARY WORKSHEET")
 
+        switch_user('codalab')  # root user
         self.original_environ = os.environ.copy()
         self.original_worksheet = _run_command([cl, 'work', '-u'])
         temp_worksheet = _run_command([cl, 'new', random_name()])
@@ -345,6 +396,7 @@ class ModuleContext(object):
         # Clean up and restore original worksheet
         print("[*][*] CLEANING UP")
 
+        switch_user('codalab')  # root user
         _run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
             self.bundles.extend(_run_command([cl, 'ls', '-w', worksheet, '-u']).split())
@@ -362,9 +414,19 @@ class ModuleContext(object):
                     pass
                 _run_command([cl, 'rm', '--force', bundle])
 
+        # Delete all extra workers created
+        worker_model = self.manager.worker_model()
+        for worker_id, user_id in self.worker_to_user.items():
+            worker_model.worker_cleanup(user_id, worker_id)
+
+        # Delete all the extra users created during testing
+        model = self.manager.model()
+        for user in self.users:
+            model.delete_user(user)
+
         # Delete all groups (dedup first)
-        if len(self.groups) > 0:
-            _run_command([cl, 'grm'] + list(set(self.groups)))
+        for group in list(set(self.groups)):
+            _run_command([cl, 'grm', group])
 
         # Reraise only KeyboardInterrupt
         if exc_type is KeyboardInterrupt:
@@ -380,9 +442,17 @@ class ModuleContext(object):
         """Mark a bundle for cleanup on exit."""
         self.bundles.append(uuid)
 
+    def collect_user(self, uuid):
+        """Mark a user for cleanup on exit."""
+        self.users.append(uuid)
+
     def collect_group(self, uuid):
         """Mark a group for cleanup on exit."""
         self.groups.append(uuid)
+
+    def collect_worker(self, user_id, worker_id):
+        """Keep track of workers to users for cleanup on exit."""
+        self.worker_to_user[worker_id] = user_id
 
 
 class TestModule(object):
@@ -392,7 +462,7 @@ class TestModule(object):
     a decorator to register new modules and a class method to run modules by name.
     """
 
-    modules = OrderedDict()
+    modules = OrderedDict()  # type: Dict[str, 'TestModule']
 
     def __init__(self, name, func, description, default):
         self.name = name
@@ -490,25 +560,42 @@ class TestModule(object):
 
 
 @TestModule.register('unittest')
-def test(ctx):
-    """Run nose unit tests (exclude this file)."""
-    _run_command(['nosetests', '-e', 'test_cli.py'])
+def test_unittest(ctx):
+    """Run backend unit tests."""
+    _run_command(['coverage', 'run', '--rcfile=tests/unit/.coveragerc', '-m', 'nose', 'tests.unit'])
+    _run_command(
+        ['coverage', 'report', '--rcfile=tests/unit/.coveragerc'], max_output_chars=sys.maxsize
+    )
 
 
 @TestModule.register('gen-rest-docs')
-def test(ctx):
+def test_gen_rest_docs(ctx):
     """Generate REST API docs."""
-    _run_command(['python3', os.path.join(base_path, 'scripts/gen-rest-docs.py'), '--docs', '/tmp'])
+    _run_command(
+        [
+            'python3',
+            os.path.join(base_path, '..', '..', 'scripts', 'gen-rest-docs.py'),
+            '--docs',
+            '/tmp',
+        ]
+    )
 
 
 @TestModule.register('gen-cli-docs')
-def test(ctx):
+def test_gen_cli_docs(ctx):
     """Generate CLI docs."""
-    _run_command(['python3', os.path.join(base_path, 'scripts/gen-cli-docs.py'), '--docs', '/tmp'])
+    _run_command(
+        [
+            'python3',
+            os.path.join(base_path, '..', '..', 'scripts', 'gen-cli-docs.py'),
+            '--docs',
+            '/tmp',
+        ]
+    )
 
 
 @TestModule.register('gen-readthedocs')
-def test(ctx):
+def test_gen_readthedocs(ctx):
     """Generate the readthedocs site."""
     # Make sure there are no extraneous things.
     # mkdocs doesn't return exit code 1 for some warnings.
@@ -516,7 +603,7 @@ def test(ctx):
 
 
 @TestModule.register('basic')
-def test(ctx):
+def test_basic(ctx):
     # upload
     uuid = _run_command(
         [cl, 'upload', test_path('a.txt'), '--description', 'hello', '--tags', 'a', 'b']
@@ -549,7 +636,7 @@ def test(ctx):
 
 
 @TestModule.register('auth')
-def test(ctx):
+def test_auth(ctx):
     username = os.getenv("CODALAB_USERNAME")
     password = os.getenv("CODALAB_PASSWORD")
 
@@ -575,7 +662,7 @@ def test(ctx):
 
 
 @TestModule.register('upload1')
-def test(ctx):
+def test_upload1(ctx):
     # Upload contents
     uuid = _run_command([cl, 'upload', '-c', 'hello'])
     check_equals('hello', _run_command([cl, 'cat', uuid]))
@@ -638,7 +725,7 @@ def test(ctx):
 
 
 @TestModule.register('upload2')
-def test(ctx):
+def test_upload2(ctx):
     # Upload tar.gz and zip.
     for suffix in ['.tar.gz', '.zip']:
         # Pack it up
@@ -693,7 +780,7 @@ def test(ctx):
 
 
 @TestModule.register('upload3')
-def test(ctx):
+def test_upload3(ctx):
     # Upload URL
     uuid = _run_command([cl, 'upload', 'https://www.wikipedia.org'])
     check_contains('<title>Wikipedia</title>', _run_command([cl, 'cat', uuid]))
@@ -708,7 +795,7 @@ def test(ctx):
 
 
 @TestModule.register('upload4')
-def test(ctx):
+def test_upload4(ctx):
     # Uploads a pair of archives at the same time. Makes sure they're named correctly when unpacked.
     archive_paths = [temp_path(''), temp_path('')]
     archive_exts = [p + '.tar.gz' for p in archive_paths]
@@ -731,7 +818,7 @@ def test(ctx):
 
 
 @TestModule.register('download')
-def test(ctx):
+def test_download(ctx):
     # Upload test files directory as archive to preserve everything invariant of the upload implementation
     archive_path = temp_path('.tar.gz')
     contents_path = test_path('')
@@ -776,7 +863,7 @@ def test(ctx):
 
 
 @TestModule.register('refs')
-def test(ctx):
+def test_refs(ctx):
     # Test references
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
     wuuid = _run_command([cl, 'work', '-u'])
@@ -785,11 +872,11 @@ def test(ctx):
     # . is current worksheet
     check_contains(wuuid, _run_command([cl, 'ls', '-w', '.']))
     # / is home worksheet
-    check_contains('::home-', _run_command([cl, 'ls', '-w', '/']))
+    check_contains('home-', _run_command([cl, 'ls', '-w', '/']))
 
 
 @TestModule.register('binary')
-def test(ctx):
+def test_binary(ctx):
     # Upload a binary file and test it
     path = '/bin/ls'
     uuid = _run_command([cl, 'upload', path])
@@ -798,14 +885,14 @@ def test(ctx):
 
 
 @TestModule.register('rm')
-def test(ctx):
+def test_rm(ctx):
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
     _run_command([cl, 'add', 'bundle', uuid])  # Duplicate
     _run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
 
 
 @TestModule.register('make')
-def test(ctx):
+def test_make(ctx):
     uuid1 = _run_command([cl, 'upload', test_path('a.txt')])
     uuid2 = _run_command([cl, 'upload', test_path('b.txt')])
     # make
@@ -823,7 +910,7 @@ def test(ctx):
 
 
 @TestModule.register('worksheet')
-def test(ctx):
+def test_worksheet(ctx):
     wname = random_name()
     # Create new worksheet
     wuuid = _run_command([cl, 'new', wname])
@@ -867,7 +954,7 @@ def test(ctx):
 
 
 @TestModule.register('worksheet_search')
-def test(ctx):
+def test_worksheet_search(ctx):
     wname = random_name()
     # Create new worksheet
     wuuid = _run_command([cl, 'new', wname])
@@ -885,9 +972,7 @@ def test(ctx):
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    group_uuid_line = _run_command([cl, 'gnew', group_name])
-    group_uuid = get_uuid(group_uuid_line)
-    ctx.collect_group(group_uuid)
+    group_uuid = create_group(ctx, group_name)
     # Make worksheet unavailable to public but available to the group
     _run_command([cl, 'wperm', group_wuuid, 'public', 'n'])
     _run_command([cl, 'wperm', group_wuuid, group_name, 'r'])
@@ -897,7 +982,7 @@ def test(ctx):
 
 
 @TestModule.register('worksheet_tags')
-def test(ctx):
+def test_worksheet_tags(ctx):
     wname = random_name()
     wuuid = _run_command([cl, 'new', wname])
     ctx.collect_worksheet(wuuid)
@@ -922,7 +1007,7 @@ def test(ctx):
 
 
 @TestModule.register('freeze')
-def test(ctx):
+def test_freeze(ctx):
     _run_command([cl, 'work', '-u'])
     wname = random_name()
     wuuid = _run_command([cl, 'new', wname])
@@ -943,7 +1028,7 @@ def test(ctx):
 
 
 @TestModule.register('detach')
-def test(ctx):
+def test_detach(ctx):
     uuid1 = _run_command([cl, 'upload', test_path('a.txt')])
     uuid2 = _run_command([cl, 'upload', test_path('b.txt')])
     _run_command([cl, 'add', 'bundle', uuid1])
@@ -965,7 +1050,7 @@ def test(ctx):
 
 
 @TestModule.register('perm')
-def test(ctx):
+def test_perm(ctx):
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
     check_equals('all', _run_command([cl, 'info', '-v', '-f', 'permission', uuid]))
     check_contains('none', _run_command([cl, 'perm', uuid, 'public', 'n']))
@@ -974,7 +1059,7 @@ def test(ctx):
 
 
 @TestModule.register('search')
-def test(ctx):
+def test_search(ctx):
     name = random_name()
     uuid1 = _run_command([cl, 'upload', test_path('a.txt'), '-n', name])
     uuid2 = _run_command([cl, 'upload', test_path('b.txt'), '-n', name])
@@ -1008,9 +1093,7 @@ def test(ctx):
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    group_uuid_line = _run_command([cl, 'gnew', group_name])
-    group_uuid = get_uuid(group_uuid_line)
-    ctx.collect_group(group_uuid)
+    group_uuid = create_group(ctx, group_name)
     # Make bundle unavailable to public but available to the group
     _run_command([cl, 'perm', group_buuid, 'public', 'n'])
     _run_command([cl, 'perm', group_buuid, group_name, 'r'])
@@ -1020,7 +1103,7 @@ def test(ctx):
 
 
 @TestModule.register('search_time')
-def test(ctx):
+def test_search_time(ctx):
     name = random_name()
     time1 = datetime.now().isoformat()
     # These sleeps are required to ensure that there is sufficient time that passes between tests
@@ -1077,7 +1160,7 @@ def test(ctx):
 
 
 @TestModule.register('run')
-def test(ctx):
+def test_run(ctx):
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
@@ -1202,7 +1285,7 @@ def test(ctx):
 
 
 @TestModule.register('link')
-def test(ctx):
+def test_link(ctx):
     # Upload fails
     uuid = _run_command([cl, "upload", "/etc/passwd", '--link'])
     check_equals(State.READY, get_info(uuid, 'state'))
@@ -1257,7 +1340,7 @@ def test(ctx):
 
 
 @TestModule.register('run2')
-def test(ctx):
+def test_run2(ctx):
     # Test that content of dependency is mounted at the top when . is specified as the dependency key
     dir3 = _run_command([cl, 'upload', test_path('dir3')])
     uuid = _run_command([cl, 'run', '.:%s' % dir3, 'cat f1'])
@@ -1305,7 +1388,7 @@ def test(ctx):
 
 
 @TestModule.register('read')
-def test(ctx):
+def test_read(ctx):
     dep_uuid = _run_command([cl, 'upload', test_path('')])
     uuid = _run_command(
         [
@@ -1368,7 +1451,7 @@ def test(ctx):
 
 
 @TestModule.register('kill')
-def test(ctx):
+def test_kill(ctx):
     uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
     wait_until_state(uuid, State.RUNNING)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
@@ -1378,7 +1461,7 @@ def test(ctx):
 
 
 @TestModule.register('write')
-def test(ctx):
+def test_write(ctx):
     uuid = _run_command([cl, 'run', 'sleep 5'])
     wait_until_state(uuid, State.RUNNING)
     target = uuid + '/message'
@@ -1390,7 +1473,7 @@ def test(ctx):
 
 
 @TestModule.register('mimic')
-def test(ctx):
+def test_mimic(ctx):
     def data_hash(uuid):
         _run_command([cl, 'wait', uuid])
         return get_info(uuid, 'data_hash')
@@ -1463,7 +1546,7 @@ def test(ctx):
 
 
 @TestModule.register('status')
-def test(ctx):
+def test_status(ctx):
     _run_command([cl, 'status'])
     _run_command([cl, 'alias'])
     help_output = _run_command([cl, 'help'])
@@ -1474,7 +1557,7 @@ def test(ctx):
 
 
 @TestModule.register('batch')
-def test(ctx):
+def test_batch(ctx):
     """Test batch resolution of bundle uuids"""
     wother = random_name()
     bnames = [random_name() for _ in range(2)]
@@ -1510,7 +1593,7 @@ def test(ctx):
 
 
 @TestModule.register('resources')
-def test(ctx):
+def test_resources(ctx):
     """Test whether resource constraints are respected"""
     uuid = _run_command([cl, 'upload', 'scripts/stress-test.pl'])
 
@@ -1587,7 +1670,7 @@ def test(ctx):
 
 
 @TestModule.register('copy')
-def test(ctx):
+def test_copy(ctx):
     def assert_bundles_ready(worksheet):
         _run_command([cl, 'work', worksheet])
         bundles = _run_command([cl, 'ls', '--uuid-only'])
@@ -1652,16 +1735,14 @@ def test(ctx):
 
 
 @TestModule.register('groups')
-def test(ctx):
+def test_groups(ctx):
     # Should not crash
     _run_command([cl, 'ginfo', 'public'])
 
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    group_uuid_line = _run_command([cl, 'gnew', group_name])
-    group_uuid = get_uuid(group_uuid_line)
-    ctx.collect_group(group_uuid)
+    create_group(ctx, group_name)
 
     # Check that you are added to your own group
     group_info = _run_command([cl, 'ginfo', group_name])
@@ -1682,7 +1763,7 @@ def test(ctx):
 
 
 @TestModule.register('netcat')
-def test(ctx):
+def test_netcat(ctx):
     script_uuid = _run_command([cl, 'upload', test_path('netcat-test.py')])
     _run_command([cl, 'info', script_uuid])
     uuid = _run_command(
@@ -1703,7 +1784,7 @@ def test(ctx):
 
 
 @TestModule.register('netcurl')
-def test(ctx):
+def test_netcurl(ctx):
     uuid = _run_command(
         [cl, 'run', 'echo hello > hello.txt; python -m http.server'], request_memory="10m"
     )
@@ -1717,7 +1798,7 @@ def test(ctx):
 
 
 @TestModule.register('anonymous')
-def test(ctx):
+def test_anonymous(ctx):
     # Should not crash
     # TODO: multi-user tests that check that owner is hidden for anonymous objects
     _run_command([cl, 'wedit', '--anonymous'])
@@ -1728,7 +1809,7 @@ def test(ctx):
 
 
 @TestModule.register('docker', default=False)
-def test(ctx):
+def test_docker(ctx):
     """
     Placeholder for tests for default Codalab docker images
     """
@@ -1790,7 +1871,7 @@ def test(ctx):
 
 
 @TestModule.register('competition')
-def test(ctx):
+def test_competition(ctx):
     """Sanity-check the competition script."""
     submit_tag = 'submit'
     eval_tag = 'eval'
@@ -1850,7 +1931,7 @@ def test(ctx):
 
 
 @TestModule.register('unicode')
-def test(ctx):
+def test_unicode(ctx):
     # Non-unicode in worksheet title
     wuuid = _run_command([cl, 'new', random_name()])
 
@@ -1885,15 +1966,15 @@ def test(ctx):
 
 
 @TestModule.register('workers')
-def test(ctx):
+def test_workers(ctx):
     result = _run_command([cl, 'workers'])
     lines = result.split("\n")
 
-    # Output should contain at least 3 lines as following:
+    # Output should contain 3 lines, something like:
     # worker_id        cpus  gpus  memory  free_disk  last_checkin  tag  runs
     # -----------------------------------------------------------------------
     # 7a343e1015c7(1)  0/2   0/0   2.0g    32.9g      2.0s ago
-    check_equals(True, len(lines) >= 3)
+    assert len(lines) == 3
 
     # Check header which includes 8 columns in total from output.
     header = lines[0]
@@ -1906,6 +1987,7 @@ def test(ctx):
             'free_disk',
             'exit_after_num_runs',
             'last_checkin',
+            'group',
             'tag',
             'runs',
             'shared_file_system',
@@ -1916,11 +1998,53 @@ def test(ctx):
 
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
-    check_equals(True, len(worker_info) >= 9)
+    assert len(worker_info) >= 10
+
+
+@TestModule.register('sharing_workers')
+def test_sharing_workers(ctx):
+    def check_workers(user, expected_workers):
+        switch_user(user)
+        result = _run_command([cl, 'workers'])
+
+        # Subtract 2 for the headers that is included in the output of `cl workers`
+        actual_number_of_workers = len(result.split('\n')) - 2
+        check_equals(actual_number_of_workers, len(expected_workers))
+
+        for worker in expected_workers:
+            assert worker in result
+
+    # userA will not start a worker, but will be granted access to one
+    create_user(ctx, 'userA')
+
+    # userB will start a worker and be granted access to another one
+    create_user(ctx, 'userB')
+    switch_user('userB')
+    create_group(ctx, 'group1')
+    create_worker(ctx, 'userB', 'worker1', group_name='group1')
+
+    # userC will not have access to any workers
+    create_user(ctx, 'userC')
+
+    # userD will start a worker
+    create_user(ctx, 'userD')
+    switch_user('userD')
+    create_group(ctx, 'group2')
+    add_user_to_group('group2', 'userA')
+    create_worker(ctx, 'userD', 'worker2', group_name='group2')
+
+    # Test to see that a user has access to a worker after the worker was created
+    add_user_to_group('group2', 'userB')
+
+    # Validate user's access to the newly created workers
+    check_workers('userA', ['worker2'])
+    check_workers('userB', ['worker1', 'worker2'])
+    check_workers('userC', [])
+    check_workers('userD', ['worker2'])
 
 
 @TestModule.register('rest1')
-def test(ctx):
+def test_rest1(ctx):
     """
     Call REST APIs.  Most things should be captured by CLI commands, but add things here that aren't.
     """
@@ -1943,7 +2067,7 @@ def test(ctx):
 
 
 @TestModule.register('worksheets')
-def test(ctx):
+def test_worksheets(ctx):
     # Create a comprehensive worksheet and test the output of cl print
     test_worksheet = SampleWorksheet(cl)
     test_worksheet.create()
@@ -1951,7 +2075,7 @@ def test(ctx):
 
 
 @TestModule.register('memoize')
-def test(ctx):
+def test_memoize(ctx):
     # Case 1: no dependency
     uuid = _run_command([cl, 'run', 'echo hello'])
     wait(uuid)
@@ -2101,7 +2225,7 @@ def test(ctx):
 
 
 @TestModule.register('edit_user')
-def test(ctx):
+def test_edit_user(ctx):
     # Can't both remove and grant access for a user
     user_id, user_name = current_user()
     _run_command([cl, 'uedit', user_name, '--grant-access', '--remove-access'], 1)
@@ -2111,7 +2235,7 @@ def test(ctx):
 
 
 @TestModule.register('protected_mode')
-def test(ctx):
+def test_protected_mode(ctx):
     user_id, user_name = current_user()
 
     worksheet_uuid = _run_command([cl, 'new', random_name()])
@@ -2167,6 +2291,20 @@ def test(ctx):
     # Request to grant access and check that the user now has access
     _run_command([cl, 'uedit', user_name, '--grant-access'])
     check_equals(_run_command([cl, 'uinfo', user_name, '-f', 'has_access']), 'True')
+
+
+@TestModule.register('edit')
+def test_edit(ctx):
+    uuid = _run_command([cl, 'run', 'echo hello'], request_memory='10m')
+    check_equals('10m', get_info(uuid, 'request_memory'))
+    _run_command([cl, 'edit', uuid, '--field', 'request_memory', '12m'])
+    check_equals('12m', get_info(uuid, 'request_memory'))
+
+    # invalid field name
+    _run_command([cl, 'edit', uuid, '-f', 'invalid_field', 'value'], expected_exit_code=1)
+
+    # invalid field value
+    _run_command([cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1)
 
 
 if __name__ == '__main__':

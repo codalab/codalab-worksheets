@@ -14,15 +14,19 @@ from codalab.worker.file_util import (
     un_tar_directory,
 )
 
+FILES_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'cli', 'files')
+IGNORE_TEST_DIR = os.path.join(FILES_DIR, 'ignore_test')
+
 
 class FileUtilTest(unittest.TestCase):
     def test_tar_has_files(self):
-        dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'files')
         temp_dir = tempfile.mkdtemp()
         self.addCleanup(lambda: remove_path(temp_dir))
 
         output_dir = os.path.join(temp_dir, 'output')
-        un_tar_directory(tar_gzip_directory(dir, False, ['f2'], ['f1', 'b.txt']), output_dir, 'gz')
+        un_tar_directory(
+            tar_gzip_directory(FILES_DIR, False, ['f2'], ['f1', 'b.txt']), output_dir, 'gz'
+        )
         output_dir_entries = os.listdir(output_dir)
         self.assertIn('dir1', output_dir_entries)
         self.assertIn('a.txt', output_dir_entries)
@@ -67,12 +71,13 @@ class FileUtilTest(unittest.TestCase):
         self.assertEqual(un_gzip_bytestring(gzip_bytestring(b'contents')), b'contents')
 
     def test_tar_exclude_ignore(self):
-        dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'files/ignore_test')
         temp_dir = tempfile.mkdtemp()
         self.addCleanup(lambda: remove_path(temp_dir))
         output_dir = os.path.join(temp_dir, 'output')
 
-        un_tar_directory(tar_gzip_directory(dir, ignore_file='.tarignore'), output_dir, 'gz')
+        un_tar_directory(
+            tar_gzip_directory(IGNORE_TEST_DIR, ignore_file='.tarignore'), output_dir, 'gz'
+        )
         output_dir_entries = os.listdir(output_dir)
         self.assertIn('not_ignored.txt', output_dir_entries)
         self.assertIn('dir', output_dir_entries)
@@ -82,12 +87,11 @@ class FileUtilTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', 'ignored2.txt')))
 
     def test_tar_always_ignore(self):
-        dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'files/ignore_test')
         temp_dir = tempfile.mkdtemp()
         self.addCleanup(lambda: remove_path(temp_dir))
         output_dir = os.path.join(temp_dir, 'output')
 
-        un_tar_directory(tar_gzip_directory(dir), output_dir, 'gz')
+        un_tar_directory(tar_gzip_directory(IGNORE_TEST_DIR), output_dir, 'gz')
         output_dir_entries = os.listdir(output_dir)
         self.assertNotIn('._ignored', output_dir_entries)
         self.assertIn('dir', output_dir_entries)

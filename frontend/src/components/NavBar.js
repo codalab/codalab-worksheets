@@ -35,6 +35,7 @@ import Search from 'semantic-ui-react/dist/commonjs/modules/Search';
 import _ from 'lodash';
 import { executeCommand } from '../util/cli_utils';
 import DOMPurify from 'dompurify';
+import { NAME_REGEX } from '../constants';
 
 const kDefaultWorksheetName = 'unnamed';
 
@@ -92,6 +93,15 @@ class NavBar extends React.Component<{
 
     createNewWorksheet() {
         this.resetDialog();
+        if (!NAME_REGEX.test(this.state.newWorksheetName)) {
+            this.setState({
+                snackbarShow: true,
+                snackbarMessage: `Names must match ${NAME_REGEX}, was ${this.state.newWorksheetName}`,
+                snackbarVariant: 'error',
+            });
+            return;
+        }
+
         executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`)
             .then((data) => {
                 if (data.structured_result && data.structured_result.ui_actions) {
@@ -141,12 +151,9 @@ class NavBar extends React.Component<{
 
     resultRenderer = ({ title, description }) => (
         <div key='content' className='content'>
-            {title && <div dangerouslySetInnerHTML={{ __html: title }} className='title'></div>}
+            {title && <div dangerouslySetInnerHTML={{ __html: title }} className='title' />}
             {description && (
-                <div
-                    dangerouslySetInnerHTML={{ __html: description }}
-                    className='description'
-                ></div>
+                <div dangerouslySetInnerHTML={{ __html: description }} className='description' />
             )}
         </div>
     );
