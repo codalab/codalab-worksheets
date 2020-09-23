@@ -135,7 +135,7 @@ class WorksheetItemList extends React.Component {
                 $('body')
                     .stop(true)
                     .animate({ scrollTop: 0 }, 'fast');
-                this.props.setFocus(0, 0);
+                this.props.setFocus(-1, 0);
             }.bind(this),
             'keydown',
         );
