@@ -137,24 +137,10 @@ class BaseBundleManagerTest(unittest.TestCase):
         return bundle, parent
 
     def create_bundle_two_deps(self):
-        parent1 = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.READY,
-        )
+        parent1 = self.create_run_bundle(state=State.READY)
         with open(self.codalab_manager.bundle_store().get_bundle_location(parent1.uuid), "w+") as f:
             f.write("hello world 1")
-        parent2 = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.READY,
-        )
+        parent2 = self.create_run_bundle(state=State.READY)
         with open(self.codalab_manager.bundle_store().get_bundle_location(parent2.uuid), "w+") as f:
             f.write("hello world 2")
         bundle = MakeBundle.construct(
