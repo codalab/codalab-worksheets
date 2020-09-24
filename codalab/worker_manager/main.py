@@ -74,6 +74,11 @@ def main():
         help="If set, the CodaLab worker will only run bundles that match the worker\'s tag.",
     )
     parser.add_argument(
+        '--worker-group',
+        type=str,
+        help="If set, the CodaLab worker will only run bundles for that group.",
+    )
+    parser.add_argument(
         '--worker-executable', default="cl-worker", help="The CodaLab worker executable to run."
     )
     subparsers = parser.add_subparsers(
