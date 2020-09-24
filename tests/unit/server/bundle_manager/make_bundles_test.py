@@ -21,7 +21,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
 
     def test_restage_stuck_bundle(self):
         bundle = self.create_make_bundle(state=State.MAKING)
-
+        self.save_bundle(bundle)
         self.bundle_manager._make_bundles()
 
         self.assertTrue(self.bundle_manager._is_making_bundles())
@@ -30,7 +30,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
 
     def test_bundle_no_dependencies(self):
         bundle = self.create_make_bundle(state=State.STAGED)
-
+        self.save_bundle(bundle)
         threads = self.bundle_manager._make_bundles()
         self.assertTrue(self.bundle_manager._is_making_bundles())
         for t in threads:
@@ -41,7 +41,9 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.assertEqual(bundle.state, State.READY)
 
     def test_single_dependency(self):
-        bundle, _ = self.create_bundle_single_dep()
+        bundle, parent = self.create_bundle_single_dep(bundle_type=MakeBundle, bundle_state=State.STAGED)
+        self.save_bundle(parent)
+        self.save_bundle(bundle)
 
         threads = self.bundle_manager._make_bundles()
         self.assertTrue(self.bundle_manager._is_making_bundles())
@@ -62,7 +64,10 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
             self.assertEqual(f.read(), "hello world")
 
     def test_multiple_dependencies(self):
-        bundle, _, __ = self.create_bundle_two_deps()
+        bundle, parent1, parent2 = self.create_bundle_two_deps()
+        self.save_bundle(bundle)
+        self.save_bundle(parent1)
+        self.save_bundle(parent2)
 
         threads = self.bundle_manager._make_bundles()
         self.assertTrue(self.bundle_manager._is_making_bundles())
@@ -90,34 +95,18 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
             self.assertEqual(f.read(), "hello world 2")
 
     def test_fail_invalid_dependency_path(self):
-        parent = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.READY,
-        )
-        bundle = MakeBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA_MAKE_BUNDLE,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.STAGED,
-        )
+        bundle = self.create_make_bundle(state=State.STAGED)
         bundle.dependencies = [
             Dependency(
                 {
-                    "parent_uuid": parent.uuid,
+                    "parent_uuid": generate_uuid(),
                     "parent_path": "",
                     "child_uuid": bundle.uuid,
                     "child_path": "src",
                 }
             )
         ]
-        self.bundle_manager._model.save_bundle(parent)
-        self.bundle_manager._model.save_bundle(bundle)
+        self.save_bundle(bundle)
 
         threads = self.bundle_manager._make_bundles()
         self.assertTrue(self.bundle_manager._is_making_bundles())
@@ -139,14 +128,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
             owner_id=self.user_id,
             uuid=generate_uuid(),
         )
-        bundle = MakeBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA_MAKE_BUNDLE,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.STAGED,
-        )
+        bundle = self.create_make_bundle(state=State.STAGED)
         bundle.dependencies = [
             Dependency(
                 {
@@ -157,8 +139,8 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
                 }
             )
         ]
-        self.bundle_manager._model.save_bundle(parent)
-        self.bundle_manager._model.save_bundle(bundle)
+        self.save_bundle(parent)
+        self.save_bundle(bundle)
 
         threads = self.bundle_manager._make_bundles()
         self.assertTrue(self.bundle_manager._is_making_bundles())

@@ -89,40 +89,27 @@ class BaseBundleManagerTest(unittest.TestCase):
             uuid=generate_uuid(),
             state=state
         )
-        self.bundle_manager._model.save_bundle(bundle)
         return bundle
-
-    def create_run_bundle(self, state=State.READY):
+    
+    def save_bundle(self, bundle):
+        self.bundle_manager._model.save_bundle(bundle)
+    
+    def create_run_bundle(self, state=State.CREATED, metadata=None):
         bundle = RunBundle.construct(
             targets=[],
             command='',
-            metadata=BASE_METADATA,
+            metadata=dict(BASE_METADATA, **(metadata or {})),
             owner_id=self.user_id,
             uuid=generate_uuid(),
             state=state
         )
-        self.bundle_manager._model.save_bundle(bundle)
         return bundle
     
-    def create_bundle_single_dep(self):
-        parent = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.READY,
-        )
+    def create_bundle_single_dep(self, parent_state=State.READY, bundle_state=State.CREATED, bundle_type=RunBundle):
+        parent = self.create_run_bundle(parent_state)
         with open(self.codalab_manager.bundle_store().get_bundle_location(parent.uuid), "w+") as f:
             f.write("hello world")
-        bundle = MakeBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA_MAKE_BUNDLE,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.STAGED,
-        )
+        bundle = self.create_run_bundle(bundle_state) if bundle_type == RunBundle else self.create_make_bundle(bundle_state)
         bundle.dependencies = [
             Dependency(
                 {
@@ -133,8 +120,6 @@ class BaseBundleManagerTest(unittest.TestCase):
                 }
             )
         ]
-        self.bundle_manager._model.save_bundle(parent)
-        self.bundle_manager._model.save_bundle(bundle)
         return bundle, parent
     
     def create_bundle_two_deps(self):
@@ -146,7 +131,6 @@ class BaseBundleManagerTest(unittest.TestCase):
             uuid=generate_uuid(),
             state=State.READY,
         )
-        self.bundle_manager._model.save_bundle(parent1)
         with open(self.codalab_manager.bundle_store().get_bundle_location(parent1.uuid), "w+") as f:
             f.write("hello world 1")
         parent2 = RunBundle.construct(
@@ -157,7 +141,6 @@ class BaseBundleManagerTest(unittest.TestCase):
             uuid=generate_uuid(),
             state=State.READY,
         )
-        self.bundle_manager._model.save_bundle(parent2)
         with open(self.codalab_manager.bundle_store().get_bundle_location(parent2.uuid), "w+") as f:
             f.write("hello world 2")
         bundle = MakeBundle.construct(
@@ -186,7 +169,6 @@ class BaseBundleManagerTest(unittest.TestCase):
                 }
             ),
         ]
-        self.bundle_manager._model.save_bundle(bundle)
         return bundle, parent1, parent2
 
     def mock_worker_checkin(

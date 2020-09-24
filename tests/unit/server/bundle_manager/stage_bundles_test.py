@@ -10,15 +10,8 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
         self.bundle_manager._stage_bundles()
 
     def test_single_bundle(self):
-        bundle = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id='id1',
-            uuid=generate_uuid(),
-            state=State.CREATED,
-        )
-        self.bundle_manager._model.save_bundle(bundle)
+        bundle = self.create_run_bundle()
+        self.save_bundle(bundle)
 
         self.bundle_manager._stage_bundles()
 
@@ -26,35 +19,9 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
         self.assertEqual(bundle.state, State.STAGED)
 
     def test_with_dependency(self):
-        parent = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.READY,
-        )
-        bundle = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.CREATED,
-        )
-        bundle.dependencies = [
-            Dependency(
-                {
-                    "parent_uuid": parent.uuid,
-                    "parent_path": "",
-                    "child_uuid": bundle.uuid,
-                    "child_path": "src",
-                }
-            )
-        ]
-
-        self.bundle_manager._model.save_bundle(parent)
-        self.bundle_manager._model.save_bundle(bundle)
+        bundle, parent = self.create_bundle_single_dep()
+        self.save_bundle(parent)
+        self.save_bundle(bundle)
 
         self.bundle_manager._stage_bundles()
 
@@ -64,35 +31,9 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
     def test_do_not_stage_with_failed_dependency(self):
         for state in (State.FAILED, State.KILLED):
             with self.subTest(state=state):
-                parent = RunBundle.construct(
-                    targets=[],
-                    command='',
-                    metadata=BASE_METADATA,
-                    owner_id=self.user_id,
-                    uuid=generate_uuid(),
-                    state=state,
-                )
-                bundle = RunBundle.construct(
-                    targets=[],
-                    command='',
-                    metadata=BASE_METADATA,
-                    owner_id=self.user_id,
-                    uuid=generate_uuid(),
-                    state=State.CREATED,
-                )
-                bundle.dependencies = [
-                    Dependency(
-                        {
-                            "parent_uuid": parent.uuid,
-                            "parent_path": "",
-                            "child_uuid": bundle.uuid,
-                            "child_path": "src",
-                        }
-                    )
-                ]
-
-                self.bundle_manager._model.save_bundle(parent)
-                self.bundle_manager._model.save_bundle(bundle)
+                bundle, parent = self.create_bundle_single_dep(parent_state=state, bundle_state=State.CREATED)
+                self.save_bundle(bundle)
+                self.save_bundle(parent)
 
                 self.bundle_manager._stage_bundles()
 
@@ -106,35 +47,11 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
     def test_allow_failed_dependencies(self):
         for state in (State.FAILED, State.KILLED):
             with self.subTest(state=state):
-                parent = RunBundle.construct(
-                    targets=[],
-                    command='',
-                    metadata=BASE_METADATA,
-                    owner_id=self.user_id,
-                    uuid=generate_uuid(),
-                    state=state,
-                )
-                bundle = RunBundle.construct(
-                    targets=[],
-                    command='',
-                    metadata=dict(BASE_METADATA, allow_failed_dependencies=True),
-                    owner_id=self.user_id,
-                    uuid=generate_uuid(),
-                    state=State.CREATED,
-                )
-                bundle.dependencies = [
-                    Dependency(
-                        {
-                            "parent_uuid": parent.uuid,
-                            "parent_path": "",
-                            "child_uuid": bundle.uuid,
-                            "child_path": "src",
-                        }
-                    )
-                ]
-
-                self.bundle_manager._model.save_bundle(parent)
-                self.bundle_manager._model.save_bundle(bundle)
+                bundle, parent = self.create_bundle_single_dep()
+                bundle.state = State.CREATED
+                bundle.metadata.allow_failed_dependencies = True
+                self.save_bundle(bundle)
+                self.save_bundle(parent)
 
                 self.bundle_manager._stage_bundles()
 
@@ -142,14 +59,7 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
                 self.assertEqual(bundle.state, State.STAGED)
 
     def test_missing_parent(self):
-        bundle = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.CREATED,
-        )
+        bundle = self.create_run_bundle()
         bundle.dependencies = [
             Dependency(
                 {
@@ -160,8 +70,7 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
                 }
             )
         ]
-
-        self.bundle_manager._model.save_bundle(bundle)
+        self.save_bundle(bundle)
 
         self.bundle_manager._stage_bundles()
 
@@ -170,35 +79,10 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
         self.assertIn("Missing parent bundles", bundle.metadata.failure_message)
 
     def test_no_permission_parents(self):
-        parent = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=generate_uuid(),
-            uuid=generate_uuid(),
-            state=State.READY,
-        )
-        bundle = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.CREATED,
-        )
-        bundle.dependencies = [
-            Dependency(
-                {
-                    "parent_uuid": parent.uuid,
-                    "parent_path": "",
-                    "child_uuid": bundle.uuid,
-                    "child_path": "src",
-                }
-            )
-        ]
-
-        self.bundle_manager._model.save_bundle(parent)
-        self.bundle_manager._model.save_bundle(bundle)
+        bundle, parent = self.create_bundle_single_dep()
+        parent.owner_id = generate_uuid()
+        self.save_bundle(parent)
+        self.save_bundle(bundle)
 
         self.bundle_manager._stage_bundles()
 
