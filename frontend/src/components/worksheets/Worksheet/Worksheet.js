@@ -665,7 +665,7 @@ class Worksheet extends React.Component {
     __innerScrollToItem = (index, subIndex) => {
         let node;
         if (index === -1) {
-            node = document.getElementById('worksheet_header');
+            node = document.getElementById('worksheet_dummy_header');
         } else {
             node = subIndex
                 ? document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
@@ -1673,7 +1673,7 @@ class Worksheet extends React.Component {
                                 {this.state.focusIndex === -1 ? (
                                     <div
                                         className={classes.worksheetDummyHeader}
-                                        id='worksheet_header'
+                                        id='worksheet_dummy_header'
                                     />
                                 ) : (
                                     <div style={{ height: 8 }} />
