@@ -11,6 +11,8 @@ import re
 import uuid
 from .worker_manager import WorkerManager, WorkerJob
 
+from codalab.lib.telemetry_util import CODALAB_SENTRY_INGEST, using_sentry
+
 logger = logging.getLogger(__name__)
 
 
@@ -169,6 +171,11 @@ class AWSBatchWorkerManager(WorkerManager):
             )
             job_definition['containerProperties']['mountPoints'].append(
                 {'sourceVolume': 'shared_dir', 'containerPath': bundle_mount, 'readOnly': False}
+            )
+
+        if using_sentry:
+            job_definition["containerProperties"]["environment"].append(
+                {'name': 'CODALAB_SENTRY_INGEST_URL', 'value': CODALAB_SENTRY_INGEST}
             )
 
         # Create a job definition
