@@ -40,30 +40,31 @@ export class FileBrowser extends React.Component<
         this.state = {
             currentWorkingDirectory: '',
             fileBrowserData: {},
-            isVisible: false,
+            isVisible: !this.props.startCollapsed,
         };
     }
 
-    componentWillReceiveProps(nextProps) {
-        if (nextProps.isRunBundleUIVisible === false && this.state.isVisible) {
-            this.setState({ isVisible: false });
-            this.getDOMNode()
-                .getElementsByClassName('file-browser-arrow')[0]
-                .click();
-        }
-    }
-
-    componentDidUpdate(prevProps, prevState) {
-        if (prevProps.uuid !== this.props.uuid) {
-            // Reset and fire off an asynchronous fetch for new data
-            this.setState({ fileBrowserData: {} });
+    componentDidMount() {
+        if (!this.props.startCollapsed) {
             this.updateFileBrowser('');
         }
     }
 
-    componentWillMount() {
-        if (!this.props.startCollapsed) {
-            this.setState({ isVisible: true });
+    static getDerivedStateFromProps(nextProps, prevState) {
+        if (nextProps.isRunBundleUIVisible === false && prevState.isVisible) {
+            return { isVisible: false };
+        }
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        if (this.props.isRunBundleUIVisible === false && prevState.isVisible) {
+            this.getDOMNode()
+                .getElementsByClassName('file-browser-arrow')[0]
+                .click();
+        }
+        if (prevProps.uuid !== this.props.uuid) {
+            // Reset and fire off an asynchronous fetch for new data
+            this.setState({ fileBrowserData: {} });
             this.updateFileBrowser('');
         }
     }
@@ -385,6 +386,10 @@ const iconStyle = {
     marginRight: 4,
 };
 
+const fileBrowserItemLiteTableRowStyle = {
+    height: 26,
+};
+
 class FileBrowserItemLite extends React.Component<{
     bundle_uuid: string,
     updateFileBrowser: (string) => void,
@@ -408,7 +413,10 @@ class FileBrowserItemLite extends React.Component<{
         let item;
         if (this.props.type === 'directory' || this.props.type === '..') {
             item = (
-                <TableRow onClick={() => this.props.updateFileBrowser(file_location)}>
+                <TableRow
+                    onClick={() => this.props.updateFileBrowser(file_location)}
+                    style={fileBrowserItemLiteTableRowStyle}
+                >
                     <TableCell>
                         <div style={rowCenter}>
                             <FolderIcon style={iconStyle} />
@@ -425,7 +433,7 @@ class FileBrowserItemLite extends React.Component<{
                 this.props.bundle_uuid
             }/contents/blob/${encodeBundleContentsPath(file_location)}`;
             item = (
-                <TableRow>
+                <TableRow style={fileBrowserItemLiteTableRowStyle}>
                     <TableCell>
                         <div style={rowCenter}>
                             <FileIcon style={iconStyle} />
@@ -439,7 +447,7 @@ class FileBrowserItemLite extends React.Component<{
             );
         } else if (this.props.type === 'link') {
             item = (
-                <TableRow>
+                <TableRow style={fileBrowserItemLiteTableRowStyle}>
                     <TableCell>
                         <div style={rowCenter}>
                             <LinkIcon style={iconStyle} />
@@ -462,7 +470,6 @@ export class FileBrowserLite extends React.Component<
     {
         currentDirectory: string,
         fileBrowserData: {},
-        isVisible: boolean,
     },
 > {
     constructor(props) {
@@ -482,6 +489,10 @@ export class FileBrowserLite extends React.Component<
     }
 
     componentDidMount() {
+        if (!this.props.startCollapsed) {
+            this.updateFileBrowser('');
+        }
+
         if (this.props.isRunningBundle) {
             this.timer = setInterval(() => {
                 if (!this.props.isRunningBundle) {
@@ -491,13 +502,6 @@ export class FileBrowserLite extends React.Component<
                 }
                 this.updateFileBrowser('');
             }, 4000);
-        }
-    }
-
-    componentWillMount() {
-        if (!this.props.startCollapsed) {
-            this.setState({ isVisible: true });
-            this.updateFileBrowser('');
         }
     }
 

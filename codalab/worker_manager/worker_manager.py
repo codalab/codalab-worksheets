@@ -82,6 +82,43 @@ class WorkerManager(object):
         """Start a new `WorkerJob`."""
         raise NotImplementedError
 
+    def build_command(self, worker_id, work_dir):
+        command = [
+            self.args.worker_executable,
+            '--server',
+            self.args.server,
+            '--verbose',
+            '--exit-when-idle',
+            '--idle-seconds',
+            str(self.args.worker_idle_seconds),
+            '--work-dir',
+            work_dir,
+            '--id',
+            worker_id,
+            '--network-prefix',
+            'cl_worker_{}_network'.format(worker_id),
+        ]
+
+        # Additional optional arguments
+        if self.args.worker_tag:
+            command.extend(['--tag', self.args.worker_tag])
+        if self.args.worker_group:
+            command.extend(['--group', self.args.worker_group])
+        if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
+            command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
+        if self.args.worker_max_work_dir_size:
+            command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
+        if self.args.worker_delete_work_dir_on_exit:
+            command.extend(['--delete-work-dir-on-exit'])
+        if self.args.worker_exit_on_exception:
+            command.extend(['--exit-on-exception'])
+        if self.args.worker_tag_exclusive:
+            command.extend(['--tag-exclusive'])
+        if self.args.worker_pass_down_termination:
+            command.extend(['--pass-down-termination'])
+
+        return command
+
     def run_loop(self):
         while True:
             try:
