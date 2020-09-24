@@ -14,15 +14,7 @@ class BundleManagerFailUnresponsiveBundlesTest(BaseBundleManagerTest):
     @freeze_time("2012-01-14", as_arg=True)
     def test_fail_bundle(frozen_time, self):
         # Bundles stuck in uploading state for too long should be failed.
-        bundle = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id='id1',
-            uuid=generate_uuid(),
-            state=State.UPLOADING,
-        )
-        self.bundle_manager._model.save_bundle(bundle)
+        bundle = self.create_run_bundle(State.UPLOADING)
 
         frozen_time.move_to("2020-02-12")
         self.bundle_manager._fail_unresponsive_bundles()

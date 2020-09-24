@@ -33,7 +33,7 @@ BASE_METADATA = {
     "tags": [],
     "run_status": "Finished",
     "last_updated": 1495786180,
-    "failure_message": "Kill requested",
+    "failure_message": "",
     "request_disk": "",
     "request_gpus": 0,
     "remote": "vm-clws-prod-worker-3",
@@ -42,18 +42,18 @@ BASE_METADATA = {
 
 BASE_METADATA_MAKE_BUNDLE = {
     "description": "",
-    "name": "run-python",
+    "name": "name",
     "created": 1495784349,
-    "failure_message": "Kill requested",
+    "failure_message": "",
     "tags": [],
     "allow_failed_dependencies": False,
 }
 
 BASE_METADATA_DATASET_BUNDLE = {
     "description": "",
-    "name": "run-python",
+    "name": "name",
     "created": 1495784349,
-    "failure_message": "Kill requested",
+    "failure_message": "",
     "tags": [],
     "license": "",
     "source_url": "",
@@ -85,6 +85,18 @@ class BaseBundleManagerTest(unittest.TestCase):
             targets=[],
             command='',
             metadata=BASE_METADATA_MAKE_BUNDLE,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=state
+        )
+        self.bundle_manager._model.save_bundle(bundle)
+        return bundle
+
+    def create_run_bundle(self, state=State.READY):
+        bundle = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
             owner_id=self.user_id,
             uuid=generate_uuid(),
             state=state
