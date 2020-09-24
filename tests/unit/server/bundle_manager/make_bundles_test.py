@@ -16,10 +16,12 @@ from tests.unit.server.bundle_manager import (
 
 class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
     def test_no_bundles(self):
+        """With no bundles available, nothing should happen."""
         self.bundle_manager._make_bundles()
         self.assertFalse(self.bundle_manager._is_making_bundles())
 
     def test_restage_stuck_bundle(self):
+        """Bundles stuck in "MAKING" should be restaged and go back to the "MAKING" state."""
         bundle = self.create_make_bundle(state=State.MAKING)
         self.save_bundle(bundle)
         self.bundle_manager._make_bundles()
@@ -29,6 +31,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.assertEqual(bundle.state, State.MAKING)
 
     def test_bundle_no_dependencies(self):
+        """A MakeBundle with no dependencies should be made."""
         bundle = self.create_make_bundle(state=State.STAGED)
         self.save_bundle(bundle)
         threads = self.bundle_manager._make_bundles()
@@ -41,7 +44,10 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.assertEqual(bundle.state, State.READY)
 
     def test_single_dependency(self):
-        bundle, parent = self.create_bundle_single_dep(bundle_type=MakeBundle, bundle_state=State.STAGED)
+        """A MakeBundle with a single dependency should be made."""
+        bundle, parent = self.create_bundle_single_dep(
+            bundle_type=MakeBundle, bundle_state=State.STAGED
+        )
         self.save_bundle(parent)
         self.save_bundle(bundle)
 
@@ -55,15 +61,11 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
 
         self.assertEqual(bundle.state, State.READY)
 
-        with open(
-            os.path.join(
-                self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid), "src"
-            ),
-            "r",
-        ) as f:
+        with self.read_bundle(bundle, "src") as f:
             self.assertEqual(f.read(), "hello world")
 
     def test_multiple_dependencies(self):
+        """A MakeBundle with two dependencies should be made."""
         bundle, parent1, parent2 = self.create_bundle_two_deps()
         self.save_bundle(bundle)
         self.save_bundle(parent1)
@@ -79,22 +81,13 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
 
         self.assertEqual(bundle.state, State.READY)
 
-        with open(
-            os.path.join(
-                self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid), "src1"
-            ),
-            "r",
-        ) as f:
+        with self.read_bundle(bundle, "src1") as f:
             self.assertEqual(f.read(), "hello world 1")
-        with open(
-            os.path.join(
-                self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid), "src2"
-            ),
-            "r",
-        ) as f:
+        with self.read_bundle(bundle, "src2") as f:
             self.assertEqual(f.read(), "hello world 2")
 
     def test_fail_invalid_dependency_path(self):
+        """A MakeBundle with an invalid dependency specified should fail."""
         bundle = self.create_make_bundle(state=State.STAGED)
         bundle.dependencies = [
             Dependency(
@@ -120,6 +113,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.assertIn("Invalid dependency", bundle.metadata.failure_message)
 
     def test_linked_dependency(self):
+        """A MakeBundle with a linked dependency should be made."""
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(b"hello world")
             tempfile_name = f.name
@@ -151,11 +145,6 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
         self.assertEqual(bundle.state, State.READY)
 
-        with open(
-            os.path.join(
-                self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid), "src"
-            ),
-            "rb",
-        ) as f:
-            self.assertEqual(f.read(), b"hello world")
+        with self.read_bundle(bundle, "src") as f:
+            self.assertEqual(f.read(), "hello world")
         os.remove(tempfile_name)

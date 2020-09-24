@@ -1,6 +1,6 @@
 import unittest
 from mock import Mock
-
+import os
 from codalab.server.bundle_manager import BundleManager
 from codalab.worker.bundle_state import BundleCheckinState, State
 from codalab.lib.codalab_manager import CodaLabManager
@@ -77,7 +77,7 @@ class BaseBundleManagerTest(unittest.TestCase):
             "last name",
             "password",
             "affiliation",
-            user_id=self.user_id
+            user_id=self.user_id,
         )
 
     def create_make_bundle(self, state=State.MAKING):
@@ -87,13 +87,21 @@ class BaseBundleManagerTest(unittest.TestCase):
             metadata=BASE_METADATA_MAKE_BUNDLE,
             owner_id=self.user_id,
             uuid=generate_uuid(),
-            state=state
+            state=state,
         )
         return bundle
-    
+
     def save_bundle(self, bundle):
         self.bundle_manager._model.save_bundle(bundle)
-    
+
+    def read_bundle(self, bundle, extra_path=""):
+        return open(
+            os.path.join(
+                self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid), extra_path
+            ),
+            "r",
+        )
+
     def create_run_bundle(self, state=State.CREATED, metadata=None):
         bundle = RunBundle.construct(
             targets=[],
@@ -101,15 +109,21 @@ class BaseBundleManagerTest(unittest.TestCase):
             metadata=dict(BASE_METADATA, **(metadata or {})),
             owner_id=self.user_id,
             uuid=generate_uuid(),
-            state=state
+            state=state,
         )
         return bundle
-    
-    def create_bundle_single_dep(self, parent_state=State.READY, bundle_state=State.CREATED, bundle_type=RunBundle):
+
+    def create_bundle_single_dep(
+        self, parent_state=State.READY, bundle_state=State.CREATED, bundle_type=RunBundle
+    ):
         parent = self.create_run_bundle(parent_state)
         with open(self.codalab_manager.bundle_store().get_bundle_location(parent.uuid), "w+") as f:
             f.write("hello world")
-        bundle = self.create_run_bundle(bundle_state) if bundle_type == RunBundle else self.create_make_bundle(bundle_state)
+        bundle = (
+            self.create_run_bundle(bundle_state)
+            if bundle_type == RunBundle
+            else self.create_make_bundle(bundle_state)
+        )
         bundle.dependencies = [
             Dependency(
                 {
@@ -121,7 +135,7 @@ class BaseBundleManagerTest(unittest.TestCase):
             )
         ]
         return bundle, parent
-    
+
     def create_bundle_two_deps(self):
         parent1 = RunBundle.construct(
             targets=[],

@@ -7,11 +7,12 @@ from tests.unit.server.bundle_manager import BASE_METADATA, BaseBundleManagerTes
 
 class BundleManagerFailUnresponsiveBundlesTest(BaseBundleManagerTest):
     def test_no_bundles(self):
+        """With no bundles available, nothing should happen."""
         self.bundle_manager._fail_unresponsive_bundles()
 
     @freeze_time("2012-01-14", as_kwarg='frozen_time')
     def test_fail_bundle(self, frozen_time):
-        # Bundles stuck in uploading state for too long should be failed.
+        """Bundles stuck in uploading state for too long should be failed."""
         bundle = self.create_run_bundle(State.UPLOADING)
         self.save_bundle(bundle)
 
