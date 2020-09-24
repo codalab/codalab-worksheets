@@ -173,7 +173,7 @@ class AWSBatchWorkerManager(WorkerManager):
                 {'sourceVolume': 'shared_dir', 'containerPath': bundle_mount, 'readOnly': False}
             )
 
-        if using_sentry:
+        if using_sentry():
             job_definition["containerProperties"]["environment"].append(
                 {'name': 'CODALAB_SENTRY_INGEST_URL', 'value': CODALAB_SENTRY_INGEST}
             )
