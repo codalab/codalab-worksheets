@@ -1435,8 +1435,10 @@ class Worksheet extends React.Component {
         let form = document.querySelector('#upload-menu');
 
         Mousetrap(form).bind(['enter'], function(e) {
-            e.stopPropagation();
+            e.stopImmediatePropagation();
+            e.preventDefault();
             document.querySelector('label[for=' + e.target.firstElementChild.htmlFor + ']').click();
+            Mousetrap(form).unbind(['enter']);
         });
 
         this.setState({ uploadAnchor: e.currentTarget });
@@ -1691,6 +1693,7 @@ class Worksheet extends React.Component {
                                         bottom: '50px',
                                         right: '30px',
                                         backgroundColor: '00BFFF',
+                                        zIndex: 10,
                                     }}
                                 >
                                     <ExpandMoreIcon size='medium' />
