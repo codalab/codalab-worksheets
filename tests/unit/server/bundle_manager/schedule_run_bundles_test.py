@@ -44,10 +44,8 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
         self.assertEqual(bundle.state, State.STARTING)
 
-    # TODO: switch to the newest version of freezegun with the patch in https://github.com/spulec/freezegun/pull/353,
-    # so that we can use as_kwarg and thus maintain the order of parameters as (self, frozen_time).
-    @freeze_time("2020-02-01", as_arg=True)
-    def test_cleanup_dead_workers(frozen_time, self):
+    @freeze_time("2020-02-01", as_kwarg='frozen_time')
+    def test_cleanup_dead_workers(self, frozen_time):
         # Workers should be removed after they don't check in for a long enough time period.
         self.mock_worker_checkin(cpus=1, user_id=self.user_id)
 

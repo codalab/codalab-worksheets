@@ -9,10 +9,8 @@ class BundleManagerFailUnresponsiveBundlesTest(BaseBundleManagerTest):
     def test_no_bundles(self):
         self.bundle_manager._fail_unresponsive_bundles()
 
-    # TODO: switch to the newest version of freezegun with the patch in https://github.com/spulec/freezegun/pull/353,
-    # so that we can use as_kwarg and thus maintain the order of parameters as (self, frozen_time).
-    @freeze_time("2012-01-14", as_arg=True)
-    def test_fail_bundle(frozen_time, self):
+    @freeze_time("2012-01-14", as_kwarg='frozen_time')
+    def test_fail_bundle(self, frozen_time):
         # Bundles stuck in uploading state for too long should be failed.
         bundle = self.create_run_bundle(State.UPLOADING)
 
