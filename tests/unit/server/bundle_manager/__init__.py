@@ -42,7 +42,7 @@ BASE_METADATA = {
 
 BASE_METADATA_MAKE_BUNDLE = {
     "description": "",
-    "name": "name",
+    "name": "make-1",
     "created": 1495784349,
     "failure_message": "",
     "tags": [],
@@ -51,7 +51,7 @@ BASE_METADATA_MAKE_BUNDLE = {
 
 BASE_METADATA_DATASET_BUNDLE = {
     "description": "",
-    "name": "name",
+    "name": "dataset-1",
     "created": 1495784349,
     "failure_message": "",
     "tags": [],
@@ -71,12 +71,12 @@ class BaseBundleManagerTest(unittest.TestCase):
         self.bundle_manager = BundleManager(self.codalab_manager)
         self.user_id = generate_uuid()
         self.bundle_manager._model.add_user(
-            "username",
-            "email@email.com",
-            "first name",
-            "last name",
+            "codalab",
+            "noreply@codalab.org",
+            "Test",
+            "User",
             "password",
-            "affiliation",
+            "Stanford",
             user_id=self.user_id,
         )
 
