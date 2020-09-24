@@ -663,9 +663,14 @@ class Worksheet extends React.Component {
     };
 
     __innerScrollToItem = (index, subIndex) => {
-        const node = subIndex
-            ? document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
-            : document.getElementById(`codalab-worksheet-item-${index}`);
+        let node;
+        if (index === -1) {
+            node = document.getElementById('worksheet_dummy_header');
+        } else {
+            node = subIndex
+                ? document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
+                : document.getElementById(`codalab-worksheet-item-${index}`);
+        }
         if (node) {
             node.scrollIntoView({ block: 'center' });
         }
@@ -1666,7 +1671,10 @@ class Worksheet extends React.Component {
                                 style={{ width: this.state.worksheetWidthPercentage }}
                             >
                                 {this.state.focusIndex === -1 ? (
-                                    <div className={classes.worksheetDummyHeader} />
+                                    <div
+                                        className={classes.worksheetDummyHeader}
+                                        id='worksheet_dummy_header'
+                                    />
                                 ) : (
                                     <div style={{ height: 8 }} />
                                 )}

@@ -542,6 +542,7 @@ Object {
             >
               <div
                 class="Worksheet-worksheetDummyHeader-4"
+                id="worksheet_dummy_header"
               />
               <div
                 class="Worksheet-worksheetInner-3"
@@ -1304,6 +1305,7 @@ Object {
           >
             <div
               class="Worksheet-worksheetDummyHeader-4"
+              id="worksheet_dummy_header"
             />
             <div
               class="Worksheet-worksheetInner-3"
