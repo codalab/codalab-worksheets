@@ -5,12 +5,14 @@ This module exports some simple names used throughout the CodaLab bundle system:
   - precondition, a utility method that check's a function's input preconditions.
 """
 import http.client
+import urllib.request
+
+from retry import retry
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
 CODALAB_VERSION = '0.5.22'
 BINARY_PLACEHOLDER = '<binary>'
-URLOPEN_TIMEOUT_SECONDS = 30
 
 
 class IntegrityError(ValueError):
@@ -109,3 +111,15 @@ def ensure_str(response):
         return response.decode()
     except UnicodeDecodeError:
         return BINARY_PLACEHOLDER
+
+
+@retry(tries=4, delay=3, backoff=2)
+def urlopen_with_retry(request):
+    """
+    Makes a request using urlopen with a timeout of 60 seconds and retries on failures.
+    Retries a maximum of 4 times, with an initial delay of 3 seconds and
+    exponential backoff factor of 2 for subsequent failures (3s, 6s, 12s).
+    :param request: Can be a url string or a request object
+    :return: the response object
+    """
+    return urllib.request.urlopen(request, timeout=60)
