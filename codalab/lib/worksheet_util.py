@@ -32,7 +32,6 @@ import os
 import re
 import sys
 
-
 from codalab.common import PermissionError, UsageError
 from codalab.lib import canonicalize, editor_util, formatting
 from codalab.objects.permission import group_permissions_str, permission_str
@@ -52,7 +51,6 @@ from codalab.rest.worksheet_block_schemas import (
     BundleUUIDSpecSchema,
 )
 
-
 # Note: this is part of the client's session, not server side.
 CURRENT_WORKSHEET = '.'
 
@@ -64,12 +62,11 @@ TYPE_WORKSHEET = 'worksheet'
 
 WORKSHEET_ITEM_TYPES = (TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET)
 
-
-BUNDLE_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{([^{]*)\}\s*$')
-SUBWORKSHEET_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{\{(.*)\}\}\s*$')
+BUNDLE_REGEX = re.compile('^\\s*([(.*)])?\\s*{([^{]*)}\\s*$')
+SUBWORKSHEET_REGEX = re.compile('^\\s*([(.*)])?\\s*{{(.*)}}\\s*$')
 
 DIRECTIVE_CHAR = '%'
-DIRECTIVE_REGEX = re.compile(r'^\s*' + DIRECTIVE_CHAR + '\s*(.*)\s*$')
+DIRECTIVE_REGEX = re.compile(r'^\s*' + DIRECTIVE_CHAR + '\\s*(.*)\\s*$')
 
 # Default number of lines to pull for each display mode.
 DEFAULT_CONTENTS_MAX_LINES = 10
