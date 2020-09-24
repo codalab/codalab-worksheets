@@ -1701,6 +1701,7 @@ class Worksheet extends React.Component {
                                         bottom: '50px',
                                         right: '30px',
                                         backgroundColor: '00BFFF',
+                                        zIndex: 10,
                                     }}
                                 >
                                     <ExpandMoreIcon size='medium' />
