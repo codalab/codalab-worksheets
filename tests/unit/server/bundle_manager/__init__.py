@@ -2,9 +2,13 @@ import unittest
 from mock import Mock
 
 from codalab.server.bundle_manager import BundleManager
-from codalab.worker.bundle_state import BundleCheckinState
+from codalab.worker.bundle_state import BundleCheckinState, State
 from codalab.lib.codalab_manager import CodaLabManager
+from codalab.bundles.run_bundle import RunBundle
+from codalab.bundles.make_bundle import MakeBundle
+from codalab.bundles.dataset_bundle import DatasetBundle
 from codalab.lib.spec_util import generate_uuid
+from codalab.objects.dependency import Dependency
 
 
 BASE_METADATA = {
@@ -75,6 +79,103 @@ class BaseBundleManagerTest(unittest.TestCase):
             "affiliation",
             user_id=self.user_id
         )
+
+    def create_make_bundle(self, state=State.MAKING):
+        bundle = MakeBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA_MAKE_BUNDLE,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=state
+        )
+        self.bundle_manager._model.save_bundle(bundle)
+        return bundle
+    
+    def create_bundle_single_dep(self):
+        parent = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=State.READY,
+        )
+        with open(self.codalab_manager.bundle_store().get_bundle_location(parent.uuid), "w+") as f:
+            f.write("hello world")
+        bundle = MakeBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA_MAKE_BUNDLE,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=State.STAGED,
+        )
+        bundle.dependencies = [
+            Dependency(
+                {
+                    "parent_uuid": parent.uuid,
+                    "parent_path": "",
+                    "child_uuid": bundle.uuid,
+                    "child_path": "src",
+                }
+            )
+        ]
+        self.bundle_manager._model.save_bundle(parent)
+        self.bundle_manager._model.save_bundle(bundle)
+        return bundle, parent
+    
+    def create_bundle_two_deps(self):
+        parent1 = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=State.READY,
+        )
+        self.bundle_manager._model.save_bundle(parent1)
+        with open(self.codalab_manager.bundle_store().get_bundle_location(parent1.uuid), "w+") as f:
+            f.write("hello world 1")
+        parent2 = RunBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=State.READY,
+        )
+        self.bundle_manager._model.save_bundle(parent2)
+        with open(self.codalab_manager.bundle_store().get_bundle_location(parent2.uuid), "w+") as f:
+            f.write("hello world 2")
+        bundle = MakeBundle.construct(
+            targets=[],
+            command='',
+            metadata=BASE_METADATA_MAKE_BUNDLE,
+            owner_id=self.user_id,
+            uuid=generate_uuid(),
+            state=State.STAGED,
+        )
+        bundle.dependencies = [
+            Dependency(
+                {
+                    "parent_uuid": parent1.uuid,
+                    "parent_path": "",
+                    "child_uuid": bundle.uuid,
+                    "child_path": "src1",
+                }
+            ),
+            Dependency(
+                {
+                    "parent_uuid": parent2.uuid,
+                    "parent_path": "",
+                    "child_uuid": bundle.uuid,
+                    "child_path": "src2",
+                }
+            ),
+        ]
+        self.bundle_manager._model.save_bundle(bundle)
+        return bundle, parent1, parent2
 
     def mock_worker_checkin(
         self, cpus=0, gpus=0, memory_bytes=0, free_disk_bytes=0, tag=None, user_id=None,

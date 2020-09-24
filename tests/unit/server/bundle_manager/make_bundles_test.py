@@ -20,15 +20,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.assertFalse(self.bundle_manager._is_making_bundles())
 
     def test_restage_stuck_bundle(self):
-        bundle = MakeBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA_MAKE_BUNDLE,
-            owner_id='id1',
-            uuid=generate_uuid(),
-            state=State.MAKING,
-        )
-        self.bundle_manager._model.save_bundle(bundle)
+        bundle = self.create_make_bundle(state=State.MAKING)
 
         self.bundle_manager._make_bundles()
 
@@ -37,15 +29,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.assertEqual(bundle.state, State.MAKING)
 
     def test_bundle_no_dependencies(self):
-        bundle = MakeBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA_MAKE_BUNDLE,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.STAGED,
-        )
-        self.bundle_manager._model.save_bundle(bundle)
+        bundle = self.create_make_bundle(state=State.STAGED)
 
         threads = self.bundle_manager._make_bundles()
         self.assertTrue(self.bundle_manager._is_making_bundles())
@@ -57,36 +41,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.assertEqual(bundle.state, State.READY)
 
     def test_single_dependency(self):
-        parent = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.READY,
-        )
-        with open(self.codalab_manager.bundle_store().get_bundle_location(parent.uuid), "w+") as f:
-            f.write("hello world")
-        bundle = MakeBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA_MAKE_BUNDLE,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.STAGED,
-        )
-        bundle.dependencies = [
-            Dependency(
-                {
-                    "parent_uuid": parent.uuid,
-                    "parent_path": "",
-                    "child_uuid": bundle.uuid,
-                    "child_path": "src",
-                }
-            )
-        ]
-        self.bundle_manager._model.save_bundle(parent)
-        self.bundle_manager._model.save_bundle(bundle)
+        bundle, _ = self.create_bundle_single_dep()
 
         threads = self.bundle_manager._make_bundles()
         self.assertTrue(self.bundle_manager._is_making_bundles())
@@ -107,55 +62,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
             self.assertEqual(f.read(), "hello world")
 
     def test_multiple_dependencies(self):
-        parent1 = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.READY,
-        )
-        self.bundle_manager._model.save_bundle(parent1)
-        with open(self.codalab_manager.bundle_store().get_bundle_location(parent1.uuid), "w+") as f:
-            f.write("hello world 1")
-        parent2 = RunBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.READY,
-        )
-        self.bundle_manager._model.save_bundle(parent2)
-        with open(self.codalab_manager.bundle_store().get_bundle_location(parent2.uuid), "w+") as f:
-            f.write("hello world 2")
-        bundle = MakeBundle.construct(
-            targets=[],
-            command='',
-            metadata=BASE_METADATA_MAKE_BUNDLE,
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
-            state=State.STAGED,
-        )
-        bundle.dependencies = [
-            Dependency(
-                {
-                    "parent_uuid": parent1.uuid,
-                    "parent_path": "",
-                    "child_uuid": bundle.uuid,
-                    "child_path": "src1",
-                }
-            ),
-            Dependency(
-                {
-                    "parent_uuid": parent2.uuid,
-                    "parent_path": "",
-                    "child_uuid": bundle.uuid,
-                    "child_path": "src2",
-                }
-            ),
-        ]
-        self.bundle_manager._model.save_bundle(bundle)
+        bundle, _, __ = self.create_bundle_two_deps()
 
         threads = self.bundle_manager._make_bundles()
         self.assertTrue(self.bundle_manager._is_making_bundles())
