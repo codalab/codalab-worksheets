@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import traceback
+from typing import List
 
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
@@ -171,7 +172,7 @@ class BundleManager(object):
             logger.info('Staging %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.STAGED})
 
-    def _make_bundles(self):
+    def _make_bundles(self) -> List[threading.Thread]:
         # Re-stage any stuck bundles. This would happen if the bundle manager
         # died.
         for bundle in self._model.batch_get_bundles(state=State.MAKING, bundle_type='make'):
