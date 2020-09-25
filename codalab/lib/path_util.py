@@ -324,7 +324,7 @@ def remove(path):
     Remove the given path, whether it is a directory, file, or link.
     """
     if path.startswith("azfs://"):
-        FileSystems.remove(path)
+        FileSystems.delete([path])
         return
     check_isvalid(path, 'remove')
     set_write_permissions(path)  # Allow permissions

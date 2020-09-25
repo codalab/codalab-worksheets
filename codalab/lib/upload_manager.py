@@ -69,7 +69,10 @@ class UploadManager(object):
             # structure is simplified at the end.
             for source in sources:
                 is_url, is_local_path, is_fileobj, filename = self._interpret_source(source)
-                source_output_path = os.path.join(bundle_path, filename)
+                if not bundle_path.startswith("azfs://"):
+                    source_output_path = os.path.join(bundle_path, filename)
+                else:
+                    source_output_path = bundle_path
                 if is_url:
                     if git:
                         source_output_path = file_util.strip_git_ext(source_output_path)
@@ -117,7 +120,7 @@ class UploadManager(object):
                         with FileSystems.create(source_output_path) as out:
                             shutil.copyfileobj(source[1], out)
 
-            if len(sources) == 1:
+            if len(sources) == 1 and not bundle_path.startswith("azfs://"):
                 self._simplify_directory(bundle_path)
         except:
             if FileSystems.exists(bundle_path):

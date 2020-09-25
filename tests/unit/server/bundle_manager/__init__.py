@@ -60,7 +60,7 @@ BASE_METADATA_DATASET_BUNDLE = {
 }
 
 
-class TestBase():
+class TestBase:
     """
     Base class for BundleManager tests with a CodaLab Manager hitting a real, in-memory database.
     """
@@ -104,6 +104,9 @@ class TestBase():
             "r",
         )
 
+    def update_bundle(self, bundle, update):
+        return self.bundle_manager._model.update_bundle(bundle, update)
+
     def write_bundle(self, bundle, extra_path=""):
         location = self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid)
         if extra_path:
@@ -121,6 +124,7 @@ class TestBase():
             uuid=generate_uuid(),
             state=state,
         )
+        bundle.is_anonymous = False
         return bundle
 
     def create_bundle_single_dep(
@@ -224,6 +228,7 @@ class TestBase():
         self.bundle_manager._model.bundle_checkin(
             bundle, worker_run, user_id or self.user_id, worker_id
         )
+
 
 class BaseBundleManagerTest(TestBase, unittest.TestCase):
     pass

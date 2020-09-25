@@ -156,7 +156,7 @@ def _compute_target_info_beam(path, depth):
         # Single file
         file = FileSystems.match([path])[0].metadata_list[0]
         return {
-            'name': os.path.basename(file.path),
+            'name': bundle_uuid,
             'type': 'file',
             'size': file.size_in_bytes,
             'perm': 0o777,
