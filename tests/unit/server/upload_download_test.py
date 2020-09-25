@@ -10,7 +10,15 @@ import gzip
 import tarfile
 import zipfile
 import unittest
+import codalab.lib.beam.mockblobstoragefilesystem
+from codalab.lib.beam.blobstoragefilesystem import BlobStorageFileSystem
+from codalab.lib.beam.mockblobstoragefilesystem import MockBlobStorageFileSystem
 
+# Monkey-patch so that we use MockBlobStorageFileSystem
+# instead of BlobStorageFileSystem
+class DummyClass: pass
+BlobStorageFileSystem.__bases__ = (DummyClass,)
+codalab.lib.beam.mockblobstoragefilesystem.BlobStorageFileSystem = MockBlobStorageFileSystem
 
 class BaseUploadDownloadBundleTest(TestBase):
     DEFAULT_PERM = 420

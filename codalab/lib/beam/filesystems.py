@@ -1,7 +1,6 @@
 import os
 from apache_beam.io.filesystems import FileSystems
-# from .blobstoragefilesystem import BlobStorageFileSystem
-from .mockblobstoragefilesystem import MockBlobStorageFileSystem
+from .blobstoragefilesystem import BlobStorageFileSystem
 
 """
 Modifies Beam to add support for Azure Blob Storage filesystems.
