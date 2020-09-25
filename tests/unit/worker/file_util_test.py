@@ -5,6 +5,7 @@ import bz2
 
 from codalab.worker.file_util import (
     gzip_file,
+    get_file_size,
     gzip_bytestring,
     remove_path,
     tar_gzip_directory,
@@ -12,6 +13,7 @@ from codalab.worker.file_util import (
     un_bz2_file,
     un_gzip_bytestring,
     un_tar_directory,
+    read_file_section,
 )
 
 FILES_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'cli', 'files')
@@ -44,6 +46,16 @@ class FileUtilTest(unittest.TestCase):
         output_dir = os.path.join(temp_dir, 'output')
         un_tar_directory(tar_gzip_directory(dir), output_dir, 'gz')
         self.assertEqual(os.listdir(output_dir), [])
+
+    def test_get_file_size(self):
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.write(b"hello world")
+        self.assertEqual(get_file_size(f.name), 11)
+
+    def test_read_file_section(self):
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.write(b"hello world")
+        self.assertEqual(read_file_section(f.name, 2, 4), b"llo ")
 
     def test_gzip_stream(self):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:

@@ -17,4 +17,4 @@ services:
     volumes:
       - ./../../alembic/:/opt/codalab-worksheets/alembic/
       - ./../../tests/:/opt/codalab-worksheets/tests/
-      - ./../../codalab/:/opt/codalab-worksheets/codalab/
+      # - ./../../codalab/:/opt/codalab-worksheets/codalab/

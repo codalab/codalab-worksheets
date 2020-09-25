@@ -3,7 +3,6 @@ from codalab.lib.beam.filesystems import FileSystems
 from codalab.worker.bundle_state import LinkFormat
 from zipfile import ZipFile
 from codalab.lib.path_util import parse_azure_url
-from pydash.objects import set_
 class PathException(Exception):
     pass
 

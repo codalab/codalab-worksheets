@@ -104,7 +104,7 @@ services:
     expose:
       - 10000
     volumes:
-      - ./var/azurite:/data
+      - ${CODALAB_HOME}/azurite:/data
 
   worker-manager-cpu:
     image: codalab/server:${CODALAB_VERSION}
