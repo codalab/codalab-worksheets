@@ -1,11 +1,3 @@
-import mock
-from sqlalchemy import create_engine
-from sqlalchemy.engine.reflection import Inspector
-import unittest
-
-from codalab.model.bundle_model import BundleModel, db_metadata
-
-
 def metadata_to_dicts(uuid, metadata):
     return [
         {'bundle_uuid': uuid, 'metadata_key': key, 'metadata_value': value}
