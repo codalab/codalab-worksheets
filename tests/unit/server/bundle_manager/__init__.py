@@ -107,14 +107,9 @@ class BaseBundleManagerTest(unittest.TestCase):
         location = self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid)
         if extra_path:
             # Write to a directory.
-            location = os.path.join(
-                location, extra_path
-            )
+            location = os.path.join(location, extra_path)
             os.makedirs(os.path.dirname(location), exist_ok=True)
-        return open(
-            location,
-            "w+",
-        )
+        return open(location, "w+",)
 
     def create_run_bundle(self, state=State.CREATED, metadata=None):
         bundle = RunBundle.construct(

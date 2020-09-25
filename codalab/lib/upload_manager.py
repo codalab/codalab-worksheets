@@ -179,7 +179,7 @@ class UploadManager(object):
                 child_path = FileSystems.match([path + "/*"])[0].metadata_list[0].path
             FileSystems.rename([child_path], [path])
             return
-        
+
         if child_path is None:
             child_path = os.listdir(path)[0]
         temp_path = path + crypt_util.get_random_string()

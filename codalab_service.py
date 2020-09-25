@@ -26,7 +26,16 @@ import subprocess
 import yaml
 import tempfile
 
-DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'azurite', 'rest-server', 'bundle-manager', 'worker', 'init']
+DEFAULT_SERVICES = [
+    'mysql',
+    'nginx',
+    'frontend',
+    'azurite',
+    'rest-server',
+    'bundle-manager',
+    'worker',
+    'init',
+]
 
 ALL_SERVICES = DEFAULT_SERVICES + ['monitor', 'worker-manager-cpu', 'worker-manager-gpu']
 

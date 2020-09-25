@@ -1062,7 +1062,7 @@ class BundleModel(object):
                 dirs_and_files = [], [bundle_location]
             data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
             data_size = path_util.get_size(bundle_location, dirs_and_files)
-        
+
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
             if data_size > disk_left:

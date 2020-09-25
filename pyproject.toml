@@ -14,5 +14,6 @@ exclude = '''
    | dist
    | build
    | frontend
+   | codalab/lib/beam
 )/
 '''

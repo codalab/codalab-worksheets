@@ -5,6 +5,7 @@ from tests.unit.server.bundle_manager import BaseBundleManagerTest
 from codalab.worker.download_util import BundleTarget
 from codalab.common import NotFoundError
 
+
 class GetTargetInfoTest(BaseBundleManagerTest):
     def test_not_found(self):
         """Running get_target_info for a nonexistent bundle should raise an error."""
@@ -17,7 +18,7 @@ class GetTargetInfoTest(BaseBundleManagerTest):
         bundle = self.create_run_bundle()
         self.save_bundle(bundle)
         with self.write_bundle(bundle) as f:
-          f.write("hello world")
+            f.write("hello world")
         target = BundleTarget(bundle.uuid, "")
         info = self.download_manager.get_target_info(target, 0)
         self.assertEqual(info["name"], bundle.uuid)
@@ -31,7 +32,7 @@ class GetTargetInfoTest(BaseBundleManagerTest):
         bundle = self.create_run_bundle()
         self.save_bundle(bundle)
         with self.write_bundle(bundle, "item.txt") as f:
-          f.write("hello world")
+            f.write("hello world")
         target = BundleTarget(bundle.uuid, "")
         info = self.download_manager.get_target_info(target, 0)
         self.assertEqual(info["name"], bundle.uuid)
@@ -45,7 +46,7 @@ class GetTargetInfoTest(BaseBundleManagerTest):
         bundle = self.create_run_bundle()
         self.save_bundle(bundle)
         with self.write_bundle(bundle, "src/item.txt") as f:
-          f.write("hello world")
+            f.write("hello world")
         target = BundleTarget(bundle.uuid, "src")
         info = self.download_manager.get_target_info(target, 0)
         self.assertEqual(info["name"], "src")

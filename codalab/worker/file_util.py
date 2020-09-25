@@ -82,6 +82,7 @@ def tar_gzip_directory(
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
 
+
 def zip_directory(
     directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[], ignore_file=None
 ):
@@ -148,6 +149,7 @@ def un_tar_directory(fileobj, directory_path, compression='', force=False):
                 raise tarfile.TarError('Archive member extracts outside the directory.')
             tar.extract(member, directory_path)
 
+
 def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSED):
     """
     Opens the given file. Can be in a directory.
@@ -156,7 +158,7 @@ def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSE
         bundle_uuid, zip_path, zip_subpath = parse_azure_url(file_path)
         if zip_subpath:
             with ZipFile(FileSystems.open(zip_path, compression_type)) as f:
-                return f.open(zip_subpath, 'r') # zipfile.open only supports 'r', not 'rb'
+                return f.open(zip_subpath, 'r')  # zipfile.open only supports 'r', not 'rb'
     return FileSystems.open(file_path, mode)
 
 
@@ -374,7 +376,7 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
             if child.path not in exclude_names:
                 result += child.size_in_bytes
         return result
-    
+
     try:
         result = os.lstat(path).st_size
     except FileNotFoundError:
