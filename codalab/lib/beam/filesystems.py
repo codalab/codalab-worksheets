@@ -12,4 +12,4 @@ we will switch to using a Beam library instead.
 # Test key for Azurite (local development)
 os.environ[
     'AZURE_STORAGE_CONNECTION_STRING'
-] = 'DefaultEndpointsProtocol=http;AccountName=storageclwsdev0;AccountKey=key;BlobEndpoint=http://azurite:10000/devstoreaccount1;'
+] = 'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;'
