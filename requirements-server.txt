@@ -7,7 +7,9 @@
 # Only for development
 -r requirements.dev.txt
 
-# For worker manager
+# For worker manager. If this entry is moved, or if requirements-server.txt
+# is renamed or moved, fix
+# codalab.worker_manager.aws_batch_worker_manager.get_boto3_pip_version()
 boto3==1.14.57
 
 # For testing
