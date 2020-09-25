@@ -69,6 +69,7 @@ class BaseBundleManagerTest(unittest.TestCase):
         self.codalab_manager = CodaLabManager()
         self.codalab_manager.config['server']['class'] = 'SQLiteModel'
         self.bundle_manager = BundleManager(self.codalab_manager)
+        self.download_manager = self.codalab_manager.download_manager()
         self.user_id = generate_uuid()
         self.bundle_manager._model.add_user(
             "codalab",
@@ -100,6 +101,19 @@ class BaseBundleManagerTest(unittest.TestCase):
                 self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid), extra_path
             ),
             "r",
+        )
+
+    def write_bundle(self, bundle, extra_path=""):
+        location = self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid)
+        if extra_path:
+            # Write to a directory.
+            location = os.path.join(
+                location, extra_path
+            )
+            os.makedirs(os.path.dirname(location), exist_ok=True)
+        return open(
+            location,
+            "w+",
         )
 
     def create_run_bundle(self, state=State.CREATED, metadata=None):
