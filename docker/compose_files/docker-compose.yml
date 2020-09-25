@@ -98,10 +98,9 @@ services:
 
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:3.8.0
+    command: "azurite --blobHost 0.0.0.0"
     networks:
       - rest-server
-    environment:
-      - AZURITE_ACCOUNTS="storageclwsdev0:key"
     expose:
       - 10000
     volumes:
