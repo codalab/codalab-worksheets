@@ -1,4 +1,4 @@
-from codalab.worker.bundle_state import Dependency, State
+from codalab.worker.bundle_state import State
 from codalab.objects.dependency import Dependency
 from codalab.bundles.run_bundle import RunBundle
 from codalab.lib.spec_util import generate_uuid
