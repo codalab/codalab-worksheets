@@ -131,6 +131,9 @@ def parse_args():
         help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
     parser.add_argument(
+        '--group', default=None, help='Name of the group that can run jobs on this worker'
+    )
+    parser.add_argument(
         '--tag-exclusive',
         action='store_true',
         help='To be used when the worker should only run bundles that match the worker\'s tag.',
@@ -256,6 +259,7 @@ def main():
         bundle_service,
         args.shared_file_system,
         args.tag_exclusive,
+        args.group,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
         pass_down_termination=args.pass_down_termination,

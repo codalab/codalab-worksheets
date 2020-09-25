@@ -18,8 +18,10 @@ Things not tested:
 
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
+from datetime import datetime
 from typing import Dict
 
+from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
@@ -36,7 +38,6 @@ import sys
 import tempfile
 import time
 import traceback
-from datetime import datetime
 
 
 global cl
@@ -98,6 +99,51 @@ def current_user():
     user_id = _run_command([cl, 'uinfo', '-f', 'id'])
     user_name = _run_command([cl, 'uinfo', '-f', 'user_name'])
     return user_id, user_name
+
+
+def create_user(context, username, password='codalab'):
+    # Currently there isn't a method for creating a user with the CLI. Use CodaLabManager instead.
+    manager = CodaLabManager()
+    model = manager.model()
+
+    # Creates a user without going through the full sign-up process
+    model.add_user(
+        username, random_name(), '', '', password, '', user_id=username, is_verified=True
+    )
+    context.collect_user(username)
+
+
+def switch_user(username, password='codalab'):
+    del os.environ["CODALAB_USERNAME"]
+    del os.environ["CODALAB_PASSWORD"]
+    _run_command([cl, 'logout'])
+
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = password
+    _run_command([cl, 'uinfo'])
+
+
+def create_group(context, name):
+    group_uuid_line = _run_command([cl, 'gnew', name])
+    group_uuid = get_uuid(group_uuid_line)
+    context.collect_group(group_uuid)
+    return group_uuid
+
+
+def create_worker(context, user_id, worker_id, tag=None, group_name=None):
+    manager = CodaLabManager()
+    worker_model = manager.worker_model()
+
+    # Creating a worker through cl-worker on the same instance can cause conflicts with existing workers, so instead
+    # mimic the behavior of cl-worker --id [worker_id] --group [group_name], by leveraging the worker check-in.
+    worker_model.worker_checkin(
+        user_id, worker_id, tag, group_name, 1, 0, 1000, 1000, {}, False, False, 100, False
+    )
+    context.collect_worker(user_id, worker_id)
+
+
+def add_user_to_group(group, user_name):
+    _run_command([cl, 'uadd', user_name, group])
 
 
 def get_uuid(line):
@@ -300,18 +346,21 @@ class ModuleContext(object):
         self.worksheets = []
         self.bundles = []
         self.groups = []
+        self.users = []
+        self.worker_to_user = {}
         self.error = None
 
         # Allow for making REST calls
         from codalab.lib.codalab_manager import CodaLabManager
 
-        manager = CodaLabManager()
-        self.client = manager.current_client()
+        self.manager = CodaLabManager()
+        self.client = self.manager.current_client()
 
     def __enter__(self):
         """Prepares clean environment for test module."""
         print("[*][*] SWITCHING TO TEMPORARY WORKSHEET")
 
+        switch_user('codalab')  # root user
         self.original_environ = os.environ.copy()
         self.original_worksheet = _run_command([cl, 'work', '-u'])
         temp_worksheet = _run_command([cl, 'new', random_name()])
@@ -347,6 +396,7 @@ class ModuleContext(object):
         # Clean up and restore original worksheet
         print("[*][*] CLEANING UP")
 
+        switch_user('codalab')  # root user
         _run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
             self.bundles.extend(_run_command([cl, 'ls', '-w', worksheet, '-u']).split())
@@ -364,9 +414,19 @@ class ModuleContext(object):
                     pass
                 _run_command([cl, 'rm', '--force', bundle])
 
+        # Delete all extra workers created
+        worker_model = self.manager.worker_model()
+        for worker_id, user_id in self.worker_to_user.items():
+            worker_model.worker_cleanup(user_id, worker_id)
+
+        # Delete all the extra users created during testing
+        model = self.manager.model()
+        for user in self.users:
+            model.delete_user(user)
+
         # Delete all groups (dedup first)
-        if len(self.groups) > 0:
-            _run_command([cl, 'grm'] + list(set(self.groups)))
+        for group in list(set(self.groups)):
+            _run_command([cl, 'grm', group])
 
         # Reraise only KeyboardInterrupt
         if exc_type is KeyboardInterrupt:
@@ -382,9 +442,17 @@ class ModuleContext(object):
         """Mark a bundle for cleanup on exit."""
         self.bundles.append(uuid)
 
+    def collect_user(self, uuid):
+        """Mark a user for cleanup on exit."""
+        self.users.append(uuid)
+
     def collect_group(self, uuid):
         """Mark a group for cleanup on exit."""
         self.groups.append(uuid)
+
+    def collect_worker(self, user_id, worker_id):
+        """Keep track of workers to users for cleanup on exit."""
+        self.worker_to_user[worker_id] = user_id
 
 
 class TestModule(object):
@@ -904,9 +972,7 @@ def test_worksheet_search(ctx):
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    group_uuid_line = _run_command([cl, 'gnew', group_name])
-    group_uuid = get_uuid(group_uuid_line)
-    ctx.collect_group(group_uuid)
+    group_uuid = create_group(ctx, group_name)
     # Make worksheet unavailable to public but available to the group
     _run_command([cl, 'wperm', group_wuuid, 'public', 'n'])
     _run_command([cl, 'wperm', group_wuuid, group_name, 'r'])
@@ -1027,9 +1093,7 @@ def test_search(ctx):
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    group_uuid_line = _run_command([cl, 'gnew', group_name])
-    group_uuid = get_uuid(group_uuid_line)
-    ctx.collect_group(group_uuid)
+    group_uuid = create_group(ctx, group_name)
     # Make bundle unavailable to public but available to the group
     _run_command([cl, 'perm', group_buuid, 'public', 'n'])
     _run_command([cl, 'perm', group_buuid, group_name, 'r'])
@@ -1678,9 +1742,7 @@ def test_groups(ctx):
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    group_uuid_line = _run_command([cl, 'gnew', group_name])
-    group_uuid = get_uuid(group_uuid_line)
-    ctx.collect_group(group_uuid)
+    create_group(ctx, group_name)
 
     # Check that you are added to your own group
     group_info = _run_command([cl, 'ginfo', group_name])
@@ -1908,11 +1970,11 @@ def test_workers(ctx):
     result = _run_command([cl, 'workers'])
     lines = result.split("\n")
 
-    # Output should contain at least 3 lines as following:
+    # Output should contain 3 lines, something like:
     # worker_id        cpus  gpus  memory  free_disk  last_checkin  tag  runs
     # -----------------------------------------------------------------------
     # 7a343e1015c7(1)  0/2   0/0   2.0g    32.9g      2.0s ago
-    check_equals(True, len(lines) >= 3)
+    assert len(lines) == 3
 
     # Check header which includes 8 columns in total from output.
     header = lines[0]
@@ -1925,6 +1987,7 @@ def test_workers(ctx):
             'free_disk',
             'exit_after_num_runs',
             'last_checkin',
+            'group',
             'tag',
             'runs',
             'shared_file_system',
@@ -1935,7 +1998,49 @@ def test_workers(ctx):
 
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
-    check_equals(True, len(worker_info) >= 9)
+    assert len(worker_info) >= 10
+
+
+@TestModule.register('sharing_workers')
+def test_sharing_workers(ctx):
+    def check_workers(user, expected_workers):
+        switch_user(user)
+        result = _run_command([cl, 'workers'])
+
+        # Subtract 2 for the headers that is included in the output of `cl workers`
+        actual_number_of_workers = len(result.split('\n')) - 2
+        check_equals(actual_number_of_workers, len(expected_workers))
+
+        for worker in expected_workers:
+            assert worker in result
+
+    # userA will not start a worker, but will be granted access to one
+    create_user(ctx, 'userA')
+
+    # userB will start a worker and be granted access to another one
+    create_user(ctx, 'userB')
+    switch_user('userB')
+    create_group(ctx, 'group1')
+    create_worker(ctx, 'userB', 'worker1', group_name='group1')
+
+    # userC will not have access to any workers
+    create_user(ctx, 'userC')
+
+    # userD will start a worker
+    create_user(ctx, 'userD')
+    switch_user('userD')
+    create_group(ctx, 'group2')
+    add_user_to_group('group2', 'userA')
+    create_worker(ctx, 'userD', 'worker2', group_name='group2')
+
+    # Test to see that a user has access to a worker after the worker was created
+    add_user_to_group('group2', 'userB')
+
+    # Validate user's access to the newly created workers
+    check_workers('userA', ['worker2'])
+    check_workers('userB', ['worker1', 'worker2'])
+    check_workers('userC', [])
+    check_workers('userD', ['worker2'])
 
 
 @TestModule.register('rest1')
@@ -2189,7 +2294,7 @@ def test_protected_mode(ctx):
 
 
 @TestModule.register('edit')
-def test(ctx):
+def test_edit(ctx):
     uuid = _run_command([cl, 'run', 'echo hello'], request_memory='10m')
     check_equals('10m', get_info(uuid, 'request_memory'))
     _run_command([cl, 'edit', uuid, '--field', 'request_memory', '12m'])

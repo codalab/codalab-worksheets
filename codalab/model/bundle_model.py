@@ -721,7 +721,7 @@ class BundleModel(object):
         """
         # Decode json formatted dependencies string to a list of key value pairs
         dependencies = json.loads(dependencies)
-        # When there is no dependency to be matched, the target memozied bundle
+        # When there is no dependency to be matched, the target memoized bundle
         # should only exist in the bundle table but not in the bundle_dependency table.
         if len(dependencies) == 0:
             query = (
@@ -1262,7 +1262,7 @@ class BundleModel(object):
         if not worksheets:
             raise NotFoundError('Could not find worksheet with uuid %s' % (uuid,))
         if len(worksheets) > 1:
-            raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
+            raise IntegrityError('Found multiple worksheets with uuid %s' % (uuid,))
         return worksheets[0]
 
     def batch_get_worksheets(self, fetch_items, **kwargs):
@@ -1924,8 +1924,12 @@ class BundleModel(object):
                 return []
         return [str_key_dict(row) for row in rows]
 
-    # Helper function: return list of group uuids that |user_id| is in.
-    def _get_user_groups(self, user_id):
+    def get_user_groups(self, user_id):
+        """
+        Get the list of groups that the user belongs to
+        :param user_id: ID of the user
+        :return: A list of group uuid's
+        """
         groups = [self.public_group_uuid]  # Everyone is in the public group implicitly.
         if user_id is not None:
             groups += [row['group_uuid'] for row in self.batch_get_user_in_group(user_id=user_id)]
@@ -2066,7 +2070,7 @@ class BundleModel(object):
 
         if len(remaining_object_uuids) > 0:
             result = self.batch_get_group_permissions(table, user_id, remaining_object_uuids)
-            user_groups = self._get_user_groups(user_id)
+            user_groups = self.get_user_groups(user_id)
             for object_uuid, permissions in result.items():
                 for row in permissions:
                     if row['group_uuid'] in user_groups:

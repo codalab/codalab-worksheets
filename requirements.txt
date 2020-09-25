@@ -18,6 +18,6 @@ selenium==3.141.0
 requests==2.24.0
 azure-storage-blob==12.4.0
 azure-core==1.8.0
-sentry-sdk==0.17.4
+sentry-sdk==0.17.8
 requests-oauthlib==1.1.0
 oauthlib==2.1.0

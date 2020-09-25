@@ -663,9 +663,14 @@ class Worksheet extends React.Component {
     };
 
     __innerScrollToItem = (index, subIndex) => {
-        const node = subIndex
-            ? document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
-            : document.getElementById(`codalab-worksheet-item-${index}`);
+        let node;
+        if (index === -1) {
+            node = document.getElementById('worksheet_dummy_header');
+        } else {
+            node = subIndex
+                ? document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
+                : document.getElementById(`codalab-worksheet-item-${index}`);
+        }
         if (node) {
             node.scrollIntoView({ block: 'center' });
         }
@@ -1435,8 +1440,10 @@ class Worksheet extends React.Component {
         let form = document.querySelector('#upload-menu');
 
         Mousetrap(form).bind(['enter'], function(e) {
-            e.stopPropagation();
+            e.stopImmediatePropagation();
+            e.preventDefault();
             document.querySelector('label[for=' + e.target.firstElementChild.htmlFor + ']').click();
+            Mousetrap(form).unbind(['enter']);
         });
 
         this.setState({ uploadAnchor: e.currentTarget });
@@ -1663,6 +1670,14 @@ class Worksheet extends React.Component {
                                 onClick={this.handleClickForDeselect}
                                 style={{ width: this.state.worksheetWidthPercentage }}
                             >
+                                {this.state.focusIndex === -1 ? (
+                                    <div
+                                        className={classes.worksheetDummyHeader}
+                                        id='worksheet_dummy_header'
+                                    />
+                                ) : (
+                                    <div style={{ height: 8 }} />
+                                )}
                                 <div
                                     className={classes.worksheetInner}
                                     onClick={this.handleClickForDeselect}
@@ -1686,6 +1701,7 @@ class Worksheet extends React.Component {
                                         bottom: '50px',
                                         right: '30px',
                                         backgroundColor: '00BFFF',
+                                        zIndex: 10,
                                     }}
                                 >
                                     <ExpandMoreIcon size='medium' />
@@ -1735,6 +1751,11 @@ const styles = (theme) => ({
         padding: '0px 30px', // Horizonal padding, no vertical
         height: '100%',
         position: 'relative',
+        marginTop: -theme.spacing.large, // Offset DummyHeader height
+    },
+    worksheetDummyHeader: {
+        backgroundColor: '#F1F8FE',
+        height: theme.spacing.large,
     },
     uuid: {
         fontFamily: theme.typography.fontFamilyMonospace,
