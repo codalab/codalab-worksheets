@@ -140,7 +140,10 @@ def _compute_target_info(path, depth):
     return result
 
 def _compute_target_info_beam(path, depth):
+    # TODO (Ashwin): handle depth.
     bundle_uuid, zip_path, zip_subpath = parse_azure_url(path)
+    if zip_subpath == "/images/":
+        raise Exception((path, zip_subpath))
     if zip_path is None:
         # Single file
         file = FileSystems.match([path])[0].metadata_list[0]
@@ -171,12 +174,19 @@ def _compute_target_info_beam(path, depth):
             'size': zipinfo.file_size,
             'perm': 0o777
         }
-    base['contents'] = [{
-    # TODO: support previewing nested directories.
-        'name': zipinfo.filename,
-        'type': 'file',
-        'size': zipinfo.file_size,
-        'perm': 0o777
-    } for zipinfo in f.infolist() if zipinfo.filename.startswith(zip_subpath)]
+    def get_last_part(path):
+        parts = path.split("/")
+        return parts[-1]
+    dirs = [zipinfo.filename for zipinfo in f.infolist() if zipinfo.is_dir() and not zipinfo.filename.startswith(zip_subpath)]
+    # raise Exception([(any(zipinfo.filename.startswith(i) for i in dirs), zipinfo.filename) for zipinfo in f.infolist() if zipinfo.filename.startswith(zip_subpath)])
+    base['e'] = [path.replace(zip_subpath, "").rstrip("/") + "/" + zipinfo.filename.lstrip("/") for zipinfo in f.infolist() if zipinfo.filename.startswith(zip_subpath) and not (any(zipinfo.filename.startswith(i) for i in dirs) and not zipinfo.is_dir())]
+    if depth > 0:
+        base['contents'] = [({
+            'name': get_last_part(zipinfo.filename),
+            'type': 'directory' if zipinfo.is_dir() else 'file',
+            'size': zipinfo.file_size,
+            'perm': 0o777,
+        } if not zipinfo.is_dir() else _compute_target_info_beam(f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.zip/{zipinfo.filename}", depth - 1)) for zipinfo in f.infolist() if zipinfo.filename.startswith(zip_subpath) and not (any(zipinfo.filename.startswith(i) for i in dirs) and not zipinfo.is_dir()) ]
     base['fs'] = 'azure'
+    # base['name'] = base['name'].rstrip("/")
     return base
