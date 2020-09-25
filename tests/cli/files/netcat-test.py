@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import socket
-import time
 
 TCP_IP = '0.0.0.0'
 TCP_PORT = 5005
