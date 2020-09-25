@@ -114,3 +114,25 @@ class PathUtilTest(unittest.TestCase):
         mock_os.mkdir.side_effect = mkdir_with_other_failure
         self.assertRaises(OSError, lambda: path_util.make_directory(self.test_path))
         self.assertEqual(mock_os.mkdir.call_args_list, self.mkdir_calls)
+
+class ParseAzureUrl(unittest.TestCase):
+    def test_single_file(self):
+        """Parse a URL referring to a single file on Azure."""
+        bundle_uuid, zip_path, zip_subpath = path_util.parse_azure_url("azfs://storageclwsdev0/bundles/uuid/contents.txt")
+        self.assertEqual(bundle_uuid, "uuid")
+        self.assertEqual(zip_path, None)
+        self.assertEqual(zip_subpath, None)
+
+    def test_directory(self):
+        """Parse a URL referring to a zipped directory."""
+        bundle_uuid, zip_path, zip_subpath = path_util.parse_azure_url("azfs://storageclwsdev0/bundles/uuid/contents.zip")
+        self.assertEqual(bundle_uuid, "uuid")
+        self.assertEqual(zip_path, "azfs://storageclwsdev0/bundles/uuid/contents.zip")
+        self.assertEqual(zip_subpath, "")
+
+    def test_directory_with_subpath(self):
+        """Parse a URL referring to a subpath within a zipped directory."""
+        bundle_uuid, zip_path, zip_subpath = path_util.parse_azure_url("azfs://storageclwsdev0/bundles/uuid/contents.zip/a/b.txt")
+        self.assertEqual(bundle_uuid, "uuid")
+        self.assertEqual(zip_path, "azfs://storageclwsdev0/bundles/uuid/contents.zip")
+        self.assertEqual(zip_subpath, "a/b.txt")
