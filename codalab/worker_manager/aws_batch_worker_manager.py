@@ -10,7 +10,14 @@ logger = logging.getLogger(__name__)
 
 
 def get_boto3_pip_version():
-    server_requirements_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir, "requirements-server.txt"))
+    server_requirements_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            os.pardir,
+            os.pardir,
+            "requirements-server.txt",
+        )
+    )
     with open(server_requirements_path) as f:
         for line in f:
             if line.startswith("boto3"):
