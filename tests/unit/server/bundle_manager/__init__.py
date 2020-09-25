@@ -60,7 +60,7 @@ BASE_METADATA_DATASET_BUNDLE = {
 }
 
 
-class BaseBundleManagerTest(unittest.TestCase):
+class TestBase():
     """
     Base class for BundleManager tests with a CodaLab Manager hitting a real, in-memory database.
     """
@@ -70,6 +70,7 @@ class BaseBundleManagerTest(unittest.TestCase):
         self.codalab_manager.config['server']['class'] = 'SQLiteModel'
         self.bundle_manager = BundleManager(self.codalab_manager)
         self.download_manager = self.codalab_manager.download_manager()
+        self.upload_manager = self.codalab_manager.upload_manager()
         self.user_id = generate_uuid()
         self.bundle_manager._model.add_user(
             "codalab",
@@ -223,3 +224,6 @@ class BaseBundleManagerTest(unittest.TestCase):
         self.bundle_manager._model.bundle_checkin(
             bundle, worker_run, user_id or self.user_id, worker_id
         )
+
+class BaseBundleManagerTest(TestBase, unittest.TestCase):
+    pass
