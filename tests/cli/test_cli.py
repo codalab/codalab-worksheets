@@ -1465,6 +1465,7 @@ def test_write(ctx):
     uuid = _run_command([cl, 'run', 'sleep 5'])
     wait_until_state(uuid, State.RUNNING)
     target = uuid + '/message'
+    # TODO: investigate -Tony
     _run_command([cl, 'write', 'file with space', 'hello world'], 1)  # Not allowed
     check_equals(uuid, _run_command([cl, 'write', target, 'hello world']))
     _run_command([cl, 'wait', uuid])
