@@ -657,10 +657,7 @@ class BundleCLI(object):
         return worksheet_uuid
 
     def uls_print_table(
-        self,
-        columns,
-        row_dicts,
-        user_defined=False,
+        self, columns, row_dicts, user_defined=False,
     ):
         rows = [columns]
         # display restricted fields if the server returns those fields - which suggests the user is root
@@ -712,7 +709,6 @@ class BundleCLI(object):
             if i == 0:
                 print('' + (sum(lengths) + 2 * (len(columns) - 1)) * '-', file=self.stdout)
 
-
     def print_table(
         self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''
     ):
@@ -720,8 +716,6 @@ class BundleCLI(object):
         Pretty-print a list of columns from each row in the given list of dicts.
         """
         rows = [columns]
-        # display restricted fields if the server returns those fields - which suggests the user is root
-
         # Get the contents of the table
         for row_dict in row_dicts:
             row = []
