@@ -214,5 +214,5 @@ def update_users():
     local.model.update_user_info(users[0])
 
     # Return updated users
-    users = local.model.get_users(user_ids=[users[0]['user_id']])
+    users = local.model.get_users(user_ids=[users[0]['user_id']])['results']
     return AdminUserSchema(many=True).dump(users).data

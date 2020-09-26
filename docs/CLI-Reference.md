@@ -419,34 +419,6 @@ Usage: `cl <command> <arguments>`
       user_spec    Username or id of user to show [default: the authenticated user]
       -f, --field  Print out these comma-separated fields.
 
-### uls
-    Lists users on CodaLab (returns 10 results by default).
-      uls <keyword> ... <keyword>         : Username or id contains each <keyword>.
-      uls user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., first_name).
-    
-      uls .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
-      uls .offset=<offset>                : Return results starting at <offset>.
-    
-      uls .joined_before=<datetime>       : Returns users joined before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
-      uls .joined_after=<datetime>        : Returns users joined after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
-      uls .active_before=<datetime>       : (Root user only) Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
-      uls .active_after=<datetime>        : (Root user only) Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
-
-      uls .disk_used_less_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_less_than=70% or 0.3).
-      uls .disk_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_more_than=70% or 0.3).
-      uls .time_used_less_than=<<percentage> or <float>      : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_less_than=70% or 0.3).
-      uls .time_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_more_than=70% or 0.3).
-
-      uls size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
-      uls size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).
-      uls .last                           : Sort in reverse chronological order (equivalent to id=.sort-).
-      uls .count                          : Count the number of matching bundles.
-      uls .format=<format>                : Apply <format> function (see worksheet markdown).
-    Arguments:
-      keywords     Keywords to search for.
-      -f, --field  Print out these comma-separated fields.
-
-
 ### uedit
     Edit user information.
     Note that password and email can only be changed through the web interface.
@@ -467,6 +439,33 @@ Usage: `cl <command> <arguments>`
     To be safe, you can only delete a user if user does not own any bundles, worksheets, or groups.
     Arguments:
       user_spec  Username or id of user to delete.
+
+### uls
+    Lists users on CodaLab (returns 10 results by default).
+      uls <keyword> ... <keyword>         : Username or id contains each <keyword>.
+      uls user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., first_name).
+
+      uls .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
+      uls .offset=<offset>                : Return results starting at <offset>.
+
+      uls .joined_before=<datetime>       : Returns users joined before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
+      uls .joined_after=<datetime>        : Returns users joined after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
+      uls .active_before=<datetime>       : (Root user only) Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
+      uls .active_after=<datetime>        : (Root user only) Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
+
+      uls .disk_used_less_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_less_than=70% or 0.3).
+      uls .disk_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_more_than=70% or 0.3).
+      uls .time_used_less_than=<<percentage> or <float>      : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_less_than=70% or 0.3).
+      uls .time_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_more_than=70% or 0.3).
+
+      uls size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
+      uls size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).
+      uls .last                           : Sort in reverse chronological order (equivalent to id=.sort-).
+      uls .count                          : Count the number of matching bundles.
+      uls .format=<format>                : Apply <format> function (see worksheet markdown).
+    Arguments:
+      keywords     Keywords to search for.
+      -f, --field  Print out these comma-separated fields.
 
 
 ## Commands for managing server

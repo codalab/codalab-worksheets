@@ -2169,7 +2169,7 @@ class BundleModel(object):
             return result['results'][0]
         return None
 
-    def get_users(self, keywords=None, user_ids=None, usernames=None, check_active=None):
+    def get_users(self, keywords=None, user_ids=None, usernames=None, check_active=True):
         """
         Get user stats.
 
