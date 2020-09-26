@@ -86,6 +86,10 @@ def main():
         description='Which worker manager to run (AWS Batch etc.)',
         dest='worker_manager_name',
     )
+    # This is a workaround for setting a subparser as required for older
+    # versions of python (< 3.7) , necessary due to a bug in Python 3.x .
+    # https://bugs.python.org/issue9253#msg186387
+    subparsers.required = True
 
     # Each worker manager class defines its NAME, which is the subcommand the users use
     # to invoke that type of Worker Manager. We map those to their respective classes
