@@ -656,22 +656,14 @@ class BundleCLI(object):
             )['uuid']
         return worksheet_uuid
 
-    def print_table(
+    def uls_print_table(
         self,
         columns,
         row_dicts,
-        post_funcs={},
-        justify={},
-        show_header=True,
-        indent='',
-        user_defined_fields=False,
+        user_defined=False,
     ):
-        """
-        Pretty-print a list of columns from each row in the given list of dicts.
-        """
         rows = [columns]
         # display restricted fields if the server returns those fields - which suggests the user is root
-        #
         try:
             if row_dicts and row_dicts[0].get('last_login') and not user_defined_fields:
                 columns += ('last_login', 'time', 'disk', 'parallel_run_quota')
@@ -698,6 +690,43 @@ class BundleCLI(object):
                     row.append(' ')
                     continue
 
+                if cell is None:
+                    cell = contents_str(cell)
+                row.append(cell)
+            rows.append(row)
+
+        # Display the table
+        lengths = [max(len(str(value)) for value in col) for col in zip(*rows)]
+        for (i, row) in enumerate(rows):
+            row_strs = []
+            for (j, value) in enumerate(row):
+                value = str(value)
+                length = lengths[j]
+                padding = (length - len(value)) * ' '
+                if {}.get(columns[j], -1) < 0:
+                    row_strs.append(value + padding)
+                else:
+                    row_strs.append(padding + value)
+            if i > 0:
+                print('' + '  '.join(row_strs), file=self.stdout)
+            if i == 0:
+                print('' + (sum(lengths) + 2 * (len(columns) - 1)) * '-', file=self.stdout)
+
+
+    def print_table(
+        self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''
+    ):
+        """
+        Pretty-print a list of columns from each row in the given list of dicts.
+        """
+        rows = [columns]
+        # display restricted fields if the server returns those fields - which suggests the user is root
+
+        # Get the contents of the table
+        for row_dict in row_dicts:
+            row = []
+            for col in columns:
+                cell = row_dict.get(col)
                 func = post_funcs.get(col)
                 if func:
                     cell = worksheet_util.apply_func(func, cell)
@@ -3838,7 +3867,7 @@ class BundleCLI(object):
                     'date_joined',
                 )
             self.print_result_limit_info(len(users))
-            self.print_table(columns, users, user_defined_fields=args.field)
+            self.uls_print_table(columns, users, user_defined=args.field)
         else:
             print(NO_RESULTS_FOUND, file=self.stderr)
 
