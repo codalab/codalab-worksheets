@@ -33,7 +33,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
         expected_command_str = (
             "cl-worker --server some_server --verbose --exit-when-idle --idle-seconds 888 "
             "--work-dir /some/path/some_user-codalab-SlurmBatchWorkerManager-scratch/some_worker_id "
-            "--id some_worker_id --network-prefix cl_worker_some_worker_id_network --tag some_tag "
+            "--id $(hostname -s)-some_worker_id --network-prefix cl_worker_some_worker_id_network --tag some_tag "
             "--group some_group --exit-after-num-runs 8 --max-work-dir-size 88g --pass-down-termination"
         )
         self.assertEqual(' '.join(command), expected_command_str)
