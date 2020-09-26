@@ -657,7 +657,14 @@ class BundleCLI(object):
         return worksheet_uuid
 
     def print_table(
-        self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent='', user_defined_fields=True,
+        self,
+        columns,
+        row_dicts,
+        post_funcs={},
+        justify={},
+        show_header=True,
+        indent='',
+        user_defined_fields=False,
     ):
         """
         Pretty-print a list of columns from each row in the given list of dicts.
@@ -666,7 +673,7 @@ class BundleCLI(object):
         # display restricted fields if the server returns those fields - which suggests the user is root
         #
         try:
-            if row_dicts and row_dicts[0].get('last_login'):
+            if row_dicts and row_dicts[0].get('last_login') and not user_defined_fields:
                 columns += ('last_login', 'time', 'disk', 'parallel_run_quota')
                 rows = [columns]
         except KeyError:

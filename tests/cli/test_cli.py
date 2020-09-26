@@ -1022,7 +1022,7 @@ def test(ctx):
     )
 
     # check .count
-    check_equals('1', _run_command([cl, 'uls', 'joined_after=' + prev_time, '.count']))
+    check_equals('1', _run_command([cl, 'uls', '.joined_after=' + prev_time, '.count']))
 
     # check non-root user doesn't have access
     check_contains(
