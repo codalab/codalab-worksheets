@@ -18,7 +18,7 @@ class BaseTestCase(unittest.TestCase):
     def create_worksheet(self, worksheet_name=None):
         worksheet_name = worksheet_name or f"codalab-{uuid.uuid4()}"
         response = self.app.post_json(
-            f'/rest/worksheets',
+            '/rest/worksheets',
             {'data': [{'type': 'worksheets', 'attributes': {'name': worksheet_name}}]},
         )
         worksheet_id = response.json["data"][0]["id"]
