@@ -68,7 +68,7 @@ BUNDLE_REGEX = re.compile('^\s*(\\[(.*)\\])?\s*\\{([^{]*)\\}\s*$')
 SUBWORKSHEET_REGEX = re.compile('^\s*(\\[(.*)\\])?\s*\\{\\{(.*)\\}\\}\s*$')
 
 DIRECTIVE_CHAR = '%'
-DIRECTIVE_REGEX = re.compile(r'^\s*' + DIRECTIVE_CHAR + '\s*(.*)\s*$')
+DIRECTIVE_REGEX = re.compile(r'^\\s*' + DIRECTIVE_CHAR + r'\\s*(.*)\\s*$')
 
 # Default number of lines to pull for each display mode.
 DEFAULT_CONTENTS_MAX_LINES = 10

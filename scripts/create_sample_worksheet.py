@@ -7,6 +7,9 @@ import time
 
 from scripts.test_util import cleanup, run_command
 
+import logging
+
+logger = logging.getLogger(__name__)
 """
 Script to create small and large sample worksheets in any instance to stress test the front end. The purpose of
 the small worksheet is to test all features CodaLab offers on the front end. The large worksheet is a much bigger
@@ -93,8 +96,12 @@ class SampleWorksheet:
         print('\n\nValidating output of cl print {}...'.format(self._worksheet_name))
         output_lines = run_command([self._cl, 'print', self._worksheet_name]).split('\n')
         has_error = False
+        logger.info("Yibo: expected " + str(len(self._expected_lines)))
+        logger.info("Yibo: output " + str(len(output_lines)))
         for i in range(len(self._expected_lines)):
             line = str(i + 1).zfill(5)
+            logger.info("Yibo: expected " + self._expected_lines[i])
+            logger.info("Yibo: output " + output_lines[i])
             if re.match(self._expected_lines[i], output_lines[i]):
                 print('\x1b[1;34m{}| {}\x1b[0m'.format(line, output_lines[i]))
             else:

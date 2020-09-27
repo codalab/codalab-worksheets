@@ -3,6 +3,7 @@ Helper functions for working with the BundleModel.
 Some functions placed in this central location to prevent circular imports.
 """
 import http.client
+import logging
 import re
 
 from bottle import abort, local, request
@@ -11,6 +12,8 @@ from codalab.bundles import PrivateBundle
 from codalab.lib import bundle_util
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.objects.permission import check_bundles_have_read_permission, unique_group
+
+logger = logging.getLogger(__name__)
 
 
 def get_resource_ids(document, type_):
@@ -245,7 +248,11 @@ def get_group_info(group_spec, need_admin, access_all_groups=False):
         group_info = unique_group(local.model, group_spec, user_id=user_id)
 
     # If not root and need admin access, but don't have it, raise error.
-    if not is_root_user and need_admin and group_info.get('is_admin') == False:
+    logger.info("Yibo: groouop_info_.get('isadmin') is " + str(group_info.get('is_admin')))
+    logger.info(
+        "Yibo: type of group_info_.get('isadmin') is " + str(type(group_info.get('is_admin')))
+    )
+    if not is_root_user and need_admin and group_info.get('is_admin') is False:
         abort(http.client.FORBIDDEN, 'You are not the admin of group %s.' % group_spec)
 
     # No one can admin the public group (not even root), because it's a special group.
