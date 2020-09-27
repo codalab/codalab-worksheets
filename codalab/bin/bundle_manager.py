@@ -13,9 +13,15 @@ def main():
         type=int,
         default=0.5,
     )
+    parser.add_argument(
+        '--worker-timeout-seconds',
+        help='Number of seconds to wait after a checkin before determining a worker is offline',
+        type=int,
+        default=60,
+    )
     args = parser.parse_args()
 
-    manager = BundleManager(CodaLabManager())
+    manager = BundleManager(CodaLabManager(), args.worker_timeout_seconds)
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
         signal.signal(sig, lambda signup, frame: manager.signal())

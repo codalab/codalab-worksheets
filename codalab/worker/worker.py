@@ -64,6 +64,7 @@ class Worker:
         exit_when_idle,  # type: str
         exit_after_num_runs,  # type: int
         idle_seconds,  # type: int
+        checkin_frequency_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
@@ -112,6 +113,7 @@ class Worker:
         self.pass_down_termination = pass_down_termination
         self.exit_on_exception = exit_on_exception
 
+        self.checkin_frequency_seconds = checkin_frequency_seconds
         self.last_checkin_successful = False
         self.last_time_ran = None  # type: Optional[bool]
 
@@ -233,8 +235,18 @@ class Worker:
         now = time.time()
         if len(self.runs) > 0 or self.last_time_ran is None:
             self.last_time_ran = now
-        is_idle = now - self.last_time_ran > self.idle_seconds
-        return self.exit_when_idle and is_idle and self.last_checkin_successful
+
+        idle_duration_seconds = now - self.last_time_ran
+        if (
+            self.exit_when_idle
+            and idle_duration_seconds > self.idle_seconds
+            and self.last_checkin_successful
+        ):
+            logger.warning(
+                "Worker was idle for {} seconds. Exiting...".format(idle_duration_seconds)
+            )
+            return True
+        return False
 
     def check_num_runs_stop(self):
         """
@@ -260,6 +272,8 @@ class Worker:
                 self.save_state()
                 if self.check_idle_stop() or self.check_num_runs_stop():
                     self.terminate = True
+                else:
+                    time.sleep(self.checkin_frequency_seconds)
             except Exception:
                 self.last_checkin_successful = False
                 if using_sentry():

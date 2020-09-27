@@ -116,6 +116,10 @@ class WorkerManager(object):
             command.extend(['--tag-exclusive'])
         if self.args.worker_pass_down_termination:
             command.extend(['--pass-down-termination'])
+        if self.args.worker_checkin_frequency_seconds:
+            command.extend(
+                ['--checkin-frequency-seconds', str(self.args.worker_checkin_frequency_seconds)]
+            )
 
         return command
 
