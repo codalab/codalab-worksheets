@@ -2,7 +2,10 @@ import copy
 import json
 
 from codalab.bundles import get_bundle_subclass
-from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship  # NOQA - JsonApiClient used in comments
+from codalab.client.json_api_client import (
+    JsonApiClient,  # NOQA - JsonApiClient used in comments
+    JsonApiRelationship,
+)
 from codalab.common import UsageError
 from codalab.lib import worksheet_util
 from codalab.worker.bundle_state import BundleInfo
