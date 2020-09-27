@@ -95,7 +95,7 @@ def send_email(subject, message):
         'Sending an email to %s from %s@%s; subject: %s; message contains %d lines'
         % (admin_email, sender_username, sender_host, subject, len(message))
     )
-    sys.stdout.flush()
+
     if not admin_email:
         return
 
@@ -120,6 +120,7 @@ def send_email(subject, message):
 def log(line):
     current_datetime = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     line = '[%s] %s' % (current_datetime, line)
+    print(line)
     sys.stdout.flush()
     report.append(line)
     out = open(args.log_path, 'a')
