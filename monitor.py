@@ -91,11 +91,11 @@ def get_public_workers():
 
 # message is a list
 def send_email(subject, message):
-    print(
-        'send_email to %s from %s@%s; subject: %s; message contains %d lines'
+    log(
+        'Sending an email to %s from %s@%s; subject: %s; message contains %d lines'
         % (admin_email, sender_username, sender_host, subject, len(message))
     )
-    sys.stdout.flush()
+
     if not admin_email:
         return
 
@@ -117,17 +117,10 @@ def send_email(subject, message):
     s.quit()
 
 
-def get_date():
-    # Only save a backup for every month to save space
-    return datetime.datetime.utcnow().strftime('%Y-%m')
-
-
-def log(line, newline=True):
-    line = '[%s] %s' % (get_date(), line)
-    if newline:
-        print(line)
-    else:
-        print(line)
+def log(line):
+    current_datetime = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    line = '[%s] %s' % (current_datetime, line)
+    print(line)
     sys.stdout.flush()
     report.append(line)
     out = open(args.log_path, 'a')
@@ -229,7 +222,6 @@ def email_time():
 
 def backup_db():
     log('Backup DB (note that errors are not detected due to shell pipes)')
-    date = get_date()
     mysql_conf_path = os.path.join(args.codalab_home, 'monitor-mysql.cnf')
     with open(mysql_conf_path, 'w') as f:
         print('[client]', file=f)
@@ -237,7 +229,10 @@ def backup_db():
         print('port="%s"' % bundles_port, file=f)
         print('user="%s"' % bundles_username, file=f)
         print('password="%s"' % bundles_password, file=f)
-    path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_database, date)
+
+    # Only save a backup for every month to save space
+    month = datetime.datetime.utcnow().strftime('%Y-%m')
+    path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_database, month)
     run_command(
         [
             'bash',
