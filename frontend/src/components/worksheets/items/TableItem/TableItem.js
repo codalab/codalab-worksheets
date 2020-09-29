@@ -236,7 +236,12 @@ class TableItem extends React.Component<{
         });
         return (
             <div className='ws-item'>
-                <TableContainer style={{ overflowX: 'auto', maxHeight: 500 }}>
+                <TableContainer
+                    style={{
+                        overflowX: 'auto',
+                        maxHeight: 500,
+                    }}
+                >
                     <Table className={tableClassName}>
                         <TableHead>
                             <TableRow
@@ -328,6 +333,11 @@ class _TableContainer extends React.Component {
 const styles = (theme) => ({
     tableContainer: {
         position: 'relative',
+        '&::-webkit-scrollbar': {
+            display: 'none',
+        } /* Safari and Chrome */,
+        '-ms-overflow-style': 'none' /* Internet Explorer 10+ */,
+        'scrollbar-width': 'none' /* Firefox */,
     },
     tableHeader: {
         position: 'sticky',
