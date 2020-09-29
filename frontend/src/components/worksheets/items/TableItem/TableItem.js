@@ -330,14 +330,10 @@ class _TableContainer extends React.Component {
     }
 }
 
-const styles = (theme) => ({
+const styles = () => ({
     tableContainer: {
         position: 'relative',
-        '&::-webkit-scrollbar': {
-            display: 'none',
-        } /* Safari and Chrome */,
-        '-ms-overflow-style': 'none' /* Internet Explorer 10+ */,
-        'scrollbar-width': 'none' /* Firefox */,
+        overflow: 'hidden',
     },
     tableHeader: {
         position: 'sticky',
