@@ -1,10 +1,4 @@
 import unittest
-from mock import Mock
-from bottle import request
-from codalab.server.rest_server import request, create_rest_app
-from webtest import TestApp
-import os
-import json
 from .base import BaseTestCase
 
 
