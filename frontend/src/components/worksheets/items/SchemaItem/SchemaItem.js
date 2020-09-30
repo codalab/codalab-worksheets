@@ -59,7 +59,7 @@ class SchemaItem extends React.Component<{
     };
 
     saveSchema = () => {
-        const { schema_name, field_rows, ids } = this.props.item;
+        const { schema_name, ids } = this.props.item;
         let updatedSchema = ['schema ' + this.state.curSchemaName];
         let fromAddSchema = false;
         // Note: When using the add-item end point,

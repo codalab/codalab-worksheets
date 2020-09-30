@@ -1,7 +1,6 @@
 {
     "extends": "react-app",
     "rules": {
-        "no-unused-vars": "off",
         "no-loop-func": "off",
         "jsx-a11y/anchor-is-valid": "off",
         "no-shadow-restricted-names": "off",

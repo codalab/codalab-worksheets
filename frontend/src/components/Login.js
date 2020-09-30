@@ -33,7 +33,7 @@ class Login extends React.Component {
     };
 
     render() {
-        const { next, error } = queryString.parse(this.props.location.search);
+        const { error } = queryString.parse(this.props.location.search);
         const pathname = this.props.location.pathname;
 
         let { redirectToReferrer, from } = this.state;

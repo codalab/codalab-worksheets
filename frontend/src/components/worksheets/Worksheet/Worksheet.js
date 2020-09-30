@@ -5,7 +5,6 @@ import { withStyles } from '@material-ui/core/styles';
 import { renderPermissions, getAfterSortKey, createAlertText } from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
-import ReactDOM from 'react-dom';
 import InformationModal from '../InformationModal/InformationModal';
 import WorksheetHeader from './WorksheetHeader';
 import {
@@ -354,7 +353,6 @@ class Worksheet extends React.Component {
             this.setState({ openedDialog: DIALOG_TYPES.OPEN_KILL });
         } else if (cmd_type === 'copy' || cmd_type === 'cut') {
             let validBundles = [];
-            let cutBundleIds = [];
             let actualCopiedCounts = 0;
             let tableIDs = Object.keys(this.copyCallbacks).sort();
             tableIDs.forEach((tableID) => {
@@ -447,14 +445,11 @@ class Worksheet extends React.Component {
     pasteBundlesToWorksheet = () => {
         // Unchecks all bundles after pasting
         const data = JSON.parse(window.localStorage.getItem('CopiedBundles'));
-        let bundleString = '';
         let items = [];
         data.forEach((bundle) => {
-            bundleString += '[]{' + bundle.uuid + '}\n';
             items.push(bundle.uuid);
         });
         // remove the last new line character
-        bundleString = bundleString.substr(0, bundleString.length - 1);
         let worksheetUUID = this.state.ws.uuid;
         let after_sort_key;
         if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
