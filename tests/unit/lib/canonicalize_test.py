@@ -1,10 +1,7 @@
-import mock
-import os
 import unittest
 
 from codalab.common import UsageError
 from codalab.lib import canonicalize, spec_util
-from codalab.worker.bundle_state import State
 
 
 class CanonicalizeTest(unittest.TestCase):
