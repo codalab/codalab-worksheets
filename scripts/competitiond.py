@@ -39,7 +39,6 @@ from collections import defaultdict, namedtuple
 from marshmallow import Schema, fields, ValidationError, missing
 import yaml
 
-sys.path.append('.')
 from codalab.bundles import RunBundle
 from codalab.common import NotFoundError, PermissionError
 from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship, JsonApiException
@@ -52,7 +51,7 @@ from codalab.rest.schemas import BundleDependencySchema, validate_uuid
 from codalab.server.auth import RestOAuthHandler
 from codalab.worker.bundle_state import State
 
-
+sys.path.append('.')
 logger = logging.getLogger(__name__)
 
 
@@ -759,7 +758,7 @@ class Competition(object):
         while not self.should_stop:
             try:
                 self.run_once()
-            except:
+            except Exception:
                 traceback.print_exc()
 
             if self.should_stop:

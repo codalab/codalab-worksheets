@@ -84,9 +84,9 @@ def current_worksheet():
     Does so by parsing the output of `cl work`:
         Switched to worksheet http://localhost:2900/worksheets/0x87a7a7ffe29d4d72be9b23c745adc120 (home-codalab).
     """
-    m = re.search('(http.*?)/worksheets/(.*?) \((.*?)\)', _run_command([cl, 'work']))
+    m = re.search('(http.*?)/worksheets/(.*?) \\((.*?)\\)', _run_command([cl, 'work']))
     assert m is not None
-    worksheet_host, worksheet_uuid, worksheet_name = m.group(1), m.group(2), m.group(3)
+    worksheet_host, worksheet_name = m.group(1), m.group(3)
     return worksheet_host + "::" + worksheet_name
 
 
@@ -150,7 +150,7 @@ def get_uuid(line):
     """
     Returns the uuid from a line where the uuid is between parentheses
     """
-    m = re.search(".*\((0x[a-z0-9]+)\)", line)
+    m = re.search(".*\\((0x[a-z0-9]+)\\)", line)
     assert m is not None
     return m.group(1)
 
@@ -276,7 +276,8 @@ def _run_command(
         request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "10m".
         request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m".
         request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed).
-        request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands. Defaults to "python:3.6.10-slim-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
+        request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands.
+                                              Defaults to "python:3.6.10-slim-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
 
     Returns:
         str: Command output.
