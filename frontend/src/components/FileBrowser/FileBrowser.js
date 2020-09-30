@@ -263,11 +263,12 @@ export class FileBrowserBreadCrumbs extends React.Component<{
         for (let i = 0; i < splitDirs.length; i++) {
             if (i > 0) currentDirectory += '/';
             currentDirectory += splitDirs[i];
+            const fixedCurrentDirectory = currentDirectory;
             links.push(
                 <span
                     key={splitDirs[i]}
                     index={splitDirs[i]}
-                    onClick={() => this.props.updateFileBrowser(currentDirectory)}
+                    onClick={() => this.props.updateFileBrowser(fixedCurrentDirectory)}
                 >
                     {' '}
                     / {splitDirs[i]}

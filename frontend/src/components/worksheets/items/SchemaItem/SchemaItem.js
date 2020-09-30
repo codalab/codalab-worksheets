@@ -136,11 +136,13 @@ class SchemaItem extends React.Component<{
         const headerKeys = this.props.item.header;
         let textFieldChanged = false;
         for (let ind = 0; ind < originalRows.length; ind++) {
+            let candTextFieldChanged = false;
             headerKeys.forEach((key) => {
                 if (originalRows[ind][key] !== this.state.rows[ind][key]) {
-                    textFieldChanged = true;
+                    candTextFieldChanged = true;
                 }
             });
+            textFieldChanged = candTextFieldChanged;
         }
         return textFieldChanged;
     };
