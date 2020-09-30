@@ -215,6 +215,7 @@ class Worksheet extends React.Component {
         // TODO: This function should be cleaner, after my logic refactoring, the identifier
         //      shouldn't be necessary. However, if we want more control on what happens after
         //      bulk operation, this might be useful
+        let bundlesCount = this.state.uuidBundlesCheckedCount;
         if (check) {
             //A bundle is checked
             if (
@@ -223,7 +224,6 @@ class Worksheet extends React.Component {
             ) {
                 return;
             }
-            let bundlesCount = this.state.uuidBundlesCheckedCount;
             if (!(uuid in bundlesCount)) {
                 bundlesCount[uuid] = 0;
             }
@@ -253,7 +253,10 @@ class Worksheet extends React.Component {
                 delete this.state.uuidBundlesCheckedCount[uuid];
                 delete this.state.checkedBundles[uuid];
             } else {
-                this.state.uuidBundlesCheckedCount[uuid] -= 1;
+                bundlesCount[uuid] -= 1;
+                this.setState({
+                    uuidBundlesCheckedCount: bundlesCount,
+                });
                 delete this.state.checkedBundles[uuid][identifier];
             }
             if (Object.keys(this.state.uuidBundlesCheckedCount).length === 0) {
@@ -1034,7 +1037,15 @@ class Worksheet extends React.Component {
             if (this.hasEditPermission()) {
                 var editor = ace.edit('worksheet-editor');
                 if (saveChanges) {
-                    this.state.ws.info.source = editor.getValue().split('\n');
+                    this.setState({
+                        ws: {
+                            ...this.state.ws,
+                            info: {
+                                ...this.state.ws.info,
+                                source: editor.getValue().split('\n'),
+                            },
+                        },
+                    });
                 }
                 var rawIndex = editor.getCursorPosition().row;
                 this.setState({
