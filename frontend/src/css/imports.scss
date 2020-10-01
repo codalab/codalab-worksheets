@@ -493,10 +493,14 @@ button.link {
   border: none;
   cursor: pointer;
   outline:none;
+  display: inline;
 }
 button.link:hover{
   text-decoration: underline;
   color: #1a4b75;
+}
+.link-button:focus {
+  text-decoration: none;
 }
 
 .context-menu {
