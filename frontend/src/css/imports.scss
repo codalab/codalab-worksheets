@@ -481,6 +481,24 @@ a.button-disabled {
   background-color: #e6e6e6;
   color: #b4b4b4;
 }
+
+// Make <button> looks like <a>
+button.link {
+  font-size: 1em;
+  text-align: left;
+  color:  #4479b2;
+  background: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  outline:none;
+}
+button.link:hover{
+  text-decoration: underline;
+  color: #1a4b75;
+}
+
 .context-menu {
   font-size: 14px;
   background-color: white;

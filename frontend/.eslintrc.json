@@ -1,9 +1,5 @@
 {
     "extends": "react-app",
     "rules": {
-        "no-loop-func": "off",
-        "jsx-a11y/anchor-is-valid": "off",
-        "no-shadow-restricted-names": "off",
-        "react/no-direct-mutation-state": "off"
     }
 }

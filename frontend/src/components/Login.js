@@ -87,8 +87,8 @@ class Login extends React.Component {
                     <p>
                         <NavLink to='/account/reset'>Forgot your password?</NavLink>
                     </p>
-                    <a
-                        href='#'
+                    <button
+                        class='link'
                         onClick={(event) => {
                             alert(
                                 'Please log in and navigate to your dashboard to resend confirmation email.',
@@ -97,7 +97,7 @@ class Login extends React.Component {
                         }}
                     >
                         Resend confirmation email
-                    </a>
+                    </button>
                 </ContentWrapper>
             </React.Fragment>
         );
