@@ -20,7 +20,7 @@
  * @version 1.6.3
  * @url craig.is/killing/mice
  */
-(function(window, document) {
+(function(window, document, undefined) {
     // Check if mousetrap is used inside browser, if not, return
     if (!window) {
         return;
