@@ -79,3 +79,8 @@ To upload a file with Azure Blob Storage, use `cl upload` with the `--use_azure_
 ```bash
 cl upload test.txt -a
 ```
+
+To set this up, you must first create an Azure Blob Storage Account, add a container called "bundles", and then set
+the `CODALAB_AZURE_BLOB_CONNECTION_STRING` environment variable to the right connection string when starting up CodaLab.
+
+During local development, you can simulate the Azure Blob Storage Account by running the `azurite` service from `codalab_service.py`.
