@@ -2,15 +2,13 @@
 Script that creates the root user.
 """
 import sys
-
-sys.path.append('.')
-
 import getpass
 
 from codalab.lib import crypt_util
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.objects.user import User
 
+sys.path.append('.')
 manager = CodaLabManager()
 model = manager.model()
 

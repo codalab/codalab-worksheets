@@ -58,7 +58,6 @@ class UploadManagerTest(unittest.TestCase):
 
     def test_ignored_files(self):
         dsstore_file = os.path.join(self.temp_dir, '.DS_Store')
-        macosx_file = os.path.join(self.temp_dir, '__MACOSX')
         self.write_string_to_file('testing', dsstore_file)
         source = os.path.join(self.temp_dir, 'filename')
         self.write_string_to_file('testing', source)
