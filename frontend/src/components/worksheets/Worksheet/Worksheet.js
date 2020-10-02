@@ -5,7 +5,6 @@ import { withStyles } from '@material-ui/core/styles';
 import { renderPermissions, getAfterSortKey, createAlertText } from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
-import ReactDOM from 'react-dom';
 import InformationModal from '../InformationModal/InformationModal';
 import WorksheetHeader from './WorksheetHeader';
 import {
@@ -216,6 +215,7 @@ class Worksheet extends React.Component {
         // TODO: This function should be cleaner, after my logic refactoring, the identifier
         //      shouldn't be necessary. However, if we want more control on what happens after
         //      bulk operation, this might be useful
+        let bundlesCount = this.state.uuidBundlesCheckedCount;
         if (check) {
             //A bundle is checked
             if (
@@ -224,7 +224,6 @@ class Worksheet extends React.Component {
             ) {
                 return;
             }
-            let bundlesCount = this.state.uuidBundlesCheckedCount;
             if (!(uuid in bundlesCount)) {
                 bundlesCount[uuid] = 0;
             }
@@ -254,7 +253,10 @@ class Worksheet extends React.Component {
                 delete this.state.uuidBundlesCheckedCount[uuid];
                 delete this.state.checkedBundles[uuid];
             } else {
-                this.state.uuidBundlesCheckedCount[uuid] -= 1;
+                bundlesCount[uuid] -= 1;
+                this.setState({
+                    uuidBundlesCheckedCount: bundlesCount,
+                });
                 delete this.state.checkedBundles[uuid][identifier];
             }
             if (Object.keys(this.state.uuidBundlesCheckedCount).length === 0) {
@@ -355,7 +357,6 @@ class Worksheet extends React.Component {
             this.setState({ openedDialog: DIALOG_TYPES.OPEN_KILL });
         } else if (cmd_type === 'copy' || cmd_type === 'cut') {
             let validBundles = [];
-            let cutBundleIds = [];
             let actualCopiedCounts = 0;
             let tableIDs = Object.keys(this.copyCallbacks).sort();
             tableIDs.forEach((tableID) => {
@@ -448,14 +449,11 @@ class Worksheet extends React.Component {
     pasteBundlesToWorksheet = () => {
         // Unchecks all bundles after pasting
         const data = JSON.parse(window.localStorage.getItem('CopiedBundles'));
-        let bundleString = '';
         let items = [];
         data.forEach((bundle) => {
-            bundleString += '[]{' + bundle.uuid + '}\n';
             items.push(bundle.uuid);
         });
         // remove the last new line character
-        bundleString = bundleString.substr(0, bundleString.length - 1);
         let worksheetUUID = this.state.ws.uuid;
         let after_sort_key;
         if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
@@ -1042,7 +1040,15 @@ class Worksheet extends React.Component {
             if (this.hasEditPermission()) {
                 var editor = ace.edit('worksheet-editor');
                 if (saveChanges) {
-                    this.state.ws.info.source = editor.getValue().split('\n');
+                    this.setState({
+                        ws: {
+                            ...this.state.ws,
+                            info: {
+                                ...this.state.ws.info,
+                                source: editor.getValue().split('\n'),
+                            },
+                        },
+                    });
                 }
                 var rawIndex = editor.getCursorPosition().row;
                 this.setState({
