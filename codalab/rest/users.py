@@ -142,7 +142,7 @@ def fetch_users():
 
     Query parameters:
 
-    - `keywords`: Search keyword. May be provided multiples times for multiple
+    - `keywords`: Search keyword. May be provided multiple times for multiple
     keywords.
     Examples of other special keyword forms:
     - `name=<name>            ` : More targeted search of using metadata fields.
