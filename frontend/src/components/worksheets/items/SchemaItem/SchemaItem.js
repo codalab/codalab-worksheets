@@ -23,6 +23,11 @@ import ArrowRightRoundedIcon from '@material-ui/icons/ArrowRightRounded';
 import Tooltip from '@material-ui/core/Tooltip';
 import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 import { getAfterSortKey } from '../../../../util/worksheet_utils';
+import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
+import WarningIcon from '@material-ui/icons/Warning';
+import CancelIcon from '@material-ui/icons/Cancel';
+import Grid from '@material-ui/core/Grid';
+import Typography from '@material-ui/core/Typography';
 
 class SchemaItem extends React.Component<{
     worksheetUUID: string,
@@ -36,6 +41,7 @@ class SchemaItem extends React.Component<{
             rows: [...this.props.item.field_rows],
             curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
+            confirmingDeletion: false,
         };
     }
 
@@ -47,6 +53,7 @@ class SchemaItem extends React.Component<{
         }
         if (save) {
             this.saveSchema();
+            this.setState({ confirmingDeletion: false });
         }
     };
 
@@ -55,6 +62,7 @@ class SchemaItem extends React.Component<{
             rows: [...this.props.item.field_rows],
             curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
+            confirmingDeletion: false,
         });
     };
 
@@ -95,7 +103,14 @@ class SchemaItem extends React.Component<{
         });
         // TODO: Comparing with TextEditorItem, unclear why the after sort key is wrong here, but if we don't -1
         //       we will move one line below the desired one
-        this.props.updateSchemaItem(updatedSchema, ids, getAfterSortKey(this.props.item) - 1);
+        this.props.updateSchemaItem(
+            updatedSchema,
+            ids,
+            getAfterSortKey(this.props.item) - 1,
+            this.props.create,
+            false,
+        );
+        if (this.props.create) this.props.onSubmit();
     };
 
     addFieldRowAfter = (idx) => (e) => {
@@ -126,7 +141,12 @@ class SchemaItem extends React.Component<{
     changeSchemaName = (e) => {
         if (!this.props.editPermission) return;
         // replace new line with space, remove single quotes since we use that to quote fields with space when saving
-        this.setState({ curSchemaName: e.target.value.replace(/\n/g, ' ').replace("'", '') });
+        this.setState({
+            curSchemaName: e.target.value
+                .replace(/\n/g, ' ')
+                .replace("'", '')
+                .replace(' ', '_'),
+        });
     };
 
     checkIfTextChanged = () => {
@@ -181,6 +201,11 @@ class SchemaItem extends React.Component<{
         this.setState({ rows: copiedRows });
     };
 
+    deleteThisSchema = () => {
+        this.setState({ showSchemaDetail: false, confirmingDeletion: false });
+        this.props.updateSchemaItem([], this.props.item.ids, null, false, true);
+    };
+
     componentDidUpdate(prevProps, prevState) {
         if (
             prevProps.item.field_rows !== this.props.item.field_rows ||
@@ -218,7 +243,7 @@ class SchemaItem extends React.Component<{
             'post-processor': '<how to render value>',
         };
         headerHtml =
-            showSchemaDetail &&
+            (showSchemaDetail || this.props.create) &&
             schemaHeaders.map((header, index) => {
                 return (
                     <TableCell
@@ -286,12 +311,33 @@ class SchemaItem extends React.Component<{
                                 <RestoreIcon />
                             </IconButton>
                         </Tooltip>
+                    }{' '}
+                    {
+                        <Tooltip
+                            title={
+                                'Deletes whole schema, bundle blocks using the schema will be affected'
+                            }
+                        >
+                            <IconButton
+                                outlined
+                                onClick={() => {
+                                    if (this.props.create) {
+                                        this.props.onSubmit();
+                                        return;
+                                    }
+                                    this.setState({ confirmingDeletion: true });
+                                }}
+                                disabled={this.state.confirmingDeletion}
+                            >
+                                <DeleteForeverIcon fontSize='small' />
+                            </IconButton>
+                        </Tooltip>
                     }
                 </TableCell>,
             );
         }
         bodyRowsHtml =
-            showSchemaDetail &&
+            (showSchemaDetail || this.props.create) &&
             rows.map((rowItem, ind) => {
                 let rowCells = schemaHeaders.map((headerKey, col) => {
                     return (
@@ -374,7 +420,7 @@ class SchemaItem extends React.Component<{
                 );
             });
         let schemaTable = null;
-        if (showSchemaDetail) {
+        if (showSchemaDetail || this.props.create) {
             schemaTable = (
                 <Table className={classNames(classes.fullTable)}>
                     <TableHead>
@@ -384,7 +430,7 @@ class SchemaItem extends React.Component<{
                 </Table>
             );
         }
-        if (focused) {
+        if (focused || this.props.create) {
             Mousetrap.bind(
                 ['enter'],
                 (e) => {
@@ -403,57 +449,92 @@ class SchemaItem extends React.Component<{
                 Mousetrap.unbindGlobal(['ctrl+enter']);
             });
             Mousetrap.bindGlobal(['esc'], () => {
+                if (this.props.create) {
+                    Mousetrap.unbindGlobal(['ctrl+enter']);
+                    this.props.onSubmit();
+                }
                 this.clearChanges();
                 Mousetrap.unbindGlobal(['esc']);
             });
         }
-
         return (
             <div
                 onClick={() => {
+                    if (this.props.create) return;
                     this.props.setFocus(this.props.focusIndex, 0);
                 }}
             >
-                <Tooltip
-                    title={showSchemaDetail ? '' : 'Click to view schema: ' + schemaName}
-                    placement='right'
-                >
-                    <Button
-                        color='secondary'
-                        variant='outlined'
-                        onClick={() => this.setState({ showSchemaDetail: !showSchemaDetail })}
-                        style={{ paddingLeft: '10px' }}
-                        className={classNames(focused ? classes.highlight : '')}
-                    >
-                        {showSchemaDetail ? (
-                            <ArrowDropDownRoundedIcon />
-                        ) : (
-                            <ArrowRightRoundedIcon />
+                <Grid container direction='row'>
+                    <Grid item xs={10} alignItems='flex-start'>
+                        <Tooltip
+                            title={
+                                showSchemaDetail || this.props.create
+                                    ? ''
+                                    : 'Click to view schema: ' + schemaName
+                            }
+                            placement='right'
+                        >
+                            <Button
+                                color='secondary'
+                                variant='outlined'
+                                onClick={() =>
+                                    this.setState({ showSchemaDetail: !showSchemaDetail })
+                                }
+                                style={{ paddingLeft: '10px' }}
+                                className={classNames(focused ? classes.highlight : '')}
+                            >
+                                {showSchemaDetail || this.props.create ? (
+                                    <ArrowDropDownRoundedIcon />
+                                ) : (
+                                    <ArrowRightRoundedIcon />
+                                )}
+                                <ViewListIcon style={{ padding: '0px' }} />
+                            </Button>
+                        </Tooltip>
+                        {(showSchemaDetail || this.props.create) && (
+                            <TextField
+                                variant='outlined'
+                                id='standard-multiline-static'
+                                InputProps={{
+                                    style: {
+                                        padding: 8,
+                                    },
+                                }}
+                                multiline
+                                error={this.state.curSchemaName === ''}
+                                helperText={
+                                    this.state.curSchemaName === ''
+                                        ? 'Schema name can not be empty'
+                                        : ''
+                                }
+                                size='small'
+                                disabled={!editPermission}
+                                value={this.state.curSchemaName}
+                                style={{ paddingLeft: '20px' }}
+                                onChange={this.changeSchemaName}
+                            />
                         )}
-                        <ViewListIcon style={{ padding: '0px' }} />
-                    </Button>
-                </Tooltip>
-                {showSchemaDetail && (
-                    <TextField
-                        variant='outlined'
-                        id='standard-multiline-static'
-                        InputProps={{
-                            style: {
-                                padding: 8,
-                            },
-                        }}
-                        multiline
-                        error={this.state.curSchemaName === ''}
-                        helperText={
-                            this.state.curSchemaName === '' ? 'Schema name can not be empty' : ''
-                        }
-                        size='small'
-                        disabled={!editPermission}
-                        value={this.state.curSchemaName}
-                        style={{ paddingLeft: '20px' }}
-                        onChange={this.changeSchemaName}
-                    />
-                )}
+                    </Grid>
+                    <Grid item xs={2} spacing={0}>
+                        {(showSchemaDetail || this.props.create) && this.state.confirmingDeletion && (
+                            <Tooltip title={'This action is not revertable'}>
+                                <IconButton onClick={this.deleteThisSchema}>
+                                    <WarningIcon outlined fontSize='small' color='error' />
+                                    <Typography color='error'>Confirm</Typography>
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                        {(showSchemaDetail || this.props.create) && this.state.confirmingDeletion && (
+                            <IconButton
+                                outlined
+                                onClick={() => this.setState({ confirmingDeletion: false })}
+                            >
+                                <CancelIcon fontSize='small' />
+                                <Typography>Cancel</Typography>
+                            </IconButton>
+                        )}
+                    </Grid>
+                </Grid>
                 {schemaTable}
             </div>
         );
