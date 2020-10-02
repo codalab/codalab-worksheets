@@ -20,6 +20,15 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.bundle_manager._make_bundles()
         self.assertFalse(self.bundle_manager._is_making_bundles())
 
+    def make_bundles_and_wait(self):
+        """Helper function to run _make_bundles() and wait for the bundles to be
+        fully made."""
+        threads = self.bundle_manager._make_bundles()
+        self.assertTrue(self.bundle_manager._is_making_bundles())
+        for t in threads:
+            t.join()
+        self.assertFalse(self.bundle_manager._is_making_bundles())
+
     def test_restage_stuck_bundle(self):
         """Bundles stuck in "MAKING" should be restaged and go back to the "MAKING" state."""
         bundle = self.create_make_bundle(state=State.MAKING)
@@ -34,11 +43,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         """A MakeBundle with no dependencies should be made."""
         bundle = self.create_make_bundle(state=State.STAGED)
         self.save_bundle(bundle)
-        threads = self.bundle_manager._make_bundles()
-        self.assertTrue(self.bundle_manager._is_making_bundles())
-        for t in threads:
-            t.join()
-        self.assertFalse(self.bundle_manager._is_making_bundles())
+        self.make_bundles_and_wait()
 
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
         self.assertEqual(bundle.state, State.READY)
@@ -51,11 +56,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.save_bundle(parent)
         self.save_bundle(bundle)
 
-        threads = self.bundle_manager._make_bundles()
-        self.assertTrue(self.bundle_manager._is_making_bundles())
-        for t in threads:
-            t.join()
-        self.assertFalse(self.bundle_manager._is_making_bundles())
+        self.make_bundles_and_wait()
 
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
 
@@ -71,11 +72,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.save_bundle(parent1)
         self.save_bundle(parent2)
 
-        threads = self.bundle_manager._make_bundles()
-        self.assertTrue(self.bundle_manager._is_making_bundles())
-        for t in threads:
-            t.join()
-        self.assertFalse(self.bundle_manager._is_making_bundles())
+        self.make_bundles_and_wait()
 
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
 
@@ -101,11 +98,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         ]
         self.save_bundle(bundle)
 
-        threads = self.bundle_manager._make_bundles()
-        self.assertTrue(self.bundle_manager._is_making_bundles())
-        for t in threads:
-            t.join()
-        self.assertFalse(self.bundle_manager._is_making_bundles())
+        self.make_bundles_and_wait()
 
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
 
@@ -136,11 +129,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.save_bundle(parent)
         self.save_bundle(bundle)
 
-        threads = self.bundle_manager._make_bundles()
-        self.assertTrue(self.bundle_manager._is_making_bundles())
-        for t in threads:
-            t.join()
-        self.assertFalse(self.bundle_manager._is_making_bundles())
+        self.make_bundles_and_wait()
 
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
         self.assertEqual(bundle.state, State.READY)
