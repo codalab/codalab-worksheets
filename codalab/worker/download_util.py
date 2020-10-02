@@ -124,7 +124,7 @@ def _get_target_path(bundle_path, path):
 
 def _compute_target_info(path, depth):
     if path.startswith("azfs://"):
-        return _compute_target_info_beam(path, depth)
+        return _compute_target_info_externalized(path, depth)
     result = {}
     result['name'] = os.path.basename(path)
     stat = os.lstat(path)
@@ -147,11 +147,11 @@ def _compute_target_info(path, depth):
     return result
 
 
-def _compute_target_info_beam(path, depth):
-    # TODO (Ashwin): handle depth.
+def _compute_target_info_externalized(path, depth):
+    """Computes target info for a file that is externalized on a location
+    such as Azure, by using the Apache Beam FileSystem APIs."""
+    # TODO (Ashwin): properly return permissions.
     bundle_uuid, zip_path, zip_subpath = parse_azure_url(path)
-    if zip_subpath == "/images/":
-        raise Exception((path, zip_subpath))
     if zip_path is None:
         # Single file
         file = FileSystems.match([path])[0].metadata_list[0]
