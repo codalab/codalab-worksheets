@@ -24,7 +24,6 @@ import os
 import socket
 import subprocess
 import yaml
-import tempfile
 
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
 
@@ -161,10 +160,10 @@ CODALAB_ARGUMENTS = [
         help='Network name for the worker',
         default=lambda args: args.instance_name + '-worker-network',
     ),
-    ### Docker
+    # Docker
     CodalabArg(name='docker_username', help='Docker Hub username to push built images'),
     CodalabArg(name='docker_password', help='Docker Hub password to push built images'),
-    ### CodaLab
+    # CodaLab
     CodalabArg(
         name='codalab_username',
         env_var='CODALAB_USERNAME',
@@ -177,7 +176,7 @@ CODALAB_ARGUMENTS = [
         help='CodaLab (root) password',
         default='codalab',
     ),
-    ### MySQL
+    # MySQL
     CodalabArg(name='mysql_host', help='MySQL hostname', default='mysql'),  # Inside Docker
     CodalabArg(name='mysql_port', help='MySQL port', default=3306, type=int),
     CodalabArg(name='mysql_database', help='MySQL database name', default='codalab_bundles'),
@@ -220,7 +219,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='shared_file_system', help='Whether worker has access to the bundle mount', type=bool
     ),
-    ### User
+    # User
     CodalabArg(name='user_disk_quota', help='How much space a user can use', default='100g'),
     CodalabArg(name='user_time_quota', help='How much total time a user can use', default='100y'),
     CodalabArg(
@@ -229,24 +228,24 @@ CODALAB_ARGUMENTS = [
         type=int,
         default=100,
     ),
-    ### Email
+    # Email
     CodalabArg(name='admin_email', help='Email to send admin notifications to (e.g., monitoring)'),
     CodalabArg(name='support_email', help='Help email to send user questions to'),
     CodalabArg(name='email_host', help='Send email by logging into this SMTP server'),
     CodalabArg(name='email_username', help='Username of email account for sending email'),
     CodalabArg(name='email_password', help='Password of email account for sending email'),
-    ### SSL
+    # SSL
     CodalabArg(name='use_ssl', help='Use HTTPS instead of HTTP', type=bool, default=False),
     CodalabArg(name='ssl_cert_file', help='Path to the cert file for SSL'),
     CodalabArg(name='ssl_key_file', help='Path to the key file for SSL'),
-    ### Sentry
+    # Sentry
     CodalabArg(
         name='sentry_ingest_url',
         help=(
             'Ingest URL for logging exceptions with Sentry. If not provided, Sentry is not used.'
         ),
     ),
-    ### Worker manager
+    # Worker manager
     CodalabArg(
         name='worker_manager_type',
         help='Type of worker manager (e.g., aws-batch, azure-batch, slurm); only aws-batch supported right now',
@@ -307,7 +306,7 @@ CODALAB_ARGUMENTS = [
         help='Comma-separated list of directories that are mounted on the REST server, allowing their contents to be used in the --link argument.',
         default='/tmp/codalab/link-mounts',
     ),
-    ### Public workers
+    # Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
 ]
 
@@ -539,7 +538,7 @@ class CodalabServiceManager(object):
             # so we can't just use regular interpolation with environment variables. Instead,
             # we create a temporary file with the modified docker-compose.yml and use that file instead.
             with open(os.path.join(self.compose_cwd, 'docker-compose.yml')) as f:
-                compose_options = yaml.load(f)
+                compose_options = yaml.safe_load(f)
             for mount_path in self.args.link_mounts.split(","):
                 mount_path = os.path.abspath(mount_path)
                 compose_options["x-codalab-server"]["volumes"].append(

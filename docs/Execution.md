@@ -80,8 +80,15 @@ If the default workers are full or do not satisfy your needs, one of the advanta
 
 You should see that the run finished, and if you look at the `remote` metadata field, you should see your hostname.
 
-Note that only your runs will be run on your workers, so you don't have to worry about interference with other users.
+**Sharing a worker with a group** 
 
+You can also share your worker with other users within a group. When shared, your worker will pick up staged bundles that belong
+to you or your group members, so long as you have admin permissions for the bundle.
+  
+To share a worker, simply start a worker with a valid group name specified: 
+
+    cl-worker --group <group name>
+    
 **Controlling where runs happen with tags**.
 
 You can tag workers and run jobs on workers with those tags.  To tag a worker, start the worker as follows:

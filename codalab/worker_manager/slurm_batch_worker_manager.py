@@ -236,8 +236,6 @@ class SlurmBatchWorkerManager(WorkerManager):
         :param worker_id: a string representing the worker id
         :return: the command to run on
         """
-        # This needs to be a unique directory since Batch jobs may share a host
-        worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         # Codalab worker's work directory
         if self.args.worker_work_dir_prefix:
             work_dir_prefix = Path(self.args.worker_work_dir_prefix)
@@ -247,38 +245,12 @@ class SlurmBatchWorkerManager(WorkerManager):
         worker_work_dir = work_dir_prefix.joinpath(
             Path('{}-codalab-SlurmBatchWorkerManager-scratch'.format(self.username), worker_id)
         )
+        command = self.build_command(worker_id, str(worker_work_dir))
 
-        command = [
-            self.args.worker_executable,
-            '--server',
-            self.args.server,
-            '--verbose',
-            '--exit-when-idle',
-            '--idle-seconds',
-            str(self.args.worker_idle_seconds),
-            '--work-dir',
-            str(worker_work_dir),
-            '--id',
-            worker_id,
-            '--network-prefix',
-            worker_network_prefix,
-            # always set in the Slurm worker manager to ensure safe shutdown
-            '--pass-down-termination',
-        ]
-        if self.args.worker_tag:
-            command.extend(['--tag', self.args.worker_tag])
+        # --pass-down-termination should always be set for Slurm worker managers to ensure safe shutdown
+        command.append('--pass-down-termination')
         if self.args.password_file:
             command.extend(['--password-file', self.args.password_file])
-        if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
-            command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
-        if self.args.worker_max_work_dir_size:
-            command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
-        if self.args.worker_delete_work_dir_on_exit:
-            command.extend(['--delete-work-dir-on-exit'])
-        if self.args.worker_exit_on_exception:
-            command.extend(['--exit-on-exception'])
-        if self.args.worker_tag_exclusive:
-            command.extend(['--tag-exclusive'])
 
         return command
 

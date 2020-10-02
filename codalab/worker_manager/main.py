@@ -74,6 +74,11 @@ def main():
         help="If set, the CodaLab worker will only run bundles that match the worker\'s tag.",
     )
     parser.add_argument(
+        '--worker-group',
+        type=str,
+        help="If set, the CodaLab worker will only run bundles for that group.",
+    )
+    parser.add_argument(
         '--worker-executable', default="cl-worker", help="The CodaLab worker executable to run."
     )
     subparsers = parser.add_subparsers(
@@ -81,6 +86,10 @@ def main():
         description='Which worker manager to run (AWS Batch etc.)',
         dest='worker_manager_name',
     )
+    # This is a workaround for setting a subparser as required for older
+    # versions of python (< 3.7) , necessary due to a bug in Python 3.x .
+    # https://bugs.python.org/issue9253#msg186387
+    subparsers.required = True
 
     # Each worker manager class defines its NAME, which is the subcommand the users use
     # to invoke that type of Worker Manager. We map those to their respective classes

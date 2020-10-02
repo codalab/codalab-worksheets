@@ -38,7 +38,7 @@ class TestFile:
 
     def __init__(self, file_name, size_mb=1, content=None):
         self._file_name = file_name
-        if content == None:
+        if content is None:
             self._size_mb = size_mb
             self._make_random_file()
         else:
@@ -120,6 +120,8 @@ class StressTestRunner:
         self.cleanup()
         self._test_many_gpu_runs()
         self.cleanup()
+        self._test_multiple_cpus_runs_count()
+        self.cleanup()
         self._test_many_bundle_uploads()
         self.cleanup()
         self._test_many_worksheet_copies()
@@ -166,6 +168,11 @@ class StressTestRunner:
         self._set_worksheet('many_gpu_runs')
         for _ in range(self._args.gpu_runs_count):
             self._run_bundle([self._cl, 'run', 'echo running with a gpu...', '--request-gpus=1'])
+
+    def _test_multiple_cpus_runs_count(self):
+        self._set_worksheet('multiple_cpus_requested_runs')
+        for _ in range(args.multiple_cpus_runs_count):
+            self._run_bundle([self._cl, 'run', 'sleep 30', '--request-cpus=4'])
 
     def _test_many_bundle_uploads(self):
         self._set_worksheet('many_bundle_uploads')
@@ -298,6 +305,7 @@ def main():
         print('Setting the heavy configuration...')
         args.large_file_size_gb = 10
         args.gpu_runs_count = 50
+        args.multiple_cpus_runs_count = 50
         args.bundle_upload_count = 500
         args.create_worksheet_count = 500
         args.parallel_runs_count = 500
@@ -369,6 +377,12 @@ if __name__ == '__main__':
         '--gpu-runs-count',
         type=int,
         help='Number of runs that request a GPU (defaults to 1)',
+        default=1,
+    )
+    parser.add_argument(
+        '--multiple-cpus-runs-count',
+        type=int,
+        help='Number of runs that requests more than one CPU (defaults to 1)',
         default=1,
     )
     parser.add_argument(
