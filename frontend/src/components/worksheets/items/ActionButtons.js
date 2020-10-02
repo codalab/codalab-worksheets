@@ -10,6 +10,7 @@ import BundleBulkActionMenu from '../BundleBulkActionMenu';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
 import Tooltip from '@material-ui/core/Tooltip';
+import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd';
 
 const StyledMenuItem = withStyles((theme) => ({
     root: {
@@ -36,6 +37,7 @@ class ActionButtons extends React.Component<{
             classes,
             onShowNewRun,
             onShowNewText,
+            onShowNewSchema,
             showUploadMenu,
             closeUploadMenu,
             uploadAnchor,
@@ -165,6 +167,19 @@ class ActionButtons extends React.Component<{
                     >
                         <NoteAddIcon className={classes.buttonIcon} />
                         Paste bundles
+                    </Button>
+                </Tooltip>
+                <Tooltip title='Add a new schema'>
+                    <Button
+                        size='small'
+                        color='inherit'
+                        aria-label='schema'
+                        onClick={onShowNewSchema}
+                        disabled={!editPermission}
+                        id='add-schema-button'
+                    >
+                        <PlaylistAddIcon className={classes.buttonIcon} />
+                        Schema
                     </Button>
                 </Tooltip>
             </div>
