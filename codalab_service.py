@@ -315,6 +315,10 @@ CODALAB_ARGUMENTS = [
         help='Comma-separated list of directories that are mounted on the REST server, allowing their contents to be used in the --link argument.',
         default='/tmp/codalab/link-mounts',
     ),
+    CodalabArg(
+        name='azure_blob_connection_string',
+        help='Azure Blob storage connection string'
+    ),
     # Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
 ]
@@ -736,6 +740,8 @@ class CodalabServiceManager(object):
         if self.args.mysql_host == 'mysql':
             self.bring_up_service('mysql')
 
+        self.bring_up_service('azurite')
+
         if should_run_service(self.args, 'init'):
             print_header('Populating config.json')
             commands = [
@@ -780,7 +786,13 @@ class CodalabServiceManager(object):
                 'if [ $(alembic current | wc -l) -eq 0 ]; then echo stamp; alembic stamp head; fi'
             )
 
-        self.bring_up_service('azurite')
+        if should_run_service(self.args, 'azurite'):
+            # Run for local development with Azurite only
+            print_header('Setting up Azurite')
+            self.run_service_cmd(
+                'python3 scripts/initialize-azurite.py'
+            )
+
         self.bring_up_service('rest-server')
 
         if should_run_service(self.args, 'init'):

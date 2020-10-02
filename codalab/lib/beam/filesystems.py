@@ -1,24 +1,26 @@
 import os
 from apache_beam.io.filesystems import FileSystems
-from .blobstoragefilesystem import BlobStorageFileSystem
 from azure.storage.blob import BlobServiceClient
-from azure.core.exceptions import ResourceExistsError
+from .blobstoragefilesystem import BlobStorageFileSystem
 
 """
-Modifies Beam to add support for Azure Blob Storage filesystems.
+Modifies Apache Beam to add support for Azure Blob Storage filesystems.
 
 Based on work from https://github.com/apache/beam/pull/12581. Once that PR is added into Beam,
-we will switch to using a Beam library instead.
+and a new version is released, we will switch to using a Beam library instead.
 """
 
-# Test key for Azurite (local development)
-os.environ[
-    'AZURE_STORAGE_CONNECTION_STRING'
-] = 'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;'
+# Test connection string for Azurite (local development)
+TEST_CONN_STR = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
 
-client = BlobServiceClient.from_connection_string(os.environ['AZURE_STORAGE_CONNECTION_STRING'])
-try:
-    client.create_container("bundles")
-    print("Created container 'bundles'.")
-except ResourceExistsError:
-    pass
+# The Apache beam BlobStorageFileSystem expects the AZURE_STORAGE_CONNECTION_STRING environment variable
+# to be set to the correct Azure Blob Storage connection string.
+AZURE_BLOB_CONNECTION_STRING = os.environ.get("CODALAB_AZURE_BLOB_CONNECTION_STRING", TEST_CONN_STR)
+os.environ['AZURE_STORAGE_CONNECTION_STRING'] = AZURE_BLOB_CONNECTION_STRING 
+
+client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNECTION_STRING)
+
+# This is the account name of the account, which determines the first part of Azure URLs. For example,
+# if AZURE_BLOB_ACCOUNT_NAME is equal to "devstoreaccount1", all Azure URLs for objects within that account
+# will start with "azfs://"
+AZURE_BLOB_ACCOUNT_NAME = client.account_name
