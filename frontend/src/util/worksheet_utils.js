@@ -1,5 +1,4 @@
 import * as React from 'react';
-import $ from 'jquery';
 import _ from 'underscore';
 
 // See codalab.lib.formatting in codalab-worksheets

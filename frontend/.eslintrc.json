@@ -1,10 +1,13 @@
 {
     "extends": "react-app",
-    "rules": {
-        "no-unused-vars": "off",
-        "no-loop-func": "off",
-        "jsx-a11y/anchor-is-valid": "off",
-        "no-shadow-restricted-names": "off",
-        "react/no-direct-mutation-state": "off"
-    }
+    "rules": {},
+    "overrides": [
+        {
+            "files": ["./src/util/ws_mousetrap_fork.js"],
+            "rules": {
+                // Override the rule check for ws_mousetrap_fork.js since it is external code
+                "no-shadow-restricted-names": "off"
+            }
+        }
+    ]
 }
