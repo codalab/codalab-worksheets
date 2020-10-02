@@ -23,7 +23,6 @@ class ContentsItem extends React.Component {
             return <div />;
         }
         var contents = this.props.item.lines.join('');
-        var bundleInfo = this.props.item.bundles_spec.bundle_infos[0];
         return (
             <div className='ws-item' onClick={this.handleClick}>
                 <div className={className} ref={this.props.item.ref}>
