@@ -1,17 +1,15 @@
-
 import sys
 import os
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
 from logging.config import fileConfig
-
-#add the root dir to the path, so we can import codalab things
-CODALAB_CLI_ROOT = os.path.abspath(os.path.split(os.path.split(__file__)[0])[0])
-sys.path.append(CODALAB_CLI_ROOT)
-
 from codalab.model import tables
 from codalab.lib.codalab_manager import CodaLabManager
+
+
+# add the root dir to the path, so we can import codalab things
+CODALAB_CLI_ROOT = os.path.abspath(os.path.split(os.path.split(__file__)[0])[0])
+sys.path.append(CODALAB_CLI_ROOT)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -26,6 +24,8 @@ fileConfig(config.config_file_name)
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = tables.db_metadata
+
+
 # allows
 # $ alembic revision --autogenerate -m "Added some table"
 
@@ -33,6 +33,7 @@ target_metadata = tables.db_metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
 
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
@@ -53,6 +54,7 @@ def run_migrations_offline():
     with context.begin_transaction():
         context.run_migrations()
 
+
 def run_migrations_online():
     """Run migrations in 'online' mode.
 
@@ -64,10 +66,7 @@ def run_migrations_online():
     engine = manager.model().engine
 
     connection = engine.connect()
-    context.configure(
-                connection=connection,
-                target_metadata=target_metadata
-                )
+    context.configure(connection=connection, target_metadata=target_metadata)
 
     try:
         with context.begin_transaction():
@@ -75,8 +74,8 @@ def run_migrations_online():
     finally:
         connection.close()
 
+
 if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-

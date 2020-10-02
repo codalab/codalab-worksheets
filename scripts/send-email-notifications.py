@@ -16,11 +16,11 @@ import os
 import sys
 import time
 
-sys.path.append('.')
 from sqlalchemy import select
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.model.tables import user as cl_user
 
+sys.path.append('.')
 HEADER = ['user_name', 'email', 'first_name', 'last_name', 'notifications']
 
 

@@ -23,6 +23,7 @@ const styles = {
 export default ({
     onShowNewRun,
     onShowNewText,
+    onShowNewSchema,
     showUploadMenu,
     closeUploadMenu,
     uploadAnchor,
@@ -143,6 +144,7 @@ export default ({
                                 info={info}
                                 onShowNewRun={onShowNewRun}
                                 onShowNewText={onShowNewText}
+                                onShowNewSchema={onShowNewSchema}
                                 showUploadMenu={showUploadMenu}
                                 closeUploadMenu={closeUploadMenu}
                                 uploadAnchor={uploadAnchor}

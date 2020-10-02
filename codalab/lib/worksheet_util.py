@@ -929,7 +929,8 @@ def interpret_items(schemas, raw_items, db_model=None):
                 current_display = default_display
 
             # Reset schema to minimize long distance dependencies of directives
-            if not is_directive:
+            command = get_command(value_obj)
+            if not is_directive or (command != "add" and command != "addschema"):
                 if current_schema is not None:
                     blocks.append(
                         SchemaBlockSchema()
