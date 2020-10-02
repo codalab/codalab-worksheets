@@ -4,7 +4,6 @@ Generate REST docs.
 """
 import sys
 
-sys.path.append('.')
 import argparse
 from inspect import isclass
 from collections import defaultdict, namedtuple
@@ -18,7 +17,9 @@ from textwrap import dedent
 from codalab.common import CODALAB_VERSION
 
 # Ensure all REST modules are loaded
-from codalab.server import rest_server
+from codalab.server import rest_server  # NOQA - Ignoring flake8 errors since we want to keep it.
+
+sys.path.append('.')
 
 
 EXCLUDED_APIS = {'account', 'api', 'static', 'chats', 'faq', 'help'}

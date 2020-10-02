@@ -15,6 +15,7 @@ import SaveIcon from '@material-ui/icons/Save';
 import RestoreIcon from '@material-ui/icons/Restore';
 import TextField from '@material-ui/core/TextField';
 import Tooltip from '@material-ui/core/Tooltip';
+import classNames from 'classnames';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -125,8 +126,7 @@ class TableItem extends React.Component<{
     };
 
     render() {
-        const { worksheetUUID, setFocus, editPermission } = this.props;
-
+        const { classes, worksheetUUID, setFocus, editPermission } = this.props;
         // Provide copy data callback
         this.props.addCopyBundleRowsCallback(this.props.itemID, this.copyCheckedBundleRows);
         let tableClassName = this.props.focused ? 'table focused' : 'table';
@@ -140,28 +140,26 @@ class TableItem extends React.Component<{
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
+                    classes={{
+                        root: classNames({
+                            [classes.tableHeader]: true,
+                        }),
+                    }}
                     style={
                         index === 0
                             ? {
-                                  paddingLeft: editPermission ? '30px' : '70px',
-                                  position: 'sticky',
-                                  top: 0,
-                                  backgroundColor: '#F8F9FA',
-                                  zIndex: 1,
+                                  paddingLeft: editPermission ? '30px' : '40px',
+                                  paddingBottom: 0,
+                                  paddingTop: 0,
                               }
-                            : {
-                                  position: 'sticky',
-                                  top: 0,
-                                  backgroundColor: '#F8F9FA',
-                                  zIndex: 1,
-                              }
+                            : {}
                     }
                 >
                     {editPermission && index === 0 && (
                         <Tooltip title={'Change the schemas of this table'}>
                             <IconButton>
                                 <ViewListIcon
-                                    style={{ padding: '0px' }}
+                                    style={{ padding: '0px', height: 15 }}
                                     onClick={() => {
                                         this.setState({
                                             openSchemaTextBox: !this.state.openSchemaTextBox,
@@ -243,7 +241,7 @@ class TableItem extends React.Component<{
                         <TableHead>
                             <TableRow
                                 style={{
-                                    height: 36,
+                                    height: 32,
                                     borderTop: '0px solid #DEE2E6',
                                 }}
                             >
@@ -331,6 +329,14 @@ const styles = (theme) => ({
     tableContainer: {
         position: 'relative',
     },
+    tableHeader: {
+        position: 'sticky',
+        top: 0,
+        backgroundColor: '#F8F9FA',
+        zIndex: 1,
+        color: '#000000',
+        height: 26,
+    },
 });
 
 const TableContainer = withStyles(styles)(_TableContainer);
@@ -364,4 +370,5 @@ const TableWrapper = (props) => {
     return <TableItem {...props} />;
 };
 
-export default TableWrapper;
+export { TableWrapper };
+export default withStyles(styles)(TableItem);
