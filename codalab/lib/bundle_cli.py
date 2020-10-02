@@ -1197,7 +1197,7 @@ class BundleCLI(object):
             ),
             Commands.Argument(
                 '-a',
-                '--use_azure_blob_beta',
+                '--use-azure-blob-beta',
                 help='Use Azure Blob Storage to store files (beta feature).',
                 action='store_true',
                 default=False,
