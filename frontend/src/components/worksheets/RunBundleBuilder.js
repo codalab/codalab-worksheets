@@ -3,7 +3,6 @@ import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import Button from '../Button';
 import {
-    depEqual,
     shorten_uuid,
     buildTerminalCommand,
     createHandleRedirectFn,
@@ -61,14 +60,6 @@ class RunBundleBuilder extends React.Component<Props> {
     };
 
     createRunBundle = () => {
-        var clCommand = this.getClCommand(
-            this.state.selectedDependencies,
-            this.state.dependencyKeyList,
-            this.state.command,
-        );
-        var response = $('#command_line')
-            .terminal()
-            .exec(clCommand);
         this.toggleBuilder();
     };
 
