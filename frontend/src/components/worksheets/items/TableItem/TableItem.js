@@ -145,15 +145,7 @@ class TableItem extends React.Component<{
                             [classes.tableHeader]: true,
                         }),
                     }}
-                    style={
-                        index === 0
-                            ? {
-                                  paddingLeft: editPermission ? '30px' : '40px',
-                                  paddingBottom: 0,
-                                  paddingTop: 0,
-                              }
-                            : {}
-                    }
+                    style={index === 0 ? { paddingLeft: editPermission ? '30px' : '70px' } : {}}
                 >
                     {editPermission && index === 0 && (
                         <Tooltip title={'Change the schemas of this table'}>
@@ -236,18 +228,14 @@ class TableItem extends React.Component<{
         });
         return (
             <div className='ws-item'>
-                <TableContainer
-                    style={{
-                        overflowX: 'auto',
-                        maxHeight: 500,
-                    }}
-                >
+                <TableContainer style={{ overflowX: 'auto' }}>
                     <Table className={tableClassName}>
                         <TableHead>
                             <TableRow
                                 style={{
                                     height: 32,
                                     borderTop: '0px solid #DEE2E6',
+                                    backgroundColor: '#F8F9FA',
                                 }}
                             >
                                 {headerHtml}
@@ -333,11 +321,6 @@ class _TableContainer extends React.Component {
 const styles = () => ({
     tableContainer: {
         position: 'relative',
-        '&::-webkit-scrollbar': {
-            display: 'none',
-        } /* Safari and Chrome */,
-        '-ms-overflow-style': 'none' /* Internet Explorer 10+ */,
-        'scrollbar-width': 'none' /* Firefox */,
     },
     tableHeader: {
         position: 'sticky',
