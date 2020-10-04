@@ -5,6 +5,7 @@ Main entry point for the worker managers.
 import argparse
 import logging
 from .aws_batch_worker_manager import AWSBatchWorkerManager
+from .azure_batch_worker_manager import AzureBatchWorkerManager
 from .slurm_batch_worker_manager import SlurmBatchWorkerManager
 
 
@@ -96,6 +97,7 @@ def main():
     # so we can automatically initialize the correct worker manager class from the argument
     worker_manager_types = {
         AWSBatchWorkerManager.NAME: AWSBatchWorkerManager,
+        AzureBatchWorkerManager.NAME: AzureBatchWorkerManager,
         SlurmBatchWorkerManager.NAME: SlurmBatchWorkerManager,
     }
     for worker_manager_name, worker_manager_type in worker_manager_types.items():
