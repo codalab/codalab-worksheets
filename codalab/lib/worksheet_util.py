@@ -571,7 +571,7 @@ def get_default_schemas():
     # Single fields
     uuid = ['uuid[0:8]', 'uuid', '[0:8]']
     name = ['name']
-    summary = ['summary']
+    summary = ['summary[0:1024]', 'summary', '[0:1024]']
     data_size = ['data_size', 'data_size', 'size']
     time = ['time', 'time', 'duration']
     state = ['state']
