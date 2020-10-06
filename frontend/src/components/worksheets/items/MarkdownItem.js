@@ -101,7 +101,7 @@ class MarkdownItem extends React.Component {
     };
 
     deleteItem = () => {
-        const { reloadWorksheet, item, worksheetUUID, setFocus, focused, focusIndex } = this.props;
+        const { reloadWorksheet, item, worksheetUUID } = this.props;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
         $.ajax({
             url,
