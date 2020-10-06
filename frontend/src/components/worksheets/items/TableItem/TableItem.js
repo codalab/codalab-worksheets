@@ -145,7 +145,15 @@ class TableItem extends React.Component<{
                             [classes.tableHeader]: true,
                         }),
                     }}
-                    style={index === 0 ? { paddingLeft: editPermission ? '30px' : '70px' } : {}}
+                    style={
+                        index === 0
+                            ? {
+                                  paddingLeft: editPermission ? '30px' : '70px',
+                                  paddingBottom: 0,
+                                  paddingTop: 0,
+                              }
+                            : {}
+                    }
                 >
                     {editPermission && index === 0 && (
                         <Tooltip title={'Change the schemas of this table'}>
