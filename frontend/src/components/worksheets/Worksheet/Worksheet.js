@@ -592,15 +592,15 @@ class Worksheet extends React.Component {
     };
 
     setFocus = (index, subIndex, shouldScroll = true) => {
-        let info = this.state.ws.info;
+        var info = this.state.ws.info;
         // prevent multiple clicking from resetting the index
         if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex) {
             return;
         }
         const item = this.refs.list.refs['item' + index];
 
-        // Make sure that the screen doesn't scroll when the user normally press j / k,
-        // until the target element is completely not on the screen
+        // Make the judgement only if the shouldScroll parameter has the default value of `True`
+        // Logic: Only scroll when the target element is completely not on the screen
         if (shouldScroll) {
             const element = subIndex
                 ? $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)
@@ -608,15 +608,21 @@ class Worksheet extends React.Component {
 
             function isOnScreen(element) {
                 if (element.offset() === undefined) return false;
-                let elementOffsetTop = element.offset().top;
-                let elementHeight = element.height();
-                let screenScrollTop = $(window).scrollTop();
-                let screenHeight = $(window).height();
-                let scrollIsAboveElement = elementOffsetTop + elementHeight - screenScrollTop >= 0;
-                let elementIsVisibleOnScreen =
+                var elementOffsetTop = element.offset().top;
+                // For result table which should first scroll itself when a row inside it is not visible anymore.
+                // The max height for the result table is 500.
+                if (elementOffsetTop <= 262 || elementOffsetTop >= 762) {
+                    return false;
+                }
+                var elementHeight = element.height();
+                var screenScrollTop = $(window).scrollTop();
+                var screenHeight = $(window).height();
+                var scrollIsAboveElement = elementOffsetTop + elementHeight - screenScrollTop >= 0;
+                var elementIsVisibleOnScreen =
                     screenScrollTop + screenHeight - elementOffsetTop >= 0;
                 return scrollIsAboveElement && elementIsVisibleOnScreen;
             }
+
             shouldScroll = !isOnScreen(element);
         }
         if (item && (!item.props || !item.props.item)) {
