@@ -85,6 +85,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: Apache Software License",
     ],
+    py_modules=['codalab_service'],
     python_requires='~=3.6',
     cmdclass={'install': Install},
     include_package_data=True,
