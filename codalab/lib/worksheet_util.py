@@ -64,11 +64,11 @@ TYPE_WORKSHEET = 'worksheet'
 WORKSHEET_ITEM_TYPES = (TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET)
 
 
-BUNDLE_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{([^{]*)\}\s*$')
-SUBWORKSHEET_REGEX = re.compile('^\s*(\[(.*)\])?\s*\{\{(.*)\}\}\s*$')
+BUNDLE_REGEX = re.compile(r'^\s*(\[(.*)\])?\s*\{([^{]*)\}\s*$')
+SUBWORKSHEET_REGEX = re.compile(r'^\s*(\[(.*)\])?\s*\{\{(.*)\}\}\s*$')
 
 DIRECTIVE_CHAR = '%'
-DIRECTIVE_REGEX = re.compile(r'^\s*' + DIRECTIVE_CHAR + '\s*(.*)\s*$')
+DIRECTIVE_REGEX = re.compile(r'^\s*' + DIRECTIVE_CHAR + r'\s*(.*)\s*$')
 
 # Default number of lines to pull for each display mode.
 DEFAULT_CONTENTS_MAX_LINES = 10
@@ -542,7 +542,7 @@ def apply_func(func, arg):
                 t = tokens[2].replace(esc_slash, '/')
                 arg = re.sub(s, t, arg)
             elif f.startswith('['):  # substring
-                m = re.match('\[(.*):(.*)\]', f)
+                m = re.match(r'\[(.*):(.*)\]', f)
                 if m:
                     start = int(m.group(1) or 0)
                     end = int(m.group(2) or len(arg))

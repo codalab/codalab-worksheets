@@ -56,7 +56,7 @@ from codalab.worker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 
-SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
+SEARCH_KEYWORD_REGEX = re.compile(r'^([\.\w/]*)=(.*)$')
 SEARCH_RESULTS_LIMIT = 10
 
 

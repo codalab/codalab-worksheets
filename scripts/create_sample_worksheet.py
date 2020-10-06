@@ -20,16 +20,16 @@ class SampleWorksheet:
     _WORKSHEET_FILE_PATH = '/tmp/sample-worksheet-temp.txt'
     _TEX_AND_MATH = (
         'The loss minimization framework is to cast learning as an optimization problem. We are estimating (fitting or '
-        'learning) $\mathbf w$ using $ \mathcal{D}_\\text{train}$. A loss function $ \\text{Loss}(x, y, \mathbf w) $ '
-        'quantifies how unhappy you would be if you used $\mathbf w$ to make a prediction on $x$ when the correct '
+        r'learning) $\mathbf w$ using $ \mathcal{D}_\\text{train}$. A loss function $ \\text{Loss}(x, y, \mathbf w) $ '
+        r'quantifies how unhappy you would be if you used $\mathbf w$ to make a prediction on $x$ when the correct '
         'output is $y$. This is the object we want to minimize. Below is minimizing training loss across all training '
-        'examples. Note that $ \\text{TrainLoss}(\mathbf w) $ is just the average of loss for all training examples.\n'
-        '\n$$ \\text{TrainLoss}(\mathbf w) = \\frac{1}{| \mathcal{D}_{\\text{train}} |} \sum_{(x,y) \in \mathcal{D}'
-        '_{\\text{train}}}\\text{Loss}(x, y, \mathbf w) \\ \n\min_{\mathbf w \in \mathbb{R}^d} \\text{TrainLoss}(\mathbf w)$$'
+        r'examples. Note that $ \\text{TrainLoss}(\mathbf w) $ is just the average of loss for all training examples.\n'
+        r'\n$$ \\text{TrainLoss}(\mathbf w) = \\frac{1}{| \mathcal{D}_{\\text{train}} |} \sum_{(x,y) \in \mathcal{D}'
+        r'_{\\text{train}}}\\text{Loss}(x, y, \mathbf w) \\ \n\min_{\mathbf w \in \mathbb{R}^d} \\text{TrainLoss}(\mathbf w)$$'
     )
 
-    _NAME_REGEX = '[\s\S]{0,100}'
-    _TEXT_REGEX = '[\s\S]{0,1000}'
+    _NAME_REGEX = r'[\s\S]{0,100}'
+    _TEXT_REGEX = r'[\s\S]{0,1000}'
 
     _FULL_UUID_REGEX = '0x[a-z0-9]{32}'
     _PARTIAL_UUID_REGEX = '0x[a-z0-9]{6}'
@@ -41,9 +41,9 @@ class SampleWorksheet:
     _PERMISSION_REGEX = '(read|all|none)'
 
     _SIZE_REGEX = '[0-9.]{0,10}[tkgmb]{0,2}'
-    _IMAGE_REGEX = '\[Image\]'
-    _GRAPH_REGEX = '\[Graph\]'
-    _SCHEMA_REGEX = '\[SchemaBlock\]'
+    _IMAGE_REGEX = r'\[Image\]'
+    _GRAPH_REGEX = r'\[Graph\]'
+    _SCHEMA_REGEX = r'\[SchemaBlock\]'
 
     def __init__(self, cl, large=False, preview_mode=False):
         # For simplicity, reference a set number of entities for each section of the small and large worksheet.
@@ -301,14 +301,14 @@ class SampleWorksheet:
         self._add_line('% add name')
         self._add_blank_line_pattern()
         self._expected_lines.append(
-            'Error in source line [\d]+: `add` must be preceded by `schema` directive'
+            r'Error in source line [\d]+: `add` must be preceded by `schema` directive'
         )
 
         self._add_description('Attempting to add a non-existing schema')
         self._add_line('% schema invalid_schema')
         self._add_line('% addschema nonexistent_schema')
         self._add_blank_line_pattern()
-        self._expected_lines.append('Unexpected error while parsing line [\d]+')
+        self._expected_lines.append(r'Unexpected error while parsing line [\d]+')
 
         self._add_description('Attempting to create a schema with invalid functions')
         self._add_line('% schema invalid_functions_schema')
@@ -322,7 +322,7 @@ class SampleWorksheet:
         self._add_table_pattern(['time', 'updated', 'size'], 0)
         for _ in range(len(self._valid_bundles)):
             self._expected_lines.append(
-                '\s\s<invalid function: duration2>\s\s<invalid function: date2>\s\s<invalid function: size2>'
+                r'\s\s<invalid function: duration2>\s\s<invalid function: date2>\s\s<invalid function: size2>'
             )
 
     def _add_display_modes(self):
@@ -417,10 +417,10 @@ class SampleWorksheet:
         self._add_header('Invalid Directives')
         self._add_line('% hi')
         self._add_blank_line_pattern()
-        self._expected_lines.append('Error in source line [\d]+: unknown directive `hi`')
+        self._expected_lines.append(r'Error in source line [\d]+: unknown directive `hi`')
         self._add_line('% hello')
         self._add_blank_line_pattern()
-        self._expected_lines.append('Error in source line [\d]+: unknown directive `hello`')
+        self._expected_lines.append(r'Error in source line [\d]+: unknown directive `hello`')
 
     def _add_rendering_logic(self):
         self._add_header('Rendering')
@@ -521,7 +521,7 @@ class SampleWorksheet:
 
     def _add_table_pattern(self, headers, row_count):
         def add_row_pattern(values):
-            self._expected_lines.append('\s\s%s' % '\s*'.join(values))
+            self._expected_lines.append(r'\s\s%s' % r'\s*'.join(values))
 
         self._add_blank_line_pattern()
         add_row_pattern(headers)
@@ -532,12 +532,12 @@ class SampleWorksheet:
 
     def _add_default_table_pattern(self, row_count):
         self._add_table_pattern(
-            ['uuid\[0:8\]', 'name', 'summary', 'data_size', 'state', 'description'], row_count
+            [r'uuid\[0:8\]', 'name', 'summary', 'data_size', 'state', 'description'], row_count
         )
 
     def _add_records_pattern(self, headers, record_count):
         def format_record_entity(header):
-            return '\s\s{}:\s*{}'.format(header, self._get_pattern(header))
+            return r'\s\s{}:\s*{}'.format(header, self._get_pattern(header))
 
         for _ in range(record_count):
             self._add_blank_line_pattern()
@@ -550,7 +550,7 @@ class SampleWorksheet:
             self._expected_lines.append(f'\[Worksheet .*{SampleWorksheet._FULL_UUID_REGEX}.*\]')
 
     def _add_dash_pattern(self):
-        self._expected_lines.append('\s\s[-]*')
+        self._expected_lines.append(r'\s\s[-]*')
 
     def _add_blank_line_pattern(self):
         self._expected_lines.append('')
