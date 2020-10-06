@@ -25,7 +25,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
-from scripts.test_util import Colorizer, run_command
+from scripts.test_util import Colorizer, run_command, cleanup
 
 import argparse
 import json
@@ -558,6 +558,12 @@ class TestModule(object):
 
 
 ############################################################
+
+
+@TestModule.register('unittest')
+def test_localhost(ctx):
+    """Test if `cl work [domainname]::` works"""
+    _run_command([cl, 'work', 'localhost::'])
 
 
 @TestModule.register('unittest')
