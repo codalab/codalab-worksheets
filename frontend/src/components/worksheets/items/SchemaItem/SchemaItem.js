@@ -415,12 +415,13 @@ class SchemaItem extends React.Component<{
                 <Tooltip
                     title={showSchemaDetail ? '' : 'Click to view schema: ' + schemaName}
                     placement='right'
+                    arrow
                 >
                     <Button
                         color='secondary'
                         variant='outlined'
                         onClick={() => this.setState({ showSchemaDetail: !showSchemaDetail })}
-                        style={{ paddingLeft: '10px' }}
+                        style={{ paddingLeft: '10px', width: '100%', height: '20px' }}
                         className={classNames(focused ? classes.highlight : '')}
                     >
                         {showSchemaDetail ? (
