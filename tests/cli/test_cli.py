@@ -25,7 +25,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
-from scripts.test_util import Colorizer, run_command, cleanup
+from scripts.test_util import Colorizer, run_command
 
 import argparse
 import json
