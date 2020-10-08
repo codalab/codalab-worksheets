@@ -561,6 +561,12 @@ class TestModule(object):
 
 
 @TestModule.register('unittest')
+def test_localhost(ctx):
+    """Test if `cl work [domainname]::` works"""
+    _run_command([cl, 'work', 'localhost::'])
+
+
+@TestModule.register('unittest')
 def test_unittest(ctx):
     """Run backend unit tests."""
     _run_command(['coverage', 'run', '--rcfile=tests/unit/.coveragerc', '-m', 'nose', 'tests.unit'])
