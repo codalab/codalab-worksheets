@@ -16,7 +16,7 @@ class Button extends React.Component {
             classname = classname + ' ' + this.props.className;
         }
         return (
-            <a
+            <button
                 style={buttonStyle}
                 className={classname}
                 id={this.props.id}
@@ -24,7 +24,7 @@ class Button extends React.Component {
                 onClick={this.props.handleClick}
             >
                 {this.props.text}
-            </a>
+            </button>
         );
     }
 }

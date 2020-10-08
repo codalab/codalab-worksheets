@@ -317,13 +317,13 @@ class WorksheetTest(UITester):
         self.login()
         self.wait_until_worksheet_content_loads()
         # wait for small worksheet to be resolved from place holder item
-        by = By.LINK_TEXT
-        selector = "Small Worksheet [cl_small_worksheet]"
+        by = By.XPATH
+        selector = '//button[text()="Small Worksheet [cl_small_worksheet]"]'
         timeout_message = 'Timed out while waiting for {}: {}.'.format(by, selector)
         WebDriverWait(self.browser, 10).until(
             EC.presence_of_element_located((by, selector)), message=timeout_message
         )
-        self.click(By.LINK_TEXT, 'Small Worksheet [cl_small_worksheet]')
+        self.click(by, selector)
         self.switch_to_new_tab()
         self.wait_until_worksheet_content_loads()
         self.output_images('worksheet_container')
