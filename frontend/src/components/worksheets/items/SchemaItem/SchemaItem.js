@@ -421,7 +421,12 @@ class SchemaItem extends React.Component<{
                         color='secondary'
                         variant='outlined'
                         onClick={() => this.setState({ showSchemaDetail: !showSchemaDetail })}
-                        style={{ paddingLeft: '10px', width: '100%', height: '20px' }}
+                        style={{
+                            paddingLeft: '10px',
+                            width: '100%',
+                            height: '20px',
+                            justifyContent: 'left',
+                        }}
                         className={classNames(focused ? classes.highlight : '')}
                     >
                         {showSchemaDetail ? (
