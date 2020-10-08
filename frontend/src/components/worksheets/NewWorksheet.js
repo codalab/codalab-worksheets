@@ -7,13 +7,6 @@ import { NAME_REGEX } from '../../constants';
 
 var SAMPLE_WORKSHEET_TEXT = '-worksheetname';
 
-type Props = {
-    clickAction: 'DEFAULT' | 'SIGN_IN_REDIRECT' | 'DISABLED',
-    ws: {},
-    userInfo?: {},
-    escCount: number,
-};
-
 class NewWorksheet extends React.Component {
     /** Constructor. */
     constructor(props) {

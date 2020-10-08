@@ -1,6 +1,6 @@
 import React from 'react';
-import { Router, Route, Link, Redirect, withRouter, Switch } from 'react-router-dom';
-import { CookiesProvider, withCookies } from 'react-cookie';
+import { Router, Route, Redirect, Switch } from 'react-router-dom';
+import { CookiesProvider } from 'react-cookie';
 
 import { MuiThemeProvider } from '@material-ui/core/styles';
 import CodalabTheme from './theme';
