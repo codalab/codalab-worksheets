@@ -65,7 +65,7 @@ FILE_CONTENTS_2 = "hello world 2"
 
 class BaseBundleManagerTest(unittest.TestCase):
     """
-    Base class for BundleManager tests with a CodaLab Manager hitting a real, in-memory database.
+    Base class for BundleManager tests with a CodaLab Manager hitting an in-memory SQLite database.
     """
 
     def setUp(self):
@@ -84,6 +84,7 @@ class BaseBundleManagerTest(unittest.TestCase):
         )
 
     def create_make_bundle(self, state=State.MAKING):
+        """Creates a MakeBundle with the given state."""
         bundle = MakeBundle.construct(
             targets=[],
             command='',
@@ -95,9 +96,17 @@ class BaseBundleManagerTest(unittest.TestCase):
         return bundle
 
     def save_bundle(self, bundle):
+        """Saves the given bundle to the database."""
         self.bundle_manager._model.save_bundle(bundle)
 
     def read_bundle(self, bundle, extra_path=""):
+        """Retrieves the given bundle from the bundle store and returns
+        its contents.
+        Args:
+            extra_path: path appended to bundle store location from which to read the file.
+        Returns:
+            Bundle contents
+        """
         with open(
             os.path.join(
                 self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid), extra_path
@@ -107,11 +116,22 @@ class BaseBundleManagerTest(unittest.TestCase):
             return f.read()
 
     def write_bundle(self, bundle, contents=""):
-        """Writes the given contents to the location of the given bundle."""
+        """Writes the given contents to the location of the given bundle.
+        Args:
+            bundle: bundle to write
+            contents: string to write
+        Returns:
+            None
+        """
         with open(self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid), "w+") as f:
             f.write(contents)
 
     def create_run_bundle(self, state=State.CREATED, metadata=None):
+        """Creates a RunBundle.
+        Args:
+            state: state for the new bundle
+            metadata: additional metadata to add to the bundle.
+        """
         bundle = RunBundle.construct(
             targets=[],
             command='',
@@ -125,6 +145,17 @@ class BaseBundleManagerTest(unittest.TestCase):
     def create_bundle_single_dep(
         self, parent_state=State.READY, bundle_state=State.CREATED, bundle_type=RunBundle
     ):
+        """Creates a bundle with a single dependency, which is mounted at path "src" of the
+        new bundle.
+
+        Args:
+            parent_state: State of the parent bundle. Defaults to State.READY.
+            bundle_state: State of the new bundle. Defaults to State.CREATED.
+            bundle_type: Type of child bundle to create; valid values are RunBundle and MakeBundle. Defaults to RunBundle.
+
+        Returns:
+            (bundle, parent)
+        """
         parent = self.create_run_bundle(parent_state)
         self.write_bundle(parent, FILE_CONTENTS_1)
         bundle = (
@@ -145,6 +176,12 @@ class BaseBundleManagerTest(unittest.TestCase):
         return bundle, parent
 
     def create_bundle_two_deps(self):
+        """Create a bundle with two dependencies. The first dependency is mounted at path "src1"
+        and the second is mounted at path "src2" of the new bundle.
+
+        Returns:
+            (bundle, parent1, parent2)
+        """
         parent1 = self.create_run_bundle(state=State.READY)
         self.write_bundle(parent1, FILE_CONTENTS_1)
         parent2 = self.create_run_bundle(state=State.READY)
@@ -180,8 +217,7 @@ class BaseBundleManagerTest(unittest.TestCase):
     def mock_worker_checkin(
         self, cpus=0, gpus=0, memory_bytes=0, free_disk_bytes=0, tag=None, user_id=None,
     ):
-        """Mock check-in a new worker."""
-        # codalab-owned worker
+        """Perform a mock check-in of a new worker."""
         worker_id = generate_uuid()
         self.bundle_manager._worker_model.worker_checkin(
             user_id=user_id or self.bundle_manager._model.root_user_id,  # codalab-owned worker
@@ -203,7 +239,13 @@ class BaseBundleManagerTest(unittest.TestCase):
         return worker_id
 
     def mock_bundle_checkin(self, bundle, worker_id, user_id=None):
-        """Mock a worker checking in with the latest status of a bundle."""
+        """Mock a worker checking in with the latest state of a bundle.
+
+        Args:
+            bundle: Bundle to check in.
+            worker_id ([type]): worker id of the worker that performs the checkin.
+            user_id (optional): user id that performs the checkin. Defaults to the default user id.
+        """
         worker_run = BundleCheckinState(
             uuid=bundle.uuid,
             run_status="",
