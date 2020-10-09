@@ -204,7 +204,7 @@ def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSE
     """
     Opens the given file. Can be in a directory.
     """
-    return FileSystems.open(file_path, mode)
+    return FileSystems.open(file_path, mode, compression_type)
 
 
 def gzip_file(file_path):
