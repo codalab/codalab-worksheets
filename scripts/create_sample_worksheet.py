@@ -532,7 +532,8 @@ class SampleWorksheet:
 
     def _add_default_table_pattern(self, row_count):
         self._add_table_pattern(
-            ['uuid\[0:8\]', 'name', 'summary\[0:1024\]', 'data_size', 'state', 'description'], row_count
+            ['uuid\[0:8\]', 'name', 'summary\[0:1024\]', 'data_size', 'state', 'description'],
+            row_count,
         )
 
     def _add_records_pattern(self, headers, record_count):
