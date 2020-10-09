@@ -131,14 +131,6 @@ class TestBase:
     def update_bundle(self, bundle, update):
         return self.bundle_manager._model.update_bundle(bundle, update)
 
-    def write_bundle(self, bundle, extra_path=""):
-        location = self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid)
-        if extra_path:
-            # Write to a directory.
-            location = os.path.join(location, extra_path)
-            os.makedirs(os.path.dirname(location), exist_ok=True)
-        return open(location, "w+",)
-
     def create_run_bundle(self, state=State.CREATED, metadata=None):
         """Creates a RunBundle.
         Args:
