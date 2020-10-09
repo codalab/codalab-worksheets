@@ -24,7 +24,7 @@ import sys
 
 from codalab.common import precondition, UsageError
 from codalab.lib import file_util
-from codalab.lib.beam.filesystems import FileSystems
+from apache_beam.io.filesystems import FileSystems
 
 
 # Block sizes and canonical strings used when hashing files.

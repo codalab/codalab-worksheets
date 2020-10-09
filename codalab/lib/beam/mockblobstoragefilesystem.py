@@ -1,5 +1,9 @@
 """Mock Azure Blob Storage filesystem that is backed by a local filesystem instead.
-Used only for unit tests.
+This means that uploaded files / zip files will be stored to disk instead of Azure Blob
+Storage / a local Azurite emulator.
+
+Used only for unit tests, as this is very fast and requires less dependencies
+than the alternatives. See tests/unit/server/upload_download_test.py for an example.
 """
 
 from apache_beam.io.filesystem import FileSystem

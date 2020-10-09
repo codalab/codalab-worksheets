@@ -1,4 +1,12 @@
-apache-beam==2.21.0
+# Installs the upcoming 2.25.0 Apache Beam release.
+# TODO: Once Apache Beam 2.25.0 is released, we can replace the following with:
+# apache-beam==2.25.0. We can also remove instances of
+# "python3 -m pip install grpcio-tools==1.30.0 future==0.18.2 mypy-protobuf==1.18"
+# in Dockerfile.worker and Dockerfile.server, which include requirements required
+# for building Apache Beam from source.
+
+https://github.com/apache/beam/archive/release-2.25.0.zip#egg=apache-beam&subdirectory=sdks/python
+
 bottle==0.12.18
 docker==4.3.0
 marshmallow-jsonapi==0.15.1

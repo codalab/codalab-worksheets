@@ -16,7 +16,7 @@ from uuid import uuid4
 from sqlalchemy import and_, or_, not_, select, union, desc, func
 from sqlalchemy.sql.expression import literal, true
 
-from codalab.lib.beam.filesystems import FileSystems
+from apache_beam.io.filesystems import FileSystems
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.run_bundle import RunBundle
 from codalab.common import IntegrityError, NotFoundError, precondition, UsageError
