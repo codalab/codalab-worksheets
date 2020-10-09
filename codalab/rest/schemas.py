@@ -270,6 +270,7 @@ class UserSchema(Schema):
     class Meta:
         type_ = 'users'
 
+
 USER_ACCESSIBLE_FIELDS = (
     'id',
     'user_name',
@@ -280,6 +281,7 @@ USER_ACCESSIBLE_FIELDS = (
     'disk_used',
     'date_joined',
 )
+
 
 class AuthenticatedUserSchema(UserSchema):
     email = fields.String()

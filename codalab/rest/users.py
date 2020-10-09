@@ -165,9 +165,7 @@ def fetch_users():
 
     if request.user.user_id != local.model.root_user_id:
         for key in keywords:
-            if not all(
-                accessed_field in key for accessed_field in USER_ACCESSIBLE_FIELDS
-            ):
+            if not all(accessed_field in key for accessed_field in USER_ACCESSIBLE_FIELDS):
                 abort(http.client.FORBIDDEN, "You don't have access to search for these fields")
 
     # Handle search keywords
