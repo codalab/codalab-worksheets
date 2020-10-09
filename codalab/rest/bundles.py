@@ -77,7 +77,7 @@ def _fetch_bundles():
            given base worksheet
         3. or a reverse index of the form `^N` referring to the Nth-to-last
            bundle on the given base worksheet.
-     - `keywords`: Search keyword. May be provided multiples times for multiple
+     - `keywords`: Search keyword. May be provided multiple times for multiple
         keywords. Bare keywords match the names and descriptions of bundles.
         Examples of other special keyword forms:
         - `name=<name>            ` : More targeted search of using metadata fields.
