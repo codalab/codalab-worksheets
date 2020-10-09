@@ -272,14 +272,20 @@ class UserSchema(Schema):
 
 
 USER_ACCESSIBLE_FIELDS = (
-    'id',
+    'name',
     'user_name',
     'first_name',
     'last_name',
     'affiliation',
     'url',
     'disk_used',
-    'date_joined',
+    'joined',
+    'count',
+    'limit',
+    'offset',
+    'last',
+    'format',
+    'size',
 )
 
 

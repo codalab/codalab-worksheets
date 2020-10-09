@@ -662,11 +662,13 @@ class BundleCLI(object):
         """
         Pretty-print a list of user info from each row in the given list of dicts.
         """
-        rows = [columns]
+
         # display restricted fields if the server returns those fields - which suggests the user is root
         try:
-            if row_dicts and row_dicts[0].get('last_login') and not user_defined_fields:
+            if row_dicts and row_dicts[0].get('last_login') and not user_defined:
                 columns += ('last_login', 'time', 'disk', 'parallel_run_quota')
+                rows = [columns]
+            else:
                 rows = [columns]
         except KeyError:
             pass
@@ -707,8 +709,7 @@ class BundleCLI(object):
                     row_strs.append(value + padding)
                 else:
                     row_strs.append(padding + value)
-            if i > 0:
-                print('' + '  '.join(row_strs), file=self.stdout)
+            print('' + '  '.join(row_strs), file=self.stdout)
             if i == 0:
                 print('' + (sum(lengths) + 2 * (len(columns) - 1)) * '-', file=self.stdout)
 
