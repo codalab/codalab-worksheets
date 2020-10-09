@@ -309,7 +309,7 @@ class DownloadManager(object):
     def _is_available_locally(self, target):
         file_path = self._get_target_path(target)
         if file_path.startswith("azfs://"):
-            return True
+            return False
         if self._bundle_model.get_bundle_state(target.bundle_uuid) in [
             State.RUNNING,
             State.PREPARING,
