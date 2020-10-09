@@ -770,14 +770,19 @@ class BundleCLI(object):
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         else:
             client_is_explicit = spec_util.client_is_explicit(spec)
-            client, spec = self.parse_spec(spec)
+            client, parsed_spec = self.parse_spec(spec)
             # If we're on the same client, then resolve spec with respect to
             # the current worksheet.
             if client_is_explicit:
                 base_worksheet_uuid = None
             else:
                 _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            worksheet_uuid = self.resolve_worksheet_uuid(client, base_worksheet_uuid, spec)
+            try:
+                worksheet_uuid = self.resolve_worksheet_uuid(
+                    client, base_worksheet_uuid, parsed_spec
+                )
+            except ValueError:
+                raise UsageError('Invalid spec: "{}"'.format(spec))
         return client, worksheet_uuid
 
     @staticmethod

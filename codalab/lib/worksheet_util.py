@@ -423,6 +423,11 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
             )
             return key, value
 
+        def truncate_sumnary(summary):
+            if len(summary) > 1024:
+                return summary[:1024] + '...'
+            return summary
+
         # Nice easy-to-ready description of how this bundle got created.
         bundle_type = bundle_info.get('bundle_type')
         if bundle_type in ('dataset', 'program'):
@@ -431,9 +436,9 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
             args = []
             for dep in deps:
                 args.append(friendly_render_dep(dep)[1])
-            return '= ' + ' '.join(args)
+            return truncate_sumnary('= ' + ' '.join(args))
         elif bundle_type == 'run':
-            return '! ' + bundle_info['command']
+            return truncate_sumnary('! ' + bundle_info['command'])
     elif genpath == 'host_worksheets':
         if 'host_worksheets' in bundle_info:
             return ' '.join(
@@ -571,7 +576,7 @@ def get_default_schemas():
     # Single fields
     uuid = ['uuid[0:8]', 'uuid', '[0:8]']
     name = ['name']
-    summary = ['summary']
+    summary = ['summary[0:1024]', 'summary']
     data_size = ['data_size', 'data_size', 'size']
     time = ['time', 'time', 'duration']
     state = ['state']
@@ -929,7 +934,8 @@ def interpret_items(schemas, raw_items, db_model=None):
                 current_display = default_display
 
             # Reset schema to minimize long distance dependencies of directives
-            if not is_directive:
+            command = get_command(value_obj)
+            if not is_directive or (command != "add" and command != "addschema"):
                 if current_schema is not None:
                     blocks.append(
                         SchemaBlockSchema()
