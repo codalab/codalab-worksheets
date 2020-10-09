@@ -431,7 +431,7 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
         # Nice easy-to-ready description of how this bundle got created.
         bundle_type = bundle_info.get('bundle_type')
         if bundle_type in ('dataset', 'program'):
-            return truncate_sumnary('[uploaded]' * 1024)
+            return '[uploaded]'
         if bundle_type == 'make':
             args = []
             for dep in deps:
