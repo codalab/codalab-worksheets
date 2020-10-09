@@ -673,7 +673,7 @@ class Worksheet extends React.Component {
         if (index === -1) {
             node = document.getElementById('worksheet_dummy_header');
         } else {
-            node = subIndex
+            node = document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
                 ? document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
                 : document.getElementById(`codalab-worksheet-item-${index}`);
         }
