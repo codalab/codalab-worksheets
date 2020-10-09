@@ -12,6 +12,10 @@ import zipfile
 import unittest
 
 class BaseUploadDownloadBundleTest(TestBase):
+    """Base class for UploadDownload tests.
+    All subclasses must implement the upload_folder
+    and upload_file methods.
+    """
     DEFAULT_PERM = 420
 
     def upload_folder(self, bundle, contents):
@@ -107,7 +111,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         info = self.download_manager.get_target_info(target, 0)
         self.assertEqual(info["name"], bundle.uuid)
         self.assertEqual(info["size"], 11)
-        # self.assertEqual(info["perm"], self.DEFAULT_PERM)
+        self.assertEqual(info["perm"], self.DEFAULT_PERM)
         self.assertEqual(info["type"], "file")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
         self.check_file_target_contents(target)
