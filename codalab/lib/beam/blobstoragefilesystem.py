@@ -23,7 +23,7 @@ from __future__ import absolute_import
 
 from future.utils import iteritems
 
-import codalab.lib.beam.blobstorageio as blobstorageio
+from apache_beam.io.azure import blobstorageio
 from apache_beam.io.filesystem import BeamIOError
 from apache_beam.io.filesystem import CompressedFile
 from apache_beam.io.filesystem import CompressionTypes
@@ -294,7 +294,7 @@ class BlobStorageFileSystem(FileSystem):
     # Retrieve exceptions.
     exceptions = {
         path: error
-        for (path, error) in results.items() if error != 202 and error != None
+        for (path, error) in results.items() if error is not None
     }
 
     if exceptions:
