@@ -15,7 +15,8 @@ TEST_CONN_STR = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;Acco
 
 # The Apache beam BlobStorageFileSystem expects the AZURE_STORAGE_CONNECTION_STRING environment variable
 # to be set to the correct Azure Blob Storage connection string.
-AZURE_BLOB_CONNECTION_STRING = os.environ.get("CODALAB_AZURE_BLOB_CONNECTION_STRING", TEST_CONN_STR)
+AZURE_BLOB_CONNECTION_STRING = os.environ.get("CODALAB_AZURE_BLOB_CONNECTION_STRING") or TEST_CONN_STR
+
 os.environ['AZURE_STORAGE_CONNECTION_STRING'] = AZURE_BLOB_CONNECTION_STRING 
 
 client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNECTION_STRING)
