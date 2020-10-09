@@ -659,6 +659,9 @@ class BundleCLI(object):
     def uls_print_table(
         self, columns, row_dicts, user_defined=False,
     ):
+        """
+        Pretty-print a list of user info from each row in the given list of dicts.
+        """
         rows = [columns]
         # display restricted fields if the server returns those fields - which suggests the user is root
         try:
@@ -3936,6 +3939,7 @@ class BundleCLI(object):
             'affiliation',
             'url',
             'date_joined',
+            'last_login',
             'email',
             'time',
             'disk',

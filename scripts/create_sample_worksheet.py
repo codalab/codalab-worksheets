@@ -158,7 +158,7 @@ class SampleWorksheet:
             name = 'valid_private_worksheet_%s' % id
             title = 'Other Private Worksheet %s' % id
             uuid = self._create_tagged_worksheet(name, title)
-            run_command([self._cl, 'wperm', uuid, 'public', 'n'])
+            run_command([self._cl, 'wperm', uuid, 'public', 'none'])
             self._private_worksheets.append(uuid)
             uuid = run_command(
                 [

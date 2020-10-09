@@ -2171,37 +2171,7 @@ class BundleModel(object):
 
     def get_users(self, keywords=None, user_ids=None, usernames=None, check_active=True):
         """
-        Get user stats.
-
-        Returns a bundle search result dict where:
-            result: list of bundle uuids matching search criteria in order
-                        specified for bundle searches
-                    single number value for aggregate searches(.count)
-            is_aggregate: True for aggregate searches, False otherwise
-        Each keyword is either:
-        - <key>=<value>
-        - .active_before=<datetime>: return users whose last login is before the datetime
-        - .active_after=<datetime>: return users whose last login is after the datetime
-        - .joined_before=<datetime>: return users who joined before the datetime
-        - .joined_after=<datetime>: return users who joined after the datetime
-        - .disk_used_less_than=<percentage> or <float>: return users whose disk usage is
-            less than and equal to e.g., 70% or 0.3
-        - .disk_used_more_than=<percentage> or <float>: return users whose disk usage is
-            more than and equal to e.g., 70% or 0.3
-        - .time_used_less_than=<percentage> or <float>: return users whose disk usage is
-            less than and equal to e.g., 70% or 0.3
-        - .time_used_more_than=<percentage> or <float>: return users whose disk usage is
-            more than and equal to e.g., 70% or 0.3
-        - .offset=<int>: return bundles starting at this offset
-        - .limit=<int>: maximum number of bundles to return
-        - .count: just return the number of bundles
-        Keys are the following:
-        - User fields (e.g., name)
-        Values can be one of the following:
-        - .sort: sort in increasing order
-        - .sort-: sort by decreasing order
-        :param usernames: usernames or emails of users to fetch
-        :return: list of matching User objects
+        see the documentation for `cl uls` for information about keyword structure.
         """
         clauses = []
         offset = 0

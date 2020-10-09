@@ -12,6 +12,7 @@ from codalab.rest.schemas import (
     AdminUserSchema,
     AuthenticatedUserSchema,
     USER_READ_ONLY_FIELDS,
+    USER_ACCESSIBLE_FIELDS,
     UserSchema,
 )
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
@@ -164,8 +165,8 @@ def fetch_users():
 
     if request.user.user_id != local.model.root_user_id:
         for key in keywords:
-            if any(
-                unaccessed_field in key for unaccessed_field in ['time', 'disk', 'active', 'email']
+            if not all(
+                accessed_field in key for accessed_field in USER_ACCESSIBLE_FIELDS
             ):
                 abort(http.client.FORBIDDEN, "You don't have access to search for these fields")
 
