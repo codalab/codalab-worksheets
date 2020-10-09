@@ -89,7 +89,6 @@ def pack_files_for_upload(
     exclude_patterns=None,
     force_compression=False,
     ignore_file=None,
-    use_azure_blob_beta=False,
 ):
     """
     Create a single flat tarfile containing all the sources.
