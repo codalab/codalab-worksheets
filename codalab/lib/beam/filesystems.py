@@ -1,9 +1,13 @@
 import os
+from apache_beam.io.filesystems import FileSystems
 from azure.storage.blob import BlobServiceClient
+from .blobstoragefilesystem import BlobStorageFileSystem
 
 """
-Constants and common values used for manipulation of
-the Apache Beam Azure Blob Storage filesystem.
+Modifies Apache Beam to add support for Azure Blob Storage filesystems.
+
+Based on work from https://github.com/apache/beam/pull/12581. Once that PR is added into Beam,
+and a new version is released, we will switch to using a Beam library instead.
 """
 
 # Test connection string for Azurite (local development)

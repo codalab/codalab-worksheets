@@ -11,7 +11,7 @@ import tarfile
 import zipfile
 import unittest
 import codalab.lib.beam.mockblobstoragefilesystem
-from apache_beam.io.filesystems import BlobStorageFileSystem
+from codalab.lib.beam.blobstoragefilesystem import BlobStorageFileSystem
 from codalab.lib.beam.mockblobstoragefilesystem import MockBlobStorageFileSystem
 
 # Monkey-patch so that we use MockBlobStorageFileSystem

@@ -45,10 +45,6 @@ COPY requirements.docs.txt requirements.docs.txt
 COPY requirements.dev.txt requirements.dev.txt
 COPY requirements-server.txt requirements-server.txt
 RUN python3 -m pip install setuptools --upgrade
-
-# TODO: Remove this line once we can install Apache Beam 2.25.0
-RUN python3 -m pip install grpcio-tools==1.30.0 future==0.18.2 mypy-protobuf==1.18
-
 RUN python3 -m pip install --no-cache-dir -r requirements-server.txt
 
 # Install code
