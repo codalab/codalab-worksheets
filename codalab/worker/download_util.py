@@ -214,7 +214,7 @@ def _compute_target_info_externalized(path, depth):
                     'perm': 0o777,
                 }
                 if not zipinfo.is_dir()
-                else _compute_target_info_beam(
+                else _compute_target_info_externalized(
                     f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.zip/{zipinfo.filename}",
                     depth - 1,
                 )
