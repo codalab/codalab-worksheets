@@ -833,40 +833,40 @@ def test_download(ctx):
         ['tar', 'cfz', archive_path, '-C', os.path.dirname(contents_path), '--']
         + os.listdir(contents_path)
     )
+    uuid = _run_command([cl, 'upload', archive_path])
 
-    for uuid in (_run_command([cl, 'upload', archive_path]), _run_command([cl, 'upload', '-a', archive_path])):
-        # Download whole bundle
-        path = temp_path('')
-        _run_command([cl, 'download', uuid, '-o', path])
-        check_contains(['a.txt', 'b.txt', 'echo', crazy_name], _run_command(['ls', '-R', path]))
-        shutil.rmtree(path)
+    # Download whole bundle
+    path = temp_path('')
+    _run_command([cl, 'download', uuid, '-o', path])
+    check_contains(['a.txt', 'b.txt', 'echo', crazy_name], _run_command(['ls', '-R', path]))
+    shutil.rmtree(path)
 
-        # Download a target inside (binary)
-        _run_command([cl, 'download', uuid + '/echo', '-o', path])
-        check_equals(test_path_contents('echo', binary=True), path_contents(path, binary=True))
-        os.unlink(path)
+    # Download a target inside (binary)
+    _run_command([cl, 'download', uuid + '/echo', '-o', path])
+    check_equals(test_path_contents('echo', binary=True), path_contents(path, binary=True))
+    os.unlink(path)
 
-        # Download a target inside (crazy name)
-        _run_command([cl, 'download', uuid + '/' + crazy_name, '-o', path])
-        check_equals(test_path_contents(crazy_name), path_contents(path))
-        os.unlink(path)
+    # Download a target inside (crazy name)
+    _run_command([cl, 'download', uuid + '/' + crazy_name, '-o', path])
+    check_equals(test_path_contents(crazy_name), path_contents(path))
+    os.unlink(path)
 
-        # Download a target inside (name starting with hyphen)
-        _run_command([cl, 'download', uuid + '/' + '-AmMDnVl4s8', '-o', path])
-        check_equals(test_path_contents('-AmMDnVl4s8'), path_contents(path))
-        os.unlink(path)
+    # Download a target inside (name starting with hyphen)
+    _run_command([cl, 'download', uuid + '/' + '-AmMDnVl4s8', '-o', path])
+    check_equals(test_path_contents('-AmMDnVl4s8'), path_contents(path))
+    os.unlink(path)
 
-        # Download a target inside (symlink)
-        _run_command([cl, 'download', uuid + '/a-symlink.txt', '-o', path], 1)  # Disallow symlinks
+    # Download a target inside (symlink)
+    _run_command([cl, 'download', uuid + '/a-symlink.txt', '-o', path], 1)  # Disallow symlinks
 
-        # Download a target inside (directory)
-        _run_command([cl, 'download', uuid + '/dir1', '-o', path])
-        check_equals(test_path_contents('dir1/f1'), path_contents(path + '/f1'))
-        shutil.rmtree(path)
+    # Download a target inside (directory)
+    _run_command([cl, 'download', uuid + '/dir1', '-o', path])
+    check_equals(test_path_contents('dir1/f1'), path_contents(path + '/f1'))
+    shutil.rmtree(path)
 
-        # Download something that doesn't exist
-        _run_command([cl, 'download', 'not-exists'], 1)
-        _run_command([cl, 'download', uuid + '/not-exists'], 1)
+    # Download something that doesn't exist
+    _run_command([cl, 'download', 'not-exists'], 1)
+    _run_command([cl, 'download', uuid + '/not-exists'], 1)
 
 
 @TestModule.register('refs')

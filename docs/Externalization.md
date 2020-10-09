@@ -90,6 +90,8 @@ In order to enable Azure Blob Storage as a bundle store, follow these instructio
 1. Create a container named "bundles" from the Azure Portal.
 1. Set the `CODALAB_AZURE_BLOB_CONNECTION_STRING` environment variable to the Blob Storage connection string before starting the server.
 
+You can also force usage of Azure Blob Storage for all uploads (so users don't have to opt in) by setting the environment variable `CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=1` before starting the server.
+
 ### Local development
 
 During local development, you can simulate the Azure Blob Storage Account by running the `azurite` service from `codalab_service.py`. By default, this service is not run, so you must explicitly specify it:

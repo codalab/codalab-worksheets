@@ -314,9 +314,12 @@ CODALAB_ARGUMENTS = [
         help='Comma-separated list of directories that are mounted on the REST server, allowing their contents to be used in the --link argument.',
         default='/tmp/codalab/link-mounts',
     ),
+    CodalabArg(name='azure_blob_connection_string', help='Azure Blob storage connection string'),
     CodalabArg(
-        name='azure_blob_connection_string',
-        help='Azure Blob storage connection string'
+        name='always_use_azure_blob_beta',
+        type=bool,
+        default=False,
+        help='If set to True, always uses Azure Blob storage for all uploads (set to False by default)',
     ),
     # Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
@@ -788,9 +791,7 @@ class CodalabServiceManager(object):
         if should_run_service(self.args, 'azurite'):
             # Run for local development with Azurite only
             print_header('Setting up Azurite')
-            self.run_service_cmd(
-                'python3 scripts/initialize-azurite.py'
-            )
+            self.run_service_cmd('python3 scripts/initialize-azurite.py')
 
         self.bring_up_service('rest-server')
 
