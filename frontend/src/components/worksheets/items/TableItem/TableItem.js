@@ -148,7 +148,7 @@ class TableItem extends React.Component<{
                     style={
                         index === 0
                             ? {
-                                  paddingLeft: editPermission ? '30px' : '40px',
+                                  paddingLeft: editPermission ? '30px' : '70px',
                                   paddingBottom: 0,
                                   paddingTop: 0,
                               }
@@ -236,13 +236,14 @@ class TableItem extends React.Component<{
         });
         return (
             <div className='ws-item'>
-                <TableContainer style={{ overflowX: 'auto', maxHeight: 500 }}>
+                <TableContainer style={{ overflowX: 'auto' }}>
                     <Table className={tableClassName}>
                         <TableHead>
                             <TableRow
                                 style={{
                                     height: 32,
                                     borderTop: '0px solid #DEE2E6',
+                                    backgroundColor: '#F8F9FA',
                                 }}
                             >
                                 {headerHtml}
@@ -325,7 +326,7 @@ class _TableContainer extends React.Component {
     }
 }
 
-const styles = (theme) => ({
+const styles = () => ({
     tableContainer: {
         position: 'relative',
     },
