@@ -108,7 +108,7 @@ def zip_directory(
         tmp_zip_name = os.path.join(tmp, "tmp.zip")
         args = [
             'zip',
-            '-r',  # -q
+            '-rq',
             # Unlike with tar_gzip_directory, we cannot send output to stdout because of this bug in zip
             # (https://bugs.launchpad.net/ubuntu/+source/zip/+bug/1892338). Thus, we have to write to a
             # temporary file and then read the output.
