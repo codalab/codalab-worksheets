@@ -11,6 +11,8 @@ from tests.unit.server.bundle_manager import (
     BASE_METADATA,
     BASE_METADATA_MAKE_BUNDLE,
     BASE_METADATA_DATASET_BUNDLE,
+    FILE_CONTENTS_1,
+    FILE_CONTENTS_2,
 )
 
 
@@ -62,8 +64,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
 
         self.assertEqual(bundle.state, State.READY)
 
-        with self.read_bundle(bundle, "src") as f:
-            self.assertEqual(f.read(), "hello world")
+        self.assertEqual(self.read_bundle(bundle, "src"), FILE_CONTENTS_1)
 
     def test_multiple_dependencies(self):
         """A MakeBundle with two dependencies should be made."""
@@ -78,10 +79,8 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
 
         self.assertEqual(bundle.state, State.READY)
 
-        with self.read_bundle(bundle, "src1") as f:
-            self.assertEqual(f.read(), "hello world 1")
-        with self.read_bundle(bundle, "src2") as f:
-            self.assertEqual(f.read(), "hello world 2")
+        self.assertEqual(self.read_bundle(bundle, "src1"), FILE_CONTENTS_1)
+        self.assertEqual(self.read_bundle(bundle, "src2"), FILE_CONTENTS_2)
 
     def test_fail_invalid_dependency_path(self):
         """A MakeBundle with an invalid dependency specified should fail."""
@@ -108,7 +107,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
     def test_linked_dependency(self):
         """A MakeBundle with a linked dependency should be made."""
         with tempfile.NamedTemporaryFile(delete=False) as f:
-            f.write(b"hello world")
+            f.write(FILE_CONTENTS_1.encode())
             tempfile_name = f.name
         parent = DatasetBundle.construct(
             metadata=dict(BASE_METADATA_DATASET_BUNDLE, link_url=tempfile_name),
@@ -134,6 +133,5 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
         self.assertEqual(bundle.state, State.READY)
 
-        with self.read_bundle(bundle, "src") as f:
-            self.assertEqual(f.read(), "hello world")
+        self.assertEqual(self.read_bundle(bundle, "src"), FILE_CONTENTS_1)
         os.remove(tempfile_name)

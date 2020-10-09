@@ -59,6 +59,9 @@ BASE_METADATA_DATASET_BUNDLE = {
     "source_url": "",
 }
 
+FILE_CONTENTS_1 = "hello world 1"
+FILE_CONTENTS_2 = "hello world 2"
+
 
 class BaseBundleManagerTest(unittest.TestCase):
     """
@@ -95,12 +98,18 @@ class BaseBundleManagerTest(unittest.TestCase):
         self.bundle_manager._model.save_bundle(bundle)
 
     def read_bundle(self, bundle, extra_path=""):
-        return open(
+        with open(
             os.path.join(
                 self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid), extra_path
             ),
             "r",
-        )
+        ) as f:
+            return f.read()
+
+    def write_bundle(self, bundle, contents=""):
+        """Writes the given contents to the location of the given bundle."""
+        with open(self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid), "w+") as f:
+            f.write(contents)
 
     def create_run_bundle(self, state=State.CREATED, metadata=None):
         bundle = RunBundle.construct(
@@ -117,8 +126,7 @@ class BaseBundleManagerTest(unittest.TestCase):
         self, parent_state=State.READY, bundle_state=State.CREATED, bundle_type=RunBundle
     ):
         parent = self.create_run_bundle(parent_state)
-        with open(self.codalab_manager.bundle_store().get_bundle_location(parent.uuid), "w+") as f:
-            f.write("hello world")
+        self.write_bundle(parent, FILE_CONTENTS_1)
         bundle = (
             self.create_run_bundle(bundle_state)
             if bundle_type == RunBundle
@@ -138,11 +146,9 @@ class BaseBundleManagerTest(unittest.TestCase):
 
     def create_bundle_two_deps(self):
         parent1 = self.create_run_bundle(state=State.READY)
-        with open(self.codalab_manager.bundle_store().get_bundle_location(parent1.uuid), "w+") as f:
-            f.write("hello world 1")
+        self.write_bundle(parent1, FILE_CONTENTS_1)
         parent2 = self.create_run_bundle(state=State.READY)
-        with open(self.codalab_manager.bundle_store().get_bundle_location(parent2.uuid), "w+") as f:
-            f.write("hello world 2")
+        self.write_bundle(parent2, FILE_CONTENTS_2)
         bundle = MakeBundle.construct(
             targets=[],
             command='',
