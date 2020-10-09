@@ -1205,7 +1205,7 @@ class BundleCLI(object):
                 '--use-azure-blob-beta',
                 help='Use Azure Blob Storage to store files (beta feature).',
                 action='store_true',
-                default=False,
+                default=True if os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") else False,
             ),
         )
         + Commands.metadata_arguments([UploadedBundle])
