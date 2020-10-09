@@ -19,6 +19,7 @@ from codalab.worker.file_util import (
     un_bz2_file,
     un_gzip_stream,
     un_tar_directory,
+    unzip_directory,
 )
 
 
@@ -55,48 +56,30 @@ def unpack(ext, source, dest_path):
     Note: |source| can be a file handle or a path.
     |ext| contains the extension of the archive.
     """
-    if ext != '.zip':
-        close_source = False
-        try:
-            if isinstance(source, str):
-                source = open(source, 'rb')
-                close_source = True
+    close_source = False
+    try:
+        if isinstance(source, str):
+            source = open(source, 'rb')
+            close_source = True
 
-            if ext == '.tar.gz' or ext == '.tgz':
-                un_tar_directory(source, dest_path, 'gz')
-            elif ext == '.tar.bz2':
-                un_tar_directory(source, dest_path, 'bz2')
-            elif ext == '.bz2':
-                un_bz2_file(source, dest_path)
-            elif ext == '.gz':
-                with open(dest_path, 'wb') as f:
-                    shutil.copyfileobj(un_gzip_stream(source), f)
-            else:
-                raise UsageError('Not an archive.')
-        except (tarfile.TarError, IOError):
-            raise UsageError('Invalid archive upload.')
-        finally:
-            if close_source:
-                source.close()
-    else:
-        delete_source = False
-        try:
-            # unzip doesn't accept input from standard input, so we have to save
-            # to a temporary file.
-            if not isinstance(source, str):
-                temp_path = dest_path + '.zip'
-                with open(temp_path, 'wb') as f:
-                    shutil.copyfileobj(source, f)
-                source = temp_path
-                delete_source = True
-
-            # TODO(Ashwin): preserve permissions with -X, if needed.
-            exitcode = subprocess.call(['unzip', '-q', source, '-d', dest_path])
-            if exitcode != 0:
-                raise UsageError('Invalid archive upload.')
-        finally:
-            if delete_source:
-                path_util.remove(source)
+        if ext == '.tar.gz' or ext == '.tgz':
+            un_tar_directory(source, dest_path, 'gz')
+        elif ext == '.tar.bz2':
+            un_tar_directory(source, dest_path, 'bz2')
+        elif ext == '.bz2':
+            un_bz2_file(source, dest_path)
+        elif ext == '.gz':
+            with open(dest_path, 'wb') as f:
+                shutil.copyfileobj(un_gzip_stream(source), f)
+        elif ext == '.zip':
+            unzip_directory(source, dest_path)
+        else:
+            raise UsageError('Not an archive.')
+    except (tarfile.TarError, IOError):
+        raise UsageError('Invalid archive upload.')
+    finally:
+        if close_source:
+            source.close()
 
 
 def pack_files_for_upload(

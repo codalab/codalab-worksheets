@@ -9,10 +9,11 @@ import zlib
 import bz2
 from zipfile import ZipFile
 
-from codalab.common import BINARY_PLACEHOLDER
+from codalab.common import BINARY_PLACEHOLDER, UsageError
 from apache_beam.io.filesystem import CompressionTypes
 from codalab.lib.beam.filesystems import FileSystems
 from codalab.lib.path_util import parse_azure_url
+import tempfile
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -39,7 +40,11 @@ def get_path_exists(path):
 
 
 def tar_gzip_directory(
-    directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[], ignore_file=None
+    directory_path,
+    follow_symlinks=False,
+    exclude_patterns=None,
+    exclude_names=None,
+    ignore_file=None,
 ):
     """
     Returns a file-like object containing a tarred and gzipped archive of the
@@ -84,7 +89,11 @@ def tar_gzip_directory(
 
 
 def zip_directory(
-    directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[], ignore_file=None
+    directory_path,
+    follow_symlinks=False,
+    exclude_patterns=None,
+    exclude_names=None,
+    ignore_file=None,
 ):
     """
     Returns a file-like object containing a zipped archive of the given directory.
@@ -96,32 +105,44 @@ def zip_directory(
                       the directory structure are excluded.
     ignore_file: Name of the file where exclusion patterns are read from.
     """
-    # zip needs to be used with relative paths, so that the final directory structure
-    # is correct -- https://stackoverflow.com/questions/11249624/zip-stating-absolute-paths-but-only-keeping-part-of-them.
-    args = ['zip', '-rq', '-', '.']
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_zip_name = os.path.join(tmp, "tmp.zip")
+        args = [
+            'zip',
+            '-r',  # -q
+            # Unlike with tar_gzip_directory, we cannot send output to stdout because of this bug in zip
+            # (https://bugs.launchpad.net/ubuntu/+source/zip/+bug/1892338). Thus, we have to write to a
+            # temporary file and then read the output.
+            tmp_zip_name,
+            # zip needs to be used with relative paths, so that the final directory structure
+            # is correct -- https://stackoverflow.com/questions/11249624/zip-stating-absolute-paths-but-only-keeping-part-of-them.
+            '.',
+        ]
 
-    if ignore_file:
-        # Ignore entries specified by the ignore file (e.g. .gitignore)
-        args.append('-x@' + ignore_file)
-    if not follow_symlinks:
-        args.append('-y')
-    if not exclude_patterns:
-        exclude_patterns = []
+        if ignore_file:
+            # Ignore entries specified by the ignore file (e.g. .gitignore)
+            args.append('--exclude @' + ignore_file)
+        if not follow_symlinks:
+            args.append('-y')
+        if not exclude_patterns:
+            exclude_patterns = []
 
-    exclude_patterns.extend(ALWAYS_IGNORE_PATTERNS)
-    for pattern in exclude_patterns:
-        args.append('-x ' + pattern)
+        exclude_patterns.extend(ALWAYS_IGNORE_PATTERNS)
+        for pattern in exclude_patterns:
+            args.append(f'--exclude=*{pattern}*')
 
-    if exclude_names:
-        for name in exclude_names:
-            # Exclude top-level entries provided by exclude_names
-            args.append('-x ./' + name)
+        if exclude_names:
+            for name in exclude_names:
+                # Exclude top-level entries provided by exclude_names
+                args.append('--exclude=./' + name)
 
-    try:
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE, cwd=directory_path)
-        return proc.stdout
-    except subprocess.CalledProcessError as e:
-        raise IOError(e.output)
+        try:
+            proc = subprocess.Popen(args, stdout=subprocess.PIPE, cwd=directory_path)
+            proc.wait()
+            with open(tmp_zip_name, "rb") as out:
+                return BytesIO(out.read())
+        except subprocess.CalledProcessError as e:
+            raise IOError(e.output)
 
 
 def un_tar_directory(fileobj, directory_path, compression='', force=False):
@@ -148,6 +169,36 @@ def un_tar_directory(fileobj, directory_path, compression='', force=False):
             if not member_path.startswith(directory_path):
                 raise tarfile.TarError('Archive member extracts outside the directory.')
             tar.extract(member, directory_path)
+
+
+def unzip_directory(fileobj_or_name, directory_path, force=False):
+    """
+    Extracts the given file-like object containing a zip archive into the given
+    directory, which will be created and should not already exist. If it already exists,
+    and `force` is `False`, an error is raised. If it already exists, and `force` is `True`,
+    the directory is removed and recreated.
+    """
+    directory_path = os.path.realpath(directory_path)
+    if force:
+        remove_path(directory_path)
+    os.mkdir(directory_path)
+
+    def do_unzip(filename):
+        # TODO(Ashwin): preserve permissions with -X.
+        print(" ".join(['unzip', '-q', str(filename), '-d', directory_path]))
+        exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
+        if exitcode != 0:
+            raise UsageError('Invalid archive upload. ')
+
+    # If fileobj_or_name is a file object, we have to save it
+    # to a temporary file, because unzip doesn't accept input from standard input.
+    if not isinstance(fileobj_or_name, str):
+        with tempfile.NamedTemporaryFile() as f:
+            shutil.copyfileobj(fileobj_or_name, f)
+            do_unzip(f.name)
+    else:
+        # In this case, fileobj_or_name is a file name.
+        do_unzip(fileobj_or_name)
 
 
 def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSED):
