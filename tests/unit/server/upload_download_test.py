@@ -11,11 +11,13 @@ import tarfile
 import zipfile
 import unittest
 
+
 class BaseUploadDownloadBundleTest(TestBase):
     """Base class for UploadDownload tests.
     All subclasses must implement the upload_folder
     and upload_file methods.
     """
+
     DEFAULT_PERM = 420
 
     def upload_folder(self, bundle, contents):
