@@ -74,13 +74,26 @@ of `--link` (applied to the dependency) and `--shared-file-system`:
 
 ## Azure Blob Storage
 
-To upload a file with Azure Blob Storage, use `cl upload` with the `--use_azure_blob_storage_beta` option (or `-a`):
+Azure Blob Storage can be used as a bundle store. Note that this feature is in beta and may change.
+
+To upload a file with Azure Blob Storage, use `cl upload` with the `--use-azure-blob-storage-beta` option (or `-a`):
 
 ```bash
 cl upload test.txt -a
 ```
 
-To set this up, you must first create an Azure Blob Storage Account, add a container called "bundles", and then set
-the `CODALAB_AZURE_BLOB_CONNECTION_STRING` environment variable to the right connection string when starting up CodaLab.
+### Server setup
 
-During local development, you can simulate the Azure Blob Storage Account by running the `azurite` service from `codalab_service.py`.
+In order to enable Azure Blob Storage as a bundle store, follow these instructions:
+
+1. Create an Azure Blob Storage Account.
+1. Create a container named "bundles" from the Azure Portal.
+1. Set the `CODALAB_AZURE_BLOB_CONNECTION_STRING` environment variable to the Blob Storage connection string before starting the server.
+
+### Local development
+
+During local development, you can simulate the Azure Blob Storage Account by running the `azurite` service from `codalab_service.py`. By default, this service is not run, so you must explicitly specify it:
+
+```
+python codalab_service.py start -bds default azurite
+```
