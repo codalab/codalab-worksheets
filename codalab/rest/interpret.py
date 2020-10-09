@@ -62,7 +62,7 @@ def _interpret_search():
     }
     ```
     """
-    return _interpret_search(request.json)
+    return interpret_search(request.json)
 
 
 @post('/interpret/wsearch', apply=ProtectedPlugin())
