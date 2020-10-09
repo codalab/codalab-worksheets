@@ -121,7 +121,7 @@ def zip_directory(
 
         if ignore_file:
             # Ignore entries specified by the ignore file (e.g. .gitignore)
-            args.append('--exclude @' + ignore_file)
+            args.append('-x@' + ignore_file)
         if not follow_symlinks:
             args.append('-y')
         if not exclude_patterns:
@@ -185,7 +185,6 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
 
     def do_unzip(filename):
         # TODO(Ashwin): preserve permissions with -X.
-        print(" ".join(['unzip', '-q', str(filename), '-d', directory_path]))
         exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
         if exitcode != 0:
             raise UsageError('Invalid archive upload. ')
@@ -195,6 +194,7 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
     if not isinstance(fileobj_or_name, str):
         with tempfile.NamedTemporaryFile() as f:
             shutil.copyfileobj(fileobj_or_name, f)
+            f.seek(0)
             do_unzip(f.name)
     else:
         # In this case, fileobj_or_name is a file name.
