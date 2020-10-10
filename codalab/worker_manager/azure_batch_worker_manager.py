@@ -29,14 +29,12 @@ class AzureBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--azure-config-path',
             type=str,
-            help='Path to the Azure batch configuration file (.cfg)',
-        )  # required
-        subparser.add_argument(
-            '--pool-id', type=str, help='ID of the Azure Batch pool to use',
-        )  # required
-        subparser.add_argument(
-            '--job-name', type=str, default='codalab-worker', help='Name of the job',
+            help='Path to the Azure Batch configuration file (.cfg)',
         )
+        subparser.add_argument(
+            '--job-id', type=str, help='ID of the Azure Batch job to add tasks to',
+        )
+        # TODO: add task name -Tony
         subparser.add_argument(
             '--cpus', type=int, default=1, help='Default number of CPUs for each worker'
         )
@@ -64,18 +62,9 @@ class AzureBatchWorkerManager(WorkerManager):
         self.batch_client.config.retry_policy.retries = 1
 
     def get_worker_jobs(self):
-        """Return list of worker jobs."""
-        worker_jobs = []
-        azure_batch_jobs = self.batch_client.job.list(
-            options=batchmodels.JobListOptions(filter="state eq 'active'")
-        )
-
-        for job in azure_batch_jobs:
-            task_counts = self.batch_client.job.get_task_counts(job.id)
-
-            if task_counts.active == 1 or task_counts.running == 1:
-                worker_jobs.append(WorkerJob(True))
-        return worker_jobs
+        # Count the number active and running tasks only within the Batch job
+        task_counts = self.batch_client.job.get_task_counts(self.args.job_id)
+        return [WorkerJob(True) for _ in range(task_counts.active + task_counts.running)]
 
     def start_worker_job(self):
         worker_image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
@@ -84,28 +73,12 @@ class AzureBatchWorkerManager(WorkerManager):
         work_dir_prefix = (
             self.args.worker_work_dir_prefix if self.args.worker_work_dir_prefix else "/tmp/"
         )
+
         # This needs to be a unique directory since Batch jobs may share a host
         work_dir = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
         command = self.build_command(worker_id, work_dir)
 
-        # Create a job using the pool
-        job_id = 'azure-{}-{}'.format(self.args.job_name, worker_id)
-        job = batch.models.JobAddParameter(
-            id=job_id,
-            display_name=self.args.job_name,
-            pool_info=batch.models.PoolInformation(pool_id=self.args.pool_id),
-            common_environment_settings=[
-                batch.models.EnvironmentSetting(
-                    name='CODALAB_USERNAME', value=os.environ.get('CODALAB_USERNAME')
-                ),
-                batch.models.EnvironmentSetting(
-                    name='CODALAB_PASSWORD', value=os.environ.get('CODALAB_PASSWORD')
-                ),
-            ],
-        )
-        self.batch_client.job.add(job, raw=True)
-
-        # Create a task in job
+        # Create a task within the job
         task_container_run_options = [
             '--cpus %d' % self.args.cpus,
             '--memory %dM' % self.args.memory_mb,
@@ -114,14 +87,23 @@ class AzureBatchWorkerManager(WorkerManager):
             '--user %s' % self.args.user,
         ]
 
+        if os.environ.get('CODALAB_USERNAME') and os.environ.get('CODALAB_PASSWORD'):
+            task_container_run_options.extend(
+                [
+                    '--env CODALAB_USERNAME=%s' % os.environ.get('CODALAB_USERNAME'),
+                    '--env CODALAB_PASSWORD=%s' % os.environ.get('CODALAB_PASSWORD'),
+                ]
+            )
+
         if self.args.gpus > 0:
             task_container_run_options.append('--gpus all')
 
-        # Allow worker to directly mount a directory.
+        # Allow worker to directly mount a directory
         if os.environ.get('CODALAB_SHARED_FILE_SYSTEM') == 'true':
             command.append('--shared-file-system')
-            bundle_mount = os.environ.get('CODALAB_BUNDLE_MOUNT')
-            task_container_run_options.append('--volume shared_dir:%s' % bundle_mount)
+            task_container_run_options.append(
+                '--volume shared_dir:%s' % os.environ.get('CODALAB_BUNDLE_MOUNT')
+            )
 
         # Configure Sentry
         if using_sentry():
@@ -130,12 +112,14 @@ class AzureBatchWorkerManager(WorkerManager):
             )
 
         command_line = "/bin/sh -c '{}'".format(' '.join(command))
-        logger.debug("Running as a task: {}".format(command_line))
+        logger.debug("Running the following as an Azure Batch task: {}".format(command_line))
 
         task_container_settings = batch.models.TaskContainerSettings(
             image_name=worker_image, container_run_options=' '.join(task_container_run_options)
         )
         task = batch.models.TaskAddParameter(
-            id=job_id, command_line=command_line, container_settings=task_container_settings,
+            id='cl_worker_{}'.format(worker_id),
+            command_line=command_line,
+            container_settings=task_container_settings,
         )
-        self.batch_client.task.add(job_id, task, raw=True)
+        self.batch_client.task.add(self.args.job_id, task)
