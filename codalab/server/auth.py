@@ -66,4 +66,6 @@ class RestOAuthHandler(object):
         except urllib.error.HTTPError as e:
             if e.code == 401:
                 return None
-            raise
+            raise e
+        except urllib.error.URLError:
+            print("Your login info is incorrect. Please double check")

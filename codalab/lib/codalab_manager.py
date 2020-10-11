@@ -49,6 +49,16 @@ from codalab.lib import formatting
 from codalab.model.worker_model import WorkerModel
 
 
+def exception_handler(exctype, value, traceback, debug_hook=sys.excepthook):
+    # All your trace are belong to us!
+    # your format
+    if exctype == PermissionError:
+        print("%s: %s" % (exctype.__name__, value))
+    else:
+        debug_hook(exctype, value, traceback)
+
+
+sys.excepthook = exception_handler
 MAIN_BUNDLE_SERVICE = 'https://worksheets.codalab.org'
 
 
