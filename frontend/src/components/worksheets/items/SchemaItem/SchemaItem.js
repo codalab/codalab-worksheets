@@ -425,7 +425,6 @@ class SchemaItem extends React.Component<{
                             paddingLeft: '10px',
                             width: '100%',
                             height: '20px',
-                            justifyContent: 'left',
                         }}
                         className={classNames(focused ? classes.highlight : '')}
                     >
