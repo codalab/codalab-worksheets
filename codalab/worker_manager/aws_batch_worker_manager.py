@@ -54,7 +54,7 @@ class AWSBatchWorkerManager(WorkerManager):
     def __init__(self, args):
         super().__init__(args)
         # We import this lazily, so a user doesn't have to install boto3 unless
-        # they absolutely want to run the AWS worker manager (versus if it's incidentally)
+        # they absolutely want to run the AWS worker manager, versus if it's incidentally
         # imported by other code (e.g., to access AWSBatchWorkerManager.DESCRIPTION , as done
         # in codalab/worker_manager/main.py ).
         try:
