@@ -11,6 +11,8 @@ import re
 import uuid
 from .worker_manager import WorkerManager, WorkerJob
 
+from codalab.lib.telemetry_util import CODALAB_SENTRY_INGEST, using_sentry
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,12 +68,13 @@ class AWSBatchWorkerManager(WorkerManager):
         jobs = []
         for status in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING']:
             response = self.batch_client.list_jobs(jobQueue=self.args.job_queue, jobStatus=status)
-            # Only record jobs if a job regex filter isn't provided or if the job's name completely matches
-            # a provided job regex filter.
-            if not self.args.job_filter or re.fullmatch(
-                self.args.job_filter, response.get("jobName", "")
-            ):
-                jobs.extend(response['jobSummaryList'])
+            for jobSummary in response['jobSummaryList']:
+                # Only record jobs if a job regex filter isn't provided or if the job's name completely matches
+                # a provided job regex filter.
+                if not self.args.job_filter or re.fullmatch(
+                    self.args.job_filter, jobSummary.get("jobName", "")
+                ):
+                    jobs.append(jobSummary)
         logger.info(
             'Workers: {}'.format(
                 ' '.join(job['jobId'] + ':' + job['status'] for job in jobs) or '(none)'
@@ -140,6 +143,11 @@ class AWSBatchWorkerManager(WorkerManager):
             )
             job_definition['containerProperties']['mountPoints'].append(
                 {'sourceVolume': 'shared_dir', 'containerPath': bundle_mount, 'readOnly': False}
+            )
+
+        if using_sentry():
+            job_definition["containerProperties"]["environment"].append(
+                {'name': 'CODALAB_SENTRY_INGEST_URL', 'value': CODALAB_SENTRY_INGEST}
             )
 
         # Create a job definition

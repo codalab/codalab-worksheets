@@ -230,6 +230,38 @@ Object {
                           class="MuiTouchRipple-root-238"
                         />
                       </button>
+                      <button
+                        aria-label="schema"
+                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        id="add-schema-button"
+                        tabindex="0"
+                        title="Add a new schema"
+                        type="button"
+                      >
+                        <span
+                          class="MuiButton-label-116"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                            focusable="false"
+                            role="presentation"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M0 0h24v24H0z"
+                              fill="none"
+                            />
+                            <path
+                              d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"
+                            />
+                          </svg>
+                          Schema
+                        </span>
+                        <span
+                          class="MuiTouchRipple-root-238"
+                        />
+                      </button>
                     </div>
                   </div>
                   <div
@@ -542,6 +574,7 @@ Object {
             >
               <div
                 class="Worksheet-worksheetDummyHeader-4"
+                id="worksheet_dummy_header"
               />
               <div
                 class="Worksheet-worksheetInner-3"
@@ -658,7 +691,7 @@ Object {
               </div>
               <button
                 class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-contained-126 MuiButton-containedPrimary-127 MuiButton-raised-129 MuiButton-raisedPrimary-130"
-                style="border-radius: 400px; position: fixed; bottom: 50px; right: 30px;"
+                style="border-radius: 400px; position: fixed; bottom: 50px; right: 30px; z-index: 10;"
                 tabindex="0"
                 type="button"
               >
@@ -992,6 +1025,38 @@ Object {
                         class="MuiTouchRipple-root-238"
                       />
                     </button>
+                    <button
+                      aria-label="schema"
+                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                      id="add-schema-button"
+                      tabindex="0"
+                      title="Add a new schema"
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-116"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M0 0h24v24H0z"
+                            fill="none"
+                          />
+                          <path
+                            d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"
+                          />
+                        </svg>
+                        Schema
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-238"
+                      />
+                    </button>
                   </div>
                 </div>
                 <div
@@ -1304,6 +1369,7 @@ Object {
           >
             <div
               class="Worksheet-worksheetDummyHeader-4"
+              id="worksheet_dummy_header"
             />
             <div
               class="Worksheet-worksheetInner-3"
@@ -1420,7 +1486,7 @@ Object {
             </div>
             <button
               class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-contained-126 MuiButton-containedPrimary-127 MuiButton-raised-129 MuiButton-raisedPrimary-130"
-              style="border-radius: 400px; position: fixed; bottom: 50px; right: 30px;"
+              style="border-radius: 400px; position: fixed; bottom: 50px; right: 30px; z-index: 10;"
               tabindex="0"
               type="button"
             >

@@ -1,6 +1,6 @@
 import React from 'react';
 import nock from 'nock';
-import { render, fireEvent, waitFor, screen } from '../utils/test-utils';
+import { render, waitFor, screen } from '../utils/test-utils';
 import Worksheet from '../components/worksheets/Worksheet/Worksheet';
 
 describe('render simple worksheet', () => {
