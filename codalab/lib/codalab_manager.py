@@ -343,6 +343,14 @@ class CodaLabManager(object):
                 root_user_id=self.root_user_id(),
                 system_user_id=self.system_user_id(),
             )
+        elif model_class == 'SQLiteModel':
+            from codalab.model.sqlite_model import SQLiteModel
+
+            model = SQLiteModel(
+                default_user_info=self.default_user_info(),
+                root_user_id=self.root_user_id(),
+                system_user_id=self.system_user_id(),
+            )
         else:
             raise UsageError('Unexpected model class: %s, expected MySQLModel' % (model_class,))
         return model
