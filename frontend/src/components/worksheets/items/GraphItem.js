@@ -50,7 +50,6 @@ class GraphItem extends React.Component {
         // columns, one for x and y.
         var ytox = {}; // Maps the names of the y columns to x columns
         var columns = [];
-        var totalNumPoints = 0;
         for (var i = 0; i < item.trajectories.length; i++) {
             // For each trajectory
             var info = item.trajectories[i];
@@ -71,7 +70,6 @@ class GraphItem extends React.Component {
             }
             columns.push(xcol);
             columns.push(ycol);
-            totalNumPoints += points.length;
         }
 
         return {

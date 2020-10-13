@@ -5,7 +5,6 @@ import { withStyles } from '@material-ui/core/styles';
 import { renderPermissions, getAfterSortKey, createAlertText } from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
-import ReactDOM from 'react-dom';
 import InformationModal from '../InformationModal/InformationModal';
 import WorksheetHeader from './WorksheetHeader';
 import {
@@ -70,6 +69,7 @@ class Worksheet extends React.Component {
             anchorEl: null,
             showNewRun: false,
             showNewText: false,
+            showNewSchema: false,
             uploadAnchor: null,
             showRerun: false,
             isValid: true,
@@ -215,6 +215,7 @@ class Worksheet extends React.Component {
         // TODO: This function should be cleaner, after my logic refactoring, the identifier
         //      shouldn't be necessary. However, if we want more control on what happens after
         //      bulk operation, this might be useful
+        let bundlesCount = this.state.uuidBundlesCheckedCount;
         if (check) {
             //A bundle is checked
             if (
@@ -223,7 +224,6 @@ class Worksheet extends React.Component {
             ) {
                 return;
             }
-            let bundlesCount = this.state.uuidBundlesCheckedCount;
             if (!(uuid in bundlesCount)) {
                 bundlesCount[uuid] = 0;
             }
@@ -253,7 +253,10 @@ class Worksheet extends React.Component {
                 delete this.state.uuidBundlesCheckedCount[uuid];
                 delete this.state.checkedBundles[uuid];
             } else {
-                this.state.uuidBundlesCheckedCount[uuid] -= 1;
+                bundlesCount[uuid] -= 1;
+                this.setState({
+                    uuidBundlesCheckedCount: bundlesCount,
+                });
                 delete this.state.checkedBundles[uuid][identifier];
             }
             if (Object.keys(this.state.uuidBundlesCheckedCount).length === 0) {
@@ -354,7 +357,6 @@ class Worksheet extends React.Component {
             this.setState({ openedDialog: DIALOG_TYPES.OPEN_KILL });
         } else if (cmd_type === 'copy' || cmd_type === 'cut') {
             let validBundles = [];
-            let cutBundleIds = [];
             let actualCopiedCounts = 0;
             let tableIDs = Object.keys(this.copyCallbacks).sort();
             tableIDs.forEach((tableID) => {
@@ -447,14 +449,11 @@ class Worksheet extends React.Component {
     pasteBundlesToWorksheet = () => {
         // Unchecks all bundles after pasting
         const data = JSON.parse(window.localStorage.getItem('CopiedBundles'));
-        let bundleString = '';
         let items = [];
         data.forEach((bundle) => {
-            bundleString += '[]{' + bundle.uuid + '}\n';
             items.push(bundle.uuid);
         });
         // remove the last new line character
-        bundleString = bundleString.substr(0, bundleString.length - 1);
         let worksheetUUID = this.state.ws.uuid;
         let after_sort_key;
         if (this.state.focusIndex !== -1 && this.state.focusIndex !== undefined) {
@@ -563,7 +562,7 @@ class Worksheet extends React.Component {
         );
     };
 
-    updateSchemaItem = (rows, ids, after_sort_key) => {
+    updateSchemaItem = (rows, ids, after_sort_key, create, deletion) => {
         // rows: list of string representing the new schema:
         //      % schema example
         //      % add uuid uuid [0:8]
@@ -573,7 +572,7 @@ class Worksheet extends React.Component {
         let url = `/rest/worksheets/${worksheetUUID}/add-items`;
         let actualData = { items: rows };
         actualData['item_type'] = 'directive';
-        actualData['ids'] = ids;
+        if (!create) actualData['ids'] = ids;
         actualData['after_sort_key'] = after_sort_key;
         $.ajax({
             url,
@@ -581,9 +580,15 @@ class Worksheet extends React.Component {
             contentType: 'application/json',
             type: 'POST',
             success: () => {
-                const moveIndex = false;
-                const param = { moveIndex };
-                this.reloadWorksheet(undefined, undefined, param);
+                if (deletion) {
+                    const textDeleted = true;
+                    const param = { textDeleted };
+                    this.reloadWorksheet(undefined, undefined, param);
+                } else {
+                    const moveIndex = false;
+                    const param = { moveIndex };
+                    this.reloadWorksheet(undefined, undefined, param);
+                }
             },
             error: (jqHXR) => {
                 alert(createAlertText(this.url, jqHXR.responseText));
@@ -592,12 +597,33 @@ class Worksheet extends React.Component {
     };
 
     setFocus = (index, subIndex, shouldScroll = true) => {
-        var info = this.state.ws.info;
+        let info = this.state.ws.info;
         // prevent multiple clicking from resetting the index
         if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex) {
             return;
         }
         const item = this.refs.list.refs['item' + index];
+
+        // Make sure that the screen doesn't scroll when the user normally press j / k,
+        // until the target element is completely not on the screen
+        if (shouldScroll) {
+            const element = subIndex
+                ? $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)
+                : $(`#codalab-worksheet-item-${index}`);
+
+            function isOnScreen(element) {
+                if (element.offset() === undefined) return false;
+                let elementOffsetTop = element.offset().top;
+                let elementHeight = element.height();
+                let screenScrollTop = $(window).scrollTop();
+                let screenHeight = $(window).height();
+                let scrollIsAboveElement = elementOffsetTop + elementHeight - screenScrollTop >= 0;
+                let elementIsVisibleOnScreen =
+                    screenScrollTop + screenHeight - elementOffsetTop >= 0;
+                return scrollIsAboveElement && elementIsVisibleOnScreen;
+            }
+            shouldScroll = !isOnScreen(element);
+        }
         if (item && (!item.props || !item.props.item)) {
             // Skip "no search results" items and scroll past them.
             const offset = index - this.state.focusIndex;
@@ -654,6 +680,7 @@ class Worksheet extends React.Component {
             focusedBundleUuidList: focusedBundleUuidList,
             showNewRun: false,
             showNewText: false,
+            showNewSchema: false,
             uploadAnchor: null,
             showNewRerun: false,
         });
@@ -667,7 +694,7 @@ class Worksheet extends React.Component {
         if (index === -1) {
             node = document.getElementById('worksheet_dummy_header');
         } else {
-            node = subIndex
+            node = document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
                 ? document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
                 : document.getElementById(`codalab-worksheet-item-${index}`);
         }
@@ -1034,7 +1061,15 @@ class Worksheet extends React.Component {
             if (this.hasEditPermission()) {
                 var editor = ace.edit('worksheet-editor');
                 if (saveChanges) {
-                    this.state.ws.info.source = editor.getValue().split('\n');
+                    this.setState({
+                        ws: {
+                            ...this.state.ws,
+                            info: {
+                                ...this.state.ws.info,
+                                source: editor.getValue().split('\n'),
+                            },
+                        },
+                    });
                 }
                 var rawIndex = editor.getCursorPosition().row;
                 this.setState({
@@ -1600,9 +1635,11 @@ class Worksheet extends React.Component {
                 showNewRun={this.state.showNewRun}
                 showNewText={this.state.showNewText}
                 showNewRerun={this.state.showNewRerun}
+                showNewSchema={this.state.showNewSchema}
                 onHideNewRun={() => this.setState({ showNewRun: false })}
                 onHideNewText={() => this.setState({ showNewText: false })}
                 onHideNewRerun={() => this.setState({ showNewRerun: false })}
+                onHideNewSchema={() => this.setState({ showNewSchema: false })}
                 handleCheckBundle={this.handleCheckBundle}
                 confirmBundleRowAction={this.confirmBundleRowAction}
                 setDeleteItemCallback={this.setDeleteItemCallback}
@@ -1637,6 +1674,7 @@ class Worksheet extends React.Component {
                     setAnchorEl={(e) => this.setState({ anchorEl: e })}
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
+                    onShowNewSchema={() => this.setState({ showNewSchema: true })}
                     uploadAnchor={uploadAnchor}
                     showUploadMenu={this.showUploadMenu}
                     closeUploadMenu={() => {
