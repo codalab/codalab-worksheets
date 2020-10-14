@@ -193,6 +193,19 @@ class Worksheet extends React.Component {
         }
     }
 
+    _createWsItemsIdDict(info) {
+        let wsItemsIdDict = {};
+        for (let i = 0; i < info.blocks.length; i++) {
+            if (info.blocks[i].bundles_spec) {
+                for (let j = 0; j < (this._numTableRows(info.blocks[i]) || 1); j++) {
+                    wsItemsIdDict[info.blocks[i].bundles_spec.bundle_infos[j].uuid] = [i, j];
+                }
+            } else {
+                wsItemsIdDict[info.blocks[i].ids[0]] = [i, 0];
+        }
+        return wsItemsIdDict;
+    }
+
     handleClickForDeselect = (event) => {
         //Deselecting when clicking outside worksheet_items component
         if (event.target === event.currentTarget) {
@@ -659,7 +672,7 @@ class Worksheet extends React.Component {
         let focusedBundleUuidList = [];
         if (index !== -1) {
             // index !== -1 means something is selected.
-            // focusedBundleUuidList is a list of uuids of all bundles after the selected bundle (itself included)
+            // focusedBundleUuidList is a list of ids of all items after the selected bundle (itself included)
             // Say the selected bundle has focusIndex 1 and subFocusIndex 2, then focusedBundleUuidList will include the uuids of
             // all the bundles that have focusIndex 1 and subFocusIndex >= 2, and also all the bundles that have focusIndex > 1
             for (let i = index; i < info.blocks.length; i++) {
@@ -670,6 +683,8 @@ class Worksheet extends React.Component {
                             info.blocks[i].bundles_spec.bundle_infos[j].uuid,
                         );
                     }
+                } else {
+                    focusedBundleUuidList.concat(info.blocks[i].ids);
                 }
             }
         }
@@ -856,7 +871,6 @@ class Worksheet extends React.Component {
                     var focusIndex = this.state.focusIndex;
                     var subFocusIndex = this.state.subFocusIndex;
                     var wsItems = this.state.ws.info.blocks;
-
                     if (focusIndex === 0 && subFocusIndex === 0) {
                         // Deselect all item when selecting up above the first item.
                         this.setFocus(-1, 0);
@@ -1355,22 +1369,34 @@ class Worksheet extends React.Component {
                             this.setFocus(focus >= 0 ? focus : 'end', 'end');
                         }
                     } else if (numOfBundles < this.state.numOfBundles) {
-                        // If the number of bundles decreases, then focus should be on the same bundle as before
-                        // unless that bundle doesn't exist anymore, in which case we select the one above it.
-                        // the deleted bundle is the only item of the table
-                        if (this.state.subFocusIndex === 0) {
-                            // the deleted item is the last item of the worksheet
-                            if (items.length === focus + 1) {
-                                this.setFocus(focus - 1, 0);
-                            } else {
-                                this.setFocus(focus, 0);
-                            }
-                            // the deleted bundle is the last item of the table
-                            // note that for some reason subFocusIndex begins with 1, not 0
-                        } else if (this._numTableRows(items[focus]) === this.state.subFocusIndex) {
-                            this.setFocus(focus, this.state.subFocusIndex - 1);
+                        // Bundles are deleted
+                        // When delete something, cursor should be after the thing that was deleted
+                        // The method also works when deleting multiple (non-consecutive) bundles.
+                        if (focus === -1) {
+                            // No focus has been set
+                            // Move focus to the virtual item
+                            this.setFocus(focus, 0);
                         } else {
-                            this.setFocus(focus, this.state.subFocusIndex);
+                            // Move focus to the next available item
+                            // First, create an id list containing the ids of all the items on the current page
+                            const wsItemsIdDict = this._createWsItemsIdDict(this.state.ws.info);
+                            let hasSetFocus = false;
+                            for (let k = 0; k < this.state.focusedBundleUuidList.length; k++) {
+                                // Find the first current available item by searching for its id
+                                if (this.state.focusedBundleUuidList[k] in wsItemsIdDict) {
+                                    this.setFocus(
+                                        wsItemsIdDict[this.state.focusedBundleUuidList[k]][0],
+                                        wsItemsIdDict[this.state.focusedBundleUuidList[k]][1],
+                                    );
+                                    hasSetFocus = true;
+                                    break;
+                                }
+                            }
+                            // If all the following items of the previous focused item have been delete
+                            // Move focus to the last item on the page.
+                            if (!hasSetFocus) {
+                                this.setFocus(items.length - 1, 'end');
+                            }
                         }
                     } else {
                         if (moveIndex) {
