@@ -134,6 +134,8 @@ class TableItem extends React.Component<{
         let bundleInfos = item.bundles_spec.bundle_infos;
         let headerItems = item.header;
         let headerHtml = headerItems.map((item, index) => {
+            item = item === 'uuid[0:8]' ? 'uuid' : item;
+            item = item === 'summary[0:1024]' ? 'summary' : item;
             return (
                 <TableCell
                     onMouseEnter={(e) => this.setState({ hovered: true })}
