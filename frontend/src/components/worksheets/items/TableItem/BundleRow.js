@@ -174,7 +174,8 @@ class BundleRow extends Component {
                         className='bundle-link'
                         target='_blank'
                         rel='noopener noreferrer'
-                        style={{ display: 'inline-block', width: 60 }}
+                        // Instead of setting a fixed width for the table cell, provide a width range to allow the cell be adaptive
+                        style={{ display: 'inline-block', minWidth: 60, maxWidth: 230 }}
                     >
                         {rowContent}
                     </a>
@@ -388,14 +389,14 @@ const styles = (theme) => ({
         verticalAlign: 'middle !important',
         border: 'none !important',
         padding: '0px 4px !important',
-        wordWrap: 'break-word',
+        wordWrap: 'break-word', // Allows unbreakable words to be broken to avoid overflow
     },
     noCheckBox: {
         maxWidth: 200,
         minWidth: 110,
     },
     withCheckBox: {
-        maxWidth: 200,
+        maxWidth: 230,
         minWidth: 130,
     },
     bundleDetail: {

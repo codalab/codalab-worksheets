@@ -1497,7 +1497,14 @@ class BundleModel(object):
             cl_worksheet.c.frozen,
             cl_worksheet.c.owner_id,
         ]
-        query = select(cols_to_select).distinct().where(clause).offset(offset).limit(limit)
+        query = (
+            select(cols_to_select)
+            .distinct()
+            .where(clause)
+            .offset(offset)
+            .order_by(desc(cl_worksheet.c.owner_id == user_id))
+            .limit(limit)
+        )
 
         # Sort
         if sort_key[0] is not None:
