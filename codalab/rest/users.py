@@ -12,11 +12,28 @@ from codalab.rest.schemas import (
     AdminUserSchema,
     AuthenticatedUserSchema,
     USER_READ_ONLY_FIELDS,
-    USER_ACCESSIBLE_FIELDS,
     UserSchema,
 )
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
 from codalab.rest.util import get_resource_ids
+
+
+USER_ACCESSIBLE_FIELDS = (
+    'name',
+    'user_name',
+    'first_name',
+    'last_name',
+    'affiliation',
+    'url',
+    'disk_used',
+    'joined',
+    'count',
+    'limit',
+    'offset',
+    'last',
+    'format',
+    'size',
+)
 
 
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)

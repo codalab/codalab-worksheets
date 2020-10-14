@@ -271,24 +271,6 @@ class UserSchema(Schema):
         type_ = 'users'
 
 
-USER_ACCESSIBLE_FIELDS = (
-    'name',
-    'user_name',
-    'first_name',
-    'last_name',
-    'affiliation',
-    'url',
-    'disk_used',
-    'joined',
-    'count',
-    'limit',
-    'offset',
-    'last',
-    'format',
-    'size',
-)
-
-
 class AuthenticatedUserSchema(UserSchema):
     email = fields.String()
     notifications = fields.Integer()
