@@ -1,10 +1,3 @@
-try:
-    import boto3
-except ModuleNotFoundError:
-    raise ModuleNotFoundError(
-        "Running the worker manager requires the boto3 module.\n"
-        "Please run: pip install boto3==1.9.228"
-    )
 import logging
 import os
 import re
@@ -60,6 +53,17 @@ class AWSBatchWorkerManager(WorkerManager):
 
     def __init__(self, args):
         super().__init__(args)
+        # We import this lazily, so a user doesn't have to install boto3 unless
+        # they absolutely want to run the AWS worker manager, versus if it's incidentally
+        # imported by other code (e.g., to access AWSBatchWorkerManager.DESCRIPTION , as done
+        # in codalab/worker_manager/main.py ).
+        try:
+            import boto3
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "Running the AWS worker manager requires the boto3 module.\n"
+                "Please run: pip install boto3"
+            )
         self.batch_client = boto3.client('batch', region_name=self.args.region)
 
     def get_worker_jobs(self):
