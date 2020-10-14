@@ -661,15 +661,7 @@ class Worksheet extends React.Component {
         if (subIndex === 'end') {
             subIndex = (this._numTableRows(info.blocks[index]) || 1) - 1;
         }
-        if (
-            index < -1 ||
-            index >= info.blocks.length ||
-            subIndex < -1 ||
-            subIndex >= (this._numTableRows(info.blocks[index]) || 1)
-        ) {
-            console.log('Out of bounds');
-            return; // Out of bounds (note index = -1 is okay)
-        }
+
         let focusedBundleUuidList = [];
         if (index !== -1) {
             // index !== -1 means something is selected.
@@ -689,6 +681,16 @@ class Worksheet extends React.Component {
                 }
             }
         }
+
+        // If we met a out of bound, we default it to the last item
+        // A protection mechanism to avoid possible error
+        if (index >= info.blocks.length) {
+            index = info.blocks.length - 1;
+            if (subIndex >= info.blocks[index].length || 1) {
+                subIndex = 0;
+            }
+        }
+
         // Change the focus - triggers updating of all descendants.
         this.setState({
             focusIndex: index,
