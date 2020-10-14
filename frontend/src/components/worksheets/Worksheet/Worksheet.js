@@ -597,12 +597,33 @@ class Worksheet extends React.Component {
     };
 
     setFocus = (index, subIndex, shouldScroll = true) => {
-        var info = this.state.ws.info;
+        let info = this.state.ws.info;
         // prevent multiple clicking from resetting the index
         if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex) {
             return;
         }
         const item = this.refs.list.refs['item' + index];
+
+        // Make sure that the screen doesn't scroll when the user normally press j / k,
+        // until the target element is completely not on the screen
+        if (shouldScroll) {
+            const element = subIndex
+                ? $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)
+                : $(`#codalab-worksheet-item-${index}`);
+
+            function isOnScreen(element) {
+                if (element.offset() === undefined) return false;
+                let elementOffsetTop = element.offset().top;
+                let elementHeight = element.height();
+                let screenScrollTop = $(window).scrollTop();
+                let screenHeight = $(window).height();
+                let scrollIsAboveElement = elementOffsetTop + elementHeight - screenScrollTop >= 0;
+                let elementIsVisibleOnScreen =
+                    screenScrollTop + screenHeight - elementOffsetTop >= 0;
+                return scrollIsAboveElement && elementIsVisibleOnScreen;
+            }
+            shouldScroll = !isOnScreen(element);
+        }
         if (item && (!item.props || !item.props.item)) {
             // Skip "no search results" items and scroll past them.
             const offset = index - this.state.focusIndex;
