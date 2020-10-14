@@ -865,13 +865,9 @@ class Worksheet extends React.Component {
                         (wsItems[focusIndex].mode === 'table_block' ||
                             wsItems[focusIndex].mode === 'subworksheets_block')
                     ) {
-                        // worksheet_item_interface and table_item_interface do the exact same thing anyway right now
-                        if (focusIndex === 0 && subFocusIndex === 0) {
-                            // stay on the first row
-                            return;
-                        }
                         if (subFocusIndex - 1 < 0) {
-                            this.setFocus(focusIndex - 1 < 0 ? 0 : focusIndex - 1, 'end'); // Move out of this table to the item above the current table
+                            // focusIndex must > 0
+                            this.setFocus(focusIndex - 1, 'end'); // Move out of this table to the item above the current table
                         } else {
                             this.setFocus(focusIndex, subFocusIndex - 1);
                         }
@@ -894,9 +890,13 @@ class Worksheet extends React.Component {
                         (wsItems[focusIndex].mode === 'table_block' ||
                             wsItems[focusIndex].mode === 'subworksheets_block')
                     ) {
-                        if (subFocusIndex + 1 >= this._numTableRows(wsItems[focusIndex])) {
+                        if (
+                            focusIndex < wsItems.length - 1 &&
+                            subFocusIndex + 1 >= this._numTableRows(wsItems[focusIndex])
+                        ) {
+                            console.log('last', focusIndex, subFocusIndex);
                             this.setFocus(focusIndex + 1, 0);
-                        } else {
+                        } else if (subFocusIndex + 1 < this._numTableRows(wsItems[focusIndex])) {
                             this.setFocus(focusIndex, subFocusIndex + 1);
                         }
                     } else {
