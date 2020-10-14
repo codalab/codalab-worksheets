@@ -202,6 +202,7 @@ class Worksheet extends React.Component {
                 }
             } else {
                 wsItemsIdDict[info.blocks[i].ids[0]] = [i, 0];
+            }
         }
         return wsItemsIdDict;
     }
