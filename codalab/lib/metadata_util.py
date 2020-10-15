@@ -110,8 +110,10 @@ def parse_metadata_form(bundle_subclass, form_result):
                 result[metadata_key] = remainder
             else:
                 try:
-                    result[metadata_key] = metadata_type(remainder) if remainder != None else None
-                except:
+                    result[metadata_key] = (
+                        metadata_type(remainder) if remainder is not None else None
+                    )
+                except Exception:
                     raise UsageError('Invalid value %s for type %s' % (remainder, metadata_type))
     if 'name' not in result:
         raise UsageError('No name specified; aborting')
