@@ -1318,7 +1318,6 @@ class Worksheet extends React.Component {
     reloadWorksheet = (
         partialUpdateItems,
         rawIndexAfterEditMode,
-        { moveIndex = false, textDeleted = false, searchDeleted = false } = {},
         { moveIndex = false, textDeleted = false, searchDeleted = false, uploadFiles = false } = {},
     ) => {
         if (partialUpdateItems === undefined) {
@@ -1357,7 +1356,6 @@ class Worksheet extends React.Component {
                             this.setFocus(focusIndexPair[0], focusIndexPair[1]);
                         }
                     } else if (
-                        this.state.numOfBundles !== -1 &&
                         (this.state.numOfBundles !== -1 &&
                             numOfBundles > this.state.numOfBundles) ||
                         uploadFiles
