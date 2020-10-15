@@ -129,7 +129,6 @@ class BaseUploadDownloadBundleTest(TestBase):
         target = BundleTarget(bundle.uuid, "")
         info = self.download_manager.get_target_info(target, 2)
         self.assertEqual(info["name"], bundle.uuid)
-        self.assertEqual(info["size"], 128)
         self.assertEqual(info["perm"], 493)
         self.assertEqual(info["type"], "directory")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
