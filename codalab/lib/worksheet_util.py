@@ -1008,6 +1008,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                     raw_to_block.append((len(blocks) - 1, 0))
             elif item_type == TYPE_DIRECTIVE:
                 command = get_command(value_obj)
+                raw_to_block_has_append = False
                 if command == '%' or command == '' or command is None:
                     # Comment
                     pass
@@ -1019,6 +1020,8 @@ def interpret_items(schemas, raw_items, db_model=None):
                     current_schema_ids.append(item_id)
                     current_schema_name = name
                     schemas[name] = current_schema = []
+                    raw_to_block.append((len(blocks) - 1 + len(current_schema_ids), 0))
+                    raw_to_block_has_append = True
                 elif command == 'addschema':
                     # Add to schema
                     if current_schema is None:
@@ -1055,7 +1058,8 @@ def interpret_items(schemas, raw_items, db_model=None):
                 else:
                     raise UsageError("unknown directive `%s`" % command)
 
-                raw_to_block.append(None)
+                if not raw_to_block_has_append:
+                    raw_to_block.append(None)
             else:
                 raise RuntimeError('Unknown worksheet item type: %s' % item_type)
 

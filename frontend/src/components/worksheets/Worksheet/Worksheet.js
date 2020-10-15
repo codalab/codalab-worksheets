@@ -679,7 +679,7 @@ class Worksheet extends React.Component {
                         );
                     }
                 } else {
-                    focusedBundleUuidList.concat(info.blocks[i].ids);
+                    focusedBundleUuidList = focusedBundleUuidList.concat(info.blocks[i].ids);
                 }
             }
         }
@@ -1319,6 +1319,7 @@ class Worksheet extends React.Component {
         partialUpdateItems,
         rawIndexAfterEditMode,
         { moveIndex = false, textDeleted = false, searchDeleted = false } = {},
+        { moveIndex = false, textDeleted = false, searchDeleted = false, uploadFiles = false } = {},
     ) => {
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
@@ -1357,7 +1358,9 @@ class Worksheet extends React.Component {
                         }
                     } else if (
                         this.state.numOfBundles !== -1 &&
-                        numOfBundles > this.state.numOfBundles
+                        (this.state.numOfBundles !== -1 &&
+                            numOfBundles > this.state.numOfBundles) ||
+                        uploadFiles
                     ) {
                         // If the number of bundles increases then the focus should be on the new bundle.
                         // if the current focus is not on a table
@@ -1412,7 +1415,7 @@ class Worksheet extends React.Component {
                             // When deleting text, we want the focus to stay at the same index,
                             // unless it is the last item in the worksheet, at which point the
                             // focus goes to the last item in the worksheet.
-                            this.setFocus(items.length === focus ? items.length - 1 : focus, 'end');
+                            this.setFocus(items.length === focus ? items.length - 1 : focus, 0);
                         }
                         if (searchDeleted) {
                             // Executed 'rm' command but no bundle deleted
