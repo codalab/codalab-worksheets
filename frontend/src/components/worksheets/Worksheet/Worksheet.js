@@ -200,8 +200,8 @@ class Worksheet extends React.Component {
                 for (let j = 0; j < (this._numTableRows(info.blocks[i]) || 1); j++) {
                     wsItemsIdDict[info.blocks[i].bundles_spec.bundle_infos[j].uuid] = [i, j];
                 }
-            } else if(info.blocks[i].ids) {
-                 wsItemsIdDict[info.blocks[i].ids[0]] = [i, 0];
+            } else if (info.blocks[i].ids) {
+                wsItemsIdDict[info.blocks[i].ids[0]] = [i, 0];
             }
         }
         return wsItemsIdDict;
@@ -309,7 +309,9 @@ class Worksheet extends React.Component {
                         draggable: true,
                     });
                 });
-                this.reloadWorksheet( (cmd==='rm'));
+                const searchDeleted = cmd === 'rm';
+                const param = { searchDeleted };
+                this.reloadWorksheet(undefined, undefined, param);
             })
             .fail((e) => {
                 this.setState({
@@ -599,7 +601,7 @@ class Worksheet extends React.Component {
                     const param = { textDeleted };
                     this.reloadWorksheet(undefined, undefined, param);
                 } else {
-                    const moveIndex = false;
+                    const moveIndex = true;
                     const param = { moveIndex };
                     this.reloadWorksheet(undefined, undefined, param);
                 }
@@ -1314,10 +1316,9 @@ class Worksheet extends React.Component {
     // The bundle_infos for bundles that don't need updating are also null.
     // If rawIndexAfterEditMode is defined, this reloadWorksheet is called right after toggling editMode. It should resolve rawIndex to (focusIndex, subFocusIndex) pair.
     reloadWorksheet = (
-        isDelete,
         partialUpdateItems,
         rawIndexAfterEditMode,
-        { moveIndex = false, textDeleted = false } = {},
+        { moveIndex = false, textDeleted = false, searchDeleted = false } = {},
     ) => {
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
@@ -1402,12 +1403,7 @@ class Worksheet extends React.Component {
                                 this.setFocus(items.length - 1, 'end');
                             }
                         }
-                    }
-                    else if(isDelete){
-                        // Executed 'rm' command but no bundle deleted
-                        this.setFocus(focus,this.state.subFocusIndex);
-                    }
-                    else{
+                    } else {
                         if (moveIndex) {
                             // for adding a new cell, we want the focus to be the one below the current focus
                             this.setFocus(focus >= 0 ? focus + 1 : items.length - 1, 0);
@@ -1418,7 +1414,12 @@ class Worksheet extends React.Component {
                             // focus goes to the last item in the worksheet.
                             this.setFocus(items.length === focus ? items.length - 1 : focus, 'end');
                         }
-                    } this.setState({
+                        if (searchDeleted) {
+                            // Executed 'rm' command but no bundle deleted
+                            this.setFocus(focus, this.state.subFocusIndex);
+                        }
+                    }
+                    this.setState({
                         updating: false,
                         version: this.state.version + 1,
                         numOfBundles: numOfBundles,
@@ -1445,7 +1446,6 @@ class Worksheet extends React.Component {
             this.setState({ ws: ws, version: this.state.version + 1 });
             this.checkRunBundle(ws.info);
         }
-
     };
 
     openWorksheet = (uuid) => {
