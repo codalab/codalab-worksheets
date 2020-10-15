@@ -31,8 +31,8 @@ NVIDIA_MOUNT_ERROR_REGEX = (
 )
 # This error happens when the memory requested by user is not enough to start a docker container
 MEMORY_LIMIT_ERROR_REGEX = (
-    r'[\s\S]*OCI runtime create failed[\s\S]*failed to write[\s\S]*'
-    r'memory.limit_in_bytes: device or resource busy[\s\S]*'
+    '[\s\S]*OCI runtime create failed[\s\S]*failed to write[\s\S]*'
+    'memory.limit_in_bytes: device or resource busy[\s\S]*'
 )
 
 logger = logging.getLogger(__name__)

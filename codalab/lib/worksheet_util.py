@@ -547,7 +547,7 @@ def apply_func(func, arg):
                 t = tokens[2].replace(esc_slash, '/')
                 arg = re.sub(s, t, arg)
             elif f.startswith('['):  # substring
-                m = re.match('\\[(.*):(.*)\\]', f)
+                m = re.match('\[(.*):(.*)\]', f)
                 if m:
                     start = int(m.group(1) or 0)
                     end = int(m.group(2) or len(arg))
