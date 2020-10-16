@@ -2,7 +2,9 @@ import copy
 import json
 
 from codalab.bundles import get_bundle_subclass
-from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship
+
+# JsonApiClient is used to explain the first argument of mimic_bundles, so keep it
+from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship  # NOQA: F401
 from codalab.common import UsageError
 from codalab.lib import worksheet_util
 from codalab.worker.bundle_state import BundleInfo
@@ -280,7 +282,6 @@ def mimic_bundles(
 
             prelude_items = []  # The prelude that we're building up
             for item in worksheet_info['items']:
-                just_added = False
 
                 if item['type'] == worksheet_util.TYPE_BUNDLE:
                     old_bundle_uuid = item['bundle']['id']
@@ -313,7 +314,6 @@ def mimic_bundles(
                                 params={'uuid': worksheet_uuid},
                             )
                             new_bundle_uuids_added.add(new_bundle_uuid)
-                            just_added = True
 
                 if (item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or item[
                     'type'

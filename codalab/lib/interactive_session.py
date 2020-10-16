@@ -175,7 +175,7 @@ class InteractiveSession:
     def _construct_final_command(self):
         try:
             candidate_commands = self._get_bash_history()
-        except:
+        except Exception:
             print(
                 'The history of bash commands could not be retrieved at path: %s'
                 % InteractiveSession._BASH_HISTORY_CONTAINER_PATH,
