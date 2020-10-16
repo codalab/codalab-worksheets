@@ -167,7 +167,7 @@ class MultiDiskBundleStore(object):
         try:
             print(partition_abs_path)
             path_util.check_isvalid(partition_abs_path, 'rm-partition')
-        except:
+        except Exception:
             print(
                 "Partition with name '%s' does not exist. Run `cl ls-partitions` to see a list of mounted partitions."
                 % partition,
@@ -239,7 +239,7 @@ class MultiDiskBundleStore(object):
             fname = os.path.basename(path)
             try:
                 return UUID_REGEX.match(fname).groups()[0]
-            except:
+            except Exception:
                 return None
 
         def _is_bundle(path):
@@ -258,7 +258,7 @@ class MultiDiskBundleStore(object):
                 uuid = _get_uuid(bundle_path)
                 # Screen for bundles stored on disk that are no longer in the database
                 bundle = db_bundle_by_uuid.get(uuid, None)
-                if bundle == None:
+                if bundle is None:
                     to_delete += [bundle_path]
                     continue
                 # Delete dependencies stored inside of READY or FAILED bundles
@@ -277,7 +277,7 @@ class MultiDiskBundleStore(object):
             for path in other_paths:
                 uuid = _get_uuid(path)
                 bundle = db_bundle_by_uuid.get(uuid, None)
-                if bundle == None:
+                if bundle is None:
                     to_delete += [path]
                     continue
                 ends_with_ext = (
@@ -329,16 +329,16 @@ class MultiDiskBundleStore(object):
             for bundle_path in bundle_paths:
                 uuid = _get_uuid(bundle_path)
                 bundle = db_bundle_by_uuid.get(uuid, None)
-                if bundle == None:
+                if bundle is None:
                     continue
-                if compute_data_hash or bundle.data_hash == None:
+                if compute_data_hash or bundle.data_hash is None:
                     dirs_and_files = (
                         path_util.recursive_ls(bundle_path)
                         if os.path.isdir(bundle_path)
                         else ([], [bundle_path])
                     )
                     data_hash = '0x%s' % path_util.hash_directory(bundle_path, dirs_and_files)
-                    if bundle.data_hash == None:
+                    if bundle.data_hash is None:
                         data_hash_recomputed += 1
                         print(
                             'Giving bundle %s data_hash %s' % (bundle_path, data_hash),
