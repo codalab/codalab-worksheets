@@ -318,6 +318,8 @@ class LinkedBundlePath:
         bundle_path (str): Path to the bundle contents in that particular storage.
 
         is_zip (bool): Whether this bundle is stored as a zip file on this storage medium stores folders. Only done currently by Azure Blob Storage.
+
+        uses_beam (bool): Whether this bundle's storage type requires using Apache Beam to interact with it.
         
         zip_subpath (str): If is_zip is True, returns the subpath within the zip file for the file that this BundlePath points to.
 
@@ -327,6 +329,7 @@ class LinkedBundlePath:
     storage_type: StorageType
     bundle_path: str
     is_zip: bool
+    uses_beam: bool
     zip_subpath: str
     bundle_uuid: str
 
@@ -339,6 +342,7 @@ def parse_linked_bundle_url(url):
         Returns a LinkedBundlePath instance to encode this information.
     """
     if url.startswith("azfs://"):
+        uses_beam = True
         storage_type = StorageType.AZURE_BLOB_STORAGE
         url = url[len("azfs://") :]
         storage_account, container, bundle_uuid, contents_file, *remainder = url.split("/", 4)
@@ -353,12 +357,14 @@ def parse_linked_bundle_url(url):
         storage_type = StorageType.FILE_STORAGE
         bundle_path = url
         is_zip = False
+        uses_beam = False
         zip_subpath = None
         bundle_uuid = None
     return LinkedBundlePath(
         storage_type=storage_type,
         bundle_path=bundle_path,
         is_zip=is_zip,
+        uses_beam=uses_beam,
         zip_subpath=zip_subpath,
         bundle_uuid=bundle_uuid,
     )

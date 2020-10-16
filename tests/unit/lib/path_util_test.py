@@ -124,6 +124,7 @@ class ParseBundleUrl(unittest.TestCase):
             "azfs://storageclwsdev0/bundles/uuid/contents.txt"
         )
         self.assertEqual(linked_bundle_path.storage_type, StorageType.AZURE_BLOB_STORAGE)
+        self.assertEqual(linked_bundle_path.uses_beam, True)
         self.assertEqual(
             linked_bundle_path.bundle_path, "azfs://storageclwsdev0/bundles/uuid/contents.txt"
         )
@@ -163,6 +164,7 @@ class ParseBundleUrl(unittest.TestCase):
             "/tmp/storageclwsdev0/bundles/uuid/contents.txt"
         )
         self.assertEqual(linked_bundle_path.storage_type, StorageType.FILE_STORAGE)
+        self.assertEqual(linked_bundle_path.uses_beam, False)
         self.assertEqual(
             linked_bundle_path.bundle_path, "/tmp/storageclwsdev0/bundles/uuid/contents.txt"
         )
