@@ -209,5 +209,5 @@ else:
                 result ^= _bin_to_long(u)
             return _long_to_bin(result, hex_format_string)
 
-        T = [F(x) for x in range(1, remainder)]
-        return b''.join(T) + F(remainder)[:r]
+        T = [F(x) for x in range(1, floor)]
+        return b''.join(T) + F(floor)[:r]
