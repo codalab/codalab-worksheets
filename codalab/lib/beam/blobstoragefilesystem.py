@@ -25,8 +25,6 @@ remove this file.
 Azure Blob Storage.
 """
 
-from __future__ import absolute_import
-
 from future.utils import iteritems
 
 import codalab.lib.beam.blobstorageio as blobstorageio
