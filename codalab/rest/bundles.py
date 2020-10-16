@@ -77,7 +77,7 @@ def _fetch_bundles():
            given base worksheet
         3. or a reverse index of the form `^N` referring to the Nth-to-last
            bundle on the given base worksheet.
-     - `keywords`: Search keyword. May be provided multiples times for multiple
+     - `keywords`: Search keyword. May be provided multiple times for multiple
         keywords. Bare keywords match the names and descriptions of bundles.
         Examples of other special keyword forms:
         - `name=<name>            ` : More targeted search of using metadata fields.
@@ -184,7 +184,9 @@ def build_bundles_document(bundle_uuids):
 
     if 'owner' in include_set:
         owner_ids = set(b['owner_id'] for b in bundles if b['owner_id'] is not None)
-        json_api_include(document, UserSchema(), local.model.get_users(owner_ids))
+        json_api_include(
+            document, UserSchema(), local.model.get_users(user_ids=owner_ids)['results']
+        )
 
     if 'group_permissions' in include_set:
         for bundle in bundles:
