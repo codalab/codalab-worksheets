@@ -84,9 +84,7 @@ def fetch_worksheet(uuid):
     if 'owner' in include_set:
         user_ids.add(worksheet['owner_id'])
     if user_ids:
-        json_api_include(
-            document, UserSchema(), local.model.get_users(user_ids=user_ids)['results']
-        )
+        json_api_include(document, UserSchema(), local.model.get_users(user_ids))
 
     # Include subworksheets
     if 'items.subworksheets' in include_set:
@@ -139,9 +137,7 @@ def fetch_worksheets():
     if 'owner' in include_set:
         owner_ids = {w['owner_id'] for w in worksheets}
         if owner_ids:
-            json_api_include(
-                document, UserSchema(), local.model.get_users(user_ids=owner_ids)['results']
-            )
+            json_api_include(document, UserSchema(), local.model.get_users(owner_ids))
 
     # Include permissions
     if 'group_permissions' in include_set:
