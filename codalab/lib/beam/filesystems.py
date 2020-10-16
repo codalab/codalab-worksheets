@@ -1,18 +1,23 @@
 import os
+from apache_beam.io.filesystems import FileSystems
 from azure.storage.blob import BlobServiceClient
+from .blobstoragefilesystem import BlobStorageFileSystem
 
-"""Sets up a connection to Azure Blob Storage.
-Other modules can use the "client" and "AZURE_BLOB_ACCOUNT_NAME"
-variables in order to interact with the connected
-Azure Blob Storage Account.
+"""
+Modifies Apache Beam to add support for Azure Blob Storage filesystems.
+
+Based on work from https://github.com/apache/beam/pull/12581. Once that PR is added into Beam,
+and a new version (2.25.0) is released, we will switch to using the actual Beam library instead.
 """
 
 # Test connection string for Azurite (local development)
 TEST_CONN_STR = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
 
-AZURE_BLOB_CONNECTION_STRING = (
-    os.environ.get("CODALAB_AZURE_BLOB_CONNECTION_STRING") or TEST_CONN_STR
-)
+# The Apache beam BlobStorageFileSystem expects the AZURE_STORAGE_CONNECTION_STRING environment variable
+# to be set to the correct Azure Blob Storage connection string.
+AZURE_BLOB_CONNECTION_STRING = os.environ.get("CODALAB_AZURE_BLOB_CONNECTION_STRING") or TEST_CONN_STR
+
+os.environ['AZURE_STORAGE_CONNECTION_STRING'] = AZURE_BLOB_CONNECTION_STRING 
 
 client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNECTION_STRING)
 

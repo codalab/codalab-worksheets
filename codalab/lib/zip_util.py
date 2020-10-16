@@ -89,6 +89,7 @@ def pack_files_for_upload(
     exclude_patterns=None,
     force_compression=False,
     ignore_file=None,
+    use_azure_blob_beta=False,
 ):
     """
     Create a single flat tarfile containing all the sources.
@@ -134,19 +135,34 @@ def pack_files_for_upload(
         source = sources[0]
         filename = os.path.basename(source)
         if os.path.isdir(sources[0]):
-            archived = tar_gzip_directory(
-                source,
-                follow_symlinks=follow_symlinks,
-                exclude_patterns=exclude_patterns,
-                ignore_file=ignore_file,
-            )
-            return {
-                'fileobj': archived,
-                'filename': filename + '.tar.gz',
-                'filesize': None,
-                'should_unpack': True,
-                'should_simplify': False,
-            }
+            if use_azure_blob_beta:
+                archived = zip_directory(
+                    source,
+                    follow_symlinks=follow_symlinks,
+                    exclude_patterns=exclude_patterns,
+                    ignore_file=ignore_file,
+                )
+                return {
+                    'fileobj': archived,
+                    'filename': filename + '.zip',
+                    'filesize': None,
+                    'should_unpack': False,
+                    'should_simplify': False,
+                }
+            else:
+                archived = tar_gzip_directory(
+                    source,
+                    follow_symlinks=follow_symlinks,
+                    exclude_patterns=exclude_patterns,
+                    ignore_file=ignore_file,
+                )
+                return {
+                    'fileobj': archived,
+                    'filename': filename + '.tar.gz',
+                    'filesize': None,
+                    'should_unpack': True,
+                    'should_simplify': False,
+                }
         elif path_is_archive(source):
             return {
                 'fileobj': open(source, mode='rb'),

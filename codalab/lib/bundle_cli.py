@@ -1200,6 +1200,13 @@ class BundleCLI(object):
                 action='store_true',
                 default=False,
             ),
+            Commands.Argument(
+                '-a',
+                '--use-azure-blob-beta',
+                help='Use Azure Blob Storage to store files (beta feature).',
+                action='store_true',
+                default=True if os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") else False,
+            ),
         )
         + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
@@ -1248,6 +1255,7 @@ class BundleCLI(object):
                     'unpack': False,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
+                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1265,6 +1273,7 @@ class BundleCLI(object):
                     'git': args.git,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
+                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1293,6 +1302,7 @@ class BundleCLI(object):
                 exclude_patterns=args.exclude_patterns,
                 force_compression=args.force_compression,
                 ignore_file=args.ignore,
+                use_azure_blob_beta=args.use_azure_blob_beta,
             )
 
             # Create bundle.
@@ -1321,6 +1331,7 @@ class BundleCLI(object):
                         'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
+                        'use_azure_blob_beta': args.use_azure_blob_beta,
                     },
                     progress_callback=progress.update,
                 )
@@ -3230,7 +3241,6 @@ class BundleCLI(object):
         aliases=('wsearch', 'ws'),
         help=[
             'List worksheets on the current instance matching the given keywords (returns 10 results by default).',
-            'Searcher\'s own worksheets are prioritized.',
             '  wls tag=paper           : List worksheets tagged as "paper".',
             '  wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.',
             '  wls .mine               : List my worksheets.',

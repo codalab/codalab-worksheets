@@ -8,6 +8,7 @@ import sys
 import time
 from io import BytesIO
 from http.client import HTTPResponse
+from codalab.lib import path_util
 
 from bottle import abort, get, post, put, delete, local, request, response
 from codalab.bundles import get_bundle_subclass, UploadedBundle
@@ -37,7 +38,7 @@ from codalab.rest.schemas import (
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
 from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin, ProtectedPlugin
-from codalab.worker.bundle_state import State
+from codalab.worker.bundle_state import State, LinkFormat
 from codalab.worker.download_util import BundleTarget
 
 logger = logging.getLogger(__name__)
@@ -627,9 +628,16 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             abort(http.client.BAD_REQUEST, 'Head and tail not supported for directory blobs.')
         # Always tar and gzip directories
         gzipped_stream = False  # but don't set the encoding to 'gzip'
-        mimetype = 'application/gzip'
-        filename += '.tar.gz'
+
+        if target_info.get('fs') == 'azure':
+            mimetype = 'application/zip'
+            filename += '.zip'
+        else:
+            mimetype = 'application/gzip'
+            filename += '.tar.gz'
+
         fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
+
     elif target_info['type'] == 'file':
         # Let's gzip to save bandwidth.
         # For simplicity, we do this even if the file is already a packed
@@ -646,7 +654,6 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         mimetype, encoding = mimetypes.guess_type(filename, strict=False)
         if encoding is not None:
             mimetype = 'application/octet-stream'
-
         if byte_range and (head_lines or tail_lines):
             abort(http.client.BAD_REQUEST, 'Head and range not supported on the same request.')
         elif byte_range:
@@ -707,6 +714,9 @@ def _update_bundle_contents_blob(uuid):
     - `state_on_success`: (optional) Update the bundle state to this state if
       the upload completes successfully. Must be either 'ready' or 'failed'.
       Default is 'ready'.
+    - `use_azure_blob_beta`: (optional) Use Azure Blob Storage to store the bundle.
+      Default is False. This argument is ignored (and Azure Blob Storage is always
+      used) if the CODALAB_ALWAYS_USE_AZURE_BLOB_BETA environment variable is set on the client.
     """
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
@@ -716,6 +726,7 @@ def _update_bundle_contents_blob(uuid):
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
     finalize_on_success = query_get_bool('finalize_on_success', default=True)
+    use_azure_blob_beta = query_get_bool('use_azure_blob_beta', default=False)
     final_state = request.query.get('state_on_success', default=State.READY)
     if finalize_on_success and final_state not in State.FINAL_STATES:
         abort(
@@ -736,7 +747,28 @@ def _update_bundle_contents_blob(uuid):
         if request.query.filename:
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
-        if sources:
+
+        if use_azure_blob_beta:
+            local.model.update_bundle(
+                bundle,
+                {
+                    'metadata': {
+                        # TODO(Ashwin): don't hardcode storage account name.
+                        'link_url': f"azfs://storageclwsdev0/bundles/{bundle.uuid}{'/contents.zip' if filename.endswith('.zip') else '/contents'}",
+                        'link_format': LinkFormat.ZIP
+                        if filename.endswith('.zip')
+                        else LinkFormat.RAW,
+                    },
+                },
+            )
+            bundle = local.model.get_bundle(uuid)
+
+        bundle_link_url = getattr(bundle.metadata, "link_url", None)
+        # Don't upload to bundle store if using --link with a URL that
+        # already exists. If using the Azure Blob Storage backend,
+        # we do want to perform the upload to the URL specified in
+        # bundle.metadata.link_url.
+        if sources and (not bundle_link_url or use_azure_blob_beta):
             local.upload_manager.upload_to_bundle_store(
                 bundle,
                 sources=sources,
@@ -747,7 +779,6 @@ def _update_bundle_contents_blob(uuid):
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
             )  # See UploadManager for full explanation of 'simplify'
-            bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
             local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
@@ -894,8 +925,9 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         # check first is needs to be deleted
         bundle_link_url = bundle_link_urls.get(uuid)
         if bundle_link_url:
-            # Don't physically delete linked bundles.
-            pass
+            # Don't physically delete linked bundles, unless they're from Azure.
+            if bundle_link_url.startswith("azfs://"):
+                path_util.remove(bundle_link_url)
         else:
             bundle_location = local.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):

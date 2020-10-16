@@ -24,6 +24,7 @@ import sys
 
 from codalab.common import precondition, UsageError
 from codalab.lib import file_util
+from codalab.lib.beam.filesystems import FileSystems
 
 
 # Block sizes and canonical strings used when hashing files.
@@ -298,10 +299,33 @@ def rename(old_path, new_path):
     subprocess.call(['mv', old_path, new_path])
 
 
+def parse_azure_url(url):
+    # file in directory: "azfs://storageclwsdev0/bundles/uuid/contents.zip/file1"
+    # single file: "azfs://storageclwsdev0/bundles/uuid/contents"
+    # Returns bundle_uuid, zip_path, zip_subpath
+    if url.startswith("azfs://"):
+        url = url[len("azfs://") :]
+    _storage_account, _container, bundle_uuid, _contents_file, *remainder = url.split("/", 4)
+    if len(remainder):
+        zip_subpath = remainder[0]
+    else:
+        zip_subpath = ""
+    if _contents_file.endswith(".zip"):
+        return (
+            bundle_uuid,
+            f"azfs://{_storage_account}/{_container}/{bundle_uuid}/{_contents_file}",
+            zip_subpath,
+        )
+    return bundle_uuid, None, None
+
+
 def remove(path):
     """
     Remove the given path, whether it is a directory, file, or link.
     """
+    if path.startswith("azfs://"):
+        FileSystems.delete([path])
+        return
     check_isvalid(path, 'remove')
     set_write_permissions(path)  # Allow permissions
     if os.path.islink(path):

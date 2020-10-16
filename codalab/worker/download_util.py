@@ -1,4 +1,8 @@
 import os
+from codalab.lib.beam.filesystems import FileSystems
+from codalab.worker.bundle_state import LinkFormat
+from zipfile import ZipFile
+from codalab.lib.path_util import parse_azure_url
 
 
 class PathException(Exception):
@@ -60,7 +64,11 @@ def get_target_info(bundle_path, target, depth):
     """
     final_path = _get_normalized_target_path(bundle_path, target)
 
-    if not os.path.islink(final_path) and not os.path.exists(final_path):
+    if (
+        not final_path.startswith("azfs://")
+        and not os.path.islink(final_path)
+        and not FileSystems.exists(final_path)
+    ):
         raise PathException(
             'Path {} in bundle {} not found'.format(target.bundle_uuid, target.subpath)
         )
@@ -91,8 +99,12 @@ BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 
 
 def _get_normalized_target_path(bundle_path, target):
-    real_bundle_path = os.path.realpath(bundle_path)
-    normalized_target_path = os.path.normpath(_get_target_path(real_bundle_path, target.subpath))
+    real_bundle_path = (
+        bundle_path if bundle_path.startswith("azfs://") else os.path.realpath(bundle_path)
+    )
+    normalized_target_path = _get_target_path(real_bundle_path, target.subpath)
+    if not normalized_target_path.startswith("azfs://"):
+        normalized_target_path = os.path.normpath(normalized_target_path)
     error_path = _get_target_path(target.bundle_uuid, target.subpath)
 
     if not normalized_target_path.startswith(real_bundle_path):
@@ -111,6 +123,8 @@ def _get_target_path(bundle_path, path):
 
 
 def _compute_target_info(path, depth):
+    if path.startswith("azfs://"):
+        return _compute_target_info_externalized(path, depth)
     result = {}
     result['name'] = os.path.basename(path)
     stat = os.lstat(path)
@@ -131,3 +145,84 @@ def _compute_target_info(path, depth):
     if result is None:
         raise PathException()
     return result
+
+
+def _compute_target_info_externalized(path, depth):
+    """Computes target info for a file that is externalized on a location
+    such as Azure, by using the Apache Beam FileSystem APIs."""
+    # TODO (Ashwin): properly return permissions.
+    bundle_uuid, zip_path, zip_subpath = parse_azure_url(path)
+    if zip_path is None:
+        # Single file
+        file = FileSystems.match([path])[0].metadata_list[0]
+        return {
+            'name': bundle_uuid,
+            'type': 'file',
+            'size': file.size_in_bytes,
+            'perm': 0o777,
+        }
+    elif not zip_subpath:
+        # We want the entire zip file, not a subpath within it.
+        with ZipFile(FileSystems.open(zip_path)) as f:
+            base = {
+                'name': bundle_uuid,
+                'type': 'directory',
+                'size': sum([zipinfo.file_size for zipinfo in f.infolist()]),
+                'perm': 0o777,
+            }
+    else:
+        with ZipFile(FileSystems.open(zip_path)) as f:
+            zipinfo = f.getinfo(zip_subpath)
+        if not zipinfo.is_dir():
+            return {
+                'name': zipinfo.filename,
+                'type': 'file',
+                'size': zipinfo.file_size,
+                'perm': 0o777,
+                'fs': 'azure',
+            }
+        base = {
+            'name': zipinfo.filename,
+            'type': 'directory',
+            'size': zipinfo.file_size,
+            'perm': 0o777,
+        }
+
+    def get_last_part(path):
+        parts = path.split("/")
+        return parts[-1]
+
+    dirs = [
+        zipinfo.filename
+        for zipinfo in f.infolist()
+        if zipinfo.is_dir() and not zipinfo.filename.startswith(zip_subpath)
+    ]
+    # raise Exception([(any(zipinfo.filename.startswith(i) for i in dirs), zipinfo.filename) for zipinfo in f.infolist() if zipinfo.filename.startswith(zip_subpath)])
+    base['e'] = [
+        path.replace(zip_subpath, "").rstrip("/") + "/" + zipinfo.filename.lstrip("/")
+        for zipinfo in f.infolist()
+        if zipinfo.filename.startswith(zip_subpath)
+        and not (any(zipinfo.filename.startswith(i) for i in dirs) and not zipinfo.is_dir())
+    ]
+    if depth > 0:
+        base['contents'] = [
+            (
+                {
+                    'name': get_last_part(zipinfo.filename),
+                    'type': 'directory' if zipinfo.is_dir() else 'file',
+                    'size': zipinfo.file_size,
+                    'perm': 0o777,
+                }
+                if not zipinfo.is_dir()
+                else _compute_target_info_externalized(
+                    f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.zip/{zipinfo.filename}",
+                    depth - 1,
+                )
+            )
+            for zipinfo in f.infolist()
+            if zipinfo.filename.startswith(zip_subpath)
+            and not (any(zipinfo.filename.startswith(i) for i in dirs) and not zipinfo.is_dir())
+        ]
+    base['fs'] = 'azure'
+    # base['name'] = base['name'].rstrip("/")
+    return base
