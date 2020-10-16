@@ -122,7 +122,7 @@ class UploadManager(object):
 
             if len(sources) == 1 and not bundle_path.startswith("azfs://"):
                 self._simplify_directory(bundle_path)
-        except:
+        except UsageError:
             if FileSystems.exists(bundle_path):
                 path_util.remove(bundle_path)
             raise

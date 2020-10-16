@@ -1,5 +1,4 @@
 import http.client
-import json
 import logging
 import mimetypes
 import os
@@ -11,7 +10,8 @@ from http.client import HTTPResponse
 from codalab.lib import path_util
 
 from bottle import abort, get, post, put, delete, local, request, response
-from codalab.bundles import get_bundle_subclass, UploadedBundle
+from codalab.bundles import get_bundle_subclass
+from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import precondition, UsageError, NotFoundError
 from codalab.lib import canonicalize, spec_util, worksheet_util
 from codalab.lib.server_util import (

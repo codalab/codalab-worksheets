@@ -1,7 +1,6 @@
 import logging
 import os
 from contextlib import closing
-import fnmatch
 
 from codalab.common import http_error_to_exception, precondition, UsageError, NotFoundError
 from codalab.worker import download_util

@@ -5,7 +5,7 @@ a list of CodaLab bundle system command-line arguments and executes them.
 Each of the supported commands corresponds to a method on this class.
 This function takes an argument list and does the action.
 
-For example: 
+For example:
   cl upload foo
 
 results in the following:
@@ -829,7 +829,7 @@ class BundleCLI(object):
             # Convert the command after '---' to a shell-escaped version of the string.
             shell_escaped_command = [quote(x) for x in argv[i + 1 :]]
             argv = argv[0:i] + [' '.join(shell_escaped_command)]
-        except:
+        except Exception:
             pass
 
         return argv
@@ -1062,11 +1062,11 @@ class BundleCLI(object):
                 return False
             try:
                 return int(value)
-            except:
+            except Exception:
                 pass
             try:
                 return float(value)
-            except:
+            except Exception:
                 pass
             return value
 
@@ -2559,7 +2559,7 @@ class BundleCLI(object):
                 break
 
         while True:
-            if not run_state in State.FINAL_STATES:
+            if run_state not in State.FINAL_STATES:
                 run_state = client.fetch('bundles', bundle_uuid)['state']
 
             # Read data.
@@ -3912,8 +3912,8 @@ class BundleCLI(object):
         if 'events' in info:
             for event in info['events']:
                 row = [
-                    event.end_time.strftime('%Y-%m-%d %X') if event.end_time != None else '',
-                    '%.3f' % event.duration if event.duration != None else '',
+                    event.end_time.strftime('%Y-%m-%d %X') if event.end_time is not None else '',
+                    '%.3f' % event.duration if event.duration is not None else '',
                     '%s(%s)' % (event.user_name, event.user_id),
                     event.command,
                     event.args,

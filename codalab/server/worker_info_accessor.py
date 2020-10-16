@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 import datetime
-from typing import Callable, Any, Optional, Union
+from typing import Callable, Union
 
 
 def refresh_cache(
