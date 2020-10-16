@@ -133,9 +133,9 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.assertEqual(info["type"], "directory")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
         # Directory size can vary based on platform, so removing it before checking equality.
-        info["contents"][0][1].pop("size")
+        info["contents"][1].pop("size")
         self.assertEqual(
-            info["contents"][0],
+            info["contents"],
             [
                 {'name': 'item.txt', 'size': 11, 'perm': self.DEFAULT_PERM, 'type': 'file'},
                 {
