@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.22_
+_version 0.5.23_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -912,22 +912,22 @@ Return information about a worksheet. Calls
 - resolve_interpreted_items: get more information about a worksheet.
 In the future, for large worksheets, might want to break this up so
 that we can render something basic.
-Return: 
+Return:
     worksheet_info dict{}:
         key:[value_type] <description>
-        blocks:[list] 
+        blocks:[list]
                 Resolved worksheet blocks from raw_items.
-                    Bundles will be grouped into table block items, 
+                    Bundles will be grouped into table block items,
                     text items might be grouped into one markdown block etc.
         source:[list] source lines
-        raw_to_block:[list] 
+        raw_to_block:[list]
                         Raw_items to its block index pair.
                             For example, assume the first resolved block item is a bundle table that has 2 rows,
                             then the 2nd element in the list would be [0, 1]
                             [0, 1]: 0 means the item belongs to the first block,
                                     1 means the item is the second item of the block (2nd bundle in our example)
                             NOTE: Used for setting focus on frontend
-        block_to_raw:[dict] 
+        block_to_raw:[dict]
                         Maps the blocks (table, markdown, records) to their corresponding source line indices,
                         it's mostly a reverse mapping of raw_to_block, by mostly: raw_to_block has some bug,
                         please refer to worksheet_utils flush_bundles function.
@@ -938,13 +938,11 @@ Return:
                         [1, 0]: 9
                         This means the first blocks' first item corresponds to the first line in source,
                         the second item corresponds to the second line in source
-                        The second block corresponds the 10th line in source. 
+                        The second block corresponds the 10th line in source.
                         2-8 can be skipped for multiple reasons: blank lines, comments, schema lines etc.
-                            NOTE: Used for setting focus on frontend                                      
-
+                            NOTE: Used for setting focus on frontend
 This endpoint can be called with &brief=1 in order to give an abbreviated version,
 which does not resolve searches or wsearches.
-
 To return an interpreted worksheet that only resolves a particular search/wsearch,
 pass in the search query to the "directive" argument. The value for this argument
 must be a search/wsearch query -- for example, &directive=search 0x .limit=100

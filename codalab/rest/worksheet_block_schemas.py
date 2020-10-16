@@ -3,10 +3,8 @@ Marshmallow schemas that represent worksheet block.
 Used for serializing resource dicts into JSON API documents, and vice-versa.
 The schemas also perform some basic validation.
 """
-from bottle import local
-from marshmallow import Schema as PlainSchema, ValidationError, validate, validates_schema
-from marshmallow_jsonapi import Schema, fields
-import sys
+from marshmallow import Schema as PlainSchema, validate
+from marshmallow_jsonapi import fields
 
 
 # Enum that represents different modes for a block.

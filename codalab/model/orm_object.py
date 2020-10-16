@@ -9,7 +9,6 @@ non-id columns of a SQLAlchemy table.
 from typing import Tuple, Union
 
 from codalab.common import precondition
-import datetime
 
 
 class ORMObject(object):

@@ -9,11 +9,7 @@ from bottle import abort, local, request
 
 from codalab.bundles import PrivateBundle
 from codalab.lib import bundle_util
-from codalab.model.tables import (
-    GROUP_OBJECT_PERMISSION_ALL,
-    GROUP_OBJECT_PERMISSION_NONE,
-    GROUP_OBJECT_PERMISSION_READ,
-)
+from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.objects.permission import check_bundles_have_read_permission, unique_group
 
 
@@ -106,7 +102,7 @@ def get_bundle_infos(
         parent2children = model.get_children_uuids(readable)
 
         # Gather all children bundle uuids and fetch permissions
-        child_uuids = [uuid for l in parent2children.values() for uuid in l]
+        child_uuids = [uuid for v in parent2children.values() for uuid in v]
         child_perms = _get_user_bundle_permissions(model, child_uuids)
 
         # Lookup bundle names
@@ -125,7 +121,7 @@ def get_bundle_infos(
         # just need a single host worksheet per bundle uuid. This is much faster than fetching all
         # worksheet uuid's per bundle.
         host_worksheets = model.get_host_worksheet_uuids(readable, 5)
-        worksheet_uuids = [uuid for l in host_worksheets.values() for uuid in l]
+        worksheet_uuids = [uuid for v in host_worksheets.values() for uuid in v]
         worksheet_names = _get_readable_worksheet_names(model, worksheet_uuids)
 
         for bundle_uuid, host_uuids in host_worksheets.items():
@@ -143,7 +139,7 @@ def get_bundle_infos(
     if get_host_worksheets:
         host_worksheets = model.get_all_host_worksheet_uuids(readable)
         # Gather all worksheet uuids
-        worksheet_uuids = [uuid for l in host_worksheets.values() for uuid in l]
+        worksheet_uuids = [uuid for v in host_worksheets.values() for uuid in v]
         worksheet_names = _get_readable_worksheet_names(model, worksheet_uuids)
 
         # Fill the info
@@ -249,7 +245,7 @@ def get_group_info(group_spec, need_admin, access_all_groups=False):
         group_info = unique_group(local.model, group_spec, user_id=user_id)
 
     # If not root and need admin access, but don't have it, raise error.
-    if not is_root_user and need_admin and group_info.get('is_admin') == False:
+    if not is_root_user and need_admin and group_info.get('is_admin') is False:
         abort(http.client.FORBIDDEN, 'You are not the admin of group %s.' % group_spec)
 
     # No one can admin the public group (not even root), because it's a special group.

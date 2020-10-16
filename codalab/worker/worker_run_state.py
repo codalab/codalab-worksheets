@@ -68,7 +68,7 @@ class RunStage(object):
     WORKER_STATE_TO_SERVER_STATE[FINISHED] = State.READY
 
     """
-    This stage will collect bundles in terminal states and 
+    This stage will collect bundles in terminal states and
     sent them back to the server with RESTAGED state
     """
     RESTAGED = 'RUN_STAGE.RESTAGED'
