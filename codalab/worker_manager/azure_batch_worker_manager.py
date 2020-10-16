@@ -94,9 +94,6 @@ class AzureBatchWorkerManager(WorkerManager):
                 ]
             )
 
-        if self.args.gpus > 0:
-            task_container_run_options.append("--gpus 'all'")
-
         # Allow worker to directly mount a directory
         if os.environ.get('CODALAB_SHARED_FILE_SYSTEM') == 'true':
             command.append('--shared-file-system')
