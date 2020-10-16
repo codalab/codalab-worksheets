@@ -26,6 +26,8 @@ from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
+from codalab.objects.user import User
+from codalab.model.tables import NOTIFICATIONS_IMPORTANT
 
 import argparse
 import json
@@ -1011,6 +1013,50 @@ def test_worksheet_tags(ctx):
     # Delete tags
     _run_command([cl, 'wedit', wname, '--tags'])
     check_contains(r'Tags:\s+###', _run_command([cl, 'ls', '-w', wuuid]))
+
+
+@TestModule.register('uls')
+def test(ctx):
+    prev_time = datetime.now().isoformat()
+    # Create & switch new user
+    create_user(ctx, 'non_root_user')
+    switch_user('non_root_user')
+
+    # check non-root user access
+    # check .joined_after
+    check_contains(
+        'non_root_user', _run_command([cl, 'uls', '.joined_after=' + prev_time, '-f', 'user_name'])
+    )
+
+    # check .count
+    check_equals('1', _run_command([cl, 'uls', '.joined_after=' + prev_time, '.count']))
+
+    # check non-root user doesn't have access
+    check_contains(
+        'access to search for these fields', _run_command([cl, 'uls', '.active_after=' + prev_time, '-f', 'user_name'])
+    )
+    # check root user access
+    switch_user('codalab')  # root user
+
+    # check .active_after
+    check_contains(
+        'non_root_user', _run_command([cl, 'uls', '.active_after=' + prev_time, '-f', 'user_name'])
+    )
+
+    # check .disk_used_more_than
+    check_contains(
+        'non_root_user', _run_command([cl, 'uls', '.disk_used_less_than=' + '1%', '-f', 'user_name'])
+    )
+
+    # check .time_used_less_than
+    check_contains(
+        'non_root_user', _run_command([cl, 'uls', '.time_used_less_than=' + '1%', '-f', 'user_name'])
+    )
+
+    # check user defined fields
+    check_contains(
+        '3', _run_command([cl, 'uls', '.time_used_less_than=' + '1%', '-f', 'parallel_run_quota'])
+    )
 
 
 @TestModule.register('freeze')
