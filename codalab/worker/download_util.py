@@ -1,4 +1,8 @@
 import os
+from codalab.lib.beam.filesystems import FileSystems
+from codalab.worker.bundle_state import LinkFormat
+from zipfile import ZipFile
+from codalab.lib.path_util import parse_linked_bundle_url
 
 
 class PathException(Exception):
@@ -60,7 +64,11 @@ def get_target_info(bundle_path, target, depth):
     """
     final_path = _get_normalized_target_path(bundle_path, target)
 
-    if not os.path.islink(final_path) and not os.path.exists(final_path):
+    if (
+        not parse_linked_bundle_url(final_path).uses_beam
+        and not os.path.islink(final_path)
+        and not os.path.exists(final_path)
+    ):
         raise PathException(
             'Path {} in bundle {} not found'.format(target.bundle_uuid, target.subpath)
         )
@@ -91,8 +99,14 @@ BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 
 
 def _get_normalized_target_path(bundle_path, target):
-    real_bundle_path = os.path.realpath(bundle_path)
-    normalized_target_path = os.path.normpath(_get_target_path(real_bundle_path, target.subpath))
+    real_bundle_path = (
+        bundle_path
+        if parse_linked_bundle_url(bundle_path).uses_beam
+        else os.path.realpath(bundle_path)
+    )
+    normalized_target_path = _get_target_path(real_bundle_path, target.subpath)
+    if not parse_linked_bundle_url(normalized_target_path).uses_beam:
+        normalized_target_path = os.path.normpath(normalized_target_path)
     error_path = _get_target_path(target.bundle_uuid, target.subpath)
 
     if not normalized_target_path.startswith(real_bundle_path):
@@ -111,6 +125,8 @@ def _get_target_path(bundle_path, path):
 
 
 def _compute_target_info(path, depth):
+    if parse_linked_bundle_url(path).uses_beam:
+        return _compute_target_info_beam(path, depth)
     result = {}
     result['name'] = os.path.basename(path)
     stat = os.lstat(path)
@@ -131,3 +147,75 @@ def _compute_target_info(path, depth):
     if result is None:
         raise PathException()
     return result
+
+
+def _compute_target_info_beam(path, depth):
+    """Computes target info for a file that is externalized on a location
+    such as Azure, by using the Apache Beam FileSystem APIs."""
+    # TODO (Ashwin): properly return permissions.
+    linked_bundle_path = parse_linked_bundle_url(path)
+    if not linked_bundle_path.is_zip:
+        # Single file
+        file = FileSystems.match([path])[0].metadata_list[0]
+        return {
+            'name': linked_bundle_path.bundle_uuid,
+            'type': 'file',
+            'size': file.size_in_bytes,
+            'perm': 0o777,
+        }
+    elif not linked_bundle_path.zip_subpath:
+        # We want the entire zip file, not a subpath within it.
+        with ZipFile(FileSystems.open(linked_bundle_path.bundle_path)) as f:
+            base = {
+                'name': linked_bundle_path.bundle_uuid,
+                'type': 'directory',
+                'size': sum([zipinfo.file_size for zipinfo in f.infolist()]),
+                'perm': 0o777,
+            }
+    else:
+        with ZipFile(FileSystems.open(linked_bundle_path.bundle_path)) as f:
+            zipinfo = f.getinfo(linked_bundle_path.zip_subpath)
+        if not zipinfo.is_dir():
+            return {
+                'name': zipinfo.filename,
+                'type': 'file',
+                'size': zipinfo.file_size,
+                'perm': 0o777,
+                'fs': 'azure',
+            }
+        base = {
+            'name': zipinfo.filename,
+            'type': 'directory',
+            'size': zipinfo.file_size,
+            'perm': 0o777,
+        }
+
+    def get_last_part(path):
+        parts = path.split("/")
+        return parts[-1]
+
+    dirs = [
+        zipinfo.filename
+        for zipinfo in f.infolist()
+        if zipinfo.is_dir() and not zipinfo.filename.startswith(linked_bundle_path.zip_subpath)
+    ]
+    if depth > 0:
+        base['contents'] = [
+            (
+                {
+                    'name': get_last_part(zipinfo.filename),
+                    'type': 'directory' if zipinfo.is_dir() else 'file',
+                    'size': zipinfo.file_size,
+                    'perm': 0o777,
+                }
+                if not zipinfo.is_dir()
+                else _compute_target_info_beam(
+                    f"azfs://storageclwsdev0/bundles/{linked_bundle_path.bundle_uuid}/contents.zip/{zipinfo.filename}",
+                    depth - 1,
+                )
+            )
+            for zipinfo in f.infolist()
+            if zipinfo.filename.startswith(linked_bundle_path.zip_subpath)
+            and not (any(zipinfo.filename.startswith(i) for i in dirs) and not zipinfo.is_dir())
+        ]
+    return base

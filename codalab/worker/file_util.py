@@ -11,7 +11,8 @@ from zipfile import ZipFile
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from apache_beam.io.filesystem import CompressionTypes
-from apache_beam.io.filesystems import FileSystems
+from codalab.lib.beam.filesystems import FileSystems
+from codalab.lib.path_util import parse_linked_bundle_url
 import tempfile
 
 NONE_PLACEHOLDER = '<none>'
@@ -108,7 +109,7 @@ def zip_directory(
         tmp_zip_name = os.path.join(tmp, "tmp.zip")
         args = [
             'zip',
-            '-rq',
+            '-r',  # -q
             # Unlike with tar_gzip_directory, we cannot send output to stdout because of this bug in zip
             # (https://bugs.launchpad.net/ubuntu/+source/zip/+bug/1892338). Thus, we have to write to a
             # temporary file and then read the output.
@@ -204,7 +205,17 @@ def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSE
     """
     Opens the given file. Can be in a directory.
     """
-    return FileSystems.open(file_path, mode, compression_type)
+    linked_bundle_path = parse_linked_bundle_url(file_path)
+    if (
+        linked_bundle_path.uses_beam
+        and linked_bundle_path.is_zip
+        and linked_bundle_path.zip_subpath
+    ):
+        with ZipFile(FileSystems.open(linked_bundle_path.bundle_path, compression_type)) as f:
+            return f.open(
+                linked_bundle_path.zip_subpath, 'r'
+            )  # zipfile.open only supports 'r', not 'rb'
+    return FileSystems.open(file_path, mode)
 
 
 def gzip_file(file_path):
@@ -412,6 +423,16 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
     If ignore_nonexistent_path is True and the input path is nonexistent, the value
     0 is returned. Else, an exception is raised (FileNotFoundError).
     """
+    if parse_linked_bundle_url(path).uses_beam:
+        result = get_path_size(path)
+        patterns = [
+            os.path.join(path, "", "**")
+        ]  # Adds trailing slash if not already there -- this is needed so that on somewhere like S3, we correctly match directory contents, not files starting with the same prefix.
+        for child in FileSystems.match(patterns)[0].metadata_list:
+            if child.path not in exclude_names:
+                result += child.size_in_bytes
+        return result
+
     try:
         result = os.lstat(path).st_size
     except FileNotFoundError:
@@ -435,16 +456,14 @@ def remove_path(path):
     """
     Removes a path if it exists.
     """
-    # We need to include this first if statement
-    # to allow local broken symbolic links to be deleted
-    # as well (which aren't matched by the Beam methods).
-    if os.path.islink(path):
-        os.remove(path)
-    elif get_path_exists(path):
-        FileSystems.delete([path])
+    filesystem = FileSystems.get_filesystem(path)
+    if not filesystem.exists(path):
+        return
+    FileSystems.delete([path])
 
 
 def path_is_parent(parent_path, child_path):
+    # TODO(Ashwin): fix.
     """
     Given a parent_path and a child_path, determine if the child path
     is a strict subpath of the parent_path. In the case that the resolved

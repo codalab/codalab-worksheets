@@ -4,6 +4,8 @@ import shutil
 
 from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
+from codalab.lib.beam.filesystems import FileSystems
+from codalab.lib.path_util import parse_linked_bundle_url
 
 
 class UploadManager(object):
@@ -58,17 +60,19 @@ class UploadManager(object):
             else self._default_exclude_patterns
         )
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
-        if bundle_link_url:
-            # Don't do anything for linked bundles.
-            return
-        bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
+        bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
+        linked_bundle_path = parse_linked_bundle_url(bundle_path)
         try:
-            path_util.make_directory(bundle_path)
+            if not linked_bundle_path.uses_beam:
+                path_util.make_directory(bundle_path)
             # Note that for uploads with a single source, the directory
             # structure is simplified at the end.
             for source in sources:
                 is_url, is_local_path, is_fileobj, filename = self._interpret_source(source)
-                source_output_path = os.path.join(bundle_path, filename)
+                if not linked_bundle_path.uses_beam:
+                    source_output_path = os.path.join(bundle_path, filename)
+                else:
+                    source_output_path = bundle_path
                 if is_url:
                     if git:
                         source_output_path = file_util.strip_git_ext(source_output_path)
@@ -111,13 +115,15 @@ class UploadManager(object):
                             simplify_archive=simplify_archives,
                         )
                     else:
-                        with open(source_output_path, 'wb') as out:
+                        # Uploading zip files from Azure (in which case unpack is False),
+                        # or uploading a single file.
+                        with FileSystems.create(source_output_path) as out:
                             shutil.copyfileobj(source[1], out)
 
-            if len(sources) == 1:
+            if len(sources) == 1 and not linked_bundle_path.uses_beam:
                 self._simplify_directory(bundle_path)
         except UsageError:
-            if os.path.exists(bundle_path):
+            if FileSystems.exists(bundle_path):
                 path_util.remove(bundle_path)
             raise
 
@@ -171,9 +177,14 @@ class UploadManager(object):
         Modifies |path| in place: If the |path| directory contains exactly
         one file / directory, then replace |path| with that file / directory.
         """
+        if parse_linked_bundle_url(path).uses_beam:
+            if child_path is None:
+                child_path = FileSystems.match([path + "/*"])[0].metadata_list[0].path
+            FileSystems.rename([child_path], [path])
+            return
+
         if child_path is None:
             child_path = os.listdir(path)[0]
-
         temp_path = path + crypt_util.get_random_string()
         path_util.rename(path, temp_path)
         child_path = os.path.join(temp_path, child_path)
@@ -182,7 +193,7 @@ class UploadManager(object):
 
     def has_contents(self, bundle):
         # TODO: make this non-fs-specific.
-        return os.path.exists(self._bundle_store.get_bundle_location(bundle.uuid))
+        return FileSystems.exists(self._bundle_store.get_bundle_location(bundle.uuid))
 
     def cleanup_existing_contents(self, bundle):
         self._bundle_store.cleanup(bundle.uuid, dry_run=False)
