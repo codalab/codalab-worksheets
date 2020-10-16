@@ -5,7 +5,7 @@ a list of CodaLab bundle system command-line arguments and executes them.
 Each of the supported commands corresponds to a method on this class.
 This function takes an argument list and does the action.
 
-For example: 
+For example:
   cl upload foo
 
 results in the following:
@@ -717,14 +717,19 @@ class BundleCLI(object):
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         else:
             client_is_explicit = spec_util.client_is_explicit(spec)
-            client, spec = self.parse_spec(spec)
+            client, parsed_spec = self.parse_spec(spec)
             # If we're on the same client, then resolve spec with respect to
             # the current worksheet.
             if client_is_explicit:
                 base_worksheet_uuid = None
             else:
                 _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            worksheet_uuid = self.resolve_worksheet_uuid(client, base_worksheet_uuid, spec)
+            try:
+                worksheet_uuid = self.resolve_worksheet_uuid(
+                    client, base_worksheet_uuid, parsed_spec
+                )
+            except ValueError:
+                raise UsageError('Invalid spec: "{}"'.format(spec))
         return client, worksheet_uuid
 
     @staticmethod
@@ -824,7 +829,7 @@ class BundleCLI(object):
             # Convert the command after '---' to a shell-escaped version of the string.
             shell_escaped_command = [quote(x) for x in argv[i + 1 :]]
             argv = argv[0:i] + [' '.join(shell_escaped_command)]
-        except:
+        except Exception:
             pass
 
         return argv
@@ -1057,11 +1062,11 @@ class BundleCLI(object):
                 return False
             try:
                 return int(value)
-            except:
+            except Exception:
                 pass
             try:
                 return float(value)
-            except:
+            except Exception:
                 pass
             return value
 
@@ -2543,7 +2548,7 @@ class BundleCLI(object):
                 break
 
         while True:
-            if not run_state in State.FINAL_STATES:
+            if run_state not in State.FINAL_STATES:
                 run_state = client.fetch('bundles', bundle_uuid)['state']
 
             # Read data.
@@ -3225,6 +3230,7 @@ class BundleCLI(object):
         aliases=('wsearch', 'ws'),
         help=[
             'List worksheets on the current instance matching the given keywords (returns 10 results by default).',
+            'Searcher\'s own worksheets are prioritized.',
             '  wls tag=paper           : List worksheets tagged as "paper".',
             '  wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.',
             '  wls .mine               : List my worksheets.',
@@ -3896,8 +3902,8 @@ class BundleCLI(object):
         if 'events' in info:
             for event in info['events']:
                 row = [
-                    event.end_time.strftime('%Y-%m-%d %X') if event.end_time != None else '',
-                    '%.3f' % event.duration if event.duration != None else '',
+                    event.end_time.strftime('%Y-%m-%d %X') if event.end_time is not None else '',
+                    '%.3f' % event.duration if event.duration is not None else '',
                     '%s(%s)' % (event.user_name, event.user_id),
                     event.command,
                     event.args,

@@ -33,11 +33,9 @@ import os
 import psutil
 import re
 import sys
-import tempfile
 import textwrap
 import time
 from distutils.util import strtobool
-from urllib.parse import urlparse
 
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import CODALAB_VERSION, PermissionError, UsageError
@@ -339,6 +337,14 @@ class CodaLabManager(object):
 
             model = MySQLModel(
                 engine_url=self.config['server']['engine_url'],
+                default_user_info=self.default_user_info(),
+                root_user_id=self.root_user_id(),
+                system_user_id=self.system_user_id(),
+            )
+        elif model_class == 'SQLiteModel':
+            from codalab.model.sqlite_model import SQLiteModel
+
+            model = SQLiteModel(
                 default_user_info=self.default_user_info(),
                 root_user_id=self.root_user_id(),
                 system_user_id=self.system_user_id(),

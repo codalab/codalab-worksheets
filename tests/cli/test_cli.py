@@ -86,7 +86,7 @@ def current_worksheet():
     """
     m = re.search('(http.*?)/worksheets/(.*?) \((.*?)\)', _run_command([cl, 'work']))
     assert m is not None
-    worksheet_host, worksheet_uuid, worksheet_name = m.group(1), m.group(2), m.group(3)
+    worksheet_host, worksheet_name = m.group(1), m.group(3)
     return worksheet_host + "::" + worksheet_name
 
 
@@ -276,7 +276,8 @@ def _run_command(
         request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "10m".
         request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m".
         request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed).
-        request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands. Defaults to "python:3.6.10-slim-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
+        request_docker_image (str, optional): Value of the --request-docker-image argument passed to "cl run" commands.
+                                              Defaults to "python:3.6.10-slim-buster". We do not use the default CodaLab CPU image so that we can speed up tests.
 
     Returns:
         str: Command output.
@@ -557,6 +558,12 @@ class TestModule(object):
 
 
 ############################################################
+
+
+@TestModule.register('unittest')
+def test_localhost(ctx):
+    """Test if `cl work [domainname]::` works"""
+    _run_command([cl, 'work', 'localhost::'])
 
 
 @TestModule.register('unittest')
@@ -2305,6 +2312,11 @@ def test_edit(ctx):
 
     # invalid field value
     _run_command([cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1)
+
+
+@TestModule.register('work')
+def test(ctx):
+    uuid = _run_command([cl, 'work', 'nonexistent::'], expected_exit_code=1)
 
 
 if __name__ == '__main__':

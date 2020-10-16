@@ -106,7 +106,7 @@ class Metadata(object):
         for spec in metadata_specs:
             if spec.key in self._metadata_keys:
                 value = getattr(self, spec.key)
-                if value == None:
+                if value is None:
                     continue
                 values = value if spec.type == list else (value,)
                 for value in values:
