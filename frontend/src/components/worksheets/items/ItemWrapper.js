@@ -28,7 +28,16 @@ class ItemWrapper extends React.Component {
 
         const { isDummyItem } = item;
         return (
-            <div className={isDummyItem ? '' : classes.container} id={id}>
+            <div
+                className={
+                    isDummyItem
+                        ? ''
+                        : item.mode === 'schema_block'
+                        ? classes.schemaContainer
+                        : classes.container
+                }
+                id={id}
+            >
                 {!isDummyItem && <div className={classes.main}>{children}</div>}
                 {showNewRun && (
                     <div className={classes.insertBox}>
@@ -84,6 +93,11 @@ const styles = (theme) => ({
     container: {
         position: 'relative',
         marginBottom: 20,
+        zIndex: 5,
+    },
+    schemaContainer: {
+        position: 'relative',
+        marginBottom: 0,
         zIndex: 5,
     },
     main: {
