@@ -14,7 +14,6 @@ exclude = '''
    | dist
    | build
    | frontend
-   | codalab/lib/beam/blobstoragefilesystem.py
-   | codalab/lib/beam/blobstorageio.py
+   | codalab/lib/beam
 )/
 '''
