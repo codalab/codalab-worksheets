@@ -1,3 +1,4 @@
+# type: ignore
 """
 The following is a file copied from https://github.com/apache/beam/pull/12581. Once that PR is added into Beam,
 and a new version (2.25.0) is released, we will switch to using the actual Beam library instead and
