@@ -2316,7 +2316,7 @@ def test_edit(ctx):
 
 @TestModule.register('work')
 def test(ctx):
-    uuid = _run_command([cl, 'work', 'nonexistent::'], expected_exit_code=1)
+    _run_command([cl, 'work', 'nonexistent::'], expected_exit_code=1)
 
 
 if __name__ == '__main__':

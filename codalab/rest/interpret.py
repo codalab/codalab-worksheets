@@ -62,7 +62,7 @@ def _interpret_search():
     }
     ```
     """
-    return interpret_search(request.json)
+    return interpret_search(request.json)  # NOQA - F821: undefined function name
 
 
 @post('/interpret/wsearch', apply=ProtectedPlugin())
