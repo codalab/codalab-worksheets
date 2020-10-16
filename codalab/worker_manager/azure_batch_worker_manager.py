@@ -34,7 +34,6 @@ class AzureBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--job-id', type=str, help='ID of the Azure Batch job to add tasks to',
         )
-        # TODO: add task name -Tony
         subparser.add_argument(
             '--cpus', type=int, default=1, help='Default number of CPUs for each worker'
         )
