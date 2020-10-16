@@ -33,7 +33,7 @@ class SMTPEmailer(Emailer):
         self.server_email = server_email
         self.port = port
         self.use_tls = use_tls
-        self.do_login = self.password != None
+        self.do_login = self.password is not None
 
     def send_email(
         self, subject, body, recipient, sender=None, mime_type='plain', charset='us-ascii'

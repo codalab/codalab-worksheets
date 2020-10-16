@@ -1,8 +1,6 @@
 from codalab.worker.bundle_state import State
-from codalab.bundles.run_bundle import RunBundle
-from codalab.lib.spec_util import generate_uuid
 from freezegun import freeze_time
-from tests.unit.server.bundle_manager import BASE_METADATA, BaseBundleManagerTest
+from tests.unit.server.bundle_manager import BaseBundleManagerTest
 
 
 class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):

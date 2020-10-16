@@ -5,6 +5,8 @@ import traceback
 import logging
 
 import docker
+from docker import DockerClient
+
 from codalab.lib.telemetry_util import capture_exception, using_sentry
 import codalab.worker.docker_utils as docker_utils
 

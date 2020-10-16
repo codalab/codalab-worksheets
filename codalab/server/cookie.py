@@ -24,7 +24,7 @@ class LoginCookie(object):
 
     def save(self):
         """
-        Save cookie on the Bottle response object. 
+        Save cookie on the Bottle response object.
         """
         self.clear()
         response.set_cookie(
