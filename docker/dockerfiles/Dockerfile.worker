@@ -34,6 +34,7 @@ RUN echo "{\"credsStore\": \"ecr-login\"}" >> ~/.docker/config.json
 
 WORKDIR /opt
 RUN mkdir ${WORKDIR}/codalab
+RUN mkdir ${WORKDIR}/scripts
 
 # Install dependencies
 COPY requirements.txt requirements.txt
@@ -44,6 +45,7 @@ RUN python3.6 -m pip install --user --no-cache-dir --upgrade pip; \
 COPY codalab/lib codalab/lib
 COPY codalab/worker codalab/worker
 COPY codalab/common.py codalab/common.py
+COPY scripts/detect-ec2-spot-preemption.sh scripts/detect-ec2-spot-preemption.sh
 COPY setup.py setup.py
 
 RUN python3 -m pip install --no-cache-dir -e .

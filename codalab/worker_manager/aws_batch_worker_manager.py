@@ -96,7 +96,9 @@ class AWSBatchWorkerManager(WorkerManager):
         )
         # This needs to be a unique directory since Batch jobs may share a host
         work_dir = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
-        command = self.build_command(worker_id, work_dir)
+        command = "/opt/scripts/detect-ec2-spot-preemption.sh & " + self.build_command(
+            worker_id, work_dir
+        )
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-batch-jobdefinition.html
         # Need to mount:
