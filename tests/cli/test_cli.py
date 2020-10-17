@@ -26,8 +26,6 @@ from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
-from codalab.objects.user import User
-from codalab.model.tables import NOTIFICATIONS_IMPORTANT
 
 import argparse
 import json
@@ -2361,7 +2359,7 @@ def test_edit(ctx):
 
 
 @TestModule.register('work')
-def test(ctx):
+def test_nonexistent(ctx):
     _run_command([cl, 'work', 'nonexistent::'], expected_exit_code=1)
 
 

@@ -175,7 +175,7 @@ def fetch_users():
     usernames.discard('')  # str.split(',') will return '' on empty strings
 
     keywords = query_get_list('keywords')
-    if usernames == None and keywords == None:
+    if usernames is None and keywords is None:
         abort(
             http.client.BAD_REQUEST, "Request must include 'keywords' query parameter or usernames"
         )
