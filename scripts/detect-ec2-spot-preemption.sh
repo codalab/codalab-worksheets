@@ -14,6 +14,7 @@ do
         echo "Sending SIGTERM to CodaLab workers"
         # Kill all cl-workers in the EC2 instance.
         pgrep -f "cl-worker" | xargs kill
+        sleep 5
     else
         # Instance not yet marked for termination, so sleep and check again in 5 seconds.
         sleep 5
