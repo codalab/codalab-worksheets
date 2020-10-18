@@ -18,4 +18,4 @@ echo "EC2 spot instance scheduled for shutdown."
 echo "Sending SIGTERM to CodaLab workers"
 # Kill all cl-workers in the EC2 instance.
 pgrep -f "cl-worker" | xargs kill
-echo "Sendt SIGTERM to CodaLab workers"
+echo "Sent SIGTERM to CodaLab workers"
