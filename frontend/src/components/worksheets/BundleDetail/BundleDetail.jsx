@@ -15,6 +15,7 @@ class BundleDetail extends React.Component<
         // Callback on metadata change.
         bundleMetadataChanged: () => void,
         onClose: () => void,
+        onOpen: () => void,
     },
     {
         errorMessages: string[],
@@ -73,6 +74,7 @@ class BundleDetail extends React.Component<
                 clearInterval(this.timer);
             }
         }, 4000);
+        this.props.onOpen();
     }
 
     componentWillUnmount() {
@@ -196,7 +198,7 @@ class BundleDetail extends React.Component<
   
     render(): React.Node {
         const { uuid, bundleMetadataChanged,
-            onUpdate, onClose,
+            onUpdate, onClose, onOpen,
             rerunItem, showNewRerun,
             showDetail, handleDetailClick,
             editPermission } = this.props;
