@@ -9,6 +9,7 @@ class WorksheetItem extends React.Component {
     constructor(props) {
         super(props);
         this.state = Immutable({});
+        this.rowRefs = {}; // Map of {elementId: ref}
     }
 
     capture_keys() {
