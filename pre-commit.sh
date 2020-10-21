@@ -27,3 +27,4 @@ npm run --prefix frontend format
 
 # Check if there are any mypy errors
 venv/bin/mypy .
+venv/bin/flake8 .

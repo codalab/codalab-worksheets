@@ -2,7 +2,9 @@ import http.client
 import socket
 import sys
 import six
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.parse
+import urllib.error
 
 from codalab.common import http_error_to_exception, precondition, ensure_str, UsageError
 from codalab.worker.rest_client import RestClient, RestClientException
@@ -289,7 +291,7 @@ class JsonApiClient(RestClient):
             for key, relationship in obj_data.get('relationships', {}).items():
                 linkage = relationship['data']
                 if isinstance(linkage, list):
-                    obj[key] = [unpack_linkage(l) for l in linkage]
+                    obj[key] = [unpack_linkage(v) for v in linkage]
                 else:
                     obj[key] = unpack_linkage(linkage)
             return obj

@@ -343,7 +343,7 @@ Query parameters:
        given base worksheet
     3. or a reverse index of the form `^N` referring to the Nth-to-last
        bundle on the given base worksheet.
- - `keywords`: Search keyword. May be provided multiples times for multiple
+ - `keywords`: Search keyword. May be provided multiple times for multiple
     keywords. Bare keywords match the names and descriptions of bundles.
     Examples of other special keyword forms:
     - `name=<name>            ` : More targeted search of using metadata fields.
@@ -751,7 +751,16 @@ Takes the following query parameters:
     filter[user_name]=name1,name2,...
     filter[email]=email1,email2,...
 
-Fetches all users that match any of these usernames or emails.
+Query parameters:
+
+- `keywords`: Search keyword. May be provided multiple times for multiple
+keywords.
+Examples of other special keyword forms:
+- `name=<name>            ` : More targeted search of using metadata fields.
+- `date_joined=.sort             ` : Sort by a particular field.
+- `date_joined=.sort-            ` : Sort by a particular field in reverse.
+- `.count                 ` : Count the number of users.
+- `.limit=10              ` : Limit the number of results to the top 10.
 
 ### `PATCH /users`
 
@@ -912,22 +921,22 @@ Return information about a worksheet. Calls
 - resolve_interpreted_items: get more information about a worksheet.
 In the future, for large worksheets, might want to break this up so
 that we can render something basic.
-Return: 
+Return:
     worksheet_info dict{}:
         key:[value_type] <description>
-        blocks:[list] 
+        blocks:[list]
                 Resolved worksheet blocks from raw_items.
-                    Bundles will be grouped into table block items, 
+                    Bundles will be grouped into table block items,
                     text items might be grouped into one markdown block etc.
         source:[list] source lines
-        raw_to_block:[list] 
+        raw_to_block:[list]
                         Raw_items to its block index pair.
                             For example, assume the first resolved block item is a bundle table that has 2 rows,
                             then the 2nd element in the list would be [0, 1]
                             [0, 1]: 0 means the item belongs to the first block,
                                     1 means the item is the second item of the block (2nd bundle in our example)
                             NOTE: Used for setting focus on frontend
-        block_to_raw:[dict] 
+        block_to_raw:[dict]
                         Maps the blocks (table, markdown, records) to their corresponding source line indices,
                         it's mostly a reverse mapping of raw_to_block, by mostly: raw_to_block has some bug,
                         please refer to worksheet_utils flush_bundles function.
@@ -938,13 +947,11 @@ Return:
                         [1, 0]: 9
                         This means the first blocks' first item corresponds to the first line in source,
                         the second item corresponds to the second line in source
-                        The second block corresponds the 10th line in source. 
+                        The second block corresponds the 10th line in source.
                         2-8 can be skipped for multiple reasons: blank lines, comments, schema lines etc.
-                            NOTE: Used for setting focus on frontend                                      
-
+                            NOTE: Used for setting focus on frontend
 This endpoint can be called with &brief=1 in order to give an abbreviated version,
 which does not resolve searches or wsearches.
-
 To return an interpreted worksheet that only resolves a particular search/wsearch,
 pass in the search query to the "directive" argument. The value for this argument
 must be a search/wsearch query -- for example, &directive=search 0x .limit=100

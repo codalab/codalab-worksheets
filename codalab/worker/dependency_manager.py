@@ -6,6 +6,7 @@ import threading
 import traceback
 import time
 import shutil
+from typing import Dict
 
 from codalab.lib.formatting import size_str
 from codalab.worker.file_util import remove_path, un_tar_directory
