@@ -5,8 +5,11 @@ Object {
   "asFragment": [Function],
   "baseElement": <body
     class="ws-interface"
+    style="overflow: hidden; padding-right: 0px;"
   >
-    <div>
+    <div
+      aria-hidden="true"
+    >
       <div
         class="sticky-outer-wrapper"
       >
@@ -587,17 +590,17 @@ Object {
                     id="worksheet_items"
                   >
                     <div
-                      class="ItemWrapper-container-245"
+                      class="ItemWrapper-container-282"
                       id="codalab-worksheet-item-0"
                     >
                       <div
-                        class="ItemWrapper-main-247"
+                        class="ItemWrapper-main-284"
                       >
                         <div
-                          class="ws-item MarkdownItem-textContainer-249"
+                          class="ws-item MarkdownItem-textContainer-286"
                         >
                           <div
-                            class="type-markup  MarkdownItem-textRender-252"
+                            class="type-markup  MarkdownItem-textRender-289"
                           >
                             <p>
                               123
@@ -607,10 +610,10 @@ Object {
 
                           </div>
                           <div
-                            class="MarkdownItem-buttonsPanel-250"
+                            class="MarkdownItem-buttonsPanel-287"
                           >
                             <button
-                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
+                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-288"
                               tabindex="0"
                               title="Edit"
                               type="button"
@@ -640,7 +643,7 @@ Object {
                             </button>
                               
                             <button
-                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
+                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-288"
                               tabindex="0"
                               title="Delete"
                               type="button"
@@ -800,8 +803,53 @@ Object {
         </ul>
       </div>
     </div>
+    <div
+      aria-describedby="save-schema-description"
+      aria-labelledby="save-schema-title"
+      class="MuiModal-root-155 MuiDialog-root-175"
+      role="dialog"
+    >
+      <div
+        aria-hidden="true"
+        class="MuiBackdrop-root-189"
+        style="opacity: 1; webkit-transition: opacity 225ms cubic-bezier(0.4, 0, 0.2, 1) 0ms; transition: opacity 225ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;"
+      />
+      <div
+        class="MuiDialog-container-178 MuiDialog-scrollPaper-176"
+        role="document"
+        style="opacity: 1; webkit-transition: opacity 225ms cubic-bezier(0.4, 0, 0.2, 1) 0ms; transition: opacity 225ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;"
+        tabindex="-1"
+      >
+        <div
+          class="MuiPaper-root-191 MuiPaper-elevation24-217 MuiPaper-rounded-192 MuiDialog-paper-179 MuiDialog-paperScrollPaper-180 MuiDialog-paperWidthSm-183"
+        >
+          <div
+            class="MuiDialogTitle-root-245"
+            id="save-schema-title"
+            style="background-color: rgb(217, 236, 219);"
+          >
+            <h6
+              class="MuiTypography-root-246 MuiTypography-h6-263"
+            >
+              <div
+                class="MuiGrid-container-11"
+              >
+                <div
+                  class="MuiGrid-item-12"
+                  style="color: rgb(83, 120, 83);"
+                >
+                  Schema Saved!
+                </div>
+              </div>
+            </h6>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>,
-  "container": <div>
+  "container": <div
+    aria-hidden="true"
+  >
     <div
       class="sticky-outer-wrapper"
     >
@@ -1382,17 +1430,17 @@ Object {
                   id="worksheet_items"
                 >
                   <div
-                    class="ItemWrapper-container-245"
+                    class="ItemWrapper-container-282"
                     id="codalab-worksheet-item-0"
                   >
                     <div
-                      class="ItemWrapper-main-247"
+                      class="ItemWrapper-main-284"
                     >
                       <div
-                        class="ws-item MarkdownItem-textContainer-249"
+                        class="ws-item MarkdownItem-textContainer-286"
                       >
                         <div
-                          class="type-markup  MarkdownItem-textRender-252"
+                          class="type-markup  MarkdownItem-textRender-289"
                         >
                           <p>
                             123
@@ -1402,10 +1450,10 @@ Object {
 
                         </div>
                         <div
-                          class="MarkdownItem-buttonsPanel-250"
+                          class="MarkdownItem-buttonsPanel-287"
                         >
                           <button
-                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
+                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-288"
                             tabindex="0"
                             title="Edit"
                             type="button"
@@ -1435,7 +1483,7 @@ Object {
                           </button>
                             
                           <button
-                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
+                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-288"
                             tabindex="0"
                             title="Delete"
                             type="button"
@@ -1590,17 +1638,18 @@ Object {
   "asFragment": [Function],
   "baseElement": <body
     class="ws-interface"
+    style="padding-right: 0px;"
   >
     <div>
       <div
-        class="MuiGrid-container-264 MuiGrid-direction-xs-column-267 MuiGrid-align-items-xs-center-272 MuiGrid-justify-xs-center-281"
+        class="MuiGrid-container-301 MuiGrid-direction-xs-column-304 MuiGrid-align-items-xs-center-309 MuiGrid-justify-xs-center-318"
         style="margin-top: 100px;"
       >
         <div
           class="alert alert-danger alert-dismissable"
         >
           <div
-            class="MuiGrid-item-265"
+            class="MuiGrid-item-302"
             style="font-size: 16px; margin-left: 10px;"
           >
             Not found: '/worksheets/sample_uuid'
@@ -1611,14 +1660,14 @@ Object {
   </body>,
   "container": <div>
     <div
-      class="MuiGrid-container-264 MuiGrid-direction-xs-column-267 MuiGrid-align-items-xs-center-272 MuiGrid-justify-xs-center-281"
+      class="MuiGrid-container-301 MuiGrid-direction-xs-column-304 MuiGrid-align-items-xs-center-309 MuiGrid-justify-xs-center-318"
       style="margin-top: 100px;"
     >
       <div
         class="alert alert-danger alert-dismissable"
       >
         <div
-          class="MuiGrid-item-265"
+          class="MuiGrid-item-302"
           style="font-size: 16px; margin-left: 10px;"
         >
           Not found: '/worksheets/sample_uuid'

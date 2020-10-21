@@ -13,6 +13,7 @@ import {
     DEFAULT_WORKSHEET_WIDTH,
     LOCAL_STORAGE_WORKSHEET_WIDTH,
     DIALOG_TYPES,
+    AUTO_HIDDEN_DURATION,
 } from '../../../constants';
 import WorksheetTerminal from '../WorksheetTerminal';
 import Loading from '../../Loading';
@@ -594,7 +595,23 @@ class Worksheet extends React.Component {
                 alert(createAlertText(this.url, jqHXR.responseText));
             },
         });
+        this.setState({
+            openedDialog: DIALOG_TYPES.OPEN_SAVED_SCHEMA,
+        });
+        this.autoHideOpenedDialog();
     };
+
+    autoHideOpenedDialog() {
+        const self = this;
+        if (this.timer) {
+            clearTimeout(this.timer);
+        }
+        this.timer = setTimeout(() => {
+            self.setState({
+                openedDialog: null,
+            });
+        }, AUTO_HIDDEN_DURATION);
+    }
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         let info = this.state.ws.info;
