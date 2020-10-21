@@ -201,8 +201,7 @@ class WorksheetDialogs extends React.Component {
                 </Dialog>
                 {/* Schema saved message dialog */}
                 <Dialog
-                    // open={this.props.openedDialog === DIALOG_TYPES.OPEN_SAVED_SCHEMA}
-                    open={true}
+                    open={this.props.openedDialog === DIALOG_TYPES.OPEN_SAVED_SCHEMA}
                     aria-labelledby='save-schema-title'
                     aria-describedby='save-schema-description'
                 >
