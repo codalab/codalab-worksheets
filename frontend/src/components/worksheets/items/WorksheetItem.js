@@ -17,11 +17,7 @@ class WorksheetItem extends React.Component {
         Mousetrap.bind(
             ['enter'],
             function() {
-                this.props.openWorksheet(
-                    this.rowRefs[
-                        `codalab-worksheet-item-${this.props.focusIndex}-subitem-${this.props.subFocusIndex}`
-                    ].current.props.uuid,
-                );
+                this.props.openWorksheet(this._get_uuid_from_element_id());
             }.bind(this),
             'keydown',
         );
@@ -30,10 +26,11 @@ class WorksheetItem extends React.Component {
         Mousetrap.bind(
             ['shift+enter'],
             function() {
-                const id = `codalab-worksheet-item-${this.props.focusIndex}-subitem-${this.props.subFocusIndex}`;
-                const uuid = this.rowRefs[id].current.props.uuid;
+                const uuid = this._get_uuid_from_element_id();
                 // Construct the URI by using the uuid of target worksheet
-                const baseURI = document.getElementById(id).attributes[0].baseURI;
+                const baseURI = document.getElementById(
+                    `codalab-worksheet-item-${this.props.focusIndex}-subitem-${this.props.subFocusIndex}`,
+                ).attributes[0].baseURI;
                 const uriComponents = baseURI.split('/');
                 uriComponents[uriComponents.length - 2] = uuid;
                 window.open(uriComponents.join('/'), '_blank');
@@ -45,12 +42,9 @@ class WorksheetItem extends React.Component {
         Mousetrap.bind(
             ['i'],
             function() {
-                const uuid = this.rowRefs[
-                    `codalab-worksheet-item-${this.props.focusIndex}-subitem-${this.props.subFocusIndex}`
-                ].current.props.uuid;
                 $('#command_line')
                     .terminal()
-                    .insert(uuid + ' ');
+                    .insert(this._get_uuid_from_element_id() + ' ');
             }.bind(this),
             'keydown',
         );
@@ -66,9 +60,7 @@ class WorksheetItem extends React.Component {
             this.props.setFocus(this.props.focusIndex, rowIndex);
         } else {
             // Actually open this worksheet.
-            const uuid = this.rowRefs[
-                `codalab-worksheet-item-${this.props.focusIndex}-subitem-${this.props.subFocusIndex}`
-            ].current.props.uuid;
+            const uuid = this._get_uuid_from_element_id();
             this.props.openWorksheet(uuid);
         }
     };
@@ -80,6 +72,11 @@ class WorksheetItem extends React.Component {
         } else {
             throw new Error('Invalid: ' + item.mode);
         }
+    }
+
+    _get_uuid_from_element_id() {
+        const id = `codalab-worksheet-item-${this.props.focusIndex}-subitem-${this.props.subFocusIndex}`;
+        return this.rowRefs[id].current.props.uuid;
     }
 
     shouldComponentUpdate(nextProps, nextState) {
