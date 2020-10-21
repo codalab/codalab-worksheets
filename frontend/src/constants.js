@@ -20,11 +20,7 @@ export const DIALOG_TYPES = {
     OPEN_DELETE_MARKDOWN: 'delete_markdown_block',
     OPEN_DELETE_WORKSHEET: 'delete_whole_worksheet',
     OPEN_ERROR_DIALOG: 'error_dialog',
-    OPEN_SAVED_SCHEMA: 'saved_schema',
 };
-
-// Default Duration for dialogs shown on the screen
-export const AUTO_HIDDEN_DURATION = 1500;
 
 // Bundle fetch status values; corresponds with FetchStatusCodes in backend
 export const FETCH_STATUS_SCHEMA = {

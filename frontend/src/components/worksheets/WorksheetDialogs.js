@@ -199,21 +199,6 @@ class WorksheetDialogs extends React.Component {
                         </DialogContentText>
                     </DialogContent>
                 </Dialog>
-                {/* Schema saved message dialog */}
-                <Dialog
-                    // open={this.props.openedDialog === DIALOG_TYPES.OPEN_SAVED_SCHEMA}
-                    open={true}
-                    aria-labelledby='save-schema-title'
-                    aria-describedby='save-schema-description'
-                >
-                    <DialogTitle id='save-schema-title' style={{ backgroundColor: '#D9ECDB' }}>
-                        <Grid container direction='row'>
-                            <Grid item xs={100} style={{ color: '#537853' }}>
-                                {'Schema Saved!'}
-                            </Grid>
-                        </Grid>
-                    </DialogTitle>
-                </Dialog>
                 }
             </div>
         );
