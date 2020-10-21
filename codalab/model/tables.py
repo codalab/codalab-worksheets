@@ -286,7 +286,7 @@ oauth2_auth_code = Table(
 chat = Table(
     'chat',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),  #  Primary key
+    Column('id', Integer, primary_key=True, nullable=False),  # Primary key
     Column('time', DateTime, nullable=False),  # When did the user send this query?
     Column('sender_user_id', String(63), nullable=True),  # Who sent it?
     Column('recipient_user_id', String(63), nullable=True),  # Who received it?

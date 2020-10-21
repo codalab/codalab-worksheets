@@ -46,7 +46,7 @@ def wrap_exception(message):
                 return '{}: {}'.format(message, exception)
 
             def check_for_user_error(exception):
-                error_message = format_error_message(e)
+                error_message = format_error_message(exception)
                 if re.match(NVIDIA_MOUNT_ERROR_REGEX, str(exception)):
                     raise DockerUserErrorException(error_message)
                 elif re.match(MEMORY_LIMIT_ERROR_REGEX, str(exception)):
@@ -194,7 +194,7 @@ def start_bundle_container(
             stdin_open=tty,
         )
         logger.debug('Started Docker container for UUID %s, container ID %s,', uuid, container.id)
-    except docker.errors.APIError as e:
+    except docker.errors.APIError:
         # The container failed to start, so it's in the CREATED state
         # If we try to re-run the container again, we'll get a 409 CONFLICT
         # because a container with the same name already exists. So, we try to remove

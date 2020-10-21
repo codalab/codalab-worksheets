@@ -1,6 +1,5 @@
 from codalab.worker.bundle_state import State
 from codalab.objects.dependency import Dependency
-from codalab.bundles.run_bundle import RunBundle
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.dataset_bundle import DatasetBundle
 from codalab.lib.spec_util import generate_uuid
@@ -8,8 +7,6 @@ import os
 import tempfile
 from tests.unit.server.bundle_manager import (
     BaseBundleManagerTest,
-    BASE_METADATA,
-    BASE_METADATA_MAKE_BUNDLE,
     BASE_METADATA_DATASET_BUNDLE,
     FILE_CONTENTS_1,
     FILE_CONTENTS_2,

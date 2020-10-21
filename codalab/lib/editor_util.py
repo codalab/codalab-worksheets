@@ -4,11 +4,9 @@ import sys
 import tempfile
 
 from codalab.lib import path_util
-from codalab.lib.codalab_manager import CodaLabManager
 
 
 def find_default_editor():
-    manager = CodaLabManager()
     editor = os.getenv('EDITOR')
     if editor:
         return editor

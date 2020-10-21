@@ -6,7 +6,6 @@ from codalab.worker.bundle_state import BundleCheckinState, State
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.bundles.run_bundle import RunBundle
 from codalab.bundles.make_bundle import MakeBundle
-from codalab.bundles.dataset_bundle import DatasetBundle
 from codalab.lib.spec_util import generate_uuid
 from codalab.objects.dependency import Dependency
 
