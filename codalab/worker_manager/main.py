@@ -4,6 +4,8 @@ Main entry point for the worker managers.
 
 import argparse
 import logging
+
+from codalab.common import LoginPermissionError
 from .aws_batch_worker_manager import AWSBatchWorkerManager
 from .azure_batch_worker_manager import AzureBatchWorkerManager
 from .slurm_batch_worker_manager import SlurmBatchWorkerManager
@@ -130,7 +132,10 @@ def main():
         )
 
     manager = worker_manager_types[args.worker_manager_name](args)
-    manager.run_loop()
+    try:
+        manager.run_loop()
+    except LoginPermissionError:
+        print('Login credentials are incorrect. Please double check')
 
 
 if __name__ == '__main__':

@@ -38,7 +38,7 @@ import time
 from distutils.util import strtobool
 
 from codalab.client.json_api_client import JsonApiClient
-from codalab.common import CODALAB_VERSION, PermissionError, UsageError
+from codalab.common import CODALAB_VERSION, UsageError, LoginPermissionError
 from codalab.lib.bundle_store import MultiDiskBundleStore
 from codalab.lib.crypt_util import get_random_string
 from codalab.lib.download_manager import DownloadManager
@@ -49,16 +49,6 @@ from codalab.lib import formatting
 from codalab.model.worker_model import WorkerModel
 
 
-def exception_handler(exctype, value, traceback, debug_hook=sys.excepthook):
-    # All your trace are belong to us!
-    # your format
-    if exctype == PermissionError:
-        print("%s: %s" % (exctype.__name__, value))
-    else:
-        debug_hook(exctype, value, traceback)
-
-
-sys.excepthook = exception_handler
 MAIN_BUNDLE_SERVICE = 'https://worksheets.codalab.org'
 
 
@@ -511,7 +501,7 @@ class CodaLabManager(object):
 
         token_info = auth_handler.generate_token('credentials', username, password)
         if token_info is None:
-            raise PermissionError("Invalid username or password.")
+            raise LoginPermissionError("Invalid username or password.")
         return _cache_token(token_info, username)
 
     def get_current_worksheet_uuid(self):
