@@ -1,7 +1,6 @@
 try:
     import azure.batch._batch_service_client as batch   # type: ignore
     import azure.batch.batch_auth as batchauth  # type: ignore
-    import azure.batch.models as batchmodels    # type: ignore
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         "Running the worker manager requires the azure-batch module.\n"
