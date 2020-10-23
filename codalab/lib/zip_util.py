@@ -5,17 +5,13 @@ the user uploads an archive of a known type.
 from fnmatch import fnmatch
 import os
 import shutil
-import subprocess
 import tarfile
-import zipfile
 import tempfile
 
 from codalab.common import UsageError
-from codalab.lib import path_util
 from codalab.worker.file_util import (
     gzip_file,
     tar_gzip_directory,
-    zip_directory,
     un_bz2_file,
     un_gzip_stream,
     un_tar_directory,
