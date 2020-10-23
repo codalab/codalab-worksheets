@@ -1,5 +1,5 @@
 from contextlib import closing
-from io import BytesIO
+from io import BytesIO, TextIOWrapper
 import gzip
 import os
 import shutil
@@ -8,7 +8,10 @@ import tarfile
 import zlib
 import bz2
 
-from codalab.common import BINARY_PLACEHOLDER
+from codalab.common import BINARY_PLACEHOLDER, UsageError
+from apache_beam.io.filesystem import CompressionTypes
+from apache_beam.io.filesystems import FileSystems
+import tempfile
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -27,8 +30,19 @@ def get_tar_version_output():
         raise IOError(e.output)
 
 
+def get_path_exists(path):
+    """
+    Returns whether the given path exists.
+    """
+    return FileSystems.exists(path)
+
+
 def tar_gzip_directory(
-    directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[], ignore_file=None
+    directory_path,
+    follow_symlinks=False,
+    exclude_patterns=None,
+    exclude_names=None,
+    ignore_file=None,
 ):
     """
     Returns a file-like object containing a tarred and gzipped archive of the
@@ -65,12 +79,68 @@ def tar_gzip_directory(
             args.append('--exclude=./' + name)
     # Add everything in the current directory
     args.append('.')
-
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
         return proc.stdout
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
+
+
+def zip_directory(
+    directory_path,
+    follow_symlinks=False,
+    exclude_patterns=None,
+    exclude_names=None,
+    ignore_file=None,
+):
+    """
+    Returns a file-like object containing a zipped archive of the given directory.
+
+    follow_symlinks: Whether symbolic links should be followed.
+    exclude_names: Any top-level directory entries with names in exclude_names
+                   are not included.
+    exclude_patterns: Any directory entries with the given names at any depth in
+                      the directory structure are excluded.
+    ignore_file: Name of the file where exclusion patterns are read from.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_zip_name = os.path.join(tmp, "tmp.zip")
+        args = [
+            'zip',
+            '-rq',
+            # Unlike with tar_gzip_directory, we cannot send output to stdout because of this bug in zip
+            # (https://bugs.launchpad.net/ubuntu/+source/zip/+bug/1892338). Thus, we have to write to a
+            # temporary file and then read the output.
+            tmp_zip_name,
+            # zip needs to be used with relative paths, so that the final directory structure
+            # is correct -- https://stackoverflow.com/questions/11249624/zip-stating-absolute-paths-but-only-keeping-part-of-them.
+            '.',
+        ]
+
+        if ignore_file:
+            # Ignore entries specified by the ignore file (e.g. .gitignore)
+            args.append('-x@' + ignore_file)
+        if not follow_symlinks:
+            args.append('-y')
+        if not exclude_patterns:
+            exclude_patterns = []
+
+        exclude_patterns.extend(ALWAYS_IGNORE_PATTERNS)
+        for pattern in exclude_patterns:
+            args.append(f'--exclude=*{pattern}*')
+
+        if exclude_names:
+            for name in exclude_names:
+                # Exclude top-level entries provided by exclude_names
+                args.append('--exclude=./' + name)
+
+        try:
+            proc = subprocess.Popen(args, stdout=subprocess.PIPE, cwd=directory_path)
+            proc.wait()
+            with open(tmp_zip_name, "rb") as out:
+                return BytesIO(out.read())
+        except subprocess.CalledProcessError as e:
+            raise IOError(e.output)
 
 
 def un_tar_directory(fileobj, directory_path, compression='', force=False):
@@ -96,20 +166,55 @@ def un_tar_directory(fileobj, directory_path, compression='', force=False):
             member_path = os.path.realpath(os.path.join(directory_path, member.name))
             if not member_path.startswith(directory_path):
                 raise tarfile.TarError('Archive member extracts outside the directory.')
-
             tar.extract(member, directory_path)
+
+
+def unzip_directory(fileobj_or_name, directory_path, force=False):
+    """
+    Extracts the given file-like object containing a zip archive into the given
+    directory, which will be created and should not already exist. If it already exists,
+    and `force` is `False`, an error is raised. If it already exists, and `force` is `True`,
+    the directory is removed and recreated.
+    """
+    directory_path = os.path.realpath(directory_path)
+    if force:
+        remove_path(directory_path)
+    os.mkdir(directory_path)
+
+    def do_unzip(filename):
+        # TODO(Ashwin): preserve permissions with -X.
+        exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
+        if exitcode != 0:
+            raise UsageError('Invalid archive upload. ')
+
+    # If fileobj_or_name is a file object, we have to save it
+    # to a temporary file, because unzip doesn't accept input from standard input.
+    if not isinstance(fileobj_or_name, str):
+        with tempfile.NamedTemporaryFile() as f:
+            shutil.copyfileobj(fileobj_or_name, f)
+            f.seek(0)
+            do_unzip(f.name)
+    else:
+        # In this case, fileobj_or_name is a file name.
+        do_unzip(fileobj_or_name)
+
+
+def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSED):
+    """
+    Opens the given file. Can be in a directory.
+    """
+    return FileSystems.open(file_path, mode, compression_type)
 
 
 def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
     """
-    args = ['gzip', '-c', '-n', file_path]
     try:
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-        return proc.stdout
-    except subprocess.CalledProcessError as e:
-        raise IOError(e.output)
+        data = open_file(file_path).read()
+        return BytesIO(gzip.compress(data))
+    except Exception as e:
+        raise IOError(e)
 
 
 def un_bz2_file(source, dest_path):
@@ -122,7 +227,7 @@ def un_bz2_file(source, dest_path):
     # fileno(). Our version requires only read() and close().
 
     BZ2_BUFFER_SIZE = 100 * 1024 * 1024  # Unzip in chunks of 100MB
-    with open(dest_path, 'wb') as dest:
+    with FileSystems.create(dest_path, compression_type=CompressionTypes.UNCOMPRESSED) as dest:
         decompressor = bz2.BZ2Decompressor()
         for data in iter(lambda: source.read(BZ2_BUFFER_SIZE), b''):
             dest.write(decompressor.decompress(data))
@@ -198,15 +303,26 @@ def un_gzip_bytestring(bytestring):
             return fileobj.read()
 
 
+def get_file_size(file_path):
+    """
+    Gets the size of the file, in bytes. If file is not found, raises a
+    FileNotFoundError.
+    """
+    if not get_path_exists(file_path):
+        raise FileNotFoundError
+    # TODO: add a FileSystems.size() method to Apache Beam to make this less verbose.
+    filesystem = FileSystems.get_filesystem(file_path)
+    return filesystem.size(file_path)
+
+
 def read_file_section(file_path, offset, length):
     """
     Reads length bytes of the given file from the given offset.
     Return bytes.
     """
-    file_size = os.stat(file_path).st_size
-    if offset >= file_size:
+    if offset >= get_file_size(file_path):
         return b''
-    with open(file_path, 'rb') as fileobj:
+    with open_file(file_path, 'rb') as fileobj:
         fileobj.seek(offset, os.SEEK_SET)
         return fileobj.read(length)
 
@@ -228,11 +344,11 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 lines[-1] += '\n'
 
     try:
-        file_size = os.stat(file_path).st_size
+        file_size = get_file_size(file_path)
     except FileNotFoundError:
         return NONE_PLACEHOLDER
 
-    with open(file_path) as fileobj:
+    with TextIOWrapper(open_file(file_path)) as fileobj:
         if file_size > (num_head_lines + num_tail_lines) * max_line_length:
             if num_head_lines > 0:
                 # To ensure that the last line is a whole line, we remove the
@@ -318,13 +434,13 @@ def remove_path(path):
     """
     Removes a path if it exists.
     """
-    if os.path.islink(path) or os.path.exists(path):
-        if os.path.islink(path):
-            os.remove(path)
-        elif os.path.isdir(path):
-            shutil.rmtree(path)
-        else:
-            os.remove(path)
+    # We need to include this first if statement
+    # to allow local broken symbolic links to be deleted
+    # as well (which aren't matched by the Beam methods).
+    if os.path.islink(path):
+        os.remove(path)
+    elif get_path_exists(path):
+        FileSystems.delete([path])
 
 
 def path_is_parent(parent_path, child_path):
