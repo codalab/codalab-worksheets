@@ -260,11 +260,11 @@ services:
       --id ${HOSTNAME}
       --verbose
     <<: *codalab-base
-    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker-internal
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
     depends_on:
       - rest-server
     volumes:
-      - /var/run/docker-internal.sock:/var/run/docker-internal.sock
+      - /var/run/docker.sock:/var/run/docker.sock
       - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
     networks:
       - service
@@ -283,11 +283,11 @@ services:
       --shared-file-system
       --verbose
     <<: *codalab-base
-    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker-internal
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
     depends_on:
       - rest-server
     volumes:
-      - /var/run/docker-internal.sock:/var/run/docker-internal.sock
+      - /var/run/docker.sock:/var/run/docker.sock
       - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
       - ${CODALAB_HOME}:${CODALAB_HOME}
       - ${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}
@@ -303,7 +303,7 @@ services:
     depends_on:
       - rest-server
     volumes:
-      - /var/lib/docker-internal:/var/lib/docker-internal
+      - /var/lib/docker:/var/lib/docker
       - ${CODALAB_HOME}:${CODALAB_HOME}
       - ${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}
       - ${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}
