@@ -1,7 +1,7 @@
 from codalab.lib.spec_util import generate_uuid
-from tests.unit.server.bundle_manager import TestBase
 from codalab.worker.download_util import BundleTarget
 from codalab.common import NotFoundError
+from tests.unit.server.bundle_manager import TestBase
 from io import BytesIO
 import gzip
 import tarfile
