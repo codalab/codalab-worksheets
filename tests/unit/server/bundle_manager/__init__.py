@@ -220,7 +220,7 @@ class TestBase:
         return bundle, parent1, parent2
 
     def mock_worker_checkin(
-        self, cpus=0, gpus=0, memory_bytes=0, free_disk_bytes=0, tag=None, user_id=None,
+        self, cpus=0, gpus=0, memory_bytes=0, free_disk_bytes=0, tag=None, user_id=None
     ):
         """Perform a mock check-in of a new worker."""
         worker_id = generate_uuid()
