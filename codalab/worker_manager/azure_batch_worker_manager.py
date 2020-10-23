@@ -1,5 +1,5 @@
 try:
-    import azure.batch._batch_service_client as batch   # type: ignore
+    import azure.batch._batch_service_client as batch  # type: ignore
     import azure.batch.batch_auth as batchauth  # type: ignore
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
