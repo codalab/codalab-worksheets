@@ -635,9 +635,10 @@ class Worksheet extends React.Component {
         // Make sure that the screen doesn't scroll when the user normally press j / k,
         // until the target element is completely not on the screen
         if (shouldScroll) {
-            const element = subIndex
-                ? $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)
-                : $(`#codalab-worksheet-item-${index}`);
+            const element =
+                $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)[0] === undefined
+                    ? $(`#codalab-worksheet-item-${index}`)
+                    : $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`);
 
             function isOnScreen(element) {
                 if (element.offset() === undefined) return false;
