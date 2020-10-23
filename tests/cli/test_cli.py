@@ -1031,7 +1031,8 @@ def test(ctx):
 
     # check non-root user doesn't have access
     check_contains(
-        'access to search for these fields', _run_command([cl, 'uls', '.active_after=' + prev_time, '-f', 'user_name'])
+        'access to search for these fields',
+        _run_command([cl, 'uls', '.active_after=' + prev_time, '-f', 'user_name']),
     )
     # check root user access
     switch_user('codalab')  # root user
@@ -1043,12 +1044,14 @@ def test(ctx):
 
     # check .disk_used_more_than
     check_contains(
-        'non_root_user', _run_command([cl, 'uls', '.disk_used_less_than=' + '1%', '-f', 'user_name'])
+        'non_root_user',
+        _run_command([cl, 'uls', '.disk_used_less_than=' + '1%', '-f', 'user_name']),
     )
 
     # check .time_used_less_than
     check_contains(
-        'non_root_user', _run_command([cl, 'uls', '.time_used_less_than=' + '1%', '-f', 'user_name'])
+        'non_root_user',
+        _run_command([cl, 'uls', '.time_used_less_than=' + '1%', '-f', 'user_name']),
     )
 
     # check user defined fields
