@@ -61,7 +61,7 @@ def include_group_relationships(document, groups):
         user_ids.add(group['owner_id'])
         user_ids.update(group['members'])
         user_ids.update(group['admins'])
-    json_api_include(document, UserSchema(), local.model.get_users(user_ids))
+    json_api_include(document, UserSchema(), local.model.get_users(user_ids=user_ids)['results'])
 
 
 @delete('/groups', apply=AuthenticatedProtectedPlugin())
