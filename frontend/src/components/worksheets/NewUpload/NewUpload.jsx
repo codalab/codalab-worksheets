@@ -74,7 +74,7 @@ class NewUpload extends React.Component<{
         }
 
         if (fileSize > FILE_SIZE_LIMIT_B) {
-            alert('File size is large than' + FILE_SIZE_LIMIT_GB + 'GB. Please upload your file(s) through CLI.');
+            alert('File size is large than ' + FILE_SIZE_LIMIT_GB + 'GB. Please upload your file(s) through CLI.');
             return;
         }
         const { worksheetUUID, after_sort_key } = this.props;
@@ -82,16 +82,15 @@ class NewUpload extends React.Component<{
         this.setState({
             uploading: true,
         });
+        let promises = [];
 
-        let index = -1;
-        for (const file of files) {
-            const createBundleData = getDefaultBundleMetadata(name || file.name, description);
-            index += 1;
+        for (let i = 0; i < files.length; i++) {
+            const createBundleData = getDefaultBundleMetadata(name || files[i].name, description);
             let url = `/rest/bundles?worksheet=${ worksheetUUID }`;
             if (after_sort_key) {
                 url += `&after_sort_key=${ after_sort_key }`;
             }
-            $.ajax({
+            let request = $.ajax({
                 url,
                 data: JSON.stringify(createBundleData),
                 contentType: 'application/json',
@@ -106,7 +105,7 @@ class NewUpload extends React.Component<{
                             '/rest/bundles/' +
                             bundleUuid +
                             '/contents/blob/?' +
-                            getQueryParams(file.name);
+                            getQueryParams(files[i].name);
                         $.ajax({
                             url: url,
                             type: 'PUT',
@@ -131,12 +130,6 @@ class NewUpload extends React.Component<{
                             },
                             success: (data, status, jqXHR) => {
                                 this.clearProgress();
-                                if (index === files.length - 1) {
-                                    const moveIndex = true;
-                                    const param = { moveIndex };
-                                    this.props.reloadWorksheet(undefined, undefined, param);
-                                    this.props.onUploadFinish();
-                                }
                             },
                             error: (jqHXR, status, error) => {
                                 this.clearProgress();
@@ -151,14 +144,23 @@ class NewUpload extends React.Component<{
                             },
                         });
                     };
-                    reader.readAsArrayBuffer(file);
+                    reader.readAsArrayBuffer(files[i]);
                 },
                 error: (jqHXR, status, error) => {
                     this.clearProgress();
                     alert(createAlertText(url, jqHXR.responseText));
                 },
             });
+            promises.push(request);
         }
+        let _this = this;
+        $.when.apply(null, promises).done(function() {
+            console.log('here');
+            const moveIndex = true;
+            const param = { moveIndex };
+            _this.props.reloadWorksheet(undefined, undefined, param);
+            _this.props.onUploadFinish();
+        });
     }
 
     uploadFolder = (files) => {
