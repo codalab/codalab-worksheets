@@ -10,6 +10,7 @@ import urllib
 from codalab.common import NotFoundError
 from codalab.client.json_api_client import JsonApiException
 from codalab.lib.codalab_manager import CodaLabManager
+from codalab.lib.formatting import parse_size
 from codalab.worker.bundle_state import State
 
 
@@ -160,6 +161,8 @@ class WorkerManager(object):
         bundles = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
         )
+        bundles = self.filter_bundles(bundles)
+
         new_staged_uuids = [bundle['uuid'] for bundle in bundles]
         old_staged_uuids = self.staged_uuids
         # Bundles that were staged but now aren't
@@ -247,3 +250,17 @@ class WorkerManager(object):
             logger.info('Starting a worker!')
             self.start_worker_job()
             self.last_worker_start_time = time.time()
+
+    def filter_bundles(self, bundles):
+        filtered_bundles = []
+
+        for bundle in bundles:
+            # Filter bundles based on the resources specified when creating the worker manager
+            worker_memory_bytes = parse_size('{}m'.format(self.args.memory_mb))
+            if (
+                bundle['metadata']['request_cpus'] <= self.args.cpus
+                and bundle['metadata']['request_gpus'] <= self.args.gpus
+                and parse_size(bundle['metadata']['request_memory']) <= worker_memory_bytes
+            ):
+                filtered_bundles.append(bundle)
+        return filtered_bundles
