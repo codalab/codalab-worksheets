@@ -62,7 +62,7 @@ FILE_CONTENTS_1 = "hello world 1"
 FILE_CONTENTS_2 = "hello world 2"
 
 
-class BaseBundleManagerTest(unittest.TestCase):
+class TestBase:
     """
     Base class for BundleManager tests with a CodaLab Manager hitting an in-memory SQLite database.
     """
@@ -71,6 +71,8 @@ class BaseBundleManagerTest(unittest.TestCase):
         self.codalab_manager = CodaLabManager()
         self.codalab_manager.config['server']['class'] = 'SQLiteModel'
         self.bundle_manager = BundleManager(self.codalab_manager)
+        self.download_manager = self.codalab_manager.download_manager()
+        self.upload_manager = self.codalab_manager.upload_manager()
         self.user_id = generate_uuid()
         self.bundle_manager._model.add_user(
             "codalab",
@@ -125,6 +127,9 @@ class BaseBundleManagerTest(unittest.TestCase):
         with open(self.codalab_manager.bundle_store().get_bundle_location(bundle.uuid), "w+") as f:
             f.write(contents)
 
+    def update_bundle(self, bundle, update):
+        return self.bundle_manager._model.update_bundle(bundle, update)
+
     def create_run_bundle(self, state=State.CREATED, metadata=None):
         """Creates a RunBundle.
         Args:
@@ -139,6 +144,7 @@ class BaseBundleManagerTest(unittest.TestCase):
             uuid=generate_uuid(),
             state=state,
         )
+        bundle.is_anonymous = False
         return bundle
 
     def create_bundle_single_dep(
@@ -261,3 +267,7 @@ class BaseBundleManagerTest(unittest.TestCase):
         self.bundle_manager._model.bundle_checkin(
             bundle, worker_run, user_id or self.user_id, worker_id
         )
+
+
+class BaseBundleManagerTest(TestBase, unittest.TestCase):
+    pass
