@@ -96,6 +96,16 @@ services:
     networks:
       - rest-server
 
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.8.0
+    command: "azurite --blobHost 0.0.0.0"
+    networks:
+      - rest-server
+    expose:
+      - 10000
+    volumes:
+      - ${CODALAB_HOME}/azurite:/data
+
   worker-manager-cpu:
     image: codalab/server:${CODALAB_VERSION}
     command: |
