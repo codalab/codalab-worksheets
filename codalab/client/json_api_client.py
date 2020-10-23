@@ -2,7 +2,9 @@ import http.client
 import socket
 import sys
 import six
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.parse
+import urllib.error
 
 from codalab.common import http_error_to_exception, precondition, ensure_str, UsageError
 from codalab.worker.rest_client import RestClient, RestClientException
@@ -289,7 +291,7 @@ class JsonApiClient(RestClient):
             for key, relationship in obj_data.get('relationships', {}).items():
                 linkage = relationship['data']
                 if isinstance(linkage, list):
-                    obj[key] = [unpack_linkage(l) for l in linkage]
+                    obj[key] = [unpack_linkage(v) for v in linkage]
                 else:
                     obj[key] = unpack_linkage(linkage)
             return obj
@@ -657,6 +659,15 @@ class JsonApiClient(RestClient):
                 fileobj=fileobj,
                 progress_callback=progress_callback,
             )
+
+    @wrap_exception('Unable to get the locations of bundles')
+    def get_bundles_locations(self, bundle_uuids):
+        response = self._make_request(
+            method='GET',
+            path='/bundles/locations',
+            query_params=self._pack_params({'uuids': bundle_uuids}),
+        )
+        return response['data']
 
     @wrap_exception('Unable to interpret file genpaths')
     def interpret_file_genpaths(self, queries):

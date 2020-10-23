@@ -186,7 +186,15 @@ class BundleModel(object):
     def get_bundle_names(self, uuids):
         """
         Fetch the bundle names of the given uuids.
-        Return {uuid: ..., name: ...}
+        Return {uuid: name}
+        """
+        return self.get_bundle_metadata(uuids, "name")
+
+    def get_bundle_metadata(self, uuids, metadata_key):
+        """
+        Fetch a single metadata value from the bundles referenced
+        by the given uuids.
+        Return {uuid: metadata_value}
         """
         if len(uuids) == 0:
             return []
@@ -196,7 +204,7 @@ class BundleModel(object):
                     [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
                 ).where(
                     and_(
-                        cl_bundle_metadata.c.metadata_key == 'name',
+                        cl_bundle_metadata.c.metadata_key == metadata_key,
                         cl_bundle_metadata.c.bundle_uuid.in_(uuids),
                     )
                 )
@@ -324,8 +332,8 @@ class BundleModel(object):
             # Get children of all nodes in frontier
             result = self.get_children_uuids(frontier)
             new_frontier = []
-            for l in result.values():
-                for uuid in l:
+            for v in result.values():
+                for uuid in v:
                     if uuid in visited:
                         continue
                     new_frontier.append(uuid)
@@ -447,20 +455,8 @@ class BundleModel(object):
             elif key == '.format':
                 format_func = value
             # Bundle fields
-            elif key == 'bundle_type':
-                clause = make_condition(key, cl_bundle.c.bundle_type, value)
-            elif key == 'id':
-                clause = make_condition(key, cl_bundle.c.id, value)
-            elif key == 'uuid':
-                clause = make_condition(key, cl_bundle.c.uuid, value)
-            elif key == 'data_hash':
-                clause = make_condition(key, cl_bundle.c.data_hash, value)
-            elif key == 'state':
-                clause = make_condition(key, cl_bundle.c.state, value)
-            elif key == 'command':
-                clause = make_condition(key, cl_bundle.c.command, value)
-            elif key == 'owner_id':
-                clause = make_condition(key, cl_bundle.c.owner_id, value)
+            elif key in ('bundle_type', 'id', 'uuid', 'data_hash', 'state', 'command', 'owner_id'):
+                clause = make_condition(key, getattr(cl_bundle.c, key), value)
             elif key == '.shared':  # shared with any group I am in with read permission
                 clause = cl_bundle.c.uuid.in_(
                     select([cl_group_bundle_permission.c.object_uuid]).where(
@@ -712,7 +708,7 @@ class BundleModel(object):
         """
         # Decode json formatted dependencies string to a list of key value pairs
         dependencies = json.loads(dependencies)
-        # When there is no dependency to be matched, the target memozied bundle
+        # When there is no dependency to be matched, the target memoized bundle
         # should only exist in the bundle table but not in the bundle_dependency table.
         if len(dependencies) == 0:
             query = (
@@ -840,7 +836,10 @@ class BundleModel(object):
             # Check if the designated worker is going to be terminated soon
             row = connection.execute(
                 cl_worker.select().where(
-                    and_(cl_worker.c.worker_id == worker_id, cl_worker.c.is_terminating == False)
+                    and_(
+                        cl_worker.c.worker_id == worker_id,
+                        cl_worker.c.is_terminating == False,  # NOQA E712
+                    )
                 )
             ).fetchone()
             # If the worker is going to be terminated soon, stop starting bundle on this worker
@@ -1019,6 +1018,7 @@ class BundleModel(object):
             self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
 
         if worker['shared_file_system']:
+            # TODO(Ashwin): fix for --link.
             self.update_disk_metadata(bundle, bundle_location)
 
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
@@ -1044,6 +1044,7 @@ class BundleModel(object):
         else:
             dirs_and_files = [], [bundle_location]
 
+        # TODO(Ashwin): make this non-fs specific
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
         data_size = path_util.get_size(bundle_location, dirs_and_files)
         if enforce_disk_quota:
@@ -1245,7 +1246,7 @@ class BundleModel(object):
         if not worksheets:
             raise NotFoundError('Could not find worksheet with uuid %s' % (uuid,))
         if len(worksheets) > 1:
-            raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
+            raise IntegrityError('Found multiple worksheets with uuid %s' % (uuid,))
         return worksheets[0]
 
     def batch_get_worksheets(self, fetch_items, **kwargs):
@@ -1379,16 +1380,8 @@ class BundleModel(object):
                     )
                 )
             # Bundle fields
-            elif key == 'id':
-                clause = make_condition(cl_worksheet.c.id, value)
-            elif key == 'uuid':
-                clause = make_condition(cl_worksheet.c.uuid, value)
-            elif key == 'name':
-                clause = make_condition(cl_worksheet.c.name, value)
-            elif key == 'title':
-                clause = make_condition(cl_worksheet.c.title, value)
-            elif key == 'owner_id':
-                clause = make_condition(cl_worksheet.c.owner_id, value)
+            elif key in ('id', 'uuid', 'name', 'title', 'owner_id'):
+                clause = make_condition(getattr(cl_worksheet.c, key), value)
             elif key == 'group':  # shared with group with read or all permissions?
                 group_uuid = get_group_info(value, False)['uuid']
                 clause = cl_worksheet.c.uuid.in_(
@@ -1487,7 +1480,14 @@ class BundleModel(object):
             cl_worksheet.c.frozen,
             cl_worksheet.c.owner_id,
         ]
-        query = select(cols_to_select).distinct().where(clause).offset(offset).limit(limit)
+        query = (
+            select(cols_to_select)
+            .distinct()
+            .where(clause)
+            .offset(offset)
+            .order_by(desc(cl_worksheet.c.owner_id == user_id))
+            .limit(limit)
+        )
 
         # Sort
         if sort_key[0] is not None:
@@ -1553,7 +1553,7 @@ class BundleModel(object):
                     or_(
                         cl_worksheet_item.c.sort_key > after_sort_key,
                         and_(
-                            cl_worksheet_item.c.sort_key == None,
+                            cl_worksheet_item.c.sort_key is None,
                             cl_worksheet_item.c.id > after_sort_key,
                         ),
                     ),
@@ -1907,8 +1907,12 @@ class BundleModel(object):
                 return []
         return [str_key_dict(row) for row in rows]
 
-    # Helper function: return list of group uuids that |user_id| is in.
-    def _get_user_groups(self, user_id):
+    def get_user_groups(self, user_id):
+        """
+        Get the list of groups that the user belongs to
+        :param user_id: ID of the user
+        :return: A list of group uuid's
+        """
         groups = [self.public_group_uuid]  # Everyone is in the public group implicitly.
         if user_id is not None:
             groups += [row['group_uuid'] for row in self.batch_get_user_in_group(user_id=user_id)]
@@ -2049,7 +2053,7 @@ class BundleModel(object):
 
         if len(remaining_object_uuids) > 0:
             result = self.batch_get_group_permissions(table, user_id, remaining_object_uuids)
-            user_groups = self._get_user_groups(user_id)
+            user_groups = self.get_user_groups(user_id)
             for object_uuid, permissions in result.items():
                 for row in permissions:
                     if row['group_uuid'] in user_groups:
@@ -2170,31 +2174,165 @@ class BundleModel(object):
             user_ids = [user_id]
         if username is not None:
             usernames = [username]
-        result = self.get_users(user_ids, usernames, check_active)
-        if result:
-            return result[0]
+        result = self.get_users(user_ids=user_ids, usernames=usernames, check_active=check_active)
+        if result['results']:
+            return result['results'][0]
         return None
 
-    def get_users(self, user_ids=None, usernames=None, check_active=True):
+    def get_users(self, keywords=None, user_ids=None, usernames=None, check_active=True):
         """
-        Get users.
-
-        :param user_ids: user ids of users to fetch
-        :param usernames: usernames or emails of users to fetch
-        :return: list of matching User objects
+        see the documentation for `cl uls` for information about keyword structure.
         """
         clauses = []
+        offset = 0
+        format_func = None
+        limit = SEARCH_RESULTS_LIMIT
+        count = False
+        sort_key = [None]
+        aux_fields = []  # Fields (e.g., sorting) that we need to include in the query
+
+        # Number nested subqueries
+        subquery_index = [0]
+
+        def alias(clause):
+            subquery_index[0] += 1
+            return clause.alias('q' + str(subquery_index[0]))
+
+        def is_numeric(key):
+            return key in (
+                'id',
+                'time_quota',
+                'parallel_run_quota',
+                'time_used',
+                'disk_quota',
+                'disk_used',
+            )
+
+        def make_condition(key, field, value):
+            # Special
+            if value == '.sort':
+                aux_fields.append(field)
+                if is_numeric(key):
+                    field = field * 1
+                sort_key[0] = field
+            elif value == '.sort-':
+                aux_fields.append(field)
+                if is_numeric(key):
+                    field = field * 1
+                sort_key[0] = desc(field)
+            else:
+                # Ordinary value
+                if isinstance(value, list):
+                    return field.in_(value)
+                if '%' in value:
+                    return field.like(value)
+                return field == value
+            return None
+
         if check_active:
             clauses.append(cl_user.c.is_active)
         if user_ids is not None:
             clauses.append(cl_user.c.user_id.in_(user_ids))
         if usernames is not None:
             clauses.append(or_(cl_user.c.user_name.in_(usernames), cl_user.c.email.in_(usernames)))
+        if keywords is not None:
+            for keyword in keywords:
+                keyword = keyword.replace('.*', '%')
+                # Sugar
+                if keyword == '.count':
+                    count = True
+                    limit = None
+                    continue
+                elif keyword == '.last':
+                    keyword = 'id=.sort-'
+
+                m = SEARCH_KEYWORD_REGEX.match(keyword)  # key=value
+                if m:
+                    key, value = m.group(1), m.group(2)
+                    if ',' in value:  # value is value1,value2
+                        value = value.split(',')
+                else:
+                    key, value = '', keyword
+
+                clause = None
+                # Special functions
+                if key == '.offset':
+                    offset = int(value)
+                elif key == '.limit':
+                    limit = int(value)
+                elif key == '.format':
+                    format_func = value
+                # Bundle fields
+                elif key in (
+                    'id',
+                    'user_id',
+                    'user_name',
+                    'email',
+                    'last_login',
+                    'first_name',
+                    'last_name',
+                    'affiliation',
+                    'time_quota',
+                    'parallel_run_quota',
+                    'time_used',
+                    'disk_quota',
+                    'disk_used',
+                ):
+                    clause = make_condition(key, getattr(cl_user.c, key), value)
+                elif key == '.joined_after':
+                    clause = cl_user.c.date_joined >= value
+                elif key == '.active_after':
+                    clause = cl_user.c.last_login >= value
+                elif key == '.joined_before':
+                    clause = cl_user.c.date_joined <= value
+                elif key == '.active_before':
+                    clause = cl_user.c.last_login <= value
+                elif any(kw in key for kw in ['.disk', '.time']):
+                    if '%' in value:
+                        value = float(value.strip('%')) / 100.0
+                    if key == '.disk_used_less_than':
+                        clause = cl_user.c.disk_used / cl_user.c.disk_quota <= value
+                    elif key == '.disk_used_more_than':
+                        clause = cl_user.c.disk_used / cl_user.c.disk_quota >= value
+                    elif key == '.time_used_less_than':
+                        clause = cl_user.c.time_used / cl_user.c.time_quota <= value
+                    elif key == '.time_used_more_than':
+                        clause = cl_user.c.time_used / cl_user.c.time_quota >= value
+                elif key == '':  # Match any field
+                    clause = []
+                    clause.append(cl_user.c.user_id.like('%' + value + '%'))
+                    clause.append(cl_user.c.user_name.like('%' + value + '%'))
+                    clause.append(cl_user.c.first_name.like('%' + value + '%'))
+                    clause.append(cl_user.c.last_name.like('%' + value + '%'))
+                    clause = or_(*clause)
+
+                else:
+                    raise UsageError('Unknown key: %s' % key)
+
+                if clause is not None:
+                    clauses.append(clause)
+
+        clause = and_(*clauses)
+
+        query = select([cl_user] + aux_fields).distinct().where(clause).offset(offset).limit(limit)
+
+        # Sort
+        if sort_key[0] is not None:
+            query = query.order_by(sort_key[0])
+
+        # Count
+        if count:
+            query = alias(query).count()
 
         with self.engine.begin() as connection:
-            rows = connection.execute(select([cl_user]).where(and_(*clauses))).fetchall()
+            rows = connection.execute(query).fetchall()
 
-        return [User(row) for row in rows]
+        if count:  # Just returning a single number
+            rows = worksheet_util.apply_func(format_func, rows[0][0])
+            return {'results': rows, 'is_aggregate': True}
+        else:
+            results = [User(row) for row in rows]
+            return {'results': results, 'is_aggregate': False}
 
     def user_exists(self, username, email):
         """
@@ -2223,6 +2361,9 @@ class BundleModel(object):
         notifications=NOTIFICATIONS_GENERAL,
         user_id=None,
         is_verified=False,
+        has_access=False,
+        time_used=0,
+        disk_used=0,
     ):
         """
         Create a brand new unverified user.
@@ -2250,14 +2391,15 @@ class BundleModel(object):
                         "first_name": first_name,
                         "last_name": last_name,
                         "date_joined": now,
+                        "has_access": has_access,
                         "is_verified": is_verified,
                         "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
                         "time_quota": self.default_user_info['time_quota'],
                         "parallel_run_quota": self.default_user_info['parallel_run_quota'],
-                        "time_used": 0,
+                        "time_used": time_used,
                         "disk_quota": self.default_user_info['disk_quota'],
-                        "disk_used": 0,
+                        "disk_used": disk_used,
                         "affiliation": affiliation,
                         "url": None,
                     }
@@ -2386,6 +2528,21 @@ class BundleModel(object):
 
         return True
 
+    def is_verified(self, user_id):
+        """
+        Checks if the user is verified or not.
+        :param user_id: id of the user
+        :return: boolean to indicate if the user is verified or not
+        """
+        with self.engine.begin() as connection:
+            verified_row = connection.execute(
+                cl_user.select()
+                .where(and_(cl_user.c.user_id == user_id, cl_user.c.is_verified))
+                .limit(1)
+            ).fetchone()
+
+            return verified_row is not None
+
     def new_user_reset_code(self, user_id):
         """
         Generate a new password reset code.
@@ -2509,6 +2666,7 @@ class BundleModel(object):
         self.update_user_info({'user_id': user_id, 'last_login': datetime.datetime.utcnow()})
 
     def _get_disk_used(self, user_id):
+        # TODO(Ashwin): don't include linked bundles
         return (
             self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%'])[
                 'result'

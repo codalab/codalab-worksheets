@@ -23,8 +23,8 @@ class Bundle(ORMObject):
     # Bundle subclasses should have the following class-level attributes:
     #   - BUNDLE_TYPE: a string bundle type
     #   - METADATA_SPECS: a list of MetadataSpec objects
-    BUNDLE_TYPE = None
-    METADATA_SPECS = None
+    BUNDLE_TYPE: str
+    METADATA_SPECS: list
 
     @classmethod
     def construct(cls, *args, **kwargs):

@@ -198,6 +198,7 @@ user = Table(
     Column('first_name', String(30, convert_unicode=True)),
     Column('last_name', String(30, convert_unicode=True)),
     Column('date_joined', DateTime, nullable=False),
+    Column('has_access', Boolean, default=False, nullable=True),
     Column('is_verified', Boolean, nullable=False, default=False),
     Column('is_superuser', Boolean, nullable=False, default=False),
     Column('password', String(128), nullable=False),
@@ -285,7 +286,7 @@ oauth2_auth_code = Table(
 chat = Table(
     'chat',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),  #  Primary key
+    Column('id', Integer, primary_key=True, nullable=False),  # Primary key
     Column('time', DateTime, nullable=False),  # When did the user send this query?
     Column('sender_user_id', String(63), nullable=True),  # Who sent it?
     Column('recipient_user_id', String(63), nullable=True),  # Who received it?
@@ -304,6 +305,7 @@ worker = Table(
     db_metadata,
     Column('user_id', String(63), ForeignKey(user.c.user_id), primary_key=True, nullable=False),
     Column('worker_id', String(127), primary_key=True, nullable=False),
+    Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=True),
     Column('tag', Text, nullable=True),  # Tag that allows for scheduling runs on specific workers.
     Column('cpus', Integer, nullable=False),  # Number of CPUs on worker.
     Column('gpus', Integer, nullable=False),  # Number of GPUs on worker.

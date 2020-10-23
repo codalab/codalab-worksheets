@@ -33,11 +33,9 @@ import os
 import psutil
 import re
 import sys
-import tempfile
 import textwrap
 import time
 from distutils.util import strtobool
-from urllib.parse import urlparse
 
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import CODALAB_VERSION, PermissionError, UsageError
@@ -212,17 +210,17 @@ class CodaLabManager(object):
 
         return config
 
-    @property
+    @property  # type: ignore
     @cached
     def config_path(self):
         return os.getenv('CODALAB_CONFIG', os.path.join(self.codalab_home, 'config.json'))
 
-    @property
+    @property  # type: ignore
     @cached
     def state_path(self):
         return os.getenv('CODALAB_STATE', os.path.join(self.codalab_home, 'state.json'))
 
-    @property
+    @property  # type: ignore
     @cached
     def codalab_home(self):
         from codalab.lib import path_util
@@ -234,7 +232,7 @@ class CodaLabManager(object):
         path_util.make_directory(home)
         return home
 
-    @property
+    @property  # type: ignore
     @cached
     def worker_socket_dir(self):
         from codalab.lib import path_util
@@ -343,6 +341,14 @@ class CodaLabManager(object):
                 root_user_id=self.root_user_id(),
                 system_user_id=self.system_user_id(),
             )
+        elif model_class == 'SQLiteModel':
+            from codalab.model.sqlite_model import SQLiteModel
+
+            model = SQLiteModel(
+                default_user_info=self.default_user_info(),
+                root_user_id=self.root_user_id(),
+                system_user_id=self.system_user_id(),
+            )
         else:
             raise UsageError('Unexpected model class: %s, expected MySQLModel' % (model_class,))
         return model
@@ -372,7 +378,7 @@ class CodaLabManager(object):
     def rest_extra_headers(self, address):
         return self.config.get('cli', {}).get('extra_headers', {}).get(address, {})
 
-    @property
+    @property  # type: ignore
     @cached
     def emailer(self):
         if 'email' in self.config:

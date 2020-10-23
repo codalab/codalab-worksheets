@@ -6,16 +6,16 @@ import http.client
 import json
 from datetime import datetime
 
-from bottle import abort, get, local, post, put, request, response
+from bottle import abort, get, local, post, request, response
 
 from codalab.lib import spec_util
 from codalab.objects.permission import check_bundle_have_run_permission
-from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin
 from codalab.worker.bundle_state import BundleCheckinState
 from codalab.worker.main import DEFAULT_EXIT_AFTER_NUM_RUNS
 
 
-@post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedPlugin())
+@post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedProtectedPlugin())
 def checkin(worker_id):
     """
     Checks in with the bundle service, storing information about the worker.
@@ -29,6 +29,7 @@ def checkin(worker_id):
         request.user.user_id,
         worker_id,
         request.json.get("tag"),
+        request.json.get("group_name"),
         request.json.get("cpus"),
         request.json.get("gpus"),
         request.json.get("memory_bytes"),
@@ -64,7 +65,7 @@ def check_reply_permission(worker_id, socket_id):
 @post(
     "/workers/<worker_id>/reply/<socket_id:int>",
     name="worker_reply_json",
-    apply=AuthenticatedPlugin(),
+    apply=AuthenticatedProtectedPlugin(),
 )
 def reply(worker_id, socket_id):
     """
@@ -77,7 +78,7 @@ def reply(worker_id, socket_id):
 @post(
     "/workers/<worker_id>/reply_data/<socket_id:int>",
     name="worker_reply_blob",
-    apply=AuthenticatedPlugin(),
+    apply=AuthenticatedProtectedPlugin(),
 )
 def reply_data(worker_id, socket_id):
     """
@@ -107,14 +108,14 @@ def check_run_permission(bundle):
     """
     Checks whether the current user can run the bundle.
     """
-    if not check_bundle_have_run_permission(local.model, request.user.user_id, bundle):
+    if not check_bundle_have_run_permission(local.model, request.user, bundle):
         abort(http.client.FORBIDDEN, "User does not have permission to run bundle.")
 
 
 @post(
     "/workers/<worker_id>/start_bundle/<uuid:re:%s>" % spec_util.UUID_STR,
     name="worker_start_bundle",
-    apply=AuthenticatedPlugin(),
+    apply=AuthenticatedProtectedPlugin(),
 )
 def start_bundle(worker_id, uuid):
     """
@@ -137,14 +138,19 @@ def start_bundle(worker_id, uuid):
     return json.dumps(False)
 
 
-@get("/workers/info", name="workers_info", apply=AuthenticatedPlugin())
+@get("/workers/info", name="workers_info", apply=AuthenticatedProtectedPlugin())
 def workers_info():
     workers = local.worker_model.get_workers()
     if request.user.user_id != local.model.root_user_id:
-        # Filter to workers that only this user owns.
-        workers = [worker for worker in workers if worker['user_id'] == request.user.user_id]
+        # Filter to only include the workers that the user owns or has access to
+        user_groups = local.model.get_user_groups(request.user.user_id)
+        workers = [
+            worker
+            for worker in workers
+            if worker['user_id'] == request.user.user_id or worker['group_uuid'] in user_groups
+        ]
 
-    # edit entries in data to make them suitable for human reading
+    # Edit entries in the data to make them suitable for human reading
     for worker in workers:
         # checkin_time: seconds since epoch
         worker["checkin_time"] = int(

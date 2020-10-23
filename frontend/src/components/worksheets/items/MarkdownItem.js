@@ -58,14 +58,19 @@ class MarkdownItem extends React.Component {
         this.setState({ showEdit: !this.state.showEdit });
     };
 
+    getEditPermission = () => {
+        // A markdown item can only be edited if the user has edit permissions to the worksheet,
+        // and if it was not loaded from an async directive (which would mean that it's the computed result of an aggregate search directive).
+        return this.props.editPermission && !this.props.item.loadedFromPlaceholder;
+    };
+
     capture_keys = () => {
         // Edit the markdown
-        const { editPermission } = this.props;
         Mousetrap.bind(
             ['enter'],
             function(ev) {
                 ev.preventDefault();
-                if (editPermission && !this.props.item.error) {
+                if (this.getEditPermission() && !this.props.item.error) {
                     this.toggleEdit();
                 }
             }.bind(this),
@@ -77,7 +82,7 @@ class MarkdownItem extends React.Component {
             function(ev) {
                 ev.preventDefault();
                 if (!this.props.item.error && this.props.focused) {
-                    if (editPermission) {
+                    if (this.getEditPermission()) {
                         this.props.setDeleteItemCallback(this.deleteItem);
                     }
                 }
@@ -96,7 +101,7 @@ class MarkdownItem extends React.Component {
     };
 
     deleteItem = () => {
-        const { reloadWorksheet, item, worksheetUUID, setFocus, focused, focusIndex } = this.props;
+        const { reloadWorksheet, item, worksheetUUID } = this.props;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
         $.ajax({
             url,
@@ -118,7 +123,7 @@ class MarkdownItem extends React.Component {
     };
 
     render() {
-        const { classes, item, editPermission } = this.props;
+        const { classes, item } = this.props;
         var { showEdit } = this.state;
         var contents = item.text;
         if (item.error) {
@@ -147,7 +152,7 @@ class MarkdownItem extends React.Component {
                     className={`${className} ${classes.textRender}`}
                     dangerouslySetInnerHTML={{ __html: contents }}
                 />
-                {editPermission && !item.error && (
+                {this.getEditPermission() && !item.error && (
                     <div className={classes.buttonsPanel}>
                         <Tooltip title='Edit'>
                             <IconButton

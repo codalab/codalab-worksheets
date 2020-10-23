@@ -9,10 +9,10 @@ from codalab.common import UsageError
 from codalab.lib.server_util import json_api_include
 from codalab.rest.schemas import GroupSchema, UserSchema
 from codalab.rest.util import ensure_unused_group_name, get_group_info, get_resource_ids
-from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin
 
 
-@get('/groups/<group_spec>', apply=AuthenticatedPlugin())
+@get('/groups/<group_spec>', apply=AuthenticatedProtectedPlugin())
 def fetch_group(group_spec):
     """Fetch a single group."""
     group = get_group_info(group_spec, need_admin=False, access_all_groups=True)
@@ -22,7 +22,7 @@ def fetch_group(group_spec):
     return document
 
 
-@get('/groups', apply=AuthenticatedPlugin())
+@get('/groups', apply=AuthenticatedProtectedPlugin())
 def fetch_groups():
     """Fetch list of groups readable by the authenticated user."""
     if request.user.user_id == local.model.root_user_id:
@@ -61,10 +61,10 @@ def include_group_relationships(document, groups):
         user_ids.add(group['owner_id'])
         user_ids.update(group['members'])
         user_ids.update(group['admins'])
-    json_api_include(document, UserSchema(), local.model.get_users(user_ids))
+    json_api_include(document, UserSchema(), local.model.get_users(user_ids=user_ids)['results'])
 
 
-@delete('/groups', apply=AuthenticatedPlugin())
+@delete('/groups', apply=AuthenticatedProtectedPlugin())
 def delete_groups():
     """Delete groups."""
     group_ids = get_resource_ids(request.json, 'groups')
@@ -80,7 +80,7 @@ def delete_groups():
     abort(http.client.NO_CONTENT)
 
 
-@post('/groups', apply=AuthenticatedPlugin())
+@post('/groups', apply=AuthenticatedProtectedPlugin())
 def create_group():
     """Create a group."""
     groups = GroupSchema(strict=True, many=True).load(request.json, partial=True).data
@@ -95,12 +95,12 @@ def create_group():
     return GroupSchema(many=True).dump(created_groups).data
 
 
-@post('/groups/<group_spec>/relationships/admins', apply=AuthenticatedPlugin())
+@post('/groups/<group_spec>/relationships/admins', apply=AuthenticatedProtectedPlugin())
 def add_group_admins(group_spec):
     return add_group_members_helper(group_spec, True)
 
 
-@post('/groups/<group_spec>/relationships/members', apply=AuthenticatedPlugin())
+@post('/groups/<group_spec>/relationships/members', apply=AuthenticatedProtectedPlugin())
 def add_group_members(group_spec):
     return add_group_members_helper(group_spec, False)
 
@@ -124,8 +124,8 @@ def add_group_members_helper(group_spec, is_admin):
     return request.json
 
 
-@delete('/groups/<group_spec>/relationships/admins', apply=AuthenticatedPlugin())
-@delete('/groups/<group_spec>/relationships/members', apply=AuthenticatedPlugin())
+@delete('/groups/<group_spec>/relationships/admins', apply=AuthenticatedProtectedPlugin())
+@delete('/groups/<group_spec>/relationships/members', apply=AuthenticatedProtectedPlugin())
 def delete_group_members(group_spec):
     # For now, both routes will delete a member entirely from the group.
     user_ids = get_resource_ids(request.json, 'users')

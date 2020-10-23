@@ -13,6 +13,7 @@ from dateutil import parser, tz
 import datetime
 import re
 import requests
+import traceback
 
 
 MIN_API_VERSION = '1.17'
@@ -45,7 +46,7 @@ def wrap_exception(message):
                 return '{}: {}'.format(message, exception)
 
             def check_for_user_error(exception):
-                error_message = format_error_message(e)
+                error_message = format_error_message(exception)
                 if re.match(NVIDIA_MOUNT_ERROR_REGEX, str(exception)):
                     raise DockerUserErrorException(error_message)
                 elif re.match(MEMORY_LIMIT_ERROR_REGEX, str(exception)):
@@ -95,7 +96,7 @@ def get_available_runtime():
             raise DockerException("nvidia-docker runtime available but no NVIDIA devices detected")
         return NVIDIA_RUNTIME
     except DockerException as e:
-        logger.error("Cannot initialize NVIDIA runtime, no GPU support: %s", e)
+        logger.warning("Cannot initialize NVIDIA runtime, no GPU support: %s", e)
         return DEFAULT_RUNTIME
 
 
@@ -173,25 +174,37 @@ def start_bundle_container(
 
     # Name the container with the UUID for readability
     container_name = 'codalab_run_%s' % uuid
-    container = client.containers.run(
-        image=docker_image,
-        command=docker_command,
-        name=container_name,
-        network=network,
-        mem_limit=memory_bytes,
-        shm_size='1G',
-        cpuset_cpus=cpuset_str,
-        environment=environment,
-        working_dir=working_dir,
-        entrypoint=entrypoint,
-        volumes=volumes,
-        user=user,
-        detach=detach,
-        runtime=runtime,
-        tty=tty,
-        stdin_open=tty,
-    )
-    logger.debug('Started Docker container for UUID %s, container ID %s,', uuid, container.id)
+    try:
+        container = client.containers.run(
+            image=docker_image,
+            command=docker_command,
+            name=container_name,
+            network=network,
+            mem_limit=memory_bytes,
+            shm_size='1G',
+            cpuset_cpus=cpuset_str,
+            environment=environment,
+            working_dir=working_dir,
+            entrypoint=entrypoint,
+            volumes=volumes,
+            user=user,
+            detach=detach,
+            runtime=runtime,
+            tty=tty,
+            stdin_open=tty,
+        )
+        logger.debug('Started Docker container for UUID %s, container ID %s,', uuid, container.id)
+    except docker.errors.APIError:
+        # The container failed to start, so it's in the CREATED state
+        # If we try to re-run the container again, we'll get a 409 CONFLICT
+        # because a container with the same name already exists. So, we try to remove
+        # the container here.
+        try:
+            container.remove(force=True)
+        except Exception:
+            logger.warning("Failed to clean up Docker container after failed launch.")
+            traceback.print_exc()
+        raise
     return container
 
 

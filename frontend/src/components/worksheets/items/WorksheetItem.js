@@ -77,23 +77,22 @@ class WorksheetItem extends React.Component {
 
         var self = this;
         var tableClassName = this.props.focused ? 'table focused' : 'table';
-        var canEdit = this.props.canEdit;
         var items = this._getItems();
 
+        const { focusIndex } = this.props;
+
         var body_rows_html = items.map(function(row_item, row_index) {
-            var row_ref = 'row' + row_index;
             var row_focused = self.props.focused && row_index === self.props.subFocusIndex;
             var url = '/worksheets/' + row_item.uuid;
             return (
                 <TableWorksheetRow
                     key={row_index}
-                    ref={row_ref}
+                    id={`codalab-worksheet-item-${focusIndex}-subitem-${row_index}`}
                     item={row_item}
                     rowIndex={row_index}
                     focused={row_focused}
                     url={url}
                     uuid={row_item.uuid}
-                    canEdit={canEdit}
                     updateRowIndex={self.updateRowIndex}
                 />
             );
@@ -142,12 +141,12 @@ class TableWorksheetRow extends React.Component {
         var item = this.props.item;
         var className = /*'type-worksheet' + */ this.props.focused ? ' focused' : '';
         return (
-            <tr className={className}>
+            <tr className={className} id={this.props.id}>
                 <td>
                     <div onClick={this.handleRowClick}>
-                        <a href='#' onClick={this.handleTextClick}>
-                            {`${item.title + ' '}[${item.name}]`}
-                        </a>
+                        <button class='link' onClick={this.handleTextClick}>{`${item.title + ' '}[${
+                            item.name
+                        }]`}</button>
                     </div>
                 </td>
             </tr>

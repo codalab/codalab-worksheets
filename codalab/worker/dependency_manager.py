@@ -6,6 +6,7 @@ import threading
 import traceback
 import time
 import shutil
+from typing import Dict
 
 from codalab.lib.formatting import size_str
 from codalab.worker.file_util import remove_path, un_tar_directory
@@ -364,6 +365,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         """
         Normalize the path for the dependency by replacing / with _, avoiding conflicts
         """
+        # TODO(Ashwin): make this not fs-specific.
         if dependency_key.parent_path:
             path = os.path.join(dependency_key.parent_uuid, dependency_key.parent_path)
         else:
@@ -424,6 +426,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                         % size_str(bytes_downloaded),
                     )
 
+            # TODO(Ashwin): make this not fs-specific.
             dependency_path = os.path.join(self.dependencies_dir, dependency_state.path)
             logger.debug('Downloading dependency %s', dependency_state.dependency_key)
             try:

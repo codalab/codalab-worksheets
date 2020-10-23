@@ -1,14 +1,11 @@
-try:
-    import boto3
-except ModuleNotFoundError:
-    raise ModuleNotFoundError(
-        "Running the worker manager requires the boto3 module.\n"
-        "Please run: pip install boto3==1.9.228"
-    )
 import logging
 import os
+import re
+from shlex import quote
 import uuid
 from .worker_manager import WorkerManager, WorkerJob
+
+from codalab.lib.telemetry_util import CODALAB_SENTRY_INGEST, using_sentry
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +54,17 @@ class AWSBatchWorkerManager(WorkerManager):
 
     def __init__(self, args):
         super().__init__(args)
+        # We import this lazily, so a user doesn't have to install boto3 unless
+        # they absolutely want to run the AWS worker manager, versus if it's incidentally
+        # imported by other code (e.g., to access AWSBatchWorkerManager.DESCRIPTION , as done
+        # in codalab/worker_manager/main.py ).
+        try:
+            import boto3
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "Running the AWS worker manager requires the boto3 module.\n"
+                "Please run: pip install boto3"
+            )
         self.batch_client = boto3.client('batch', region_name=self.args.region)
 
     def get_worker_jobs(self):
@@ -65,10 +73,13 @@ class AWSBatchWorkerManager(WorkerManager):
         jobs = []
         for status in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING']:
             response = self.batch_client.list_jobs(jobQueue=self.args.job_queue, jobStatus=status)
-            # Only record jobs if a job regex filter isn't provided or if the job's name completely matches
-            # a provided job regex filter.
-            if not args.job_filter or re.fullmatch(args.job_filter, response.get("jobName", "")):
-                jobs.extend(response['jobSummaryList'])
+            for jobSummary in response['jobSummaryList']:
+                # Only record jobs if a job regex filter isn't provided or if the job's name completely matches
+                # a provided job regex filter.
+                if not self.args.job_filter or re.fullmatch(
+                    self.args.job_filter, jobSummary.get("jobName", "")
+                ):
+                    jobs.append(jobSummary)
         logger.info(
             'Workers: {}'.format(
                 ' '.join(job['jobId'] + ':' + job['status'] for job in jobs) or '(none)'
@@ -86,36 +97,7 @@ class AWSBatchWorkerManager(WorkerManager):
         )
         # This needs to be a unique directory since Batch jobs may share a host
         work_dir = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
-        worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
-        command = [
-            self.args.worker_executable,
-            '--server',
-            self.args.server,
-            '--verbose',
-            '--exit-when-idle',
-            '--idle-seconds',
-            str(self.args.worker_idle_seconds),
-            '--work-dir',
-            work_dir,
-            '--id',
-            worker_id,
-            '--network-prefix',
-            worker_network_prefix,
-        ]
-        if self.args.worker_tag:
-            command.extend(['--tag', self.args.worker_tag])
-        if self.args.worker_max_work_dir_size:
-            command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
-        if self.args.worker_delete_work_dir_on_exit:
-            command.extend(['--worker-delete-work-dir-on-exit'])
-        if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
-            command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
-        if self.args.worker_exit_on_exception:
-            command.extend(['--exit-on-exception'])
-        if self.args.worker_pass_down_termination:
-            command.extend(['--pass-down-termination'])
-        if self.args.worker_tag_exclusive:
-            command.extend(['--tag-exclusive'])
+        command = self.build_command(worker_id, work_dir)
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-batch-jobdefinition.html
         # Need to mount:
@@ -129,7 +111,12 @@ class AWSBatchWorkerManager(WorkerManager):
                 'image': image,
                 'vcpus': self.args.cpus,
                 'memory': self.args.memory_mb,
-                'command': command,
+                'command': [
+                    "/bin/bash",
+                    "-c",
+                    "/opt/scripts/detect-ec2-spot-preemption.sh & "
+                    + " ".join(quote(arg) for arg in command),
+                ],
                 'environment': [
                     {'name': 'CODALAB_USERNAME', 'value': os.environ.get('CODALAB_USERNAME')},
                     {'name': 'CODALAB_PASSWORD', 'value': os.environ.get('CODALAB_PASSWORD')},
@@ -166,6 +153,11 @@ class AWSBatchWorkerManager(WorkerManager):
             )
             job_definition['containerProperties']['mountPoints'].append(
                 {'sourceVolume': 'shared_dir', 'containerPath': bundle_mount, 'readOnly': False}
+            )
+
+        if using_sentry():
+            job_definition["containerProperties"]["environment"].append(
+                {'name': 'CODALAB_SENTRY_INGEST_URL', 'value': CODALAB_SENTRY_INGEST}
             )
 
         # Create a job definition

@@ -5,11 +5,13 @@ import json
 import socket
 import threading
 import time
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.parse
+import urllib.error
 
 from .rest_client import RestClient, RestClientException
 from .file_util import tar_gzip_directory
-from codalab.common import ensure_str
+from codalab.common import ensure_str, URLOPEN_TIMEOUT_SECONDS
 
 
 def wrap_exception(message):
@@ -33,7 +35,7 @@ def wrap_exception(message):
                     else:
                         raise BundleServiceException(
                             message + ': ' + http.client.responses[e.code] + ' - ' + client_error,
-                            e.code >= 400 and e.code < 500,
+                            400 <= e.code < 500,
                         )
                 except json.decoder.JSONDecodeError as e:
                     raise BundleServiceException(message + ': ' + str(e), False)
@@ -97,12 +99,14 @@ class BundleServiceClient(RestClient):
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest',
         }
-        request = urllib.request.Request(
+        request_to_send = urllib.request.Request(
             self._base_url + '/oauth2/token',
             data=urllib.parse.urlencode(request_data).encode('utf-8'),
             headers=headers,
         )
-        with closing(urllib.request.urlopen(request)) as response:
+        with closing(
+            urllib.request.urlopen(request_to_send, timeout=URLOPEN_TIMEOUT_SECONDS)
+        ) as response:
             response_data = response.read().decode()
         try:
             token = json.loads(response_data)

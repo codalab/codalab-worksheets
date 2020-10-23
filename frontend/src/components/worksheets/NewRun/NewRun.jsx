@@ -37,6 +37,7 @@ class _DependencyEditor extends React.Component<{
     addDependency: (Bundle) => void,
     updateDependency: (number, string) => void,
     removeDependency: (number) => void,
+    addSubpath: (number, string) => void,
 
     /** Candidate dependencies. */
     dependencies: Dependency[],
@@ -48,8 +49,15 @@ class _DependencyEditor extends React.Component<{
     };
     render() {
         const { classes, dependencies, candidates,
-            addDependency, updateDependency, removeDependency } = this.props;
+            addDependency, updateDependency, removeDependency, addSubpath } = this.props;
 
+        const subpathInputProps =  {
+            style: {
+                fontSize: 14,
+            },
+            disableUnderline: true 
+        }
+         
         return (
             <Grid container direction="column" className={classes.container}>
                 {/* Existing dependencies ------------------------------------------------------ */}
@@ -59,6 +67,17 @@ class _DependencyEditor extends React.Component<{
                             <Typography variant="body1">
                                 {`${dep.target.name} (${shorten_uuid(dep.target.uuid)})`}
                             </Typography>
+                        </Grid>
+                        <Grid item xs={2}>
+                            <div className={classes.subpathContainer}>
+                                <Typography variant="body1" style={{marginTop: 2}}>/</Typography>
+                                <ConfigTextInput
+                                        value={dep.target.path}
+                                        placeholder="subpath"
+                                        onValueChange={(alias) => addSubpath(idx, alias)}
+                                        customInputProps={subpathInputProps}
+                                />
+                            </div>
                         </Grid>
                         <Grid item xs={1} container justify="center">
                             <Typography variant="body2">as</Typography>
@@ -101,7 +120,8 @@ class _DependencyEditor extends React.Component<{
                             }}
                         />
                     </Grid>
-                    <Grid item xs={1} container justify="center">
+                    <Grid item xs={2} />
+                    <Grid item xs={1} container justify="center" >
                         <Typography variant="body2">as</Typography>
                     </Grid>
                     <Grid item xs={3}>
@@ -114,8 +134,13 @@ class _DependencyEditor extends React.Component<{
 }
 const DependencyEditor = withStyles((theme) => ({
     container: {
-        paddingBottom: theme.spacing.large,
-    }
+        paddingBottom: theme.spacing.large
+    },
+    subpathContainer: {
+        display:"flex",
+        backgroundColor: "#EFF1F3",
+        height: 28
+    }, 
 }))(_DependencyEditor);
 
 
@@ -214,6 +239,19 @@ class NewRun extends React.Component<{
         this.setState({ dependencies });
     }
 
+    /**
+     * Add a subpath to an existing dependency
+     * @param idx
+     *     Index of dependency to add subpath to
+     * @param subpath
+     *     Subpath to be added to dependency
+     */
+    addSubpath(idx: number, subpath: string) {
+        const { dependencies } = this.state;
+        dependencies[idx].target.path = subpath;
+        this.setState({ dependencies });
+    }
+ 
     getCommand() {
         const {
             dependencies,
@@ -487,6 +525,7 @@ class NewRun extends React.Component<{
                     addDependency={(dep) => this.addDependency(dep)}
                     updateDependency={(idx, alias) => this.updateDependency(idx, alias)}
                     removeDependency={(idx) => this.removeDependency(idx)}
+                    addSubpath={(idx, subpath) => this.addSubpath(idx, subpath)}
                     dependencies={this.state.dependencies}
                     candidates={candidates}
                 />
@@ -506,8 +545,8 @@ class NewRun extends React.Component<{
                     placeholder="python train.py --data mydataset.txt"
                     maxRows={4}
                     onKeyDown={(e) => {
-                        if (e.keyCode === 13 && (e.ctrlKey || e.shiftKey || e.metaKey)) {
-                            // Press control enter
+                        if (e.keyCode === 13 && !(e.shiftKey)) {
+                            // if strictly enter key is pressed
                             e.preventDefault();
                             this.runCommand();
                             this.props.onSubmit();

@@ -23,10 +23,11 @@ const styles = {
 export default ({
     onShowNewRun,
     onShowNewText,
+    onShowNewSchema,
     showUploadMenu,
     closeUploadMenu,
     uploadAnchor,
-    canEdit,
+    editPermission,
     info,
     classes,
     renderPermissions,
@@ -58,8 +59,8 @@ export default ({
                         <h5 className='worksheet-title'>
                             {/*TODO: use html contenteditable*/}
                             <WorksheetEditableField
-                                key={'title' + canEdit}
-                                canEdit={canEdit}
+                                key={'title' + editPermission}
+                                canEdit={editPermission}
                                 fieldName='title'
                                 value={info ? info.title : 'Loading...'}
                                 uuid={info && info.uuid}
@@ -71,7 +72,7 @@ export default ({
                             {info && (
                                 <React.Fragment>
                                     <WorksheetEditableField
-                                        canEdit={canEdit}
+                                        canEdit={editPermission}
                                         fieldName='name'
                                         value={info && info.name}
                                         uuid={info && info.uuid}
@@ -117,7 +118,7 @@ export default ({
                                     &nbsp;tags:&nbsp;
                                     <div style={{ display: 'inline-block' }}>
                                         <WorksheetEditableField
-                                            canEdit={canEdit}
+                                            canEdit={editPermission}
                                             dataType='list'
                                             fieldName='tags'
                                             value={info.tags.join(' ')}
@@ -143,6 +144,7 @@ export default ({
                                 info={info}
                                 onShowNewRun={onShowNewRun}
                                 onShowNewText={onShowNewText}
+                                onShowNewSchema={onShowNewSchema}
                                 showUploadMenu={showUploadMenu}
                                 closeUploadMenu={closeUploadMenu}
                                 uploadAnchor={uploadAnchor}

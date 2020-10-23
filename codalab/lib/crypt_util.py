@@ -32,14 +32,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import binascii
 import hashlib
 import hmac
-import random
+from random import SystemRandom
 import struct
 import six
 import time
 
 # Use the system PRNG if possible
 try:
-    random = random.SystemRandom()
+    random = SystemRandom()
     using_sysrandom = True
 except NotImplementedError:
     import warnings
@@ -186,8 +186,8 @@ else:
             dklen = hlen
         if dklen > (2 ** 32 - 1) * hlen:
             raise OverflowError('dklen too big')
-        l = -(-dklen // hlen)
-        r = dklen - (l - 1) * hlen
+        floor = -(-dklen // hlen)
+        r = dklen - (floor - 1) * hlen
 
         hex_format_string = "%%0%ix" % (hlen * 2)
 
@@ -209,5 +209,5 @@ else:
                 result ^= _bin_to_long(u)
             return _long_to_bin(result, hex_format_string)
 
-        T = [F(x) for x in range(1, l)]
-        return b''.join(T) + F(l)[:r]
+        T = [F(x) for x in range(1, floor)]
+        return b''.join(T) + F(floor)[:r]

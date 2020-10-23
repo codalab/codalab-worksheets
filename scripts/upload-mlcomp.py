@@ -6,7 +6,9 @@
 
 # Usage: directories to upload
 
-import sys, os, yaml
+import sys
+import os
+import yaml
 
 for path in sys.argv[1:]:
     info = yaml.safe_load(open(os.path.join(path, 'metadata')))
@@ -17,7 +19,7 @@ for path in sys.argv[1:]:
         bundle_type = 'program'
         tags = info['task']
     else:
-        raise 'Weird info: %s' % info
+        raise ValueError('Weird info: %s' % info)
 
     name = info['name'].replace(' ', '_')
     cmd = "cl upload %s `/bin/ls -d %s/*` --name %s --tags mlcomp %s --description \"%s\"" % (

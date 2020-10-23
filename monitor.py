@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
-import os, sys
-import datetime
 from collections import defaultdict
-from smtplib import SMTP
 from email.mime.text import MIMEText
-import subprocess
-import time
+from smtplib import SMTP
+from typing import Dict
+
 import argparse
+import datetime
+import os
+import subprocess
+import sys
+import time
 
 BASE_DIR = os.path.dirname(__file__)
 
@@ -25,7 +28,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     '--codalab-home',
     help='where the CodaLab instance lives',
-    default=os.getenv('CODALAB_HOME', os.path.join(os.getenv('HOME'), '.codalab')),
+    default=os.getenv('CODALAB_HOME', os.path.join(os.getenv('HOME', default="..."), '.codalab')),
 )
 
 # Where to write out information
@@ -72,18 +75,27 @@ sender_password = os.environ['CODALAB_EMAIL_PASSWORD']
 if not os.path.exists(args.backup_path):
     os.mkdir(args.backup_path)
 
-# Comma-separated list of worker ids to monitor. Example: vm-clws-prod-worker-0,vm-clws-prod-worker-1
-public_workers = set([worker.strip() for worker in os.environ['CODALAB_PUBLIC_WORKERS'].split(',')])
-
 report = []  # Build up the current report to send in an email
+
+
+def get_public_workers():
+    # Comma-separated list of worker ids to monitor. Example: vm-clws-prod-worker-0,vm-clws-prod-worker-1
+    return set(
+        [
+            worker.strip()
+            for worker in os.environ['CODALAB_PUBLIC_WORKERS'].split(',')
+            if worker.rstrip()
+        ]
+    )
+
 
 # message is a list
 def send_email(subject, message):
-    print(
-        'send_email to %s from %s@%s; subject: %s; message contains %d lines'
+    log(
+        'Sending an email to %s from %s@%s; subject: %s; message contains %d lines'
         % (admin_email, sender_username, sender_host, subject, len(message))
     )
-    sys.stdout.flush()
+
     if not admin_email:
         return
 
@@ -105,17 +117,10 @@ def send_email(subject, message):
     s.quit()
 
 
-def get_date():
-    # Only save a backup for every month to save space
-    return datetime.datetime.utcnow().strftime('%Y-%m')
-
-
-def log(line, newline=True):
-    line = '[%s] %s' % (get_date(), line)
-    if newline:
-        print(line)
-    else:
-        print(line)
+def log(line):
+    current_datetime = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    line = '[%s] %s' % (current_datetime, line)
+    print(line)
     sys.stdout.flush()
     report.append(line)
     out = open(args.log_path, 'a')
@@ -128,8 +133,8 @@ def logs(s):
         log(line)
 
 
-num_errors = defaultdict(int)
-last_sent = defaultdict(int)
+num_errors: Dict[str, int] = defaultdict(int)
+last_sent: Dict[str, float] = defaultdict(int)
 
 
 def error_logs(error_type, s):
@@ -147,7 +152,7 @@ def error_logs(error_type, s):
         last_sent[error_type] = t
 
 
-durations = defaultdict(list)  # Command => durations for that command
+args_to_durations: Dict[str, list] = defaultdict(list)  # Command => durations for that command
 
 
 def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=True):
@@ -161,12 +166,12 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
 
     # Add to the list
     duration = end_time - start_time
-    l = durations[str(args)]
-    l.append(duration)
-    while len(l) > 1000:  # Keep the list bounded
-        l.pop(0)
-    average_duration = sum(l) // len(l)
-    max_duration = max(l)
+    durations = args_to_durations[str(args)]
+    durations.append(duration)
+    while len(durations) > 1000:  # Keep the list bounded
+        durations.pop(0)
+    average_duration = sum(durations) // len(durations)
+    max_duration = max(durations)
 
     # Abstract away the concrete uuids
     simple_args = ['0x*' if arg.startswith('0x') else arg for arg in args]
@@ -217,7 +222,6 @@ def email_time():
 
 def backup_db():
     log('Backup DB (note that errors are not detected due to shell pipes)')
-    date = get_date()
     mysql_conf_path = os.path.join(args.codalab_home, 'monitor-mysql.cnf')
     with open(mysql_conf_path, 'w') as f:
         print('[client]', file=f)
@@ -225,7 +229,10 @@ def backup_db():
         print('port="%s"' % bundles_port, file=f)
         print('user="%s"' % bundles_username, file=f)
         print('password="%s"' % bundles_password, file=f)
-    path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_database, date)
+
+    # Only save a backup for every month to save space
+    month = datetime.datetime.utcnow().strftime('%Y-%m')
+    path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_database, month)
     run_command(
         [
             'bash',
@@ -256,10 +263,9 @@ def check_disk_space(paths):
 
 
 def poll_online_workers():
+    public_workers = get_public_workers()
     if len(public_workers) == 0:
-        error_logs(
-            'worker check failed', 'Missing value for environment variable CODALAB_PUBLIC_WORKERS.'
-        )
+        log("Environment variable CODALAB_PUBLIC_WORKERS is empty.")
         return
     lines = run_command(['cl', 'workers']).split('\n')
     workers_info = lines[2:]
@@ -319,7 +325,7 @@ while True:
             run_command(['cl', 'search', '.last', '.limit=5'])
 
         # Try uploading, downloading and running a job with a dependency.
-        if run_time():
+        if run_time() and get_public_workers():
             upload_uuid = run_command(
                 ['cl', 'upload', os.path.join(BASE_DIR, 'scripts', 'stress-test.pl')]
             )

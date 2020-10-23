@@ -39,3 +39,8 @@ site
 
 # Temporary bundle data
 codalab-worker-scratch
+
+# mypy
+.mypy_cache/
+
+.coverage

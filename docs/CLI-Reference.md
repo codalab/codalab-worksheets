@@ -22,11 +22,14 @@ Usage: `cl <command> <arguments>`
       -z, --force-compression  Always use compression (this may speed up single-file uploads over a slow network).
       -w, --worksheet-spec     Upload to this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
       -i, --ignore             Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
+      -l, --link               Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store.
       -n, --name               Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description        Full description of the bundle.
       --tags                   Space-separated list of tags used for search (e.g., machine-learning).
       --license                The license under which this program/dataset is released.
       --source-url             URL corresponding to the original source of this bundle.
+      --link-url               Link URL of bundle.
+      --link-format            Link format of bundle. Can be equal to"raw" or "zip" (only "raw" is supported as of now).
       -e, --edit               Show an editor to allow editing of the bundle metadata.
 
 ### make
@@ -50,6 +53,7 @@ Usage: `cl <command> <arguments>`
       -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
       -a, --after_sort_key         Insert after this sort_key
       -m, --memoize                If a bundle with the same command and dependencies already exists, return it instead of creating a new one.
+      -i, --interactive            Beta feature - Start an interactive session to construct your run command.
       -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description            Full description of the bundle.
       --tags                       Space-separated list of tags used for search (e.g., machine-learning).
@@ -61,32 +65,7 @@ Usage: `cl <command> <arguments>`
       --request-cpus               Number of CPUs allowed for this run.
       --request-gpus               Number of GPUs allowed for this run.
       --request-queue              Submit run to this job queue.
-      --request-priority           Job priority (higher is more important).
-      --request-network            Whether to allow network access.
-      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents.
-      -e, --edit                   Show an editor to allow editing of the bundle metadata.
-      -W, --wait                   Wait until run finishes.
-      -t, --tail                   Wait until run finishes, displaying stdout/stderr.
-      -v, --verbose                Display verbose output.
-
-### docker
-    Beta feature. Simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.
-    Arguments:
-      target_spec                  [<key>]:[[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
-      command                      Arbitrary Linux command to execute.
-      -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
-      -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
-      -d, --description            Full description of the bundle.
-      --tags                       Space-separated list of tags used for search (e.g., machine-learning).
-      --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
-      --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.
-      --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.
-      --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.
-      --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.
-      --request-cpus               Number of CPUs allowed for this run.
-      --request-gpus               Number of GPUs allowed for this run.
-      --request-queue              Submit run to this job queue.
-      --request-priority           Job priority (higher is more important).
+      --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority.
       --request-network            Whether to allow network access.
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
@@ -107,6 +86,7 @@ Usage: `cl <command> <arguments>`
       --anonymous           Set bundle to be anonymous (identity of the owner will NOT be visible to users without 'all' permission on the bundle).
       --not-anonymous       Set bundle to be NOT anonymous.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+      -f, --field           Edit any specified bundle metadata field.
 
 ### detach (de)
     Detach a bundle from this worksheet, but doesn't remove the bundle.
@@ -148,7 +128,7 @@ Usage: `cl <command> <arguments>`
       search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
       search .offset=<offset>                : Return results starting at <offset>.
     
-      search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-3-14).
+      search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
       search .after=<datetime>               : Returns bundles created after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
     
       search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
@@ -221,7 +201,7 @@ Usage: `cl <command> <arguments>`
       --request-cpus               Number of CPUs allowed for this run. (for runs)
       --request-gpus               Number of GPUs allowed for this run. (for runs)
       --request-queue              Submit run to this job queue. (for runs)
-      --request-priority           Job priority (higher is more important). (for runs)
+      --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)
       --request-network            Whether to allow network access. (for runs)
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
@@ -250,7 +230,7 @@ Usage: `cl <command> <arguments>`
       --request-cpus               Number of CPUs allowed for this run. (for runs)
       --request-gpus               Number of GPUs allowed for this run. (for runs)
       --request-queue              Submit run to this job queue. (for runs)
-      --request-priority           Job priority (higher is more important). (for runs)
+      --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)
       --request-network            Whether to allow network access. (for runs)
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
@@ -364,6 +344,7 @@ Usage: `cl <command> <arguments>`
 
 ### wls (wsearch, ws)
     List worksheets on the current instance matching the given keywords (returns 10 results by default).
+    Searcher's own worksheets are prioritized.
       wls tag=paper           : List worksheets tagged as "paper".
       wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.
       wls .mine               : List my worksheets.
@@ -451,12 +432,41 @@ Usage: `cl <command> <arguments>`
       -t, --time-quota          Total amount of time allowed (e.g., 3, 3m, 3h, 3d)
       -p, --parallel-run-quota  Total amount of runs the user may have running at a time on shared public workers
       -d, --disk-quota          Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)
+      --grant-access            Grant access to the user if the CodaLab instance is in protected mode
+      --remove-access           Remove the user's access if the CodaLab instance is in protected mode
 
 ### ufarewell
     Delete user permanently. Root user only.
     To be safe, you can only delete a user if user does not own any bundles, worksheets, or groups.
     Arguments:
       user_spec  Username or id of user to delete.
+
+### uls
+    Lists users on CodaLab (returns 10 results by default).
+      uls <keyword> ... <keyword>         : Username or id contains each <keyword>.
+      uls user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., first_name).
+    
+      uls .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
+      uls .offset=<offset>                : Return results starting at <offset>.
+    
+      uls .joined_before=<datetime>       : Returns users joined before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
+      uls .joined_after=<datetime>        : Returns users joined after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
+      uls .active_before=<datetime>       : (Root user only) Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
+      uls .active_after=<datetime>        : (Root user only) Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
+    
+      uls .disk_used_less_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_less_than=70% or 0.3).
+      uls .disk_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_more_than=70% or 0.3).
+      uls .time_used_less_than=<<percentage> or <float>      : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_less_than=70% or 0.3).
+      uls .time_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_more_than=70% or 0.3).
+    
+      uls size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
+      uls size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).
+      uls .last                           : Sort in reverse chronological order (equivalent to id=.sort-).
+      uls .count                          : Count the number of matching bundles.
+      uls .format=<format>                : Apply <format> function (see worksheet markdown).
+    Arguments:
+      keywords     Keywords to search for.
+      -f, --field  Print out these comma-separated fields.
 
 
 ## Commands for managing server

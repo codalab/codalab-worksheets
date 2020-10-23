@@ -1,10 +1,12 @@
-'''
+"""
 AuthHandler encapsulates the logic to authenticate users on the server-side.
-'''
+"""
 import base64
 import json
-import threading
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.parse
+import urllib.error
+from codalab.common import URLOPEN_TIMEOUT_SECONDS
 
 
 # TODO(sckoo): clean up auth logic across:
@@ -58,7 +60,7 @@ class RestOAuthHandler(object):
             data=urllib.parse.urlencode(data).encode('utf-8'),
         )
         try:
-            response = urllib.request.urlopen(request)
+            response = urllib.request.urlopen(request, timeout=URLOPEN_TIMEOUT_SECONDS)
             result = json.loads(response.read().decode())
             return result
         except urllib.error.HTTPError as e:

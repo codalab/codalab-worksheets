@@ -2,10 +2,36 @@ import os
 import re
 import sys
 from collections import OrderedDict
+from typing import Callable, Any
 
 from codalab.lib import path_util, spec_util
 from codalab.worker.bundle_state import State
 from functools import reduce
+
+
+def require_partitions(f: Callable[['MultiDiskBundleStore', Any], Any]):
+    """Decorator added to MultiDiskBundleStore methods that require a disk to
+    be added to the deployment for tasks to succeed. Prints a helpful error
+    message prompting the user to add a new disk.
+    """
+
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        if len(self.nodes) < 1:
+            print(
+                """
+Error: No partitions available.
+To use MultiDiskBundleStore, you must add at least one partition. Try the following:
+
+    $ cl help bs-add-partition
+""",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        else:
+            return f(*args, **kwargs)
+
+    return wrapper
 
 
 class MultiDiskBundleStore(object):
@@ -21,30 +47,6 @@ class MultiDiskBundleStore(object):
     # Location where MultiDiskBundleStore data and temp data is kept relative to CODALAB_HOME
     DATA_SUBDIRECTORY = 'bundles'
     CACHE_SIZE = 1 * 1000 * 1000  # number of entries to cache
-
-    def require_partitions(f):
-        """Decorator added to MultiDiskBundleStore methods that require a disk to
-        be added to the deployment for tasks to succeed. Prints a helpful error
-        message prompting the user to add a new disk.
-        """
-
-        def wrapper(*args, **kwargs):
-            self = args[0]
-            if len(self.nodes) < 1:
-                print(
-                    """
-    Error: No partitions available.
-    To use MultiDiskBundleStore, you must add at least one partition. Try the following:
-
-        $ cl help bs-add-partition
-    """,
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-            else:
-                return f(*args, **kwargs)
-
-        return wrapper
 
     def __init__(self, codalab_home):
         self.codalab_home = path_util.normalize(codalab_home)
@@ -165,7 +167,7 @@ class MultiDiskBundleStore(object):
         try:
             print(partition_abs_path)
             path_util.check_isvalid(partition_abs_path, 'rm-partition')
-        except:
+        except Exception:
             print(
                 "Partition with name '%s' does not exist. Run `cl ls-partitions` to see a list of mounted partitions."
                 % partition,
@@ -237,7 +239,7 @@ class MultiDiskBundleStore(object):
             fname = os.path.basename(path)
             try:
                 return UUID_REGEX.match(fname).groups()[0]
-            except:
+            except Exception:
                 return None
 
         def _is_bundle(path):
@@ -256,7 +258,7 @@ class MultiDiskBundleStore(object):
                 uuid = _get_uuid(bundle_path)
                 # Screen for bundles stored on disk that are no longer in the database
                 bundle = db_bundle_by_uuid.get(uuid, None)
-                if bundle == None:
+                if bundle is None:
                     to_delete += [bundle_path]
                     continue
                 # Delete dependencies stored inside of READY or FAILED bundles
@@ -275,7 +277,7 @@ class MultiDiskBundleStore(object):
             for path in other_paths:
                 uuid = _get_uuid(path)
                 bundle = db_bundle_by_uuid.get(uuid, None)
-                if bundle == None:
+                if bundle is None:
                     to_delete += [path]
                     continue
                 ends_with_ext = (
@@ -327,16 +329,16 @@ class MultiDiskBundleStore(object):
             for bundle_path in bundle_paths:
                 uuid = _get_uuid(bundle_path)
                 bundle = db_bundle_by_uuid.get(uuid, None)
-                if bundle == None:
+                if bundle is None:
                     continue
-                if compute_data_hash or bundle.data_hash == None:
+                if compute_data_hash or bundle.data_hash is None:
                     dirs_and_files = (
                         path_util.recursive_ls(bundle_path)
                         if os.path.isdir(bundle_path)
                         else ([], [bundle_path])
                     )
                     data_hash = '0x%s' % path_util.hash_directory(bundle_path, dirs_and_files)
-                    if bundle.data_hash == None:
+                    if bundle.data_hash is None:
                         data_hash_recomputed += 1
                         print(
                             'Giving bundle %s data_hash %s' % (bundle_path, data_hash),

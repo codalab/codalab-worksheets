@@ -23,10 +23,11 @@ import errno
 import os
 import socket
 import subprocess
+import yaml
 
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
 
-ALL_SERVICES = DEFAULT_SERVICES + ['monitor', 'worker-manager-cpu', 'worker-manager-gpu']
+ALL_SERVICES = DEFAULT_SERVICES + ['azurite', 'monitor', 'worker-manager-cpu', 'worker-manager-gpu']
 
 ALL_NO_SERVICES = [
     'no-' + service for service in ALL_SERVICES
@@ -147,14 +148,22 @@ CODALAB_ARGUMENTS = [
         default='codalab',
     ),
     CodalabArg(
+        name='protected_mode',
+        env_var='CODALAB_PROTECTED_MODE',
+        help='Whether to run the instance in protected mode',
+        type=bool,
+        default=False,
+        flag='-p',
+    ),
+    CodalabArg(
         name='worker_network_prefix',
         help='Network name for the worker',
         default=lambda args: args.instance_name + '-worker-network',
     ),
-    ### Docker
+    # Docker
     CodalabArg(name='docker_username', help='Docker Hub username to push built images'),
     CodalabArg(name='docker_password', help='Docker Hub password to push built images'),
-    ### CodaLab
+    # CodaLab
     CodalabArg(
         name='codalab_username',
         env_var='CODALAB_USERNAME',
@@ -167,7 +176,7 @@ CODALAB_ARGUMENTS = [
         help='CodaLab (root) password',
         default='codalab',
     ),
-    ### MySQL
+    # MySQL
     CodalabArg(name='mysql_host', help='MySQL hostname', default='mysql'),  # Inside Docker
     CodalabArg(name='mysql_port', help='MySQL port', default=3306, type=int),
     CodalabArg(name='mysql_database', help='MySQL database name', default='codalab_bundles'),
@@ -210,7 +219,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='shared_file_system', help='Whether worker has access to the bundle mount', type=bool
     ),
-    ### User
+    # User
     CodalabArg(name='user_disk_quota', help='How much space a user can use', default='100g'),
     CodalabArg(name='user_time_quota', help='How much total time a user can use', default='100y'),
     CodalabArg(
@@ -219,17 +228,24 @@ CODALAB_ARGUMENTS = [
         type=int,
         default=100,
     ),
-    ### Email
+    # Email
     CodalabArg(name='admin_email', help='Email to send admin notifications to (e.g., monitoring)'),
     CodalabArg(name='support_email', help='Help email to send user questions to'),
     CodalabArg(name='email_host', help='Send email by logging into this SMTP server'),
     CodalabArg(name='email_username', help='Username of email account for sending email'),
     CodalabArg(name='email_password', help='Password of email account for sending email'),
-    ### SSL
+    # SSL
     CodalabArg(name='use_ssl', help='Use HTTPS instead of HTTP', type=bool, default=False),
     CodalabArg(name='ssl_cert_file', help='Path to the cert file for SSL'),
     CodalabArg(name='ssl_key_file', help='Path to the key file for SSL'),
-    ### Worker manager
+    # Sentry
+    CodalabArg(
+        name='sentry_ingest_url',
+        help=(
+            'Ingest URL for logging exceptions with Sentry. If not provided, Sentry is not used.'
+        ),
+    ),
+    # Worker manager
     CodalabArg(
         name='worker_manager_type',
         help='Type of worker manager (e.g., aws-batch, azure-batch, slurm); only aws-batch supported right now',
@@ -285,7 +301,12 @@ CODALAB_ARGUMENTS = [
         default=SERVICE_REQUEST_TIMEOUT_SECONDS,
         help='Docker client timeout (in seconds)',
     ),
-    ### Public workers
+    CodalabArg(
+        name='link_mounts',
+        help='Comma-separated list of directories that are mounted on the REST server, allowing their contents to be used in the --link argument.',
+        default='/tmp/codalab/link-mounts',
+    ),
+    # Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
 ]
 
@@ -510,7 +531,30 @@ class CodalabServiceManager(object):
             self.args.version = clean_version(self.args.version)
         self.compose_cwd = os.path.join(BASE_DIR, 'docker', 'compose_files')
 
-        self.compose_files = ['docker-compose.yml']
+        self.compose_files = []
+        self.compose_tempfile_name = ""
+        if self.args.link_mounts:
+            # We want to be able to mount a variable number of folders to the Docker container,
+            # so we can't just use regular interpolation with environment variables. Instead,
+            # we create a temporary file with the modified docker-compose.yml and use that file instead.
+            with open(os.path.join(self.compose_cwd, 'docker-compose.yml')) as f:
+                compose_options = yaml.safe_load(f)
+            for mount_path in self.args.link_mounts.split(","):
+                mount_path = os.path.abspath(mount_path)
+                compose_options["x-codalab-server"]["volumes"].append(
+                    f"{mount_path}:/opt/codalab-worksheets-link-mounts{mount_path}"
+                )
+            docker_compose_custom_path = os.path.join(
+                self.args.codalab_home, 'docker-compose-custom.yml'
+            )
+            os.makedirs(os.path.dirname(docker_compose_custom_path), exist_ok=True)
+            with open(docker_compose_custom_path, 'w+') as f:
+                yaml.dump(compose_options, f)
+                self.compose_tempfile_name = f.name
+            self.compose_files.append(self.compose_tempfile_name)
+        else:
+            self.compose_files.append('docker-compose.yml')
+
         if self.args.dev:
             self.compose_files.append('docker-compose.dev.yml')
         if self.args.use_ssl:
@@ -564,10 +608,15 @@ class CodalabServiceManager(object):
         else:
             cache_args = ''
 
+        if self.args.dev:
+            build_args = ' --build-arg dev=true'
+        else:
+            build_args = ''
+
         # Build the image using the cache
         self._run_docker_cmd(
-            'build%s -t %s -f docker/dockerfiles/Dockerfile.%s .'
-            % (cache_args, docker_image, image)
+            'build%s %s -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            % (cache_args, build_args, docker_image, image)
         )
 
     def push_image(self, image):
@@ -595,8 +644,9 @@ class CodalabServiceManager(object):
 
     def _run_compose_cmd(self, cmd):
         compose_files_str = ' '.join('-f ' + f for f in self.compose_files)
-        command_string = 'docker-compose -p %s %s %s' % (
+        command_string = 'docker-compose -p %s --project-directory %s %s %s' % (
             self.args.instance_name,
+            self.compose_cwd,
             compose_files_str,
             cmd,
         )
@@ -662,6 +712,8 @@ class CodalabServiceManager(object):
         return self.wait('rest-server', self.args.rest_port, cmd)
 
     def start_services(self):
+        if self.args.protected_mode:
+            print_header('Starting CodaLab services in protected mode...')
 
         mysql_url = 'mysql://{}:{}@{}:{}/{}'.format(
             self.args.mysql_username,
@@ -674,6 +726,8 @@ class CodalabServiceManager(object):
 
         if self.args.mysql_host == 'mysql':
             self.bring_up_service('mysql')
+
+        self.bring_up_service('azurite')
 
         if should_run_service(self.args, 'init'):
             print_header('Populating config.json')
@@ -718,6 +772,11 @@ class CodalabServiceManager(object):
             self.run_service_cmd(
                 'if [ $(alembic current | wc -l) -eq 0 ]; then echo stamp; alembic stamp head; fi'
             )
+
+        if should_run_service(self.args, 'azurite'):
+            # Run for local development with Azurite only
+            print_header('Setting up Azurite')
+            self.run_service_cmd('python3 scripts/initialize-azurite.py')
 
         self.bring_up_service('rest-server')
 

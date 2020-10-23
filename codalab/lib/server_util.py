@@ -8,11 +8,12 @@ import http.client
 import sys
 import threading
 import time
-import urllib.request, urllib.parse, urllib.error
-import re
+import urllib.request
+import urllib.parse
+import urllib.error
 
 from bottle import abort, request, HTTPResponse, redirect, app
-from oauthlib.common import to_unicode, bytes_type
+from oauthlib.common import to_unicode
 
 from codalab.common import precondition
 
@@ -226,7 +227,7 @@ def to_bytes(text, encoding='utf-8'):
     """Make sure text is bytes type."""
     if not text:
         return text
-    if not isinstance(text, bytes_type):
+    if not isinstance(text, bytes):
         text = text.encode(encoding)
     return text
 

@@ -6,7 +6,7 @@ import json
 
 from bottle import local, request, response
 
-from codalab.server.authenticated_plugin import user_is_authenticated
+from codalab.server.authenticated_plugin import AuthPlugin
 
 
 class LoginCookie(object):
@@ -24,7 +24,7 @@ class LoginCookie(object):
 
     def save(self):
         """
-        Save cookie on the Bottle response object. 
+        Save cookie on the Bottle response object.
         """
         self.clear()
         response.set_cookie(
@@ -79,17 +79,15 @@ class LoginCookie(object):
         response.delete_cookie(cls.KEY, path=cls.PATH)
 
 
-class CookieAuthenticationPlugin(object):
+class CookieAuthenticationPlugin(AuthPlugin):
     """
     Bottle plugin that checks the cookie and populates request.user if it is
     found and valid.
     """
 
-    api = 2
-
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
-            if not user_is_authenticated():
+            if not self.user_is_authenticated():
                 cookie = LoginCookie.get()
                 if cookie:
                     request.user = local.model.get_user(user_id=cookie.user_id)

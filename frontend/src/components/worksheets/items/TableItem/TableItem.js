@@ -9,6 +9,13 @@ import BundleRow from './BundleRow';
 import { getIds } from '../../../../util/worksheet_utils';
 import { fetchAsyncBundleContents } from '../../../../util/async_loading_utils';
 import { FETCH_STATUS_SCHEMA } from '../../../../constants';
+import ViewListIcon from '@material-ui/icons/ViewList';
+import IconButton from '@material-ui/core/IconButton';
+import SaveIcon from '@material-ui/icons/Save';
+import RestoreIcon from '@material-ui/icons/Restore';
+import TextField from '@material-ui/core/TextField';
+import Tooltip from '@material-ui/core/Tooltip';
+import classNames from 'classnames';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -28,6 +35,8 @@ class TableItem extends React.Component<{
             childrenCheckState: new Array(this.props.item.rows.length).fill(false),
             numSelectedChild: 0,
             indeterminateCheckState: false,
+            curSchemaNames: this.props.item.using_schemas.join(' '),
+            openSchemaTextBox: false,
         };
         this.copyCheckedBundleRows = this.copyCheckedBundleRows.bind(this);
     }
@@ -48,7 +57,7 @@ class TableItem extends React.Component<{
         });
     };
 
-    componentDidUpdate(prevProps) {
+    componentDidUpdate(prevProps, prevState) {
         if (this.props.item.rows.length !== prevProps.item.rows.length) {
             let childrenStatus = new Array(this.props.item.rows.length).fill(false);
             this.setState({
@@ -57,6 +66,17 @@ class TableItem extends React.Component<{
                 indeterminateCheckState: false,
                 checked: false,
             });
+        }
+        // If the schema was changed through editing source
+        let prevSchemas = prevProps.item.using_schemas.join(' ');
+        let newSchemas = this.props.item.using_schemas.join(' ');
+        if (prevSchemas !== newSchemas) {
+            this.setState({
+                curSchemaNames: newSchemas,
+            });
+        }
+        if (this.state.openSchemaTextBox && !prevState.openSchemaTextBox) {
+            document.getElementById('table-schema-' + this.props.itemID).focus();
         }
     }
 
@@ -101,36 +121,65 @@ class TableItem extends React.Component<{
         this.props.setFocus(this.props.focusIndex, rowIndex);
     };
 
+    changeSchemaName = (e) => {
+        this.setState({ curSchemaNames: e.target.value.replace(/\n/g, ' ') });
+    };
+
     render() {
-        const { worksheetUUID, setFocus, editPermission } = this.props;
+        const { classes, worksheetUUID, setFocus, editPermission } = this.props;
         // Provide copy data callback
         this.props.addCopyBundleRowsCallback(this.props.itemID, this.copyCheckedBundleRows);
-        var tableClassName = this.props.focused ? 'table focused' : 'table';
-        var item = this.props.item;
-        var canEdit = this.props.canEdit;
-        var bundleInfos = item.bundles_spec.bundle_infos;
-        var headerItems = item.header;
-        var headerHtml = headerItems.map((item, index) => {
+        let tableClassName = this.props.focused ? 'table focused' : 'table';
+        let item = this.props.item;
+        let bundleInfos = item.bundles_spec.bundle_infos;
+        let headerItems = item.header;
+        let headerHtml = headerItems.map((item, index) => {
             return (
                 <TableCell
                     onMouseEnter={(e) => this.setState({ hovered: true })}
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                     component='th'
                     key={index}
-                    style={index === 0 ? { paddingLeft: '70px' } : {}}
+                    classes={{
+                        root: classNames({
+                            [classes.tableHeader]: true,
+                        }),
+                    }}
+                    style={
+                        index === 0
+                            ? {
+                                  paddingLeft: editPermission ? '30px' : '70px',
+                                  paddingBottom: 0,
+                                  paddingTop: 0,
+                              }
+                            : {}
+                    }
                 >
+                    {editPermission && index === 0 && (
+                        <Tooltip title={'Change the schemas of this table'}>
+                            <IconButton>
+                                <ViewListIcon
+                                    style={{ padding: '0px', height: 15 }}
+                                    onClick={() => {
+                                        this.setState({
+                                            openSchemaTextBox: !this.state.openSchemaTextBox,
+                                        });
+                                    }}
+                                />
+                            </IconButton>
+                        </Tooltip>
+                    )}
                     {item}
                 </TableCell>
             );
         });
-        var rowItems = item.rows; // Array of {header: value, ...} objects
-        var columnWithHyperlinks = [];
+        let rowItems = item.rows; // Array of {header: value, ...} objects
+        let columnWithHyperlinks = [];
         Object.keys(rowItems[0]).forEach(function(x) {
             if (rowItems[0][x] && rowItems[0][x]['path']) columnWithHyperlinks.push(x);
         });
-        var bodyRowsHtml = rowItems.map((rowItem, rowIndex) => {
+        let bodyRowsHtml = rowItems.map((rowItem, rowIndex) => {
             let bundleInfo = bundleInfos[rowIndex];
-            let rowRef = 'row' + rowIndex;
             let rowFocused = this.props.focused && rowIndex === this.props.subFocusIndex;
             let url = '/bundles/' + bundleInfo.uuid;
             let worksheet = bundleInfo.host_worksheet;
@@ -142,7 +191,7 @@ class TableItem extends React.Component<{
             return (
                 <BundleRow
                     key={rowIndex}
-                    ref={rowRef}
+                    id={`codalab-worksheet-item-${this.props.focusIndex}-subitem-${rowIndex}`}
                     worksheetUUID={worksheetUUID}
                     item={rowItem}
                     rowIndex={rowIndex}
@@ -155,7 +204,6 @@ class TableItem extends React.Component<{
                     bundleInfo={bundleInfo}
                     uuid={bundleInfo.uuid}
                     headerItems={headerItems}
-                    canEdit={canEdit}
                     updateRowIndex={this.updateRowIndex}
                     columnWithHyperlinks={columnWithHyperlinks}
                     reloadWorksheet={this.props.reloadWorksheet}
@@ -193,14 +241,72 @@ class TableItem extends React.Component<{
                         <TableHead>
                             <TableRow
                                 style={{
-                                    height: 36,
-                                    borderTop: '2px solid #DEE2E6',
+                                    height: 32,
+                                    borderTop: '0px solid #DEE2E6',
                                     backgroundColor: '#F8F9FA',
                                 }}
                             >
                                 {headerHtml}
                             </TableRow>
                         </TableHead>
+                        {this.state.openSchemaTextBox && (
+                            <TableRow
+                                style={{
+                                    borderBottom: '2px solid #DEE2E6',
+                                    padding: '0px',
+                                }}
+                            >
+                                <TableCell colSpan='100%' style={{ padding: '0px 0px 0px 30px' }}>
+                                    <TextField
+                                        variant='outlined'
+                                        InputProps={{
+                                            style: {
+                                                padding: '10px 10px',
+                                            },
+                                        }}
+                                        id={'table-schema-' + this.props.itemID}
+                                        multiline
+                                        value={this.state.curSchemaNames || ''}
+                                        onChange={this.changeSchemaName}
+                                        size='small'
+                                        placeholder={'Using default schema'}
+                                    />
+                                    <IconButton
+                                        onClick={() => {
+                                            this.setState({ openSchemaTextBox: false });
+                                            this.props.updateBundleBlockSchema(
+                                                this.state.curSchemaNames,
+                                                'table',
+                                                this.props.item.first_bundle_source_index,
+                                            );
+                                        }}
+                                        disabled={
+                                            this.state.curSchemaNames ===
+                                            this.props.item.using_schemas.join(' ')
+                                        }
+                                        style={{ marginTop: '5px' }}
+                                    >
+                                        <SaveIcon />
+                                    </IconButton>
+                                    <IconButton
+                                        onClick={() => {
+                                            this.setState({
+                                                curSchemaNames: this.props.item.using_schemas.join(
+                                                    ' ',
+                                                ),
+                                            });
+                                        }}
+                                        disabled={
+                                            this.state.curSchemaNames ===
+                                            this.props.item.using_schemas.join(' ')
+                                        }
+                                        style={{ marginTop: '5px' }}
+                                    >
+                                        <RestoreIcon />
+                                    </IconButton>
+                                </TableCell>
+                            </TableRow>
+                        )}
                         {bodyRowsHtml}
                     </Table>
                 </TableContainer>
@@ -220,9 +326,17 @@ class _TableContainer extends React.Component {
     }
 }
 
-const styles = (theme) => ({
+const styles = () => ({
     tableContainer: {
         position: 'relative',
+    },
+    tableHeader: {
+        position: 'sticky',
+        top: 0,
+        backgroundColor: '#F8F9FA',
+        zIndex: 1,
+        color: '#000000',
+        height: 26,
     },
 });
 
@@ -234,7 +348,9 @@ const TableWrapper = (props) => {
         (async function() {
             if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
                 try {
-                    const { contents } = await fetchAsyncBundleContents({ contents: item.rows });
+                    const { contents } = await fetchAsyncBundleContents({
+                        contents: item.rows,
+                    });
                     onAsyncItemLoad({
                         ...item,
                         rows: contents,
@@ -251,8 +367,9 @@ const TableWrapper = (props) => {
         })();
         // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [item.rows, item.status]);
+    }, [item, item.rows, item.status, onAsyncItemLoad]);
     return <TableItem {...props} />;
 };
 
-export default TableWrapper;
+export { TableWrapper };
+export default withStyles(styles)(TableItem);

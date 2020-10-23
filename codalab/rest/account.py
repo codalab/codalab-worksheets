@@ -5,7 +5,7 @@ Handles create new user accounts and authenticating users.
 from bottle import request, response, template, local, redirect, default_app, get, post
 
 from codalab.lib import crypt_util, spec_util
-from codalab.lib.server_util import redirect_with_query, query_get_bool
+from codalab.lib.server_util import redirect_with_query
 from codalab.lib.spec_util import NAME_REGEX
 from codalab.common import UsageError
 from codalab.objects.user import User
@@ -164,7 +164,7 @@ def css():
 
 
 @get('/account/reset', apply=AuthenticatedPlugin())
-def request_reset():
+def request_reset_get():
     """
     Password reset endpoint for authenticated users.
     """
@@ -188,7 +188,7 @@ def request_reset():
 
 
 @post('/account/reset')
-def request_reset():
+def request_reset_post():
     """
     Password reset form POST endpoint.
     """
@@ -268,7 +268,7 @@ def reset_password():
 
 
 @post('/account/changeemail', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
-def request_reset():
+def request_change_email():
     """
     Email change form POST endpoint.
     """

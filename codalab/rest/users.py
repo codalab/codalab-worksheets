@@ -2,14 +2,38 @@
 Worksheets REST API Users Views.
 """
 import http.client
+import os
 
 from bottle import abort, get, request, local, delete
 
 from codalab.lib.spec_util import NAME_REGEX
-from codalab.lib.server_util import bottle_patch as patch, json_api_meta
-from codalab.rest.schemas import AuthenticatedUserSchema, USER_READ_ONLY_FIELDS, UserSchema
+from codalab.lib.server_util import bottle_patch as patch, json_api_meta, query_get_list
+from codalab.rest.schemas import (
+    AdminUserSchema,
+    AuthenticatedUserSchema,
+    USER_READ_ONLY_FIELDS,
+    UserSchema,
+)
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
 from codalab.rest.util import get_resource_ids
+
+
+USER_ACCESSIBLE_KEYWORDS = (
+    'name',
+    'user_name',
+    'first_name',
+    'last_name',
+    'affiliation',
+    'url',
+    'disk_used',
+    'joined',
+    'count',
+    'limit',
+    'offset',
+    'last',
+    'format',
+    'size',
+)
 
 
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
@@ -55,7 +79,7 @@ def update_authenticated_user():
 def allowed_user_schema():
     """Return schema with more fields if authenticated user is root."""
     if request.user.user_id == local.model.root_user_id:
-        return AuthenticatedUserSchema
+        return AdminUserSchema
     else:
         return UserSchema
 
@@ -134,13 +158,42 @@ def fetch_users():
         filter[user_name]=name1,name2,...
         filter[email]=email1,email2,...
 
-    Fetches all users that match any of these usernames or emails.
+    Query parameters:
+
+    - `keywords`: Search keyword. May be provided multiple times for multiple
+    keywords.
+    Examples of other special keyword forms:
+    - `name=<name>            ` : More targeted search of using metadata fields.
+    - `date_joined=.sort             ` : Sort by a particular field.
+    - `date_joined=.sort-            ` : Sort by a particular field in reverse.
+    - `.count                 ` : Count the number of users.
+    - `.limit=10              ` : Limit the number of results to the top 10.
     """
     # Combine username and email filters
     usernames = set(request.query.get('filter[user_name]', '').split(','))
     usernames |= set(request.query.get('filter[email]', '').split(','))
     usernames.discard('')  # str.split(',') will return '' on empty strings
-    users = local.model.get_users(usernames=(usernames or None))
+
+    keywords = query_get_list('keywords')
+    if usernames is None and keywords is None:
+        abort(
+            http.client.BAD_REQUEST, "Request must include 'keywords' query parameter or usernames"
+        )
+
+    if request.user.user_id != local.model.root_user_id:
+        for key in keywords:
+            if not all(accessed_field in key for accessed_field in USER_ACCESSIBLE_KEYWORDS):
+                abort(http.client.FORBIDDEN, "You don't have access to search for these fields")
+
+    # Handle search keywords
+    users = local.model.get_users(keywords=(keywords or None), usernames=(usernames or None))
+    # Return simple dict if scalar result (e.g. .sum or .count queries)
+    if users.get('is_aggregate'):
+
+        return json_api_meta({}, {'results': users['results']})
+    else:
+        users = users['results']
+
     return allowed_user_schema()(many=True).dump(users).data
 
 
@@ -157,13 +210,25 @@ def update_users():
     if request.user.user_id != local.model.root_user_id:
         abort(http.client.FORBIDDEN, "Only root user can update other users.")
 
-    users = AuthenticatedUserSchema(strict=True, many=True).load(request.json, partial=True).data
+    users = AdminUserSchema(strict=True, many=True).load(request.json, partial=True).data
 
     if len(users) != 1:
-        abort(http.client.BAD_REQUEST, "Users can only be updated on at a time.")
+        abort(http.client.BAD_REQUEST, "Users can only be updated one at a time.")
+
+    if 'has_access' in users[0]:
+        # has_access can only be updated in protected mode
+        if os.environ.get('CODALAB_PROTECTED_MODE') != 'True':
+            abort(http.client.BAD_REQUEST, "This CodaLab instance is not in protected mode.")
+
+        # Only verified users can be given access to a protected instance
+        if not local.model.is_verified(users[0]['user_id']):
+            abort(
+                http.client.BAD_REQUEST,
+                "User has to be verified first in order to be granted access.",
+            )
 
     local.model.update_user_info(users[0])
 
     # Return updated users
-    users = local.model.get_users(user_ids=[users[0]['user_id']])
-    return AuthenticatedUserSchema(many=True).dump(users).data
+    users = local.model.get_users(user_ids=[users[0]['user_id']])['results']
+    return AdminUserSchema(many=True).dump(users).data

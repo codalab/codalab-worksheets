@@ -41,6 +41,12 @@ class SlurmBatchWorkerManager(WorkerManager):
             '--nodelist', type=str, default='', help='The worker node to run jobs in'
         )
         subparser.add_argument(
+            '--exclude',
+            type=str,
+            default='',
+            help='A comma-separated list of nodes to explicitly exclude from running jobs.',
+        )
+        subparser.add_argument(
             '--partition', type=str, required=True, help='Name of batch job queue to use'
         )
         subparser.add_argument(
@@ -49,6 +55,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--gpus', type=int, default=1, help='Default number of GPUs for each worker'
         )
+        subparser.add_argument('--gpu-type', type=str, help='GPU type to request from Slurm')
         subparser.add_argument(
             '--memory-mb', type=int, default=2048, help='Default memory (in MB) for each worker'
         )
@@ -229,47 +236,21 @@ class SlurmBatchWorkerManager(WorkerManager):
         :param worker_id: a string representing the worker id
         :return: the command to run on
         """
-        # This needs to be a unique directory since Batch jobs may share a host
-        worker_network_prefix = 'cl_worker_{}_network'.format(worker_id)
         # Codalab worker's work directory
         if self.args.worker_work_dir_prefix:
             work_dir_prefix = Path(self.args.worker_work_dir_prefix)
         else:
             work_dir_prefix = Path()
 
-        worker_work_dir = work_dir_prefix.joinpath(Path('slurm-codalab-worker-scratch', worker_id))
+        worker_work_dir = work_dir_prefix.joinpath(
+            Path('{}-codalab-SlurmBatchWorkerManager-scratch'.format(self.username), worker_id)
+        )
+        command = self.build_command(worker_id, str(worker_work_dir))
 
-        command = [
-            self.args.worker_executable,
-            '--server',
-            self.args.server,
-            '--verbose',
-            '--exit-when-idle',
-            '--idle-seconds',
-            str(self.args.worker_idle_seconds),
-            '--work-dir',
-            str(worker_work_dir),
-            '--id',
-            worker_id,
-            '--network-prefix',
-            worker_network_prefix,
-            # always set in the Slurm worker manager to ensure safe shutdown
-            '--pass-down-termination',
-        ]
-        if self.args.worker_tag:
-            command.extend(['--tag', self.args.worker_tag])
+        # --pass-down-termination should always be set for Slurm worker managers to ensure safe shutdown
+        command.append('--pass-down-termination')
         if self.args.password_file:
             command.extend(['--password-file', self.args.password_file])
-        if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
-            command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
-        if self.args.worker_max_work_dir_size:
-            command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
-        if self.args.worker_delete_work_dir_on_exit:
-            command.extend(['--delete-work-dir-on-exit'])
-        if self.args.worker_exit_on_exception:
-            command.extend(['--exit-on-exception'])
-        if self.args.worker_tag_exclusive:
-            command.extend(['--tag-exclusive'])
 
         return command
 
@@ -322,6 +303,15 @@ class SlurmBatchWorkerManager(WorkerManager):
             for key in sorted(slurm_args.keys())
         ]
 
+        # Log the hostname of the node that the SlurmWorkerManager
+        # is running a worker on.
+        log_hostname = textwrap.dedent(
+            '''
+            echo "Worker is executing on host: $(hostname)" || true
+            '''
+            + '\n\n'
+        )
+
         # Check the existence of environment variables CODALAB_USERNAME and
         # CODALAB_PASSWORD when password_file is not given.
         worker_authentication = textwrap.dedent(
@@ -340,6 +330,23 @@ class SlurmBatchWorkerManager(WorkerManager):
             else ''
         )
 
+        # Even though slurm does GPU isolation, Docker overrides this, so we need to
+        # manually specify the GPUs.
+        gpu_isolation = textwrap.dedent(
+            '''
+            GPUSET=$(nvidia-smi -L | grep -o 'UUID: [^)]*' | cut -d ' ' -f2 | tr '\n' ',')
+            GPUSET=${GPUSET::-1}
+            if [ -z "$GPUSET" ]; then
+                  echo "No GPUs on the machine"
+                  GPU_ARGS="--gpuset="
+            else
+                  echo "Using GPUs $GPUSET"
+                  GPU_ARGS="--gpuset $GPUSET"
+            fi
+            '''
+            + '\n\n'
+        )
+
         # Using the --unbuffered option with srun command will allow output
         # appear in the output file as soon as it is produced.
         srun_args = [self.SRUN, '--unbuffered'] + command
@@ -349,8 +356,12 @@ class SlurmBatchWorkerManager(WorkerManager):
             '#!/usr/bin/env bash\n\n'
             + '\n'.join(sbatch_args)
             + '\n\n'
+            + log_hostname
             + worker_authentication
+            + gpu_isolation
             + ' '.join(srun_args)
+            + ' '
+            + '$GPU_ARGS'
         )
         logger.info("Slurm Batch Job Definition")
         logger.info(job_definition)
@@ -363,9 +374,15 @@ class SlurmBatchWorkerManager(WorkerManager):
         """
         slurm_args = {}
         slurm_args['nodelist'] = self.args.nodelist
+        if self.args.exclude:
+            slurm_args['exclude'] = self.args.exclude
         slurm_args['mem'] = self.args.memory_mb
         slurm_args['partition'] = self.args.partition
-        slurm_args['gres'] = "gpu:" + str(self.args.gpus)
+        gpu_gres_value = "gpu"
+        if self.args.gpu_type:
+            gpu_gres_value += ":" + self.args.gpu_type
+        gpu_gres_value += ":" + str(self.args.gpus)
+        slurm_args['gres'] = gpu_gres_value
         # job-name is unique
         slurm_args['job-name'] = worker_id
         slurm_args['cpus-per-task'] = str(self.args.cpus)

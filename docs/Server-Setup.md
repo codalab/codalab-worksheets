@@ -70,6 +70,25 @@ If you want to update CodaLab, run the following commands:
 This will grab the latest Docker images, migrate the database, and start or
 restart all the CodaLab services.  Any ongoing runs should not be affected.
 
+# Protected Mode
+
+Starting a CodaLab instance in protected mode will place the instance on lockdown. Anyone can 
+still sign up for account, but only an admin can grant access to a user with an account. Users 
+without granted access will be denied access to all REST endpoints, except a few basic 
+account management endpoints.
+
+In order to run an instance in protected mode, start the CodaLab service as follows:
+    
+    ./codalab_service.py start -p
+    
+As an admin, grant access to a user by running the following CLI command:
+
+    cl uedit <username> --grant-access
+    
+Remove a user's access by running:
+
+    cl uedit <username> --remove-access
+
 # Development
 
 If you're actively developing and want to test your changes, add the following two flags:
@@ -128,7 +147,7 @@ To run the tests against an instance that you've already set up:
 
 Or to run a specific test (e.g., basic):
 
-    docker exec codalab_rest-server_1 python3 test_cli.py basic
+    docker exec codalab_rest-server_1 python3 tests/cli/test_cli.py basic
 
 In sum, to start an instance and run tests on it:
 

@@ -61,8 +61,6 @@ class TextEditorItem extends React.Component<{
         const {
             ids,
             mode,
-            showDefault,
-            defaultValue,
             worksheetUUID,
             after_sort_key,
             reloadWorksheet,
@@ -106,7 +104,7 @@ class TextEditorItem extends React.Component<{
     };
 
     render() {
-        const { classes, defaultValue, showDefault } = this.props;
+        const { classes, defaultValue } = this.props;
         Mousetrap.bindGlobal(['ctrl+enter'], () => {
             this.saveText();
             Mousetrap.unbindGlobal(['ctrl+enter']);
@@ -114,6 +112,7 @@ class TextEditorItem extends React.Component<{
 
         Mousetrap.bindGlobal(['esc'], () => {
             this.props.closeEditor();
+            this.text = defaultValue;
             Mousetrap.unbindGlobal(['esc']);
         });
 

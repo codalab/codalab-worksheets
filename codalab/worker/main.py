@@ -10,11 +10,11 @@ import logging
 import signal
 import socket
 import stat
-import subprocess
 import sys
 import psutil
 
 from codalab.lib.formatting import parse_size
+from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, using_sentry
 from .bundle_service_client import BundleServiceClient, BundleAuthException
 from . import docker_utils
 from .worker import Worker
@@ -131,6 +131,9 @@ def parse_args():
         help='To be used when the server and the worker share the bundle store on their filesystems.',
     )
     parser.add_argument(
+        '--group', default=None, help='Name of the group that can run jobs on this worker'
+    )
+    parser.add_argument(
         '--tag-exclusive',
         action='store_true',
         help='To be used when the worker should only run bundles that match the worker\'s tag.',
@@ -194,12 +197,23 @@ def connect_to_codalab_server(server, password_file):
 
 def main():
     args = parse_args()
-    # This quits if connection unsuccessful
-    bundle_service = connect_to_codalab_server(args.server, args.password_file)
+
     # Configure logging
     logging.basicConfig(
         format='%(asctime)s %(message)s', level=(logging.DEBUG if args.verbose else logging.INFO)
     )
+
+    # Initialize sentry logging
+    if using_sentry():
+        initialize_sentry()
+
+    # This quits if connection unsuccessful
+    bundle_service = connect_to_codalab_server(args.server, args.password_file)
+
+    # Load some data into sentry
+    if using_sentry():
+        load_sentry_data(username=bundle_service._username, **vars(args))
+
     if args.shared_file_system:
         # No need to store bundles locally if filesystems are shared
         local_bundles_dir = None
@@ -245,10 +259,12 @@ def main():
         bundle_service,
         args.shared_file_system,
         args.tag_exclusive,
+        args.group,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
         pass_down_termination=args.pass_down_termination,
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,
+        exit_on_exception=args.exit_on_exception,
     )
 
     # Register a signal handler to ensure safe shutdown.
@@ -307,21 +323,8 @@ def parse_gpuset_args(arg):
         return set()
 
     try:
-        # We run nvidia-smi on the host directly, in order to respect
-        # environment variables like CUDA_VISIBLE_DEVICES or other restrictions
-        # that, for instance, might be placed by Slurm or a similar resource
-        # allocation system. Running nvidia-smi in Docker ignores these
-        # restrictions, hence why we don't just simply use
-        # docker_utils.get_nvidia_devices()
-        nvidia_command = ['nvidia-smi', '--query-gpu=index,uuid', '--format=csv,noheader']
-        output = subprocess.run(
-            nvidia_command, stdout=subprocess.PIPE, check=True, universal_newlines=True
-        ).stdout
-        print(output.split('\n')[:-1])
-        all_gpus = {
-            gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]
-        }
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
+    except docker_utils.DockerException:
         all_gpus = {}
 
     if arg == 'ALL':

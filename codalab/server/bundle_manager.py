@@ -9,8 +9,12 @@ import sys
 import threading
 import time
 import traceback
+from typing import List
 
-from codalab.objects.permission import check_bundles_have_read_permission
+from codalab.objects.permission import (
+    check_bundles_have_read_permission,
+    check_bundle_have_run_permission,
+)
 from codalab.common import NotFoundError, PermissionError
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
@@ -118,19 +122,19 @@ class BundleManager(object):
         for bundle in bundles:
             parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
 
+            missing_uuids = parent_uuids - all_parent_uuids
+            if missing_uuids:
+                bundles_to_fail.append(
+                    (bundle, 'Missing parent bundles: %s' % ', '.join(missing_uuids))
+                )
+                continue
+
             try:
                 check_bundles_have_read_permission(
                     self._model, self._model.get_user(bundle.owner_id), parent_uuids
                 )
             except PermissionError as e:
                 bundles_to_fail.append((bundle, str(e)))
-                continue
-
-            missing_uuids = parent_uuids - all_parent_uuids
-            if missing_uuids:
-                bundles_to_fail.append(
-                    (bundle, 'Missing parent bundles: %s' % ', '.join(missing_uuids))
-                )
                 continue
 
             parent_states = {uuid: all_parent_states[uuid] for uuid in parent_uuids}
@@ -168,7 +172,7 @@ class BundleManager(object):
             logger.info('Staging %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.STAGED})
 
-    def _make_bundles(self):
+    def _make_bundles(self) -> List[threading.Thread]:
         # Re-stage any stuck bundles. This would happen if the bundle manager
         # died.
         for bundle in self._model.batch_get_bundles(state=State.MAKING, bundle_type='make'):
@@ -176,6 +180,7 @@ class BundleManager(object):
                 logger.info('Re-staging make bundle %s', bundle.uuid)
                 self._model.update_bundle(bundle, {'state': State.STAGED})
 
+        threads = []
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='make'):
             logger.info('Making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.MAKING})
@@ -183,7 +188,10 @@ class BundleManager(object):
                 self._make_uuids.add(bundle.uuid)
             # Making a bundle could take time, so do the work in a separate
             # thread to ensure quick scheduling.
-            threading.Thread(target=BundleManager._make_bundle, args=[self, bundle]).start()
+            t = threading.Thread(target=BundleManager._make_bundle, args=[self, bundle])
+            threads.append(t)
+            t.start()
+        return threads
 
     def _is_making_bundles(self):
         with self._make_uuids_lock:
@@ -195,14 +203,20 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
-            bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+            bundle_link_url = getattr(bundle.metadata, "link_url", None)
+            bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
             path = os.path.normpath(bundle_location)
 
             deps = []
+            parent_bundle_link_urls = self._model.get_bundle_metadata(
+                [dep.parent_uuid for dep in bundle.dependencies], "link_url"
+            )
             for dep in bundle.dependencies:
-                parent_bundle_path = os.path.normpath(
+                parent_bundle_link_url = parent_bundle_link_urls.get(dep.parent_uuid)
+                parent_bundle_path = parent_bundle_link_url or os.path.normpath(
                     self._bundle_store.get_bundle_location(dep.parent_uuid)
                 )
+                # TODO(Ashwin): make this logic non-fs specific.
                 dependency_path = os.path.normpath(
                     os.path.join(parent_bundle_path, dep.parent_path)
                 )
@@ -229,6 +243,7 @@ class BundleManager(object):
                 for dependency_path, child_path in deps:
                     path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
+            # TODO(Ashwin): fix
             self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
@@ -290,6 +305,7 @@ class BundleManager(object):
                     )
                 )
                 bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+                # TODO(Ashwin): fix this -- bundle location could be linked.
                 self._model.transition_bundle_finished(bundle, bundle_location)
 
     def _bring_offline_stuck_running_bundles(self, workers):
@@ -344,14 +360,18 @@ class BundleManager(object):
             user_staged_bundles = [
                 staged_bundles_to_run[queue_position] for queue_position in queue_positions
             ]
-            # Sort the staged bundles for this user, according to
-            # (1) their priority (larger values indicate higher priority) and
-            # (2) whether it requested to run on a specific worker (bundles with a specified
-            # worker have higher priority).
+            # Sort the staged bundles for this user, according to (1) their
+            # priority. Larger values indicate higher priority (i.e., at the
+            # start of the sorted list). Negative priority bundles should be
+            # queued behind bundles with no specified priority (None priority)
+            # and (2) whether it requested to run on a specific worker (bundles
+            # with a specified worker have higher priority).
             sorted_user_staged_bundles = sorted(
                 user_staged_bundles,
                 key=lambda b: (
-                    b[0].metadata.request_priority is not None,
+                    b[0].metadata.request_priority is not None
+                    and b[0].metadata.request_priority >= 0,
+                    b[0].metadata.request_priority is None,
                     b[0].metadata.request_priority,
                     b[0].metadata.request_queue is not None,
                 ),
@@ -368,17 +388,20 @@ class BundleManager(object):
         # are attempting to run each staged bundle will respect the ordering of
         # staged_bundles_to_run (i.e., they won't be used immediately, and will be instead
         # assigned bundles on the next run of _run_iteration).
-        resource_deducted_user_owned_workers = {}
+        resource_deducted_user_workers = defaultdict(list)
         user_parallel_run_quota_left = {}
         for user in user_queue_positions.keys():
-            resource_deducted_user_owned_workers[user] = self._deduct_worker_resources(
-                workers.user_owned_workers(user), running_bundles_info
-            )
+            # Skip for the root user as the user-owned workers will be the public CodaLab workers,
+            # which are accounted for after this loop.
+            if user != self._model.root_user_id:
+                resource_deducted_user_workers[user] = self._deduct_worker_resources(
+                    workers.get_user_workers(user), running_bundles_info
+                )
             user_parallel_run_quota_left[user] = self._model.get_user_parallel_run_quota_left(
                 user, user_info_cache[user]
             )
         resource_deducted_codalab_owned_workers = self._deduct_worker_resources(
-            workers.user_owned_workers(self._model.root_user_id), running_bundles_info
+            workers.get_user_workers(self._model.root_user_id), running_bundles_info
         )
 
         workers_list = []
@@ -391,11 +414,11 @@ class BundleManager(object):
         for bundle, bundle_resources in staged_bundles_to_run:
             if user_parallel_run_quota_left[bundle.owner_id] > 0:
                 workers_list = (
-                    resource_deducted_user_owned_workers[bundle.owner_id]
+                    resource_deducted_user_workers[bundle.owner_id]
                     + resource_deducted_codalab_owned_workers
                 )
             else:
-                workers_list = resource_deducted_user_owned_workers[bundle.owner_id]
+                workers_list = resource_deducted_user_workers[bundle.owner_id]
             # Although we pre-compute the available workers, workers might go offline.
             # As a result, we refresh the currently-online workers (by cleaning up the
             # dead workers), and filter out the precomputed workers that are no longer online.
@@ -407,8 +430,8 @@ class BundleManager(object):
             online_worker_ids = set(
                 worker["worker_id"]
                 for worker in (
-                    workers.user_owned_workers(bundle.owner_id)
-                    + workers.user_owned_workers(self._model.root_user_id)
+                    workers.get_user_workers(bundle.owner_id)
+                    + workers.get_user_workers(self._model.root_user_id)
                 )
             )
             # Store the worker IDs for workers that have gone offline.
@@ -434,7 +457,7 @@ class BundleManager(object):
                     # decrement the parallel run quota left.
                     if worker["user_id"] == self._model.root_user_id:
                         user_parallel_run_quota_left[bundle.owner_id] -= 1
-                    # Update available worker resoures. This is a lower-bound,
+                    # Update available worker resources. This is a lower-bound,
                     # since resources released by jobs that finish are not used until
                     # the next call to _schedule_run_bundles_on_workers.
                     worker['cpus'] -= bundle_resources.cpus
@@ -567,35 +590,41 @@ class BundleManager(object):
         Tries to start running the bundle on the given worker, returning False
         if that failed.
         """
-        if self._model.transition_bundle_starting(bundle, worker['user_id'], worker['worker_id']):
-            workers.set_starting(bundle.uuid, worker['worker_id'])
-            if worker['shared_file_system']:
-                # On a shared file system we create the path here to avoid NFS
-                # directory cache issues.
-                path = self._bundle_store.get_bundle_location(bundle.uuid)
-                remove_path(path)
-                os.mkdir(path)
-            if self._worker_model.send_json_message(
-                worker['socket_id'],
-                self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
-                0.2,
-            ):
-                logger.info(
-                    'Starting run bundle {} on worker {}'.format(bundle.uuid, worker['worker_id'])
-                )
-                return True
-            else:
-                self._model.transition_bundle_staged(bundle)
-                workers.restage(bundle.uuid)
-                return False
+        if not check_bundle_have_run_permission(
+            self._model, self._model.get_user(worker['user_id']), bundle
+        ) or not self._model.transition_bundle_starting(
+            bundle, worker['user_id'], worker['worker_id']
+        ):
+            return False
+
+        workers.set_starting(bundle.uuid, worker['worker_id'])
+        if worker['shared_file_system']:
+            # On a shared file system we create the path here to avoid NFS
+            # directory cache issues.
+            # TODO(Ashwin): fix for --link
+            path = self._bundle_store.get_bundle_location(bundle.uuid)
+            remove_path(path)
+            os.mkdir(path)
+        if self._worker_model.send_json_message(
+            worker['socket_id'],
+            self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
+            0.2,
+        ):
+            logger.info(
+                'Starting run bundle {} on worker {}'.format(bundle.uuid, worker['worker_id'])
+            )
+            return True
         else:
+            self._model.transition_bundle_staged(bundle)
+            workers.restage(bundle.uuid)
             return False
 
     @staticmethod
     def _compute_request_cpus(bundle):
         """
         Compute the CPU limit used for scheduling the run.
-        The default of 1 is for backwards compatibility for
+        The default of 1 (if no GPUs specified)
+        is for backwards compatibility for
         runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_cpus:
@@ -676,10 +705,18 @@ class BundleManager(object):
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
         if shared_file_system:
-            message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
+            bundle_link_url = getattr(bundle.metadata, "link_url", None)
+            message['bundle'][
+                'location'
+            ] = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
+            parent_bundle_link_urls = self._model.get_bundle_metadata(
+                [dep['parent_uuid'] for dep in message['bundle']['dependencies']], "link_url"
+            )
             for dependency in message['bundle']['dependencies']:
-                dependency['location'] = self._bundle_store.get_bundle_location(
-                    dependency['parent_uuid']
+                parent_bundle_link_url = parent_bundle_link_urls.get(dependency['parent_uuid'])
+                dependency['location'] = (
+                    parent_bundle_link_url
+                    or self._bundle_store.get_bundle_location(dependency['parent_uuid'])
                 )
 
         # Figure out the resource requirements.
@@ -736,7 +773,7 @@ class BundleManager(object):
         READY / FAILED, no worker_run DB entry:
             Finished.
         """
-        workers = WorkerInfoAccessor(self._worker_model, WORKER_TIMEOUT_SECONDS - 5)
+        workers = WorkerInfoAccessor(self._model, self._worker_model, WORKER_TIMEOUT_SECONDS - 5)
 
         # Handle some exceptional cases.
         self._cleanup_dead_workers(workers)
@@ -914,14 +951,14 @@ class BundleManager(object):
 
     def _get_running_bundles_info(self, workers, staged_bundles_to_run):
         """
-        Build a nested dictionary to store information (bundle and bundle_resources) including 
+        Build a nested dictionary to store information (bundle and bundle_resources) including
         the current running bundles and staged bundles.
-        Note that the primary usage of this function is to improve efficiency when calling 
-        self._compute_bundle_resources(), e.g. reusing constants (gpus, cpus, memory) from 
+        Note that the primary usage of this function is to improve efficiency when calling
+        self._compute_bundle_resources(), e.g. reusing constants (gpus, cpus, memory) from
         the returning values of self._compute_bundle_resources() as they don't change over time.
-        However, be careful when using this function to improve efficiency for returning values 
-        like disk and time from self._compute_bundle_resources() as they do depend on the number 
-        of jobs that are running during the time of computation. Accuracy might be affected 
+        However, be careful when using this function to improve efficiency for returning values
+        like disk and time from self._compute_bundle_resources() as they do depend on the number
+        of jobs that are running during the time of computation. Accuracy might be affected
         without considering this factor.
         :param workers: a WorkerInfoAccessor object containing worker related information e.g. running uuid.
         :return: a nested dictionary structured as follows:
