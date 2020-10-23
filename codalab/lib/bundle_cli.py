@@ -137,7 +137,7 @@ GROUP_AND_PERMISSION_COMMANDS = (
     'chown',
 )
 
-USER_COMMANDS = ('uinfo', 'uedit', 'ufarewell')
+USER_COMMANDS = ('uinfo', 'uedit', 'ufarewell', 'uls')
 
 SERVER_COMMANDS = (
     'workers',
@@ -656,14 +656,71 @@ class BundleCLI(object):
             )['uuid']
         return worksheet_uuid
 
+    def uls_print_table(
+        self, columns, row_dicts, user_defined=False,
+    ):
+        """
+        Pretty-print a list of user info from each row in the given list of dicts.
+        """
+
+        # display restricted fields if the server returns those fields - which suggests the user is root
+        try:
+            if row_dicts and row_dicts[0].get('last_login') and not user_defined:
+                columns += ('last_login', 'time', 'disk', 'parallel_run_quota')
+                rows = [columns]
+            else:
+                rows = [columns]
+        except KeyError:
+            pass
+
+        # Get the contents of the table
+        for row_dict in row_dicts:
+            row = []
+            for col in columns:
+                try:
+                    if col == 'time':
+                        cell = formatting.ratio_str(
+                            formatting.duration_str, row_dict['time_used'], row_dict['time_quota']
+                        )
+                    elif col == 'disk':
+                        cell = formatting.ratio_str(
+                            formatting.size_str, row_dict['disk_used'], row_dict['disk_quota']
+                        )
+                    else:
+                        cell = row_dict.get(col)
+                except KeyError:
+                    row.append(' ')
+                    continue
+
+                if cell is None:
+                    cell = contents_str(cell)
+                row.append(cell)
+            rows.append(row)
+
+        # Display the table
+        lengths = [max(len(str(value)) for value in col) for col in zip(*rows)]
+        for (i, row) in enumerate(rows):
+            row_strs = []
+            for (j, value) in enumerate(row):
+                value = str(value)
+                length = lengths[j]
+                padding = (length - len(value)) * ' '
+                if {}.get(columns[j], -1) < 0:
+                    row_strs.append(value + padding)
+                else:
+                    row_strs.append(padding + value)
+            print('' + '  '.join(row_strs), file=self.stdout)
+            if i == 0:
+                print('' + (sum(lengths) + 2 * (len(columns) - 1)) * '-', file=self.stdout)
+
     def print_table(
         self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''
     ):
         """
         Pretty-print a list of columns from each row in the given list of dicts.
         """
-        # Get the contents of the table
         rows = [columns]
+        # Get the contents of the table
         for row_dict in row_dicts:
             row = []
             for col in columns:
@@ -1962,7 +2019,7 @@ class BundleCLI(object):
             '  search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).',
             '  search .offset=<offset>                : Return results starting at <offset>.',
             '',
-            '  search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-3-14).',
+            '  search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).',
             '  search .after=<datetime>               : Returns bundles created after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).',
             '',
             '  search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).',
@@ -3760,6 +3817,65 @@ class BundleCLI(object):
         self.print_user_info(user)
 
     @Commands.command(
+        'uls',
+        help=[
+            'Lists users on CodaLab (returns 10 results by default).',
+            '  uls <keyword> ... <keyword>         : Username or id contains each <keyword>.',
+            '  uls user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., first_name).',
+            '',
+            '  uls .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).',
+            '  uls .offset=<offset>                : Return results starting at <offset>.',
+            '',
+            '  uls .joined_before=<datetime>       : Returns users joined before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).',
+            '  uls .joined_after=<datetime>        : Returns users joined after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).',
+            '  uls .active_before=<datetime>       : (Root user only) Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).',
+            '  uls .active_after=<datetime>        : (Root user only) Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).',
+            '',
+            '  uls .disk_used_less_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_less_than=70% or 0.3).',
+            '  uls .disk_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_more_than=70% or 0.3).',
+            '  uls .time_used_less_than=<<percentage> or <float>      : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_less_than=70% or 0.3).',
+            '  uls .time_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_more_than=70% or 0.3).',
+            '',
+            '  uls size=.sort                      : Sort by a particular field (where `size` can be any metadata field).',
+            '  uls size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).',
+            '  uls .last                           : Sort in reverse chronological order (equivalent to id=.sort-).',
+            '  uls .count                          : Count the number of matching bundles.',
+            '  uls .format=<format>                : Apply <format> function (see worksheet markdown).',
+        ],
+        arguments=(
+            Commands.Argument('keywords', help='Keywords to search for.', nargs='+'),
+            Commands.Argument('-f', '--field', help='Print out these comma-separated fields.'),
+        ),
+    )
+    def do_uls_command(self, args):
+        """
+        Search for specific users.
+        """
+        client = self.manager.current_client()
+        users = client.fetch('users', params={'keywords': args.keywords})
+        # Print direct numeric result
+        if 'meta' in users:
+            print(users['meta']['results'], file=self.stdout)
+            return
+
+        # Print table
+        if len(users) > 0:
+            if args.field:
+                columns = args.field.split(',')
+            else:
+                columns = (
+                    'user_name',
+                    'first_name',
+                    'last_name',
+                    'affiliation',
+                    'date_joined',
+                )
+            self.print_result_limit_info(len(users))
+            self.uls_print_table(columns, users, user_defined=args.field)
+        else:
+            print(NO_RESULTS_FOUND, file=self.stderr)
+
+    @Commands.command(
         'uinfo',
         help=['Show user information.'],
         arguments=(
@@ -3781,6 +3897,10 @@ class BundleCLI(object):
         else:
             user = client.fetch('users', args.user_spec)
         self.print_user_info(user, args.field)
+
+    def print_users_info(self, users):
+        for user in users:
+            self.print_user_info(user, fields=None)
 
     def print_user_info(self, user, fields=None):
         def print_attribute(key, user, should_pretty_print):
