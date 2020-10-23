@@ -1,6 +1,7 @@
 try:
     import azure.batch._batch_service_client as batch  # type: ignore
     import azure.batch.batch_auth as batchauth  # type: ignore
+    import azure.batch.models as batchmodels  # type: ignore
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         "Running the worker manager requires the azure-batch module.\n"
@@ -51,17 +52,18 @@ class AzureBatchWorkerManager(WorkerManager):
 
         azure_config = configparser.ConfigParser()
         azure_config.read(self.args.azure_config_path)
-        batch_account_key = azure_config.get('Batch', 'batchaccountkey')
-        batch_account_name = azure_config.get('Batch', 'batchaccountname')
-        batch_service_url = azure_config.get('Batch', 'batchserviceurl')
+        batch_account_key = azure_config.get('Batch', 'account_key')
+        batch_account_name = azure_config.get('Batch', 'account_name')
+        batch_service_url = azure_config.get('Batch', 'service_url')
+        self._batch_log_container_url = azure_config.get('Batch', 'log_container_url')
 
         credentials = batchauth.SharedKeyCredentials(batch_account_name, batch_account_key)
-        self.batch_client = batch.BatchServiceClient(credentials, batch_url=batch_service_url)
-        self.batch_client.config.retry_policy.retries = 1
+        self._batch_client = batch.BatchServiceClient(credentials, batch_url=batch_service_url)
+        self._batch_client.config.retry_policy.retries = 1
 
     def get_worker_jobs(self):
         # Count the number active and running tasks only within the Batch job
-        task_counts = self.batch_client.job.get_task_counts(self.args.job_id)
+        task_counts = self._batch_client.job.get_task_counts(self.args.job_id)
         return [WorkerJob(True) for _ in range(task_counts.active + task_counts.running)]
 
     def start_worker_job(self):
@@ -109,12 +111,25 @@ class AzureBatchWorkerManager(WorkerManager):
         command_line = "/bin/sh -c '{}'".format(' '.join(command))
         logger.debug("Running the following as an Azure Batch task: {}".format(command_line))
 
-        task_container_settings = batch.models.TaskContainerSettings(
-            image_name=worker_image, container_run_options=' '.join(task_container_run_options)
-        )
+        task_id = 'cl_worker_{}'.format(worker_id)
         task = batch.models.TaskAddParameter(
-            id='cl_worker_{}'.format(worker_id),
+            id=task_id,
             command_line=command_line,
-            container_settings=task_container_settings,
+            container_settings=batch.models.TaskContainerSettings(
+                image_name=worker_image, container_run_options=' '.join(task_container_run_options)
+            ),
+            output_files=[
+                batchmodels.OutputFile(
+                    file_pattern='../stderr.txt',
+                    destination=batchmodels.OutputFileDestination(
+                        container=batchmodels.OutputFileBlobContainerDestination(
+                            path=task_id, container_url=self._batch_log_container_url
+                        )
+                    ),
+                    upload_options=batchmodels.OutputFileUploadOptions(
+                        upload_condition=batchmodels.OutputFileUploadCondition.task_completion
+                    ),
+                )
+            ],
         )
-        self.batch_client.task.add(self.args.job_id, task)
+        self._batch_client.task.add(self.args.job_id, task)
