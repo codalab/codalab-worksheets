@@ -9,14 +9,15 @@ class WorksheetItem extends React.Component {
     constructor(props) {
         super(props);
         this.state = Immutable({});
+        this.rowRefs = {}; // Map of {elementId: ref}
     }
 
     capture_keys() {
         // Open worksheet in same tab
         Mousetrap.bind(
             ['enter'],
-            function(e) {
-                this.props.openWorksheet(this.refs['row' + this.props.subFocusIndex].props.uuid);
+            function() {
+                this.props.openWorksheet(this._get_uuid_from_element_id());
             }.bind(this),
             'keydown',
         );
@@ -25,8 +26,14 @@ class WorksheetItem extends React.Component {
         Mousetrap.bind(
             ['shift+enter'],
             function() {
-                // TODO: Doesn't work for bundle rows right now, should address later
-                window.open(this.refs['row' + this.props.subFocusIndex].props.url, '_blank');
+                const uuid = this._get_uuid_from_element_id();
+                // Construct the URI by using the uuid of target worksheet
+                const baseURI = document.getElementById(
+                    `codalab-worksheet-item-${this.props.focusIndex}-subitem-${this.props.subFocusIndex}`,
+                ).attributes[0].baseURI;
+                const uriComponents = baseURI.split('/');
+                uriComponents[uriComponents.length - 2] = uuid;
+                window.open(uriComponents.join('/'), '_blank');
             }.bind(this),
             'keydown',
         );
@@ -34,11 +41,10 @@ class WorksheetItem extends React.Component {
         // Paste uuid of focused worksheet into console
         Mousetrap.bind(
             ['i'],
-            function(e) {
-                var uuid = this.refs['row' + this.props.subFocusIndex].props.uuid;
+            function() {
                 $('#command_line')
                     .terminal()
-                    .insert(uuid + ' ');
+                    .insert(this._get_uuid_from_element_id() + ' ');
             }.bind(this),
             'keydown',
         );
@@ -54,7 +60,7 @@ class WorksheetItem extends React.Component {
             this.props.setFocus(this.props.focusIndex, rowIndex);
         } else {
             // Actually open this worksheet.
-            var uuid = this.refs['row' + rowIndex].props.uuid;
+            const uuid = this._get_uuid_from_element_id();
             this.props.openWorksheet(uuid);
         }
     };
@@ -66,6 +72,11 @@ class WorksheetItem extends React.Component {
         } else {
             throw new Error('Invalid: ' + item.mode);
         }
+    }
+
+    _get_uuid_from_element_id() {
+        const id = `codalab-worksheet-item-${this.props.focusIndex}-subitem-${this.props.subFocusIndex}`;
+        return this.rowRefs[id].current.props.uuid;
     }
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -84,16 +95,19 @@ class WorksheetItem extends React.Component {
         var body_rows_html = items.map(function(row_item, row_index) {
             var row_focused = self.props.focused && row_index === self.props.subFocusIndex;
             var url = '/worksheets/' + row_item.uuid;
+            const id = `codalab-worksheet-item-${focusIndex}-subitem-${row_index}`;
+            self.rowRefs[id] = React.createRef();
             return (
                 <TableWorksheetRow
                     key={row_index}
-                    id={`codalab-worksheet-item-${focusIndex}-subitem-${row_index}`}
+                    id={id}
                     item={row_item}
                     rowIndex={row_index}
                     focused={row_focused}
                     url={url}
                     uuid={row_item.uuid}
                     updateRowIndex={self.updateRowIndex}
+                    ref={self.rowRefs[id]}
                 />
             );
         });
@@ -122,7 +136,7 @@ class TableWorksheetRow extends React.Component {
         this.props.updateRowIndex(this.props.rowIndex, false);
     };
 
-    handleTextClick = (event) => {
+    handleTextClick = () => {
         var newWindow = true;
         // TODO: same window is broken, so always open in new window
         //var newWindow = event.ctrlKey;

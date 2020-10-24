@@ -722,9 +722,7 @@ Object {
           </div>
         </div>
       </div>
-      <div>
-        }
-      </div>
+      <div />
       <div
         class="progress-message"
         id="update_progress"
@@ -1517,9 +1515,7 @@ Object {
         </div>
       </div>
     </div>
-    <div>
-      }
-    </div>
+    <div />
     <div
       class="progress-message"
       id="update_progress"
