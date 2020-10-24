@@ -6,7 +6,7 @@ import http.client
 import json
 from datetime import datetime
 
-from bottle import abort, get, local, post, put, request, response
+from bottle import abort, get, local, post, request, response
 
 from codalab.lib import spec_util
 from codalab.objects.permission import check_bundle_have_run_permission
@@ -109,9 +109,7 @@ def check_run_permission(bundle):
     Checks whether the current user can run the bundle.
     """
     if not check_bundle_have_run_permission(local.model, request.user, bundle):
-        abort(
-            http.client.FORBIDDEN, "User does not have permission to run bundle.",
-        )
+        abort(http.client.FORBIDDEN, "User does not have permission to run bundle.")
 
 
 @post(

@@ -567,7 +567,7 @@ def apply_func(func, arg):
             else:
                 return '<invalid function: %s>' % f
         return arg
-    except:
+    except Exception:
         # Applying the function failed, so just return the arg.
         return arg
 
@@ -690,7 +690,7 @@ def interpret_items(schemas, raw_items, db_model=None):
         """
         Having collected bundles in |bundle_infos|, flush them into |blocks|,
         potentially as a single table depending on the mode.
-        bundle_block_start_index: The raw index for % display <mode> schema 
+        bundle_block_start_index: The raw index for % display <mode> schema
         """
         if len(bundle_infos) == 0:
             return
@@ -1106,7 +1106,7 @@ def interpret_items(schemas, raw_items, db_model=None):
 
             raw_to_block.append((len(blocks) - 1, 0))
 
-        except Exception as e:
+        except Exception:
             current_schema = None
             bundle_infos[:] = []
             worksheet_infos[:] = []

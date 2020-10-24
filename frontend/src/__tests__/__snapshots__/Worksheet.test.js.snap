@@ -591,13 +591,13 @@ Object {
                       id="codalab-worksheet-item-0"
                     >
                       <div
-                        class="ItemWrapper-main-246"
+                        class="ItemWrapper-main-247"
                       >
                         <div
-                          class="ws-item MarkdownItem-textContainer-248"
+                          class="ws-item MarkdownItem-textContainer-249"
                         >
                           <div
-                            class="type-markup  MarkdownItem-textRender-251"
+                            class="type-markup  MarkdownItem-textRender-252"
                           >
                             <p>
                               123
@@ -607,10 +607,10 @@ Object {
 
                           </div>
                           <div
-                            class="MarkdownItem-buttonsPanel-249"
+                            class="MarkdownItem-buttonsPanel-250"
                           >
                             <button
-                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-250"
+                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
                               tabindex="0"
                               title="Edit"
                               type="button"
@@ -640,7 +640,7 @@ Object {
                             </button>
                               
                             <button
-                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-250"
+                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
                               tabindex="0"
                               title="Delete"
                               type="button"
@@ -722,9 +722,7 @@ Object {
           </div>
         </div>
       </div>
-      <div>
-        }
-      </div>
+      <div />
       <div
         class="progress-message"
         id="update_progress"
@@ -1386,13 +1384,13 @@ Object {
                     id="codalab-worksheet-item-0"
                   >
                     <div
-                      class="ItemWrapper-main-246"
+                      class="ItemWrapper-main-247"
                     >
                       <div
-                        class="ws-item MarkdownItem-textContainer-248"
+                        class="ws-item MarkdownItem-textContainer-249"
                       >
                         <div
-                          class="type-markup  MarkdownItem-textRender-251"
+                          class="type-markup  MarkdownItem-textRender-252"
                         >
                           <p>
                             123
@@ -1402,10 +1400,10 @@ Object {
 
                         </div>
                         <div
-                          class="MarkdownItem-buttonsPanel-249"
+                          class="MarkdownItem-buttonsPanel-250"
                         >
                           <button
-                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-250"
+                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
                             tabindex="0"
                             title="Edit"
                             type="button"
@@ -1435,7 +1433,7 @@ Object {
                           </button>
                             
                           <button
-                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-250"
+                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
                             tabindex="0"
                             title="Delete"
                             type="button"
@@ -1517,9 +1515,7 @@ Object {
         </div>
       </div>
     </div>
-    <div>
-      }
-    </div>
+    <div />
     <div
       class="progress-message"
       id="update_progress"
@@ -1593,14 +1589,14 @@ Object {
   >
     <div>
       <div
-        class="MuiGrid-container-263 MuiGrid-direction-xs-column-266 MuiGrid-align-items-xs-center-271 MuiGrid-justify-xs-center-280"
+        class="MuiGrid-container-264 MuiGrid-direction-xs-column-267 MuiGrid-align-items-xs-center-272 MuiGrid-justify-xs-center-281"
         style="margin-top: 100px;"
       >
         <div
           class="alert alert-danger alert-dismissable"
         >
           <div
-            class="MuiGrid-item-264"
+            class="MuiGrid-item-265"
             style="font-size: 16px; margin-left: 10px;"
           >
             Not found: '/worksheets/sample_uuid'
@@ -1611,14 +1607,14 @@ Object {
   </body>,
   "container": <div>
     <div
-      class="MuiGrid-container-263 MuiGrid-direction-xs-column-266 MuiGrid-align-items-xs-center-271 MuiGrid-justify-xs-center-280"
+      class="MuiGrid-container-264 MuiGrid-direction-xs-column-267 MuiGrid-align-items-xs-center-272 MuiGrid-justify-xs-center-281"
       style="margin-top: 100px;"
     >
       <div
         class="alert alert-danger alert-dismissable"
       >
         <div
-          class="MuiGrid-item-264"
+          class="MuiGrid-item-265"
           style="font-size: 16px; margin-left: 10px;"
         >
           Not found: '/worksheets/sample_uuid'

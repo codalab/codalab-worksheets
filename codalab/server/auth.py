@@ -1,10 +1,11 @@
-'''
+"""
 AuthHandler encapsulates the logic to authenticate users on the server-side.
-'''
+"""
 import base64
 import json
-import threading
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.parse
+import urllib.error
 from codalab.common import URLOPEN_TIMEOUT_SECONDS
 
 

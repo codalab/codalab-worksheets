@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from shlex import quote
 import uuid
 from .worker_manager import WorkerManager, WorkerJob
 
@@ -110,7 +111,12 @@ class AWSBatchWorkerManager(WorkerManager):
                 'image': image,
                 'vcpus': self.args.cpus,
                 'memory': self.args.memory_mb,
-                'command': command,
+                'command': [
+                    "/bin/bash",
+                    "-c",
+                    "/opt/scripts/detect-ec2-spot-preemption.sh & "
+                    + " ".join(quote(arg) for arg in command),
+                ],
                 'environment': [
                     {'name': 'CODALAB_USERNAME', 'value': os.environ.get('CODALAB_USERNAME')},
                     {'name': 'CODALAB_PASSWORD', 'value': os.environ.get('CODALAB_PASSWORD')},
