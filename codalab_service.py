@@ -25,7 +25,15 @@ import socket
 import subprocess
 import yaml
 
-DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
+DEFAULT_SERVICES = [
+    'mysql',
+    'nginx',
+    'frontend',
+    'rest-server',
+    'bundle-manager',
+    'worker',
+    'init',
+]
 
 ALL_SERVICES = DEFAULT_SERVICES + ['azurite', 'monitor', 'worker-manager-cpu', 'worker-manager-gpu']
 
