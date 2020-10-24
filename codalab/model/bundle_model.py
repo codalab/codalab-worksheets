@@ -1380,7 +1380,7 @@ class BundleModel(object):
                     )
                 )
             # Bundle fields
-            elif key in ('id', 'uuid', 'name', 'title', 'owner_id',):
+            elif key in ('id', 'uuid', 'name', 'title', 'owner_id'):
                 clause = make_condition(getattr(cl_worksheet.c, key), value)
             elif key == 'group':  # shared with group with read or all permissions?
                 group_uuid = get_group_info(value, False)['uuid']

@@ -27,7 +27,7 @@ import yaml
 
 DEFAULT_SERVICES = ['mysql', 'nginx', 'frontend', 'rest-server', 'bundle-manager', 'worker', 'init']
 
-ALL_SERVICES = DEFAULT_SERVICES + ['monitor', 'worker-manager-cpu', 'worker-manager-gpu']
+ALL_SERVICES = DEFAULT_SERVICES + ['azurite', 'monitor', 'worker-manager-cpu', 'worker-manager-gpu']
 
 ALL_NO_SERVICES = [
     'no-' + service for service in ALL_SERVICES
@@ -727,6 +727,8 @@ class CodalabServiceManager(object):
         if self.args.mysql_host == 'mysql':
             self.bring_up_service('mysql')
 
+        self.bring_up_service('azurite')
+
         if should_run_service(self.args, 'init'):
             print_header('Populating config.json')
             commands = [
@@ -770,6 +772,11 @@ class CodalabServiceManager(object):
             self.run_service_cmd(
                 'if [ $(alembic current | wc -l) -eq 0 ]; then echo stamp; alembic stamp head; fi'
             )
+
+        if should_run_service(self.args, 'azurite'):
+            # Run for local development with Azurite only
+            print_header('Setting up Azurite')
+            self.run_service_cmd('python3 scripts/initialize-azurite.py')
 
         self.bring_up_service('rest-server')
 

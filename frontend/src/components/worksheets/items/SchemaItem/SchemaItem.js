@@ -111,6 +111,7 @@ class SchemaItem extends React.Component<{
             false,
         );
         if (this.props.create) this.props.onSubmit();
+        this.setState({ showSchemaDetail: false });
     };
 
     addFieldRowAfter = (idx) => (e) => {
