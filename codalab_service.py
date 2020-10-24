@@ -529,7 +529,7 @@ class CodalabServiceManager(object):
 
         if self.args.version:
             self.args.version = clean_version(self.args.version)
-        self.compose_cwd = os.path.join(BASE_DIR, 'docker-internal', 'compose_files')
+        self.compose_cwd = os.path.join(BASE_DIR, 'docker', 'compose_files')
 
         self.compose_files = []
         self.compose_tempfile_name = ""
