@@ -1,5 +1,7 @@
 import os
+from apache_beam.io.filesystems import FileSystems
 from azure.storage.blob import BlobServiceClient
+from .blobstoragefilesystem import BlobStorageFileSystem # type: ignore
 
 """
 Modifies Apache Beam to add support for Azure Blob Storage filesystems.
