@@ -31,3 +31,6 @@ export const FETCH_STATUS_SCHEMA = {
     NOT_FOUND: 'not_found',
     NO_PERMISSION: 'no_permission',
 };
+
+// Default Duration for dialogs shown on the screen
+export const AUTO_HIDDEN_DURATION = 1500;
