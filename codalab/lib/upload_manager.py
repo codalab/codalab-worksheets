@@ -116,7 +116,7 @@ class UploadManager(object):
 
             if len(sources) == 1:
                 self._simplify_directory(bundle_path)
-        except:
+        except UsageError:
             if os.path.exists(bundle_path):
                 path_util.remove(bundle_path)
             raise

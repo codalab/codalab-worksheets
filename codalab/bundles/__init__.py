@@ -2,7 +2,6 @@ from codalab.bundles.dataset_bundle import DatasetBundle
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.program_bundle import ProgramBundle
 from codalab.bundles.run_bundle import RunBundle
-from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.private_bundle import PrivateBundle
 
 
