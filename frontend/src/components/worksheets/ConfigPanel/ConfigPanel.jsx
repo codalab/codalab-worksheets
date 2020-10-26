@@ -64,19 +64,22 @@ const styles = (theme) => ({
     container: {
         flexGrow: 1,
         height: '100%',
-        maxWidth: 1080,
+        maxWidth: '100%',
     },
     content: {
         backgroundColor: 'white',
         padding: theme.spacing.larger,
         maxHeight: '100%',
         overflow: 'auto',
+        flexGrow: 1,
+        maxWidth: '90%',
     },
     sidebar: {
         backgroundColor: theme.color.grey.lighter,
         padding: theme.spacing.larger,
         maxHeight: '100%',
         overflow: 'auto',
+        maxWidth: 250,
     },
     buttons: {
         '& button': {
