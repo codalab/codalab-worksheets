@@ -24,10 +24,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 import { getAfterSortKey } from '../../../../util/worksheet_utils';
 import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
-import WarningIcon from '@material-ui/icons/Warning';
-import CancelIcon from '@material-ui/icons/Cancel';
 import Grid from '@material-ui/core/Grid';
-import Typography from '@material-ui/core/Typography';
 
 class SchemaItem extends React.Component<{
     worksheetUUID: string,
@@ -317,6 +314,7 @@ class SchemaItem extends React.Component<{
                                         return;
                                     }
                                     this.setState({ confirmingDeletion: true });
+                                    this.props.setDeleteItemCallback(this.deleteThisSchema);
                                 }}
                                 disabled={this.state.confirmingDeletion}
                             >
@@ -524,25 +522,6 @@ class SchemaItem extends React.Component<{
                             onChange={this.changeSchemaName}
                         />
                     )}
-                    <Grid item xs={2} spacing={0}>
-                        {(showSchemaDetail || this.props.create) && this.state.confirmingDeletion && (
-                            <Tooltip title={'This action is not revertable'}>
-                                <IconButton onClick={this.deleteThisSchema}>
-                                    <WarningIcon outlined fontSize='small' color='error' />
-                                    <Typography color='error'>Confirm</Typography>
-                                </IconButton>
-                            </Tooltip>
-                        )}
-                        {(showSchemaDetail || this.props.create) && this.state.confirmingDeletion && (
-                            <IconButton
-                                outlined
-                                onClick={() => this.setState({ confirmingDeletion: false })}
-                            >
-                                <CancelIcon fontSize='small' />
-                                <Typography>Cancel</Typography>
-                            </IconButton>
-                        )}
-                    </Grid>
                 </Grid>
                 {schemaTable}
             </div>
