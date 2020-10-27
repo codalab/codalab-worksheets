@@ -1,3 +1,4 @@
+import ssl
 import http
 import logging
 import os
@@ -6,7 +7,7 @@ import socket
 import sys
 import time
 import traceback
-import urllib
+import urllib.error
 from argparse import ArgumentParser
 from collections import namedtuple
 from typing import Dict, List, Union
@@ -151,19 +152,24 @@ class WorkerManager(object):
             try:
                 self.run_one_iteration()
             except (
-                urllib.error.URLError,
                 http.client.HTTPException,
                 socket.error,
                 NotFoundError,
-                JsonApiException,
             ):
                 # Sometimes, network errors occur when running the WorkerManager . These are often
                 # transient exceptions, and retrying the command would lead to success---as a result,
                 # we ignore these network-based exceptions (rather than fatally exiting from the
                 # WorkerManager )
                 traceback.print_exc()
+            except (urllib.error.URLError, JsonApiException, ssl.SSLError) as e:
+                if "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed" in str(e):
+                    print("Your login info is incorrect. Please try again.")
+                else:
+                    traceback.print_exc()
+
             if self.args.once:
                 break
+            print('Sleeping {} seconds'.format(self.args.sleep_time))
             logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
             time.sleep(self.args.sleep_time)
 
