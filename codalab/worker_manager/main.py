@@ -135,7 +135,7 @@ def main():
     try:
         manager.run_loop()
     except LoginPermissionError:
-        print('Login credentials are incorrect. Please double check')
+        print('All attempts have failed. Please double check your login credentials.')
 
 
 if __name__ == '__main__':

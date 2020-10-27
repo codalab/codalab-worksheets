@@ -68,4 +68,4 @@ class RestOAuthHandler(object):
                 return None
             raise e
         except urllib.error.URLError:
-            print("Your login info is incorrect. Please double check")
+            print("Your login info is incorrect. Please try again.")
