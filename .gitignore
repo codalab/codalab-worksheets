@@ -44,3 +44,5 @@ codalab-worker-scratch
 .mypy_cache/
 
 .coverage
+
+sent.jsonl
