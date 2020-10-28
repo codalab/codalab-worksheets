@@ -32,6 +32,7 @@ import json
 import os
 import sys
 import time
+import markdown2
 
 from sqlalchemy import select
 from codalab.lib.codalab_manager import CodaLabManager
@@ -76,9 +77,8 @@ def main(args):
     subject = args.subject
     with open(args.body_file) as f:
         body_template = f.read()
-    
+
     if args.body_file.endswith('.md'):
-        import markdown2
         body_template = f"""
             <div style='margin:auto; width: 100%; max-width: 600px'>
                 <img src=https://worksheets.codalab.org/img/codalab-logo.png style='max-width: 100%;' />
@@ -87,11 +87,20 @@ def main(args):
                 <small>If you'd like stop receiving these emails, please <a href='https://worksheets.codalab.org/account/profile'>update your account settings on CodaLab</a>.</small>
             </div>
         """
-    
-    mime_type = 'html' if args.body_file.endswith('.html') or args.body_file.endswith('.md') else 'plain'
+
+    mime_type = (
+        'html' if args.body_file.endswith('.html') or args.body_file.endswith('.md') else 'plain'
+    )
 
     # Figure out who we want to send
-    to_send_list = [{'email': e, 'first_name': '', 'last_name': '', 'user_name': '', 'notifications': 2} for e in args.emails.split(",")] if args.emails else get_to_send_list(manager.model(), args.threshold)
+    to_send_list = (
+        [
+            {'email': e, 'first_name': '', 'last_name': '', 'user_name': '', 'notifications': 2}
+            for e in args.emails.split(",")
+        ]
+        if args.emails
+        else get_to_send_list(manager.model(), args.threshold)
+    )
     sent_list = get_sent_list(args.sent_file)
     sent_emails = set(info['email'] for info in sent_list)
     pending_to_send_list = [info for info in to_send_list if info['email'] not in sent_emails]
@@ -159,9 +168,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--body-file', help='File containing body of email to be sent', required=True
     )
-    parser.add_argument(
-        '--emails', help='List of emails to send to (only used for testing)'
-    )
+    parser.add_argument('--emails', help='List of emails to send to (only used for testing)')
     parser.add_argument(
         '--sent-file',
         help='File that keeps track of who we\'ve already sent email to ',
