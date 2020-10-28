@@ -145,7 +145,7 @@ class SchemaItem extends React.Component<{
             curSchemaName: e.target.value
                 .replace(/\n/g, ' ')
                 .replace("'", '')
-                .replace(' ', '_'),
+                .replace(' ', ''),
         });
     };
 

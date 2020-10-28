@@ -656,9 +656,7 @@ class BundleCLI(object):
             )['uuid']
         return worksheet_uuid
 
-    def uls_print_table(
-        self, columns, row_dicts, user_defined=False,
-    ):
+    def uls_print_table(self, columns, row_dicts, user_defined=False):
         """
         Pretty-print a list of user info from each row in the given list of dicts.
         """
@@ -3863,13 +3861,7 @@ class BundleCLI(object):
             if args.field:
                 columns = args.field.split(',')
             else:
-                columns = (
-                    'user_name',
-                    'first_name',
-                    'last_name',
-                    'affiliation',
-                    'date_joined',
-                )
+                columns = ('user_name', 'first_name', 'last_name', 'affiliation', 'date_joined')
             self.print_result_limit_info(len(users))
             self.uls_print_table(columns, users, user_defined=args.field)
         else:

@@ -1,5 +1,5 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '0.5.24';
+export const CODALAB_VERSION = '0.5.25';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
@@ -31,3 +31,6 @@ export const FETCH_STATUS_SCHEMA = {
     NOT_FOUND: 'not_found',
     NO_PERMISSION: 'no_permission',
 };
+
+// Default Duration for dialogs shown on the screen
+export const AUTO_HIDDEN_DURATION = 1500;
