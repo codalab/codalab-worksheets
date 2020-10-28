@@ -2,13 +2,30 @@
 Sends email notifications to users with notifications set to a certain
 threshold.  Keeps track of partial progress in a file.
 
-    python scripts/send_email.py \
-        --subject "Hello World" \
-        --body-file body.html \
+Actually send emails:
+
+    python scripts/send-email-notifications.py \
+        --subject "Fall 2020 CodaLab Worksheets Newsletter" \
+        --body-file docs/blog/2020-fall.md \
         --sent-file sent.jsonl \
-        --threshold 1 \
+        --threshold 2 \
+        --doit
+
+Test sending emails:
+
+    python scripts/send-email-notifications.py \
+        --subject "[TEST] Fall 2020 CodaLab Worksheets Newsletter" \
+        --body-file docs/blog/2020-fall.md \
+        --sent-file sent.jsonl \
+        --emails codalab.worksheets@gmail.com \
+        --threshold 2 \
         --doit
 """
+
+# # A notifications value is one of the following:
+# NOTIFICATIONS_NONE = 0x00  # Receive no notifications
+# NOTIFICATIONS_IMPORTANT = 0x01  # Receive only important notifications
+# NOTIFICATIONS_GENERAL = 0x02  # Receive general notifications (new features)
 
 import argparse
 import json
@@ -54,16 +71,27 @@ def get_sent_list(sent_file):
 
 def main(args):
     manager = CodaLabManager()
-    model = manager.model()
 
     # Get the the message
     subject = args.subject
     with open(args.body_file) as f:
         body_template = f.read()
-    mime_type = 'html' if args.body_file.endswith('.html') else 'plain'
+    
+    if args.body_file.endswith('.md'):
+        import markdown2
+        body_template = f"""
+            <div style='margin:auto; width: 100%; max-width: 600px'>
+                <img src=https://worksheets.codalab.org/img/codalab-logo.png style='max-width: 100%;' />
+                <h1>CodaLab Worksheets</h1>
+                {markdown2.markdown(body_template)}<br><br>
+                <small>If you'd like stop receiving these emails, please <a href='https://worksheets.codalab.org/account/profile'>update your account settings on CodaLab</a>.</small>
+            </div>
+        """
+    
+    mime_type = 'html' if args.body_file.endswith('.html') or args.body_file.endswith('.md') else 'plain'
 
     # Figure out who we want to send
-    to_send_list = get_to_send_list(model, args.threshold)
+    to_send_list = [{'email': e, 'first_name': '', 'last_name': '', 'user_name': '', 'notifications': 2} for e in args.emails.split(",")] if args.emails else get_to_send_list(manager.model(), args.threshold)
     sent_list = get_sent_list(args.sent_file)
     sent_emails = set(info['email'] for info in sent_list)
     pending_to_send_list = [info for info in to_send_list if info['email'] not in sent_emails]
@@ -130,6 +158,9 @@ if __name__ == '__main__':
     parser.add_argument('--subject', help='Subject of email', required=True)
     parser.add_argument(
         '--body-file', help='File containing body of email to be sent', required=True
+    )
+    parser.add_argument(
+        '--emails', help='List of emails to send to (only used for testing)'
     )
     parser.add_argument(
         '--sent-file',
