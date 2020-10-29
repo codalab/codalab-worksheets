@@ -169,7 +169,6 @@ class WorkerManager(object):
 
             if self.args.once:
                 break
-            print('Sleeping {} seconds'.format(self.args.sleep_time))
             logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
             time.sleep(self.args.sleep_time)
 
