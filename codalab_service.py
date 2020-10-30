@@ -76,9 +76,15 @@ def should_run_service(args, service):
     services = [] if args.services is None else args.services
     if 'default' in args.services:
         services.extend(DEFAULT_SERVICES)
+
     # 'worker-shared-file-system` is just `worker` but with a different argument, so they're equivalent for us
     if service == 'worker-shared-file-system':
         service = 'worker'
+    elif 'worker-manager-cpu' in service:
+        service = 'worker-manager-cpu'
+    elif 'worker-manager-gpu' in service:
+        service = 'worker-manager-gpu'
+
     return (service in services) and ('no-' + service not in services)
 
 
