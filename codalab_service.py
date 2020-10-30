@@ -278,13 +278,19 @@ CODALAB_ARGUMENTS = [
         help='Default number of GPUs for each worker',
     ),
     CodalabArg(
-        name='worker_manager_azure_batch_account_name', type=str, help='Azure Batch account name',
+        name='worker_manager_azure_batch_account_name',
+        type=str,
+        help='Azure Batch account name for the Azure Batch worker manager',
     ),
     CodalabArg(
-        name='worker_manager_azure_batch_account_key', type=str, help='Azure Batch account key',
+        name='worker_manager_azure_batch_account_key',
+        type=str,
+        help='Azure Batch account key for the Azure Batch worker manager',
     ),
     CodalabArg(
-        name='worker_manager_azure_batch_service_url', type=str, help='Azure Batch service url',
+        name='worker_manager_azure_batch_service_url',
+        type=str,
+        help='Azure Batch service url for the Azure Batch worker manager',
     ),
     CodalabArg(
         name='worker_manager_aws_region',
@@ -367,7 +373,7 @@ for worker_manager_type in ['cpu', 'gpu']:
         CodalabArg(
             name='worker_manager_{}_azure_log_container_url'.format(worker_manager_type),
             type=str,
-            help='URL of the Azure Storage container that stores the worker logs for the {} worker manager'.format(
+            help='URL of the Azure Storage container to store the worker logs for the {} Azure Batch worker manager'.format(
                 worker_manager_type
             ),
         ),
@@ -849,7 +855,7 @@ class CodalabServiceManager(object):
             self.bring_up_service('aws-batch-worker-manager-gpu')
         else:
             print(
-                '{} worker manager type is not supported. Skipping bringing up worker managers.'.format(
+                'Worker manager type: {} is not supported. Skipping bringing up worker managers.'.format(
                     self.args.worker_manager_type
                 )
             )

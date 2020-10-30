@@ -48,7 +48,7 @@ class AzureBatchWorkerManager(WorkerManager):
         subparser.add_argument(
             '--log-container-url',
             type=str,
-            help='URL of the Azure Storage container that stores the worker logs',
+            help='URL of the Azure Storage container to store the worker logs',
         )
         subparser.add_argument(
             '--job-id', type=str, help='ID of the Azure Batch job to add tasks to',
@@ -78,7 +78,7 @@ class AzureBatchWorkerManager(WorkerManager):
         self._batch_client.config.retry_policy.retries = 1
 
     def get_worker_jobs(self) -> List[WorkerJob]:
-        # Count the number active and running tasks only within the Batch job
+        # Count the number active and running tasks within the Azure Batch job
         task_counts: TaskCounts = self._batch_client.job.get_task_counts(self.args.job_id)
         return [WorkerJob(True) for _ in range(task_counts.active + task_counts.running)]
 
@@ -143,6 +143,7 @@ class AzureBatchWorkerManager(WorkerManager):
                         )
                     ),
                     upload_options=OutputFileUploadOptions(
+                        # Upload worker logs once the task completes
                         upload_condition=OutputFileUploadCondition.task_completion
                     ),
                 )
