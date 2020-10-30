@@ -78,7 +78,7 @@ class AzureBatchWorkerManager(WorkerManager):
         self._batch_client.config.retry_policy.retries = 1
 
     def get_worker_jobs(self) -> List[WorkerJob]:
-        # Count the number active and running tasks within the Azure Batch job
+        # Count the number active and running tasks for the Azure Batch job
         task_counts: TaskCounts = self._batch_client.job.get_task_counts(self.args.job_id)
         return [WorkerJob(True) for _ in range(task_counts.active + task_counts.running)]
 
@@ -94,7 +94,6 @@ class AzureBatchWorkerManager(WorkerManager):
         work_dir: str = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
         command: List[str] = self.build_command(worker_id, work_dir)
 
-        # Create a task within the job
         task_container_run_options: List[str] = [
             '--cpus %d' % self.args.cpus,
             '--memory %dM' % self.args.memory_mb,
@@ -111,8 +110,8 @@ class AzureBatchWorkerManager(WorkerManager):
                 ]
             )
 
-        # Allow worker to directly mount a directory
         if os.environ.get('CODALAB_SHARED_FILE_SYSTEM') == 'true':
+            # Allow workers to directly mount a directory
             command.append('--shared-file-system')
             task_container_run_options.append(
                 '--volume shared_dir:%s' % os.environ.get('CODALAB_BUNDLE_MOUNT')
@@ -149,4 +148,5 @@ class AzureBatchWorkerManager(WorkerManager):
                 )
             ],
         )
+        # Create a task under the Azure Batch job
         self._batch_client.task.add(self.args.job_id, task)
