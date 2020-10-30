@@ -15,6 +15,7 @@ import NewRun from '../../NewRun';
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleDetail from '../../BundleDetail';
 import TextEditorItem from '../TextEditorItem';
+import SchemaItem from '../SchemaItem';
 
 // The approach taken in this design is to hack the HTML `Table` element by using one `TableBody` for each `BundleRow`.
 // We need the various columns to be aligned for all `BundleRow` within a `Table`, therefore using `div` is not an
@@ -378,6 +379,36 @@ class BundleRow extends Component {
                                     closeEditor={() => {
                                         this.props.onHideNewText();
                                     }}
+                                />
+                            </div>
+                        </TableCell>
+                    </TableRow>
+                )}
+                {this.props.showNewSchema && (
+                    <TableRow>
+                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                            <div className={classes.insertBox}>
+                                <SchemaItem
+                                    after_sort_key={this.props.after_sort_key}
+                                    ws={this.props.ws}
+                                    onSubmit={() => this.props.onHideNewSchema()}
+                                    reloadWorksheet={reloadWorksheet}
+                                    editPermission={true}
+                                    item={{
+                                        field_rows: [
+                                            {
+                                                field: '',
+                                                'generalized-path': '',
+                                                'post-processor': null,
+                                                from_schema_name: '',
+                                            },
+                                        ],
+                                        header: ['field', 'generalized-path', 'post-processor'],
+                                        schema_name: '',
+                                        sort_keys: [-1],
+                                    }}
+                                    create={true}
+                                    updateSchemaItem={this.props.updateSchemaItem}
                                 />
                             </div>
                         </TableCell>
