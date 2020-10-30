@@ -563,7 +563,7 @@ class BundleCLI(object):
         instance, worksheet_spec, bundle_spec, subpath = parse_target_spec(target_spec)
 
         if bundle_spec is None:
-            raise UsageError('bundle spec is not missing')
+            raise UsageError('bundle spec is missing')
 
         if instance is not None:
             if self.headless:
