@@ -13,6 +13,7 @@ import {
     DEFAULT_WORKSHEET_WIDTH,
     LOCAL_STORAGE_WORKSHEET_WIDTH,
     DIALOG_TYPES,
+    AUTO_HIDDEN_DURATION,
 } from '../../../constants';
 import WorksheetTerminal from '../WorksheetTerminal';
 import Loading from '../../Loading';
@@ -33,6 +34,7 @@ import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import queryString from 'query-string';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import { Popover } from '@material-ui/core';
 
 /*
 Information about the current worksheet and its items.
@@ -86,6 +88,10 @@ class Worksheet extends React.Component {
             copiedBundleIds: '',
             showPasteButton: window.localStorage.getItem('CopiedBundles') !== '',
             worksheetWidthPercentage: localWorksheetWidthPreference || DEFAULT_WORKSHEET_WIDTH,
+            messagePopover: {
+                showMessage: false,
+                messageContent: null,
+            },
         };
         this.copyCallbacks = [];
         this.bundleTableID = new Set();
@@ -465,6 +471,10 @@ class Worksheet extends React.Component {
         let actualData = { items };
         if (after_sort_key) {
             actualData['after_sort_key'] = after_sort_key;
+        } else {
+            // If no location for the insertion is specified,
+            // insert the new item at the top of the worksheet in default.
+            actualData['after_sort_key'] = -1;
         }
         actualData['item_type'] = 'bundle';
         $.ajax({
@@ -594,7 +604,36 @@ class Worksheet extends React.Component {
                 alert(createAlertText(this.url, jqHXR.responseText));
             },
         });
+        this.setState({
+            messagePopover: {
+                showMessage: true,
+                messageContent: 'Schema Saved!',
+            },
+        });
+        this.autoHideOpenedMessagePopover();
     };
+
+    setDeleteSchemaItemCallback = (callback) => {
+        this.setState({
+            deleteItemCallback: callback,
+            openedDialog: DIALOG_TYPES.OPEN_DELETE_SCHEMA,
+        });
+    };
+
+    autoHideOpenedMessagePopover() {
+        const self = this;
+        if (this.timer) {
+            clearTimeout(this.timer);
+        }
+        this.timer = setTimeout(() => {
+            self.setState({
+                messagePopover: {
+                    showMessage: false,
+                    messageContent: null,
+                },
+            });
+        }, AUTO_HIDDEN_DURATION);
+    }
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         let info = this.state.ws.info;
@@ -607,9 +646,10 @@ class Worksheet extends React.Component {
         // Make sure that the screen doesn't scroll when the user normally press j / k,
         // until the target element is completely not on the screen
         if (shouldScroll) {
-            const element = subIndex
-                ? $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)
-                : $(`#codalab-worksheet-item-${index}`);
+            const element =
+                $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)[0] === undefined
+                    ? $(`#codalab-worksheet-item-${index}`)
+                    : $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`);
 
             function isOnScreen(element) {
                 if (element.offset() === undefined) return false;
@@ -1647,6 +1687,7 @@ class Worksheet extends React.Component {
                 onAsyncItemLoad={this.onAsyncItemLoad}
                 updateBundleBlockSchema={this.updateBundleBlockSchema}
                 updateSchemaItem={this.updateSchemaItem}
+                setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
             />
         );
 
@@ -1767,6 +1808,23 @@ class Worksheet extends React.Component {
                     showInformationModal={this.state.showInformationModal}
                     toggleInformationModal={this.toggleInformationModal}
                 />
+                <Popover
+                    open={this.state.messagePopover.showMessage}
+                    anchorEl={anchorEl}
+                    anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'center',
+                    }}
+                    transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                    }}
+                    classes={{ paper: classes.noTransform }}
+                >
+                    <div style={{ padding: 10, backgroundColor: '#D9ECDB', color: '#537853' }}>
+                        {this.state.messagePopover.messageContent}
+                    </div>
+                </Popover>
                 {this.state.updating && <Loading />}
                 {!info && <Loading />}
             </React.Fragment>

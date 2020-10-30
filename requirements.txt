@@ -21,3 +21,4 @@ azure-core==1.8.0
 sentry-sdk==0.18.0
 requests-oauthlib==1.1.0
 oauthlib==2.1.0
+markdown2==2.3.10

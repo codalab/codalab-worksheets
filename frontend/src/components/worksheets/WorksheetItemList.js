@@ -249,6 +249,7 @@ class WorksheetItemList extends React.Component {
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         updateSchemaItem: this.props.updateSchemaItem,
+                        setDeleteSchemaItemCallback: this.props.setDeleteSchemaItemCallback,
                     };
                     addWorksheetItems(
                         props,
@@ -306,6 +307,7 @@ class WorksheetItemList extends React.Component {
                             }}
                             create={true}
                             updateSchemaItem={this.props.updateSchemaItem}
+                            setDeleteSchemaItemCallback={this.props.setDeleteSchemaItemCallback}
                         />
                     )}
                     {worksheet_items}

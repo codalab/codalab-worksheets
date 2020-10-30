@@ -1,14 +1,10 @@
-from codalab.worker.bundle_state import State
-from codalab.bundles.run_bundle import RunBundle
 from codalab.lib.spec_util import generate_uuid
-from tests.unit.server.bundle_manager import TestBase
 from codalab.worker.download_util import BundleTarget
 from codalab.common import NotFoundError
-from codalab.worker.bundle_state import LinkFormat
-from io import StringIO, BytesIO
+from tests.unit.server.bundle_manager import TestBase
+from io import BytesIO
 import gzip
 import tarfile
-import zipfile
 import unittest
 
 
