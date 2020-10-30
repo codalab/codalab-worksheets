@@ -248,8 +248,7 @@ class UserInfo extends React.Component {
 }
 
 class AccountNotificationsCheckbox extends React.Component {
-    handleClick = (cb) => {
-        var notifications = this.props.user.attributes['notifications'];
+    handleClick = () => {
         this.props.onChange('notifications', parseInt(this.props.fieldKey));
     };
 

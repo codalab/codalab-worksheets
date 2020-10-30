@@ -84,7 +84,7 @@ def current_worksheet():
     Does so by parsing the output of `cl work`:
         Switched to worksheet http://localhost:2900/worksheets/0x87a7a7ffe29d4d72be9b23c745adc120 (home-codalab).
     """
-    m = re.search('(http.*?)/worksheets/(.*?) \\((.*?)\\)', _run_command([cl, 'work']))
+    m = re.search('(http.*?)/worksheets/(.*?) \((.*?)\)', _run_command([cl, 'work']))
     assert m is not None
     worksheet_host, worksheet_name = m.group(1), m.group(3)
     return worksheet_host + "::" + worksheet_name
@@ -150,7 +150,7 @@ def get_uuid(line):
     """
     Returns the uuid from a line where the uuid is between parentheses
     """
-    m = re.search(".*\\((0x[a-z0-9]+)\\)", line)
+    m = re.search(".*\((0x[a-z0-9]+)\)", line)
     assert m is not None
     return m.group(1)
 
@@ -558,6 +558,12 @@ class TestModule(object):
 
 
 ############################################################
+
+
+@TestModule.register('unittest')
+def test_localhost(ctx):
+    """Test if `cl work [domainname]::` works"""
+    _run_command([cl, 'work', 'localhost::'])
 
 
 @TestModule.register('unittest')
@@ -1005,6 +1011,53 @@ def test_worksheet_tags(ctx):
     # Delete tags
     _run_command([cl, 'wedit', wname, '--tags'])
     check_contains(r'Tags:\s+###', _run_command([cl, 'ls', '-w', wuuid]))
+
+
+@TestModule.register('uls')
+def test(ctx):
+    prev_time = datetime.now().isoformat()
+    # Create & switch new user
+    create_user(ctx, 'non_root_user')
+    switch_user('non_root_user')
+
+    # check non-root user access
+    # check .joined_after
+    check_contains(
+        'non_root_user', _run_command([cl, 'uls', '.joined_after=' + prev_time, '-f', 'user_name'])
+    )
+
+    # check .count
+    check_equals('1', _run_command([cl, 'uls', '.joined_after=' + prev_time, '.count']))
+
+    # check non-root user doesn't have access
+    check_contains(
+        'access to search for these fields',
+        _run_command([cl, 'uls', '.active_after=' + prev_time, '-f', 'user_name']),
+    )
+    # check root user access
+    switch_user('codalab')  # root user
+
+    # check .active_after
+    check_contains(
+        'non_root_user', _run_command([cl, 'uls', '.active_after=' + prev_time, '-f', 'user_name'])
+    )
+
+    # check .disk_used_more_than
+    check_contains(
+        'non_root_user',
+        _run_command([cl, 'uls', '.disk_used_less_than=' + '1%', '-f', 'user_name']),
+    )
+
+    # check .time_used_less_than
+    check_contains(
+        'non_root_user',
+        _run_command([cl, 'uls', '.time_used_less_than=' + '1%', '-f', 'user_name']),
+    )
+
+    # check user defined fields
+    check_contains(
+        '3', _run_command([cl, 'uls', '.time_used_less_than=' + '1%', '-f', 'parallel_run_quota'])
+    )
 
 
 @TestModule.register('freeze')
@@ -2306,6 +2359,11 @@ def test_edit(ctx):
 
     # invalid field value
     _run_command([cl, 'edit', uuid, '-f', 'request_memory', 'invalid_value'], expected_exit_code=1)
+
+
+@TestModule.register('work')
+def test_nonexistent(ctx):
+    _run_command([cl, 'work', 'nonexistent::'], expected_exit_code=1)
 
 
 if __name__ == '__main__':

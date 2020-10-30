@@ -199,7 +199,6 @@ class WorksheetDialogs extends React.Component {
                         </DialogContentText>
                     </DialogContent>
                 </Dialog>
-                }
             </div>
         );
     }

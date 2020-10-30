@@ -62,7 +62,7 @@ class HomePage extends React.Component<{
     render() {
         const { classes, auth } = this.props;
         return (
-            <Grid container>
+            <Grid container style={{ marginTop: -6 }}>
                 {/** Splash w/ tagline, primary buttons, and video.*/}
                 <Grid item xs={12} container className={classes.splash}>
                     <Grid item xs={12} container className={classes.outer}>

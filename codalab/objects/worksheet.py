@@ -6,7 +6,6 @@ A single worksheet will have many item rows, ordered by the id the database
 assigned to each one. Each of this rows will have a string value and and
 optionally a bundle_uuid which makes it a bundle rows.
 '''
-from codalab.common import precondition
 from codalab.lib import spec_util
 from codalab.model.orm_object import ORMObject
 

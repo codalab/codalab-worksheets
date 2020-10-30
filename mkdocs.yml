@@ -43,3 +43,5 @@ nav:
     - About: About.md
     - Privacy: Privacy.md
     - Frequently Asked Questions: FAQ.md
+  - Blog:
+      - Fall 2020: blog/2020-fall.md
