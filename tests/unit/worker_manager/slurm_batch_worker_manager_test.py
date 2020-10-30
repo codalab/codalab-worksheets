@@ -1,12 +1,13 @@
 import unittest
 from types import SimpleNamespace
+from typing import Dict, List, Union
 
 from codalab.worker_manager.slurm_batch_worker_manager import SlurmBatchWorkerManager
 
 
 class SlurmBatchWorkerManagerTest(unittest.TestCase):
     def test_base_command(self):
-        args = SimpleNamespace(
+        args: SimpleNamespace = SimpleNamespace(
             server='some_server',
             user='some_user',
             partition='some_partition',
@@ -24,13 +25,13 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             password_file=None,
         )
 
-        worker_manager = SlurmBatchWorkerManager(args)
-        command = worker_manager.setup_codalab_worker('some_worker_id')
+        worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(args)
+        command: List[str] = worker_manager.setup_codalab_worker('some_worker_id')
 
         # --pass-down-termination should always be set for Slurm worker managers
         self.assertTrue('--pass-down-termination' in command)
 
-        expected_command_str = (
+        expected_command_str: str = (
             'cl-worker --server some_server --verbose --exit-when-idle --idle-seconds 888 '
             '--work-dir /some/path/some_user-codalab-SlurmBatchWorkerManager-scratch/some_worker_id '
             '--id $(hostname -s)-some_worker_id --network-prefix cl_worker_some_worker_id_network --tag some_tag '
@@ -39,7 +40,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
         self.assertEqual(' '.join(command), expected_command_str)
 
     def test_filter_bundles(self):
-        args = SimpleNamespace(
+        args: SimpleNamespace = SimpleNamespace(
             server='some_server',
             user='some_user',
             partition='some_partition',
@@ -60,8 +61,10 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             gpus=1,
         )
 
-        worker_manager = SlurmBatchWorkerManager(args)
-        filtered_bundles = worker_manager.filter_bundles(
+        worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(args)
+        filtered_bundles: List[
+            Dict[str, Dict[str, Union[int, str]]]
+        ] = worker_manager.filter_bundles(
             [
                 {'metadata': {'request_cpus': 5, 'request_gpus': 0, 'request_memory': '1m'}},
                 {'metadata': {'request_cpus': 3, 'request_gpus': 1, 'request_memory': '1g'}},

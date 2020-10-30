@@ -1,4 +1,3 @@
-from collections import namedtuple
 import http
 import logging
 import os
@@ -6,6 +5,9 @@ import socket
 import time
 import traceback
 import urllib
+from argparse import ArgumentParser
+from collections import namedtuple
+from typing import Dict, List, Union
 
 from codalab.common import NotFoundError
 from codalab.client.json_api_client import JsonApiException
@@ -57,11 +59,11 @@ class WorkerManager(object):
     """
 
     # Subcommand name to use for this worker manager type
-    NAME = 'worker-manager'
-    DESCRIPTION = 'Base class for Worker Managers, please implement for your deployment'
+    NAME: str = 'worker-manager'
+    DESCRIPTION: str = 'Base class for Worker Managers, please implement for your deployment'
 
     @staticmethod
-    def add_arguments_to_subparser(subparser):
+    def add_arguments_to_subparser(subparser: ArgumentParser) -> None:
         """
         Add any arguments specific to this worker manager to the given subparser
         """
@@ -83,8 +85,8 @@ class WorkerManager(object):
         """Start a new `WorkerJob`."""
         raise NotImplementedError
 
-    def build_command(self, worker_id, work_dir):
-        command = [
+    def build_command(self, worker_id: str, work_dir: str) -> List[str]:
+        command: List[str] = [
             self.args.worker_executable,
             '--server',
             self.args.server,
@@ -251,12 +253,14 @@ class WorkerManager(object):
             self.start_worker_job()
             self.last_worker_start_time = time.time()
 
-    def filter_bundles(self, bundles):
-        filtered_bundles = []
+    def filter_bundles(
+        self, bundles: List[Dict[str, Dict[str, Union[int, str]]]]
+    ) -> List[Dict[str, Dict[str, Union[int, str]]]]:
+        filtered_bundles: List[Dict[str, Dict[str, Union[int, str]]]] = []
 
         for bundle in bundles:
             # Filter bundles based on the resources specified when creating the worker manager
-            worker_memory_bytes = parse_size('{}m'.format(self.args.memory_mb))
+            worker_memory_bytes: int = parse_size('{}m'.format(self.args.memory_mb))
             if (
                 bundle['metadata']['request_cpus'] <= self.args.cpus
                 and bundle['metadata']['request_gpus'] <= self.args.gpus

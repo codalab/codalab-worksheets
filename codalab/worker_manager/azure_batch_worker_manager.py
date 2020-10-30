@@ -1,35 +1,54 @@
 try:
-    import azure.batch._batch_service_client as batch  # type: ignore
-    import azure.batch.batch_auth as batchauth  # type: ignore
-    import azure.batch.models as batchmodels  # type: ignore
+    from azure.batch.batch_auth import SharedKeyCredentials  # type: ignore
+    from azure.batch._batch_service_client import BatchServiceClient  # type: ignore
+    from azure.batch.models import (  # type: ignore
+        OutputFile,
+        OutputFileBlobContainerDestination,
+        OutputFileDestination,
+        OutputFileUploadCondition,
+        OutputFileUploadOptions,
+        TaskAddParameter,
+        TaskCounts,
+        TaskContainerSettings,
+    )
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         "Running the worker manager requires the azure-batch module.\n"
         "Please run: pip install azure-batch==9.0.0"
     )
 
-import configparser
 import logging
 import os
 import uuid
+from argparse import ArgumentParser
+from typing import List
 
 from codalab.lib.telemetry_util import CODALAB_SENTRY_INGEST, using_sentry
 from .worker_manager import WorkerManager, WorkerJob
 
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class AzureBatchWorkerManager(WorkerManager):
-    NAME = 'azure-batch'
-    DESCRIPTION = 'Worker manager for submitting jobs to Azure Batch'
+    NAME: str = 'azure-batch'
+    DESCRIPTION: str = 'Worker manager for submitting jobs to Azure Batch'
 
     @staticmethod
-    def add_arguments_to_subparser(subparser):
+    def add_arguments_to_subparser(subparser: ArgumentParser) -> None:
         subparser.add_argument(
-            '--azure-config-path',
+            '--account-name', type=str, help='Azure Batch account name',
+        )
+        subparser.add_argument(
+            '--account-key', type=str, help='Azure Batch account key',
+        )
+        subparser.add_argument(
+            '--service-url', type=str, help='Azure Batch service URL',
+        )
+        subparser.add_argument(
+            '--log-container-url',
             type=str,
-            help='Path to the Azure Batch configuration file (.cfg)',
+            help='URL of the Azure Storage container that stores the worker logs',
         )
         subparser.add_argument(
             '--job-id', type=str, help='ID of the Azure Batch job to add tasks to',
@@ -41,7 +60,7 @@ class AzureBatchWorkerManager(WorkerManager):
             '--gpus', type=int, default=0, help='Default number of GPUs to request for each worker'
         )
         subparser.add_argument(
-            '--memory-mb', type=int, default=1024, help='Default memory (in MB) for each worker'
+            '--memory-mb', type=int, default=2048, help='Default memory (in MB) for each worker'
         )
         subparser.add_argument(
             '--user', type=str, default='root', help='User to run the Batch jobs as'
@@ -50,36 +69,33 @@ class AzureBatchWorkerManager(WorkerManager):
     def __init__(self, args):
         super().__init__(args)
 
-        azure_config = configparser.ConfigParser()
-        azure_config.read(self.args.azure_config_path)
-        batch_account_key = azure_config.get('Batch', 'account_key')
-        batch_account_name = azure_config.get('Batch', 'account_name')
-        batch_service_url = azure_config.get('Batch', 'service_url')
-        self._batch_log_container_url = azure_config.get('Batch', 'log_container_url')
-
-        credentials = batchauth.SharedKeyCredentials(batch_account_name, batch_account_key)
-        self._batch_client = batch.BatchServiceClient(credentials, batch_url=batch_service_url)
+        credentials: SharedKeyCredentials = SharedKeyCredentials(
+            self.args.account_name, self.args.account_key
+        )
+        self._batch_client: BatchServiceClient = BatchServiceClient(
+            credentials, batch_url=self.args.service_url
+        )
         self._batch_client.config.retry_policy.retries = 1
 
-    def get_worker_jobs(self):
+    def get_worker_jobs(self) -> List[WorkerJob]:
         # Count the number active and running tasks only within the Batch job
-        task_counts = self._batch_client.job.get_task_counts(self.args.job_id)
+        task_counts: TaskCounts = self._batch_client.job.get_task_counts(self.args.job_id)
         return [WorkerJob(True) for _ in range(task_counts.active + task_counts.running)]
 
-    def start_worker_job(self):
-        worker_image = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
-        worker_id = uuid.uuid4().hex
+    def start_worker_job(self) -> None:
+        worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
+        worker_id: str = uuid.uuid4().hex
         logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
-        work_dir_prefix = (
+        work_dir_prefix: str = (
             self.args.worker_work_dir_prefix if self.args.worker_work_dir_prefix else "/tmp/"
         )
 
         # This needs to be a unique directory since Batch jobs may share a host
-        work_dir = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
-        command = self.build_command(worker_id, work_dir)
+        work_dir: str = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
+        command: List[str] = self.build_command(worker_id, work_dir)
 
         # Create a task within the job
-        task_container_run_options = [
+        task_container_run_options: List[str] = [
             '--cpus %d' % self.args.cpus,
             '--memory %dM' % self.args.memory_mb,
             '--volume /var/run/docker.sock:/var/run/docker.sock',
@@ -108,26 +124,26 @@ class AzureBatchWorkerManager(WorkerManager):
                 '--env CODALAB_SENTRY_INGEST_URL=%s' % CODALAB_SENTRY_INGEST
             )
 
-        command_line = "/bin/sh -c '{}'".format(' '.join(command))
+        command_line: str = "/bin/sh -c '{}'".format(' '.join(command))
         logger.debug("Running the following as an Azure Batch task: {}".format(command_line))
 
-        task_id = 'cl_worker_{}'.format(worker_id)
-        task = batch.models.TaskAddParameter(
+        task_id: str = 'cl_worker_{}'.format(worker_id)
+        task: TaskAddParameter = TaskAddParameter(
             id=task_id,
             command_line=command_line,
-            container_settings=batch.models.TaskContainerSettings(
+            container_settings=TaskContainerSettings(
                 image_name=worker_image, container_run_options=' '.join(task_container_run_options)
             ),
             output_files=[
-                batchmodels.OutputFile(
+                OutputFile(
                     file_pattern='../stderr.txt',
-                    destination=batchmodels.OutputFileDestination(
-                        container=batchmodels.OutputFileBlobContainerDestination(
-                            path=task_id, container_url=self._batch_log_container_url
+                    destination=OutputFileDestination(
+                        container=OutputFileBlobContainerDestination(
+                            path=task_id, container_url=self.args.log_container_url
                         )
                     ),
-                    upload_options=batchmodels.OutputFileUploadOptions(
-                        upload_condition=batchmodels.OutputFileUploadCondition.task_completion
+                    upload_options=OutputFileUploadOptions(
+                        upload_condition=OutputFileUploadCondition.task_completion
                     ),
                 )
             ],
