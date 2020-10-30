@@ -2389,6 +2389,29 @@ def test_nonexistent(ctx):
     _run_command([cl, 'work', 'nonexistent::'], expected_exit_code=1)
 
 
+@TestModule.register('worker_manager')
+def test_false_login(ctx):
+    username = os.getenv("CODALAB_USERNAME")
+    password = os.getenv("CODALAB_PASSWORD")
+    del os.environ["CODALAB_USERNAME"]
+    del os.environ["CODALAB_PASSWORD"]
+    _run_command([cl, 'logout'])
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = "wrongpassword"
+    os.environ['USER'] = "some_user"
+    result = _run_command(
+        [
+            cl_worker_manager,
+            '--server=https://worksheets.codalab.org/',
+            'slurm-batch',
+            '--partition',
+            'foo',
+        ],
+    )
+    check_equals(str(result), "Invalid username or password. Please try again:")
+    os.environ["CODALAB_PASSWORD"] = password
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
@@ -2425,10 +2448,17 @@ if __name__ == '__main__':
         choices=list(TestModule.modules.keys()) + ['all', 'default'],
         help='Tests to run from: {%(choices)s}',
     )
+    parser.add_argument(
+        '--cl-worker-manager',
+        type=str,
+        help='Path to codalab worker manager CLI executable, defaults to "cl-worker-manager"',
+        default='cl-worker-manager',
+    )
 
     args = parser.parse_args()
     cl = args.cl_executable
     cl_version = args.cl_version
+    cl_worker_manager = args.cl_worker_manager
     success = TestModule.run(args.tests, args.instance, args.second_instance)
     if not success:
         sys.exit(1)
