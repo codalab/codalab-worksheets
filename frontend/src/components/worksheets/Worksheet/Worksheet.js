@@ -613,6 +613,13 @@ class Worksheet extends React.Component {
         this.autoHideOpenedMessagePopover();
     };
 
+    setDeleteSchemaItemCallback = (callback) => {
+        this.setState({
+            deleteItemCallback: callback,
+            openedDialog: DIALOG_TYPES.OPEN_DELETE_SCHEMA,
+        });
+    };
+
     autoHideOpenedMessagePopover() {
         const self = this;
         if (this.timer) {
@@ -1680,6 +1687,7 @@ class Worksheet extends React.Component {
                 onAsyncItemLoad={this.onAsyncItemLoad}
                 updateBundleBlockSchema={this.updateBundleBlockSchema}
                 updateSchemaItem={this.updateSchemaItem}
+                setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
             />
         );
 
