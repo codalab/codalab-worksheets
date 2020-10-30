@@ -228,8 +228,15 @@ class TableItem extends React.Component<{
                         this.props.showNewText &&
                         rowFocused
                     }
+                    showNewSchema={
+                        this.props.showNewButtonsAfterEachBundleRow &&
+                        this.props.showNewSchema &&
+                        rowFocused
+                    }
                     onHideNewRun={this.props.onHideNewRun}
                     onHideNewText={this.props.onHideNewText}
+                    onHideNewSchema={this.props.onHideNewSchema}
+                    updateSchemaItem={this.props.updateSchemaItem}
                     ids={this.props.ids}
                 />
             );

@@ -100,7 +100,9 @@ class SchemaItem extends React.Component<{
         this.props.updateSchemaItem(
             updatedSchema,
             ids,
-            getAfterSortKey(this.props.item) - 1,
+            getAfterSortKey(this.props.item) - 1 >= 0
+                ? getAfterSortKey(this.props.item) - 1
+                : this.props.after_sort_key,
             this.props.create,
             false,
         );
@@ -212,7 +214,6 @@ class SchemaItem extends React.Component<{
         const schemaItem = item;
         const schemaHeaders = schemaItem.header;
         const schemaName = schemaItem.schema_name;
-        // console.log("Schema:", item.ids, item.sort_keys, this.props.after_sort_key)
         let headerHtml, bodyRowsHtml;
         const explanations = {
             field: 'Column name that is displayed.',
