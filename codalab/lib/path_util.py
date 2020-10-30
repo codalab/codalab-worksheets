@@ -347,12 +347,8 @@ def parse_linked_bundle_url(url):
         url = url[len("azfs://") :]
         storage_account, container, bundle_uuid, contents_file, *remainder = url.split("/", 4)
         bundle_path = f"azfs://{storage_account}/{container}/{bundle_uuid}/{contents_file}"
-        if contents_file.endswith(".zip"):
-            is_zip = True
-            zip_subpath = remainder[0] if len(remainder) else None
-        else:
-            is_zip = False
-            zip_subpath = None
+        is_zip = contents_file.endswith(".zip")
+        zip_subpath = remainder[0] if is_zip and len(remainder) else None
     else:
         storage_type = StorageType.FILE_STORAGE
         bundle_path = url
