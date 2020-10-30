@@ -38,7 +38,6 @@ class SchemaItem extends React.Component<{
             rows: [...this.props.item.field_rows],
             curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
-            confirmingDeletion: false,
         };
     }
 
@@ -50,7 +49,6 @@ class SchemaItem extends React.Component<{
         }
         if (save) {
             this.saveSchema();
-            this.setState({ confirmingDeletion: false });
         }
     };
 
@@ -59,7 +57,6 @@ class SchemaItem extends React.Component<{
             rows: [...this.props.item.field_rows],
             curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
-            confirmingDeletion: false,
         });
     };
 
@@ -199,7 +196,7 @@ class SchemaItem extends React.Component<{
     };
 
     deleteThisSchema = () => {
-        this.setState({ showSchemaDetail: false, confirmingDeletion: false });
+        this.setState({ showSchemaDetail: false });
         this.props.updateSchemaItem([], this.props.item.ids, null, false, true);
     };
 
@@ -313,10 +310,8 @@ class SchemaItem extends React.Component<{
                                         this.props.onSubmit();
                                         return;
                                     }
-                                    this.setState({ confirmingDeletion: true });
                                     this.props.setDeleteItemCallback(this.deleteThisSchema);
                                 }}
-                                disabled={this.state.confirmingDeletion}
                             >
                                 <DeleteForeverIcon fontSize='small' />
                             </IconButton>
