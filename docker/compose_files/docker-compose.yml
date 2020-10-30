@@ -124,7 +124,7 @@ services:
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
       --search request_gpus=0
-      --sleep-time ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
+      --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --job-queue ${CODALAB_WORKER_MANAGER_CPU_AWS_BATCH_QUEUE}
@@ -145,7 +145,7 @@ services:
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
       --search request_gpus=1
-      --sleep-time ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
+      --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --job-queue ${CODALAB_WORKER_MANAGER_GPU_AWS_BATCH_QUEUE}
@@ -167,7 +167,7 @@ services:
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
       --search request_gpus=0
-      --sleep-time ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
+      --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --account-name ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME}
@@ -190,7 +190,7 @@ services:
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
       --search request_gpus=1
-      --sleep-time ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
+      --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --account-name ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME}
