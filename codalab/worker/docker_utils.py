@@ -5,7 +5,8 @@ Most are wrappers around the official Docker python client.
 A preexisting client may be passed as a keyword parameter to all functions but one is automatically
 created if not.
 """
-
+import importlib.util
+import sys
 import logging
 import os
 import docker
@@ -15,6 +16,12 @@ import re
 import requests
 import traceback
 
+file_path = docker.__file__
+module_name = docker.__name__
+spec = importlib.util.spec_from_file_location(module_name, file_path)
+module = importlib.util.module_from_spec(spec)
+sys.modules[module_name] = module
+spec.loader.exec_module(module)
 
 MIN_API_VERSION = '1.17'
 NVIDIA_RUNTIME = 'nvidia'
