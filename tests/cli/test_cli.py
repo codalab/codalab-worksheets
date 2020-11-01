@@ -2366,6 +2366,12 @@ def test_nonexistent(ctx):
     _run_command([cl, 'work', 'nonexistent::'], expected_exit_code=1)
 
 
+@TestModule.register('rm_empty')
+def test_rm_empty(ctx):
+    result = _run_command([cl, 'rm', '""'], expected_exit_code=1)
+    check_equals(result, 'UsageError: bundle spec is missing')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
