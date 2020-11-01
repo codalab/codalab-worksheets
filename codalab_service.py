@@ -675,7 +675,7 @@ class CodalabServiceManager(object):
 
         # Build the image using the cache
         self._run_docker_cmd(
-            'build%s %s -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            'build%s %s -t %s -f docker_config/dockerfiles/Dockerfile.%s .'
             % (cache_args, build_args, docker_image, image)
         )
 
