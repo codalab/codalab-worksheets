@@ -896,6 +896,8 @@ def test_rm(ctx):
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
     _run_command([cl, 'add', 'bundle', uuid])  # Duplicate
     _run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
+    result = _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
+    check_equals(result, '')
 
 
 @TestModule.register('make')
@@ -2364,12 +2366,6 @@ def test_edit(ctx):
 @TestModule.register('work')
 def test_nonexistent(ctx):
     _run_command([cl, 'work', 'nonexistent::'], expected_exit_code=1)
-
-
-@TestModule.register('rm_empty')
-def test_rm_empty(ctx):
-    result = _run_command([cl, 'rm', '""'], expected_exit_code=1)
-    check_equals(result, 'UsageError: bundle spec is missing')
 
 
 if __name__ == '__main__':
