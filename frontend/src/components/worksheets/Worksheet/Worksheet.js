@@ -315,8 +315,8 @@ class Worksheet extends React.Component {
                         draggable: true,
                     });
                 });
-                const searchDirectiveDeleted = cmd === 'rm';
-                const param = { searchDirectiveDeleted };
+                const fromDeleteCommand = cmd === 'rm';
+                const param = { fromDeleteCommand };
                 this.reloadWorksheet(undefined, undefined, param);
             })
             .fail((e) => {
@@ -1350,7 +1350,7 @@ class Worksheet extends React.Component {
         {
             moveIndex = false,
             textDeleted = false,
-            searchDirectiveDeleted = false,
+            fromDeleteCommand = false,
             uploadFiles = false,
         } = {},
     ) => {
@@ -1449,8 +1449,9 @@ class Worksheet extends React.Component {
                             // focus goes to the last item in the worksheet.
                             this.setFocus(items.length === focus ? items.length - 1 : focus, 0);
                         }
-                        if (searchDirectiveDeleted) {
+                        if (fromDeleteCommand) {
                             // Executed 'rm' command but no bundle deleted
+                            // So bundles are deleted through a search directive
                             this.setFocus(focus, this.state.subFocusIndex);
                         }
                     }
