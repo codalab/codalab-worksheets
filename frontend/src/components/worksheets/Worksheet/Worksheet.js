@@ -487,6 +487,10 @@ class Worksheet extends React.Component {
         let actualData = { items };
         if (after_sort_key) {
             actualData['after_sort_key'] = after_sort_key;
+        } else {
+            // If no location for the insertion is specified,
+            // insert the new item at the top of the worksheet in default.
+            actualData['after_sort_key'] = -1;
         }
         actualData['item_type'] = 'bundle';
         $.ajax({
@@ -623,6 +627,13 @@ class Worksheet extends React.Component {
             },
         });
         this.autoHideOpenedMessagePopover();
+    };
+
+    setDeleteSchemaItemCallback = (callback) => {
+        this.setState({
+            deleteItemCallback: callback,
+            openedDialog: DIALOG_TYPES.OPEN_DELETE_SCHEMA,
+        });
     };
 
     autoHideOpenedMessagePopover() {
@@ -1718,6 +1729,7 @@ class Worksheet extends React.Component {
                 onAsyncItemLoad={this.onAsyncItemLoad}
                 updateBundleBlockSchema={this.updateBundleBlockSchema}
                 updateSchemaItem={this.updateSchemaItem}
+                setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
             />
         );
 
