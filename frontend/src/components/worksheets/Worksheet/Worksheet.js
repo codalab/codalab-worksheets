@@ -315,8 +315,8 @@ class Worksheet extends React.Component {
                         draggable: true,
                     });
                 });
-                const searchDeleted = cmd === 'rm';
-                const param = { searchDeleted };
+                const searchDirectiveDeleted = cmd === 'rm';
+                const param = { searchDirectiveDeleted };
                 this.reloadWorksheet(undefined, undefined, param);
             })
             .fail((e) => {
@@ -707,7 +707,7 @@ class Worksheet extends React.Component {
         let focusedBundleUuidList = [];
         if (index !== -1) {
             // index !== -1 means something is selected.
-            // focusedBundleUuidList is a list of ids of all items after the selected bundle (itself included)
+            // focusedBundleUuidList is a list of uuids of all bundles and ids of all other items after the selected bundle (itself included)
             // Say the selected bundle has focusIndex 1 and subFocusIndex 2, then focusedBundleUuidList will include the uuids of
             // all the bundles that have focusIndex 1 and subFocusIndex >= 2, and also all the bundles that have focusIndex > 1
             for (let i = index; i < info.blocks.length; i++) {
@@ -1358,7 +1358,12 @@ class Worksheet extends React.Component {
     reloadWorksheet = (
         partialUpdateItems,
         rawIndexAfterEditMode,
-        { moveIndex = false, textDeleted = false, searchDeleted = false, uploadFiles = false } = {},
+        {
+            moveIndex = false,
+            textDeleted = false,
+            searchDirectiveDeleted = false,
+            uploadFiles = false,
+        } = {},
     ) => {
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
@@ -1455,7 +1460,7 @@ class Worksheet extends React.Component {
                             // focus goes to the last item in the worksheet.
                             this.setFocus(items.length === focus ? items.length - 1 : focus, 0);
                         }
-                        if (searchDeleted) {
+                        if (searchDirectiveDeleted) {
                             // Executed 'rm' command but no bundle deleted
                             this.setFocus(focus, this.state.subFocusIndex);
                         }
