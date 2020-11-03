@@ -208,6 +208,30 @@ class SchemaItem extends React.Component<{
         }
     }
 
+    componentDidMount() {
+        if (this.props.create) {
+            const node = document.getElementById(
+                'codalab-worksheet-item-' +
+                    this.props.focusIndex +
+                    '-subitem-' +
+                    this.props.subFocusIndex,
+            )
+                ? document.getElementById(
+                      'codalab-worksheet-item-' +
+                          this.props.focusIndex +
+                          '-subitem-' +
+                          this.props.subFocusIndex +
+                          '-schema',
+                  )
+                : document.getElementById(
+                      'codalab-worksheet-item-' + this.props.focusIndex + '-schema',
+                  );
+            if (node) {
+                node.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            }
+        }
+    }
+
     render() {
         const { classes, editPermission, focused, item } = this.props;
         const { showSchemaDetail, rows } = this.state;
@@ -456,6 +480,20 @@ class SchemaItem extends React.Component<{
                     if (this.props.create) return;
                     this.props.setFocus(this.props.focusIndex, 0);
                 }}
+                id={
+                    document.getElementById(
+                        'codalab-worksheet-item-' +
+                            this.props.focusIndex +
+                            'subitem-' +
+                            this.props.subFocusIndex,
+                    )
+                        ? 'codalab-worksheet-item-' +
+                          this.props.focusIndex +
+                          'subitem-' +
+                          this.props.subFocusIndex +
+                          '-schema'
+                        : 'codalab-worksheet-item-' + this.props.focusIndex + '-schema'
+                }
             >
                 <Grid container direction='row'>
                     <Tooltip
