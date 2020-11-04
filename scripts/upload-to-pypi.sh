@@ -11,6 +11,6 @@ VER=$1
 set -e
 
 echo "==> Packaging codalab"
-python3 setup.py sdist
+python3 setup.py bdist_wheel
 echo "==> Uploading codalab"
-twine upload dist/codalab-$VER.tar.gz
+twine upload dist/codalab-$VER-py3-none-any.whl
