@@ -1,4 +1,4 @@
-apache-beam==2.24.0
+apache-beam==2.25.0
 bottle==0.12.18
 docker==4.3.0
 marshmallow-jsonapi==0.15.1
