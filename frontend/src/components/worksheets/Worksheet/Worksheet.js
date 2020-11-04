@@ -1120,7 +1120,6 @@ class Worksheet extends React.Component {
             if (this.hasEditPermission()) {
                 var editor = ace.edit('worksheet-editor');
                 if (saveChanges) {
-                    this.setState({
                     // Use callback function to ensure the worksheet info will not be sent to the backend until the frontend state has finished updating
                     this.setState(
                         {
