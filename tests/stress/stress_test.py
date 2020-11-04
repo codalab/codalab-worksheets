@@ -161,8 +161,16 @@ class StressTestRunner:
     def _test_large_bundle(self):
         self._set_worksheet('large_bundles')
         large_file = TestFile('large_file', self._args.large_file_size_gb * 1000)
-        self._run_bundle([self._cl, 'upload', large_file.name()])
+        dependency_uuid = self._run_bundle([self._cl, 'upload', large_file.name()])
         large_file.delete()
+        self._run_bundle(
+            [
+                self._cl,
+                'run',
+                'wc -c large_dependency',
+                'large_dependency:{}'.format(dependency_uuid),
+            ]
+        )
 
     def _test_many_gpu_runs(self):
         self._set_worksheet('many_gpu_runs')
@@ -303,7 +311,7 @@ def main():
 
     if args.heavy:
         print('Setting the heavy configuration...')
-        args.large_file_size_gb = 10
+        args.large_file_size_gb = 32
         args.gpu_runs_count = 50
         args.multiple_cpus_runs_count = 50
         args.bundle_upload_count = 500
