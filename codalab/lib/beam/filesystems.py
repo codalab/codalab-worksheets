@@ -1,14 +1,5 @@
 import os
-from apache_beam.io.filesystems import FileSystems
 from azure.storage.blob import BlobServiceClient
-from .blobstoragefilesystem import BlobStorageFileSystem # type: ignore
-
-"""
-Modifies Apache Beam to add support for Azure Blob Storage filesystems.
-
-Based on work from https://github.com/apache/beam/pull/12581. Once that PR is added into Beam,
-and a new version (2.25.0) is released, we will switch to using the actual Beam library instead.
-"""
 
 # Test connection string for Azurite (local development)
 TEST_CONN_STR = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"

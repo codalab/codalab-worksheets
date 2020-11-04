@@ -25,7 +25,7 @@ db_metadata = MetaData()
 bundle = Table(
     'bundle',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('uuid', String(63), nullable=False),
     Column('bundle_type', String(63), nullable=False),
     # The command will be NULL except for run bundles.
@@ -44,7 +44,7 @@ bundle = Table(
 bundle_metadata = Table(
     'bundle_metadata',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
     Column('metadata_key', String(63), nullable=False),
     Column('metadata_value', Text, nullable=False),
@@ -55,7 +55,7 @@ bundle_metadata = Table(
 bundle_dependency = Table(
     'bundle_dependency',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('child_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
     Column('child_path', Text, nullable=False),
     # Deliberately omit ForeignKey(bundle.c.uuid), because bundles can have
@@ -69,7 +69,7 @@ bundle_dependency = Table(
 worksheet = Table(
     'worksheet',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('uuid', String(63), nullable=False),
     Column('name', String(255), nullable=False),
     Column('owner_id', String(255), nullable=True),
@@ -88,7 +88,7 @@ worksheet = Table(
 worksheet_item = Table(
     'worksheet_item',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('worksheet_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
     # A worksheet item is either:
     # - type = bundle (bundle_uuid != null)
@@ -111,7 +111,7 @@ worksheet_item = Table(
 worksheet_tag = Table(
     'worksheet_tag',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('worksheet_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
     Column('tag', String(63), nullable=False),
     Index('worksheet_tag_worksheet_uuid_index', 'worksheet_uuid'),
@@ -121,7 +121,7 @@ worksheet_tag = Table(
 group = Table(
     'group',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('uuid', String(63), nullable=False),
     Column('name', String(255), nullable=False),
     Column('user_defined', Boolean),
@@ -134,7 +134,7 @@ group = Table(
 user_group = Table(
     'user_group',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=False),
     Column('user_id', String(63), ForeignKey("user.user_id"), nullable=False),
     # Whether a user is able to modify this group.
@@ -147,7 +147,7 @@ user_group = Table(
 group_bundle_permission = Table(
     'group_bundle_permission',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=False),
     # Reference to a bundle
     Column('object_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
@@ -159,7 +159,7 @@ group_bundle_permission = Table(
 group_object_permission = Table(
     'group_object_permission',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=False),
     # Reference to a worksheet object
     Column('object_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
@@ -181,7 +181,7 @@ NOTIFICATIONS_GENERAL = 0x02  # Receive general notifications (new features)
 user = Table(
     'user',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     # Basic information
     Column('user_id', String(63), nullable=False),
     Column('user_name', String(63), nullable=False, unique=True),
@@ -220,7 +220,7 @@ user = Table(
 user_verification = Table(
     'user_verification',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
     Column('date_created', DateTime, nullable=False),
     Column('date_sent', DateTime, nullable=True),
@@ -231,7 +231,7 @@ user_verification = Table(
 user_reset_code = Table(
     'user_reset_code',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
     Column('date_created', DateTime, nullable=False),
     Column('code', String(64), nullable=False),
@@ -242,7 +242,7 @@ user_reset_code = Table(
 oauth2_client = Table(
     'oauth2_client',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('client_id', String(63), nullable=False),
     Column('name', String(63), nullable=True),
     Column('secret', String(255), nullable=True),
@@ -261,7 +261,7 @@ oauth2_client = Table(
 oauth2_token = Table(
     'oauth2_token',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('client_id', String(63), ForeignKey(oauth2_client.c.client_id), nullable=False),
     Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
     Column('scopes', Text, nullable=False),
@@ -273,7 +273,7 @@ oauth2_token = Table(
 oauth2_auth_code = Table(
     'oauth2_auth_code',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),
+    Column('id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False),
     Column('client_id', String(63), ForeignKey(oauth2_client.c.client_id), nullable=False),
     Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
     Column('scopes', Text, nullable=False),
@@ -286,7 +286,9 @@ oauth2_auth_code = Table(
 chat = Table(
     'chat',
     db_metadata,
-    Column('id', Integer, primary_key=True, nullable=False),  # Primary key
+    Column(
+        'id', BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False
+    ),  # Primary key
     Column('time', DateTime, nullable=False),  # When did the user send this query?
     Column('sender_user_id', String(63), nullable=True),  # Who sent it?
     Column('recipient_user_id', String(63), nullable=True),  # Who received it?
