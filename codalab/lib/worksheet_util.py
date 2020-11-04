@@ -1008,6 +1008,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                     raw_to_block.append((len(blocks) - 1, 0))
             elif item_type == TYPE_DIRECTIVE:
                 command = get_command(value_obj)
+                appended_schema_blocks_index = False
                 if command == '%' or command == '' or command is None:
                     # Comment
                     pass
@@ -1019,6 +1020,9 @@ def interpret_items(schemas, raw_items, db_model=None):
                     current_schema_ids.append(item_id)
                     current_schema_name = name
                     schemas[name] = current_schema = []
+                    # Schema block should also be considered when calculating the focus index
+                    raw_to_block.append((len(blocks) - 1 + len(current_schema_ids), 0))
+                    appended_schema_blocks_index = True
                 elif command == 'addschema':
                     # Add to schema
                     if current_schema is None:
@@ -1054,8 +1058,9 @@ def interpret_items(schemas, raw_items, db_model=None):
                     raw_to_block.append((len(blocks) - 1, 0))
                 else:
                     raise UsageError("unknown directive `%s`" % command)
-
-                raw_to_block.append(None)
+                # Add a placeholder for other cmds
+                if not appended_schema_blocks_index:
+                    raw_to_block.append(None)
             else:
                 raise RuntimeError('Unknown worksheet item type: %s' % item_type)
 
