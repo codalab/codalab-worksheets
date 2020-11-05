@@ -356,7 +356,7 @@ def get_image_size_without_pulling(image_spec):
     requests_session = requests.Session()
     # Retry 5 times, sleeping for [0.1s, 0.2s, 0.4s, ...] between retries.
     retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[413, 429, 500, 502, 503, 504])
-    requests_session.mounft('https://', HTTPAdapter(max_retries=retries))
+    requests_session.mount('https://', HTTPAdapter(max_retries=retries))
 
     while True:
         response = requests_session.get(url=request + str(page_number))
