@@ -8,6 +8,7 @@ import ConfigurationPanel from '../ConfigPanel';
 import MainContent from './MainContent';
 import BundleDetailSideBar from './BundleDetailSideBar';
 import BundleActions from './BundleActions';
+import {findDOMNode} from "react-dom";
 
 class BundleDetail extends React.Component<
     {
@@ -34,7 +35,6 @@ class BundleDetail extends React.Component<
             return {
                 prevUuid: props.uuid,
                 errorMessages: [],
-                open: true,
             };
         }
         return null;
@@ -216,6 +216,7 @@ class BundleDetail extends React.Component<
 
         return (
             <ConfigurationPanel
+                ref={(node) => this.scrollToNewlyOpenedDetail(node)}
                 buttons={ <BundleActions
                     showNewRerun={showNewRerun}
                     showDetail={showDetail}
@@ -235,6 +236,14 @@ class BundleDetail extends React.Component<
             </ConfigurationPanel>
         );
   }
+    scrollToNewlyOpenedDetail(node) {
+        // Only scroll to the bundle detail when it is opened
+        if (node && this.state.open) {
+            findDOMNode(node).scrollIntoView({block:'center'});
+            // Avoid undesirable scroll
+            this.setState({open:false})
+        }
+    }
 }
 
 export default BundleDetail;

@@ -292,13 +292,6 @@ class BundleRow extends Component {
                                     [classes.lowlight]: !this.props.focused,
                                 }),
                             }}
-                            id={
-                                'codalab-worksheet-item-' +
-                                this.state.focusIndex +
-                                'subitem-' +
-                                this.props.rowIndex +
-                                '-detail'
-                            }
                         >
                             <BundleDetail
                                 uuid={bundleInfo.uuid}
@@ -317,16 +310,7 @@ class BundleRow extends Component {
                                 showDetail={showDetail}
                                 handleDetailClick={this.handleDetailClick}
                                 editPermission={editPermission}
-                                onOpen={() => {
-                                    const node = document.getElementById(
-                                        'codalab-worksheet-item-' +
-                                            this.state.focusIndex +
-                                            'subitem-' +
-                                            this.props.rowIndex +
-                                            '-detail',
-                                    );
-                                    node.scrollIntoView({ block: 'center' });
-                                }}
+                                onOpen={() => {}}
                             />
                         </TableCell>
                     </TableRow>
