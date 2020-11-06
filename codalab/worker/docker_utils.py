@@ -13,7 +13,9 @@ from dateutil import parser, tz
 import datetime
 import re
 import requests
+from requests.adapters import HTTPAdapter
 import traceback
+from urllib3.util.retry import Retry
 
 
 MIN_API_VERSION = '1.17'
@@ -350,8 +352,14 @@ def get_image_size_without_pulling(image_spec):
     request = uri_prefix_adjusted + image_name + '/tags/?page='
     image_size_bytes = None
     page_number = 1
+
+    requests_session = requests.Session()
+    # Retry 5 times, sleeping for [0.1s, 0.2s, 0.4s, ...] between retries.
+    retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[413, 429, 500, 502, 503, 504])
+    requests_session.mount('https://', HTTPAdapter(max_retries=retries))
+
     while True:
-        response = requests.get(url=request + str(page_number))
+        response = requests_session.get(url=request + str(page_number))
         data = response.json()
         if len(data['results']) == 0:
             break
