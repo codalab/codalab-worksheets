@@ -222,11 +222,10 @@ class SchemaItem extends React.Component<{
             'post-processor':
                 '(Optional) How to render the value (e.g., %.3f renders 3 decimal points, [0:8] takes the first 8 characters, duration renders seconds, size renders bytes).',
         };
-
-        const placeholderText = {
-            field: '<column name to display>',
-            'generalized-path': '<path to retrieve value>',
-            'post-processor': '<how to render value>',
+        const headerText = {
+            field: 'Column name',
+            'generalized-path': 'Path to render',
+            'post-processor': 'How to render',
         };
         headerHtml =
             (showSchemaDetail || this.props.create) &&
@@ -237,7 +236,7 @@ class SchemaItem extends React.Component<{
                         key={index}
                         style={{ padding: '5', fontSize: '16px', maxWidth: '100' }}
                     >
-                        {header}
+                        {headerText[header]}
                         <Tooltip
                             title={
                                 explanations[header] +
@@ -337,7 +336,6 @@ class SchemaItem extends React.Component<{
                                 error={
                                     headerKey === 'field' && this.state.rows[ind]['field'] === ''
                                 }
-                                placeholder={editPermission ? placeholderText[headerKey] : '<none>'}
                                 helperText={
                                     headerKey === 'field' &&
                                     this.state.rows[ind]['field'] === '' &&
