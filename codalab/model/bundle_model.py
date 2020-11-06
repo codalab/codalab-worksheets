@@ -2174,19 +2174,27 @@ class BundleModel(object):
             user_ids = [user_id]
         if username is not None:
             usernames = [username]
-        result = self.get_users(user_ids=user_ids, usernames=usernames, check_active=check_active)
+        result = self.get_users(
+            user_ids=user_ids, usernames=usernames, check_active=check_active, limit=1
+        )
         if result['results']:
             return result['results'][0]
         return None
 
-    def get_users(self, keywords=None, user_ids=None, usernames=None, check_active=True):
+    def get_users(
+        self,
+        keywords=None,
+        user_ids=None,
+        usernames=None,
+        check_active=True,
+        limit=SEARCH_RESULTS_LIMIT,
+    ):
         """
         see the documentation for `cl uls` for information about keyword structure.
         """
         clauses = []
         offset = 0
         format_func = None
-        limit = SEARCH_RESULTS_LIMIT
         count = False
         sort_key = [None]
         aux_fields = []  # Fields (e.g., sorting) that we need to include in the query
