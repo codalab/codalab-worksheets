@@ -673,7 +673,10 @@ class Worksheet extends React.Component {
                 let elementHeight = element.height();
                 let screenScrollTop = $(window).scrollTop();
                 let screenHeight = $(window).height();
-                let scrollIsAboveElement = elementOffsetTop + elementHeight - screenScrollTop >= 0;
+                // 170 is the sum of height of WorksheetHeader and NavBar.
+                // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
+                let scrollIsAboveElement =
+                    elementOffsetTop + elementHeight - screenScrollTop - 170 >= 0;
                 let elementIsVisibleOnScreen =
                     screenScrollTop + screenHeight - elementOffsetTop >= 0;
                 return scrollIsAboveElement && elementIsVisibleOnScreen;
