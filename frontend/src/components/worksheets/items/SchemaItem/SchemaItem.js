@@ -208,6 +208,7 @@ class SchemaItem extends React.Component<{
         }
     }
 
+    // Scroll the newly opened schema editor into view
     componentDidMount() {
         if (this.props.create) {
             const node = document.getElementById(
@@ -484,12 +485,12 @@ class SchemaItem extends React.Component<{
                     document.getElementById(
                         'codalab-worksheet-item-' +
                             this.props.focusIndex +
-                            'subitem-' +
+                            '-subitem-' +
                             this.props.subFocusIndex,
                     )
                         ? 'codalab-worksheet-item-' +
                           this.props.focusIndex +
-                          'subitem-' +
+                          '-subitem-' +
                           this.props.subFocusIndex +
                           '-schema'
                         : 'codalab-worksheet-item-' + this.props.focusIndex + '-schema'
