@@ -179,5 +179,6 @@ class BundleServiceClient(RestClient):
             '/bundles/' + uuid + '/contents/blob/' + path,
             headers={'Accept-Encoding': 'gzip'},
             return_response=True,
+            timeout_seconds=10 * 60,
         )
         return response, response.headers.get('Target-Type')
