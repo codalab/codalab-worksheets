@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.23_
+_version 0.5.26_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -343,7 +343,7 @@ Query parameters:
        given base worksheet
     3. or a reverse index of the form `^N` referring to the Nth-to-last
        bundle on the given base worksheet.
- - `keywords`: Search keyword. May be provided multiples times for multiple
+ - `keywords`: Search keyword. May be provided multiple times for multiple
     keywords. Bare keywords match the names and descriptions of bundles.
     Examples of other special keyword forms:
     - `name=<name>            ` : More targeted search of using metadata fields.
@@ -751,7 +751,16 @@ Takes the following query parameters:
     filter[user_name]=name1,name2,...
     filter[email]=email1,email2,...
 
-Fetches all users that match any of these usernames or emails.
+Query parameters:
+
+- `keywords`: Search keyword. May be provided multiple times for multiple
+keywords.
+Examples of other special keyword forms:
+- `name=<name>            ` : More targeted search of using metadata fields.
+- `date_joined=.sort             ` : Sort by a particular field.
+- `date_joined=.sort-            ` : Sort by a particular field in reverse.
+- `.count                 ` : Count the number of users.
+- `.limit=10              ` : Limit the number of results to the top 10.
 
 ### `PATCH /users`
 

@@ -199,7 +199,40 @@ class WorksheetDialogs extends React.Component {
                         </DialogContentText>
                     </DialogContent>
                 </Dialog>
-                }
+                {/* Delete schema dialog */}
+                <Dialog
+                    open={this.props.openedDialog === DIALOG_TYPES.OPEN_DELETE_SCHEMA}
+                    onClose={this.props.closeDialog}
+                    aria-labelledby='delete-schema-confirmation-title'
+                    aria-describedby='delete-schema-confirmation-description'
+                >
+                    <DialogTitle id='delete-schema-confirmation-title' style={{ color: 'red' }}>
+                        Delete this schema permanently?
+                    </DialogTitle>
+                    <DialogContent>
+                        <DialogContentText
+                            id='alert-dialog-description'
+                            style={{ color: 'red', marginBottom: '20px' }}
+                        >
+                            {'Schema deletion cannot be undone.'}
+                        </DialogContentText>
+                        <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
+                            {'Note: Deleting a schema does not delete its bundles.'}
+                        </DialogContentText>
+                        <DialogActions>
+                            <Button color='primary' onClick={this.props.closeDialog}>
+                                CANCEL
+                            </Button>
+                            <Button
+                                color='primary'
+                                variant='contained'
+                                onClick={this.props.deleteItemCallback}
+                            >
+                                DELETE
+                            </Button>
+                        </DialogActions>
+                    </DialogContent>
+                </Dialog>
             </div>
         );
     }
