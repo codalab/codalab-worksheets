@@ -236,6 +236,7 @@ class Worksheet extends React.Component {
         //      shouldn't be necessary. However, if we want more control on what happens after
         //      bulk operation, this might be useful
         let bundlesCount = this.state.uuidBundlesCheckedCount;
+        document.activeElement.blur();
         if (check) {
             //A bundle is checked
             if (
@@ -1120,25 +1121,30 @@ class Worksheet extends React.Component {
             if (this.hasEditPermission()) {
                 var editor = ace.edit('worksheet-editor');
                 if (saveChanges) {
-                    this.setState({
-                        ws: {
-                            ...this.state.ws,
-                            info: {
-                                ...this.state.ws.info,
-                                source: editor.getValue().split('\n'),
+                    // Use callback function to ensure the worksheet info will not be sent to the backend until the frontend state has finished updating
+                    this.setState(
+                        {
+                            ws: {
+                                ...this.state.ws,
+                                info: {
+                                    ...this.state.ws.info,
+                                    source: editor.getValue().split('\n'),
+                                },
                             },
                         },
-                    });
-                }
-                var rawIndex = editor.getCursorPosition().row;
-                this.setState({
-                    inSourceEditMode: false,
-                    editorEnabled: false,
-                }); // Needs to be after getting the raw contents
-                if (saveChanges) {
-                    this.saveAndUpdateWorksheet(saveChanges, rawIndex);
-                } else {
-                    this.reloadWorksheet(undefined, rawIndex);
+                        () => {
+                            var rawIndex = editor.getCursorPosition().row;
+                            this.setState({
+                                inSourceEditMode: false,
+                                editorEnabled: false,
+                            }); // Needs to be after getting the raw contents
+                            if (saveChanges) {
+                                this.saveAndUpdateWorksheet(saveChanges, rawIndex);
+                            } else {
+                                this.reloadWorksheet(undefined, rawIndex);
+                            }
+                        },
+                    );
                 }
             } else {
                 // Not allowed to edit the worksheet.
