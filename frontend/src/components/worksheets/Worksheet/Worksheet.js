@@ -1120,30 +1120,29 @@ class Worksheet extends React.Component {
             if (this.hasEditPermission()) {
                 var editor = ace.edit('worksheet-editor');
                 if (saveChanges) {
-                    // Use callback function to ensure the worksheet info will not be sent to the backend until the frontend state has finished updating
-                    this.setState(
-                        {
-                            ws: {
-                                ...this.state.ws,
-                                info: {
-                                    ...this.state.ws.info,
-                                    source: editor.getValue().split('\n'),
-                                },
+                    // Use promise here to ensure the worksheet info will not be sent to the backend until the frontend state has finished updating
+                    const setAsyncState = (newState) =>
+                        new Promise((resolve) => this.setState(newState, resolve));
+                    setAsyncState({
+                        ws: {
+                            ...this.state.ws,
+                            info: {
+                                ...this.state.ws.info,
+                                source: editor.getValue().split('\n'),
                             },
                         },
-                        () => {
-                            var rawIndex = editor.getCursorPosition().row;
-                            this.setState({
-                                inSourceEditMode: false,
-                                editorEnabled: false,
-                            }); // Needs to be after getting the raw contents
-                            if (saveChanges) {
-                                this.saveAndUpdateWorksheet(saveChanges, rawIndex);
-                            } else {
-                                this.reloadWorksheet(undefined, rawIndex);
-                            }
-                        },
-                    );
+                    }).then(() => {
+                        var rawIndex = editor.getCursorPosition().row;
+                        this.setState({
+                            inSourceEditMode: false,
+                            editorEnabled: false,
+                        }); // Needs to be after getting the raw contents
+                        if (saveChanges) {
+                            this.saveAndUpdateWorksheet(saveChanges, rawIndex);
+                        } else {
+                            this.reloadWorksheet(undefined, rawIndex);
+                        }
+                    });
                 }
             } else {
                 // Not allowed to edit the worksheet.
