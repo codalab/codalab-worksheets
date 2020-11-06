@@ -313,7 +313,7 @@ def main():
 
     if args.heavy:
         print('Setting the heavy configuration...')
-        args.large_file_size_gb = 32
+        args.large_file_size_gb = 16
         args.gpu_runs_count = 50
         args.multiple_cpus_runs_count = 50
         args.bundle_upload_count = 500
