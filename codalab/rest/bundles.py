@@ -185,7 +185,9 @@ def build_bundles_document(bundle_uuids):
     if 'owner' in include_set:
         owner_ids = set(b['owner_id'] for b in bundles if b['owner_id'] is not None)
         json_api_include(
-            document, UserSchema(), local.model.get_users(user_ids=owner_ids)['results']
+            document,
+            UserSchema(),
+            local.model.get_users(user_ids=owner_ids, limit=len(owner_ids))['results'],
         )
 
     if 'group_permissions' in include_set:
