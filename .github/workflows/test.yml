@@ -345,4 +345,5 @@ jobs:
     runs-on: ubuntu-latest
     needs: [format, test_frontend, build, test_backend, test_backend_on_worker_restart, test_backend_sharedfs, test_backend_protected_mode, test_ui]
     steps:
+      - uses: actions/checkout@v2
       - run: echo Done
