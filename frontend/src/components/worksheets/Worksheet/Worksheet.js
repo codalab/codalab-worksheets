@@ -678,11 +678,7 @@ class Worksheet extends React.Component {
                 let scrollIsAboveElement =
                     elementOffsetTop + elementHeight - screenScrollTop - 170 >= 0;
                 let elementIsVisibleOnScreen =
-                    screenScrollTop + screenHeight - elementOffsetTop >= 0;
-                console.log(
-                    elementOffsetTop + elementHeight - screenScrollTop,
-                    screenScrollTop + screenHeight - elementOffsetTop,
-                );
+                    screenScrollTop + screenHeight - elementOffsetTop >= 0;s
                 return scrollIsAboveElement && elementIsVisibleOnScreen;
             }
             shouldScroll = !isOnScreen(element);
