@@ -171,7 +171,7 @@ class CodaLabArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         # Adapted from original:
         # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
-        if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']):
+        if (len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']):
             self.cli.do_command(['help'])
             self.exit(2)
         elif self.cli.headless:
@@ -3782,7 +3782,6 @@ class BundleCLI(object):
         """
         if args.grant_access and args.remove_access:
             raise UsageError('Can\'t both grant and remove access for a user.')
-
         client = self.manager.current_client()
 
         # Build user info
@@ -3841,7 +3840,7 @@ class BundleCLI(object):
             '  uls .format=<format>                : Apply <format> function (see worksheet markdown).',
         ],
         arguments=(
-            Commands.Argument('keywords', help='Keywords to search for.', nargs='+'),
+            Commands.Argument('keywords', help='Keywords to search for.', nargs='*'),
             Commands.Argument('-f', '--field', help='Print out these comma-separated fields.'),
         ),
     )
@@ -3850,7 +3849,10 @@ class BundleCLI(object):
         Search for specific users.
         """
         client = self.manager.current_client()
-        users = client.fetch('users', params={'keywords': args.keywords})
+        if args.keywords is None:
+            user = client.fetch('users', params={'keywords': ''})
+        else:
+            users = client.fetch('users', params={'keywords': args.keywords})
         # Print direct numeric result
         if 'meta' in users:
             print(users['meta']['results'], file=self.stdout)
