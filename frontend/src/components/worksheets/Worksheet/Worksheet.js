@@ -9,6 +9,7 @@ import InformationModal from '../InformationModal/InformationModal';
 import WorksheetHeader from './WorksheetHeader';
 import {
     NAVBAR_HEIGHT,
+    HEADER_HEIGHT,
     EXPANDED_WORKSHEET_WIDTH,
     DEFAULT_WORKSHEET_WIDTH,
     LOCAL_STORAGE_WORKSHEET_WIDTH,
@@ -673,10 +674,10 @@ class Worksheet extends React.Component {
                 let elementHeight = element.height();
                 let screenScrollTop = $(window).scrollTop();
                 let screenHeight = $(window).height();
-                // 170 is the sum of height of WorksheetHeader and NavBar.
+                // HEADER_HEIGHT is the sum of height of WorksheetHeader and NavBar.
                 // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
                 let scrollIsAboveElement =
-                    elementOffsetTop + elementHeight - screenScrollTop - 170 >= 0;
+                    elementOffsetTop + elementHeight - screenScrollTop - HEADER_HEIGHT >= 0;
                 let elementIsVisibleOnScreen =
                     screenScrollTop + screenHeight - elementOffsetTop >= 0;
                 return scrollIsAboveElement && elementIsVisibleOnScreen;
