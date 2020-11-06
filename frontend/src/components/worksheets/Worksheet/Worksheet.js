@@ -237,6 +237,7 @@ class Worksheet extends React.Component {
         //      shouldn't be necessary. However, if we want more control on what happens after
         //      bulk operation, this might be useful
         let bundlesCount = this.state.uuidBundlesCheckedCount;
+        document.activeElement.blur();
         if (check) {
             //A bundle is checked
             if (
