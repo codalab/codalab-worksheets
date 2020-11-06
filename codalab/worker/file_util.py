@@ -7,6 +7,7 @@ import subprocess
 import tarfile
 import zlib
 import bz2
+from zipfile import ZipFile
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from apache_beam.io.filesystem import CompressionTypes

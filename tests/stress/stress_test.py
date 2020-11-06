@@ -165,14 +165,16 @@ class StressTestRunner:
         large_file = TestFile('large_file', self._args.large_file_size_gb * 1000)
         dependency_uuid = self._run_bundle([self._cl, 'upload', large_file.name()])
         large_file.delete()
-        self._run_bundle(
+        uuid = self._run_bundle(
             [
                 self._cl,
                 'run',
-                'wc -c large_dependency',
                 'large_dependency:{}'.format(dependency_uuid),
+                'wc -c large_dependency',
             ]
         )
+        # Wait for the run to finish before cleaning up the dependency
+        run_command([cl, 'wait', uuid])
 
     def _test_many_gpu_runs(self):
         self._set_worksheet('many_gpu_runs')
