@@ -3850,7 +3850,7 @@ class BundleCLI(object):
         """
         client = self.manager.current_client()
         if args.keywords is None:
-            user = client.fetch('users', params={'keywords': ''})
+            users = client.fetch('users', params={'keywords': ''})
         else:
             users = client.fetch('users', params={'keywords': args.keywords})
         # Print direct numeric result
