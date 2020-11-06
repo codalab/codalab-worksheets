@@ -319,7 +319,7 @@ class LinkedBundlePath:
         is_zip (bool): Whether this bundle is stored as a zip file on this storage medium stores folders. Only done currently by Azure Blob Storage.
 
         uses_beam (bool): Whether this bundle's storage type requires using Apache Beam to interact with it.
-        
+
         zip_subpath (str): If is_zip is True, returns the subpath within the zip file for the file that this BundlePath points to.
 
         bundle_uuid (str): UUID of the bundle that this path refers to.
