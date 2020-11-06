@@ -160,9 +160,19 @@ class StressTestRunner:
 
     def _test_large_bundle(self):
         self._set_worksheet('large_bundles')
+        # Set this to larger than the max memory on the system to test that data is being
+        # streamed when the large bundle is being used as a dependency.
         large_file = TestFile('large_file', self._args.large_file_size_gb * 1000)
-        self._run_bundle([self._cl, 'upload', large_file.name()])
+        dependency_uuid = self._run_bundle([self._cl, 'upload', large_file.name()])
         large_file.delete()
+        self._run_bundle(
+            [
+                self._cl,
+                'run',
+                'wc -c large_dependency',
+                'large_dependency:{}'.format(dependency_uuid),
+            ]
+        )
 
     def _test_many_gpu_runs(self):
         self._set_worksheet('many_gpu_runs')
@@ -303,7 +313,7 @@ def main():
 
     if args.heavy:
         print('Setting the heavy configuration...')
-        args.large_file_size_gb = 10
+        args.large_file_size_gb = 16
         args.gpu_runs_count = 50
         args.multiple_cpus_runs_count = 50
         args.bundle_upload_count = 500
@@ -370,7 +380,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--large-file-size-gb',
         type=int,
-        help='Size of large file in GB for single upload (defaults to 1)',
+        help='Size of large file in GB for single upload (defaults to 1). Set this to larger than the max memory on the system to test that data is being streamed',
         default=1,
     )
     parser.add_argument(

@@ -7,7 +7,6 @@ import subprocess
 import tarfile
 import zlib
 import bz2
-from zipfile import ZipFile
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from apache_beam.io.filesystem import CompressionTypes
@@ -212,8 +211,14 @@ def gzip_file(file_path):
     Returns a file-like object containing the gzipped version of the given file.
     """
     try:
-        data = open_file(file_path).read()
-        return BytesIO(gzip.compress(data))
+        BUFFER_SIZE = 100 * 1024 * 1024  # Zip in chunks of 100MB
+        file_path_obj = open_file(file_path)
+        output = BytesIO()
+        with gzip.GzipFile(fileobj=output, mode='w') as fo:
+            for data in iter(lambda: file_path_obj.read(BUFFER_SIZE), b''):
+                fo.write(data)
+        output.seek(0)  # Go back to the start of the stream, so read() works
+        return output
     except Exception as e:
         raise IOError(e)
 

@@ -131,6 +131,7 @@ class NewUpload extends React.Component<{
             if (after_sort_key) {
                 url += `&after_sort_key=${ after_sort_key }`;
             }
+<<<<<<< HEAD
             async function createFileBundle(url, data) {
                 let result;
 
@@ -143,6 +144,72 @@ class NewUpload extends React.Component<{
                     });
                     return result;
                 } catch (error) {
+=======
+            $.ajax({
+                url,
+                data: JSON.stringify(createBundleData),
+                contentType: 'application/json',
+                type: 'POST',
+                success: (data, status, jqXHR) => {
+                    const bundleUuid = data.data[0].id;
+                    let reader = new FileReader();
+                    reader.onload = () => {
+                        let arrayBuffer = reader.result,
+                            bytesArray = new Uint8Array(arrayBuffer);
+                        let url =
+                            '/rest/bundles/' +
+                            bundleUuid +
+                            '/contents/blob/?' +
+                            getQueryParams(file.name);
+                        $.ajax({
+                            url: url,
+                            type: 'PUT',
+                            contentType: 'application/octet-stream',
+                            data: new Blob([bytesArray]),
+                            processData: false,
+                            xhr: () => {
+                                let xhr = new window.XMLHttpRequest();
+                                xhr.upload.addEventListener(
+                                    'progress',
+                                    (evt) => {
+                                        if (evt.lengthComputable) {
+                                            const percentComplete = parseInt(
+                                                (evt.loaded / evt.total) * 100,
+                                            );
+                                            this.setState({ percentComplete });
+                                        }
+                                    },
+                                    false,
+                                );
+                                return xhr;
+                            },
+                            success: (data, status, jqXHR) => {
+                                this.clearProgress();
+                                if (index === files.length - 1) {
+                                    const moveIndex = true;
+                                    const uploadFiles = true;
+                                    const param = { moveIndex, uploadFiles};
+                                    this.props.reloadWorksheet(undefined, undefined, param);
+                                    this.props.onUploadFinish();
+                                }
+                            },
+                            error: (jqHXR, status, error) => {
+                                this.clearProgress();
+                                alert(
+                                    createAlertText(
+                                        reader.url,
+                                        jqHXR.responseText,
+                                        'refresh and try again.',
+                                    ),
+                                );
+                                this.props.onUploadFinish();
+                            },
+                        });
+                    };
+                    reader.readAsArrayBuffer(file);
+                },
+                error: (jqHXR, status, error) => {
+>>>>>>> master
                     this.clearProgress();
                     alert(createAlertText(url, error.responseText));
                 }
