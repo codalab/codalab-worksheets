@@ -138,7 +138,10 @@ class RestClient(object):
                     if not should_resume:
                         raise Exception('Upload aborted by client')
 
-        # Start the request
+        # Start the chunk-encoded request
+        # By providing a generator for the response body, requests automatically uses a
+        # chunked-encoded request.
+        # https://requests.readthedocs.io/en/master/user/advanced/#chunk-encoded-requests
         response = requests.post(
             requests.compat.urljoin(self._base_url, url),
             params=query_params,
