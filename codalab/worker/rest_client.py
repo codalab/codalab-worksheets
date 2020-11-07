@@ -142,8 +142,8 @@ class RestClient(object):
         # By providing a generator for the response body, requests automatically uses a
         # chunked-encoded request.
         # https://requests.readthedocs.io/en/master/user/advanced/#chunk-encoded-requests
-        response = requests.post(
-            requests.compat.urljoin(self._base_url, url),
+        response = requests.put(
+            self._base_url + url,
             params=query_params,
             data=wrap_bytes_generator_in_progress_callback(
                 stream_chunks_from_fileobj(fileobj), progress_callback
