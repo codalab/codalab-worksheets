@@ -1,8 +1,9 @@
 import unittest
 from types import SimpleNamespace
-from typing import Dict, List, Union
+from typing import List
 
 from codalab.worker_manager.slurm_batch_worker_manager import SlurmBatchWorkerManager
+from codalab.worker_manager.worker_manager import BundlesPayload
 
 
 class SlurmBatchWorkerManagerTest(unittest.TestCase):
@@ -62,18 +63,28 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
         )
 
         worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(args)
-        filtered_bundles: List[
-            Dict[str, Dict[str, Union[int, str]]]
-        ] = worker_manager.filter_bundles(
+        filtered_bundles: BundlesPayload = worker_manager.filter_bundles(
             [
-                {'metadata': {'request_cpus': 5, 'request_gpus': 0, 'request_memory': '1m'}},
-                {'metadata': {'request_cpus': 3, 'request_gpus': 1, 'request_memory': '1g'}},
-                {'metadata': {'request_cpus': 1, 'request_gpus': 0, 'request_memory': '2g'}},
+                {
+                    'uuid': 0x01,
+                    'metadata': {'request_cpus': 5, 'request_gpus': 0, 'request_memory': '1m'},
+                },
+                {
+                    'uuid': 0x02,
+                    'metadata': {'request_cpus': 3, 'request_gpus': 1, 'request_memory': '1g'},
+                },
+                {
+                    'uuid': 0x03,
+                    'metadata': {'request_cpus': 1, 'request_gpus': 0, 'request_memory': '2g'},
+                },
             ]
         )
 
         self.assertEqual(len(filtered_bundles), 1)
         self.assertEqual(
             filtered_bundles[0],
-            {'metadata': {'request_cpus': 3, 'request_gpus': 1, 'request_memory': '1g'}},
+            {
+                'uuid': 0x02,
+                'metadata': {'request_cpus': 3, 'request_gpus': 1, 'request_memory': '1g'},
+            },
         )

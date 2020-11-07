@@ -7,7 +7,7 @@ import traceback
 import urllib
 from argparse import ArgumentParser
 from collections import namedtuple
-from typing import Dict, List, Union
+from typing import Dict, List, Union, TypeVar
 
 from codalab.common import NotFoundError
 from codalab.client.json_api_client import JsonApiException
@@ -17,6 +17,9 @@ from codalab.worker.bundle_state import State
 
 
 logger = logging.getLogger(__name__)
+
+# Type aliases
+BundlesPayload = List[Dict[str, Dict[str, Union[int, str]]]]
 
 # Represents a AWS/Azure job that runs a single cl-worker.
 # `active` is a Boolean field that's set to true if the worker is
@@ -160,7 +163,7 @@ class WorkerManager(object):
         if self.args.worker_tag_exclusive and self.args.worker_tag:
             keywords += ["request_queue=%s,tag=%s" % (self.args.worker_tag, self.args.worker_tag)]
 
-        bundles = self.codalab_client.fetch(
+        bundles: BundlesPayload = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
         )
         bundles = self.filter_bundles(bundles)
@@ -253,10 +256,8 @@ class WorkerManager(object):
             self.start_worker_job()
             self.last_worker_start_time = time.time()
 
-    def filter_bundles(
-        self, bundles: List[Dict[str, Dict[str, Union[int, str]]]]
-    ) -> List[Dict[str, Dict[str, Union[int, str]]]]:
-        filtered_bundles: List[Dict[str, Dict[str, Union[int, str]]]] = []
+    def filter_bundles(self, bundles: BundlesPayload) -> BundlesPayload:
+        filtered_bundles: BundlesPayload = []
 
         for bundle in bundles:
             # Filter bundles based on the resources specified when creating the worker manager
@@ -267,4 +268,13 @@ class WorkerManager(object):
                 and parse_size(bundle['metadata']['request_memory']) <= worker_memory_bytes
             ):
                 filtered_bundles.append(bundle)
+            else:
+                logger.info(
+                    'Filtered out bundle {} based on resources requested: request_cpus={}, request_gpus={}, request_memory={}'.format(
+                        bundle['uuid'],
+                        bundle['metadata']['request_cpus'],
+                        bundle['metadata']['request_gpus'],
+                        bundle['metadata']['request_memory'],
+                    )
+                )
         return filtered_bundles

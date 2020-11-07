@@ -37,21 +37,22 @@ class AzureBatchWorkerManager(WorkerManager):
     @staticmethod
     def add_arguments_to_subparser(subparser: ArgumentParser) -> None:
         subparser.add_argument(
-            '--account-name', type=str, help='Azure Batch account name',
+            '--account-name', type=str, help='Azure Batch account name', required=True
         )
         subparser.add_argument(
-            '--account-key', type=str, help='Azure Batch account key',
+            '--account-key', type=str, help='Azure Batch account key', required=True
         )
         subparser.add_argument(
-            '--service-url', type=str, help='Azure Batch service URL',
+            '--service-url', type=str, help='Azure Batch service URL', required=True
         )
         subparser.add_argument(
             '--log-container-url',
             type=str,
             help='URL of the Azure Storage container to store the worker logs',
+            required=True,
         )
         subparser.add_argument(
-            '--job-id', type=str, help='ID of the Azure Batch job to add tasks to',
+            '--job-id', type=str, help='ID of the Azure Batch job to add tasks to', required=True
         )
         subparser.add_argument(
             '--cpus', type=int, default=1, help='Default number of CPUs for each worker'
@@ -109,6 +110,10 @@ class AzureBatchWorkerManager(WorkerManager):
                     '--env CODALAB_PASSWORD=%s' % os.environ.get('CODALAB_PASSWORD'),
                 ]
             )
+        else:
+            raise EnvironmentError(
+                'Valid credentials need to be set as environment variables: CODALAB_USERNAME and CODALAB_PASSWORD'
+            )
 
         if os.environ.get('CODALAB_SHARED_FILE_SYSTEM') == 'true':
             # Allow workers to directly mount a directory
@@ -123,7 +128,7 @@ class AzureBatchWorkerManager(WorkerManager):
                 '--env CODALAB_SENTRY_INGEST_URL=%s' % CODALAB_SENTRY_INGEST
             )
 
-        command_line: str = "/bin/sh -c '{}'".format(' '.join(command))
+        command_line: str = "/bin/bash -c '{}'".format(' '.join(command))
         logger.debug("Running the following as an Azure Batch task: {}".format(command_line))
 
         task_id: str = 'cl_worker_{}'.format(worker_id)

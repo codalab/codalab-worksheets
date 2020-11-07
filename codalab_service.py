@@ -278,6 +278,12 @@ CODALAB_ARGUMENTS = [
         default=60,
     ),
     CodalabArg(
+        name='worker_manager_sleep_time_seconds',
+        help='Number of seconds to wait between checks',
+        type=int,
+        default=5,
+    ),
+    CodalabArg(
         name='worker_manager_default_gpus',
         type=int,
         default=0,
