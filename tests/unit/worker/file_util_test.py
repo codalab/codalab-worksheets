@@ -8,6 +8,7 @@ from codalab.worker.file_util import (
     get_file_size,
     gzip_bytestring,
     remove_path,
+    stream_chunks_from_fileobj,
     tar_gzip_directory,
     un_gzip_stream,
     un_bz2_file,
@@ -57,6 +58,15 @@ class FileUtilTest(unittest.TestCase):
 
     def test_gzip_bytestring(self):
         self.assertEqual(un_gzip_bytestring(gzip_bytestring(b'contents')), b'contents')
+
+    def test_stream_chunks_from_fileobj(self):
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            self.addCleanup(lambda: os.remove(temp_file.name))
+            temp_file.write(b'contents and more contents')
+            name = temp_file.name
+        self.assertEqual(
+            b"".join(stream_chunks_from_fileobj(open(name, "rb"))), b'contents and more contents'
+        )
 
 
 class ArchiveTestBase:

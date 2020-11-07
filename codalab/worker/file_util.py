@@ -471,3 +471,14 @@ def path_is_parent(parent_path, child_path):
     # the parent path will regularize the path name in the same way as the
     # comparison that deals with both paths, removing any trailing path separator.
     return os.path.commonpath([parent_path]) == os.path.commonpath([parent_path, child_path])
+
+
+def stream_chunks_from_fileobj(fileobj, chunk_size=1 * 1000 * 1000):
+    """
+    A generator for streaming chunks of a given chunk_size from a fileobj.
+    """
+    while True:
+        data = fileobj.read(chunk_size)
+        if not data:
+            break
+        yield data
