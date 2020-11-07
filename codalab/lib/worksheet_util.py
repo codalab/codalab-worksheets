@@ -1059,7 +1059,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                 else:
                     raise UsageError("unknown directive `%s`" % command)
                 # Add a placeholder for other cmds
-                if not appended_schema_blocks_index:
+                if not appended_directive_blocks_index:
                     raw_to_block.append(None)
             else:
                 raise RuntimeError('Unknown worksheet item type: %s' % item_type)
