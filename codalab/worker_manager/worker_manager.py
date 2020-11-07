@@ -7,7 +7,7 @@ import traceback
 import urllib
 from argparse import ArgumentParser
 from collections import namedtuple
-from typing import Dict, List, Union, TypeVar
+from typing import Dict, List, Union
 
 from codalab.common import NotFoundError
 from codalab.client.json_api_client import JsonApiException
