@@ -144,10 +144,11 @@ class RestClient(object):
         # https://requests.readthedocs.io/en/master/user/advanced/#chunk-encoded-requests
         response = requests.put(
             self._base_url + url,
-            params=query_params,
             data=wrap_bytes_generator_in_progress_callback(
                 stream_chunks_from_fileobj(fileobj), progress_callback
             ),
+            headers=headers,
+            params=query_params,
             timeout=URLOPEN_TIMEOUT_SECONDS,
         )
         # Raise an exception if the response is bad.
