@@ -116,6 +116,8 @@ class StressTestRunner:
         cleanup(self._cl, StressTestRunner._TAG, should_wait=False)
         print('Running stress tests...')
         self._start_heartbeat()
+        self._test_large_bundle_dependency()
+        self.cleanup()
         self._test_large_bundle()
         self.cleanup()
         self._test_many_gpu_runs()
@@ -163,7 +165,7 @@ class StressTestRunner:
         # Set this to larger than the max memory on the system to test that data is being
         # streamed when the large bundle is being used as a dependency.
         command = 'dd if=/dev/zero of=largefile bs=1 count=0 seek={}G'.format(
-            i, self._args.args.large_file_size_gb
+            self._args.args.large_dependency_size_gb
         )
         dependency_uuid = self._run_bundle([self._cl, 'run', command])
         uuid = self._run_bundle(
