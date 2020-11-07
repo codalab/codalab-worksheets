@@ -653,7 +653,6 @@ class JsonApiClient(RestClient):
             self._make_request(method='PUT', path=request_path, query_params=params)
         else:
             self._upload_with_chunked_encoding(
-                method='PUT',
                 url=request_path,
                 query_params=params,
                 fileobj=fileobj,

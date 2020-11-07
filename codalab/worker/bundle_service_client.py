@@ -144,7 +144,7 @@ class BundleServiceClient(RestClient):
         elif isinstance(fileobj_or_bytestring, str):
             raise Exception('Expected bytes, got string')
         else:
-            self._upload_with_chunked_encoding(method, url, query_params, fileobj_or_bytestring)
+            self._upload_with_chunked_encoding(url, query_params, fileobj_or_bytestring)
 
     @wrap_exception('Unable to start bundle in bundle service')
     def start_bundle(self, worker_id, uuid, request_data):
@@ -156,7 +156,6 @@ class BundleServiceClient(RestClient):
     def update_bundle_contents(self, worker_id, uuid, path, exclude_patterns, progress_callback):
         with closing(tar_gzip_directory(path, exclude_patterns=exclude_patterns)) as fileobj:
             self._upload_with_chunked_encoding(
-                'PUT',
                 '/bundles/' + uuid + '/contents/blob/',
                 query_params={'filename': 'bundle.tar.gz', 'finalize_on_success': 0},
                 fileobj=fileobj,

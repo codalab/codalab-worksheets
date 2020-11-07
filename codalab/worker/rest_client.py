@@ -1,14 +1,14 @@
 from contextlib import closing
-from io import StringIO
-import http.client
 import json
 import urllib.request
 import urllib.parse
 import urllib.error
 from typing import Dict
 
-from .file_util import un_gzip_stream
+from .file_util import stream_chunks_from_fileobj, un_gzip_stream
 from codalab.common import URLOPEN_TIMEOUT_SECONDS
+
+import requests
 
 
 class RestClientException(Exception):
@@ -110,9 +110,7 @@ class RestClient(object):
                 except ValueError:
                     raise RestClientException('Invalid JSON: ' + response_data, False)
 
-    def _upload_with_chunked_encoding(
-        self, method, url, query_params, fileobj, progress_callback=None
-    ):
+    def _upload_with_chunked_encoding(self, url, query_params, fileobj, progress_callback=None):
         """
         Uploads the fileobj to url using method with query_params,
         if progress_callback is specified, it is called with the
@@ -121,50 +119,33 @@ class RestClient(object):
         download if False and resumes it if True. If i's not specified the download
         runs to completion
         """
-        CHUNK_SIZE = 16 * 1024
-        # Start the request.
-        parsed_base_url = urllib.parse.urlparse(self._base_url)
-        path = url + '?' + urllib.parse.urlencode(query_params)
-        if parsed_base_url.scheme == 'http':
-            conn = http.client.HTTPConnection(parsed_base_url.netloc)
-        else:
-            conn = http.client.HTTPSConnection(parsed_base_url.netloc)
-        with closing(conn):
-            conn.putrequest(method, parsed_base_url.path + path)
+        path = requests.compat.urljoin(self._base_url, url)
+        # Set headers.
+        headers = {
+            'Authorization': 'Bearer ' + self._get_access_token(),
+            'Transfer-Encoding': 'chunked',
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+        headers.update(self._extra_headers)
 
-            # Set headers.
-            headers = {
-                'Authorization': 'Bearer ' + self._get_access_token(),
-                'Transfer-Encoding': 'chunked',
-                'X-Requested-With': 'XMLHttpRequest',
-            }
-            headers.update(self._extra_headers)
-            for header_name, header_value in headers.items():
-                conn.putheader(header_name, header_value)
-            conn.endheaders()
-
-            # Use chunked transfer encoding to send the data through.
-            bytes_uploaded = 0
-            while True:
-                to_send = fileobj.read(CHUNK_SIZE)
-                if not to_send:
-                    break
-                conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
-                bytes_uploaded += len(to_send)
-                if progress_callback is not None:
-                    should_resume = progress_callback(bytes_uploaded)
+        # Wrap the fileobj chunk generator with the progress callback
+        def wrap_bytes_generator_in_progress_callback(generator, callback=None):
+            bytes_generated = 0
+            for chunk in generator:
+                yield chunk
+                bytes_generated += len(chunk)
+                if callback is not None:
+                    should_resume = callback(bytes_generated)
                     if not should_resume:
                         raise Exception('Upload aborted by client')
-            conn.send(b'0\r\n\r\n')
 
-            # Read the response.
-            response = conn.getresponse()
-            if response.status != 200:
-                # Low-level httplib module doesn't throw HTTPError
-                raise urllib.error.HTTPError(
-                    self._base_url + path,
-                    response.status,
-                    response.reason,
-                    dict(response.getheaders()),
-                    StringIO(response.read().decode()),
-                )
+        # Start the request
+        response = requests.post(
+            path,
+            params=query_params,
+            data=wrap_bytes_generator_in_progress_callback(
+                stream_chunks_from_fileobj(fileobj), progress_callback
+            ),
+        )
+        # Raise an exception if the response is bad.
+        response.raise_for_status()
