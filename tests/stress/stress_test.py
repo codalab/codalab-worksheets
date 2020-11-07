@@ -158,23 +158,30 @@ class StressTestRunner:
             # Have heartbeat run every 30 seconds
             time.sleep(30)
 
-    def _test_large_bundle(self):
-        self._set_worksheet('large_bundles')
+    def _test_large_bundle_dependency(self):
+        self._set_worksheet('large_bundle_dependency')
         # Set this to larger than the max memory on the system to test that data is being
         # streamed when the large bundle is being used as a dependency.
-        large_file = TestFile('large_file', self._args.large_file_size_gb * 1000)
-        dependency_uuid = self._run_bundle([self._cl, 'upload', large_file.name()])
-        large_file.delete()
+        command = 'dd if=/dev/zero of=largefile bs=1 count=0 seek={}G'.format(
+            i, self._args.args.large_file_size_gb
+        )
+        dependency_uuid = self._run_bundle([self._cl, 'run', command])
         uuid = self._run_bundle(
             [
                 self._cl,
                 'run',
                 'large_dependency:{}'.format(dependency_uuid),
-                'wc -c large_dependency',
+                'wc -c large_dependency/largefile',
             ]
         )
         # Wait for the run to finish before cleaning up the dependency
         run_command([cl, 'wait', uuid])
+
+    def _test_large_bundle(self):
+        self._set_worksheet('large_bundles')
+        large_file = TestFile('large_file', self._args.large_file_size_gb * 1024)
+        self._run_bundle([self._cl, 'upload', large_file.name()])
+        large_file.delete()
 
     def _test_many_gpu_runs(self):
         self._set_worksheet('many_gpu_runs')
@@ -315,7 +322,8 @@ def main():
 
     if args.heavy:
         print('Setting the heavy configuration...')
-        args.large_file_size_gb = 16
+        args.large_dependency_size_gb = 16
+        args.large_file_size_gb = 10
         args.gpu_runs_count = 50
         args.multiple_cpus_runs_count = 50
         args.bundle_upload_count = 500
@@ -380,9 +388,15 @@ if __name__ == '__main__':
 
     # Custom stress test runner arguments
     parser.add_argument(
+        '--large-dependency-size-gb',
+        type=int,
+        help='Size of large dependency in GB (defaults to 1). Set this to larger than the max memory on the system to test that data is being streamed',
+        default=1,
+    )
+    parser.add_argument(
         '--large-file-size-gb',
         type=int,
-        help='Size of large file in GB for single upload (defaults to 1). Set this to larger than the max memory on the system to test that data is being streamed',
+        help='Size of large file in GB for single upload (defaults to 1).',
         default=1,
     )
     parser.add_argument(
