@@ -119,7 +119,6 @@ class RestClient(object):
         download if False and resumes it if True. If i's not specified the download
         runs to completion
         """
-        path = requests.compat.urljoin(self._base_url, url)
         # Set headers.
         headers = {
             'Authorization': 'Bearer ' + self._get_access_token(),
@@ -141,7 +140,7 @@ class RestClient(object):
 
         # Start the request
         response = requests.post(
-            path,
+            requests.compat.urljoin(self._base_url, url),
             params=query_params,
             data=wrap_bytes_generator_in_progress_callback(
                 stream_chunks_from_fileobj(fileobj), progress_callback
