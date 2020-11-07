@@ -10,7 +10,7 @@ import http.client
 # http://semver.org/
 CODALAB_VERSION = '0.5.26'
 BINARY_PLACEHOLDER = '<binary>'
-URLOPEN_TIMEOUT_SECONDS = 120
+URLOPEN_TIMEOUT_SECONDS = 5 * 60
 
 
 class IntegrityError(ValueError):

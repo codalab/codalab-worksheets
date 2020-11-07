@@ -1,6 +1,6 @@
 apache-beam==2.25.0
 bottle==0.12.18
-dataclasses==0.7
+dataclasses==0.7;python_version<'3.7'
 docker==4.3.0
 marshmallow-jsonapi==0.15.1
 marshmallow==2.15.1

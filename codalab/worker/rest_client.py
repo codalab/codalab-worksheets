@@ -52,6 +52,7 @@ class RestClient(object):
         data=None,
         return_response=False,
         authorized=True,
+        timeout_seconds=URLOPEN_TIMEOUT_SECONDS,
     ):
         """
         `data` can be one of the following:
@@ -91,7 +92,7 @@ class RestClient(object):
             # Return a file-like object containing the contents of the response
             # body, transparently decoding gzip streams if indicated by the
             # Content-Encoding header.
-            response = urllib.request.urlopen(request, timeout=URLOPEN_TIMEOUT_SECONDS)
+            response = urllib.request.urlopen(request, timeout=timeout_seconds)
             encoding = response.headers.get('Content-Encoding')
             if not encoding or encoding == 'identity':
                 return response
@@ -99,7 +100,7 @@ class RestClient(object):
                 return un_gzip_stream(response)
             else:
                 raise RestClientException('Unsupported Content-Encoding: ' + encoding, False)
-        with closing(urllib.request.urlopen(request, timeout=URLOPEN_TIMEOUT_SECONDS)) as response:
+        with closing(urllib.request.urlopen(request, timeout=timeout_seconds)) as response:
             # If the response is a JSON document, as indicated by the
             # Content-Type header, try to deserialize it and return the result.
             # Otherwise, just ignore the response body and return None.
