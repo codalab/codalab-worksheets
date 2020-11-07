@@ -110,7 +110,7 @@ class RestClient(object):
                 except ValueError:
                     raise RestClientException('Invalid JSON: ' + response_data, False)
 
-    def _upload_with_chunked_encoding(self, url, query_params, fileobj, progress_callback=None):
+    def _upload_with_chunked_encoding(self, method, url, query_params, fileobj, progress_callback=None):
         """
         Uploads the fileobj to url using method with query_params,
         if progress_callback is specified, it is called with the
@@ -142,7 +142,8 @@ class RestClient(object):
         # By providing a generator for the response body, requests automatically uses a
         # chunked-encoded request.
         # https://requests.readthedocs.io/en/master/user/advanced/#chunk-encoded-requests
-        response = requests.put(
+        response = requests.request(
+            method,
             self._base_url + url,
             data=wrap_bytes_generator_in_progress_callback(
                 stream_chunks_from_fileobj(fileobj), progress_callback
