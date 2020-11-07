@@ -145,6 +145,7 @@ class RestClient(object):
             data=wrap_bytes_generator_in_progress_callback(
                 stream_chunks_from_fileobj(fileobj), progress_callback
             ),
+            timeout=URLOPEN_TIMEOUT_SECONDS
         )
         # Raise an exception if the response is bad.
         response.raise_for_status()
