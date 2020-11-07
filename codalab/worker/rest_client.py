@@ -92,7 +92,7 @@ class RestClient(object):
             # Return a file-like object containing the contents of the response
             # body, transparently decoding gzip streams if indicated by the
             # Content-Encoding header.
-            response = urllib.request.urlopen(request, timeout=timeout_seconds)
+            response = urllib.request.urlopen(request)
             encoding = response.headers.get('Content-Encoding')
             if not encoding or encoding == 'identity':
                 return response
