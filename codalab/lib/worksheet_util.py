@@ -1058,7 +1058,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                     raw_to_block.append((len(blocks) - 1, 0))
                 else:
                     raise UsageError("unknown directive `%s`" % command)
-                # Add a placeholder for other cmds
+                # Add a placeholder for other commands of a directive item since they do not represent substantial items
                 if not appended_directive_blocks_index:
                     raw_to_block.append(None)
             else:
