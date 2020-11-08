@@ -13,6 +13,7 @@ from argcomplete import warn
 
 from codalab.common import NotFoundError
 from codalab.lib import spec_util, worksheet_util, cli_util
+from codalab.worker.docker_utils import DEFAULT_DOCKER_TIMEOUT
 from codalab.worker.download_util import BundleTarget
 
 
@@ -206,7 +207,7 @@ class DockerImagesCompleter(CodaLabCompleter):
         first_slash = prefix.find('/')
         trimmed_prefix = prefix[0:first_slash] if first_slash >= 0 else prefix
         try:
-            client = docker.from_env()
+            client = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
             return (img['name'] for img in client.images.search(trimmed_prefix))
         except docker.errors.APIError as ex:
             warn('Error: {}'.format(ex))
