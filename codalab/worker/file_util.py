@@ -228,6 +228,9 @@ def gzip_file(file_path):
                 self.__gzip.write(s)
             return self.__buffer.read(size)
 
+        def close(self):
+            self.__input.close()
+
     try:
         file_path_obj = open_file(file_path)
         return GzipStream(file_path_obj)
