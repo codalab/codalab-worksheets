@@ -21,7 +21,7 @@ from urllib3.util.retry import Retry
 MIN_API_VERSION = '1.17'
 NVIDIA_RUNTIME = 'nvidia'
 DEFAULT_RUNTIME = 'runc'
-DEFAULT_TIMEOUT = 720
+DEFAULT_DOCKER_TIMEOUT = 720
 DEFAULT_CONTAINER_RUNNING_TIME = 0
 # Docker Registry HTTP API v2 URI prefix
 URI_PREFIX = 'https://hub.docker.com/v2/repositories/'
@@ -38,7 +38,7 @@ MEMORY_LIMIT_ERROR_REGEX = (
 )
 
 logger = logging.getLogger(__name__)
-client = docker.from_env(timeout=DEFAULT_TIMEOUT)
+client = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
 
 
 def wrap_exception(message):
