@@ -227,6 +227,7 @@ def gzip_file(file_path):
                     break
                 self.__gzip.write(s)
             return self.__buffer.read(size)
+
     try:
         file_path_obj = open_file(file_path)
         return GzipStream(file_path_obj)
@@ -487,6 +488,7 @@ class BytesBuffer:
     A class for a buffer of bytes. Unlike io.BytesIO(), this class
     keeps track of the buffer's size (in bytes).
     """
+
     def __init__(self):
         self.__buf = deque()
         self.__size = 0
