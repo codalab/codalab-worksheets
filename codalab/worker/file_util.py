@@ -262,7 +262,7 @@ def un_gzip_stream(fileobj):
         def __init__(self, fileobj):
             self._fileobj = fileobj
             self._decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
-            self._buffer = b''
+            self._buffer = BytesBuffer()
             self._finished = False
 
         def read(self, num_bytes=None):
@@ -272,15 +272,13 @@ def un_gzip_stream(fileobj):
                     self._fileobj.read(num_bytes) if num_bytes is not None else self._fileobj.read()
                 )
                 if chunk:
-                    self._buffer += self._decoder.decompress(chunk)
+                    self._buffer.write(self._decoder.decompress(chunk))
                 else:
-                    self._buffer += self._decoder.flush()
+                    self._buffer.write(self._decoder.flush())
                     self._finished = True
             if num_bytes is None:
                 num_bytes = len(self._buffer)
-            result = self._buffer[:num_bytes]
-            self._buffer = self._buffer[num_bytes:]
-            return result
+            return self._buffer.read(num_bytes)
 
         def close(self):
             self._fileobj.close()
