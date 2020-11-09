@@ -216,6 +216,7 @@ class BundleDetail extends React.Component<
 
         return (
             <ConfigurationPanel
+                //  The ref is created only once, and that this is the only way to properly create the ref before componentDidMount().
                 ref={(node) => this.scrollToNewlyOpenedDetail(node)}
                 buttons={ <BundleActions
                     showNewRerun={showNewRerun}
