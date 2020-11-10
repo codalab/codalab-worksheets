@@ -39,7 +39,7 @@ def main():
     parser.add_argument(
         '--exit-after-seconds',
         type=int,
-        help='Stop the worker manager after this many seconds have passed',
+        help='Stop the worker manager after this many seconds have passed since the last worker was launched',
     )
     parser.add_argument(
         '--once',
