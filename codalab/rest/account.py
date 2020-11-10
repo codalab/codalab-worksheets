@@ -42,6 +42,8 @@ def do_login():
 
     user = local.model.get_user(username=username)
     if not (user and user.check_password(password)):
+        if error_uri is None:
+            error_uri = '/'
         return redirect_with_query(
             error_uri, {"error": "Login/password did not match.", "next": success_uri}
         )
