@@ -896,8 +896,7 @@ def test_rm(ctx):
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
     _run_command([cl, 'add', 'bundle', uuid])  # Duplicate
     _run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
-    result = _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
-    check_equals(result, '')
+    _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
 
 
 @TestModule.register('make')
