@@ -37,6 +37,11 @@ def main():
         '--sleep-time', help='Number of seconds to wait between checks', default=5, type=int
     )
     parser.add_argument(
+        '--exit-after-seconds',
+        type=int,
+        help='Stop the worker manager after this many seconds have passed',
+    )
+    parser.add_argument(
         '--once',
         help='Just run once and exit instead of looping (for debugging)',
         action='store_true',

@@ -1,8 +1,10 @@
 from collections import namedtuple
+from datetime import datetime
 import http
 import logging
 import os
 import socket
+import sys
 import time
 import traceback
 import urllib
@@ -141,6 +143,15 @@ class WorkerManager(object):
             time.sleep(self.args.sleep_time)
 
     def run_one_iteration(self):
+        if self.args.exit_after_seconds:
+            seconds_since_last_worker = int(time.time() - self.last_worker_start_time)
+            if seconds_since_last_worker > self.args.exit_after_seconds and self.last_worker_start_time != 0:
+                logger.info(
+                    f"{seconds_since_last_worker} seconds have passed since the last worker was launched, "
+                    f"which is greater than {self.args.exit_after_seconds}"
+                )
+                logger.info("Exiting...")
+                sys.exit(0)
         # Get staged bundles for the current user. The principle here is that we want to get all of
         # the staged bundles can be run by this user.
         keywords = ['state=' + State.STAGED] + self.args.search
