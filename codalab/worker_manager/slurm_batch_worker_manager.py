@@ -3,6 +3,7 @@ import uuid
 import subprocess
 import getpass
 import re
+import sys
 import textwrap
 from pathlib import Path
 
@@ -87,10 +88,15 @@ class SlurmBatchWorkerManager(WorkerManager):
             default='slurm-worker-scratch',
             help='Directory where to store Slurm batch scripts, logs, etc',
         )
+        subparser.add_argument(
+            '--exit-after-num-failed', type=int, help='Stop the worker manager when this many jobs have failed to start'
+        )
 
     def __init__(self, args):
         super().__init__(args)
         self.username = self.args.user
+        self.exit_after_num_failed = self.args.exit_after_num_failed
+        self.num_failed = 0
         # A set of newly submitted job id to keep tracking worker status, as worker might not be created right away.
         self.submitted_jobs = self.load_worker_jobs()
 
@@ -144,6 +150,11 @@ class SlurmBatchWorkerManager(WorkerManager):
             if 'FAILED' in job_state:
                 jobs_to_remove.add(job_id)
                 logger.error("Failed to start job {}".format(job_id))
+                self.num_failed += 1
+                if self.exit_after_num_failed is not None and self.num_failed > self.exit_after_num_failed:
+                    logger.info(f"Failed to start {self.num_failed} jobs in total, which is more than {self.exit_after_num_failed}")
+                    logger.info("Exiting...")
+                    sys.exit(0)
             elif 'COMPLETED' in job_state or 'CANCELLED' in job_state or "TIMEOUT" in job_state:
                 jobs_to_remove.add(job_id)
                 logger.info("Removing job ID {}".format(job_id))
