@@ -22,6 +22,8 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             worker_tag_exclusive=False,
             worker_pass_down_termination=False,
             password_file=None,
+            slurm_work_dir=None,
+            exit_after_num_failed=None,
         )
 
         worker_manager = SlurmBatchWorkerManager(args)
