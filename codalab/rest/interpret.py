@@ -225,7 +225,6 @@ def fetch_interpreted_worksheet(uuid):
     brief = request.query.get("brief", "0") == "1"
 
     directive = request.query.get("directive", None)
-    print(directive)
     search_results = []
 
     worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
