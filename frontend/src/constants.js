@@ -5,6 +5,7 @@ export const CODALAB_VERSION = '0.5.27';
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
 
 export const NAVBAR_HEIGHT = 60;
+export const HEADER_HEIGHT = 170;
 
 // Worksheet width
 export const EXPANDED_WORKSHEET_WIDTH = '99%';
