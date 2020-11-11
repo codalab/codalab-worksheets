@@ -378,5 +378,4 @@ const TableWrapper = (props) => {
     return <TableItem {...props} />;
 };
 
-export { TableWrapper };
-export default withStyles(styles)(TableItem);
+export default withStyles(styles)(TableWrapper);
