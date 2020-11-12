@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import traceback
+from typing import List
 
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
@@ -121,19 +122,19 @@ class BundleManager(object):
         for bundle in bundles:
             parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
 
+            missing_uuids = parent_uuids - all_parent_uuids
+            if missing_uuids:
+                bundles_to_fail.append(
+                    (bundle, 'Missing parent bundles: %s' % ', '.join(missing_uuids))
+                )
+                continue
+
             try:
                 check_bundles_have_read_permission(
                     self._model, self._model.get_user(bundle.owner_id), parent_uuids
                 )
             except PermissionError as e:
                 bundles_to_fail.append((bundle, str(e)))
-                continue
-
-            missing_uuids = parent_uuids - all_parent_uuids
-            if missing_uuids:
-                bundles_to_fail.append(
-                    (bundle, 'Missing parent bundles: %s' % ', '.join(missing_uuids))
-                )
                 continue
 
             parent_states = {uuid: all_parent_states[uuid] for uuid in parent_uuids}
@@ -171,7 +172,7 @@ class BundleManager(object):
             logger.info('Staging %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.STAGED})
 
-    def _make_bundles(self):
+    def _make_bundles(self) -> List[threading.Thread]:
         # Re-stage any stuck bundles. This would happen if the bundle manager
         # died.
         for bundle in self._model.batch_get_bundles(state=State.MAKING, bundle_type='make'):
@@ -179,6 +180,7 @@ class BundleManager(object):
                 logger.info('Re-staging make bundle %s', bundle.uuid)
                 self._model.update_bundle(bundle, {'state': State.STAGED})
 
+        threads = []
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='make'):
             logger.info('Making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.MAKING})
@@ -186,7 +188,10 @@ class BundleManager(object):
                 self._make_uuids.add(bundle.uuid)
             # Making a bundle could take time, so do the work in a separate
             # thread to ensure quick scheduling.
-            threading.Thread(target=BundleManager._make_bundle, args=[self, bundle]).start()
+            t = threading.Thread(target=BundleManager._make_bundle, args=[self, bundle])
+            threads.append(t)
+            t.start()
+        return threads
 
     def _is_making_bundles(self):
         with self._make_uuids_lock:
@@ -618,7 +623,8 @@ class BundleManager(object):
     def _compute_request_cpus(bundle):
         """
         Compute the CPU limit used for scheduling the run.
-        The default of 1 is for backwards compatibility for
+        The default of 1 (if no GPUs specified)
+        is for backwards compatibility for
         runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_cpus:
@@ -947,14 +953,14 @@ class BundleManager(object):
 
     def _get_running_bundles_info(self, workers, staged_bundles_to_run):
         """
-        Build a nested dictionary to store information (bundle and bundle_resources) including 
+        Build a nested dictionary to store information (bundle and bundle_resources) including
         the current running bundles and staged bundles.
-        Note that the primary usage of this function is to improve efficiency when calling 
-        self._compute_bundle_resources(), e.g. reusing constants (gpus, cpus, memory) from 
+        Note that the primary usage of this function is to improve efficiency when calling
+        self._compute_bundle_resources(), e.g. reusing constants (gpus, cpus, memory) from
         the returning values of self._compute_bundle_resources() as they don't change over time.
-        However, be careful when using this function to improve efficiency for returning values 
-        like disk and time from self._compute_bundle_resources() as they do depend on the number 
-        of jobs that are running during the time of computation. Accuracy might be affected 
+        However, be careful when using this function to improve efficiency for returning values
+        like disk and time from self._compute_bundle_resources() as they do depend on the number
+        of jobs that are running during the time of computation. Accuracy might be affected
         without considering this factor.
         :param workers: a WorkerInfoAccessor object containing worker related information e.g. running uuid.
         :return: a nested dictionary structured as follows:

@@ -196,7 +196,10 @@ def connect_to_codalab_server(server, password_file):
         bundle_service = BundleServiceClient(server, username, password)
         return bundle_service
     except BundleAuthException as ex:
-        logger.error('Cannot log into the bundle service. Please check your worker credentials.\n')
+        logger.error(
+            'Cannot log into the bundle service. Please check your worker credentials.\n'
+            f'Username: "{username}" , server "{server}"\n'
+        )
         logger.debug('Auth error: {}'.format(ex))
         sys.exit(1)
 

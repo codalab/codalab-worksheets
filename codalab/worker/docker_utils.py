@@ -13,13 +13,15 @@ from dateutil import parser, tz
 import datetime
 import re
 import requests
+from requests.adapters import HTTPAdapter
 import traceback
+from urllib3.util.retry import Retry
 
 
 MIN_API_VERSION = '1.17'
 NVIDIA_RUNTIME = 'nvidia'
 DEFAULT_RUNTIME = 'runc'
-DEFAULT_TIMEOUT = 720
+DEFAULT_DOCKER_TIMEOUT = 720
 DEFAULT_CONTAINER_RUNNING_TIME = 0
 # Docker Registry HTTP API v2 URI prefix
 URI_PREFIX = 'https://hub.docker.com/v2/repositories/'
@@ -36,7 +38,7 @@ MEMORY_LIMIT_ERROR_REGEX = (
 )
 
 logger = logging.getLogger(__name__)
-client = docker.from_env(timeout=DEFAULT_TIMEOUT)
+client = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
 
 
 def wrap_exception(message):
@@ -46,7 +48,7 @@ def wrap_exception(message):
                 return '{}: {}'.format(message, exception)
 
             def check_for_user_error(exception):
-                error_message = format_error_message(e)
+                error_message = format_error_message(exception)
                 if re.match(NVIDIA_MOUNT_ERROR_REGEX, str(exception)):
                     raise DockerUserErrorException(error_message)
                 elif re.match(MEMORY_LIMIT_ERROR_REGEX, str(exception)):
@@ -194,7 +196,7 @@ def start_bundle_container(
             stdin_open=tty,
         )
         logger.debug('Started Docker container for UUID %s, container ID %s,', uuid, container.id)
-    except docker.errors.APIError as e:
+    except docker.errors.APIError:
         # The container failed to start, so it's in the CREATED state
         # If we try to re-run the container again, we'll get a 409 CONFLICT
         # because a container with the same name already exists. So, we try to remove
@@ -350,8 +352,14 @@ def get_image_size_without_pulling(image_spec):
     request = uri_prefix_adjusted + image_name + '/tags/?page='
     image_size_bytes = None
     page_number = 1
+
+    requests_session = requests.Session()
+    # Retry 5 times, sleeping for [0.1s, 0.2s, 0.4s, ...] between retries.
+    retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[413, 429, 500, 502, 503, 504])
+    requests_session.mount('https://', HTTPAdapter(max_retries=retries))
+
     while True:
-        response = requests.get(url=request + str(page_number))
+        response = requests_session.get(url=request + str(page_number))
         data = response.json()
         if len(data['results']) == 0:
             break

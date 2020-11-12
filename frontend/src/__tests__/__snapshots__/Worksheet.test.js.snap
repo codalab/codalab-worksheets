@@ -230,6 +230,38 @@ Object {
                           class="MuiTouchRipple-root-238"
                         />
                       </button>
+                      <button
+                        aria-label="schema"
+                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        id="add-schema-button"
+                        tabindex="0"
+                        title="Add a new schema"
+                        type="button"
+                      >
+                        <span
+                          class="MuiButton-label-116"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                            focusable="false"
+                            role="presentation"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M0 0h24v24H0z"
+                              fill="none"
+                            />
+                            <path
+                              d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"
+                            />
+                          </svg>
+                          Schema
+                        </span>
+                        <span
+                          class="MuiTouchRipple-root-238"
+                        />
+                      </button>
                     </div>
                   </div>
                   <div
@@ -559,13 +591,13 @@ Object {
                       id="codalab-worksheet-item-0"
                     >
                       <div
-                        class="ItemWrapper-main-246"
+                        class="ItemWrapper-main-247"
                       >
                         <div
-                          class="ws-item MarkdownItem-textContainer-248"
+                          class="ws-item MarkdownItem-textContainer-249"
                         >
                           <div
-                            class="type-markup  MarkdownItem-textRender-251"
+                            class="type-markup  MarkdownItem-textRender-252"
                           >
                             <p>
                               123
@@ -575,10 +607,10 @@ Object {
 
                           </div>
                           <div
-                            class="MarkdownItem-buttonsPanel-249"
+                            class="MarkdownItem-buttonsPanel-250"
                           >
                             <button
-                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-250"
+                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
                               tabindex="0"
                               title="Edit"
                               type="button"
@@ -608,7 +640,7 @@ Object {
                             </button>
                               
                             <button
-                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-250"
+                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
                               tabindex="0"
                               title="Delete"
                               type="button"
@@ -690,9 +722,7 @@ Object {
           </div>
         </div>
       </div>
-      <div>
-        }
-      </div>
+      <div />
       <div
         class="progress-message"
         id="update_progress"
@@ -988,6 +1018,38 @@ Object {
                           />
                         </svg>
                         Paste bundles
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-238"
+                      />
+                    </button>
+                    <button
+                      aria-label="schema"
+                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                      id="add-schema-button"
+                      tabindex="0"
+                      title="Add a new schema"
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-116"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M0 0h24v24H0z"
+                            fill="none"
+                          />
+                          <path
+                            d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"
+                          />
+                        </svg>
+                        Schema
                       </span>
                       <span
                         class="MuiTouchRipple-root-238"
@@ -1322,13 +1384,13 @@ Object {
                     id="codalab-worksheet-item-0"
                   >
                     <div
-                      class="ItemWrapper-main-246"
+                      class="ItemWrapper-main-247"
                     >
                       <div
-                        class="ws-item MarkdownItem-textContainer-248"
+                        class="ws-item MarkdownItem-textContainer-249"
                       >
                         <div
-                          class="type-markup  MarkdownItem-textRender-251"
+                          class="type-markup  MarkdownItem-textRender-252"
                         >
                           <p>
                             123
@@ -1338,10 +1400,10 @@ Object {
 
                         </div>
                         <div
-                          class="MarkdownItem-buttonsPanel-249"
+                          class="MarkdownItem-buttonsPanel-250"
                         >
                           <button
-                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-250"
+                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
                             tabindex="0"
                             title="Edit"
                             type="button"
@@ -1371,7 +1433,7 @@ Object {
                           </button>
                             
                           <button
-                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-250"
+                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
                             tabindex="0"
                             title="Delete"
                             type="button"
@@ -1453,9 +1515,7 @@ Object {
         </div>
       </div>
     </div>
-    <div>
-      }
-    </div>
+    <div />
     <div
       class="progress-message"
       id="update_progress"
@@ -1529,14 +1589,14 @@ Object {
   >
     <div>
       <div
-        class="MuiGrid-container-263 MuiGrid-direction-xs-column-266 MuiGrid-align-items-xs-center-271 MuiGrid-justify-xs-center-280"
+        class="MuiGrid-container-264 MuiGrid-direction-xs-column-267 MuiGrid-align-items-xs-center-272 MuiGrid-justify-xs-center-281"
         style="margin-top: 100px;"
       >
         <div
           class="alert alert-danger alert-dismissable"
         >
           <div
-            class="MuiGrid-item-264"
+            class="MuiGrid-item-265"
             style="font-size: 16px; margin-left: 10px;"
           >
             Not found: '/worksheets/sample_uuid'
@@ -1547,14 +1607,14 @@ Object {
   </body>,
   "container": <div>
     <div
-      class="MuiGrid-container-263 MuiGrid-direction-xs-column-266 MuiGrid-align-items-xs-center-271 MuiGrid-justify-xs-center-280"
+      class="MuiGrid-container-264 MuiGrid-direction-xs-column-267 MuiGrid-align-items-xs-center-272 MuiGrid-justify-xs-center-281"
       style="margin-top: 100px;"
     >
       <div
         class="alert alert-danger alert-dismissable"
       >
         <div
-          class="MuiGrid-item-264"
+          class="MuiGrid-item-265"
           style="font-size: 16px; margin-left: 10px;"
         >
           Not found: '/worksheets/sample_uuid'

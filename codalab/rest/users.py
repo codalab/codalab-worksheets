@@ -7,7 +7,7 @@ import os
 from bottle import abort, get, request, local, delete
 
 from codalab.lib.spec_util import NAME_REGEX
-from codalab.lib.server_util import bottle_patch as patch, json_api_meta
+from codalab.lib.server_util import bottle_patch as patch, json_api_meta, query_get_list
 from codalab.rest.schemas import (
     AdminUserSchema,
     AuthenticatedUserSchema,
@@ -16,6 +16,24 @@ from codalab.rest.schemas import (
 )
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
 from codalab.rest.util import get_resource_ids
+
+
+USER_ACCESSIBLE_KEYWORDS = (
+    'name',
+    'user_name',
+    'first_name',
+    'last_name',
+    'affiliation',
+    'url',
+    'disk_used',
+    'joined',
+    'count',
+    'limit',
+    'offset',
+    'last',
+    'format',
+    'size',
+)
 
 
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
@@ -140,13 +158,42 @@ def fetch_users():
         filter[user_name]=name1,name2,...
         filter[email]=email1,email2,...
 
-    Fetches all users that match any of these usernames or emails.
+    Query parameters:
+
+    - `keywords`: Search keyword. May be provided multiple times for multiple
+    keywords.
+    Examples of other special keyword forms:
+    - `name=<name>            ` : More targeted search of using metadata fields.
+    - `date_joined=.sort             ` : Sort by a particular field.
+    - `date_joined=.sort-            ` : Sort by a particular field in reverse.
+    - `.count                 ` : Count the number of users.
+    - `.limit=10              ` : Limit the number of results to the top 10.
     """
     # Combine username and email filters
     usernames = set(request.query.get('filter[user_name]', '').split(','))
     usernames |= set(request.query.get('filter[email]', '').split(','))
     usernames.discard('')  # str.split(',') will return '' on empty strings
-    users = local.model.get_users(usernames=(usernames or None))
+
+    keywords = query_get_list('keywords')
+    if usernames is None and keywords is None:
+        abort(
+            http.client.BAD_REQUEST, "Request must include 'keywords' query parameter or usernames"
+        )
+
+    if request.user.user_id != local.model.root_user_id:
+        for key in keywords:
+            if not all(accessed_field in key for accessed_field in USER_ACCESSIBLE_KEYWORDS):
+                abort(http.client.FORBIDDEN, "You don't have access to search for these fields")
+
+    # Handle search keywords
+    users = local.model.get_users(keywords=(keywords or None), usernames=(usernames or None))
+    # Return simple dict if scalar result (e.g. .sum or .count queries)
+    if users.get('is_aggregate'):
+
+        return json_api_meta({}, {'results': users['results']})
+    else:
+        users = users['results']
+
     return allowed_user_schema()(many=True).dump(users).data
 
 
@@ -183,5 +230,5 @@ def update_users():
     local.model.update_user_info(users[0])
 
     # Return updated users
-    users = local.model.get_users(user_ids=[users[0]['user_id']])
+    users = local.model.get_users(user_ids=[users[0]['user_id']])['results']
     return AdminUserSchema(many=True).dump(users).data

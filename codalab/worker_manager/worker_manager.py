@@ -2,7 +2,9 @@ from collections import namedtuple
 import http
 import logging
 import os
+import psutil
 import socket
+import sys
 import time
 import traceback
 import urllib
@@ -19,6 +21,20 @@ logger = logging.getLogger(__name__)
 # `active` is a Boolean field that's set to true if the worker is
 # actively running at the moment. (As opposed to being staged, queued, preparing etc)
 WorkerJob = namedtuple('WorkerJob', ['active'])
+
+
+def restart():
+    """
+    Restarts the current program, cleaning up file objects and descriptors
+    """
+    try:
+        p = psutil.Process(os.getpid())
+        for handler in p.open_files() + p.connections():
+            os.close(handler.fd)
+    except Exception as e:
+        logger.error(e)
+    python = sys.executable
+    os.execl(python, python, *sys.argv)
 
 
 class WorkerManager(object):
@@ -71,6 +87,7 @@ class WorkerManager(object):
         self.codalab_manager = CodaLabManager()
         self.codalab_client = self.codalab_manager.client(args.server)
         self.staged_uuids = []
+        self.worker_manager_start_time = time.time()
         self.last_worker_start_time = 0
         logger.info('Started worker manager.')
 
@@ -145,6 +162,15 @@ class WorkerManager(object):
             time.sleep(self.args.sleep_time)
 
     def run_one_iteration(self):
+        if self.args.restart_after_seconds:
+            seconds_since_start = int(time.time() - self.worker_manager_start_time)
+            if seconds_since_start > self.args.restart_after_seconds:
+                logger.info(
+                    f"{seconds_since_start} seconds have elapsed since this WorkerManager "
+                    f"was started, which is greater than {self.args.restart_after_seconds}"
+                )
+                logger.info("Restarting...")
+                restart()
         # Get staged bundles for the current user. The principle here is that we want to get all of
         # the staged bundles can be run by this user.
         keywords = ['state=' + State.STAGED] + self.args.search
