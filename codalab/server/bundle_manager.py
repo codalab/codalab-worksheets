@@ -42,7 +42,7 @@ class BundleManager(object):
     Assigns run bundles to workers and makes make bundles.
     """
 
-    def __init__(self, codalab_manager, worker_timeout_seconds):
+    def __init__(self, codalab_manager, worker_timeout_seconds=60):
         config = codalab_manager.config.get('workers')
         if not config:
             print('config.json file missing a workers section.', file=sys.stderr)
