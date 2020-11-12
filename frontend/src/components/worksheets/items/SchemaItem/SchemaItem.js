@@ -216,11 +216,11 @@ class SchemaItem extends React.Component<{
         const schemaName = schemaItem.schema_name;
         let headerHtml, bodyRowsHtml;
         const explanations = {
-            field: 'Column name that is displayed.',
+            field: 'field: Column name',
             'generalized-path':
-                'Either a bundle metadata field (e.g., uuid, name, time, state) or a file path inside the bundle (e.g., /stdout, /stats.json).',
+                'generalized-path: A bundle metadata field (e.g., uuid, name, time, state) or a file path inside the bundle (e.g., /stdout, /stats.json).',
             'post-processor':
-                '(Optional) How to render the value (e.g., %.3f renders 3 decimal points, [0:8] takes the first 8 characters, duration renders seconds, size renders bytes).',
+                'post-processor: (Optional) How to render the value (e.g., %.3f renders 3 decimal points, [0:8] takes the first 8 characters, duration renders seconds, size renders bytes).',
         };
         const headerText = {
             field: 'Column name',
