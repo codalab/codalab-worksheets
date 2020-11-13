@@ -333,7 +333,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='link_mounts',
         help='Comma-separated list of directories that are mounted on the REST server, allowing their contents to be used in the --link argument.',
-        default='/tmp/codalab/link-mounts',
+        default='/tmp/codalab/link-mounts,/private/tmp/codalab/link-mounts',
     ),
     # Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),

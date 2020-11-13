@@ -40,7 +40,7 @@ For example, in order to restrict all possible linked paths to files inside the 
 CODALAB_LINK_MOUNTS=/u/nlp/data,/u/nlp/output python codalab_service.py
 ```
 
-If this argument is not specified, the `/tmp/codalab/link-mounts` directory will be mounted by default.
+If this argument is not specified, the `/tmp/codalab/link-mounts` directory and `/private/tmp/codalab/link-mounts` (the absolute path of `/tmp/codalab/link-mounts` in macOS) will be mounted by default.
 
 ### Design
 

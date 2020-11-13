@@ -312,9 +312,9 @@ class DownloadManager(object):
     def _transform_link_path(self, path):
         """Transforms a link file path to its properly mounted path.
         Every file path is mounted to a path with "/opt/codalab-worksheets-link-mounts"
-        prepended to it.
+        prepended to the absolute version of it.
         """
-        return f"/opt/codalab-worksheets-link-mounts{path}"
+        return f"/opt/codalab-worksheets-link-mounts{os.path.abspath(path)}"
 
     def _get_target_path(self, target):
         bundle_link_url = self._bundle_model.get_bundle_metadata(
