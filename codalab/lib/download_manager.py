@@ -100,7 +100,7 @@ class DownloadManager(object):
         bundle_link_url = self._bundle_model.get_bundle_metadata(
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
-        if bundle_link_url and not bundle_link_url.startswith("azfs://"):
+        if bundle_link_url and not parse_linked_bundle_url(bundle_link_url).uses_beam:
             bundle_link_url = self._transform_link_path(bundle_link_url)
         # Raises NotFoundException if uuid is invalid
         if bundle_state == State.PREPARING:
@@ -331,7 +331,7 @@ class DownloadManager(object):
         bundle_link_url = self._bundle_model.get_bundle_metadata(
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
-        if bundle_link_url and not bundle_link_url.startswith("azfs://"):
+        if bundle_link_url and not parse_linked_bundle_url(bundle_link_url).uses_beam:
             bundle_link_url = self._transform_link_path(bundle_link_url)
         bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(target.bundle_uuid)
         try:
