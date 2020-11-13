@@ -59,6 +59,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             worker_tag_exclusive=False,
             worker_pass_down_termination=False,
             password_file=None,
+            exit_after_num_failed=None,
             memory_mb=1024,
             cpus=3,
             gpus=1,
