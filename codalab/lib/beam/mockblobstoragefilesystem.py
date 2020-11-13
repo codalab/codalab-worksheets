@@ -1,5 +1,8 @@
 """Mock Azure Blob Storage filesystem that is backed by a local filesystem instead.
-Used only for unit tests for speed, so that unit tests do not need to depend on
+This means that while URLs will still start with azfs://, adding / removing files
+will actually change files in the local /tmp/codalab/azfs-mock/ directory instead.
+
+This is used only for unit tests for speed, so that unit tests do not need to depend on
 a Blob Storage container / Azurite running in the background.
 """
 
