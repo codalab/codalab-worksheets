@@ -12,6 +12,7 @@ import apache_beam.io.filesystems
 from apache_beam.io.filesystems import BlobStorageFileSystem
 from codalab.lib.beam.mockblobstoragefilesystem import MockBlobStorageFileSystem
 
+
 # Monkey-patch so that we use MockBlobStorageFileSystem
 # instead of BlobStorageFileSystem
 class DummyClass:

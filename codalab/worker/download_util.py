@@ -1,6 +1,5 @@
 import os
 from apache_beam.io.filesystems import FileSystems
-from codalab.worker.bundle_state import LinkFormat
 from zipfile import ZipFile
 from codalab.lib.path_util import parse_linked_bundle_url
 

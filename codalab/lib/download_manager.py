@@ -6,7 +6,6 @@ from codalab.common import http_error_to_exception, precondition, UsageError, No
 from codalab.worker import download_util
 from codalab.worker import file_util
 from codalab.worker.bundle_state import State
-from apache_beam.io.filesystems import FileSystems
 from codalab.lib.path_util import parse_linked_bundle_url
 
 logger = logging.getLogger(__name__)
