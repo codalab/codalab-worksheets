@@ -171,7 +171,7 @@ class CodaLabArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         # Adapted from original:
         # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
-        if len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']:
+        if len(sys.argv) == 1 or len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']:
             self.cli.do_command(['help'])
             self.exit(2)
         elif self.cli.headless:
@@ -3852,10 +3852,7 @@ class BundleCLI(object):
         Search for specific users.
         """
         client = self.manager.current_client()
-        if args.keywords is None:
-            users = client.fetch('users', params={'keywords': ''})
-        else:
-            users = client.fetch('users', params={'keywords': args.keywords})
+        users = client.fetch('users', params={'keywords': args.keywords or ''})
         # Print direct numeric result
         if 'meta' in users:
             print(users['meta']['results'], file=self.stdout)
