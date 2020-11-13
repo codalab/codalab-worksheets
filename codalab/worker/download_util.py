@@ -206,7 +206,7 @@ def _compute_target_info_beam(path, depth):
                 }
                 if not zipinfo.is_dir()
                 else _compute_target_info_beam(
-                    f"azfs://storageclwsdev0/bundles/{linked_bundle_path.bundle_uuid}/contents.zip/{zipinfo.filename}",
+                    f"{linked_bundle_path.bundle_path}/{zipinfo.filename}",
                     depth - 1,
                 )
             )
