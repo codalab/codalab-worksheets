@@ -589,7 +589,7 @@ class CodalabServiceManager(object):
 
         if self.args.version:
             self.args.version = clean_version(self.args.version)
-        self.compose_cwd = os.path.join(BASE_DIR, 'docker', 'compose_files')
+        self.compose_cwd = os.path.join(BASE_DIR, 'docker_config', 'compose_files')
 
         self.compose_files = []
         self.compose_tempfile_name = ""
@@ -675,7 +675,7 @@ class CodalabServiceManager(object):
 
         # Build the image using the cache
         self._run_docker_cmd(
-            'build%s %s -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            'build%s %s -t %s -f docker_config/dockerfiles/Dockerfile.%s .'
             % (cache_args, build_args, docker_image, image)
         )
 
