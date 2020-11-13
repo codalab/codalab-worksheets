@@ -352,7 +352,7 @@ for worker_manager_type in ['cpu', 'gpu']:
         CodalabArg(
             name='worker_manager_{}_default_memory_mb'.format(worker_manager_type),
             type=int,
-            default=1024,
+            default=2048,
             help='Default memory (in MB) for each worker started by the {} worker manager'.format(
                 worker_manager_type
             ),

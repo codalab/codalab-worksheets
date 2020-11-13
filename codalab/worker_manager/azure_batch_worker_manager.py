@@ -14,7 +14,7 @@ try:
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         "Running the worker manager requires the azure-batch module.\n"
-        "Please run: pip install azure-batch==9.0.0"
+        "Please run: pip install azure-batch"
     )
 
 import logging
