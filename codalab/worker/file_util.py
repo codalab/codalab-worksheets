@@ -485,7 +485,6 @@ def remove_path(path):
 
 
 def path_is_parent(parent_path, child_path):
-    # TODO(Ashwin): fix.
     """
     Given a parent_path and a child_path, determine if the child path
     is a strict subpath of the parent_path. In the case that the resolved
