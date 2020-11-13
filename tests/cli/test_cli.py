@@ -1985,11 +1985,6 @@ def test_competition(ctx):
         os.remove(out_file)
 
 
-@TestModule.register('start')
-def test_competition(ctx):
-    _run_command(['codalab-service', 'start'])
-
-
 @TestModule.register('unicode')
 def test_unicode(ctx):
     # Non-unicode in worksheet title
