@@ -1359,16 +1359,14 @@ def test_link(ctx):
     # /tmp/codalab/link-mounts is the absolute path of the default link mounts folder on the host. By default, it is mounted
     # when no other argument for CODALAB_LINK_MOUNTS is specified.
     #
-    # We create the temporary file at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts because
-    # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
-    # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
+    # We create the temporary file at /opt/codalab-worksheets-link-mounts/private/tmp/codalab/link-mounts because
+    # this test is running inside a Docker container (so the host directory /private/tmp/codalab/link-mounts is
+    # mounted at /opt/codalab-worksheets-link-mounts/private/tmp/codalab/link-mounts).
+    link_mounts_dir = f"/opt/codalab-worksheets-link-mounts/private/tmp/codalab/link-mounts"
 
-    os.makedirs('/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts', exist_ok=True)
+    os.makedirs(link_mounts_dir, exist_ok=True)
     with tempfile.NamedTemporaryFile(
-        mode='w',
-        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts',
-        suffix=".txt",
-        delete=False,
+        mode='w', dir=link_mounts_dir, suffix=".txt", delete=False,
     ) as f:
         f.write("hello world!")
     _, host_filename = f.name.split("/opt/codalab-worksheets-link-mounts")
@@ -1380,9 +1378,7 @@ def test_link(ctx):
     os.remove(f.name)
 
     # Upload directory
-    with tempfile.TemporaryDirectory(
-        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts'
-    ) as dirname:
+    with tempfile.TemporaryDirectory(dir=link_mounts_dir) as dirname:
         with open(os.path.join(dirname, "test.txt"), "w+") as f:
             f.write("hello world!")
 
@@ -1410,6 +1406,20 @@ def test_link(ctx):
     check_equals(State.READY, get_info(uuid, 'state'))
     check_equals(f"/tmp/{filename}", get_info(uuid, 'link_url'))
     os.remove(f.name)
+
+    # Upload with a symlink path -- it should be resolved first
+    # before setting the value of link_url to the resolved path.
+    # Again, CodaLab can't read the contents of this bundle, as in the test case
+    # above.
+    with tempfile.NamedTemporaryFile(mode='w', dir="/tmp", suffix=".txt", delete=False,) as f:
+        f.write("hello world!")
+    symlink_name = f"/tmp/{random_name()}.symlink"
+    os.symlink(f.name, symlink_name)
+    uuid = _run_command([cl, 'upload', symlink_name, '--link'])
+    check_equals(State.READY, get_info(uuid, 'state'))
+    check_equals(f.name, get_info(uuid, 'link_url'))
+    os.remove(f.name)
+    os.remove(symlink_name)
 
 
 @TestModule.register('run2')
