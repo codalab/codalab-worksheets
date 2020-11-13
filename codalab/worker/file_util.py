@@ -475,10 +475,13 @@ def remove_path(path):
     """
     Removes a path if it exists.
     """
-    filesystem = FileSystems.get_filesystem(path)
-    if not filesystem.exists(path):
-        return
-    FileSystems.delete([path])
+    # We need to include this first if statement
+    # to allow local broken symbolic links to be deleted
+    # as well (which aren't matched by the Beam methods).
+    if os.path.islink(path):
+        os.remove(path)
+    elif get_path_exists(path):
+        FileSystems.delete([path])
 
 
 def path_is_parent(parent_path, child_path):
