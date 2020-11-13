@@ -13,7 +13,7 @@ venv/bin/pip install -r requirements-server.txt --no-cache
 venv/bin/pip install -r requirements.docs.txt --no-cache
 venv/bin/pip install -r requirements.dev.txt --no-cache
 
-venv/bin/pip check 
+venv/bin/pip check
 
 venv/bin/pip install -e .
 
