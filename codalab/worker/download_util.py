@@ -63,19 +63,16 @@ def get_target_info(bundle_path, target, depth):
     If reading the given path is not secure, raises a PathException.
     """
     final_path = _get_normalized_target_path(bundle_path, target)
+    if parse_linked_bundle_url(final_path).uses_beam:
+        info = _compute_target_info_beam(final_path, depth)
+    else:
+        if not os.path.islink(final_path) and not os.path.exists(final_path):
+            raise PathException(
+                'Path {} in bundle {} not found'.format(target.bundle_uuid, target.subpath)
+            )
+        info = _compute_target_info(final_path, depth)
 
-    if (
-        not parse_linked_bundle_url(final_path).uses_beam
-        and not os.path.islink(final_path)
-        and not os.path.exists(final_path)
-    ):
-        raise PathException(
-            'Path {} in bundle {} not found'.format(target.bundle_uuid, target.subpath)
-        )
-
-    info = _compute_target_info(final_path, depth)
     info['resolved_target'] = target
-
     return info
 
 
