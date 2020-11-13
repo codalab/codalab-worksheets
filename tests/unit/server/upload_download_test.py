@@ -6,8 +6,10 @@ from io import BytesIO
 import gzip
 import tarfile
 import unittest
-import codalab.lib.beam.mockblobstoragefilesystem
-from codalab.lib.beam.blobstoragefilesystem import BlobStorageFileSystem
+import zipfile
+from codalab.worker.bundle_state import LinkFormat
+import apache_beam.io.filesystems
+from apache_beam.io.filesystems import BlobStorageFileSystem
 from codalab.lib.beam.mockblobstoragefilesystem import MockBlobStorageFileSystem
 
 # Monkey-patch so that we use MockBlobStorageFileSystem
@@ -17,7 +19,7 @@ class DummyClass:
 
 
 BlobStorageFileSystem.__bases__ = (DummyClass,)
-codalab.lib.beam.mockblobstoragefilesystem.BlobStorageFileSystem = MockBlobStorageFileSystem
+apache_beam.io.filesystems.BlobStorageFileSystem = MockBlobStorageFileSystem
 
 
 class BaseUploadDownloadBundleTest(TestBase):
