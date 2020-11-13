@@ -1,4 +1,5 @@
 from contextlib import closing
+from collections import deque
 from io import BytesIO, TextIOWrapper
 import gzip
 import os
@@ -222,15 +223,29 @@ def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
     """
+    BUFFER_SIZE = 100 * 1024 * 1024  # Zip in chunks of 100MB
+
+    class GzipStream:
+        def __init__(self, fileobj):
+            self.__input = fileobj
+            self.__buffer = BytesBuffer()
+            self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
+
+        def read(self, size=-1):
+            while size < 0 or len(self.__buffer) < size:
+                s = self.__input.read(BUFFER_SIZE)
+                if not s:
+                    self.__gzip.close()
+                    break
+                self.__gzip.write(s)
+            return self.__buffer.read(size)
+
+        def close(self):
+            self.__input.close()
+
     try:
-        BUFFER_SIZE = 100 * 1024 * 1024  # Zip in chunks of 100MB
         file_path_obj = open_file(file_path)
-        output = BytesIO()
-        with gzip.GzipFile(fileobj=output, mode='w') as fo:
-            for data in iter(lambda: file_path_obj.read(BUFFER_SIZE), b''):
-                fo.write(data)
-        output.seek(0)  # Go back to the start of the stream, so read() works
-        return output
+        return GzipStream(file_path_obj)
     except Exception as e:
         raise IOError(e)
 
@@ -263,7 +278,7 @@ def un_gzip_stream(fileobj):
         def __init__(self, fileobj):
             self._fileobj = fileobj
             self._decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
-            self._buffer = b''
+            self._buffer = BytesBuffer()
             self._finished = False
 
         def read(self, num_bytes=None):
@@ -273,15 +288,13 @@ def un_gzip_stream(fileobj):
                     self._fileobj.read(num_bytes) if num_bytes is not None else self._fileobj.read()
                 )
                 if chunk:
-                    self._buffer += self._decoder.decompress(chunk)
+                    self._buffer.write(self._decoder.decompress(chunk))
                 else:
-                    self._buffer += self._decoder.flush()
+                    self._buffer.write(self._decoder.flush())
                     self._finished = True
             if num_bytes is None:
                 num_bytes = len(self._buffer)
-            result = self._buffer[:num_bytes]
-            self._buffer = self._buffer[num_bytes:]
-            return result
+            return self._buffer.read(num_bytes)
 
         def close(self):
             self._fileobj.close()
@@ -491,3 +504,42 @@ def path_is_parent(parent_path, child_path):
     # the parent path will regularize the path name in the same way as the
     # comparison that deals with both paths, removing any trailing path separator.
     return os.path.commonpath([parent_path]) == os.path.commonpath([parent_path, child_path])
+
+
+class BytesBuffer:
+    """
+    A class for a buffer of bytes. Unlike io.BytesIO(), this class
+    keeps track of the buffer's size (in bytes).
+    """
+
+    def __init__(self):
+        self.__buf = deque()
+        self.__size = 0
+
+    def __len__(self):
+        return self.__size
+
+    def write(self, data):
+        self.__buf.append(data)
+        self.__size += len(data)
+
+    def read(self, size=-1):
+        if size < 0:
+            size = self.__size
+        ret_list = []
+        while size > 0 and len(self.__buf):
+            s = self.__buf.popleft()
+            size -= len(s)
+            ret_list.append(s)
+        if size < 0:
+            ret_list[-1], remainder = ret_list[-1][:size], ret_list[-1][size:]
+            self.__buf.appendleft(remainder)
+        ret = b''.join(ret_list)
+        self.__size -= len(ret)
+        return ret
+
+    def flush(self):
+        pass
+
+    def close(self):
+        pass

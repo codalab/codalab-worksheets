@@ -9,6 +9,7 @@ import InformationModal from '../InformationModal/InformationModal';
 import WorksheetHeader from './WorksheetHeader';
 import {
     NAVBAR_HEIGHT,
+    HEADER_HEIGHT,
     EXPANDED_WORKSHEET_WIDTH,
     DEFAULT_WORKSHEET_WIDTH,
     LOCAL_STORAGE_WORKSHEET_WIDTH,
@@ -57,7 +58,7 @@ class Worksheet extends React.Component {
             },
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
-            activeComponent: 'list', // Where the focus is (action, list, or side_panel)
+            activeComponent: 'itemList', // Where the focus is (terminal, itemList)
             inSourceEditMode: false, // Whether we're editing the worksheet
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind inSourceEditMode)
             showTerminal: false, // Whether the terminal is shown
@@ -654,11 +655,11 @@ class Worksheet extends React.Component {
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         let info = this.state.ws.info;
+
         // prevent multiple clicking from resetting the index
         if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex) {
             return;
         }
-        const item = this.refs.list.refs['item' + index];
 
         // Make sure that the screen doesn't scroll when the user normally press j / k,
         // until the target element is completely not on the screen
@@ -674,22 +675,17 @@ class Worksheet extends React.Component {
                 let elementHeight = element.height();
                 let screenScrollTop = $(window).scrollTop();
                 let screenHeight = $(window).height();
-                let scrollIsAboveElement = elementOffsetTop + elementHeight - screenScrollTop >= 0;
+                // HEADER_HEIGHT is the sum of height of WorksheetHeader and NavBar.
+                // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
+                let scrollIsAboveElement =
+                    elementOffsetTop + elementHeight - screenScrollTop - HEADER_HEIGHT >= 0;
                 let elementIsVisibleOnScreen =
                     screenScrollTop + screenHeight - elementOffsetTop >= 0;
                 return scrollIsAboveElement && elementIsVisibleOnScreen;
             }
             shouldScroll = !isOnScreen(element);
         }
-        if (item && (!item.props || !item.props.item)) {
-            // Skip "no search results" items and scroll past them.
-            const offset = index - this.state.focusIndex;
-            if (offset === 0) {
-                return;
-            }
-            this.setFocus(index + offset, subIndex, shouldScroll);
-            return;
-        }
+
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
             index = -1;
@@ -812,7 +808,7 @@ class Worksheet extends React.Component {
     }
 
     handleTerminalFocus = (event) => {
-        this.setState({ activeComponent: 'action' });
+        this.setState({ activeComponent: 'terminal' });
         // just scroll to the top of the page.
         // Add the stop() to keep animation events from building up in the queue
         $('#command_line').data('resizing', null);
@@ -823,7 +819,7 @@ class Worksheet extends React.Component {
     handleTerminalBlur = (event) => {
         // explicitly close terminal because we're leaving the terminal
         // $('#command_line').terminal().focus(false);
-        this.setState({ activeComponent: 'list' });
+        this.setState({ activeComponent: 'itemList' });
         $('#command_line').data('resizing', null);
         $('#ws_search').removeAttr('style');
     };
@@ -853,7 +849,7 @@ class Worksheet extends React.Component {
             this.reloadWorksheet();
         }.bind(this);
 
-        if (this.state.activeComponent === 'action') {
+        if (this.state.activeComponent === 'terminal') {
             // no need for other keys, we have the terminal focused
             return;
         }
@@ -954,7 +950,6 @@ class Worksheet extends React.Component {
                             focusIndex < wsItems.length - 1 &&
                             subFocusIndex + 1 >= this._numTableRows(wsItems[focusIndex])
                         ) {
-                            console.log('last', focusIndex, subFocusIndex);
                             this.setFocus(focusIndex + 1, 0);
                         } else if (subFocusIndex + 1 < this._numTableRows(wsItems[focusIndex])) {
                             this.setFocus(focusIndex, subFocusIndex + 1);
@@ -1328,7 +1323,7 @@ class Worksheet extends React.Component {
     }
 
     focusTerminal() {
-        this.setState({ activeComponent: 'action' });
+        this.setState({ activeComponent: 'terminal' });
         this.setState({ showTerminal: true });
         $('#command_line')
             .terminal()
@@ -1691,11 +1686,10 @@ class Worksheet extends React.Component {
 
         let terminalDisplay = (
             <WorksheetTerminal
-                ref={'action'}
                 ws={this.state.ws}
                 handleFocus={this.handleTerminalFocus}
                 handleBlur={this.handleTerminalBlur}
-                active={this.state.activeComponent === 'action'}
+                active={this.state.activeComponent === 'terminal'}
                 reloadWorksheet={this.reloadWorksheet}
                 openWorksheet={this.openWorksheet}
                 editMode={() => {
@@ -1708,8 +1702,7 @@ class Worksheet extends React.Component {
 
         let itemsDisplay = (
             <WorksheetItemList
-                ref={'list'}
-                active={this.state.activeComponent === 'list'}
+                active={this.state.activeComponent === 'itemList'}
                 ws={this.state.ws}
                 version={this.state.version}
                 focusIndex={this.state.focusIndex}
