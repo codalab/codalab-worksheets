@@ -19,6 +19,7 @@ import requests
 
 from .bundle_service_client import BundleServiceException, BundleServiceClient
 from .dependency_manager import DependencyManager
+from .docker_utils import DEFAULT_DOCKER_TIMEOUT
 from .docker_image_manager import DockerImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
@@ -83,7 +84,7 @@ class Worker:
         self.state_committer = JsonStateCommitter(commit_file)
         self.bundle_service = bundle_service
 
-        self.docker = docker.from_env()
+        self.docker = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
         self.cpuset = cpuset
         self.gpuset = gpuset
         self.max_memory = (
