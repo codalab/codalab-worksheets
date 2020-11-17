@@ -169,20 +169,28 @@ def _compute_target_info_beam(path, depth):
                 'perm': 0o777,
             }
     else:
-        with ZipFile(FileSystems.open(linked_bundle_path.bundle_path)) as f:
-            zipinfo = f.getinfo(linked_bundle_path.zip_subpath)
-        if not zipinfo.is_dir():
+        try:
+            with ZipFile(FileSystems.open(linked_bundle_path.bundle_path)) as f:
+                zipinfo = f.getinfo(linked_bundle_path.zip_subpath)
+            is_dir = zipinfo.is_dir()
+            filename = zipinfo.filename
+            file_size = zipinfo.file_size
+        except KeyError:
+            # Assume we're in a directory.
+            is_dir = True
+            filename = linked_bundle_path.zip_subpath
+            file_size = 0
+        if not is_dir:
             return {
-                'name': zipinfo.filename,
+                'name': filename,
                 'type': 'file',
-                'size': zipinfo.file_size,
+                'size': file_size,
                 'perm': 0o777,
-                'fs': 'azure',
             }
         base = {
-            'name': zipinfo.filename,
+            'name': filename,
             'type': 'directory',
-            'size': zipinfo.file_size,
+            'size': file_size,
             'perm': 0o777,
         }
 
@@ -211,7 +219,7 @@ def _compute_target_info_beam(path, depth):
                 )
             )
             for zipinfo in f.infolist()
-            if zipinfo.filename.startswith(linked_bundle_path.zip_subpath)
+            if (not linked_bundle_path.zip_subpath or zipinfo.filename.startswith(linked_bundle_path.zip_subpath))
             and not (any(zipinfo.filename.startswith(i) for i in dirs) and not zipinfo.is_dir())
         ]
     return base
