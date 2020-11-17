@@ -13,9 +13,9 @@ venv/bin/pip install -r requirements-server.txt --no-cache
 venv/bin/pip install -r requirements.docs.txt --no-cache
 venv/bin/pip install -r requirements.dev.txt --no-cache
 
-venv/bin/pip check
-
 venv/bin/pip install -e .
+
+venv/bin/pip check
 
 # Generate docs
 venv/bin/python scripts/gen-rest-docs.py  # Outputs to `docs`
