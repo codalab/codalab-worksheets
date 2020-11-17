@@ -5,7 +5,7 @@ The SQLAlchemy table objects for the CodaLab bundle system tables.
 # This way, SQLAlchemy will automatically perform conversions to and from UTF-8
 # encoding, or use appropriate database engine-specific data types for Unicode
 # data. Currently, only worksheet.title uses the Unicode column type.
-from sqlalchemy import Column, ForeignKey, Index, MetaData, Table, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, Index, MetaData, Table, UniqueConstraint, text, TIMESTAMP
 from sqlalchemy.types import (
     BigInteger,
     Boolean,
@@ -104,6 +104,12 @@ worksheet = Table(
         'frozen', DateTime, nullable=True
     ),  # When the worksheet was frozen (forever immutable) if it is.
     Column('is_anonymous', Boolean, nullable=False, default=False),
+    Column(
+        'date_created', TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    ),  # When the worksheet was created; Set to zero date if the worksheet created before v0.5.31; In default will be set to current_timestamp
+    Column(
+        'date_last_modified', TIMESTAMP, nullable=True
+    ),  # When the worksheet was created; Set to zero date if the worksheet created before v0.5.31; In default will be set to current_timestamp
     UniqueConstraint('uuid', name='uix_1'),
     Index('worksheet_name_index', 'name'),
     Index('worksheet_owner_index', 'owner_id'),

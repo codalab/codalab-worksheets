@@ -38,6 +38,7 @@ class ORMObject(object):
         Tuple[str, str, str, str, str, str],
         Tuple[str, str, str, str],
         Tuple[str, str, str, str, str, str, str],
+        Tuple[str, str, str, str, str, str, str, str],
     ]
 
     def __init__(self, row, strict=True):
