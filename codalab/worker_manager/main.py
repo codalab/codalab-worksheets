@@ -5,6 +5,7 @@ Main entry point for the worker managers.
 import argparse
 import logging
 from .aws_batch_worker_manager import AWSBatchWorkerManager
+from .azure_batch_worker_manager import AzureBatchWorkerManager
 from .slurm_batch_worker_manager import SlurmBatchWorkerManager
 
 
@@ -37,6 +38,11 @@ def main():
         '--sleep-time', help='Number of seconds to wait between checks', default=5, type=int
     )
     parser.add_argument(
+        '--restart-after-seconds',
+        type=int,
+        help='Restart the worker manager after this many seconds have passed since launch',
+    )
+    parser.add_argument(
         '--once',
         help='Just run once and exit instead of looping (for debugging)',
         action='store_true',
@@ -52,6 +58,11 @@ def main():
         help='Minimum time to wait between launching workers',
         default=1 * 60,
         type=int,
+    )
+    parser.add_argument(
+        '--worker-checkin-frequency-seconds',
+        type=int,
+        help='If specified, the CodaLab worker will wait this many seconds between check-ins',
     )
     parser.add_argument(
         '--worker-exit-after-num-runs',
@@ -96,6 +107,7 @@ def main():
     # so we can automatically initialize the correct worker manager class from the argument
     worker_manager_types = {
         AWSBatchWorkerManager.NAME: AWSBatchWorkerManager,
+        AzureBatchWorkerManager.NAME: AzureBatchWorkerManager,
         SlurmBatchWorkerManager.NAME: SlurmBatchWorkerManager,
     }
     for worker_manager_name, worker_manager_type in worker_manager_types.items():
