@@ -28,7 +28,7 @@ class UserTest(BaseTestCase):
                 "type": "users",
                 "attributes": {
                     "email": "",
-                    "first_name": None,
+                    "first_name": "",
                     "parallel_run_quota": 100,
                     "last_name": "",
                     "time_quota": 3153600000,
