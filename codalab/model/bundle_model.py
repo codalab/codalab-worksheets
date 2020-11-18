@@ -1597,6 +1597,7 @@ class BundleModel(object):
                 for idx, (bundle_uuid, subworksheet_uuid, value, type) in enumerate(items)
             ]
             self.do_multirow_insert(connection, cl_worksheet_item, items_to_insert)
+        self.update_worksheet_last_modified_date(worksheet_uuid)
 
     def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):
         """
@@ -1679,6 +1680,14 @@ class BundleModel(object):
             if result.rowcount < length:
                 raise UsageError('Worksheet %s was updated concurrently!' % (worksheet_uuid,))
             self.do_multirow_insert(connection, cl_worksheet_item, new_item_values)
+        self.update_worksheet_last_modified_date(worksheet_uuid)
+
+    def update_worksheet_last_modified_date(self, worksheet_id):
+        """
+        Update worksheet's last modified date to now.
+        """
+        worksheet = self.get_worksheet(worksheet_id, fetch_items=False)
+        self.update_worksheet_metadata(worksheet, {})
 
     def update_worksheet_metadata(self, worksheet, info):
         """
@@ -1692,6 +1701,10 @@ class BundleModel(object):
             worksheet.owner_id = info['owner_id']
         if 'title' in info:
             info['title'] = self.encode_str(info['title'])
+        # Always update worksheet's last modified date to current timestamp(UTC)
+        info['date_last_modified'] = datetime.datetime.utcnow()
+        worksheet.date_last_modified = info['date_last_modified']
+
         worksheet.validate()
         with self.engine.begin() as connection:
             if 'tags' in info:
