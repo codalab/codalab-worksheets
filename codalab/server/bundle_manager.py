@@ -24,7 +24,6 @@ from codalab.worker.bundle_state import State, RunResources
 
 logger = logging.getLogger(__name__)
 
-WORKER_TIMEOUT_SECONDS = 60
 SECONDS_PER_DAY = 60 * 60 * 24
 # Fail unresponsive bundles in uploading, staged and running state after this many days.
 BUNDLE_TIMEOUT_DAYS = 60
@@ -43,7 +42,7 @@ class BundleManager(object):
     Assigns run bundles to workers and makes make bundles.
     """
 
-    def __init__(self, codalab_manager):
+    def __init__(self, codalab_manager, worker_timeout_seconds=60):
         config = codalab_manager.config.get('workers')
         if not config:
             print('config.json file missing a workers section.', file=sys.stderr)
@@ -65,6 +64,7 @@ class BundleManager(object):
         def parse(to_value, field):
             return to_value(config[field]) if field in config else None
 
+        self._worker_timeout_seconds = worker_timeout_seconds
         self._max_request_time = parse(formatting.parse_duration, 'max_request_time') or 0
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory') or 0
         self._min_request_memory = (
@@ -263,7 +263,7 @@ class BundleManager(object):
         """
         for worker in workers.workers():
             if datetime.datetime.utcnow() - worker['checkin_time'] > datetime.timedelta(
-                seconds=WORKER_TIMEOUT_SECONDS
+                seconds=self._worker_timeout_seconds
             ):
                 logger.info(
                     'Cleaning up dead worker (%s, %s)', worker['user_id'], worker['worker_id']
@@ -322,7 +322,7 @@ class BundleManager(object):
             failure_message = None
             if not workers.is_running(bundle.uuid):
                 failure_message = 'No worker claims bundle'
-            if now - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS:
+            if now - bundle.metadata.last_updated > self._worker_timeout_seconds:
                 failure_message = 'Worker offline'
             if failure_message is not None:
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
@@ -773,7 +773,9 @@ class BundleManager(object):
         READY / FAILED, no worker_run DB entry:
             Finished.
         """
-        workers = WorkerInfoAccessor(self._model, self._worker_model, WORKER_TIMEOUT_SECONDS - 5)
+        workers = WorkerInfoAccessor(
+            self._model, self._worker_model, self._worker_timeout_seconds - 5
+        )
 
         # Handle some exceptional cases.
         self._cleanup_dead_workers(workers)
