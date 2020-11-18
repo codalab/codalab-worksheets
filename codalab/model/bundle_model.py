@@ -1518,6 +1518,7 @@ class BundleModel(object):
         """
         Save the given (empty) worksheet to the database. On success, set its id.
         """
+        now = datetime.datetime.utcnow()
         message = 'save_worksheet called with non-empty worksheet: %s' % (worksheet,)
         precondition(not worksheet.items, message)
         worksheet.validate()
@@ -1525,6 +1526,8 @@ class BundleModel(object):
         worksheet_value.pop('tags')
         worksheet_value.pop('items')
         worksheet_value.pop('last_item_id')
+        worksheet_value['date_created'] = now
+        worksheet_value['date_last_modified'] = now
         with self.engine.begin() as connection:
             result = connection.execute(cl_worksheet.insert().values(worksheet_value))
             worksheet.id = result.lastrowid
