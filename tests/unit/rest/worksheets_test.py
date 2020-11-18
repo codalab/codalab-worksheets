@@ -10,8 +10,11 @@ class WorksheetsTest(BaseTestCase):
             {'data': [{'type': 'worksheets', 'attributes': {'name': worksheet_name}}]},
         )
         worksheet_id = response.json["data"][0]["id"]
+        data = response.json["data"]
+        del data["attributes"]["date_last_modified"]
+        del data["attributes"]["date_created"]
         self.assertEqual(
-            response.json["data"],
+            data,
             [
                 {
                     "type": "worksheets",
