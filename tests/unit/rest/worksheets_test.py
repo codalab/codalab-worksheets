@@ -11,8 +11,6 @@ class WorksheetsTest(BaseTestCase):
         )
         worksheet_id = response.json["data"][0]["id"]
         data = response.json["data"]
-        del data["attributes"]["date_last_modified"]
-        del data["attributes"]["date_created"]
         self.assertEqual(
             data,
             [
