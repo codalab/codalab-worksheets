@@ -43,6 +43,7 @@ export default ({
     copiedBundleIds,
     showPasteButton,
     toggleWorksheetSize,
+    convertDatetimeToLocalDatetime,
 }) => (
     <Sticky top={6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
@@ -56,7 +57,7 @@ export default ({
                         alignItems='flex-start'
                         justify='space-between'
                     >
-                        <h5 className='worksheet-title'>
+                        <h5 className='worksheet-title' style={{ marginBottom: 0 }}>
                             {/*TODO: use html contenteditable*/}
                             <WorksheetEditableField
                                 key={'title' + editPermission}
@@ -67,6 +68,13 @@ export default ({
                                 onChange={() => reloadWorksheet()}
                                 allowASCII={true}
                             />
+                            {/*Hide invalid last modified date*/}
+                            {info && info['date_last_modified'] ? (
+                                <div style={{ fontWeight: 'normal', fontSize: 'small' }}>
+                                    Last Modified Date:{' '}
+                                    {convertDatetimeToLocalDatetime(info['date_last_modified'])}
+                                </div>
+                            ) : null}
                         </h5>
                         <Grid item style={{ paddingTop: '10px' }}>
                             {info && (
