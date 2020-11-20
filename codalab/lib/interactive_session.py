@@ -190,10 +190,9 @@ class InteractiveSession:
     def _construct_final_command(self):
         try:
             candidate_commands = self._get_bash_history()
-        except Exception:
+        except Exception as e:
             print(
-                'The history of bash commands could not be retrieved at path: %s'
-                % InteractiveSession._BASH_HISTORY_CONTAINER_PATH,
+                'The history of bash commands could not be retrieved at path: {}'.format(e),
                 file=self._stderr,
             )
             return ''
