@@ -202,9 +202,34 @@ class SchemaItem extends React.Component<{
         this.props.updateSchemaItem([], this.props.item.ids, null, false, true);
     };
 
+    getSchemaItemId = () => {
+        return document.getElementById(
+            'codalab-worksheet-item-' +
+                this.props.focusIndex +
+                '-subitem-' +
+                this.props.subFocusIndex,
+        )
+            ? 'codalab-worksheet-item-' +
+                  this.props.focusIndex +
+                  '-subitem-' +
+                  this.props.subFocusIndex +
+                  '-schema'
+            : 'codalab-worksheet-item-' + this.props.focusIndex + '-schema';
+    };
+
     componentDidUpdate(prevProps, prevState) {
         if (this.state.newAddedRow !== -1 && this.state.rows.length === prevState.rows.length + 1) {
             document.getElementById('textbox-' + this.state.newAddedRow + '-0').focus();
+        }
+    }
+
+    // Scroll the newly opened schema editor into view
+    componentDidMount() {
+        if (this.props.create) {
+            const node = document.getElementById(this.getSchemaItemId());
+            if (node) {
+                node.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            }
         }
     }
 
@@ -454,6 +479,7 @@ class SchemaItem extends React.Component<{
                     if (this.props.create) return;
                     this.props.setFocus(this.props.focusIndex, 0);
                 }}
+                id={this.getSchemaItemId()}
             >
                 <Grid container direction='row'>
                     <Tooltip

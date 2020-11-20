@@ -82,6 +82,8 @@ class ItemWrapper extends React.Component {
                         }}
                         create={true}
                         updateSchemaItem={this.props.updateSchemaItem}
+                        focusIndex={this.props.focusIndex}
+                        subFocusIndex={this.props.subFocusIndex}
                     />
                 )}
             </div>
