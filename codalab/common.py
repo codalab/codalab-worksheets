@@ -61,6 +61,12 @@ class PermissionError(UsageError):
     """
 
 
+class LoginPermissionError(ValueError):
+    """
+    Raised when the login credentials are incorrect.
+    """
+
+
 # Listed in order of most specific to least specific.
 http_codes_and_exceptions = [
     (http.client.FORBIDDEN, PermissionError),
