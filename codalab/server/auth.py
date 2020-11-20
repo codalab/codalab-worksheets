@@ -66,4 +66,5 @@ class RestOAuthHandler(object):
         except urllib.error.HTTPError as e:
             if e.code == 401:
                 return None
+            print("Invalid username or password.")
             raise

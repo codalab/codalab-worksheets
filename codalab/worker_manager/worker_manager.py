@@ -154,7 +154,6 @@ class WorkerManager(object):
                 urllib.error.URLError,
                 http.client.HTTPException,
                 socket.error,
-                NotFoundError,
                 JsonApiException,
             ):
                 # Sometimes, network errors occur when running the WorkerManager . These are often
@@ -162,6 +161,8 @@ class WorkerManager(object):
                 # we ignore these network-based exceptions (rather than fatally exiting from the
                 # WorkerManager )
                 traceback.print_exc()
+            except NotFoundError:
+                print("Some resources is not found. Please check the message above ^^")
             if self.args.once:
                 break
             logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
