@@ -1,4 +1,3 @@
-from collections import namedtuple
 import http
 import logging
 import os
@@ -8,14 +7,21 @@ import sys
 import time
 import traceback
 import urllib
+from argparse import ArgumentParser
+from collections import namedtuple
+from typing import Dict, List, Union
 
 from codalab.common import NotFoundError
 from codalab.client.json_api_client import JsonApiException
 from codalab.lib.codalab_manager import CodaLabManager
+from codalab.lib.formatting import parse_size
 from codalab.worker.bundle_state import State
 
 
 logger = logging.getLogger(__name__)
+
+# Type aliases
+BundlesPayload = List[Dict[str, Dict[str, Union[int, str]]]]
 
 # Represents a AWS/Azure job that runs a single cl-worker.
 # `active` is a Boolean field that's set to true if the worker is
@@ -72,11 +78,11 @@ class WorkerManager(object):
     """
 
     # Subcommand name to use for this worker manager type
-    NAME = 'worker-manager'
-    DESCRIPTION = 'Base class for Worker Managers, please implement for your deployment'
+    NAME: str = 'worker-manager'
+    DESCRIPTION: str = 'Base class for Worker Managers, please implement for your deployment'
 
     @staticmethod
-    def add_arguments_to_subparser(subparser):
+    def add_arguments_to_subparser(subparser: ArgumentParser) -> None:
         """
         Add any arguments specific to this worker manager to the given subparser
         """
@@ -99,8 +105,8 @@ class WorkerManager(object):
         """Start a new `WorkerJob`."""
         raise NotImplementedError
 
-    def build_command(self, worker_id, work_dir):
-        command = [
+    def build_command(self, worker_id: str, work_dir: str) -> List[str]:
+        command: List[str] = [
             self.args.worker_executable,
             '--server',
             self.args.server,
@@ -133,6 +139,10 @@ class WorkerManager(object):
             command.extend(['--tag-exclusive'])
         if self.args.worker_pass_down_termination:
             command.extend(['--pass-down-termination'])
+        if self.args.worker_checkin_frequency_seconds:
+            command.extend(
+                ['--checkin-frequency-seconds', str(self.args.worker_checkin_frequency_seconds)]
+            )
 
         return command
 
@@ -183,9 +193,11 @@ class WorkerManager(object):
         if self.args.worker_tag_exclusive and self.args.worker_tag:
             keywords += ["request_queue=%s,tag=%s" % (self.args.worker_tag, self.args.worker_tag)]
 
-        bundles = self.codalab_client.fetch(
+        bundles: BundlesPayload = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
         )
+        bundles = self.filter_bundles(bundles)
+
         new_staged_uuids = [bundle['uuid'] for bundle in bundles]
         old_staged_uuids = self.staged_uuids
         # Bundles that were staged but now aren't
@@ -273,3 +285,26 @@ class WorkerManager(object):
             logger.info('Starting a worker!')
             self.start_worker_job()
             self.last_worker_start_time = time.time()
+
+    def filter_bundles(self, bundles: BundlesPayload) -> BundlesPayload:
+        filtered_bundles: BundlesPayload = []
+
+        for bundle in bundles:
+            # Filter bundles based on the resources specified when creating the worker manager
+            worker_memory_bytes: int = parse_size('{}m'.format(self.args.memory_mb))
+            if (
+                bundle['metadata']['request_cpus'] <= self.args.cpus
+                and bundle['metadata']['request_gpus'] <= self.args.gpus
+                and parse_size(bundle['metadata']['request_memory']) <= worker_memory_bytes
+            ):
+                filtered_bundles.append(bundle)
+            else:
+                logger.info(
+                    'Filtered out bundle {} based on resources requested: request_cpus={}, request_gpus={}, request_memory={}'.format(
+                        bundle['uuid'],
+                        bundle['metadata']['request_cpus'],
+                        bundle['metadata']['request_gpus'],
+                        bundle['metadata']['request_memory'],
+                    )
+                )
+        return filtered_bundles
