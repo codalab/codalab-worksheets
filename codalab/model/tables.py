@@ -106,7 +106,7 @@ worksheet = Table(
     Column('is_anonymous', Boolean, nullable=False, default=False),
     Column(
         'date_created', DateTime, nullable=False
-    ),  # When the worksheet was created; Set to zero date if the worksheet created before v0.5.31; In default will be set to current_timestamp
+    ),  # When the worksheet was created; Set to zero date if the worksheet created before v0.5.31; Set to current timestamp by default
     Column(
         'date_last_modified', DateTime
     ),  # When the worksheet was last modified; Set to null if the worksheet created before v0.5.31; In default will be set to current_timestamp
