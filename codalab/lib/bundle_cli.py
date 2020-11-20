@@ -1290,7 +1290,11 @@ class BundleCLI(object):
             if len(args.path) != 1:
                 raise UsageError("Only a single path can be uploaded when using --link.")
             # If link_url is a relative path, prepend the current working directory to it.
-            bundle_info['metadata']['link_url'] = args.path[0] if os.path.isabs(args.path[0]) else os.path.join(os.getcwd(), args.path[0])
+            bundle_info['metadata']['link_url'] = (
+                args.path[0]
+                if os.path.isabs(args.path[0])
+                else os.path.join(os.getcwd(), args.path[0])
+            )
             bundle_info['metadata']['link_format'] = LinkFormat.RAW
 
             new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})
