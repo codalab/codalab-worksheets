@@ -27,11 +27,11 @@ import $ from 'jquery';
     } catch (error) {
         terminal.error(error.responseText);
     } finally {
-    terminal.resume();
-    if (!isEnabled) {
-        terminal.disable();
-    }
-    self.props.reloadWorksheet();
+        terminal.resume();
+        if (!isEnabled) {
+            terminal.disable();
+        }
+        self.props.reloadWorksheet();
     }
  */
 export function executeCommand(command: string, worksheet_uuid?: string) {

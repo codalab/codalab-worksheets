@@ -174,7 +174,7 @@ class BundleDetail extends React.Component<
                         }
                     }.bind(this),
                 );
-                $.when.apply($, fetchRequests);
+                await $.when.apply($, fetchRequests);
                 this.setState(stateUpdate);
                 return $.when(fetchRequests);
             }
