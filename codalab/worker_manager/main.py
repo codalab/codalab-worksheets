@@ -60,6 +60,11 @@ def main():
         type=int,
     )
     parser.add_argument(
+        '--worker-checkin-frequency-seconds',
+        type=int,
+        help='If specified, the CodaLab worker will wait this many seconds between check-ins',
+    )
+    parser.add_argument(
         '--worker-exit-after-num-runs',
         type=int,
         help='If specified, the CodaLab worker will exit after finishing this many of runs',

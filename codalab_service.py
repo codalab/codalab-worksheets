@@ -259,6 +259,13 @@ CODALAB_ARGUMENTS = [
             'Ingest URL for logging exceptions with Sentry. If not provided, Sentry is not used.'
         ),
     ),
+    # Bundle Manager
+    CodalabArg(
+        name='bundle_manager_worker_timeout_seconds',
+        help='Number of seconds to wait after a worker check-in before determining a worker is offline',
+        type=int,
+        default=60,
+    ),
     # Worker manager
     CodalabArg(
         name='worker_manager_type',

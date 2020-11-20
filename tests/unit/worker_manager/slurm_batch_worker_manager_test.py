@@ -23,6 +23,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             worker_exit_on_exception=False,
             worker_tag_exclusive=False,
             worker_pass_down_termination=False,
+            worker_checkin_frequency_seconds=30,
             password_file=None,
             slurm_work_dir=None,
             exit_after_num_failed=None,
@@ -34,11 +35,12 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
         # --pass-down-termination should always be set for Slurm worker managers
         self.assertTrue('--pass-down-termination' in command)
 
-        expected_command_str: str = (
-            'cl-worker --server some_server --verbose --exit-when-idle --idle-seconds 888 '
-            '--work-dir /some/path/some_user-codalab-SlurmBatchWorkerManager-scratch/some_worker_id '
-            '--id $(hostname -s)-some_worker_id --network-prefix cl_worker_some_worker_id_network --tag some_tag '
-            '--group some_group --exit-after-num-runs 8 --max-work-dir-size 88g --pass-down-termination'
+        expected_command_str = (
+            "cl-worker --server some_server --verbose --exit-when-idle --idle-seconds 888 "
+            "--work-dir /some/path/some_user-codalab-SlurmBatchWorkerManager-scratch/some_worker_id "
+            "--id $(hostname -s)-some_worker_id --network-prefix cl_worker_some_worker_id_network --tag some_tag "
+            "--group some_group --exit-after-num-runs 8 --max-work-dir-size 88g --checkin-frequency-seconds 30 "
+            "--pass-down-termination"
         )
         self.assertEqual(' '.join(command), expected_command_str)
 
