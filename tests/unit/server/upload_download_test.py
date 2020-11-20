@@ -131,18 +131,26 @@ class BaseUploadDownloadBundleTest(TestBase):
         # Directory size can vary based on platform, so removing it before checking equality.
         info["contents"][1].pop("size")
         self.assertEqual(
-            set(info["contents"]),
-            set([
-                {'name': 'item.txt', 'size': 11, 'perm': self.DEFAULT_PERM, 'type': 'file'},
-                {
-                    'name': 'src',
-                    'perm': 493,
-                    'type': 'directory',
-                    'contents': [
-                        {'name': 'item2.txt', 'size': 11, 'perm': self.DEFAULT_PERM, 'type': 'file'}
-                    ],
-                },
-            ]),
+            sorted(info["contents"], key=lambda x: x["name"]),
+            sorted(
+                [
+                    {'name': 'item.txt', 'size': 11, 'perm': self.DEFAULT_PERM, 'type': 'file'},
+                    {
+                        'name': 'src',
+                        'perm': 493,
+                        'type': 'directory',
+                        'contents': [
+                            {
+                                'name': 'item2.txt',
+                                'size': 11,
+                                'perm': self.DEFAULT_PERM,
+                                'type': 'file',
+                            }
+                        ],
+                    },
+                ],
+                key=lambda x: x["name"],
+            ),
         )
         self.check_folder_target_contents(
             target, expected_members=['.', './item.txt', './src', './src/item2.txt']
