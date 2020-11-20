@@ -1407,20 +1407,6 @@ def test_link(ctx):
     check_equals(f"/tmp/{filename}", get_info(uuid, 'link_url'))
     os.remove(f.name)
 
-    # Upload with a symlink path -- it should be resolved first
-    # before setting the value of link_url to the resolved path.
-    # Again, CodaLab can't read the contents of this bundle, as in the test case
-    # above.
-    with tempfile.NamedTemporaryFile(mode='w', dir="/tmp", suffix=".txt", delete=False,) as f:
-        f.write("hello world!")
-    symlink_name = f"/tmp/{random_name()}.symlink"
-    os.symlink(f.name, symlink_name)
-    uuid = _run_command([cl, 'upload', symlink_name, '--link'])
-    check_equals(State.READY, get_info(uuid, 'state'))
-    check_equals(f.name, get_info(uuid, 'link_url'))
-    os.remove(f.name)
-    os.remove(symlink_name)
-
 
 @TestModule.register('run2')
 def test_run2(ctx):
