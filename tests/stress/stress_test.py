@@ -165,7 +165,7 @@ class StressTestRunner:
         # Set this to larger than the max memory on the system to test that data is being
         # streamed when the large bundle is being used as a dependency.
         command = 'dd if=/dev/zero of=largefile bs=1 count=0 seek={}G'.format(
-            self._args.args.large_dependency_size_gb
+            self._args.large_dependency_size_gb
         )
         dependency_uuid = self._run_bundle([self._cl, 'run', command])
         uuid = self._run_bundle(
@@ -324,8 +324,8 @@ def main():
 
     if args.heavy:
         print('Setting the heavy configuration...')
-        args.large_dependency_size_gb = 16
-        args.large_file_size_gb = 10
+        args.large_dependency_size_gb = 15
+        args.large_file_size_gb = 5
         args.gpu_runs_count = 50
         args.multiple_cpus_runs_count = 50
         args.bundle_upload_count = 500
