@@ -97,7 +97,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         with tarfile.open(
             fileobj=self.download_manager.stream_tarred_gzipped_directory(target), mode='r:gz'
         ) as f:
-            self.assertEqual(f.getnames(), expected_members)
+            self.assertEqual(sorted(f.getnames()), sorted(expected_members))
 
     def test_bundle_single_file(self):
         """Running get_target_info for a bundle with a single file."""
