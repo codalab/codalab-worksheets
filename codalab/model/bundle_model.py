@@ -1685,6 +1685,7 @@ class BundleModel(object):
     def update_worksheet_last_modified_date(self, worksheet_id):
         """
         Update worksheet's last modified date to now.
+        Calling update_worksheet_metadata with an empty argument is equivalent to updating the last modified date.
         """
         worksheet = self.get_worksheet(worksheet_id, fetch_items=False)
         self.update_worksheet_metadata(worksheet, {})
