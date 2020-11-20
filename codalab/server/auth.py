@@ -6,7 +6,7 @@ import json
 import urllib.request
 import urllib.parse
 import urllib.error
-from codalab.common import URLOPEN_TIMEOUT_SECONDS
+from codalab.common import URLOPEN_TIMEOUT_SECONDS, LoginPermissionError
 
 
 # TODO(sckoo): clean up auth logic across:

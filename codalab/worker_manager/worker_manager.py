@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 from collections import namedtuple
 from typing import Dict, List, Union
 
-from codalab.common import NotFoundError
+from codalab.common import NotFoundError, LoginPermissionError
 from codalab.client.json_api_client import JsonApiException
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.lib.formatting import parse_size
@@ -154,18 +154,17 @@ class WorkerManager(object):
             except (
                 http.client.HTTPException,
                 socket.error,
-                NotFoundError,
+                urllib.error.URLError,
+                JsonApiException,
+                ssl.SSLError,
             ):
                 # Sometimes, network errors occur when running the WorkerManager . These are often
                 # transient exceptions, and retrying the command would lead to success---as a result,
                 # we ignore these network-based exceptions (rather than fatally exiting from the
                 # WorkerManager )
                 traceback.print_exc()
-            except (urllib.error.URLError, JsonApiException, ssl.SSLError) as e:
-                if "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed" in str(e):
-                    print("Your login info is incorrect. Please try again.")
-                else:
-                    traceback.print_exc()
+            except NotFoundError:
+                print("Your login info is incorrect. Please try again.")
 
             if self.args.once:
                 break
