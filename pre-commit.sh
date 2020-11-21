@@ -9,9 +9,9 @@ if ! [ -e venv ]; then
   python3 -m pip install virtualenv
   python3 -m virtualenv -p python3 venv
 fi
-venv/bin/pip install -r requirements-server.txt --no-cache
-venv/bin/pip install -r requirements.docs.txt --no-cache
-venv/bin/pip install -r requirements.dev.txt --no-cache
+venv/bin/pip install -r requirements-server.txt
+venv/bin/pip install -r requirements.docs.txt
+venv/bin/pip install -r requirements.dev.txt
 
 venv/bin/pip install -e .
 
