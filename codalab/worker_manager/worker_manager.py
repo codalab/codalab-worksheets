@@ -147,27 +147,24 @@ class WorkerManager(object):
         return command
 
     def run_loop(self):
-        while True:
-            try:
-                self.run_one_iteration()
-            except (
-                urllib.error.URLError,
-                http.client.HTTPException,
-                socket.error,
-                JsonApiException,
-                NotFoundError,
-            ):
-                # Sometimes, network errors occur when running the WorkerManager . These are often
-                # transient exceptions, and retrying the command would lead to success---as a result,
-                # we ignore these network-based exceptions (rather than fatally exiting from the
-                # WorkerManager )
-                traceback.print_exc()
-            except LoginPermissionError:
-                print("Invalid username or password. Please try again:")
-            if self.args.once:
-                break
-            logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
-            time.sleep(self.args.sleep_time)
+        try:
+            self.run_one_iteration()
+        except (
+            urllib.error.URLError,
+            http.client.HTTPException,
+            socket.error,
+            JsonApiException,
+            NotFoundError,
+        ):
+            # Sometimes, network errors occur when running the WorkerManager . These are often
+            # transient exceptions, and retrying the command would lead to success---as a result,
+            # we ignore these network-based exceptions (rather than fatally exiting from the
+            # WorkerManager )
+            traceback.print_exc()
+        except LoginPermissionError:
+            print("Invalid username or password. Please try again:")
+        logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
+        time.sleep(self.args.sleep_time)
 
     def run_one_iteration(self):
         if self.args.restart_after_seconds:
