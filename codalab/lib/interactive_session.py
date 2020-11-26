@@ -31,6 +31,7 @@ class InteractiveSession:
         9. Stop and remove the interactive session container.
     """
 
+    _BASH_HISTORY_CONTAINER_PATH = "/usr/sbin/.bash_history"
     _CHOOSE_COMMAND_INSTRUCTIONS = (
         "\n\n#\n"
         "# Choose the commands to use for cl run:\n"
@@ -95,12 +96,12 @@ class InteractiveSession:
             print('\nStarting an interactive session...', file=self._stdout)
             print('%s\n' % run_command, file=self._stdout)
             print('=' * 150, file=self._stdout)
-            print('Session UUID:', self._session_uuid, file=self._stdout)
-            print('CodaLab instance:', self._manager.current_client().address, file=self._stdout)
-            print('Container name:', self._get_container_name(), file=self._stdout)
-            print('Container Docker image:', self._docker_image, file=self._stdout)
+            print('Session UUID: ', self._session_uuid, file=self._stdout)
+            print('CodaLab instance: ', self._manager.current_client().address, file=self._stdout)
+            print('Container name: ', self._get_container_name(), file=self._stdout)
+            print('Container Docker image: ', self._docker_image, file=self._stdout)
             print(
-                'You can find local bundle contents at:', self._host_bundle_path, file=self._stdout
+                'You can find local bundle contents at: ', self._host_bundle_path, file=self._stdout
             )
             print('=' * 150 + '\n', file=self._stdout)
 
@@ -158,7 +159,11 @@ class InteractiveSession:
                 for docker_path, local_path in volumes.items()
             ]
         )
-        command.append('-v {}:/usr/sbin/.bash_history:rw'.format(self._host_bash_history_path))
+        command.append(
+            '-v {}:{}:rw'.format(
+                self._host_bash_history_path, InteractiveSession._BASH_HISTORY_CONTAINER_PATH
+            )
+        )
         command.append(self._docker_image)
         command.append('bash')
         return ' '.join(command)
@@ -192,7 +197,9 @@ class InteractiveSession:
             candidate_commands = self._get_bash_history()
         except Exception as e:
             print(
-                'The history of bash commands could not be retrieved at path: {}'.format(e),
+                'The history of bash commands could not be retrieved at path {}: {}'.format(
+                    InteractiveSession._BASH_HISTORY_CONTAINER_PATH, e
+                ),
                 file=self._stderr,
             )
             return ''

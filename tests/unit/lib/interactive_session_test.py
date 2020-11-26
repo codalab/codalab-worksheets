@@ -35,8 +35,6 @@ class InteractiveSessionTest(unittest.TestCase):
             '[\s\S]{0,100}local\/path1/sub/path1:\/0x[a-z0-9]{32}\/key:ro -v [\s\S]{0,100}local\/path2/sub/path2'
             ':\/0x[a-z0-9]{32}\/key2:ro -v \.bash_history:\/usr\/sbin\/\.bash_history:rw some-docker-image bash'
         )
-        print(expected_regex)
-        print(session.get_docker_run_command())
         self.assertTrue(re.match(expected_regex, session.get_docker_run_command()))
 
     def test_missing_bundle_location(self):
