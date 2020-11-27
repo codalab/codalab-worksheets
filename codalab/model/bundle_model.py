@@ -1702,7 +1702,7 @@ class BundleModel(object):
             worksheet.owner_id = info['owner_id']
         if 'title' in info:
             info['title'] = self.encode_str(info['title'])
-        # Always update worksheet's last modified date to current timestamp(UTC)
+        # Always update worksheet's last modified date to current timestamp (UTC)
         info['date_last_modified'] = datetime.datetime.utcnow()
         worksheet.date_last_modified = info['date_last_modified']
 
