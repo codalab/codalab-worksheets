@@ -3850,6 +3850,7 @@ class BundleCLI(object):
     def do_uls_command(self, args):
         """
         Search for specific users.
+        If no argument is passed, we assume the user is searching for a keyword of an empty string.
         """
         client = self.manager.current_client()
         users = client.fetch('users', params={'keywords': args.keywords or ''})
