@@ -15,6 +15,8 @@ venv/bin/pip install -r requirements.dev.txt
 
 venv/bin/pip install -e .
 
+venv/bin/pip check
+
 # Generate docs
 venv/bin/python scripts/gen-rest-docs.py  # Outputs to `docs`
 venv/bin/python scripts/gen-cli-docs.py  # Outputs to `docs`

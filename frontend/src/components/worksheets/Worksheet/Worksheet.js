@@ -317,6 +317,7 @@ class Worksheet extends React.Component {
                         draggable: true,
                     });
                 });
+
                 const fromDeleteCommand = cmd === 'rm';
                 const param = { fromDeleteCommand };
                 this.reloadWorksheet(undefined, undefined, param);
