@@ -204,9 +204,8 @@ class NewUpload extends React.Component<{
             uploading: true,
         });
         let url = `/rest/bundles?worksheet=${ worksheetUUID }`;
-        if (after_sort_key) {
-            url += `&after_sort_key=${ after_sort_key }`;
-        }
+        url += `&after_sort_key=${ isNaN(after_sort_key) ? -1: after_sort_key }`;
+
 
         let zip = new JSZip();
         [...files].map(file => {

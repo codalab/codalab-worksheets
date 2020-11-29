@@ -30,7 +30,7 @@ jobs:
           restore-keys: |
             pip-
       - run: ./pre-commit.sh && git diff --exit-code
-  
+
   test_frontend:
     name: Test Frontend
     runs-on: ubuntu-latest
