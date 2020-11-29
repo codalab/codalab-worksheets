@@ -283,6 +283,7 @@ class NewUpload extends React.Component<{
     render() {
         const { classes } = this.props;
         const { numeratorComplete, denominatorComplete, uploading } = this.state;
+        const progressbarVal = parseInt((numeratorComplete / denominatorComplete) * 100) || 0;
 
         return (
             <React.Fragment>
@@ -307,8 +308,8 @@ class NewUpload extends React.Component<{
                 { uploading && <CircularProgressbar
                         className={ classes.progress }
                         variant="determinate"
-                        value={ parseInt((numeratorComplete / denominatorComplete) * 100) || 0 }
-                        text={`${parseInt((numeratorComplete / denominatorComplete) * 100) || 0 }% uploaded`}
+                        value={ progressbarVal }
+                        text={`${progressbarVal }% uploaded`}
                         styles={buildStyles({
                             textSize: '12px',
                         })}
