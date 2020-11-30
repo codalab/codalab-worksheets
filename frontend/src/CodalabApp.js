@@ -22,6 +22,7 @@ import {
     PasswordResetVerified,
     PasswordResetComplete,
 } from './components/PasswordReset';
+import NewDashboard from './components/NewDashboard';
 
 // Routes
 import HomePage from './routes/HomePage';
@@ -109,6 +110,10 @@ function CodalabApp() {
                                 )}
                             />
                             <Route path='/bundles/:uuid' component={BundleRoute} />
+                            <Route
+                                path='/dashboard'
+                                render={(props) => <NewDashboard {...props} auth={fakeAuth} />}
+                            />
                             <Route component={PageNotFound} />
                         </Switch>
                         {/*Footer.*/}

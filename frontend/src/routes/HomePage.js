@@ -27,7 +27,7 @@ class HomePage extends React.Component<{
         super(props);
         const { auth, redirectAuthToDashboard } = this.props;
         if (auth.isAuthenticated && redirectAuthToDashboard) {
-            this.props.history.push('/worksheets?name=dashboard');
+            this.props.history.push('/dashboard');
         }
     }
 
