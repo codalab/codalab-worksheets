@@ -213,6 +213,18 @@ class DockerImagesCompleter(CodaLabCompleter):
             warn('Error: {}'.format(ex))
 
 
+class DockerStatsCompleter(CodaLabCompleter):
+    def __call__(self, prefix, action=None, parser=None, parsed_args=None):
+        try:
+            client = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
+            containers = client.containers.list()
+            for container in containers:
+                stats = container.stats(stream=False)
+                print(stats)
+        except docker.errors.APIError as e:
+            warn('Error: {}'.format(e))
+
+
 def short_uuid(full_uuid):
     return worksheet_util.apply_func('[0:8]', full_uuid)
 
