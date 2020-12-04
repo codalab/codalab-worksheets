@@ -146,6 +146,12 @@ class SlurmBatchWorkerManager(WorkerManager):
             job_acct = self.run_command(
                 [self.SCONTROL, 'show', 'jobid', '-d', job_id, '--oneliner'], verbose=False
             )
+            # Sometimes, we fail to get the job details (e.g., if there's no memory on the host).
+            # In this case, just skip and hopefully we'll be able to fetch job details next time,
+            # rather than trying to run a re.search on an empty string.
+            if job_acct == "":
+                logger.info("Failed to get state of job {}, skipping".format(job_id))
+                continue
             # Extract out the JobState from the full scontrol output.
             job_state = re.search(r'JobState=(.*)\sReason', job_acct).group(1)
             logger.info("Job ID {} has state {}".format(job_id, job_state))
