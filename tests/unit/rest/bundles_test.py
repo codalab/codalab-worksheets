@@ -62,6 +62,8 @@ class BundlesTest(BaseTestCase):
                             "request_gpus": 0,
                             "request_network": False,
                             "exclude_patterns": [],
+                            "link_format": "",
+                            "link_url": "",
                             "description": "",
                             "request_queue": "",
                             "tags": [""],
