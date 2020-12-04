@@ -22,7 +22,7 @@ import {
     PasswordResetVerified,
     PasswordResetComplete,
 } from './components/PasswordReset';
-import NewDashboard from './components/NewDashboard';
+import NewDashboard from './components/Dashboard/NewDashboard';
 
 // Routes
 import HomePage from './routes/HomePage';
