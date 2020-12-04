@@ -26,12 +26,7 @@ class GetTargetInfoTest(unittest.TestCase):
             f.write(b"a")
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
-        self.assertEqual(target_info, {
-            'name': bundle_uuid,
-            'type': 'file',
-            'size': 1,
-            'perm': 511
-        })
+        self.assertEqual(target_info, {'name': bundle_uuid, 'type': 'file', 'size': 1, 'perm': 511})
 
     def test_nested_directories(self):
         bundle_uuid = str(random.random())
@@ -43,35 +38,68 @@ class GetTargetInfoTest(unittest.TestCase):
                 zf.writestr("dist/a/b/test2.sh", "echo two")
         with FileSystems.open(bundle_path) as f:
             with ZipFile(f, "r") as zf:
-              raise Exception([x for x in zf.namelist()])
+                raise Exception([x for x in zf.namelist()])
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
-        self.assertEqual(target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 26, 'perm': 511})
+        self.assertEqual(
+            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 26, 'perm': 511}
+        )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 1)
         target_info.pop("resolved_target")
-        self.assertEqual(target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 26, 'perm': 511, 'contents': [{'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 511}, {
-                         'name': 'test.sh', 'type': 'file', 'size': 7, 'perm': 511}, {'name': 'test2.sh', 'type': 'file', 'size': 8, 'perm': 511}]})
-
+        self.assertEqual(
+            target_info,
+            {
+                'name': bundle_uuid,
+                'type': 'directory',
+                'size': 26,
+                'perm': 511,
+                'contents': [
+                    {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 511},
+                    {'name': 'test.sh', 'type': 'file', 'size': 7, 'perm': 511},
+                    {'name': 'test2.sh', 'type': 'file', 'size': 8, 'perm': 511},
+                ],
+            },
+        )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "README.md"), 1)
         target_info.pop("resolved_target")
-        self.assertEqual(target_info, {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 511})
+        self.assertEqual(
+            target_info, {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 511}
+        )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "src/test.sh"), 1)
         target_info.pop("resolved_target")
-        self.assertEqual(target_info, {'name': 'src/test.sh', 'type': 'file', 'size': 7, 'perm': 511})
+        self.assertEqual(
+            target_info, {'name': 'src/test.sh', 'type': 'file', 'size': 7, 'perm': 511}
+        )
 
-        target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "dist/a/b/test2.sh"), 1)
+        target_info = get_target_info(
+            bundle_path, BundleTarget(bundle_uuid, "dist/a/b/test2.sh"), 1
+        )
         target_info.pop("resolved_target")
-        self.assertEqual(target_info, {'name': 'dist/a/b/test2.sh', 'type': 'file', 'size': 8, 'perm': 511})
+        self.assertEqual(
+            target_info, {'name': 'dist/a/b/test2.sh', 'type': 'file', 'size': 8, 'perm': 511}
+        )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "src"), 1)
         target_info.pop("resolved_target")
-        self.assertEqual(target_info, {'name': 'src', 'type': 'directory', 'size': 0, 'perm': 511, 'contents': [{'name': 'test.sh', 'type': 'file', 'size': 7, 'perm': 511}]})
+        self.assertEqual(
+            target_info,
+            {
+                'name': 'src',
+                'type': 'directory',
+                'size': 0,
+                'perm': 511,
+                'contents': [{'name': 'test.sh', 'type': 'file', 'size': 7, 'perm': 511}],
+            },
+        )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "src/a"), 1)
         target_info.pop("resolved_target")
         print(target_info)
-        self.assertEqual(target_info, {'name': 'src/a', 'type': 'directory', 'size': 0, 'perm': 511, 'contents': []})
+        self.assertEqual(
+            target_info,
+            {'name': 'src/a', 'type': 'directory', 'size': 0, 'perm': 511, 'contents': []},
+        )

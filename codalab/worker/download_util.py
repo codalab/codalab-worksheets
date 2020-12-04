@@ -214,12 +214,14 @@ def _compute_target_info_beam(path, depth):
                 }
                 if not zipinfo.is_dir()
                 else _compute_target_info_beam(
-                    f"{linked_bundle_path.bundle_path}/{zipinfo.filename}",
-                    depth - 1,
+                    f"{linked_bundle_path.bundle_path}/{zipinfo.filename}", depth - 1,
                 )
             )
             for zipinfo in f.infolist()
-            if (not linked_bundle_path.zip_subpath or zipinfo.filename.startswith(linked_bundle_path.zip_subpath))
+            if (
+                not linked_bundle_path.zip_subpath
+                or zipinfo.filename.startswith(linked_bundle_path.zip_subpath)
+            )
             and not (any(zipinfo.filename.startswith(i) for i in dirs) and not zipinfo.is_dir())
         ]
     return base
