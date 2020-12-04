@@ -273,6 +273,16 @@ CODALAB_ARGUMENTS = [
         default='azure-batch',
     ),
     CodalabArg(
+        name='worker_manager_worker_work_dir_prefix',
+        help='Prefix to use for each worker\'s working directory of the worker manager',
+        default='/tmp',
+    ),
+    CodalabArg(
+        name='worker_manager_worker_max_work_dir_size',
+        help='Maximum size of the temporary bundle data for a worker of the worker manager',
+        default='10g',
+    ),
+    CodalabArg(
         name='worker_manager_idle_seconds',
         help='Number of seconds workers wait idle before exiting',
         type=int,
