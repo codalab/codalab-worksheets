@@ -33,9 +33,12 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         """Bundles stuck in "MAKING" should be restaged and go back to the "MAKING" state."""
         bundle = self.create_make_bundle(state=State.MAKING)
         self.save_bundle(bundle)
-        self.bundle_manager._make_bundle = (
-            Mock()
-        )  # Fixes a race case in which _make_bundle is called before this function can check the bundle state, and instead sets the bundle state to "READY". We only want to test the restaging behavior in this test, so we set _make_bundle to do nothing.
+
+        # Fixes a race case in which _make_bundle is called before this function can check the bundle state,
+        # and instead sets the bundle state to "READY". We only want to test the restaging behavior in this test,
+        # so we set _make_bundle to do nothing.
+        self.bundle_manager._make_bundle = Mock()
+
         self.bundle_manager._make_bundles()
 
         self.assertTrue(self.bundle_manager._is_making_bundles())
