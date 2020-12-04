@@ -69,7 +69,7 @@ def get_target_info(bundle_path, target, depth):
             raise PathException(
                 'Path {} in bundle {} not found'.format(target.bundle_uuid, target.subpath)
             )
-        info = _compute_target_info(final_path, depth)
+        info = _compute_target_info_local(final_path, depth)
 
     info['resolved_target'] = target
     return info
@@ -120,9 +120,8 @@ def _get_target_path(bundle_path, path):
         return bundle_path
 
 
-def _compute_target_info(path, depth):
-    if parse_linked_bundle_url(path).uses_beam:
-        return _compute_target_info_beam(path, depth)
+def _compute_target_info_local(path, depth):
+    """Computes target info for a local file."""
     result = {}
     result['name'] = os.path.basename(path)
     stat = os.lstat(path)
@@ -137,7 +136,7 @@ def _compute_target_info(path, depth):
         result['type'] = 'directory'
         if depth > 0:
             result['contents'] = [
-                _compute_target_info(os.path.join(path, file_name), depth - 1)
+                _compute_target_info_local(os.path.join(path, file_name), depth - 1)
                 for file_name in os.listdir(path)
             ]
     if result is None:
