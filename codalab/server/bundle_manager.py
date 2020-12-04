@@ -202,7 +202,6 @@ class BundleManager(object):
             return uuid in self._make_uuids
 
     def _make_bundle(self, bundle):
-        print("doing work")
         try:
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
