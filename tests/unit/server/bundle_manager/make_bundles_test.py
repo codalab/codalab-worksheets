@@ -35,7 +35,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         self.save_bundle(bundle)
         self.bundle_manager._make_bundle = (
             Mock()
-        )  # Ensure that bundles in "MAKING" are not actually made and set to "READY", so that we can only test the restaging behavior in this test.
+        )  # Fixes a race case in which _make_bundle is called before this function can check the bundle state, and instead sets the bundle state to "READY". We only want to test the restaging behavior in this test, so we set _make_bundle to do nothing.
         self.bundle_manager._make_bundles()
 
         self.assertTrue(self.bundle_manager._is_making_bundles())
