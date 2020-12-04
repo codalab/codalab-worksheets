@@ -1359,10 +1359,10 @@ def test_link(ctx):
     # /tmp/codalab/link-mounts is the absolute path of the default link mounts folder on the host. By default, it is mounted
     # when no other argument for CODALAB_LINK_MOUNTS is specified.
     #
-    # We create the temporary file at /opt/codalab-worksheets-link-mounts/private/tmp/codalab/link-mounts because
-    # this test is running inside a Docker container (so the host directory /private/tmp/codalab/link-mounts is
-    # mounted at /opt/codalab-worksheets-link-mounts/private/tmp/codalab/link-mounts).
-    link_mounts_dir = "/opt/codalab-worksheets-link-mounts/private/tmp/codalab/link-mounts"
+    # We create the temporary file at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts because
+    # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
+    # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
+    link_mounts_dir = "/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts"
 
     os.makedirs(link_mounts_dir, exist_ok=True)
     with tempfile.NamedTemporaryFile(
