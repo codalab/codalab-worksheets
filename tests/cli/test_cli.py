@@ -258,6 +258,7 @@ def _run_command(
     include_stderr=False,
     binary=False,
     force_subprocess=False,
+    cwd=None,
     request_memory="10m",
     request_disk="1m",
     request_time=None,
@@ -273,6 +274,7 @@ def _run_command(
         include_stderr (bool, optional): Include stderr in output. Defaults to False.
         binary (bool, optional): Whether output is binary. Defaults to False.
         force_subprocess (bool, optional): Force "cl" commands to run with subprocess, rather than running the CodaLab CLI directly through Python. Defaults to False.
+        cwd (str, optional): Current working directory for the command to be run from. Only has an effect if force_subpocess is set to True. Defaults to None.
         request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "10m".
         request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m".
         request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed).
@@ -300,7 +302,14 @@ def _run_command(
         # Always use subprocess for non-"cl" commands.
         force_subprocess = True
     return run_command(
-        args, expected_exit_code, max_output_chars, env, include_stderr, binary, force_subprocess
+        args,
+        expected_exit_code,
+        max_output_chars,
+        env,
+        include_stderr,
+        binary,
+        force_subprocess,
+        cwd,
     )
 
 
@@ -1353,13 +1362,11 @@ def test_link(ctx):
     # We create the temporary file at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts because
     # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
     # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
+    link_mounts_dir = "/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts"
 
-    os.makedirs('/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts', exist_ok=True)
+    os.makedirs(link_mounts_dir, exist_ok=True)
     with tempfile.NamedTemporaryFile(
-        mode='w',
-        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts',
-        suffix=".txt",
-        delete=False,
+        mode='w', dir=link_mounts_dir, suffix=".txt", delete=False,
     ) as f:
         f.write("hello world!")
     _, host_filename = f.name.split("/opt/codalab-worksheets-link-mounts")
@@ -1376,9 +1383,7 @@ def test_link(ctx):
     os.remove(f.name)
 
     # Upload directory
-    with tempfile.TemporaryDirectory(
-        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts'
-    ) as dirname:
+    with tempfile.TemporaryDirectory(dir=link_mounts_dir) as dirname:
         with open(os.path.join(dirname, "test.txt"), "w+") as f:
             f.write("hello world!")
 
@@ -1392,6 +1397,20 @@ def test_link(ctx):
         run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo/test.txt'])
         wait(run_uuid)
         check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
+
+    # Upload with a relative path.
+    # This test only ensures that the link_url is properly set from
+    # the current working directory if a relative path is supplied.
+    # Note that CodaLab can't actually read the contents of this bundle
+    # because the file is in /tmp in the Docker container, which is
+    # inaccessible from the host.
+    with tempfile.NamedTemporaryFile(mode='w', dir='/tmp', suffix=".txt", delete=False,) as f:
+        f.write("hello world!")
+    _, filename = f.name.split("/tmp/")
+    uuid = _run_command([cl, 'upload', filename, '--link'], force_subprocess=True, cwd="/tmp")
+    check_equals(State.READY, get_info(uuid, 'state'))
+    check_equals(f"/tmp/{filename}", get_info(uuid, 'link_url'))
+    os.remove(f.name)
 
 
 @TestModule.register('run2')
