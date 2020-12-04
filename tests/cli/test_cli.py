@@ -1061,9 +1061,7 @@ def test(ctx):
     )
 
     # List all users if no argument is passed
-    check_contains(
-        'non_root_user', _run_command([cl, 'uls'])
-    )
+    check_contains('non_root_user', _run_command([cl, 'uls']))
 
 
 @TestModule.register('freeze')
