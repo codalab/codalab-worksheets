@@ -212,10 +212,12 @@ def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSE
         and linked_bundle_path.is_zip
         and linked_bundle_path.zip_subpath
     ):
+        # If file path is a zip file, open the specified path within the
+        # zip file. zipfile.open only supports 'r', not 'rb', so we always pass in 'r'.
         with ZipFile(FileSystems.open(linked_bundle_path.bundle_path, compression_type)) as f:
             return f.open(
                 linked_bundle_path.zip_subpath, 'r'
-            )  # zipfile.open only supports 'r', not 'rb'
+            )
     return FileSystems.open(file_path, mode)
 
 
