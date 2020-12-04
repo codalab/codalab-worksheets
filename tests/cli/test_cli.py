@@ -1069,6 +1069,9 @@ def test(ctx):
         '3', _run_command([cl, 'uls', '.time_used_less_than=' + '1%', '-f', 'parallel_run_quota'])
     )
 
+    # List all users if no argument is passed
+    check_contains('non_root_user', _run_command([cl, 'uls']))
+
 
 @TestModule.register('freeze')
 def test_freeze(ctx):
