@@ -158,7 +158,7 @@ class MainPanel extends React.Component<{
                     open={this.state.newWorksheetShowDialog}
                     onClose={() => this.resetDialog()}
                     aria-labelledby='form-dialog-title'
-                    style={{  backgroundColor: '#f1f1f1' }}
+                    style={{ backgroundColor: '#f1f1f1' }}
                 >
                     <DialogTitle id='form-dialog-title'>New Worksheet</DialogTitle>
                     <DialogContent>
