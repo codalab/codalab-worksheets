@@ -36,7 +36,10 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
 
         self.assertTrue(self.bundle_manager._is_making_bundles())
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
-        self.assertEqual(bundle.state, State.MAKING)
+        # Sometimes, due to a race case, the bundle may end up going to the "MAKING" state
+        # and also finish making (and thus be in the "READY") state by the time this line
+        # is called.
+        self.assertIn(bundle.state, (State.MAKING, State.READY))
 
     def test_bundle_no_dependencies(self):
         """A MakeBundle with no dependencies should be made."""
