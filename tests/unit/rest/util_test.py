@@ -1,5 +1,5 @@
 import unittest
-from mock import Mock
+from unittest.mock import Mock
 
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL, GROUP_OBJECT_PERMISSION_NONE
 from codalab.rest import util
