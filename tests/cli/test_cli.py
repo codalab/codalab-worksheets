@@ -1376,8 +1376,8 @@ def test_link(ctx):
     check_equals('raw', get_info(uuid, 'link_format'))
     check_equals("hello world!", _run_command([cl, 'cat', uuid]))
 
-    run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo'])	
-    wait(run_uuid)	
+    run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo'])
+    wait(run_uuid)
     check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
 
     os.remove(f.name)
