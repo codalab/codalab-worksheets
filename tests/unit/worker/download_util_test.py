@@ -18,8 +18,9 @@ BlobStorageFileSystem.__bases__ = (DummyClass,)
 apache_beam.io.filesystems.BlobStorageFileSystem = MockBlobStorageFileSystem
 
 
-class GetTargetInfoTest(unittest.TestCase):
+class AzureBlobGetTargetInfoTest(unittest.TestCase):
     def test_single_file(self):
+        """Test getting target info of a single file on Azure Blob Storage."""
         bundle_uuid = str(random.random())
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents"
         with FileSystems.create(bundle_path) as f:
@@ -29,6 +30,7 @@ class GetTargetInfoTest(unittest.TestCase):
         self.assertEqual(target_info, {'name': bundle_uuid, 'type': 'file', 'size': 1, 'perm': 511})
 
     def test_nested_directories(self):
+        """Test getting target info of different files within a bundle that consists of nested directories, on Azure Blob Storage."""
         bundle_uuid = str(random.random())
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.zip"
         with FileSystems.create(bundle_path) as f:
@@ -36,9 +38,6 @@ class GetTargetInfoTest(unittest.TestCase):
                 zf.writestr("README.md", "hello world")
                 zf.writestr("src/test.sh", "echo hi")
                 zf.writestr("dist/a/b/test2.sh", "echo two")
-        with FileSystems.open(bundle_path) as f:
-            with ZipFile(f, "r") as zf:
-                raise Exception([x for x in zf.namelist()])
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
