@@ -177,6 +177,9 @@ class UploadManager(object):
         Modifies |path| in place: If the |path| directory contains exactly
         one file / directory, then replace |path| with that file / directory.
         """
+
+        # If the file is using Apache Beam, then use the Apache Beam FileSystems.rename
+        # method to perform this simplification.
         if parse_linked_bundle_url(path).uses_beam:
             if child_path is None:
                 child_path = FileSystems.match([path + "/*"])[0].metadata_list[0].path
@@ -192,7 +195,6 @@ class UploadManager(object):
         path_util.remove(temp_path)
 
     def has_contents(self, bundle):
-        # TODO: make this non-fs-specific.
         return FileSystems.exists(self._bundle_store.get_bundle_location(bundle.uuid))
 
     def cleanup_existing_contents(self, bundle):
