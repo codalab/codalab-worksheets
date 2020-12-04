@@ -805,6 +805,10 @@ def test_upload3(ctx):
     uuid = _run_command([cl, 'upload', 'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2'])
     check_contains(['README', 'INSTALL', 'FAQ'], _run_command([cl, 'cat', uuid]))
 
+    # Upload URL with a query string, that's an archive
+    uuid = _run_command([cl, 'upload', 'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2?a=b'])
+    check_contains(['README', 'INSTALL', 'FAQ'], _run_command([cl, 'cat', uuid]))
+
     # Upload URL from Git
     uuid = _run_command([cl, 'upload', 'https://github.com/codalab/codalab-worksheets', '--git'])
     check_contains(['README.md', 'codalab', 'scripts'], _run_command([cl, 'cat', uuid]))
