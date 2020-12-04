@@ -259,11 +259,28 @@ CODALAB_ARGUMENTS = [
             'Ingest URL for logging exceptions with Sentry. If not provided, Sentry is not used.'
         ),
     ),
+    # Bundle Manager
+    CodalabArg(
+        name='bundle_manager_worker_timeout_seconds',
+        help='Number of seconds to wait after a worker check-in before determining a worker is offline',
+        type=int,
+        default=60,
+    ),
     # Worker manager
     CodalabArg(
         name='worker_manager_type',
         help='Type of worker manager (azure-batch or aws-batch)',
         default='azure-batch',
+    ),
+    CodalabArg(
+        name='worker_manager_worker_work_dir_prefix',
+        help='Prefix to use for each worker\'s working directory of the worker manager',
+        default='/tmp',
+    ),
+    CodalabArg(
+        name='worker_manager_worker_max_work_dir_size',
+        help='Maximum size of the temporary bundle data for a worker of the worker manager',
+        default='10g',
     ),
     CodalabArg(
         name='worker_manager_idle_seconds',
@@ -589,7 +606,7 @@ class CodalabServiceManager(object):
 
         if self.args.version:
             self.args.version = clean_version(self.args.version)
-        self.compose_cwd = os.path.join(BASE_DIR, 'docker', 'compose_files')
+        self.compose_cwd = os.path.join(BASE_DIR, 'docker_config', 'compose_files')
 
         self.compose_files = []
         self.compose_tempfile_name = ""
@@ -675,7 +692,7 @@ class CodalabServiceManager(object):
 
         # Build the image using the cache
         self._run_docker_cmd(
-            'build%s %s -t %s -f docker/dockerfiles/Dockerfile.%s .'
+            'build%s %s -t %s -f docker_config/dockerfiles/Dockerfile.%s .'
             % (cache_args, build_args, docker_image, image)
         )
 

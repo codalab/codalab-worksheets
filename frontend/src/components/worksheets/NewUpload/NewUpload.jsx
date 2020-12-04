@@ -40,7 +40,8 @@ class NewUpload extends React.Component<{
     state = {
         /* Whether the upload is in progress */
         uploading: false,
-        percentComplete: 0,
+        numeratorComplete: 0,
+        denominatorComplete: 0,
     }
 
     inputFolder = React.createRef();
@@ -63,6 +64,104 @@ class NewUpload extends React.Component<{
         this.uploadFolder(files);
     }
 
+    readFileAsync(bundleUuid, file) {
+        return new Promise((resolve, reject) => {
+            let reader = new FileReader();
+            reader.onload = () => {
+                let arrayBuffer = reader.result,
+                    bytesArray = new Uint8Array(arrayBuffer);
+                let url =
+                    '/rest/bundles/' +
+                    bundleUuid +
+                    '/contents/blob/?' +
+                    getQueryParams(file.name);
+                $.ajax({
+                    url: url,
+                    type: 'PUT',
+                    contentType: 'application/octet-stream',
+                    data: new Blob([bytesArray]),
+                    processData: false,
+                    xhr: () => {
+                        let xhr = new window.XMLHttpRequest();
+                        xhr.upload.addEventListener(
+                            'progress',
+                            (evt) => {
+                                if (evt.lengthComputable) {
+                                    this.setState(prevState => {
+                                        return { numeratorComplete: prevState.numeratorComplete + evt.loaded,
+                                            denominatorComplete: prevState.denominatorComplete + evt.total};
+                                    });
+                                }
+                            },
+                            false,
+                        );
+                        return xhr;
+                    },
+                    success: function (data) {
+                        resolve(data);
+                    },
+                    error: function (error) {
+                        this.clearProgress();
+                        alert(
+                            createAlertText(
+                                error.responseText,
+                                'refresh and try again.',
+                            ),
+                        );
+                        this.props.onUploadFinish();
+                        reject(error);
+                    },
+                });
+
+            };
+            reader.readAsArrayBuffer(file);
+        })
+    }
+
+    asyncUploadFiles = async (files) => {
+        const { worksheetUUID, after_sort_key } = this.props;
+        const { name, description } = this.state;
+        this.setState({
+            uploading: true,
+        });
+
+        let promises = [...files].map(async file => {
+            const createBundleData = getDefaultBundleMetadata(name || file.name, description);
+            let url = `/rest/bundles?worksheet=${ worksheetUUID }`;
+            if (after_sort_key) {
+                url += `&after_sort_key=${ after_sort_key }`;
+            }
+            async function createFileBundle(url, data) {
+                let result;
+                try {
+                    result = await $.ajax({
+                        url: url,
+                        data: data,
+                        contentType: 'application/json',
+                        type: 'POST',
+                    });
+                    return result;
+                } catch (error) {
+                    this.clearProgress();
+                    alert(createAlertText(url, error.responseText));
+                }
+            }
+
+            const bundle = await createFileBundle(url, JSON.stringify(createBundleData));
+            const bundleUuid = bundle.data[0].id;
+
+            const promise = await this.readFileAsync(bundleUuid, file);
+            return promise;
+        })
+
+        await Promise.all(promises);
+        const moveIndex = true;
+        const param = { moveIndex };
+        this.clearProgress();
+        this.props.reloadWorksheet(undefined, undefined, param);
+        this.props.onUploadFinish();
+    }
+
     uploadFiles = (files) => {
         if (!files) {
             return;
@@ -74,92 +173,13 @@ class NewUpload extends React.Component<{
         }
 
         if (fileSize > FILE_SIZE_LIMIT_B) {
-            alert('File size is large than' + FILE_SIZE_LIMIT_GB + 'GB. Please upload your file(s) through CLI.');
+            alert('File size is large than ' + FILE_SIZE_LIMIT_GB + 'GB. Please upload your file(s) through CLI.');
             return;
         }
-        const { worksheetUUID, after_sort_key } = this.props;
-        const { name, description } = this.state;
-        this.setState({
-            uploading: true,
-        });
 
-        let index = -1;
-        for (const file of files) {
-            const createBundleData = getDefaultBundleMetadata(name || file.name, description);
-            index += 1;
-            let url = `/rest/bundles?worksheet=${ worksheetUUID }`;
-            if (after_sort_key) {
-                url += `&after_sort_key=${ after_sort_key }`;
-            }
-            $.ajax({
-                url,
-                data: JSON.stringify(createBundleData),
-                contentType: 'application/json',
-                type: 'POST',
-                success: (data, status, jqXHR) => {
-                    const bundleUuid = data.data[0].id;
-                    let reader = new FileReader();
-                    reader.onload = () => {
-                        let arrayBuffer = reader.result,
-                            bytesArray = new Uint8Array(arrayBuffer);
-                        let url =
-                            '/rest/bundles/' +
-                            bundleUuid +
-                            '/contents/blob/?' +
-                            getQueryParams(file.name);
-                        $.ajax({
-                            url: url,
-                            type: 'PUT',
-                            contentType: 'application/octet-stream',
-                            data: new Blob([bytesArray]),
-                            processData: false,
-                            xhr: () => {
-                                let xhr = new window.XMLHttpRequest();
-                                xhr.upload.addEventListener(
-                                    'progress',
-                                    (evt) => {
-                                        if (evt.lengthComputable) {
-                                            const percentComplete = parseInt(
-                                                (evt.loaded / evt.total) * 100,
-                                            );
-                                            this.setState({ percentComplete });
-                                        }
-                                    },
-                                    false,
-                                );
-                                return xhr;
-                            },
-                            success: (data, status, jqXHR) => {
-                                this.clearProgress();
-                                if (index === files.length - 1) {
-                                    const moveIndex = true;
-                                    const uploadFiles = true;
-                                    const param = { moveIndex, uploadFiles};
-                                    this.props.reloadWorksheet(undefined, undefined, param);
-                                    this.props.onUploadFinish();
-                                }
-                            },
-                            error: (jqHXR, status, error) => {
-                                this.clearProgress();
-                                alert(
-                                    createAlertText(
-                                        reader.url,
-                                        jqHXR.responseText,
-                                        'refresh and try again.',
-                                    ),
-                                );
-                                this.props.onUploadFinish();
-                            },
-                        });
-                    };
-                    reader.readAsArrayBuffer(file);
-                },
-                error: (jqHXR, status, error) => {
-                    this.clearProgress();
-                    alert(createAlertText(url, jqHXR.responseText));
-                },
-            });
-        }
+        // let promises = [];
+
+        this.asyncUploadFiles(files);
     }
 
     uploadFolder = (files) => {
@@ -184,9 +204,8 @@ class NewUpload extends React.Component<{
             uploading: true,
         });
         let url = `/rest/bundles?worksheet=${ worksheetUUID }`;
-        if (after_sort_key) {
-            url += `&after_sort_key=${ after_sort_key }`;
-        }
+        url += `&after_sort_key=${ isNaN(after_sort_key) ? -1: after_sort_key }`;
+
 
         let zip = new JSZip();
         [...files].map(file => {
@@ -219,10 +238,10 @@ class NewUpload extends React.Component<{
                                 'progress',
                                 (evt) => {
                                     if (evt.lengthComputable) {
-                                        const percentComplete = parseInt(
-                                            (evt.loaded / evt.total) * 100,
-                                        );
-                                        this.setState({ percentComplete });
+                                        this.setState(prevState => {
+                                            return { numeratorComplete: prevState.numeratorComplete + evt.loaded,
+                                                denominatorComplete: prevState.denominatorComplete + evt.total};
+                                        });
                                     }
                                 },
                                 false,
@@ -258,12 +277,13 @@ class NewUpload extends React.Component<{
     }
 
     clearProgress = () => {
-        this.setState({ percentComplete: 0, uploading: false });
+        this.setState({ numeratorComplete: 0, denominatorComplete: 0, uploading: false });
     }
 
     render() {
         const { classes } = this.props;
-        const { percentComplete, uploading } = this.state;
+        const { numeratorComplete, denominatorComplete, uploading } = this.state;
+        const progressbarVal = parseInt((numeratorComplete / denominatorComplete) * 100) || 0;
 
         return (
             <React.Fragment>
@@ -288,8 +308,8 @@ class NewUpload extends React.Component<{
                 { uploading && <CircularProgressbar
                         className={ classes.progress }
                         variant="determinate"
-                        value={ percentComplete }
-                        text={`${percentComplete}% uploaded`}
+                        value={ progressbarVal }
+                        text={`${progressbarVal }% uploaded`}
                         styles={buildStyles({
                             textSize: '12px',
                         })}

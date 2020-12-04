@@ -7,7 +7,7 @@ import sys
 
 
 # should match codalab/common.py#CODALAB_VERSION
-CODALAB_VERSION = "0.5.29"
+CODALAB_VERSION = "0.5.30"
 
 
 class Install(install):
@@ -85,6 +85,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: Apache Software License",
     ],
+    py_modules=['codalab_service'],
     python_requires='~=3.6',
     cmdclass={'install': Install},
     include_package_data=True,
