@@ -2390,7 +2390,7 @@ def test_nonexistent(ctx):
 
 
 @TestModule.register('worker_manager')
-def test_false_login(ctx):
+def test_incorrect_login(ctx):
     username = os.getenv("CODALAB_USERNAME")
     password = os.getenv("CODALAB_PASSWORD")
     del os.environ["CODALAB_USERNAME"]
