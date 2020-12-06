@@ -289,29 +289,28 @@ class WorkerManager(object):
     def filter_bundles(self, bundles: BundlesPayload) -> BundlesPayload:
         filtered_bundles: BundlesPayload = []
         worker_memory_bytes: int = parse_size('{}m'.format(self.args.memory_mb))
-        logger.info(f"Current worker manager allocates {self.args.cpus} CPUs, {self.args.gpus} GPUs, "
-                    "and {worker_memory_bytes} bytes of RAM")
+        logger.info(
+            f"Current worker manager allocates {self.args.cpus} CPUs, {self.args.gpus} GPUs, "
+            "and {worker_memory_bytes} bytes of RAM"
+        )
         for bundle in bundles:
             # Filter bundles based on the resources specified when creating the worker manager
             if bundle['metadata']['request_cpus'] > self.args.cpus:
                 logger.info(
                     'Filtered out bundle {} based on unfulfillable resource requested: request_cpus={}'.format(
-                        bundle['uuid'],
-                        bundle['metadata']['request_cpus'],
+                        bundle['uuid'], bundle['metadata']['request_cpus'],
                     )
                 )
             elif bundle['metadata']['request_gpus'] > self.args.gpus:
                 logger.info(
                     'Filtered out bundle {} based on unfulfillable resource requested: request_gpus={}'.format(
-                        bundle['uuid'],
-                        bundle['metadata']['request_gpus'],
+                        bundle['uuid'], bundle['metadata']['request_gpus'],
                     )
                 )
             elif parse_size(bundle['metadata']['request_memory']) <= worker_memory_bytes:
                 logger.info(
                     'Filtered out bundle {} based on unfulfillable resource requested: request_memory={}'.format(
-                        bundle['uuid'],
-                        bundle['metadata']['request_memory'],
+                        bundle['uuid'], bundle['metadata']['request_memory'],
                     )
                 )
             else:
