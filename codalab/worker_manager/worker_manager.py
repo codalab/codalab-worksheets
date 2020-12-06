@@ -17,7 +17,6 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.lib.formatting import parse_size
 from codalab.worker.bundle_state import State
 
-
 logger = logging.getLogger(__name__)
 
 # Type aliases
@@ -147,24 +146,26 @@ class WorkerManager(object):
         return command
 
     def run_loop(self):
-        try:
-            self.run_one_iteration()
-        except (
-            urllib.error.URLError,
-            http.client.HTTPException,
-            socket.error,
-            JsonApiException,
-            NotFoundError,
-        ):
-            # Sometimes, network errors occur when running the WorkerManager . These are often
-            # transient exceptions, and retrying the command would lead to success---as a result,
-            # we ignore these network-based exceptions (rather than fatally exiting from the
-            # WorkerManager )
-            traceback.print_exc()
-        except LoginPermissionError:
-            print("Invalid username or password. Please try again:")
-        logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
-        time.sleep(self.args.sleep_time)
+        while True:
+            try:
+                self.run_one_iteration()
+            except (
+                urllib.error.URLError,
+                http.client.HTTPException,
+                socket.error,
+                JsonApiException,
+                NotFoundError,
+            ):
+                # Sometimes, network errors occur when running the WorkerManager . These are often
+                # transient exceptions, and retrying the command would lead to success---as a result,
+                # we ignore these network-based exceptions (rather than fatally exiting from the
+                # WorkerManager )
+                traceback.print_exc()
+            except LoginPermissionError:
+                print("Invalid username or password. Please try again:")
+                break
+            logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
+            time.sleep(self.args.sleep_time)
 
     def run_one_iteration(self):
         if self.args.restart_after_seconds:
