@@ -66,6 +66,6 @@ class RestOAuthHandler(object):
         except urllib.error.HTTPError as e:
             if e.code == 401:
                 return None
-            if e.code == 404:
+            elif e.code == 404:
                 raise LoginPermissionError("Invalid username or password.")
             raise e
