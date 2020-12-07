@@ -1289,7 +1289,12 @@ class BundleCLI(object):
         if args.link:
             if len(args.path) != 1:
                 raise UsageError("Only a single path can be uploaded when using --link.")
-            bundle_info['metadata']['link_url'] = args.path[0]
+            # If link_url is a relative path, prepend the current working directory to it.
+            bundle_info['metadata']['link_url'] = (
+                args.path[0]
+                if os.path.isabs(args.path[0])
+                else os.path.join(os.getcwd(), args.path[0])
+            )
             bundle_info['metadata']['link_format'] = LinkFormat.RAW
 
             new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})
@@ -3785,7 +3790,6 @@ class BundleCLI(object):
         """
         if args.grant_access and args.remove_access:
             raise UsageError('Can\'t both grant and remove access for a user.')
-
         client = self.manager.current_client()
 
         # Build user info
@@ -3844,16 +3848,17 @@ class BundleCLI(object):
             '  uls .format=<format>                : Apply <format> function (see worksheet markdown).',
         ],
         arguments=(
-            Commands.Argument('keywords', help='Keywords to search for.', nargs='+'),
+            Commands.Argument('keywords', help='Keywords to search for.', nargs='*'),
             Commands.Argument('-f', '--field', help='Print out these comma-separated fields.'),
         ),
     )
     def do_uls_command(self, args):
         """
         Search for specific users.
+        If no argument is passed, we assume the user is searching for a keyword of an empty string.
         """
         client = self.manager.current_client()
-        users = client.fetch('users', params={'keywords': args.keywords})
+        users = client.fetch('users', params={'keywords': args.keywords or ''})
         # Print direct numeric result
         if 'meta' in users:
             print(users['meta']['results'], file=self.stdout)

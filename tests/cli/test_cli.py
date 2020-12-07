@@ -258,6 +258,7 @@ def _run_command(
     include_stderr=False,
     binary=False,
     force_subprocess=False,
+    cwd=None,
     request_memory="10m",
     request_disk="1m",
     request_time=None,
@@ -273,6 +274,7 @@ def _run_command(
         include_stderr (bool, optional): Include stderr in output. Defaults to False.
         binary (bool, optional): Whether output is binary. Defaults to False.
         force_subprocess (bool, optional): Force "cl" commands to run with subprocess, rather than running the CodaLab CLI directly through Python. Defaults to False.
+        cwd (str, optional): Current working directory for the command to be run from. Only has an effect if force_subpocess is set to True. Defaults to None.
         request_memory (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "10m".
         request_disk (str, optional): Value of the --request-memory argument passed to "cl run" commands. Defaults to "1m".
         request_time (str, optional): Value of the --request-time argument passed to "cl run" commands. Defaults to None (no argument is passed).
@@ -300,7 +302,14 @@ def _run_command(
         # Always use subprocess for non-"cl" commands.
         force_subprocess = True
     return run_command(
-        args, expected_exit_code, max_output_chars, env, include_stderr, binary, force_subprocess
+        args,
+        expected_exit_code,
+        max_output_chars,
+        env,
+        include_stderr,
+        binary,
+        force_subprocess,
+        cwd,
     )
 
 
@@ -1060,6 +1069,9 @@ def test(ctx):
         '3', _run_command([cl, 'uls', '.time_used_less_than=' + '1%', '-f', 'parallel_run_quota'])
     )
 
+    # List all users if no argument is passed
+    check_contains('non_root_user', _run_command([cl, 'uls']))
+
 
 @TestModule.register('freeze')
 def test_freeze(ctx):
@@ -1353,13 +1365,11 @@ def test_link(ctx):
     # We create the temporary file at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts because
     # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
     # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
+    link_mounts_dir = "/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts"
 
-    os.makedirs('/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts', exist_ok=True)
+    os.makedirs(link_mounts_dir, exist_ok=True)
     with tempfile.NamedTemporaryFile(
-        mode='w',
-        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts',
-        suffix=".txt",
-        delete=False,
+        mode='w', dir=link_mounts_dir, suffix=".txt", delete=False,
     ) as f:
         f.write("hello world!")
     _, host_filename = f.name.split("/opt/codalab-worksheets-link-mounts")
@@ -1376,9 +1386,7 @@ def test_link(ctx):
     os.remove(f.name)
 
     # Upload directory
-    with tempfile.TemporaryDirectory(
-        dir='/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts'
-    ) as dirname:
+    with tempfile.TemporaryDirectory(dir=link_mounts_dir) as dirname:
         with open(os.path.join(dirname, "test.txt"), "w+") as f:
             f.write("hello world!")
 
@@ -1392,6 +1400,20 @@ def test_link(ctx):
         run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo/test.txt'])
         wait(run_uuid)
         check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
+
+    # Upload with a relative path.
+    # This test only ensures that the link_url is properly set from
+    # the current working directory if a relative path is supplied.
+    # Note that CodaLab can't actually read the contents of this bundle
+    # because the file is in /tmp in the Docker container, which is
+    # inaccessible from the host.
+    with tempfile.NamedTemporaryFile(mode='w', dir='/tmp', suffix=".txt", delete=False,) as f:
+        f.write("hello world!")
+    _, filename = f.name.split("/tmp/")
+    uuid = _run_command([cl, 'upload', filename, '--link'], force_subprocess=True, cwd="/tmp")
+    check_equals(State.READY, get_info(uuid, 'state'))
+    check_equals(f"/tmp/{filename}", get_info(uuid, 'link_url'))
+    os.remove(f.name)
 
 
 @TestModule.register('run2')
@@ -2367,6 +2389,29 @@ def test_nonexistent(ctx):
     _run_command([cl, 'work', 'nonexistent::'], expected_exit_code=1)
 
 
+@TestModule.register('worker_manager')
+def test_incorrect_login(ctx):
+    username = os.getenv("CODALAB_USERNAME")
+    password = os.getenv("CODALAB_PASSWORD")
+    del os.environ["CODALAB_USERNAME"]
+    del os.environ["CODALAB_PASSWORD"]
+    _run_command([cl, 'logout'])
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = "wrongpassword"
+    os.environ['USER'] = "some_user"
+    result = _run_command(
+        [
+            cl_worker_manager,
+            '--server=https://worksheets.codalab.org/',
+            'slurm-batch',
+            '--partition',
+            'foo',
+        ],
+    )
+    check_equals(str(result), "Invalid username or password. Please try again:")
+    os.environ["CODALAB_PASSWORD"] = password
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
@@ -2403,10 +2448,17 @@ if __name__ == '__main__':
         choices=list(TestModule.modules.keys()) + ['all', 'default'],
         help='Tests to run from: {%(choices)s}',
     )
+    parser.add_argument(
+        '--cl-worker-manager',
+        type=str,
+        help='Path to codalab worker manager CLI executable, defaults to "cl-worker-manager"',
+        default='cl-worker-manager',
+    )
 
     args = parser.parse_args()
     cl = args.cl_executable
     cl_version = args.cl_version
+    cl_worker_manager = args.cl_worker_manager
     success = TestModule.run(args.tests, args.instance, args.second_instance)
     if not success:
         sys.exit(1)
