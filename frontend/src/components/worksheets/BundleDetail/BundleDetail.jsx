@@ -174,11 +174,9 @@ class BundleDetail extends React.Component<
                         }
                     }.bind(this),
                 );
-                // see https://medium.com/sungthecoder/making-multiple-ajax-calls-and-deciphering-when-apply-array-b35d1b4b1f50
-                // to understand the command $.when.apply($, someArray)
-                await $.when.apply($, fetchRequests);
+                // $.when.apply($, someArray) is another way of writing
+                await Promise.all(fetchRequests);
                 this.setState(stateUpdate);
-                return $.when(fetchRequests);
             }
         }).fail(function(xhr, status, err) {
             // 404 Not Found errors are normal if contents aren't available yet, so ignore them
