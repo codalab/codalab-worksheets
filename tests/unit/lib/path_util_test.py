@@ -1,6 +1,6 @@
 import errno
 import hashlib
-import mock
+from unittest import mock
 import os
 import unittest
 
