@@ -82,6 +82,7 @@ class MainPanel extends React.Component<{
             snackbarMessage: '',
             snackbarVariant: '',
             worksheets: [],
+            bundles: [],
         };
     }
 
