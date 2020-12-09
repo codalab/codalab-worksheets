@@ -1,5 +1,5 @@
 import unittest
-from mock import Mock
+from unittest.mock import Mock
 
 from codalab.objects.metadata_spec import MetadataSpec
 from codalab.server.bundle_manager import BundleManager

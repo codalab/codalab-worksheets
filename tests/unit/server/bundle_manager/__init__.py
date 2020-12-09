@@ -1,5 +1,5 @@
 import unittest
-from mock import Mock
+from unittest.mock import Mock
 import os
 from codalab.server.bundle_manager import BundleManager
 from codalab.worker.bundle_state import BundleCheckinState, State
