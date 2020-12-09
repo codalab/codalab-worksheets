@@ -87,9 +87,9 @@ class MainPanel extends React.Component<{
 
     componentDidMount() {
         // Fetch worksheets owned by the current user
-        const url = '/rest/interpret/wsearch';
+        const worksheetUrl: URL = '/rest/interpret/wsearch';
         $.ajax({
-            url: url,
+            url: worksheetUrl,
             dataType: 'json',
             type: 'POST',
             cache: false,
@@ -107,6 +107,47 @@ class MainPanel extends React.Component<{
                 console.error(xhr.responseText);
             },
         });
+
+        // Fetch bundles' count in different states owned by the current user one by one
+        let states: String[] = [
+            'created',
+            'staged',
+            'preparing',
+            'running',
+            'ready',
+            'failed',
+            'killed',
+        ];
+        const bundleUrl: URL = '/rest/interpret/search';
+        const fetchBundles = (stateIndex, bundlesDict) => {
+            $.ajax({
+                url: bundleUrl,
+                dataType: 'json',
+                type: 'POST',
+                cache: false,
+                data: JSON.stringify({
+                    keywords: ['.mine', '.count', 'state=' + states[stateIndex]],
+                }),
+                contentType: 'application/json; charset=utf-8',
+                success: (data) => {
+                    bundlesDict[states[stateIndex]] = data.response.result;
+                    if (stateIndex < states.length - 1) {
+                        fetchBundles(stateIndex + 1, bundlesDict);
+                    } else {
+                        const bundles: HTMLElement[] = [];
+                        for (let state in bundlesDict) {
+                            bundles.push(<li key={state}>{state + ': ' + bundlesDict[state]}</li>);
+                        }
+                        this.setState({ bundles: bundles });
+                    }
+                },
+                error: (xhr, status, err) => {
+                    console.error(xhr.responseText);
+                },
+            });
+        };
+        // Start to fetch the bundles' count
+        fetchBundles(0, {});
     }
 
     static getDerivedStateFromProps(nextProps, prevState) {
@@ -180,7 +221,16 @@ class MainPanel extends React.Component<{
                         </Box>
                     </Card>
                 </Card>
-
+                <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
+                    <Box className={classes.titleBox} display={'flex'} alignItems={'center'}>
+                        <h3 className={classes.heading}>My Bundles</h3>
+                    </Box>
+                    <Card className={classes.card}>
+                        <Box className={classes.box}>
+                            <ul>{this.state.bundles}</ul>
+                        </Box>
+                    </Card>
+                </Card>
                 <Dialog
                     open={this.state.newWorksheetShowDialog}
                     onClose={() => this.resetDialog()}
