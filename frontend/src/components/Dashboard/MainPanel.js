@@ -1,4 +1,5 @@
 import * as React from 'react';
+import $ from 'jquery';
 import Card from '@material-ui/core/Card';
 import { withStyles } from '@material-ui/core/styles';
 import Box from '@material-ui/core/Box';
@@ -80,11 +81,35 @@ class MainPanel extends React.Component<{
             snackbarShow: false,
             snackbarMessage: '',
             snackbarVariant: '',
+            worksheets: [],
         };
     }
 
+    componentDidMount() {
+        // Fetch worksheets owned by the current user
+        const url = '/rest/interpret/wsearch';
+        $.ajax({
+            url: url,
+            dataType: 'json',
+            type: 'POST',
+            cache: false,
+            data: JSON.stringify({ keywords: ['.mine'] }),
+            contentType: 'application/json; charset=utf-8',
+            success: (data) => {
+                const worksheets = data.response.map((ws, i) => (
+                    <li key={ws.uuid}>
+                        <a href={'/rest/worksheets/' + ws.uuid}>{ws.name + '[' + ws.title + ']'}</a>
+                    </li>
+                ));
+                this.setState({ worksheets });
+            },
+            error: (xhr, status, err) => {
+                console.error(xhr.responseText);
+            },
+        });
+    }
+
     static getDerivedStateFromProps(nextProps, prevState) {
-        console.log(nextProps.userInfo, prevState.userInfo);
         if (nextProps.userInfo !== prevState.userInfo) {
             return {
                 userInfo: nextProps.userInfo,
@@ -150,7 +175,9 @@ class MainPanel extends React.Component<{
                         </Tooltip>
                     </Box>
                     <Card className={classes.card}>
-                        <Box className={classes.box}>Worksheet Content Here</Box>
+                        <Box className={classes.box}>
+                            <ul>{this.state.worksheets}</ul>
+                        </Box>
                     </Card>
                 </Card>
 
