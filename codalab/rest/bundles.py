@@ -598,6 +598,10 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     - `Content-Encoding: identity`
     - `Target-Type: directory`
     - `X-CodaLab-Target-Size: <size of the target>`
+
+    Note that X-CodaLab-Target-Size is the uncompressed version of the target size. This means that it will
+    be equivalent to the downloaded file if from a single-file target, but will be the size of the uncompressed
+    archive, not the compressed archive, if from a directory target.
     """
     byte_range = get_request_range()
     head_lines = query_get_type(int, 'head', default=0)
