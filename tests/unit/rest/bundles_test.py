@@ -1,6 +1,6 @@
 from .base import BaseTestCase
 from freezegun import freeze_time
-from io import BytesIO, StringIO
+from io import BytesIO
 import tarfile
 
 
