@@ -178,7 +178,7 @@ class BundlesTest(BaseTestCase):
             response.headers['Content-Disposition'], 'attachment; filename="File.tar.gz"'
         )
         self.assertEqual(response.headers['Target-Type'], 'directory')
-        self.assertEqual(response.headers['X-Codalab-Target-Size'], '128')
+        self.assertEqual(response.headers['X-Codalab-Target-Size'], '4096')
 
         response = self.app.head(f'/rest/bundles/{bundle_id}/contents/blob/file-two.txt')
         self.assertEqual(response.status_int, 200)
