@@ -89,13 +89,18 @@ class SideBar extends React.Component {
     componentDidMount() {
         // Fetch bundles' count in different states owned by the current user one by one
         let states: String[] = [
+            'uploading',
             'created',
             'staged',
+            'making',
+            'starting',
             'preparing',
             'running',
+            'finalizing',
             'ready',
             'failed',
             'killed',
+            'worker_offline',
         ];
         const bundleUrl: URL = '/rest/interpret/search';
         const fetchBundles = (stateIndex, bundlesDict) => {
@@ -115,7 +120,12 @@ class SideBar extends React.Component {
                     } else {
                         const bundles: HTMLElement[] = [];
                         for (let state in bundlesDict) {
-                            bundles.push(<li key={state}>{state + ': ' + bundlesDict[state]}</li>);
+                            // Only show the non-zero items
+                            if (bundlesDict[state] > 0) {
+                                bundles.push(
+                                    <li key={state}>{state + ': ' + bundlesDict[state]}</li>,
+                                );
+                            }
                         }
                         this.setState({ bundles: bundles });
                     }
