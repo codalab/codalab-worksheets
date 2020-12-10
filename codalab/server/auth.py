@@ -6,7 +6,7 @@ import json
 import urllib.request
 import urllib.parse
 import urllib.error
-from codalab.common import URLOPEN_TIMEOUT_SECONDS
+from codalab.common import URLOPEN_TIMEOUT_SECONDS, LoginPermissionError
 
 
 # TODO(sckoo): clean up auth logic across:
@@ -66,4 +66,6 @@ class RestOAuthHandler(object):
         except urllib.error.HTTPError as e:
             if e.code == 401:
                 return None
-            raise
+            elif e.code == 404:
+                raise LoginPermissionError("Invalid username or password.")
+            raise e
