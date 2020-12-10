@@ -722,7 +722,10 @@ def _update_bundle_contents_blob(uuid):
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
     if bundle.state in State.FINAL_STATES:
-        abort(http.client.FORBIDDEN, f'Contents cannot be modified, bundle already finalized, in state {State.FINAL_STATES}.')
+        abort(
+            http.client.FORBIDDEN,
+            f'Contents cannot be modified, bundle already finalized, in state {State.FINAL_STATES}.',
+        )
 
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
