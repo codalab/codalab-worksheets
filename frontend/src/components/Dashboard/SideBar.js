@@ -156,7 +156,6 @@ class SideBar extends React.Component {
                 </Box>
                 <Divider />
                 <Box className={classes.box}>
-                    <h3 className={classes.heading}>Basic Statistics</h3>
                     <p className={classes.subheader}>My Disk Usage</p>
                     <Box display={'flex'} alignItems={'center'}>
                         <StyledSlider
