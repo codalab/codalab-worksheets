@@ -11,12 +11,11 @@ from argparse import ArgumentParser
 from collections import namedtuple
 from typing import Dict, List, Union
 
-from codalab.common import NotFoundError
+from codalab.common import NotFoundError, LoginPermissionError
 from codalab.client.json_api_client import JsonApiException
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.lib.formatting import parse_size
 from codalab.worker.bundle_state import State
-
 
 logger = logging.getLogger(__name__)
 
@@ -154,15 +153,16 @@ class WorkerManager(object):
                 urllib.error.URLError,
                 http.client.HTTPException,
                 socket.error,
-                NotFoundError,
                 JsonApiException,
+                NotFoundError,
             ):
                 # Sometimes, network errors occur when running the WorkerManager . These are often
                 # transient exceptions, and retrying the command would lead to success---as a result,
                 # we ignore these network-based exceptions (rather than fatally exiting from the
                 # WorkerManager )
                 traceback.print_exc()
-            if self.args.once:
+            except LoginPermissionError:
+                print("Invalid username or password. Please try again:")
                 break
             logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
             time.sleep(self.args.sleep_time)
