@@ -124,7 +124,7 @@ class WorksheetSchema(Schema):
     title = fields.String()
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
-    date_created = fields.DateTime()
+    date_created = fields.DateTime(allow_none=True)
     date_last_modified = fields.DateTime(allow_none=True)
     tags = fields.List(fields.String(validate=validate_ascii))
     group_permissions = fields.Relationship(
