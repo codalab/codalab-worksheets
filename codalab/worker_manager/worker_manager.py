@@ -307,7 +307,7 @@ class WorkerManager(object):
                         bundle['uuid'], bundle['metadata']['request_gpus'],
                     )
                 )
-            elif parse_size(bundle['metadata']['request_memory']) <= worker_memory_bytes:
+            elif parse_size(bundle['metadata']['request_memory']) > worker_memory_bytes:
                 logger.info(
                     'Filtered out bundle {} based on unfulfillable resource requested: request_memory={}'.format(
                         bundle['uuid'], bundle['metadata']['request_memory'],
