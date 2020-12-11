@@ -136,7 +136,7 @@ services:
       --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
       --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
-      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --job-queue ${CODALAB_WORKER_MANAGER_CPU_AWS_BATCH_QUEUE}
       --region ${CODALAB_WORKER_MANAGER_AWS_REGION}
@@ -161,7 +161,7 @@ services:
       --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
       --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
-      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --job-queue ${CODALAB_WORKER_MANAGER_GPU_AWS_BATCH_QUEUE}
       --region ${CODALAB_WORKER_MANAGER_AWS_REGION}
@@ -187,7 +187,7 @@ services:
       --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
       --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
-      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --account-name ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME}
       --account-key ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY}
@@ -214,7 +214,7 @@ services:
       --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_SECONDS_BETWEEN_WORKERS}
       --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
-      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --account-name ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME}
       --account-key ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY}
