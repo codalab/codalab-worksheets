@@ -283,6 +283,12 @@ CODALAB_ARGUMENTS = [
         default='10g',
     ),
     CodalabArg(
+        name='worker_manager_worker_checkin_frequency_seconds',
+        help='Number of seconds worker will wait between check-ins of the worker manager',
+        type=int,
+        default=5,
+    ),
+    CodalabArg(
         name='worker_manager_idle_seconds',
         help='Number of seconds workers wait idle before exiting',
         type=int,
