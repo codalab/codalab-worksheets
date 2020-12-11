@@ -590,12 +590,18 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     - `Content-Type: <guess of mimetype based on file extension>`
     - `Content-Encoding: [gzip|identity]`
     - `Target-Type: file`
+    - `X-CodaLab-Target-Size: <size of the target>`
 
     HTTP Response headers (for directories):
     - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
     - `Content-Type: application/gzip`
     - `Content-Encoding: identity`
     - `Target-Type: directory`
+    - `X-CodaLab-Target-Size: <size of the target>`
+
+    Note that X-CodaLab-Target-Size is the uncompressed version of the target size. This means that it will
+    be equivalent to the downloaded file if from a single-file target, but will be the size of the uncompressed
+    archive, not the compressed archive, if from a directory target.
     """
     byte_range = get_request_range()
     head_lines = query_get_type(int, 'head', default=0)
@@ -678,6 +684,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     else:
         response.set_header('Content-Disposition', 'attachment; filename="%s"' % filename)
     response.set_header('Target-Type', target_info['type'])
+    response.set_header('X-Codalab-Target-Size', target_info['size'])
 
     return fileobj
 
