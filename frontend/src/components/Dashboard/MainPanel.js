@@ -42,6 +42,23 @@ const styles = ({ spacing, palette }) => {
                 flex: 'auto',
             },
         },
+        wsCard: {
+            display: 'flex',
+            flexDirection: 'column',
+            padding: spacing(2),
+            elevation: 5,
+            marginLeft: 8,
+            marginBottom: 8,
+            width: '90%',
+            borderRadius: 12,
+            boxShadow: '0 2px 4px 0 rgba(138, 148, 159, 0.2)',
+            '& > *:nth-child(1)': {
+                marginRight: spacing(2),
+            },
+            '& > *:nth-child(2)': {
+                flex: 'auto',
+            },
+        },
         heading: {
             fontFamily: family,
             fontSize: 16,
@@ -86,6 +103,7 @@ class MainPanel extends React.Component<{
     }
 
     componentDidMount() {
+        const { classes } = this.props;
         // Fetch worksheets owned by the current user
         const worksheetUrl: URL = '/rest/interpret/wsearch';
         $.ajax({
@@ -97,9 +115,19 @@ class MainPanel extends React.Component<{
             contentType: 'application/json; charset=utf-8',
             success: (data) => {
                 const worksheets = data.response.map((ws, i) => (
-                    <li key={ws.uuid}>
-                        <a href={'/rest/worksheets/' + ws.uuid}>{ws.name + '[' + ws.title + ']'}</a>
-                    </li>
+                    <Card className={classes.wsCard}>
+                        <Box className={classes.box} alignItems={'center'}>
+                            <a href={'/rest/worksheets/' + ws.uuid}>
+                                {ws.title ? ws.title : 'Untitled'}
+                            </a>
+                            <Box display={'flex'} alignItems={'center'}>
+                                <p className={classes.subheader}>
+                                    {ws.name}{' '}
+                                    {'   |   Owned by: ' + ws.owner_name + '[' + ws.owner_id + ']'}
+                                </p>
+                            </Box>
+                        </Box>
+                    </Card>
                 ));
                 this.setState({ worksheets });
             },
@@ -174,11 +202,8 @@ class MainPanel extends React.Component<{
                             </Button>
                         </Tooltip>
                     </Box>
-                    <Card className={classes.card}>
-                        <Box className={classes.box}>
-                            <ul>{this.state.worksheets}</ul>
-                        </Box>
-                    </Card>
+
+                    {this.state.worksheets}
                 </Card>
                 <Dialog
                     open={this.state.newWorksheetShowDialog}
