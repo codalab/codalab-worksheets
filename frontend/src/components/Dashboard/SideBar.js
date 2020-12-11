@@ -18,7 +18,6 @@ const styles = ({ spacing, palette }) => {
             flexDirection: 'column',
             padding: spacing(2),
             height: '100%',
-            minWidth: 288,
             boxShadow: '0 2px 4px 0 rgba(138, 148, 159, 0.2)',
             '& > *:nth-child(1)': {
                 marginRight: spacing(2),
@@ -37,21 +36,45 @@ const styles = ({ spacing, palette }) => {
             marginBottom: 0,
         },
         subheader: {
-            fontFamily: family,
             fontSize: 14,
-            color: palette.grey[600],
-            letterSpacing: '1px',
             marginBottom: 4,
+            fontFamily: 'Roboto',
+            fontStyle: 'normal',
+            fontWeight: 300,
+            letterSpacing: 0.1,
+            color: '#000000',
+            lineHeight: '150%',
         },
         email: {
-            fontFamily: family,
             textDecoration: 'underline',
-            fontSize: 14,
+            fontSize: 15,
             marginBottom: 4,
+            fontFamily: 'Roboto',
+            fontStyle: 'normal',
+            fontWeight: 300,
+            letterSpacing: 0.15,
+            color: '#000000',
+            lineHeight: '200%',
+        },
+        affiliation: {
+            fontSize: 15,
+            marginBottom: 4,
+            fontFamily: 'Roboto',
+            fontStyle: 'normal',
+            fontWeight: 'normal',
+            letterSpacing: 0.15,
+            color: '#000000',
         },
         value: {
             fontSize: 14,
             color: palette.grey[500],
+        },
+        name: {
+            fontFamily: 'Roboto',
+            fontStyle: 'normal',
+            fontWeight: 500,
+            fontSize: 20,
+            letterSpacing: 0.15,
         },
     };
 };
@@ -87,6 +110,7 @@ class SideBar extends React.Component {
     }
 
     componentDidMount() {
+        const { classes } = this.props;
         // Fetch bundles' count in different states owned by the current user one by one
         let states: String[] = [
             'uploading',
@@ -123,7 +147,9 @@ class SideBar extends React.Component {
                             // Only show the non-zero items
                             if (bundlesDict[state] > 0) {
                                 bundles.push(
-                                    <li key={state}>{state + ': ' + bundlesDict[state]}</li>,
+                                    <li key={state} className={classes.subheader}>
+                                        {state + ': ' + bundlesDict[state]}
+                                    </li>,
                                 );
                             }
                         }
@@ -148,15 +174,17 @@ class SideBar extends React.Component {
             <Card className={cx(classes.card)} elevation={0} style={{ height: '100%' }}>
                 <Avatar src={'https://i.pravatar.cc/30'} className={classes.avatar} />
                 <Box className={classes.box}>
-                    <h3 className={classes.heading}>{userInfo.user_name}</h3>
+                    <h3 className={classes.name}>{userInfo.user_name}</h3>
                     <a className={classes.email} href={userInfo.email}>
                         {userInfo.email}
                     </a>
-                    <p className={classes.subheader}>Affiliation: {userInfo.affiliation}</p>
+                    {userInfo.affiliation ? (
+                        <p className={classes.affiliation}>Affiliation: {userInfo.affiliation}</p>
+                    ) : null}
                 </Box>
                 <Divider />
                 <Box className={classes.box}>
-                    <p className={classes.subheader}>My Disk Usage</p>
+                    <p className={classes.subheader}>My Disk Usage (Bytes)</p>
                     <Box display={'flex'} alignItems={'center'}>
                         <StyledSlider
                             classes={sliderStyles}
@@ -166,7 +194,7 @@ class SideBar extends React.Component {
                             {userInfo.disk_used}/{userInfo.disk_quota}
                         </span>
                     </Box>
-                    <p className={classes.subheader}>My Time Usage</p>
+                    <p className={classes.subheader}>My Time Usage (Seconds)</p>
                     <Box display={'flex'} alignItems={'center'}>
                         <StyledSlider
                             classes={sliderStyles}

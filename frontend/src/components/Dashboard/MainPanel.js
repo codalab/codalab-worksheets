@@ -60,22 +60,31 @@ const styles = ({ spacing, palette }) => {
             },
         },
         heading: {
-            fontFamily: family,
-            fontSize: 16,
+            fontSize: 20,
+            fontFamily: 'Roboto',
+            fontStyle: 'normal',
+            fontWeight: 500,
+            letterSpacing: 0.15,
+            lineHeight: '150%',
             marginBottom: 8,
             marginLeft: 8,
             float: 'left',
         },
-        subheader: {
-            fontFamily: family,
+        value: {
+            fontFamily: 'Roboto',
             fontSize: 14,
             color: palette.grey[600],
-            letterSpacing: '1px',
+            letterSpacing: 0.1,
             marginBottom: 4,
         },
-        value: {
-            fontSize: 14,
-            color: palette.grey[500],
+        subheader: {
+            fontSize: 16,
+            marginBottom: 4,
+            fontFamily: 'Roboto',
+            fontWeight: 400,
+            letterSpacing: 0.15,
+            color: '#4153af',
+            lineHeight: '200%',
         },
         button: {
             float: 'right',
@@ -117,11 +126,11 @@ class MainPanel extends React.Component<{
                 const worksheets = data.response.map((ws, i) => (
                     <Card className={classes.wsCard}>
                         <Box className={classes.box} alignItems={'center'}>
-                            <a href={'/rest/worksheets/' + ws.uuid}>
+                            <a className={classes.subheader} href={'/rest/worksheets/' + ws.uuid}>
                                 {ws.title ? ws.title : 'Untitled'}
                             </a>
                             <Box display={'flex'} alignItems={'center'}>
-                                <p className={classes.subheader}>
+                                <p className={classes.value}>
                                     {ws.name}{' '}
                                     {'   |   Owned by: ' + ws.owner_name + '[' + ws.owner_id + ']'}
                                 </p>
