@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.31_
+_version 0.5.32_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -539,12 +539,18 @@ HTTP Response headers (for single-file targets):
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
 - `Target-Type: file`
+- `X-CodaLab-Target-Size: <size of the target>`
 
 HTTP Response headers (for directories):
 - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
 - `Target-Type: directory`
+- `X-CodaLab-Target-Size: <size of the target>`
+
+Note that X-CodaLab-Target-Size is the uncompressed version of the target size. This means that it will
+be equivalent to the downloaded file if from a single-file target, but will be the size of the uncompressed
+archive, not the compressed archive, if from a directory target.
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/`
 
@@ -575,12 +581,18 @@ HTTP Response headers (for single-file targets):
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
 - `Target-Type: file`
+- `X-CodaLab-Target-Size: <size of the target>`
 
 HTTP Response headers (for directories):
 - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
 - `Target-Type: directory`
+- `X-CodaLab-Target-Size: <size of the target>`
+
+Note that X-CodaLab-Target-Size is the uncompressed version of the target size. This means that it will
+be equivalent to the downloaded file if from a single-file target, but will be the size of the uncompressed
+archive, not the compressed archive, if from a directory target.
 
 ### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/`
 
