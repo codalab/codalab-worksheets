@@ -288,23 +288,32 @@ class WorkerManager(object):
 
     def filter_bundles(self, bundles: BundlesPayload) -> BundlesPayload:
         filtered_bundles: BundlesPayload = []
-
+        worker_memory_bytes: int = parse_size('{}m'.format(self.args.memory_mb))
+        logger.info(
+            f"Current worker manager allocates {self.args.cpus} CPUs, {self.args.gpus} GPUs, "
+            "and {worker_memory_bytes} bytes of RAM"
+        )
         for bundle in bundles:
             # Filter bundles based on the resources specified when creating the worker manager
-            worker_memory_bytes: int = parse_size('{}m'.format(self.args.memory_mb))
-            if (
-                bundle['metadata']['request_cpus'] <= self.args.cpus
-                and bundle['metadata']['request_gpus'] <= self.args.gpus
-                and parse_size(bundle['metadata']['request_memory']) <= worker_memory_bytes
-            ):
-                filtered_bundles.append(bundle)
-            else:
+            if bundle['metadata']['request_cpus'] > self.args.cpus:
                 logger.info(
-                    'Filtered out bundle {} based on resources requested: request_cpus={}, request_gpus={}, request_memory={}'.format(
-                        bundle['uuid'],
-                        bundle['metadata']['request_cpus'],
-                        bundle['metadata']['request_gpus'],
-                        bundle['metadata']['request_memory'],
+                    'Filtered out bundle {} based on unfulfillable resource requested: request_cpus={}'.format(
+                        bundle['uuid'], bundle['metadata']['request_cpus'],
                     )
                 )
+            elif bundle['metadata']['request_gpus'] > self.args.gpus:
+                logger.info(
+                    'Filtered out bundle {} based on unfulfillable resource requested: request_gpus={}'.format(
+                        bundle['uuid'], bundle['metadata']['request_gpus'],
+                    )
+                )
+            elif parse_size(bundle['metadata']['request_memory']) > worker_memory_bytes:
+                logger.info(
+                    'Filtered out bundle {} based on unfulfillable resource requested: request_memory={}'.format(
+                        bundle['uuid'], bundle['metadata']['request_memory'],
+                    )
+                )
+            else:
+                filtered_bundles.append(bundle)
+
         return filtered_bundles
