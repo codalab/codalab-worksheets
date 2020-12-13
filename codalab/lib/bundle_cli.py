@@ -31,6 +31,7 @@ from contextlib import closing
 from io import BytesIO
 from shlex import quote
 from typing import Dict
+import webbrowser
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -66,6 +67,7 @@ from codalab.lib.cli_util import (
     parse_key_target,
     parse_target_spec,
     desugar_command,
+    BUNDLES_URL_SEPARATOR,
     INSTANCE_SEPARATOR,
     ADDRESS_SPEC_FORMAT,
     WORKSHEET_SPEC_FORMAT,
@@ -2855,6 +2857,40 @@ class BundleCLI(object):
             },
         )
         print(target.bundle_uuid, file=self.stdout)
+
+    @Commands.command(
+        'open',
+        aliases=('o',),
+        help='Open a bundle detail page in a local web browser.',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+    def do_open_command(self, args):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+
+        bundles = client.fetch(
+            'bundles', params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid,},
+        )
+
+        for i, info in enumerate(bundles):
+            webbrowser.open(self.bundle_url(info['id']))
+
+        # Headless client should fire OpenBundle UI action if no special flags used
+        if self.headless:
+            return ui_actions.serialize([ui_actions.OpenBundle(bundle['id']) for bundle in bundles])
+
+    def bundle_url(self, bundle_uuid):
+        return '%s%s%s' % (self.manager.session()['address'], BUNDLES_URL_SEPARATOR, bundle_uuid)
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
