@@ -4,13 +4,18 @@ This module exports some simple names used throughout the CodaLab bundle system:
   - The State class, an enumeration of all legal bundle states.
   - precondition, a utility method that check's a function's input preconditions.
 """
+import os
 import http.client
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
 CODALAB_VERSION = '0.5.32'
 BINARY_PLACEHOLDER = '<binary>'
-URLOPEN_TIMEOUT_SECONDS = 5 * 60
+ENV_TIMEOUT = os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS')
+if ENV_TIMEOUT is None:
+    URLOPEN_TIMEOUT_SECONDS = 5 * 60
+else:
+    URLOPEN_TIMEOUT_SECONDS = int(ENV_TIMEOUT)
 
 
 class IntegrityError(ValueError):
