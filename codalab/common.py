@@ -8,7 +8,7 @@ import http.client
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '0.5.30'
+CODALAB_VERSION = '0.5.32'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = 5 * 60
 
@@ -58,6 +58,12 @@ class PermissionError(UsageError):
     """
     Raised when access to a resource is refused because the user does not have
     necessary permissions. Similar to HTTP status 403.
+    """
+
+
+class LoginPermissionError(ValueError):
+    """
+    Raised when the login credentials are incorrect.
     """
 
 

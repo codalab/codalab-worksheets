@@ -11,12 +11,11 @@ from argparse import ArgumentParser
 from collections import namedtuple
 from typing import Dict, List, Union
 
-from codalab.common import NotFoundError
+from codalab.common import NotFoundError, LoginPermissionError
 from codalab.client.json_api_client import JsonApiException
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.lib.formatting import parse_size
 from codalab.worker.bundle_state import State
-
 
 logger = logging.getLogger(__name__)
 
@@ -154,15 +153,16 @@ class WorkerManager(object):
                 urllib.error.URLError,
                 http.client.HTTPException,
                 socket.error,
-                NotFoundError,
                 JsonApiException,
+                NotFoundError,
             ):
                 # Sometimes, network errors occur when running the WorkerManager . These are often
                 # transient exceptions, and retrying the command would lead to success---as a result,
                 # we ignore these network-based exceptions (rather than fatally exiting from the
                 # WorkerManager )
                 traceback.print_exc()
-            if self.args.once:
+            except LoginPermissionError:
+                print("Invalid username or password. Please try again:")
                 break
             logger.debug('Sleeping {} seconds'.format(self.args.sleep_time))
             time.sleep(self.args.sleep_time)
@@ -288,23 +288,32 @@ class WorkerManager(object):
 
     def filter_bundles(self, bundles: BundlesPayload) -> BundlesPayload:
         filtered_bundles: BundlesPayload = []
-
+        worker_memory_bytes: int = parse_size('{}m'.format(self.args.memory_mb))
+        logger.info(
+            f"Current worker manager allocates {self.args.cpus} CPUs, {self.args.gpus} GPUs, "
+            "and {worker_memory_bytes} bytes of RAM"
+        )
         for bundle in bundles:
             # Filter bundles based on the resources specified when creating the worker manager
-            worker_memory_bytes: int = parse_size('{}m'.format(self.args.memory_mb))
-            if (
-                bundle['metadata']['request_cpus'] <= self.args.cpus
-                and bundle['metadata']['request_gpus'] <= self.args.gpus
-                and parse_size(bundle['metadata']['request_memory']) <= worker_memory_bytes
-            ):
-                filtered_bundles.append(bundle)
-            else:
+            if bundle['metadata']['request_cpus'] > self.args.cpus:
                 logger.info(
-                    'Filtered out bundle {} based on resources requested: request_cpus={}, request_gpus={}, request_memory={}'.format(
-                        bundle['uuid'],
-                        bundle['metadata']['request_cpus'],
-                        bundle['metadata']['request_gpus'],
-                        bundle['metadata']['request_memory'],
+                    'Filtered out bundle {} based on unfulfillable resource requested: request_cpus={}'.format(
+                        bundle['uuid'], bundle['metadata']['request_cpus'],
                     )
                 )
+            elif bundle['metadata']['request_gpus'] > self.args.gpus:
+                logger.info(
+                    'Filtered out bundle {} based on unfulfillable resource requested: request_gpus={}'.format(
+                        bundle['uuid'], bundle['metadata']['request_gpus'],
+                    )
+                )
+            elif parse_size(bundle['metadata']['request_memory']) > worker_memory_bytes:
+                logger.info(
+                    'Filtered out bundle {} based on unfulfillable resource requested: request_memory={}'.format(
+                        bundle['uuid'], bundle['metadata']['request_memory'],
+                    )
+                )
+            else:
+                filtered_bundles.append(bundle)
+
         return filtered_bundles
