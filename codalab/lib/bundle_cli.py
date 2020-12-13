@@ -2885,7 +2885,7 @@ class BundleCLI(object):
         for i, info in enumerate(bundles):
             webbrowser.open(self.bundle_url(info['id']))
 
-        # Headless client should fire OpenBundle UI action if no special flags used
+        # Headless client should fire OpenBundle UI action
         if self.headless:
             return ui_actions.serialize([ui_actions.OpenBundle(bundle['id']) for bundle in bundles])
 
