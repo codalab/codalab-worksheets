@@ -2882,7 +2882,7 @@ class BundleCLI(object):
             'bundles', params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
         )
 
-        for i, info in enumerate(bundles):
+        for info in bundles:
             webbrowser.open(self.bundle_url(info['id']))
 
         # Headless client should fire OpenBundle UI action
