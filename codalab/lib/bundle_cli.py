@@ -2861,10 +2861,10 @@ class BundleCLI(object):
     @Commands.command(
         'open',
         aliases=('o',),
-        help='Open a bundle detail page in a local web browser.',
+        help='Open bundle(s) detail page(s) in a local web browser.',
         arguments=(
             Commands.Argument(
-                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
             ),
             Commands.Argument(
                 '-w',
