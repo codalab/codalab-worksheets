@@ -2425,12 +2425,14 @@ def test_open(ctx):
 @TestModule.register('wopen')
 def test_wopen(ctx):
     _run_command([cl, 'wopen'], expected_exit_code=0)
-    _run_command([cl, 'wopen', self.original_worksheet], expected_exit_code=0)
+    wuuid = _run_command([cl, 'new', random_name()])
+    ctx.collect_worksheet(wuuid)
+    _run_command([cl, 'wopen', wuuid], expected_exit_code=0)
 
     # Worksheet spec 'nonexistent' does not exist, so open should fail.
     _run_command([cl, 'wopen', 'nonexistent'], expected_exit_code=1)
 
-    
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
