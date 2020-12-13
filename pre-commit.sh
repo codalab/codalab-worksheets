@@ -23,11 +23,13 @@ venv/bin/python scripts/gen-cli-docs.py  # Outputs to `docs`
 venv/bin/mkdocs build  # Outputs to `site`
 # Note: run `venv/bin/mkdocs serve` for a live preview
 
-# Fix Python style (mutates code!)
+# Python style checks and linting
+## Fix Python style (mutates code!)
 venv/bin/black codalab scripts *.py
-# Check if there are any mypy errors
+## Check if there are any mypy or flake8 errors
 venv/bin/mypy .
 venv/bin/flake8 .
 
-# Fix Javascript style (mutates code!)
+# Javascript style checks and linting
+## Fix Javascript style (mutates code!)
 npm run --prefix frontend format
