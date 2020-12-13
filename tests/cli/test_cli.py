@@ -2412,6 +2412,16 @@ def test_incorrect_login(ctx):
     os.environ["CODALAB_PASSWORD"] = password
 
 
+@TestModule.register('open')
+def test_open(ctx):
+    uuid = _run_command([cl, 'run', 'echo hello'])
+    _run_command([cl, 'open', uuid], expected_exit_code=0)
+    _run_command([cl, 'open', uuid, '^1'], expected_exit_code=0)
+
+    # Bundle spec 'nonexistent' does not exist, so open should fail.
+    _run_command([cl, 'open', 'nonexistent'], expected_exit_code=1)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
