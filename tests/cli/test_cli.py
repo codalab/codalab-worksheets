@@ -1632,6 +1632,7 @@ def test_status(ctx):
     check_contains("Commands for bundles", cl_output)
     check_equals(cl_output, help_output)
 
+
 @TestModule.register('batch')
 def test_batch(ctx):
     """Test batch resolution of bundle uuids"""
@@ -2412,7 +2413,7 @@ def test_incorrect_login(ctx):
 
 
 @TestModule.register('open')
-def test_rm(ctx):
+def test_open(ctx):
     uuid = _run_command([cl, 'run', 'echo hello'])
     _run_command([cl, 'open', uuid], expected_exit_code=0)
     _run_command([cl, 'open', uuid, '^1'], expected_exit_code=0)
