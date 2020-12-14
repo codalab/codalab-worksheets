@@ -43,7 +43,6 @@ export default ({
     copiedBundleIds,
     showPasteButton,
     toggleWorksheetSize,
-    convertDatetimeToLocalDatetime,
 }) => (
     <Sticky top={6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
@@ -72,7 +71,7 @@ export default ({
                             {info && info['date_last_modified'] ? (
                                 <div style={{ fontWeight: 'normal', fontSize: 'small' }}>
                                     Last Modified Date:{' '}
-                                    {convertDatetimeToLocalDatetime(info['date_last_modified'])}
+                                    {new Date(info['date_last_modified']).toString()}
                                 </div>
                             ) : null}
                         </h5>

@@ -126,6 +126,10 @@ class Worksheet extends React.Component {
             dataType: 'json',
             cache: false,
             success: function(info) {
+                // Append 'Z' to indicate the time is UTC time.
+                info['date_created'] += 'Z';
+                info['date_last_modified'] += 'Z';
+
                 this.setState({
                     ws: {
                         ...this.state.ws,
@@ -213,21 +217,6 @@ class Worksheet extends React.Component {
         }
         return wsItemsIdDict;
     }
-
-    convertDatetimeToLocalDatetime = (date) => {
-        // Example: "2020-11-18T06:43:05"
-        // remove delimiter: "2020-11-18 06:43:05"
-        const reg = /[a-zA-Z]/g;
-        date = date.replace(reg, ' ');
-        // convert to an array: ["2020", "11", "18", "06", "43", "05"]
-        date = date.split(/[- :]/);
-        // convert to LocalDate format:  " Tue Nov 17 2020 22:43:05 GMT-0800 (Pacific Standard Time)"
-        const localDate = new Date(
-            Date.UTC(date[0], date[1] - 1, date[2], date[3], date[4], date[5]),
-        );
-        // return a string to embed it as a React Child
-        return localDate.toString();
-    };
 
     handleClickForDeselect = (event) => {
         //Deselecting when clicking outside worksheet_items component
@@ -1787,7 +1776,6 @@ class Worksheet extends React.Component {
                     copiedBundleIds={this.state.copiedBundleIds}
                     showPasteButton={this.state.showPasteButton}
                     toggleWorksheetSize={this.toggleWorksheetSize}
-                    convertDatetimeToLocalDatetime={this.convertDatetimeToLocalDatetime}
                 />
                 {terminalDisplay}
                 <ToastContainer
