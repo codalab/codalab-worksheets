@@ -11,11 +11,7 @@ import http.client
 # http://semver.org/
 CODALAB_VERSION = '0.5.32'
 BINARY_PLACEHOLDER = '<binary>'
-ENV_TIMEOUT = os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS')
-if ENV_TIMEOUT is None:
-    URLOPEN_TIMEOUT_SECONDS = 5 * 60
-else:
-    URLOPEN_TIMEOUT_SECONDS = int(ENV_TIMEOUT)
+URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
 
 
 class IntegrityError(ValueError):
