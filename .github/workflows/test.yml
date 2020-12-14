@@ -89,6 +89,7 @@ jobs:
           - memoize
           - copy netcat netcurl
           - edit
+          - open
     steps:
       - name: Clear free space
         run: |
