@@ -29,10 +29,9 @@ class RunBundle(DerivedBundle):
                                                                     'codalab/default-cpu:latest) we wish to use.', completer=DockerImagesCompleter, hide_when_anonymous=True, default=None))
     METADATA_SPECS.append(MetadataSpec('request_time', str, 'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.', formatting='duration', default=None))
     METADATA_SPECS.append(MetadataSpec('request_memory', str, 'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size', default='2g'))
-    METADATA_SPECS.append(MetadataSpec('memory_usage_out_of_limit', str, 'Portion of memory used by this container (e.g., 93.31MiB / 13.67GiB, 8.035MiB / 13.67GiB)', completer=DockerStatsCompleter))
     METADATA_SPECS.append(MetadataSpec('request_disk', str, 'Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.', formatting='size', default=None))
     METADATA_SPECS.append(MetadataSpec('request_cpus', int, 'Number of CPUs allowed for this run.', default=1))
-    METADATA_SPECS.append(MetadataSpec('cpu_usage', str, 'Portion of CPU used by this container (e.g., 0.28%)', completer=DockerStatsCompleter))
+    METADATA_SPECS.append(MetadataSpec('cpu_usage', str, 'Portion of CPU used by this container (e.g., 0.28%)'))
     METADATA_SPECS.append(MetadataSpec('request_gpus', int, 'Number of GPUs allowed for this run.', default=0))
     METADATA_SPECS.append(MetadataSpec('request_queue', str, 'Submit run to this job queue.', hide_when_anonymous=True, default=None))
     METADATA_SPECS.append(MetadataSpec('request_priority', int, 'Job priority (higher is more important). Negative '

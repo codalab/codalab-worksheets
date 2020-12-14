@@ -23,7 +23,8 @@ class Metadata(object):
         expected_keys = set(spec.key for spec in metadata_specs)
         for key in self._metadata_keys:
             if key not in expected_keys:
-                raise UsageError('Unexpected metadata key: %s' % (key,))
+                raise Exception("crashed in metadata validation")
+                # raise UsageError('Unexpected metadata key: %s' % (key,))
         for spec in metadata_specs:
             if spec.key in self._metadata_keys:
                 value = getattr(self, spec.key)
