@@ -48,7 +48,7 @@ Object {
                     >
                       codalab-
                     </span>
-                     by
+                     by 
                     codalab
                     <div
                       class="Worksheet-permissions-8"
@@ -63,7 +63,7 @@ Object {
                         </span>
                         )
                         <span>
-
+                           
                           public
                           (
                           <span
@@ -76,7 +76,7 @@ Object {
                         ]
                       </div>
                     </div>
-                     tags:
+                     tags: 
                     <div
                       style="display: inline-block;"
                     >
@@ -97,7 +97,7 @@ Object {
                     class="MuiGrid-item-12"
                   >
                     <div>
-
+                       
                       <button
                         aria-label="Add Text"
                         class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
@@ -480,9 +480,9 @@ Object {
                     style="width: 100%;"
                   >
                     <span
-                      data-text="Click here to enter commands (e.g., help, run '<bash command>', rm <bundle>, kill <bundle>, etc.)."
+                      data-text="Click here to enter commands (e.g., help, run '<bash command>', rm <bundle>, kill <bundle>, etc.)."
                     >
-                      Click here to enter commands (e.g., help, run '&lt;bash command&gt;', rm &lt;bundle&gt;, kill &lt;bundle&gt;, etc.).
+                      Click here to enter commands (e.g., help, run '&lt;bash command&gt;', rm &lt;bundle&gt;, kill &lt;bundle&gt;, etc.).
                     </span>
                   </div>
                 </div>
@@ -500,12 +500,12 @@ Object {
                     style=""
                   >
                     <span
-                      data-text="CodaLab> "
+                      data-text="CodaLab> "
                     >
                       <span
                         style="width: 9ch;"
                       >
-                        CodaLab&gt;
+                        CodaLab&gt; 
                       </span>
                     </span>
                   </span>
@@ -523,7 +523,7 @@ Object {
                         data-text=""
                       >
                         <span>
-
+                           
                           <span />
                         </span>
                       </span>
@@ -534,7 +534,7 @@ Object {
                 <textarea
                   autocapitalize="off"
                   class="cmd-clipboard"
-                  data-cmd-prompt="CodaLab> "
+                  data-cmd-prompt="CodaLab> "
                   spellcheck="false"
                   style="top: 0px;"
                   tabindex="1"
@@ -544,7 +544,7 @@ Object {
             <div
               class="terminal-font"
             >
-
+               
             </div>
             <div
               class="terminal-fill"
@@ -604,7 +604,7 @@ Object {
                               123
 1132132312
                             </p>
-
+                            
 
                           </div>
                           <div
@@ -639,7 +639,7 @@ Object {
                                 class="MuiTouchRipple-root-238"
                               />
                             </button>
-
+                              
                             <button
                               class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
                               tabindex="0"
@@ -842,7 +842,7 @@ Object {
                   >
                     codalab-
                   </span>
-                   by
+                   by 
                   codalab
                   <div
                     class="Worksheet-permissions-8"
@@ -857,7 +857,7 @@ Object {
                       </span>
                       )
                       <span>
-
+                         
                         public
                         (
                         <span
@@ -870,7 +870,7 @@ Object {
                       ]
                     </div>
                   </div>
-                   tags:
+                   tags: 
                   <div
                     style="display: inline-block;"
                   >
@@ -891,7 +891,7 @@ Object {
                   class="MuiGrid-item-12"
                 >
                   <div>
-
+                     
                     <button
                       aria-label="Add Text"
                       class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
@@ -1274,9 +1274,9 @@ Object {
                   style="width: 100%;"
                 >
                   <span
-                    data-text="Click here to enter commands (e.g., help, run '<bash command>', rm <bundle>, kill <bundle>, etc.)."
+                    data-text="Click here to enter commands (e.g., help, run '<bash command>', rm <bundle>, kill <bundle>, etc.)."
                   >
-                    Click here to enter commands (e.g., help, run '&lt;bash command&gt;', rm &lt;bundle&gt;, kill &lt;bundle&gt;, etc.).
+                    Click here to enter commands (e.g., help, run '&lt;bash command&gt;', rm &lt;bundle&gt;, kill &lt;bundle&gt;, etc.).
                   </span>
                 </div>
               </div>
@@ -1294,12 +1294,12 @@ Object {
                   style=""
                 >
                   <span
-                    data-text="CodaLab> "
+                    data-text="CodaLab> "
                   >
                     <span
                       style="width: 9ch;"
                     >
-                      CodaLab&gt;
+                      CodaLab&gt; 
                     </span>
                   </span>
                 </span>
@@ -1317,7 +1317,7 @@ Object {
                       data-text=""
                     >
                       <span>
-
+                         
                         <span />
                       </span>
                     </span>
@@ -1328,7 +1328,7 @@ Object {
               <textarea
                 autocapitalize="off"
                 class="cmd-clipboard"
-                data-cmd-prompt="CodaLab> "
+                data-cmd-prompt="CodaLab> "
                 spellcheck="false"
                 style="top: 0px;"
                 tabindex="1"
@@ -1338,7 +1338,7 @@ Object {
           <div
             class="terminal-font"
           >
-
+             
           </div>
           <div
             class="terminal-fill"
@@ -1398,7 +1398,7 @@ Object {
                             123
 1132132312
                           </p>
-
+                          
 
                         </div>
                         <div
@@ -1433,7 +1433,7 @@ Object {
                               class="MuiTouchRipple-root-238"
                             />
                           </button>
-
+                            
                           <button
                             class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
                             tabindex="0"

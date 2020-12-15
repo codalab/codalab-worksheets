@@ -1355,7 +1355,7 @@ class Worksheet extends React.Component {
 
     handleDateFormat(date) {
         // Append 'Z' to indicate the time is UTC time.
-        if (date[date.length - 1] !== 'Z') {
+        if (date && date[date.length - 1] !== 'Z') {
             date += 'Z';
         }
         return date;
