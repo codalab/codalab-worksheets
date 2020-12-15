@@ -67,7 +67,7 @@ export default ({
                                 onChange={() => reloadWorksheet()}
                                 allowASCII={true}
                             />
-                            {/*Hide invalid last modified date*/}
+                            {/* Hide invalid last modified date */}
                             {info && info['date_last_modified'] ? (
                                 <div style={{ fontWeight: 'normal', fontSize: 'small' }}>
                                     Last Modified Date:{' '}
