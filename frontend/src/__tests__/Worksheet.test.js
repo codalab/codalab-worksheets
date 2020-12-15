@@ -76,8 +76,6 @@ describe('render simple worksheet', () => {
                 ],
                 block_to_raw: { '0,0': 2 },
                 meta: { version: '0.5.21' },
-                date_created: '2020-12-14T10:28:27',
-                date_last_modified: '2020-12-14T10:51:21',
             });
 
         const comp = render(<Worksheet match={{ params: { uuid: 'sample_uuid' } }} />);
