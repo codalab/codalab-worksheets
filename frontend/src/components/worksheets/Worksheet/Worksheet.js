@@ -126,10 +126,8 @@ class Worksheet extends React.Component {
             dataType: 'json',
             cache: false,
             success: function(info) {
-                // Append 'Z' to indicate the time is UTC time.
-                info['date_created'] += 'Z';
-                info['date_last_modified'] += 'Z';
-
+                info['date_created'] = this.handleDateFormat(info['date_created']);
+                info['date_last_modified'] = this.handleDateFormat(info['date_last_modified']);
                 this.setState({
                     ws: {
                         ...this.state.ws,
@@ -1353,6 +1351,14 @@ class Worksheet extends React.Component {
             }
         }
         return count;
+    }
+
+    handleDateFormat(date) {
+        // Append 'Z' to indicate the time is UTC time.
+        if (date[date.length - 1] !== 'Z') {
+            date += 'Z';
+        }
+        return date;
     }
 
     // If partialUpdateItems is undefined, we will fetch the whole worksheet.
