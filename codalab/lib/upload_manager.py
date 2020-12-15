@@ -126,6 +126,7 @@ class UploadManager(object):
         if isinstance(source, str):
             if path_util.path_is_url(source):
                 is_url = True
+                source = source.rsplit('?', 1)[0]  # Remove query string from URL, if present
             else:
                 is_local_path = True
             filename = os.path.basename(os.path.normpath(source))
