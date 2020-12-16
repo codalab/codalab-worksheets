@@ -63,6 +63,7 @@ Usage: `cl <command> <arguments>`
       --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.
       --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.
       --request-cpus               Number of CPUs allowed for this run.
+      --cpu-usage                  Portion of CPU used by this container (e.g., 0.28%)
       --request-gpus               Number of GPUs allowed for this run.
       --request-queue              Submit run to this job queue.
       --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority.
@@ -201,6 +202,7 @@ Usage: `cl <command> <arguments>`
       --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. (for runs)
       --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left. (for runs)
       --request-cpus               Number of CPUs allowed for this run. (for runs)
+      --cpu-usage                  Portion of CPU used by this container (e.g., 0.28%) (for runs)
       --request-gpus               Number of GPUs allowed for this run. (for runs)
       --request-queue              Submit run to this job queue. (for runs)
       --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)
@@ -230,6 +232,7 @@ Usage: `cl <command> <arguments>`
       --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. (for runs)
       --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left. (for runs)
       --request-cpus               Number of CPUs allowed for this run. (for runs)
+      --cpu-usage                  Portion of CPU used by this container (e.g., 0.28%) (for runs)
       --request-gpus               Number of GPUs allowed for this run. (for runs)
       --request-queue              Submit run to this job queue. (for runs)
       --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)

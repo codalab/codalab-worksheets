@@ -10,7 +10,6 @@ import time
 import logging
 import json
 
-import docker
 from dateutil import parser
 from uuid import uuid4
 
@@ -936,7 +935,7 @@ class BundleModel(object):
             'time_user': worker_run.container_time_user,
             'time_system': worker_run.container_time_system,
             'remote': worker_run.remote,
-            'cpu_usage': self._get_cpu_usage(bundle),
+            # 'cpu_usage': self._get_cpu_usage(bundle),
         }
 
         if worker_run.docker_image is not None:
@@ -948,22 +947,22 @@ class BundleModel(object):
 
         return True
 
-    @staticmethod
-    def _get_cpu_usage(bundle):
-        client = docker.from_env(timeout=1000)
-        containers = client.containers.list()
-        for container in containers:
-            if bundle.get_uuid_from_container_name(container.name) != bundle.uuid:
-                continue
-            stats = container.stats(stream=False)
-            return stats['cpu_stats']['cpu_usage']['total_usage'] / stats['cpu_stats']['system_cpu_usage']
-
-    @staticmethod
-    def get_uuid_from_container_name(container_name):
-        parts = container_name.split('_')
-        if len(parts) != 3:
-            return None
-        return parts[2]
+    # @staticmethod
+    # def _get_cpu_usage(bundle):
+    #     client = docker.from_env(timeout=1000)
+    #     containers = client.containers.list()
+    #     for container in containers:
+    #         if bundle.get_uuid_from_container_name(container.name) != bundle.uuid:
+    #             continue
+    #         stats = container.stats(stream=False)
+    #         return stats['cpu_stats']['cpu_usage']['total_usage'] / stats['cpu_stats']['system_cpu_usage']
+    #
+    # @staticmethod
+    # def get_uuid_from_container_name(container_name):
+    #     parts = container_name.split('_')
+    #     if len(parts) != 3:
+    #         return None
+    #     return parts[2]
 
     def transition_bundle_worker_offline(self, bundle):
         """
