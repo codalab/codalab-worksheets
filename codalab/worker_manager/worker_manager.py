@@ -196,7 +196,10 @@ class WorkerManager(object):
         bundles: BundlesPayload = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}
         )
-        bundles = self.filter_bundles(bundles)
+        # Unless no_prefilter is set, filter out otherwise-eligible run bundles that request more
+        # resources than this WorkerManager's workers have.
+        if not args.no_prefilter:
+            bundles = self.filter_bundles(bundles)
 
         new_staged_uuids = [bundle['uuid'] for bundle in bundles]
         old_staged_uuids = self.staged_uuids

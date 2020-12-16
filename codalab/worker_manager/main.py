@@ -31,6 +31,11 @@ def main():
         help='Restart the worker manager after this many seconds have passed since launch',
     )
     parser.add_argument(
+        '--no-prefilter',
+        action='store_true',
+        help='If set, do not filter run bundles by whether the created workers satisfy their requested resources.',
+    )
+    parser.add_argument(
         '--once',
         help='Just run once and exit instead of looping (for debugging)',
         action='store_true',
