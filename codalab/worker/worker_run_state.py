@@ -407,6 +407,9 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state):
+            container_stats = docker_utils.get_container_stats_on_mac(run_state.container)
+            cpu_usage = int(container_stats['cpu_stats']['cpu_usage']['total_usage']) / int(container_stats['cpu_stats']['cpu_usage']['system_cpu_usage'])
+            run_state = run_state._replace(cpu_usage=cpu_usage)
             kill_messages = []
 
             run_stats = docker_utils.get_container_stats(run_state.container)

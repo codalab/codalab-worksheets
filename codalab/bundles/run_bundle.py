@@ -13,7 +13,7 @@ from typing import List
 from codalab.bundles.derived_bundle import DerivedBundle
 from codalab.common import UsageError
 
-from codalab.lib.completers import DockerImagesCompleter, DockerStatsCompleter
+from codalab.lib.completers import DockerImagesCompleter
 from codalab.objects.metadata_spec import MetadataSpec
 from codalab.worker.bundle_state import State
 

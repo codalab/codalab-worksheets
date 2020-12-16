@@ -262,6 +262,14 @@ def get_container_stats(container):
 
 
 @wrap_exception('Unable to check Docker API for container')
+def get_container_stats_on_mac(container):
+    if container_exists(container):
+        return client.containers.get(container.id).stats(stream=False)
+    else:
+        return None
+
+
+@wrap_exception('Unable to check Docker API for container')
 def container_exists(container):
     try:
         client.containers.get(container.id)
