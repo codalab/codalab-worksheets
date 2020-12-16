@@ -21,8 +21,6 @@ import DialogActions from '@material-ui/core/DialogActions';
 const kDefaultWorksheetName = 'unnamed';
 
 const styles = ({ spacing, palette }) => {
-    const family =
-        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"';
     return {
         box: { marginLeft: 8, marginTop: 8, marginBottom: 8, backgroundColor: 'white' },
         titleBox: { marginLeft: 8, marginTop: 8, marginBottom: 8 },
@@ -198,7 +196,7 @@ class MainPanel extends React.Component<{
             <div>
                 <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
                     <Box className={classes.titleBox} display={'flex'} alignItems={'center'}>
-                        <h3 className={classes.heading}>My Worksheets</h3>
+                        <h3 className={classes.heading}>Worksheets</h3>
                         &nbsp;&nbsp;&nbsp;&nbsp;
                         <Tooltip title='New Worksheet'>
                             <Button

@@ -45,17 +45,6 @@ const styles = ({ spacing, palette }) => {
             color: '#000000',
             lineHeight: '150%',
         },
-        email: {
-            textDecoration: 'underline',
-            fontSize: 15,
-            marginBottom: 4,
-            fontFamily: 'Roboto',
-            fontStyle: 'normal',
-            fontWeight: 300,
-            letterSpacing: 0.15,
-            color: '#000000',
-            lineHeight: '200%',
-        },
         affiliation: {
             fontSize: 15,
             marginBottom: 4,
@@ -175,16 +164,13 @@ class SideBar extends React.Component {
                 <Avatar src={'https://i.pravatar.cc/30'} className={classes.avatar} />
                 <Box className={classes.box}>
                     <h3 className={classes.name}>{userInfo.user_name}</h3>
-                    <a className={classes.email} href={userInfo.email}>
-                        {userInfo.email}
-                    </a>
                     {userInfo.affiliation ? (
                         <p className={classes.affiliation}>Affiliation: {userInfo.affiliation}</p>
                     ) : null}
                 </Box>
                 <Divider />
                 <Box className={classes.box}>
-                    <p className={classes.subheader}>My Disk Usage (Bytes)</p>
+                    <p className={classes.subheader}>Disk Usage (Bytes)</p>
                     <Box display={'flex'} alignItems={'center'}>
                         <StyledSlider
                             classes={sliderStyles}
@@ -194,7 +180,7 @@ class SideBar extends React.Component {
                             {userInfo.disk_used}/{userInfo.disk_quota}
                         </span>
                     </Box>
-                    <p className={classes.subheader}>My Time Usage (Seconds)</p>
+                    <p className={classes.subheader}>Time Usage (Seconds)</p>
                     <Box display={'flex'} alignItems={'center'}>
                         <StyledSlider
                             classes={sliderStyles}
@@ -206,7 +192,7 @@ class SideBar extends React.Component {
                     </Box>
                 </Box>
                 <Box className={classes.box}>
-                    <p className={classes.subheader}>My Bundles</p>
+                    <p className={classes.subheader}>Bundles</p>
                     <Box display={'flex'} alignItems={'center'}>
                         <ul style={{ listStyleType: 'circle' }}>{this.state.bundles}</ul>
                     </Box>
