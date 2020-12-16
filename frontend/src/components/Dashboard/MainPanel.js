@@ -124,14 +124,19 @@ class MainPanel extends React.Component<{
                 const worksheets = data.response.map((ws, i) => (
                     <Card className={classes.wsCard}>
                         <Box className={classes.box} alignItems={'center'}>
-                            <a className={classes.subheader} href={'/rest/worksheets/' + ws.uuid}>
-                                {ws.title ? ws.title : 'Untitled'}
-                            </a>
                             <Box display={'flex'} alignItems={'center'}>
-                                <p className={classes.value}>
-                                    {ws.name}{' '}
-                                    {'   |   Owned by: ' + ws.owner_name + '[' + ws.owner_id + ']'}
-                                </p>
+                                <a
+                                    className={classes.subheader}
+                                    href={'/rest/worksheets/' + ws.uuid}
+                                >
+                                    {ws.title ? ws.title : 'Untitled'}
+                                </a>
+                                <div className={classes.value} style={{ whiteSpace: 'pre' }}>
+                                    {'  by: ' + ws.owner_name + '[' + ws.owner_id + ']'}
+                                </div>
+                            </Box>
+                            <Box display={'flex'} alignItems={'center'}>
+                                <p className={classes.value}>{ws.name} </p>
                             </Box>
                         </Box>
                     </Card>
