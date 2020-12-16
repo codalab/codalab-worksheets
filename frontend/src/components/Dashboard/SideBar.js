@@ -192,7 +192,18 @@ class SideBar extends React.Component {
                     </Box>
                 </Box>
                 <Box className={classes.box}>
-                    <p className={classes.subheader}>Bundles</p>
+                    <p className={classes.subheader}>
+                        Bundles (
+                        <a
+                            className={classes.subheader}
+                            href={
+                                'https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/bundle_state.py'
+                            }
+                        >
+                            Status
+                        </a>
+                        : Count)
+                    </p>
                     <Box display={'flex'} alignItems={'center'}>
                         <ul style={{ listStyleType: 'circle' }}>{this.state.bundles}</ul>
                     </Box>
