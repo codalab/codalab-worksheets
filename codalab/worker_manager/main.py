@@ -19,18 +19,6 @@ def main():
     parser.add_argument(
         '--search', nargs='*', help='Monitor only runs that satisfy these criteria', default=[]
     )
-    parser.add_argument('--worker-tag', help='Tag to look for and put on workers')
-    parser.add_argument(
-        '--worker-work-dir-prefix', help="Prefix to use for each worker's working directory."
-    )
-    parser.add_argument(
-        '--worker-max-work-dir-size', help='Maximum size of the temporary bundle data'
-    )
-    parser.add_argument(
-        '--worker-delete-work-dir-on-exit',
-        action='store_true',
-        help="Delete a worker's working directory when the worker process exits.",
-    )
     parser.add_argument(
         '--verbose', action='store_true', help='Whether to print out extra information'
     )
@@ -48,15 +36,27 @@ def main():
         action='store_true',
     )
     parser.add_argument(
-        '--worker-idle-seconds',
-        help='Workers wait this long for extra runs before quitting',
-        default=10 * 60,
-        type=int,
-    )
-    parser.add_argument(
         '--min-seconds-between-workers',
         help='Minimum time to wait between launching workers',
         default=1 * 60,
+        type=int,
+    )
+    parser.add_argument('--worker-tag', help='Tag to look for and put on workers')
+    parser.add_argument(
+        '--worker-work-dir-prefix', help="Prefix to use for each worker's working directory."
+    )
+    parser.add_argument(
+        '--worker-max-work-dir-size', help='Maximum size of the temporary bundle data'
+    )
+    parser.add_argument(
+        '--worker-delete-work-dir-on-exit',
+        action='store_true',
+        help="Delete a worker's working directory when the worker process exits.",
+    )
+    parser.add_argument(
+        '--worker-idle-seconds',
+        help='Workers wait this long for extra runs before quitting',
+        default=10 * 60,
         type=int,
     )
     parser.add_argument(
