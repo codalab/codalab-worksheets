@@ -7,6 +7,7 @@ import Avatar from '@material-ui/core/Avatar';
 import Divider from '@material-ui/core/Divider';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import $ from 'jquery';
+import { lighten } from '@material-ui/core/es/styles/colorManipulator';
 
 const styles = ({ spacing, palette }) => {
     const family =
