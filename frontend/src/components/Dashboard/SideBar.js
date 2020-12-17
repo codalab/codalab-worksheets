@@ -4,8 +4,8 @@ import { withStyles } from '@material-ui/core/styles';
 import Box from '@material-ui/core/Box';
 import Card from '@material-ui/core/Card';
 import Avatar from '@material-ui/core/Avatar';
-import Slider from '@material-ui/core/Slider';
 import Divider from '@material-ui/core/Divider';
+import LinearProgress from '@material-ui/core/LinearProgress';
 import $ from 'jquery';
 
 const styles = ({ spacing, palette }) => {
@@ -13,6 +13,13 @@ const styles = ({ spacing, palette }) => {
         '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"';
     return {
         box: { marginLeft: 8, marginTop: 8, marginBottom: 8 },
+        progressBox: {
+            display: 'flex',
+            alignItems: 'center',
+            width: '100%',
+            height: 0,
+            paddingRight: 4,
+        },
         card: {
             display: 'flex',
             flexDirection: 'column',
@@ -68,26 +75,17 @@ const styles = ({ spacing, palette }) => {
     };
 };
 
-const sliderStyles = () => ({
+const BorderLinearProgress = withStyles({
     root: {
-        height: 4,
+        height: 10,
+        width: 600,
+        backgroundColor: lighten('#3577cb', 0.5),
     },
-    rail: {
-        borderRadius: 10,
-        height: 4,
-        backgroundColor: 'rgb(202,211,216)',
+    bar: {
+        borderRadius: 20,
+        backgroundColor: '#3577cb',
     },
-    track: {
-        borderRadius: 10,
-        height: 4,
-        backgroundColor: 'rgb(117,156,250)',
-    },
-    thumb: {
-        display: 'none',
-    },
-});
-
-const StyledSlider = withStyles(sliderStyles)(Slider);
+})(LinearProgress);
 
 class SideBar extends React.Component {
     /** Constructor. */
@@ -171,25 +169,36 @@ class SideBar extends React.Component {
                 <Divider />
                 <Box className={classes.box}>
                     <p className={classes.subheader}>Disk Usage (Bytes)</p>
-                    <Box display={'flex'} alignItems={'center'}>
-                        <StyledSlider
-                            classes={sliderStyles}
-                            defaultValue={userInfo.disk_used / userInfo.disk_quota}
+                    <Box className={classes.progressBox}>
+                        <BorderLinearProgress
+                            className={classes.margin}
+                            variant='determinate'
+                            color='secondary'
+                            value={(userInfo.disk_used / userInfo.disk_quota) * 100}
                         />
                         <span className={classes.value}>
-                            {userInfo.disk_used}/{userInfo.disk_quota}
+                            {Math.floor(userInfo.disk_quota / 1024 / 1024) + 'GB'}
                         </span>
                     </Box>
+                    <span className={classes.value}>
+                        {Math.floor((userInfo.disk_used / userInfo.disk_quota) * 100) + '%'}
+                    </span>
+
                     <p className={classes.subheader}>Time Usage (Seconds)</p>
-                    <Box display={'flex'} alignItems={'center'}>
-                        <StyledSlider
-                            classes={sliderStyles}
-                            defaultValue={userInfo.time_used / userInfo.time_quota}
+                    <Box className={classes.progressBox}>
+                        <BorderLinearProgress
+                            className={classes.margin}
+                            variant='determinate'
+                            color='secondary'
+                            value={(userInfo.time_used / userInfo.time_quota) * 100}
                         />
                         <span className={classes.value}>
-                            {userInfo.time_used}/{userInfo.time_quota}
+                            {Math.floor(userInfo.time_quota / 3600) + 'hr'}
                         </span>
                     </Box>
+                    <span className={classes.value}>
+                        {Math.floor((userInfo.time_used / userInfo.time_quota) * 100) + '%'}
+                    </span>
                 </Box>
                 <Box className={classes.box}>
                     <p className={classes.subheader}>
