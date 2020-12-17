@@ -14,7 +14,7 @@ const styles = ({ spacing, palette }) => {
     const family =
         '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"';
     return {
-        box: { marginLeft: 8, marginTop: 8, marginBottom: 8 },
+        box: { marginLeft: 8, marginTop: 8, marginBottom: 0 },
         progressBox: {
             display: 'flex',
             alignItems: 'center',
@@ -47,13 +47,13 @@ const styles = ({ spacing, palette }) => {
         },
         subheader: {
             fontSize: 14,
-            marginBottom: 4,
             fontFamily: 'Roboto',
             fontStyle: 'normal',
             fontWeight: 300,
             letterSpacing: 0.1,
             color: '#000000',
             lineHeight: '150%',
+            marginBottom: 0,
         },
         affiliation: {
             fontSize: 15,
@@ -153,7 +153,15 @@ class SideBar extends React.Component {
                             if (bundlesDict[state] > 0) {
                                 bundles.push(
                                     <li key={state} className={classes.subheader}>
-                                        {state + ': ' + bundlesDict[state]}
+                                        <a
+                                            className={classes.subheader}
+                                            href={
+                                                'https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/bundle_state.py'
+                                            }
+                                        >
+                                            {state}
+                                        </a>
+                                        {': ' + bundlesDict[state]}
                                     </li>,
                                 );
                             }
@@ -194,7 +202,7 @@ class SideBar extends React.Component {
                                 'https://github.com/codalab/codalab-worksheets/blob/master/docs/FAQ.md#how-do-i-reduce-the-amount-of-disk-usage'
                             }
                         >
-                            Disk Usage (Bytes)
+                            Disk Usage
                         </a>
                         <Box className={classes.progressBox}>
                             <BorderLinearProgress
@@ -215,7 +223,7 @@ class SideBar extends React.Component {
                                 'https://github.com/codalab/codalab-worksheets/blob/master/docs/FAQ.md'
                             }
                         >
-                            Time Usage (Seconds)
+                            Time Usage
                         </a>
                         <Box className={classes.progressBox}>
                             <BorderLinearProgress
@@ -234,18 +242,7 @@ class SideBar extends React.Component {
                     </Box>
                 ) : null}
                 <Box className={classes.box}>
-                    <p className={classes.subheader}>
-                        Bundles (
-                        <a
-                            className={classes.subheader}
-                            href={
-                                'https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/bundle_state.py'
-                            }
-                        >
-                            Status
-                        </a>
-                        : Count)
-                    </p>
+                    <p className={classes.subheader}>Bundles</p>
                     <Box display={'flex'} alignItems={'center'}>
                         <ul style={{ listStyleType: 'circle' }}>{this.state.bundles}</ul>
                     </Box>

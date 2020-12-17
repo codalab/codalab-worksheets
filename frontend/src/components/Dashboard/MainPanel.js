@@ -64,7 +64,7 @@ const styles = ({ spacing, palette }) => {
             fontWeight: 500,
             letterSpacing: 0.15,
             lineHeight: '150%',
-            marginBottom: 8,
+            marginBottom: 0,
             marginLeft: 8,
             float: 'left',
         },
@@ -129,7 +129,7 @@ class MainPanel extends React.Component<{
                                     {ws.title ? ws.title : 'Untitled'}
                                 </a>
                                 <div className={classes.value} style={{ whiteSpace: 'pre' }}>
-                                    {'  by: ' + ws.owner_name}
+                                    {'  by ' + ws.owner_name}
                                 </div>
                             </Box>
                             <Box display={'flex'} alignItems={'center'}>
