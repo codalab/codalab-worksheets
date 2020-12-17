@@ -122,15 +122,22 @@ class SideBar extends React.Component {
                 dataType: 'json',
                 type: 'POST',
                 cache: false,
-                data: JSON.stringify({
-                    keywords: ['.mine', '.count', 'state=' + states[stateIndex]],
-                }),
+                data: JSON.stringify(
+                    stateIndex < states.length
+                        ? {
+                              keywords: ['.mine', '.count', 'state=' + states[stateIndex]],
+                          }
+                        : {
+                              keywords: ['.mine', '.count', '.floating'],
+                          },
+                ),
                 contentType: 'application/json; charset=utf-8',
                 success: (data) => {
-                    bundlesDict[states[stateIndex]] = data.response.result;
-                    if (stateIndex < states.length - 1) {
+                    if (stateIndex < states.length) {
+                        bundlesDict[states[stateIndex]] = data.response.result;
                         fetchBundles(stateIndex + 1, bundlesDict);
                     } else {
+                        bundlesDict['floating'] = data.response.result;
                         const bundles: HTMLElement[] = [];
                         for (let state in bundlesDict) {
                             // Only show the non-zero items
@@ -143,6 +150,7 @@ class SideBar extends React.Component {
                             }
                         }
                         this.setState({ bundles: bundles });
+                        console.log('bundles', bundlesDict);
                     }
                 },
                 error: (xhr, status, err) => {
