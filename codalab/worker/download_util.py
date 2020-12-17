@@ -1,4 +1,5 @@
 import os
+from codalab.lib.path_util import get_size
 
 
 class PathException(Exception):
@@ -123,6 +124,7 @@ def _compute_target_info(path, depth):
         result['type'] = 'file'
     elif os.path.isdir(path):
         result['type'] = 'directory'
+        result['size'] = get_size(path)
         if depth > 0:
             result['contents'] = [
                 _compute_target_info(os.path.join(path, file_name), depth - 1)
