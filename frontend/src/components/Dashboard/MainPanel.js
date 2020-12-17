@@ -129,7 +129,7 @@ class MainPanel extends React.Component<{
                                     {ws.title ? ws.title : 'Untitled'}
                                 </a>
                                 <div className={classes.value} style={{ whiteSpace: 'pre' }}>
-                                    {'  by: ' + ws.owner_name + '[' + ws.owner_id + ']'}
+                                    {'  by: ' + ws.owner_name}
                                 </div>
                             </Box>
                             <Box display={'flex'} alignItems={'center'}>

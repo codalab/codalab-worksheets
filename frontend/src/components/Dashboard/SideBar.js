@@ -8,6 +8,7 @@ import Divider from '@material-ui/core/Divider';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import $ from 'jquery';
 import { lighten } from '@material-ui/core/es/styles/colorManipulator';
+import { renderSize, renderDuration } from '../../util/worksheet_utils';
 
 const styles = ({ spacing, palette }) => {
     const family =
@@ -202,9 +203,7 @@ class SideBar extends React.Component {
                                 color='secondary'
                                 value={(userInfo.disk_used / userInfo.disk_quota) * 100}
                             />
-                            <span className={classes.value}>
-                                {Math.floor(userInfo.disk_quota / 1024 / 1024) + 'GB'}
-                            </span>
+                            <span className={classes.value}>{renderSize(userInfo.disk_quota)}</span>
                         </Box>
                         <span className={classes.value}>
                             {Math.floor((userInfo.disk_used / userInfo.disk_quota) * 100) + '%'}
@@ -226,7 +225,7 @@ class SideBar extends React.Component {
                                 value={(userInfo.time_used / userInfo.time_quota) * 100}
                             />
                             <span className={classes.value}>
-                                {Math.floor(userInfo.time_quota / 3600) + 'hr'}
+                                {renderDuration(userInfo.time_quota)}
                             </span>
                         </Box>
                         <span className={classes.value}>
