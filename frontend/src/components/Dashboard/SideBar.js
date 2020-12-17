@@ -150,7 +150,6 @@ class SideBar extends React.Component {
                             }
                         }
                         this.setState({ bundles: bundles });
-                        console.log('bundles', bundlesDict);
                     }
                 },
                 error: (xhr, status, err) => {
