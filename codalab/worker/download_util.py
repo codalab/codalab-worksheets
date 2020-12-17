@@ -124,6 +124,7 @@ def _compute_target_info(path, depth):
         result['type'] = 'file'
     elif os.path.isdir(path):
         result['type'] = 'directory'
+        # Retrieve the size of the directory and all its contents
         result['size'] = get_size(path)
         if depth > 0:
             result['contents'] = [
