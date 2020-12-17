@@ -20,6 +20,7 @@ const styles = ({ spacing, palette }) => {
             width: '100%',
             height: 0,
             paddingRight: 4,
+            paddingTop: 8,
         },
         card: {
             display: 'flex',
@@ -169,7 +170,14 @@ class SideBar extends React.Component {
                 </Box>
                 <Divider />
                 <Box className={classes.box}>
-                    <p className={classes.subheader}>Disk Usage (Bytes)</p>
+                    <a
+                        className={classes.subheader}
+                        href={
+                            'https://github.com/codalab/codalab-worksheets/blob/master/docs/FAQ.md#how-do-i-reduce-the-amount-of-disk-usage'
+                        }
+                    >
+                        Disk Usage (Bytes)
+                    </a>
                     <Box className={classes.progressBox}>
                         <BorderLinearProgress
                             className={classes.margin}
@@ -185,7 +193,15 @@ class SideBar extends React.Component {
                         {Math.floor((userInfo.disk_used / userInfo.disk_quota) * 100) + '%'}
                     </span>
 
-                    <p className={classes.subheader}>Time Usage (Seconds)</p>
+                    <br />
+                    <a
+                        className={classes.subheader}
+                        href={
+                            'https://github.com/codalab/codalab-worksheets/blob/master/docs/FAQ.md'
+                        }
+                    >
+                        Time Usage (Seconds)
+                    </a>
                     <Box className={classes.progressBox}>
                         <BorderLinearProgress
                             className={classes.margin}
