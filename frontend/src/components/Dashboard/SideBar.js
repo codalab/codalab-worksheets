@@ -125,10 +125,18 @@ class SideBar extends React.Component {
                 data: JSON.stringify(
                     stateIndex < states.length
                         ? {
-                              keywords: ['.mine', '.count', 'state=' + states[stateIndex]],
+                              keywords: [
+                                  'owner=' + this.props.userInfo.user_name,
+                                  '.count',
+                                  'state=' + states[stateIndex],
+                              ],
                           }
                         : {
-                              keywords: ['.mine', '.count', '.floating'],
+                              keywords: [
+                                  'owner=' + this.props.userInfo.user_name,
+                                  '.count',
+                                  '.floating',
+                              ],
                           },
                 ),
                 contentType: 'application/json; charset=utf-8',
@@ -176,54 +184,56 @@ class SideBar extends React.Component {
                     ) : null}
                 </Box>
                 <Divider />
-                <Box className={classes.box}>
-                    <a
-                        className={classes.subheader}
-                        href={
-                            'https://github.com/codalab/codalab-worksheets/blob/master/docs/FAQ.md#how-do-i-reduce-the-amount-of-disk-usage'
-                        }
-                    >
-                        Disk Usage (Bytes)
-                    </a>
-                    <Box className={classes.progressBox}>
-                        <BorderLinearProgress
-                            className={classes.margin}
-                            variant='determinate'
-                            color='secondary'
-                            value={(userInfo.disk_used / userInfo.disk_quota) * 100}
-                        />
-                        <span className={classes.value}>
-                            {Math.floor(userInfo.disk_quota / 1024 / 1024) + 'GB'}
-                        </span>
-                    </Box>
-                    <span className={classes.value}>
-                        {Math.floor((userInfo.disk_used / userInfo.disk_quota) * 100) + '%'}
-                    </span>
 
-                    <br />
-                    <a
-                        className={classes.subheader}
-                        href={
-                            'https://github.com/codalab/codalab-worksheets/blob/master/docs/FAQ.md'
-                        }
-                    >
-                        Time Usage (Seconds)
-                    </a>
-                    <Box className={classes.progressBox}>
-                        <BorderLinearProgress
-                            className={classes.margin}
-                            variant='determinate'
-                            color='secondary'
-                            value={(userInfo.time_used / userInfo.time_quota) * 100}
-                        />
+                {this.props.showQuota ? (
+                    <Box className={classes.box}>
+                        <a
+                            className={classes.subheader}
+                            href={
+                                'https://github.com/codalab/codalab-worksheets/blob/master/docs/FAQ.md#how-do-i-reduce-the-amount-of-disk-usage'
+                            }
+                        >
+                            Disk Usage (Bytes)
+                        </a>
+                        <Box className={classes.progressBox}>
+                            <BorderLinearProgress
+                                className={classes.margin}
+                                variant='determinate'
+                                color='secondary'
+                                value={(userInfo.disk_used / userInfo.disk_quota) * 100}
+                            />
+                            <span className={classes.value}>
+                                {Math.floor(userInfo.disk_quota / 1024 / 1024) + 'GB'}
+                            </span>
+                        </Box>
                         <span className={classes.value}>
-                            {Math.floor(userInfo.time_quota / 3600) + 'hr'}
+                            {Math.floor((userInfo.disk_used / userInfo.disk_quota) * 100) + '%'}
+                        </span>
+                        <br />
+                        <a
+                            className={classes.subheader}
+                            href={
+                                'https://github.com/codalab/codalab-worksheets/blob/master/docs/FAQ.md'
+                            }
+                        >
+                            Time Usage (Seconds)
+                        </a>
+                        <Box className={classes.progressBox}>
+                            <BorderLinearProgress
+                                className={classes.margin}
+                                variant='determinate'
+                                color='secondary'
+                                value={(userInfo.time_used / userInfo.time_quota) * 100}
+                            />
+                            <span className={classes.value}>
+                                {Math.floor(userInfo.time_quota / 3600) + 'hr'}
+                            </span>
+                        </Box>
+                        <span className={classes.value}>
+                            {Math.floor((userInfo.time_used / userInfo.time_quota) * 100) + '%'}
                         </span>
                     </Box>
-                    <span className={classes.value}>
-                        {Math.floor((userInfo.time_used / userInfo.time_quota) * 100) + '%'}
-                    </span>
-                </Box>
+                ) : null}
                 <Box className={classes.box}>
                     <p className={classes.subheader}>
                         Bundles (

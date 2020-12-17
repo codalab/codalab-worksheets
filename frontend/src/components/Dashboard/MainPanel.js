@@ -118,17 +118,14 @@ class MainPanel extends React.Component<{
             dataType: 'json',
             type: 'POST',
             cache: false,
-            data: JSON.stringify({ keywords: ['.mine'] }),
+            data: JSON.stringify({ keywords: ['owner=' + this.props.userInfo.user_name] }),
             contentType: 'application/json; charset=utf-8',
             success: (data) => {
                 const worksheets = data.response.map((ws, i) => (
                     <Card className={classes.wsCard}>
                         <Box className={classes.box} alignItems={'center'}>
                             <Box display={'flex'} alignItems={'center'}>
-                                <a
-                                    className={classes.subheader}
-                                    href={'/rest/worksheets/' + ws.uuid}
-                                >
+                                <a className={classes.subheader} href={'/worksheets/' + ws.uuid}>
                                     {ws.title ? ws.title : 'Untitled'}
                                 </a>
                                 <div className={classes.value} style={{ whiteSpace: 'pre' }}>

@@ -30,6 +30,7 @@ import BundleRoute from './routes/BundleRoute';
 
 import history from './history';
 import Cookies from 'universal-cookie';
+import DashboardRoute from './routes/DashboardRoute';
 
 function CodalabApp() {
     return (
@@ -110,6 +111,10 @@ function CodalabApp() {
                                 )}
                             />
                             <Route path='/bundles/:uuid' component={BundleRoute} />
+                            <Route
+                                path='/dashboard/:uid'
+                                component={(props) => <DashboardRoute {...props} auth={fakeAuth} />}
+                            />
                             <Route
                                 path='/dashboard'
                                 render={(props) => <NewDashboard {...props} auth={fakeAuth} />}

@@ -8,6 +8,8 @@ import $ from 'jquery';
  * This route page displays the new Dashboard, which is the landing page for all the users.
  */
 class NewDashboard extends React.Component<{
+    // ID of user.
+    uid: string,
     classes: {},
     auth: {
         isAuthenticated: boolean,
@@ -23,6 +25,8 @@ class NewDashboard extends React.Component<{
         }
         this.state = {
             userInfo: null, // User info of the current user. (null is the default)
+            authUid: null, // User Id of the current authenticated user
+            ownDashboard: false, // Whether the dashboard is owned by current user
         };
     }
 
@@ -35,10 +39,33 @@ class NewDashboard extends React.Component<{
             cache: false,
             type: 'GET',
             success: function(data) {
-                var userInfo = data.data.attributes;
-                userInfo.user_id = data.data.id;
-                this.setState({
-                    userInfo: userInfo,
+                let authUid: String = data.data.id;
+                // Redirect to current user's own dashboard
+                this.setState({ authUid: authUid });
+                let ownDashboard: boolean;
+                if (!this.props.uid) {
+                    this.props.history.push('/dashboard/' + authUid);
+                    ownDashboard = true;
+                } else {
+                    ownDashboard = authUid === this.props.uid;
+                }
+
+                $.ajax({
+                    url: ownDashboard ? '/rest/user' : '/rest/users/' + this.props.uid,
+                    dataType: 'json',
+                    cache: false,
+                    type: 'GET',
+                    success: function(data) {
+                        const userInfo = data.data.attributes;
+                        userInfo.user_id = data.data.id;
+                        this.setState({
+                            userInfo: userInfo,
+                            ownDashboard,
+                        });
+                    }.bind(this),
+                    error: function(xhr, status, err) {
+                        console.error(xhr.responseText);
+                    },
                 });
             }.bind(this),
             error: function(xhr, status, err) {
@@ -49,18 +76,25 @@ class NewDashboard extends React.Component<{
 
     /** Renderer. */
     render() {
-        return (
-            <div>
-                <Grid container spacing={30}>
-                    <Grid item xs={3}>
-                        <SideBar userInfo={this.state.userInfo}></SideBar>
+        if (this.state.userInfo) {
+            return (
+                <div>
+                    <Grid container spacing={30}>
+                        <Grid item xs={3}>
+                            <SideBar
+                                userInfo={this.state.userInfo}
+                                showQuota={this.state.ownDashboard}
+                            ></SideBar>
+                        </Grid>
+                        <Grid item xs>
+                            <MainPanel userInfo={this.state.userInfo}></MainPanel>
+                        </Grid>
                     </Grid>
-                    <Grid item xs>
-                        <MainPanel userInfo={this.state.userInfo}></MainPanel>
-                    </Grid>
-                </Grid>
-            </div>
-        );
+                </div>
+            );
+        } else {
+            return null;
+        }
     }
 }
 
