@@ -90,6 +90,7 @@ jobs:
           - copy netcat netcurl
           - edit
           - open wopen
+          - stress
     steps:
       - name: Clear free space
         run: |

@@ -882,6 +882,20 @@ def test_download(ctx):
     _run_command([cl, 'download', uuid + '/not-exists'], 1)
 
 
+@TestModule.register('stress')
+def test_upload3(ctx):
+    # Stress tests with uploading / downloading large files.
+    def upload_size(size_gb):
+        with tempfile.NamedTemporaryFile() as f:
+            f.truncate(1024 * 1024 * 1024 * size_gb)
+        _run_command([cl, 'upload', f.name])
+
+    upload_size(5)
+    upload_size(50)
+    upload_size(70)
+    upload_size(100)
+
+
 @TestModule.register('refs')
 def test_refs(ctx):
     # Test references
