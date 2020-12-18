@@ -39,7 +39,7 @@ const styles = ({ spacing, palette }) => {
         placeholderBox: {
             marginBottom: 800,
         },
-        avatar: { marginLeft: 8, marginTop: 8, marginBottom: 8 },
+        avatar: { marginLeft: 8, marginTop: 12, marginBottom: 8 },
         heading: {
             fontFamily: family,
             fontSize: 16,
@@ -57,7 +57,7 @@ const styles = ({ spacing, palette }) => {
         },
         affiliation: {
             fontSize: 15,
-            marginBottom: 4,
+            paddingBottom: 8,
             fontFamily: 'Roboto',
             fontStyle: 'normal',
             fontWeight: 'normal',

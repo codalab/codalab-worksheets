@@ -23,41 +23,25 @@ const kDefaultWorksheetName = 'unnamed';
 const styles = ({ spacing, palette }) => {
     return {
         wsBox: {
-            marginLeft: 8,
-            marginRight: 8,
-            marginTop: 8,
-            marginBottom: 8,
+            marginLeft: 20,
+            marginRight: 20,
+            marginTop: 20,
+            marginBottom: 20,
             backgroundColor: 'white',
             alignItems: 'center',
         },
-        titleBox: { marginLeft: 8, marginTop: 8, marginBottom: 8 },
+        titleBox: { margin: 'auto', marginTop: 8, marginBottom: 8, width: '90%' },
         wsTitleBox: {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-        },
-        card: {
-            display: 'flex',
-            flexDirection: 'column',
-            padding: spacing(2),
-            elevation: 5,
-            marginLeft: 8,
-            width: '90%',
-            borderRadius: 12,
-            boxShadow: '0 2px 4px 0 rgba(138, 148, 159, 0.2)',
-            '& > *:nth-child(1)': {
-                marginRight: spacing(2),
-            },
-            '& > *:nth-child(2)': {
-                flex: 'auto',
-            },
         },
         wsCard: {
             display: 'flex',
             flexDirection: 'column',
             padding: spacing(2),
             elevation: 5,
-            marginLeft: 8,
+            margin: 'auto',
             marginBottom: 8,
             width: '90%',
             borderRadius: 12,
