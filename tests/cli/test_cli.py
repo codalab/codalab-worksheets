@@ -888,7 +888,7 @@ def test_stress(ctx):
     def upload_size(size_gb):
         with tempfile.NamedTemporaryFile() as f:
             f.truncate(1024 * 1024 * 1024 * size_gb)
-        _run_command([cl, 'upload', f.name])
+            _run_command([cl, 'upload', f.name])
 
     upload_size(5)
     upload_size(50)
