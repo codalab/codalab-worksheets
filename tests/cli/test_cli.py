@@ -883,7 +883,7 @@ def test_download(ctx):
 
 
 @TestModule.register('stress')
-def test_upload3(ctx):
+def test_stress(ctx):
     # Stress tests with uploading / downloading large files.
     def upload_size(size_gb):
         with tempfile.NamedTemporaryFile() as f:
