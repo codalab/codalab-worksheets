@@ -22,8 +22,20 @@ const kDefaultWorksheetName = 'unnamed';
 
 const styles = ({ spacing, palette }) => {
     return {
-        box: { marginLeft: 8, marginTop: 8, marginBottom: 8, backgroundColor: 'white' },
+        wsBox: {
+            marginLeft: 8,
+            marginRight: 8,
+            marginTop: 8,
+            marginBottom: 8,
+            backgroundColor: 'white',
+            alignItems: 'center',
+        },
         titleBox: { marginLeft: 8, marginTop: 8, marginBottom: 8 },
+        wsTitleBox: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+        },
         card: {
             display: 'flex',
             flexDirection: 'column',
@@ -123,8 +135,8 @@ class MainPanel extends React.Component<{
             success: (data) => {
                 const worksheets = data.response.map((ws, i) => (
                     <Card className={classes.wsCard}>
-                        <Box className={classes.box} alignItems={'center'}>
-                            <Box display={'flex'} alignItems={'center'} height={30}>
+                        <Box className={classes.wsBox}>
+                            <Box className={classes.wsTitleBox}>
                                 <a className={classes.subheader} href={'/worksheets/' + ws.uuid}>
                                     {ws.title ? ws.title : 'Untitled'}
                                 </a>
