@@ -124,7 +124,7 @@ class MainPanel extends React.Component<{
                 const worksheets = data.response.map((ws, i) => (
                     <Card className={classes.wsCard}>
                         <Box className={classes.box} alignItems={'center'}>
-                            <Box display={'flex'} alignItems={'center'}>
+                            <Box display={'flex'} alignItems={'center'} height={30}>
                                 <a className={classes.subheader} href={'/worksheets/' + ws.uuid}>
                                     {ws.title ? ws.title : 'Untitled'}
                                 </a>
