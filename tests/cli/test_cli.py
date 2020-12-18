@@ -886,10 +886,11 @@ def test_download(ctx):
 def test_stress(ctx):
     # Stress tests with uploading / downloading large files.
     def upload_size(size_gb):
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(suffix=f"-{size_gb}gb") as f:
             f.truncate(1024 * 1024 * 1024 * size_gb)
             _run_command([cl, 'upload', f.name])
 
+    upload_size(.01)
     upload_size(5)
     upload_size(50)
     upload_size(70)
