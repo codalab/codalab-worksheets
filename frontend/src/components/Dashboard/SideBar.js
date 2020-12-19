@@ -106,7 +106,7 @@ class SideBar extends React.Component {
     componentDidMount() {
         const { classes } = this.props;
         // Fetch bundles' count in different states owned by the current user one by one
-        let states: String[] = [
+        const states: String[] = [
             'uploading',
             'created',
             'staged',

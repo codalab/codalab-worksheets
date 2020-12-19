@@ -152,6 +152,7 @@ class MainPanel extends React.Component<{
         }
         return null;
     }
+
     resetDialog() {
         this.setState({
             newWorksheetShowDialog: false,
