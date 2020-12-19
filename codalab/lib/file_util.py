@@ -5,9 +5,6 @@ memory-efficent ways.
 
 import sys
 from . import formatting
-import urllib.request
-import urllib.parse
-import urllib.error
 import subprocess
 from codalab.common import urlopen_with_retry
 
