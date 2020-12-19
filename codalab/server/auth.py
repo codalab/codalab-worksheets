@@ -1,11 +1,13 @@
-'''
+"""
 AuthHandler encapsulates the logic to authenticate users on the server-side.
-'''
+"""
 import base64
 import json
-import threading
-import urllib.request, urllib.parse, urllib.error
-from codalab.common import urlopen_with_retry
+
+import urllib.request
+import urllib.parse
+import urllib.error
+from codalab.common import LoginPermissionError, urlopen_with_retry
 
 
 # TODO(sckoo): clean up auth logic across:
@@ -65,4 +67,6 @@ class RestOAuthHandler(object):
         except urllib.error.HTTPError as e:
             if e.code == 401:
                 return None
-            raise
+            elif e.code == 404:
+                raise LoginPermissionError("Invalid username or password.")
+            raise e

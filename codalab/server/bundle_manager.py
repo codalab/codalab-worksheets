@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import traceback
+from typing import List
 
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
@@ -23,7 +24,6 @@ from codalab.worker.bundle_state import State, RunResources
 
 logger = logging.getLogger(__name__)
 
-WORKER_TIMEOUT_SECONDS = 60
 SECONDS_PER_DAY = 60 * 60 * 24
 # Fail unresponsive bundles in uploading, staged and running state after this many days.
 BUNDLE_TIMEOUT_DAYS = 60
@@ -42,7 +42,7 @@ class BundleManager(object):
     Assigns run bundles to workers and makes make bundles.
     """
 
-    def __init__(self, codalab_manager):
+    def __init__(self, codalab_manager, worker_timeout_seconds=60):
         config = codalab_manager.config.get('workers')
         if not config:
             print('config.json file missing a workers section.', file=sys.stderr)
@@ -64,6 +64,7 @@ class BundleManager(object):
         def parse(to_value, field):
             return to_value(config[field]) if field in config else None
 
+        self._worker_timeout_seconds = worker_timeout_seconds
         self._max_request_time = parse(formatting.parse_duration, 'max_request_time') or 0
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory') or 0
         self._min_request_memory = (
@@ -121,19 +122,19 @@ class BundleManager(object):
         for bundle in bundles:
             parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
 
+            missing_uuids = parent_uuids - all_parent_uuids
+            if missing_uuids:
+                bundles_to_fail.append(
+                    (bundle, 'Missing parent bundles: %s' % ', '.join(missing_uuids))
+                )
+                continue
+
             try:
                 check_bundles_have_read_permission(
                     self._model, self._model.get_user(bundle.owner_id), parent_uuids
                 )
             except PermissionError as e:
                 bundles_to_fail.append((bundle, str(e)))
-                continue
-
-            missing_uuids = parent_uuids - all_parent_uuids
-            if missing_uuids:
-                bundles_to_fail.append(
-                    (bundle, 'Missing parent bundles: %s' % ', '.join(missing_uuids))
-                )
                 continue
 
             parent_states = {uuid: all_parent_states[uuid] for uuid in parent_uuids}
@@ -171,7 +172,7 @@ class BundleManager(object):
             logger.info('Staging %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.STAGED})
 
-    def _make_bundles(self):
+    def _make_bundles(self) -> List[threading.Thread]:
         # Re-stage any stuck bundles. This would happen if the bundle manager
         # died.
         for bundle in self._model.batch_get_bundles(state=State.MAKING, bundle_type='make'):
@@ -179,6 +180,7 @@ class BundleManager(object):
                 logger.info('Re-staging make bundle %s', bundle.uuid)
                 self._model.update_bundle(bundle, {'state': State.STAGED})
 
+        threads = []
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='make'):
             logger.info('Making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.MAKING})
@@ -186,7 +188,10 @@ class BundleManager(object):
                 self._make_uuids.add(bundle.uuid)
             # Making a bundle could take time, so do the work in a separate
             # thread to ensure quick scheduling.
-            threading.Thread(target=BundleManager._make_bundle, args=[self, bundle]).start()
+            t = threading.Thread(target=BundleManager._make_bundle, args=[self, bundle])
+            threads.append(t)
+            t.start()
+        return threads
 
     def _is_making_bundles(self):
         with self._make_uuids_lock:
@@ -258,7 +263,7 @@ class BundleManager(object):
         """
         for worker in workers.workers():
             if datetime.datetime.utcnow() - worker['checkin_time'] > datetime.timedelta(
-                seconds=WORKER_TIMEOUT_SECONDS
+                seconds=self._worker_timeout_seconds
             ):
                 logger.info(
                     'Cleaning up dead worker (%s, %s)', worker['user_id'], worker['worker_id']
@@ -317,7 +322,7 @@ class BundleManager(object):
             failure_message = None
             if not workers.is_running(bundle.uuid):
                 failure_message = 'No worker claims bundle'
-            if now - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS:
+            if now - bundle.metadata.last_updated > self._worker_timeout_seconds:
                 failure_message = 'Worker offline'
             if failure_message is not None:
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
@@ -618,7 +623,8 @@ class BundleManager(object):
     def _compute_request_cpus(bundle):
         """
         Compute the CPU limit used for scheduling the run.
-        The default of 1 is for backwards compatibility for
+        The default of 1 (if no GPUs specified)
+        is for backwards compatibility for
         runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_cpus:
@@ -767,7 +773,9 @@ class BundleManager(object):
         READY / FAILED, no worker_run DB entry:
             Finished.
         """
-        workers = WorkerInfoAccessor(self._model, self._worker_model, WORKER_TIMEOUT_SECONDS - 5)
+        workers = WorkerInfoAccessor(
+            self._model, self._worker_model, self._worker_timeout_seconds - 5
+        )
 
         # Handle some exceptional cases.
         self._cleanup_dead_workers(workers)
@@ -945,14 +953,14 @@ class BundleManager(object):
 
     def _get_running_bundles_info(self, workers, staged_bundles_to_run):
         """
-        Build a nested dictionary to store information (bundle and bundle_resources) including 
+        Build a nested dictionary to store information (bundle and bundle_resources) including
         the current running bundles and staged bundles.
-        Note that the primary usage of this function is to improve efficiency when calling 
-        self._compute_bundle_resources(), e.g. reusing constants (gpus, cpus, memory) from 
+        Note that the primary usage of this function is to improve efficiency when calling
+        self._compute_bundle_resources(), e.g. reusing constants (gpus, cpus, memory) from
         the returning values of self._compute_bundle_resources() as they don't change over time.
-        However, be careful when using this function to improve efficiency for returning values 
-        like disk and time from self._compute_bundle_resources() as they do depend on the number 
-        of jobs that are running during the time of computation. Accuracy might be affected 
+        However, be careful when using this function to improve efficiency for returning values
+        like disk and time from self._compute_bundle_resources() as they do depend on the number
+        of jobs that are running during the time of computation. Accuracy might be affected
         without considering this factor.
         :param workers: a WorkerInfoAccessor object containing worker related information e.g. running uuid.
         :return: a nested dictionary structured as follows:

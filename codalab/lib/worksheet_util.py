@@ -423,6 +423,11 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
             )
             return key, value
 
+        def truncate_sumnary(summary):
+            if len(summary) > 1024:
+                return summary[:1024] + '...'
+            return summary
+
         # Nice easy-to-ready description of how this bundle got created.
         bundle_type = bundle_info.get('bundle_type')
         if bundle_type in ('dataset', 'program'):
@@ -431,9 +436,9 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
             args = []
             for dep in deps:
                 args.append(friendly_render_dep(dep)[1])
-            return '= ' + ' '.join(args)
+            return truncate_sumnary('= ' + ' '.join(args))
         elif bundle_type == 'run':
-            return '! ' + bundle_info['command']
+            return truncate_sumnary('! ' + bundle_info['command'])
     elif genpath == 'host_worksheets':
         if 'host_worksheets' in bundle_info:
             return ' '.join(
@@ -562,7 +567,7 @@ def apply_func(func, arg):
             else:
                 return '<invalid function: %s>' % f
         return arg
-    except:
+    except Exception:
         # Applying the function failed, so just return the arg.
         return arg
 
@@ -571,7 +576,7 @@ def get_default_schemas():
     # Single fields
     uuid = ['uuid[0:8]', 'uuid', '[0:8]']
     name = ['name']
-    summary = ['summary']
+    summary = ['summary[0:1024]', 'summary']
     data_size = ['data_size', 'data_size', 'size']
     time = ['time', 'time', 'duration']
     state = ['state']
@@ -685,7 +690,7 @@ def interpret_items(schemas, raw_items, db_model=None):
         """
         Having collected bundles in |bundle_infos|, flush them into |blocks|,
         potentially as a single table depending on the mode.
-        bundle_block_start_index: The raw index for % display <mode> schema 
+        bundle_block_start_index: The raw index for % display <mode> schema
         """
         if len(bundle_infos) == 0:
             return
@@ -929,7 +934,8 @@ def interpret_items(schemas, raw_items, db_model=None):
                 current_display = default_display
 
             # Reset schema to minimize long distance dependencies of directives
-            if not is_directive:
+            command = get_command(value_obj)
+            if not is_directive or (command != "add" and command != "addschema"):
                 if current_schema is not None:
                     blocks.append(
                         SchemaBlockSchema()
@@ -1002,6 +1008,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                     raw_to_block.append((len(blocks) - 1, 0))
             elif item_type == TYPE_DIRECTIVE:
                 command = get_command(value_obj)
+                appended_directive_blocks_index = False
                 if command == '%' or command == '' or command is None:
                     # Comment
                     pass
@@ -1013,6 +1020,9 @@ def interpret_items(schemas, raw_items, db_model=None):
                     current_schema_ids.append(item_id)
                     current_schema_name = name
                     schemas[name] = current_schema = []
+                    # Schema block should also be considered when calculating the focus index
+                    raw_to_block.append((len(blocks) - 1 + len(current_schema_ids), 0))
+                    appended_directive_blocks_index = True
                 elif command == 'addschema':
                     # Add to schema
                     if current_schema is None:
@@ -1044,12 +1054,13 @@ def interpret_items(schemas, raw_items, db_model=None):
                         )
                         .data
                     )
-
+                    appended_directive_blocks_index = True
                     raw_to_block.append((len(blocks) - 1, 0))
                 else:
                     raise UsageError("unknown directive `%s`" % command)
-
-                raw_to_block.append(None)
+                # Add an empty item placeholder for other directives, since they do not represent substantial items
+                if not appended_directive_blocks_index:
+                    raw_to_block.append(None)
             else:
                 raise RuntimeError('Unknown worksheet item type: %s' % item_type)
 
@@ -1096,7 +1107,7 @@ def interpret_items(schemas, raw_items, db_model=None):
 
             raw_to_block.append((len(blocks) - 1, 0))
 
-        except Exception as e:
+        except Exception:
             current_schema = None
             bundle_infos[:] = []
             worksheet_infos[:] = []

@@ -1,27 +1,22 @@
-try:
-    import boto3
-except ModuleNotFoundError:
-    raise ModuleNotFoundError(
-        "Running the worker manager requires the boto3 module.\n"
-        "Please run: pip install boto3==1.9.228"
-    )
 import logging
 import os
 import re
 import uuid
-from .worker_manager import WorkerManager, WorkerJob
+from argparse import ArgumentParser
+from shlex import quote
 
+from .worker_manager import WorkerManager, WorkerJob
 from codalab.lib.telemetry_util import CODALAB_SENTRY_INGEST, using_sentry
 
 logger = logging.getLogger(__name__)
 
 
 class AWSBatchWorkerManager(WorkerManager):
-    NAME = 'aws-batch'
-    DESCRIPTION = 'Worker manager for submitting jobs to AWS Batch'
+    NAME: str = 'aws-batch'
+    DESCRIPTION: str = 'Worker manager for submitting jobs to AWS Batch'
 
     @staticmethod
-    def add_arguments_to_subparser(subparser):
+    def add_arguments_to_subparser(subparser: ArgumentParser) -> None:
         subparser.add_argument(
             '--region', type=str, default='us-east-1', help='AWS region to run jobs in'
         )
@@ -60,6 +55,17 @@ class AWSBatchWorkerManager(WorkerManager):
 
     def __init__(self, args):
         super().__init__(args)
+        # We import this lazily, so a user doesn't have to install boto3 unless
+        # they absolutely want to run the AWS worker manager, versus if it's incidentally
+        # imported by other code (e.g., to access AWSBatchWorkerManager.DESCRIPTION , as done
+        # in codalab/worker_manager/main.py ).
+        try:
+            import boto3
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "Running the AWS worker manager requires the boto3 module.\n"
+                "Please run: pip install boto3"
+            )
         self.batch_client = boto3.client('batch', region_name=self.args.region)
 
     def get_worker_jobs(self):
@@ -68,12 +74,13 @@ class AWSBatchWorkerManager(WorkerManager):
         jobs = []
         for status in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING']:
             response = self.batch_client.list_jobs(jobQueue=self.args.job_queue, jobStatus=status)
-            # Only record jobs if a job regex filter isn't provided or if the job's name completely matches
-            # a provided job regex filter.
-            if not self.args.job_filter or re.fullmatch(
-                self.args.job_filter, response.get("jobName", "")
-            ):
-                jobs.extend(response['jobSummaryList'])
+            for jobSummary in response['jobSummaryList']:
+                # Only record jobs if a job regex filter isn't provided or if the job's name completely matches
+                # a provided job regex filter.
+                if not self.args.job_filter or re.fullmatch(
+                    self.args.job_filter, jobSummary.get("jobName", "")
+                ):
+                    jobs.append(jobSummary)
         logger.info(
             'Workers: {}'.format(
                 ' '.join(job['jobId'] + ':' + job['status'] for job in jobs) or '(none)'
@@ -105,7 +112,12 @@ class AWSBatchWorkerManager(WorkerManager):
                 'image': image,
                 'vcpus': self.args.cpus,
                 'memory': self.args.memory_mb,
-                'command': command,
+                'command': [
+                    "/bin/bash",
+                    "-c",
+                    "/opt/scripts/detect-ec2-spot-preemption.sh & "
+                    + " ".join(quote(arg) for arg in command),
+                ],
                 'environment': [
                     {'name': 'CODALAB_USERNAME', 'value': os.environ.get('CODALAB_USERNAME')},
                     {'name': 'CODALAB_PASSWORD', 'value': os.environ.get('CODALAB_PASSWORD')},

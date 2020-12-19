@@ -8,6 +8,7 @@ import ConfigurationPanel from '../ConfigPanel';
 import MainContent from './MainContent';
 import BundleDetailSideBar from './BundleDetailSideBar';
 import BundleActions from './BundleActions';
+import {findDOMNode} from "react-dom";
 
 class BundleDetail extends React.Component<
     {
@@ -15,6 +16,7 @@ class BundleDetail extends React.Component<
         // Callback on metadata change.
         bundleMetadataChanged: () => void,
         onClose: () => void,
+        onOpen: () => void,
     },
     {
         errorMessages: string[],
@@ -33,7 +35,6 @@ class BundleDetail extends React.Component<
             return {
                 prevUuid: props.uuid,
                 errorMessages: [],
-                open: true,
             };
         }
         return null;
@@ -73,6 +74,7 @@ class BundleDetail extends React.Component<
                 clearInterval(this.timer);
             }
         }, 4000);
+        this.props.onOpen();
     }
 
     componentWillUnmount() {
@@ -196,7 +198,7 @@ class BundleDetail extends React.Component<
   
     render(): React.Node {
         const { uuid, bundleMetadataChanged,
-            onUpdate, onClose,
+            onUpdate, onClose, onOpen,
             rerunItem, showNewRerun,
             showDetail, handleDetailClick,
             editPermission } = this.props;
@@ -214,6 +216,8 @@ class BundleDetail extends React.Component<
 
         return (
             <ConfigurationPanel
+                //  The ref is created only once, and that this is the only way to properly create the ref before componentDidMount().
+                ref={(node) => this.scrollToNewlyOpenedDetail(node)}
                 buttons={ <BundleActions
                     showNewRerun={showNewRerun}
                     showDetail={showDetail}
@@ -233,6 +237,14 @@ class BundleDetail extends React.Component<
             </ConfigurationPanel>
         );
   }
+    scrollToNewlyOpenedDetail(node) {
+        // Only scroll to the bundle detail when it is opened
+        if (node && this.state.open) {
+            findDOMNode(node).scrollIntoView({block:'center'});
+            // Avoid undesirable scroll
+            this.setState({open:false})
+        }
+    }
 }
 
 export default BundleDetail;

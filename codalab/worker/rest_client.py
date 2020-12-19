@@ -2,11 +2,13 @@ from contextlib import closing
 from io import StringIO
 import http.client
 import json
-import urllib.request, urllib.parse, urllib.error
-from typing import Dict, Any
+import urllib.request
+import urllib.parse
+import urllib.error
+from typing import Dict
 
 from .file_util import un_gzip_stream
-from codalab.common import urlopen_with_retry
+from codalab.common import URLOPEN_TIMEOUT_SECONDS, urlopen_with_retry
 
 
 class RestClientException(Exception):
@@ -50,6 +52,7 @@ class RestClient(object):
         data=None,
         return_response=False,
         authorized=True,
+        timeout_seconds=URLOPEN_TIMEOUT_SECONDS,
     ):
         """
         `data` can be one of the following:
@@ -89,7 +92,7 @@ class RestClient(object):
             # Return a file-like object containing the contents of the response
             # body, transparently decoding gzip streams if indicated by the
             # Content-Encoding header.
-            response = urlopen_with_retry(request)
+            response = urlopen_with_retry(request, timeout=timeout_seconds)
             encoding = response.headers.get('Content-Encoding')
             if not encoding or encoding == 'identity':
                 return response
@@ -97,7 +100,8 @@ class RestClient(object):
                 return un_gzip_stream(response)
             else:
                 raise RestClientException('Unsupported Content-Encoding: ' + encoding, False)
-        with closing(urlopen_with_retry(request)) as response:
+
+        with closing(urlopen_with_retry(request, timeout=timeout_seconds)) as response:
             # If the response is a JSON document, as indicated by the
             # Content-Type header, try to deserialize it and return the result.
             # Otherwise, just ignore the response body and return None.

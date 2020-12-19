@@ -10,13 +10,9 @@ worksheet_util does not make any calls to the model, they are kind of just like
 static helper functions.
 """
 import base64
-import types
 from contextlib import closing
 from itertools import chain
 import json
-import sys
-import requests
-import urllib.request, urllib.parse, urllib.error
 import yaml
 from bottle import get, post, local, request, abort, httplib
 
@@ -24,7 +20,6 @@ from codalab.common import UsageError, NotFoundError
 from codalab.lib import formatting, spec_util
 from codalab.lib.worksheet_util import (
     TYPE_DIRECTIVE,
-    TYPE_MARKUP,
     format_metadata,
     get_default_schemas,
     get_worksheet_lines,
@@ -32,7 +27,6 @@ from codalab.lib.worksheet_util import (
     interpret_items,
     is_file_genpath,
     markup_item,
-    directive_item,
     bundle_item,
     subworksheet_item,
     get_command,
@@ -68,7 +62,7 @@ def _interpret_search():
     }
     ```
     """
-    return interpret_search(request.json)
+    return interpret_search(request.json)  # NOQA - F821: undefined function name
 
 
 @post('/interpret/wsearch', apply=ProtectedPlugin())
@@ -192,22 +186,22 @@ def fetch_interpreted_worksheet(uuid):
     - resolve_interpreted_items: get more information about a worksheet.
     In the future, for large worksheets, might want to break this up so
     that we can render something basic.
-    Return: 
+    Return:
         worksheet_info dict{}:
             key:[value_type] <description>
-            blocks:[list] 
+            blocks:[list]
                     Resolved worksheet blocks from raw_items.
-                        Bundles will be grouped into table block items, 
+                        Bundles will be grouped into table block items,
                         text items might be grouped into one markdown block etc.
             source:[list] source lines
-            raw_to_block:[list] 
+            raw_to_block:[list]
                             Raw_items to its block index pair.
                                 For example, assume the first resolved block item is a bundle table that has 2 rows,
                                 then the 2nd element in the list would be [0, 1]
                                 [0, 1]: 0 means the item belongs to the first block,
                                         1 means the item is the second item of the block (2nd bundle in our example)
                                 NOTE: Used for setting focus on frontend
-            block_to_raw:[dict] 
+            block_to_raw:[dict]
                             Maps the blocks (table, markdown, records) to their corresponding source line indices,
                             it's mostly a reverse mapping of raw_to_block, by mostly: raw_to_block has some bug,
                             please refer to worksheet_utils flush_bundles function.
@@ -218,13 +212,11 @@ def fetch_interpreted_worksheet(uuid):
                             [1, 0]: 9
                             This means the first blocks' first item corresponds to the first line in source,
                             the second item corresponds to the second line in source
-                            The second block corresponds the 10th line in source. 
+                            The second block corresponds the 10th line in source.
                             2-8 can be skipped for multiple reasons: blank lines, comments, schema lines etc.
-                                NOTE: Used for setting focus on frontend                                      
-
+                                NOTE: Used for setting focus on frontend
     This endpoint can be called with &brief=1 in order to give an abbreviated version,
     which does not resolve searches or wsearches.
-
     To return an interpreted worksheet that only resolves a particular search/wsearch,
     pass in the search query to the "directive" argument. The value for this argument
     must be a search/wsearch query -- for example, &directive=search 0x .limit=100
@@ -233,7 +225,6 @@ def fetch_interpreted_worksheet(uuid):
     brief = request.query.get("brief", "0") == "1"
 
     directive = request.query.get("directive", None)
-    print(directive)
     search_results = []
 
     worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
@@ -466,7 +457,7 @@ def resolve_interpreted_blocks(interpreted_blocks, brief):
                             block['lines'] = None
                         elif mode == BlockModes.image_block:
                             block['image_data'] = None
-                except NotFoundError as e:
+                except NotFoundError:
                     block['status']['code'] = FetchStatusCodes.not_found
                     if mode == BlockModes.contents_block:
                         block['lines'] = None
@@ -480,7 +471,7 @@ def resolve_interpreted_blocks(interpreted_blocks, brief):
                     target = BundleTarget(info['bundle_uuid'], info['target_genpath'])
                     try:
                         target_info = rest_util.get_target_info(target, 0)
-                    except NotFoundError as e:
+                    except NotFoundError:
                         continue
                     if target_info['type'] == 'file':
                         contents = head_target(target_info['resolved_target'], block['max_lines'])
@@ -554,7 +545,7 @@ def get_genpaths_table_contents_requests(contents):
 
     contents represents a table, but some of the elements might not be
     interpreted yet, so fill them in.
-    
+
     Returns requests: list of (bundle_uuid, genpath, post-processing-func)
     """
     requests = []
@@ -598,8 +589,8 @@ def interpret_file_genpaths(requests):
     """
     target_cache = {}
     responses = []
-    for (bundle_uuid, genpath, post) in requests:
-        value = interpret_file_genpath(target_cache, bundle_uuid, genpath, post)
+    for (bundle_uuid, genpath, post_in_request) in requests:
+        value = interpret_file_genpath(target_cache, bundle_uuid, genpath, post_in_request)
         responses.append(value)
     return responses
 
@@ -708,7 +699,7 @@ def resolve_items_into_infos(items):
                 subworksheet_info = local.model.get_worksheet(
                     i['subworksheet_uuid'], fetch_items=False
                 ).to_dict()
-            except UsageError as e:
+            except UsageError:
                 # If can't get the subworksheet, it's probably invalid, so just replace it with an error
                 # type = worksheet_util.TYPE_MARKUP
                 subworksheet_info = {'uuid': i['subworksheet_uuid']}

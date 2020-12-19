@@ -94,14 +94,19 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             showNewText={
                 !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewText
             }
+            showNewSchema={
+                !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewSchema
+            }
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
+            onHideNewSchema={props.onHideNewSchema}
+            updateSchemaItem={props.updateSchemaItem}
             saveAndUpdateWorksheet={props.saveAndUpdateWorksheet}
             key={props.key}
+            focusIndex={props.focusIndex}
             subFocusIndex={props.subFocusIndex}
             after_sort_key={props.after_sort_key}
             ids={props.ids}
-            updateSchemaItem={props.updateSchemaItem}
             id={props.id}
         >
             {elem}
@@ -230,9 +235,11 @@ class WorksheetItemList extends React.Component {
                         showNewRun: this.props.showNewRun,
                         showNewText: this.props.showNewText,
                         showNewRerun: this.props.showNewRerun,
+                        showNewSchema: this.props.showNewSchema,
                         onHideNewRun: this.props.onHideNewRun,
                         onHideNewText: this.props.onHideNewText,
                         onHideNewRerun: this.props.onHideNewRerun,
+                        onHideNewSchema: this.props.onHideNewSchema,
                         handleCheckBundle: this.props.handleCheckBundle,
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
                         setDeleteItemCallback: this.props.setDeleteItemCallback,
@@ -243,6 +250,7 @@ class WorksheetItemList extends React.Component {
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         updateSchemaItem: this.props.updateSchemaItem,
+                        setDeleteSchemaItemCallback: this.props.setDeleteSchemaItemCallback,
                     };
                     addWorksheetItems(
                         props,
@@ -277,6 +285,33 @@ class WorksheetItemList extends React.Component {
                                 }
                             />
                         </div>
+                    )}
+                    {this.props.showNewSchema && !focusedItem && (
+                        <SchemaItem
+                            after_sort_key={-1}
+                            ws={this.props.ws}
+                            onSubmit={() => this.props.onHideNewSchema()}
+                            reloadWorksheet={() => this.props.reloadWorksheet(undefined, (0, 0))}
+                            editPermission={true}
+                            item={{
+                                field_rows: [
+                                    {
+                                        field: '',
+                                        'generalized-path': '',
+                                        'post-processor': null,
+                                        from_schema_name: '',
+                                    },
+                                ],
+                                header: ['field', 'generalized-path', 'post-processor'],
+                                schema_name: '',
+                                sort_keys: [-1],
+                            }}
+                            create={true}
+                            updateSchemaItem={this.props.updateSchemaItem}
+                            setDeleteSchemaItemCallback={this.props.setDeleteSchemaItemCallback}
+                            focusIndex={this.props.focusIndex}
+                            subFocusIndex={this.props.subFocusIndex}
+                        />
                     )}
                     {worksheet_items}
                     <NewUpload

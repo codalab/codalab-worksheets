@@ -116,7 +116,7 @@ class UploadManager(object):
 
             if len(sources) == 1:
                 self._simplify_directory(bundle_path)
-        except:
+        except UsageError:
             if os.path.exists(bundle_path):
                 path_util.remove(bundle_path)
             raise
@@ -126,6 +126,7 @@ class UploadManager(object):
         if isinstance(source, str):
             if path_util.path_is_url(source):
                 is_url = True
+                source = source.rsplit('?', 1)[0]  # Remove query string from URL, if present
             else:
                 is_local_path = True
             filename = os.path.basename(os.path.normpath(source))

@@ -1,5 +1,4 @@
 import http.client
-import json
 import logging
 import mimetypes
 import os
@@ -10,7 +9,8 @@ from io import BytesIO
 from http.client import HTTPResponse
 
 from bottle import abort, get, post, put, delete, local, request, response
-from codalab.bundles import get_bundle_subclass, UploadedBundle
+from codalab.bundles import get_bundle_subclass
+from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import precondition, UsageError, NotFoundError
 from codalab.lib import canonicalize, spec_util, worksheet_util
 from codalab.lib.server_util import (
@@ -77,7 +77,7 @@ def _fetch_bundles():
            given base worksheet
         3. or a reverse index of the form `^N` referring to the Nth-to-last
            bundle on the given base worksheet.
-     - `keywords`: Search keyword. May be provided multiples times for multiple
+     - `keywords`: Search keyword. May be provided multiple times for multiple
         keywords. Bare keywords match the names and descriptions of bundles.
         Examples of other special keyword forms:
         - `name=<name>            ` : More targeted search of using metadata fields.
@@ -184,7 +184,11 @@ def build_bundles_document(bundle_uuids):
 
     if 'owner' in include_set:
         owner_ids = set(b['owner_id'] for b in bundles if b['owner_id'] is not None)
-        json_api_include(document, UserSchema(), local.model.get_users(owner_ids))
+        json_api_include(
+            document,
+            UserSchema(),
+            local.model.get_users(user_ids=owner_ids, limit=len(owner_ids))['results'],
+        )
 
     if 'group_permissions' in include_set:
         for bundle in bundles:
@@ -586,12 +590,18 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     - `Content-Type: <guess of mimetype based on file extension>`
     - `Content-Encoding: [gzip|identity]`
     - `Target-Type: file`
+    - `X-CodaLab-Target-Size: <size of the target>`
 
     HTTP Response headers (for directories):
     - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
     - `Content-Type: application/gzip`
     - `Content-Encoding: identity`
     - `Target-Type: directory`
+    - `X-CodaLab-Target-Size: <size of the target>`
+
+    Note that X-CodaLab-Target-Size is the uncompressed version of the target size. This means that it will
+    be equivalent to the downloaded file if from a single-file target, but will be the size of the uncompressed
+    archive, not the compressed archive, if from a directory target.
     """
     byte_range = get_request_range()
     head_lines = query_get_type(int, 'head', default=0)
@@ -674,6 +684,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     else:
         response.set_header('Content-Disposition', 'attachment; filename="%s"' % filename)
     response.set_header('Target-Type', target_info['type'])
+    response.set_header('X-Codalab-Target-Size', target_info['size'])
 
     return fileobj
 

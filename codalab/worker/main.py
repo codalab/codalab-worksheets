@@ -121,6 +121,12 @@ def parse_args():
         default=0,
     )
     parser.add_argument(
+        '--checkin-frequency-seconds',
+        help='Number of seconds to wait between worker check-ins',
+        type=int,
+        default=5,
+    )
+    parser.add_argument(
         '--id',
         default='%s(%d)' % (socket.gethostname(), os.getpid()),
         help='Internal use: ID to use for the worker.',
@@ -190,7 +196,10 @@ def connect_to_codalab_server(server, password_file):
         bundle_service = BundleServiceClient(server, username, password)
         return bundle_service
     except BundleAuthException as ex:
-        logger.error('Cannot log into the bundle service. Please check your worker credentials.\n')
+        logger.error(
+            'Cannot log into the bundle service. Please check your worker credentials.\n'
+            f'Username: "{username}" , server "{server}"\n'
+        )
         logger.debug('Auth error: {}'.format(ex))
         sys.exit(1)
 
@@ -256,6 +265,7 @@ def main():
         args.exit_when_idle,
         args.exit_after_num_runs,
         args.idle_seconds,
+        args.checkin_frequency_seconds,
         bundle_service,
         args.shared_file_system,
         args.tag_exclusive,

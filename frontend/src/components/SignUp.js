@@ -43,6 +43,28 @@ export class SignUp extends React.Component {
         );
     };
 
+    componentDidMount() {
+        const { error } = queryString.parse(this.props.location.search);
+        if (!error) {
+            return;
+        }
+        // Retrieve previous user input from the Http Request
+        const { email, username, first_name, last_name, affiliation } = queryString.parse(
+            this.props.location.search,
+        );
+        this.setState(
+            Immutable({
+                form: {
+                    email: email,
+                    username: username,
+                    first_name: first_name,
+                    last_name: last_name,
+                    affiliation: affiliation,
+                },
+            }),
+        );
+    }
+
     render() {
         const { error } = queryString.parse(this.props.location.search);
         return (
