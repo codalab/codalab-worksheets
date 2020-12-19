@@ -14,7 +14,7 @@ const styles = ({ spacing, palette }) => {
     const family =
         '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"';
     return {
-        box: { marginLeft: 8, marginTop: 8, marginBottom: 0 },
+        box: { marginLeft: 8, marginRight: 8, marginTop: 8, marginBottom: 0 },
         progressBox: {
             display: 'flex',
             alignItems: 'center',
@@ -74,6 +74,10 @@ const styles = ({ spacing, palette }) => {
             fontWeight: 500,
             fontSize: 20,
             letterSpacing: 0.15,
+        },
+        progress: {
+            minWidth: '85%',
+            maxWidth: '85%',
         },
     };
 };
@@ -206,7 +210,7 @@ class SideBar extends React.Component {
                         </a>
                         <Box className={classes.progressBox}>
                             <BorderLinearProgress
-                                className={classes.margin}
+                                className={classes.progress}
                                 variant='determinate'
                                 color='secondary'
                                 value={(userInfo.disk_used / userInfo.disk_quota) * 100}
@@ -227,7 +231,7 @@ class SideBar extends React.Component {
                         </a>
                         <Box className={classes.progressBox}>
                             <BorderLinearProgress
-                                className={classes.margin}
+                                className={classes.progress}
                                 variant='determinate'
                                 color='secondary'
                                 value={(userInfo.time_used / userInfo.time_quota) * 100}

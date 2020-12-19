@@ -84,6 +84,7 @@ const styles = ({ spacing, palette }) => {
             float: 'right',
             backgroundColor: green[500],
             color: 'white',
+            right: 0,
         },
     };
 };
