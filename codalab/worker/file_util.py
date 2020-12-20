@@ -523,3 +523,14 @@ class BytesBuffer:
 
     def close(self):
         pass
+
+
+def stream_chunks_from_fileobj(fileobj, chunk_size=1 * 1000 * 1000):
+    """
+    A generator for streaming chunks of a given chunk_size from a fileobj.
+    """
+    while True:
+        data = fileobj.read(chunk_size)
+        if not data:
+            break
+        yield data
