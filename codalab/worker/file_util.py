@@ -211,31 +211,37 @@ def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
     """
-    BUFFER_SIZE = 100 * 1024 * 1024  # Zip in chunks of 100MB
-
-    class GzipStream:
-        def __init__(self, fileobj):
-            self.__input = fileobj
-            self.__buffer = BytesBuffer()
-            self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
-
-        def read(self, size=-1):
-            while size < 0 or len(self.__buffer) < size:
-                s = self.__input.read(BUFFER_SIZE)
-                if not s:
-                    self.__gzip.close()
-                    break
-                self.__gzip.write(s)
-            return self.__buffer.read(size)
-
-        def close(self):
-            self.__input.close()
-
+    args = ['gzip', '-c', '-n', file_path]
     try:
-        file_path_obj = open_file(file_path)
-        return GzipStream(file_path_obj)
-    except Exception as e:
-        raise IOError(e)
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        return proc.stdout
+    except subprocess.CalledProcessError as e:
+        raise IOError(e.output)
+    # BUFFER_SIZE = 100 * 1024 * 1024  # Zip in chunks of 100MB
+
+    # class GzipStream:
+    #     def __init__(self, fileobj):
+    #         self.__input = fileobj
+    #         self.__buffer = BytesBuffer()
+    #         self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
+
+    #     def read(self, size=-1):
+    #         while size < 0 or len(self.__buffer) < size:
+    #             s = self.__input.read(BUFFER_SIZE)
+    #             if not s:
+    #                 self.__gzip.close()
+    #                 break
+    #             self.__gzip.write(s)
+    #         return self.__buffer.read(size)
+
+    #     def close(self):
+    #         self.__input.close()
+
+    # try:
+    #     file_path_obj = open_file(file_path)
+    #     return GzipStream(file_path_obj)
+    # except Exception as e:
+    #     raise IOError(e)
 
 
 def un_bz2_file(source, dest_path):
