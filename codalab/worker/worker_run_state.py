@@ -415,6 +415,8 @@ class RunStateMachine(StateTransitioner):
                 container_stats['cpu_stats']['cpu_usage']['system_cpu_usage']
             )
             run_state = run_state._replace(cpu_usage=cpu_usage)
+            memory_usage = int(container_stats['memory_stats']['usage'] / container_stats['memory_stats']['limit'])
+            run_state = run_state._replace(memory_usage=memory_usage)
             kill_messages = []
 
             run_stats = docker_utils.get_container_stats(run_state.container)
