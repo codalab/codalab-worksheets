@@ -409,13 +409,24 @@ class RunStateMachine(StateTransitioner):
 
         def check_resource_utilization(run_state):
             container_stats = docker_utils.get_container_stats_on_mac(run_state.container)
-            logger.info("container id is " + str(run_state.container.id) + "and name is " + run_state.container.name)
+            logger.info(
+                "container id is "
+                + str(run_state.container.id)
+                + "and name is "
+                + run_state.container.name
+            )
             logger.info("exist ? " + str(docker_utils.container_exists(run_state.container)))
-            cpu_usage = int(container_stats['cpu_stats']['cpu_usage']['total_usage']) / int(
-                container_stats['cpu_stats']['cpu_usage']['system_cpu_usage']
+            cpu_usage = str(
+                int(container_stats['cpu_stats']['cpu_usage']['total_usage'])
+                / int(container_stats['cpu_stats']['system_cpu_usage'])
             )
             run_state = run_state._replace(cpu_usage=cpu_usage)
-            memory_usage = int(container_stats['memory_stats']['usage'] / container_stats['memory_stats']['limit'])
+            memory_usage = str(
+                float(
+                    container_stats['memory_stats']['usage']
+                    / container_stats['memory_stats']['limit']
+                )
+            )
             run_state = run_state._replace(memory_usage=memory_usage)
             kill_messages = []
 

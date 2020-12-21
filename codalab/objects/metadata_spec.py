@@ -25,6 +25,10 @@ def unicode_constructor(s=""):
     return s.encode(encoding='ascii', errors='replace').decode()
 
 
+def float_constructor(s="0"):
+    return float(s)
+
+
 class MetadataSpec(object):
     def __init__(
         self,
@@ -58,4 +62,6 @@ class MetadataSpec(object):
             return unicode_constructor
         if self.type == bool:
             return bool_constructor
+        if self.type == float:
+            return float_constructor
         return self.type
