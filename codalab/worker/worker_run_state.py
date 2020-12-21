@@ -150,6 +150,7 @@ class RunStateMachine(StateTransitioner):
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
     ):
+        logger.info("Yibo - run state machine entered")
         super(RunStateMachine, self).__init__()
         self.add_transition(RunStage.PREPARING, self._transition_from_PREPARING)
         self.add_transition(RunStage.RUNNING, self._transition_from_RUNNING)
@@ -408,6 +409,8 @@ class RunStateMachine(StateTransitioner):
 
         def check_resource_utilization(run_state):
             container_stats = docker_utils.get_container_stats_on_mac(run_state.container)
+            logger.info("container id is " + str(run_state.container.id) + "and name is " + run_state.container.name)
+            logger.info("exist ? " + str(docker_utils.container_exists(run_state.container)))
             cpu_usage = int(container_stats['cpu_stats']['cpu_usage']['total_usage']) / int(
                 container_stats['cpu_stats']['cpu_usage']['system_cpu_usage']
             )
@@ -476,6 +479,7 @@ class RunStateMachine(StateTransitioner):
             run_state.bundle.uuid, threading.Thread(target=check_disk_utilization, args=[])
         )
         run_state = check_and_report_finished(run_state)
+        logger.info("Yibo - Before check_resource_utilization is called")
         run_state = check_resource_utilization(run_state)
 
         if run_state.is_killed or run_state.is_restaged:
