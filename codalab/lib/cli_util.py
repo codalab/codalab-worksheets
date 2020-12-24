@@ -23,6 +23,7 @@ BUNDLE_SPEC_FORMAT = '[%s%s]%s' % (
     BASIC_BUNDLE_SPEC_FORMAT,
 )
 
+BUNDLES_URL_SEPARATOR = '/bundles/'
 WORKSHEETS_URL_SEPARATOR = '/worksheets/'
 
 TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (BUNDLE_SPEC_FORMAT, os.sep)

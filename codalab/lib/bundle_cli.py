@@ -31,6 +31,7 @@ from contextlib import closing
 from io import BytesIO
 from shlex import quote
 from typing import Dict
+import webbrowser
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -66,6 +67,7 @@ from codalab.lib.cli_util import (
     parse_key_target,
     parse_target_spec,
     desugar_command,
+    BUNDLES_URL_SEPARATOR,
     INSTANCE_SEPARATOR,
     ADDRESS_SPEC_FORMAT,
     WORKSHEET_SPEC_FORMAT,
@@ -1016,7 +1018,9 @@ class BundleCLI(object):
             if 'username' in state:
                 print("username: %s" % state['username'], file=self.stdout)
 
-        print("current_worksheet: %s" % self.worksheet_url(worksheet_info), file=self.stdout)
+        print(
+            "current_worksheet: %s" % self.worksheet_url_and_name(worksheet_info), file=self.stdout
+        )
         print("user: %s" % self.simple_user_str(client.fetch('user')), file=self.stdout)
 
     @Commands.command(
@@ -2087,7 +2091,8 @@ class BundleCLI(object):
             )
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print(
-                'Added %d bundles to %s' % (len(bundles), self.worksheet_url(worksheet_info)),
+                'Added %d bundles to %s'
+                % (len(bundles), self.worksheet_url_and_name(worksheet_info)),
                 file=self.stdout,
             )
 
@@ -2147,7 +2152,7 @@ class BundleCLI(object):
 
     def _worksheet_description(self, worksheet_info):
         fields = [
-            ('Worksheet', self.worksheet_url(worksheet_info)),
+            ('Worksheet', self.worksheet_url_and_name(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
             ('Tags', ' '.join(worksheet_info['tags'])),
             (
@@ -2333,7 +2338,7 @@ class BundleCLI(object):
     def print_host_worksheets(self, info):
         print('host_worksheets:', file=self.stdout)
         for host_worksheet_info in info['host_worksheets']:
-            print("  %s" % self.worksheet_url(host_worksheet_info), file=self.stdout)
+            print("  %s" % self.worksheet_url_and_name(host_worksheet_info), file=self.stdout)
 
     def print_permissions(self, info):
         print('permission: %s' % permission_str(info['permission']), file=self.stdout)
@@ -2856,17 +2861,53 @@ class BundleCLI(object):
         )
         print(target.bundle_uuid, file=self.stdout)
 
+    @Commands.command(
+        'open',
+        aliases=('o',),
+        help='Open bundle(s) detail page(s) in a local web browser.',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+    def do_open_command(self, args):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+
+        bundles = client.fetch(
+            'bundles', params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
+        )
+
+        for info in bundles:
+            webbrowser.open(self.bundle_url(info['id']))
+
+        # Headless client should fire OpenBundle UI action
+        if self.headless:
+            return ui_actions.serialize([ui_actions.OpenBundle(bundle['id']) for bundle in bundles])
+
+    def bundle_url(self, bundle_uuid):
+        return '%s%s%s' % (self.manager.session()['address'], BUNDLES_URL_SEPARATOR, bundle_uuid)
+
     #############################################################################
     # CLI methods for worksheet-related commands follow!
     #############################################################################
 
-    def worksheet_url(self, worksheet_info):
-        return '%s%s%s (%s)' % (
+    def worksheet_url(self, worksheet_uuid):
+        return '%s%s%s' % (
             self.manager.session()['address'],
             WORKSHEETS_URL_SEPARATOR,
-            worksheet_info['uuid'],
-            worksheet_info['name'],
+            worksheet_uuid,
         )
+
+    def worksheet_url_and_name(self, worksheet_info):
+        return '%s (%s)' % (self.worksheet_url(worksheet_info['uuid']), worksheet_info['name'],)
 
     @Commands.command(
         'new',
@@ -3039,7 +3080,8 @@ class BundleCLI(object):
                     print(worksheet_info['uuid'], file=self.stdout)
                 else:
                     print(
-                        'Currently on worksheet: %s' % (self.worksheet_url(worksheet_info)),
+                        'Currently on worksheet: %s'
+                        % (self.worksheet_url_and_name(worksheet_info)),
                         file=self.stdout,
                     )
             else:
@@ -3067,7 +3109,8 @@ class BundleCLI(object):
         if verbose:
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print(
-                'Switched to worksheet: %s' % (self.worksheet_url(worksheet_info)), file=self.stdout
+                'Switched to worksheet: %s' % (self.worksheet_url_and_name(worksheet_info)),
+                file=self.stdout,
             )
 
     @Commands.command(
@@ -3279,7 +3322,8 @@ class BundleCLI(object):
             elif mode == BlockModes.subworksheets_block:
                 for worksheet_info in block['subworksheet_infos']:
                     print(
-                        '[Worksheet ' + self.worksheet_url(worksheet_info) + ']', file=self.stdout
+                        '[Worksheet ' + self.worksheet_url_and_name(worksheet_info) + ']',
+                        file=self.stdout,
                     )
             elif mode == BlockModes.placeholder_block:
                 print('[Placeholder]', block['directive'], file=self.stdout)
@@ -3444,6 +3488,42 @@ class BundleCLI(object):
             'Copied %s worksheet items to %s.' % (len(valid_source_items), dest_worksheet_uuid),
             file=self.stdout,
         )
+
+    @Commands.command(
+        'wopen',
+        aliases=('wo',),
+        help=[
+            'Open worksheet(s) in a local web browser.',
+            '  wopen                   : Open the current worksheet in a local web browser.',
+            '  wopen <worksheet_spec>  : Open worksheets identified by <worksheet_spec> in a local web browser.',
+        ],
+        arguments=(
+            Commands.Argument(
+                'worksheet_spec',
+                help=WORKSHEET_SPEC_FORMAT,
+                nargs='*',
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+    def do_wopen_command(self, args):
+        worksheet_uuids = (
+            [self.manager.get_current_worksheet_uuid()[1]]
+            if not args.worksheet_spec
+            else [
+                self.parse_client_worksheet_uuid(worksheet_spec)[1]
+                for worksheet_spec in args.worksheet_spec
+            ]
+        )
+
+        for worksheet_uuid in worksheet_uuids:
+            webbrowser.open(self.worksheet_url(worksheet_uuid))
+
+        # Headless client should fire OpenWorksheet UI action
+        if self.headless:
+            return ui_actions.serialize(
+                [ui_actions.OpenWorksheet(worksheet_uuid) for worksheet_uuid in worksheet_uuids]
+            )
 
     #############################################################################
     # CLI methods for commands related to groups and permissions follow!
@@ -3702,7 +3782,7 @@ class BundleCLI(object):
             % (
                 self.simple_group_str(group),
                 permission_str(new_permission),
-                self.worksheet_url(worksheet),
+                self.worksheet_url_and_name(worksheet),
             ),
             file=self.stdout,
         )
