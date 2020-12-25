@@ -643,6 +643,8 @@ class Worker:
                 finished=False,
                 finalized=False,
                 is_restaged=False,
+                cpu_usage='0',
+                memory_usage='0'
             )
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1

@@ -226,6 +226,7 @@ def get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependenc
 def get_container_stats(container):
     # We don't use the stats API since it doesn't seem to be reliable, and
     # is definitely slow. This doesn't work on Mac.
+    # possible ref: https://scoutapm.com/blog/monitoring-docker-containers-from-scratch
     cgroup = None
     for path in ['/sys/fs/cgroup', '/cgroup']:
         if os.path.exists(path):

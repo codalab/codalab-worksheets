@@ -1,3 +1,5 @@
+import subprocess
+
 import docker
 import glob
 import logging
@@ -103,6 +105,8 @@ RunState = namedtuple(
         'finished',  # bool
         'finalized',  # bool
         'is_restaged',  # bool
+        'cpu_usage',  # str
+        'memory_usage',  # str
     ],
 )
 
@@ -408,30 +412,45 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state):
-            container_stats = docker_utils.get_container_stats_on_mac(run_state.container)
+            logger.info(
+                "Yibo - existing container stats - > "
+                + str(docker_utils.get_container_stats(run_state.container))
+            )
+            logger.info(
+                "Yibo - existing bundle stats -> "
+                + str(docker_utils.get_container_stats(run_state.bundle))
+            )
+            logger.info("Yibo - check run state -> " + str(run_state))
+            logger.info("Yibo - check bundle -> " + str(run_state.bundle))
+            logger.info("Yibo - check bundle uuid -> " + str(run_state.bundle.uuid))
+            logger.info("Yibo - check run state resources cpu -> " + str(run_state.resources.cpus))
+            logger.info(
+                "Yibo - check run state resources mem -> " + str(run_state.resources.memory)
+            )
             logger.info(
                 "Yibo - container id is "
                 + str(run_state.container.id)
-                + "and name is "
+                + " and name is "
                 + run_state.container.name
             )
-            logger.info("Yibo - exist ? " + str(docker_utils.container_exists(run_state.container)))
-            logger.info("Yibo - container_stats -> " + str(container_stats))
-            logger.info("Yibo - existing stats - > " + str(docker_utils.get_container_stats(run_state.container)))
+
             try:
+                container_stats = docker_utils.get_container_stats_on_mac(run_state.container)
+                logger.info("Yibo - container_stats -> " + str(container_stats))
+
                 cpu_used = int(container_stats['cpu_stats']['cpu_usage']['total_usage'])
                 total_cpu = int(container_stats['cpu_stats']['system_cpu_usage'])
                 cpu_usage = str(float(cpu_used / total_cpu))
-                run_state = run_state._replace(cpu_usage=cpu_usage)
                 memory_usage = str(
                     float(
                         container_stats['memory_stats']['usage']
                         / container_stats['memory_stats']['limit']
                     )
                 )
+                run_state = run_state._replace(cpu_usage=cpu_usage)
                 run_state = run_state._replace(memory_usage=memory_usage)
             except KeyError:
-                # If it's not a running bundle, then we are missing some of the above keys, so we just dismiss it.
+                # If the bundle has exited, then some of the keys are missing, so we just dismiss it.
                 pass
 
             kill_messages = []
