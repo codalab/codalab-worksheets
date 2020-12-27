@@ -273,9 +273,6 @@ def run_rest_server(manager, debug, num_processes):
         server='gunicorn',
         workers=num_processes,
         worker_class='gevent',
-        # workers=10,
-        # worker_class='gthread',
-        # processes=50,
         worker_tmp_dir='/tmp',  # don't use globally set tempdir
         timeout=5 * 60,
     )
