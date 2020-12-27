@@ -2092,8 +2092,8 @@ def test_performance(ctx):
     """
 
     def do_work():
-        """Do some random work: upload / download a large file, then
-        upload / download a large directory.
+        """Do some random work: upload / download a 50 MB file, then
+        upload / download a 50 MB directory.
         """
         for _ in range(0, 2):
             with tempfile.NamedTemporaryFile(mode='w') as f:
