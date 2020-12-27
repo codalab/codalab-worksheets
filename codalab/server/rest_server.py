@@ -252,7 +252,7 @@ def create_rest_app(manager=CodaLabManager()):
     return root_app
 
 
-def run_rest_server(manager, debug, num_processes, num_threads):
+def run_rest_server(manager, debug, num_processes):
     """Runs the REST server."""
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
@@ -272,8 +272,10 @@ def run_rest_server(manager, debug, num_processes, num_threads):
         debug=debug,
         server='gunicorn',
         workers=num_processes,
-        worker_class='gthread',
-        threads=num_threads,
+        worker_class='gevent',
+        # workers=10,
+        # worker_class='gthread',
+        # processes=50,
         worker_tmp_dir='/tmp',  # don't use globally set tempdir
         timeout=5 * 60,
     )

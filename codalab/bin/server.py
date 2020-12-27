@@ -61,15 +61,7 @@ def main():
         'use more than 1 process to make the best use of multiple '
         'CPUs.',
         type=int,
-        default=1,
-    )
-    parser.add_argument(
-        '-t',
-        '--threads',
-        help='Number of threads to use. The server will be able to handle '
-        '(--processes) x (--threads) requests at the same time.',
-        type=int,
-        default=50,
+        default=10,
     )
     parser.add_argument(
         '-d', '--debug', help='Run the development server for debugging.', action='store_true'
@@ -79,9 +71,10 @@ def main():
     if args.watch:
         run_server_with_watch()
     else:
+        # gevent.monkey.patch_all() needs to be called before importing bottle.
+        import gevent.monkey; gevent.monkey.patch_all()
         from codalab.server.rest_server import run_rest_server
-
-        run_rest_server(CodaLabManager(), args.debug, args.processes, args.threads)
+        run_rest_server(CodaLabManager(), args.debug, args.processes)
 
 
 if __name__ == '__main__':

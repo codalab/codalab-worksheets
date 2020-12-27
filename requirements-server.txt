@@ -19,5 +19,6 @@ coverage==5.3
 # Server-specific
 alembic==1.4.3
 gunicorn==20.0.4
+gevent==20.12.1
 oauthlib==2.1.0
 mysqlclient==1.4.1
