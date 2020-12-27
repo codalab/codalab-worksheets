@@ -2100,6 +2100,7 @@ def test_performance(ctx):
                 f.truncate(1024 * 1024 * 50)  # 50 MB
                 uuid = _run_command([cl, 'upload', f.name])
                 _run_command([cl, 'download', uuid, '-o', f"{f.name}-output"])
+                os.unlink(f"{f.name}-output")
             time.sleep(random.random())
             with tempfile.TemporaryDirectory() as dirname:
                 with open(os.path.join(dirname, "test1.txt"), "w+") as f:
@@ -2108,6 +2109,7 @@ def test_performance(ctx):
                     f.truncate(1024 * 1024 * 50)  # 50 MB
                 uuid = _run_command([cl, 'upload', dirname])
                 _run_command([cl, 'download', uuid, '-o', f"{f.name}-output"])
+                os.unlink(f"{f.name}-output")
             time.sleep(random.random())
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
