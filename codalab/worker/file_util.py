@@ -211,7 +211,7 @@ def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
     """
-    BUFFER_SIZE = 10 * 1024 * 1024  # Zip in chunks of 10MB
+    BUFFER_SIZE = 100 * 1024 * 1024  # Zip in chunks of 100 MB
 
     class GzipStream:
         def __init__(self, fileobj):
