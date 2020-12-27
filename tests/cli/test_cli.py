@@ -2087,7 +2087,7 @@ def test_workers(ctx):
 def test_performance(ctx):
 
     def do_work():
-        for _ in range(0, 1):
+        for _ in range(0, 2):
             with tempfile.NamedTemporaryFile(
                 mode='w'
             ) as f:
@@ -2104,11 +2104,11 @@ def test_performance(ctx):
             time_taken = time.time() - start
             times.append(time_taken)
             print("Time taken for `cl workers`:", time_taken)
-            if time_taken > 5:
-                raise Exception(f"Took too long for `cl workers`: {time_taken}. All times taken: {times}. Average time: {sum(times) / len(times)}")
             time.sleep(2)
-        print(f"Success. All times taken for `cl workers`: {times}. Average time: {sum(times) / len(times)}")
-
+        message = f"All times taken for `cl workers`: {times}. Average time: {sum(times) / len(times)}"
+        print(message)
+        if any(time > 10 for time in times):
+            raise Exception(f"Took too long for `cl workers`. {message}")
 
 @TestModule.register('sharing_workers')
 def test_sharing_workers(ctx):

@@ -27,6 +27,9 @@ RUN apt-get update && \
     rsync && \
     rm -rf /var/lib/apt/lists/*;
  
+# Required for gevent: https://stackoverflow.com/questions/40184788/protocol-not-found-socket-getprotobyname
+RUN apt-get update && apt-get -o Dpkg::Options::="--force-confmiss" install --reinstall -y netbase
+
 # Set Python3.6 as the default python3 version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 
