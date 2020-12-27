@@ -2087,15 +2087,16 @@ def test_workers(ctx):
 def test_performance(ctx):
 
     def do_work():
-        with tempfile.NamedTemporaryFile(
-            mode='w'
-        ) as f:
-            f.truncate(1024 * 1024 * 50) # 50 MB
-            uuid = _run_command([cl, 'upload', f.name])
-            _run_command([cl, 'download', uuid, '-o', f"{f.name}-output"])
+        for _ in range(0, 20):
+            with tempfile.NamedTemporaryFile(
+                mode='w'
+            ) as f:
+                f.truncate(1024 * 1024 * 50) # 50 MB
+                uuid = _run_command([cl, 'upload', f.name])
+                _run_command([cl, 'download', uuid, '-o', f"{f.name}-output"])
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(do_work) for _ in range(0, 30)]
+        futures = [executor.submit(do_work) for _ in range(0, 10)]
         while any(not f.done() for f in futures):
             start = time.time()
             result = _run_command([cl, 'workers'])
@@ -2103,7 +2104,7 @@ def test_performance(ctx):
             print("Time for cl workers: ", time_taken)
             if time_taken > 10:
                 raise Exception(f"Took too long for cl workers: {time_taken}")
-            time.sleep(5000)
+            time.sleep(5)
 
 
 @TestModule.register('sharing_workers')
