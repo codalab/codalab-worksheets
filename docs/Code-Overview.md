@@ -258,6 +258,13 @@ nosetests tests.unit.rest
 python3 test_runner.py default
 ```
 
+Certain tests in this file are not run with the "default" keyword, but can be manually run:
+
+```
+python3 test_runner.py docker
+python3 test_runner.py performance
+```
+
 - End-to-end UI tests for the web interface in [tests/ui](https://github.com/codalab/codalab-worksheets/tree/master/tests/ui)
 
 ```
