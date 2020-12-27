@@ -20,6 +20,7 @@ from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Dict
+from random import random
 
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
@@ -2085,8 +2086,15 @@ def test_workers(ctx):
 
 @TestModule.register('performance')
 def test_performance(ctx):
+    """Performance testing. While many threads upload / download large files,
+    periodically run `cl workers` to ensure that the command still works and
+    takes a reasonable average amount of time (less than 5 seconds).
+    """
 
     def do_work():
+        """Do some random work: upload / download a large file, then
+        upload / download a large directory.
+        """
         for _ in range(0, 2):
             with tempfile.NamedTemporaryFile(
                 mode='w'
@@ -2094,20 +2102,29 @@ def test_performance(ctx):
                 f.truncate(1024 * 1024 * 50) # 50 MB
                 uuid = _run_command([cl, 'upload', f.name])
                 _run_command([cl, 'download', uuid, '-o', f"{f.name}-output"])
+            time.sleep(random.random())
+            with tempfile.TemporaryDirectory() as dirname:
+                with open(os.path.join(dirname, "test1.txt"), "w+") as f:
+                    f.write("hello world!")
+                with open(os.path.join(dirname, "test2.txt"), "w+") as f:
+                    f.truncate(1024 * 1024 * 50) # 50 MB
+                uuid = _run_command([cl, 'upload', dirname])
+                _run_command([cl, 'download', uuid, '-o', f"{f.name}-output"])
+            time.sleep(random.random())
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(do_work) for _ in range(0, 10)]
         times = []
         while any(not f.done() for f in futures):
+            time.sleep(2)
             start = time.time()
             _run_command([cl, 'workers'])
             time_taken = time.time() - start
             times.append(time_taken)
             print("Time taken for `cl workers`:", time_taken)
-            time.sleep(2)
         message = f"All times taken for `cl workers`: {times}. Average time: {sum(times) / len(times)}"
         print(message)
-        if any(time > 10 for time in times):
+        if sum(times) / len(times) > 5:
             raise Exception(f"Took too long for `cl workers`. {message}")
 
 @TestModule.register('sharing_workers')

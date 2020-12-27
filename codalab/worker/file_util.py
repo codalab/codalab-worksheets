@@ -211,12 +211,12 @@ def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
     """
-    # args = ['gzip', '-c', '-n', file_path]
-    # try:
-    #     proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-    #     return proc.stdout
-    # except subprocess.CalledProcessError as e:
-    #     raise IOError(e.output)
+    args = ['gzip', '-c', '-n', file_path]
+    try:
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        return proc.stdout
+    except subprocess.CalledProcessError as e:
+        raise IOError(e.output)
     BUFFER_SIZE = 10 * 1024 * 1024 # Zip in chunks of 10MB
     class GzipStream:
         def __init__(self, fileobj):
