@@ -2084,7 +2084,7 @@ def test_workers(ctx):
     assert len(worker_info) >= 10
 
 
-@TestModule.register('performance')
+@TestModule.register('performance', default=False)
 def test_performance(ctx):
     """Performance testing. While many threads upload / download large files,
     periodically run `cl workers` to ensure that the command still works and
