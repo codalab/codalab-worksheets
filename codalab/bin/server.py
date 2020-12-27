@@ -72,8 +72,11 @@ def main():
         run_server_with_watch()
     else:
         # gevent.monkey.patch_all() needs to be called before importing bottle.
-        import gevent.monkey; gevent.monkey.patch_all()
+        import gevent.monkey
+
+        gevent.monkey.patch_all()
         from codalab.server.rest_server import run_rest_server
+
         run_rest_server(CodaLabManager(), args.debug, args.processes)
 
 

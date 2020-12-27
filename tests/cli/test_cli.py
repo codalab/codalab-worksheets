@@ -2096,10 +2096,8 @@ def test_performance(ctx):
         upload / download a large directory.
         """
         for _ in range(0, 2):
-            with tempfile.NamedTemporaryFile(
-                mode='w'
-            ) as f:
-                f.truncate(1024 * 1024 * 50) # 50 MB
+            with tempfile.NamedTemporaryFile(mode='w') as f:
+                f.truncate(1024 * 1024 * 50)  # 50 MB
                 uuid = _run_command([cl, 'upload', f.name])
                 _run_command([cl, 'download', uuid, '-o', f"{f.name}-output"])
             time.sleep(random.random())
@@ -2107,7 +2105,7 @@ def test_performance(ctx):
                 with open(os.path.join(dirname, "test1.txt"), "w+") as f:
                     f.write("hello world!")
                 with open(os.path.join(dirname, "test2.txt"), "w+") as f:
-                    f.truncate(1024 * 1024 * 50) # 50 MB
+                    f.truncate(1024 * 1024 * 50)  # 50 MB
                 uuid = _run_command([cl, 'upload', dirname])
                 _run_command([cl, 'download', uuid, '-o', f"{f.name}-output"])
             time.sleep(random.random())
@@ -2122,10 +2120,13 @@ def test_performance(ctx):
             time_taken = time.time() - start
             times.append(time_taken)
             print("Time taken for `cl workers`:", time_taken)
-        message = f"All times taken for `cl workers`: {times}. Average time: {sum(times) / len(times)}"
+        message = (
+            f"All times taken for `cl workers`: {times}. Average time: {sum(times) / len(times)}"
+        )
         print(message)
         if sum(times) / len(times) > 5:
             raise Exception(f"Took too long for `cl workers`. {message}")
+
 
 @TestModule.register('sharing_workers')
 def test_sharing_workers(ctx):
