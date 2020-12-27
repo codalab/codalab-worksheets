@@ -2097,14 +2097,17 @@ def test_performance(ctx):
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(do_work) for _ in range(0, 10)]
+        times = []
         while any(not f.done() for f in futures):
             start = time.time()
             _run_command([cl, 'workers'])
             time_taken = time.time() - start
-            print("Time for cl workers: ", time_taken)
+            times.append(time_taken)
+            print("Time taken for `cl workers`:", time_taken)
             if time_taken > 5:
-                raise Exception(f"Took too long for cl workers: {time_taken}")
+                raise Exception(f"Took too long for `cl workers`: {time_taken}. All times taken: {times}. Average time: {sum(times) / len(times)}")
             time.sleep(2)
+        print(f"Success. All times taken for `cl workers`: {times}. Average time: {sum(times) / len(times)}")
 
 
 @TestModule.register('sharing_workers')
