@@ -72,7 +72,7 @@ class BaseUploadDownloadBundleTest(TestBase):
             with self.download_manager.stream_file(target, gzipped=False) as f:
                 pass
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(OSError):
             with gzip.GzipFile(
                 fileobj=self.download_manager.stream_file(target, gzipped=True)
             ) as f:
