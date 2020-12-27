@@ -2087,7 +2087,7 @@ def test_workers(ctx):
 def test_performance(ctx):
 
     def do_work():
-        for _ in range(0, 20):
+        for _ in range(0, 1):
             with tempfile.NamedTemporaryFile(
                 mode='w'
             ) as f:
@@ -2095,8 +2095,8 @@ def test_performance(ctx):
                 uuid = _run_command([cl, 'upload', f.name])
                 _run_command([cl, 'download', uuid, '-o', f"{f.name}-output"])
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        futures = [executor.submit(do_work) for _ in range(0, 20)]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(do_work) for _ in range(0, 10)]
         while any(not f.done() for f in futures):
             start = time.time()
             _run_command([cl, 'workers'])
