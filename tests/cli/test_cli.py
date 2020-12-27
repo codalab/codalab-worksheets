@@ -2101,7 +2101,7 @@ def test_performance(ctx):
                 uuid = _run_command([cl, 'upload', f.name])
                 _run_command([cl, 'download', uuid, '-o', f"{f.name}-output"])
                 os.unlink(f"{f.name}-output")
-            time.sleep(random.random())
+            time.sleep(random.random() * 2)
             with tempfile.TemporaryDirectory() as dirname:
                 with open(os.path.join(dirname, "test1.txt"), "w+") as f:
                     f.write("hello world!")
@@ -2110,7 +2110,7 @@ def test_performance(ctx):
                 uuid = _run_command([cl, 'upload', dirname])
                 _run_command([cl, 'download', uuid, '-o', f"{f.name}-output"])
                 os.unlink(f"{f.name}-output")
-            time.sleep(random.random())
+            time.sleep(random.random() * 2)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(do_work) for _ in range(0, 10)]
