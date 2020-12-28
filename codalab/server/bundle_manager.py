@@ -319,6 +319,9 @@ class BundleManager(object):
         ) + self._model.batch_get_bundles(state=State.PREPARING, bundle_type='run')
         now = time.time()
         for bundle in active_bundles:
+            logger.info('bundle processed is ' + str(bundle.uuid))
+            logger.info('cpu usage is ' + bundle.metadata.cpu_usage)
+            logger.info('memory usage is ' + bundle.metadata.memory_usage)
             failure_message = None
             if not workers.is_running(bundle.uuid):
                 failure_message = 'No worker claims bundle'

@@ -435,17 +435,8 @@ class RunStateMachine(StateTransitioner):
             )
 
             try:
-                container_stats = docker_utils.get_container_stats_on_mac(run_state.container)
-                logger.info("Yibo - container_stats -> " + str(container_stats))
-
-                cpu_used = int(container_stats['cpu_stats']['cpu_usage']['total_usage'])
-                total_cpu = int(container_stats['cpu_stats']['system_cpu_usage'])
-                cpu_usage = str(float(cpu_used / total_cpu))
-                memory_usage = str(
-                    float(
-                        container_stats['memory_stats']['usage']
-                        / container_stats['memory_stats']['limit']
-                    )
+                cpu_usage, memory_usage = docker_utils.get_container_stats_on_mac(
+                    run_state.container
                 )
                 run_state = run_state._replace(cpu_usage=cpu_usage)
                 run_state = run_state._replace(memory_usage=memory_usage)

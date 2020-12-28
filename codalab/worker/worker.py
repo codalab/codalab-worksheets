@@ -542,6 +542,8 @@ class Worker:
         """
         Returns a list of all the runs managed by this RunManager
         """
+        for run in self.runs.values():
+            logger.info('Yibo - run is like ' + str(run))
         return [
             BundleCheckinState(
                 uuid=run_state.bundle.uuid,
@@ -555,6 +557,8 @@ class Worker:
                 remote=self.id,
                 exitcode=run_state.exitcode,
                 failure_message=run_state.failure_message,
+                cpu_usage=run_state.cpu_usage,
+                memory_usage=run_state.memory_usage,
             )
             for run_state in self.runs.values()
         ]
@@ -644,7 +648,7 @@ class Worker:
                 finalized=False,
                 is_restaged=False,
                 cpu_usage='0',
-                memory_usage='0'
+                memory_usage='0',
             )
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1

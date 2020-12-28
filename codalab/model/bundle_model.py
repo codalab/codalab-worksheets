@@ -4,6 +4,7 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 
 import collections
 import datetime
+import docker
 import os
 import re
 import time
@@ -56,6 +57,7 @@ from codalab.worker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_DOCKER_TIMEOUT = 720
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 SEARCH_RESULTS_LIMIT = 10
 
@@ -928,6 +930,8 @@ class BundleModel(object):
             worker_run_row = {'user_id': user_id, 'worker_id': worker_id, 'run_uuid': bundle.uuid}
             connection.execute(cl_worker_run.insert().values(worker_run_row))
 
+        logger.info('Yibo - worker_run is ' + str(worker_run.as_dict))
+
         metadata_update = {
             'run_status': worker_run.run_status,
             'last_updated': int(time.time()),
@@ -935,7 +939,8 @@ class BundleModel(object):
             'time_user': worker_run.container_time_user,
             'time_system': worker_run.container_time_system,
             'remote': worker_run.remote,
-            # 'cpu_usage': self._get_cpu_usage(bundle),
+            'cpu_usage': worker_run.cpu_usage,
+            'memory_usage': worker_run.memory_usage,
         }
 
         if worker_run.docker_image is not None:
@@ -946,23 +951,6 @@ class BundleModel(object):
         )
 
         return True
-
-    # @staticmethod
-    # def _get_cpu_usage(bundle):
-    #     client = docker.from_env(timeout=1000)
-    #     containers = client.containers.list()
-    #     for container in containers:
-    #         if bundle.get_uuid_from_container_name(container.name) != bundle.uuid:
-    #             continue
-    #         stats = container.stats(stream=False)
-    #         return stats['cpu_stats']['cpu_usage']['total_usage'] / stats['cpu_stats']['system_cpu_usage']
-    #
-    # @staticmethod
-    # def get_uuid_from_container_name(container_name):
-    #     parts = container_name.split('_')
-    #     if len(parts) != 3:
-    #         return None
-    #     return parts[2]
 
     def transition_bundle_worker_offline(self, bundle):
         """
@@ -1151,6 +1139,7 @@ class BundleModel(object):
                 metadata_delete_keys.append(key)
             else:
                 bundle.metadata.set_metadata_key(key, value)
+        logger.info('Yibo - metadata is ' + str(bundle.metadata.to_dict()))
 
         # Delete metadata keys from metadata_update dictionary
         for key in metadata_delete_keys:
