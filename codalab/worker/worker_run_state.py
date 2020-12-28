@@ -1,5 +1,3 @@
-import subprocess
-
 import docker
 import glob
 import logging
@@ -154,7 +152,6 @@ class RunStateMachine(StateTransitioner):
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
     ):
-        logger.info("Yibo - run state machine entered")
         super(RunStateMachine, self).__init__()
         self.add_transition(RunStage.PREPARING, self._transition_from_PREPARING)
         self.add_transition(RunStage.RUNNING, self._transition_from_RUNNING)
@@ -412,27 +409,6 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state):
-            logger.info(
-                "Yibo - existing container stats - > "
-                + str(docker_utils.get_container_stats(run_state.container))
-            )
-            logger.info(
-                "Yibo - existing bundle stats -> "
-                + str(docker_utils.get_container_stats(run_state.bundle))
-            )
-            logger.info("Yibo - check run state -> " + str(run_state))
-            logger.info("Yibo - check bundle -> " + str(run_state.bundle))
-            logger.info("Yibo - check bundle uuid -> " + str(run_state.bundle.uuid))
-            logger.info("Yibo - check run state resources cpu -> " + str(run_state.resources.cpus))
-            logger.info(
-                "Yibo - check run state resources mem -> " + str(run_state.resources.memory)
-            )
-            logger.info(
-                "Yibo - container id is "
-                + str(run_state.container.id)
-                + " and name is "
-                + run_state.container.name
-            )
 
             try:
                 cpu_usage, memory_usage = docker_utils.get_container_stats_on_mac(
@@ -508,7 +484,6 @@ class RunStateMachine(StateTransitioner):
             run_state.bundle.uuid, threading.Thread(target=check_disk_utilization, args=[])
         )
         run_state = check_and_report_finished(run_state)
-        logger.info("Yibo - Before check_resource_utilization is called")
         run_state = check_resource_utilization(run_state)
 
         if run_state.is_killed or run_state.is_restaged:

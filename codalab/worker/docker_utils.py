@@ -272,13 +272,8 @@ def get_container_stats_on_mac(container):
 
 @wrap_exception('Unable to check Docker API for container')
 def get_container_stats_helper_by_name(container_name):
-    logger.info('Yibo - container_name is ' + container_name)
     try:
-        logger.info('yibo - containers list is ' + str(len(client.containers.list())))
-        for container in client.containers.list():
-            logger.info('yibo - container is ' + str(container.name))
         container_stats = client.containers.get(container_name).stats(stream=False)
-        logger.info('Yibo - docker_utils container stats is -> ' + str(container_stats))
         cpu_used = int(container_stats['cpu_stats']['cpu_usage']['total_usage'])
         total_cpu = int(container_stats['cpu_stats']['system_cpu_usage'])
         cpu_usage = str(float(cpu_used / total_cpu))

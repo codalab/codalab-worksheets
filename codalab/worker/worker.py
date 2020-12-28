@@ -121,7 +121,6 @@ class Worker:
         self.runs = {}  # type: Dict[str, RunState]
         self.docker_network_prefix = docker_network_prefix
         self.init_docker_networks(docker_network_prefix)
-        logger.info('yibo - before create a run state machine')
         self.run_state_manager = RunStateMachine(
             docker_image_manager=self.image_manager,
             dependency_manager=self.dependency_manager,
@@ -542,8 +541,6 @@ class Worker:
         """
         Returns a list of all the runs managed by this RunManager
         """
-        for run in self.runs.values():
-            logger.info('Yibo - run is like ' + str(run))
         return [
             BundleCheckinState(
                 uuid=run_state.bundle.uuid,

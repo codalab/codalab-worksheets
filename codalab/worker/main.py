@@ -251,8 +251,6 @@ def main():
         args.max_image_size,
     )
 
-    logger.info('yibo - before creating a worker')
-
     worker = Worker(
         image_manager,
         dependency_manager,

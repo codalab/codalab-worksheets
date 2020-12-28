@@ -4,7 +4,6 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 
 import collections
 import datetime
-import docker
 import os
 import re
 import time
@@ -57,7 +56,6 @@ from codalab.worker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DOCKER_TIMEOUT = 720
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 SEARCH_RESULTS_LIMIT = 10
 
@@ -930,8 +928,6 @@ class BundleModel(object):
             worker_run_row = {'user_id': user_id, 'worker_id': worker_id, 'run_uuid': bundle.uuid}
             connection.execute(cl_worker_run.insert().values(worker_run_row))
 
-        logger.info('Yibo - worker_run is ' + str(worker_run.as_dict))
-
         metadata_update = {
             'run_status': worker_run.run_status,
             'last_updated': int(time.time()),
@@ -1139,7 +1135,6 @@ class BundleModel(object):
                 metadata_delete_keys.append(key)
             else:
                 bundle.metadata.set_metadata_key(key, value)
-        logger.info('Yibo - metadata is ' + str(bundle.metadata.to_dict()))
 
         # Delete metadata keys from metadata_update dictionary
         for key in metadata_delete_keys:
