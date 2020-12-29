@@ -155,6 +155,15 @@ HEADING_LEVEL_2 = '## '
 HEADING_LEVEL_3 = '### '
 
 NO_RESULTS_FOUND = 'No results found'
+DEFAULT_BUNDLE_INFO_LIST_FIELDS = (
+    'uuid',
+    'name',
+    'summary',
+    'owner',
+    'created',
+    'data_size',
+    'state',
+)
 
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
@@ -2042,6 +2051,13 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('keywords', help='Keywords to search for.', nargs='+'),
             Commands.Argument(
+                '-f',
+                '--field',
+                type=str,
+                default="uuid,name,summary,owner,created,data_size,state",
+                help='Print out these comma-separated fields in the results table',
+            ),
+            Commands.Argument(
                 '-a',
                 '--append',
                 help='Append these bundles to the current worksheet.',
@@ -2071,7 +2087,9 @@ class BundleCLI(object):
 
         # Print table
         if len(bundles) > 0:
-            self.print_bundle_info_list(bundles, uuid_only=args.uuid_only, print_ref=False)
+            self.print_bundle_info_list(
+                bundles, uuid_only=args.uuid_only, print_ref=False, fields=args.field.split(",")
+            )
         elif not args.uuid_only:
             print(NO_RESULTS_FOUND, file=self.stderr)
 
@@ -2118,6 +2136,13 @@ class BundleCLI(object):
         name='ls',
         help='List bundles in a worksheet.',
         arguments=(
+            Commands.Argument(
+                '-f',
+                '--field',
+                type=str,
+                default="uuid,name,summary,owner,created,data_size,state",
+                help='Print out these comma-separated fields in the results table',
+            ),
             Commands.Argument('-u', '--uuid-only', help='Print only uuids.', action='store_true'),
             Commands.Argument(
                 '-w',
@@ -2147,7 +2172,9 @@ class BundleCLI(object):
         bundle_info_list = [
             item['bundle'] for item in worksheet_info['items'] if item['type'] == 'bundle'
         ]
-        self.print_bundle_info_list(bundle_info_list, args.uuid_only, print_ref=True)
+        self.print_bundle_info_list(
+            bundle_info_list, args.uuid_only, print_ref=True, fields=args.field.split(",")
+        )
         return {'refs': self.create_reference_map('bundle', bundle_info_list)}
 
     def _worksheet_description(self, worksheet_info):
@@ -2168,7 +2195,9 @@ class BundleCLI(object):
         ]
         return '\n'.join('### %s: %s' % (k, v) for k, v in fields)
 
-    def print_bundle_info_list(self, bundle_info_list, uuid_only, print_ref):
+    def print_bundle_info_list(
+        self, bundle_info_list, uuid_only, print_ref, fields=DEFAULT_BUNDLE_INFO_LIST_FIELDS
+    ):
         """
         Helper function: print >>self.stdout, a nice table showing all provided bundles.
         """
@@ -2188,15 +2217,7 @@ class BundleCLI(object):
             for bundle_info in bundle_info_list:
                 bundle_info['owner'] = nested_dict_get(bundle_info, 'owner', 'user_name')
 
-            columns = (('ref',) if print_ref else ()) + (
-                'uuid',
-                'name',
-                'summary',
-                'owner',
-                'created',
-                'data_size',
-                'state',
-            )
+            columns = (('ref',) if print_ref else ()) + tuple(fields)
             post_funcs = {'uuid': UUID_POST_FUNC, 'created': 'date', 'data_size': 'size'}
             justify = {'data_size': 1, 'ref': 1}
             bundle_dicts = [
