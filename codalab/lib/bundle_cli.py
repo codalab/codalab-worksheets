@@ -2140,7 +2140,7 @@ class BundleCLI(object):
                 '-f',
                 '--field',
                 type=str,
-                default="uuid,name,summary,owner,created,data_size,state",
+                default=','.join(DEFAULT_BUNDLE_INFO_LIST_FIELDS),
                 help='Print out these comma-separated fields in the results table',
             ),
             Commands.Argument('-u', '--uuid-only', help='Print only uuids.', action='store_true'),
