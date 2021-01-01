@@ -129,6 +129,7 @@ def urlopen_with_retry(request: urllib.request.Request, timeout: int = URLOPEN_T
     Retries a maximum of 4 times, with an initial delay of 3 seconds and
     exponential backoff factor of 2 for subsequent failures (3s, 6s, 12s).
     :param request: Can be a url string or a Request object
+    :param timeout: Timeout for urlopen in seconds
     :return: the response object
     """
-    return urllib.request.urlopen(request, timeout)
+    return urllib.request.urlopen(request, timeout=timeout)
