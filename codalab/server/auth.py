@@ -3,7 +3,6 @@ AuthHandler encapsulates the logic to authenticate users on the server-side.
 """
 import base64
 import json
-
 import urllib.request
 import urllib.parse
 import urllib.error
