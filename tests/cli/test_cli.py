@@ -1135,7 +1135,9 @@ def test_search(ctx):
     uuid1 = _run_command([cl, 'upload', test_path('a.txt'), '-n', name])
     uuid2 = _run_command([cl, 'upload', test_path('b.txt'), '-n', name])
     check_equals(uuid1, _run_command([cl, 'search', uuid1, '-u']))
-    check_equals(uuid1[:8], _run_command([cl, 'search', 'uuid=' + uuid1, '-f', 'uuid']).split("\n")[2])
+    check_equals(
+        uuid1[:8], _run_command([cl, 'search', 'uuid=' + uuid1, '-f', 'uuid']).split("\n")[2]
+    )
     check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, '-u']))
     check_equals('', _run_command([cl, 'search', 'uuid=' + uuid1[0:8], '-u']))
     check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '.*', '-u']))
@@ -1547,7 +1549,6 @@ def test_write(ctx):
     uuid = _run_command([cl, 'run', 'sleep 5'])
     wait_until_state(uuid, State.RUNNING)
     target = uuid + '/message'
-    # TODO: investigate -Tony
     _run_command([cl, 'write', 'file with space', 'hello world'], 1)  # Not allowed
     check_equals(uuid, _run_command([cl, 'write', target, 'hello world']))
     _run_command([cl, 'wait', uuid])

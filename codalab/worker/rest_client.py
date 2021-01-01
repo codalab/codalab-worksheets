@@ -101,7 +101,7 @@ class RestClient(object):
             else:
                 raise RestClientException('Unsupported Content-Encoding: ' + encoding, False)
 
-        with closing(urlopen_with_retry(request, timeout=timeout_seconds)) as response:
+        with closing(urllib.request.urlopen(request, timeout=timeout_seconds)) as response:
             # If the response is a JSON document, as indicated by the
             # Content-Type header, try to deserialize it and return the result.
             # Otherwise, just ignore the response body and return None.

@@ -11,7 +11,7 @@ import urllib.error
 
 from .rest_client import RestClient, RestClientException
 from .file_util import tar_gzip_directory
-from codalab.common import URLOPEN_TIMEOUT_SECONDS, ensure_str, urlopen_with_retry
+from codalab.common import ensure_str, URLOPEN_TIMEOUT_SECONDS
 
 
 def wrap_exception(message):
@@ -104,8 +104,9 @@ class BundleServiceClient(RestClient):
             data=urllib.parse.urlencode(request_data).encode('utf-8'),
             headers=headers,
         )
-
-        with closing(urlopen_with_retry(request_to_send)) as response:
+        with closing(
+            urllib.request.urlopen(request_to_send, timeout=URLOPEN_TIMEOUT_SECONDS)
+        ) as response:
             response_data = response.read().decode()
         try:
             token = json.loads(response_data)

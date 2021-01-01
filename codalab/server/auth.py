@@ -7,7 +7,7 @@ import json
 import urllib.request
 import urllib.parse
 import urllib.error
-from codalab.common import LoginPermissionError, urlopen_with_retry
+from codalab.common import URLOPEN_TIMEOUT_SECONDS, LoginPermissionError
 
 
 # TODO(sckoo): clean up auth logic across:
@@ -61,7 +61,7 @@ class RestOAuthHandler(object):
             data=urllib.parse.urlencode(data).encode('utf-8'),
         )
         try:
-            response = urlopen_with_retry(request)
+            response = urllib.request.urlopen(request, timeout=URLOPEN_TIMEOUT_SECONDS)
             result = json.loads(response.read().decode())
             return result
         except urllib.error.HTTPError as e:
