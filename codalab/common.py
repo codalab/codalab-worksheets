@@ -7,6 +7,7 @@ This module exports some simple names used throughout the CodaLab bundle system:
 import os
 import http.client
 import urllib.request
+import urllib.error
 
 from retry import retry
 
@@ -121,7 +122,7 @@ def ensure_str(response):
         return BINARY_PLACEHOLDER
 
 
-@retry(tries=4, delay=3, backoff=2)
+@retry(urllib.error.URLError, tries=4, delay=3, backoff=2)
 def urlopen_with_retry(request, timeout=URLOPEN_TIMEOUT_SECONDS):
     """
     Makes a request using urlopen with a timeout of 60 seconds and retries on failures.
