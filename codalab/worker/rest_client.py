@@ -100,7 +100,6 @@ class RestClient(object):
                 return un_gzip_stream(response)
             else:
                 raise RestClientException('Unsupported Content-Encoding: ' + encoding, False)
-
         with closing(urllib.request.urlopen(request, timeout=timeout_seconds)) as response:
             # If the response is a JSON document, as indicated by the
             # Content-Type header, try to deserialize it and return the result.
