@@ -1,21 +1,23 @@
 import os
 import unittest
+from pathlib import Path
 
 from codalab.lib.codalab_manager import CodaLabManager
 
 
 class CodalabManagerTest(unittest.TestCase):
     def setUp(self):
-        os.environ['CODALAB_HOME'] = '.'
+        os.environ['CODALAB_HOME'] = str(Path.home())
 
     def tearDown(self):
-        try:
-            # Remove the state and config json files created by the CodaLabManagers
-            os.remove('state.json')
-            os.remove('config.json')
-        except:
-            pass
+        def remove_file_if_exists(file):
+            file_path = os.path.join(str(Path.home()), file)
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
+        # Remove the state and config json files created by the CodaLabManagers
+        remove_file_if_exists('state.json')
+        remove_file_if_exists('config.json')
         del os.environ['CODALAB_HOME']
 
     def test_get_state_for_temp_codalab_manager(self):
