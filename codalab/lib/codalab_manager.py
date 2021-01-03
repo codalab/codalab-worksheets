@@ -304,7 +304,8 @@ class CodaLabManager(object):
         """
         Return the current session.
         """
-        sessions = self.state['sessions']
+        state = self.get_state()
+        sessions = state['sessions']
         name = self.session_name()
         if name not in sessions:
             # New session: set the address and worksheet uuid to the default (main if not specified)
@@ -328,7 +329,7 @@ class CodaLabManager(object):
     @cached
     def model(self):
         """
-        Return a model.  Called by the server.
+        Return a model. Called by the server.
         """
         model_class = self.config['server']['class']
         model = None
@@ -453,7 +454,8 @@ class CodaLabManager(object):
         :param auth_handler: AuthHandler through which to authenticate
         :return: access token
         """
-        auth = self.state['auth'].get(cache_key, {})
+        state = self.get_state()
+        auth = state['auth'].get(cache_key, {})
 
         def _cache_token(token_info, username=None):
             '''
@@ -474,7 +476,7 @@ class CodaLabManager(object):
             token_info = auth['token_info']
             expires_at = token_info.get('expires_at', 0.0)
 
-            # If token is not nearing expiration, just return it.
+            # If token is not nearing expiration (more than ten minutes left), just return it.
             if expires_at >= (time.time() + 10 * 60):
                 return token_info['access_token']
 
@@ -486,7 +488,7 @@ class CodaLabManager(object):
                 return _cache_token(token_info)
 
         # If we get here, a valid token is not already available.
-        auth = self.state['auth'][cache_key] = {}
+        auth = state['auth'][cache_key] = {}
 
         username = os.environ.get('CODALAB_USERNAME')
         password = os.environ.get('CODALAB_PASSWORD')
@@ -534,12 +536,13 @@ class CodaLabManager(object):
     def check_version(self, server_version):
         # Enforce checking version at most once every 24 hours
         epoch_str = formatting.datetime_str(datetime.datetime.utcfromtimestamp(0))
-        last_check_str = self.state.get('last_check_version_datetime', epoch_str)
+        state = self.get_state()
+        last_check_str = state.get('last_check_version_datetime', epoch_str)
         last_check_dt = formatting.parse_datetime(last_check_str)
         now = datetime.datetime.utcnow()
         if (now - last_check_dt) < datetime.timedelta(days=1):
             return
-        self.state['last_check_version_datetime'] = formatting.datetime_str(now)
+        state['last_check_version_datetime'] = formatting.datetime_str(now)
         self.save_state()
 
         # Print notice if server version is newer
@@ -555,14 +558,21 @@ class CodaLabManager(object):
 
     def logout(self, address):
         """Clear credentials associated with given address."""
-        if address in self.state['auth']:
-            del self.state['auth'][address]
+        state = self.get_state()
+        if address in state['auth']:
+            del state['auth'][address]
             self.save_state()
 
     def save_config(self):
         if self.temporary:
             return
         write_pretty_json(self.config, self.config_path)
+
+    def get_state(self):
+        if not self.temporary:
+            # For persistent CodaLabManagers, always read the state from the state json file
+            self.state = read_json_or_die(self.state_path)
+        return self.state
 
     def save_state(self):
         if self.temporary:
