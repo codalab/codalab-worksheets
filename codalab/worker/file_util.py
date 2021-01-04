@@ -210,6 +210,8 @@ def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSE
 def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
+    Note: For right now, it's important for gzip to run in a separate process,
+    otherwise things on CodaLab grind to a halt!
     """
     args = ['gzip', '-c', '-n', file_path]
     try:
