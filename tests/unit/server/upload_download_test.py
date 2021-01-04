@@ -72,12 +72,6 @@ class BaseUploadDownloadBundleTest(TestBase):
             with self.download_manager.stream_file(target, gzipped=False) as f:
                 pass
 
-        with self.assertRaises(OSError):
-            with gzip.GzipFile(
-                fileobj=self.download_manager.stream_file(target, gzipped=True)
-            ) as f:
-                pass
-
         with self.assertRaises(IsADirectoryError):
             self.download_manager.read_file_section(target, offset=3, length=4, gzipped=False)
 
