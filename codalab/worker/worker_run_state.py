@@ -409,7 +409,6 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state):
-
             try:
                 cpu_usage, memory_usage = docker_utils.get_container_stats_on_mac(
                     run_state.container

@@ -32,7 +32,7 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('request_disk', str, 'Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.', formatting='size', default=None))
     METADATA_SPECS.append(MetadataSpec('request_cpus', int, 'Number of CPUs allowed for this run.', default=1))
     METADATA_SPECS.append(MetadataSpec('cpu_usage', str, 'Portion of CPU used by this container (e.g., 0.28)', generated=True))
-    METADATA_SPECS.append(MetadataSpec('memory_usage', str, 'Portion of Memory used by this container (e.g., 0.16', generated=True))
+    METADATA_SPECS.append(MetadataSpec('memory_usage', str, 'Portion of Memory used by this container (e.g., 0.16)', generated=True))
     METADATA_SPECS.append(MetadataSpec('request_gpus', int, 'Number of GPUs allowed for this run.', default=0))
     METADATA_SPECS.append(MetadataSpec('request_queue', str, 'Submit run to this job queue.', hide_when_anonymous=True, default=None))
     METADATA_SPECS.append(MetadataSpec('request_priority', int, 'Job priority (higher is more important). Negative '
