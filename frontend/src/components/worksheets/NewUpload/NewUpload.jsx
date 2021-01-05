@@ -110,7 +110,7 @@ class NewUpload extends React.Component<{
                         );
                         this.props.onUploadFinish();
                         reject(error);
-                    },
+                    }.bind(this),
                 });
 
             };
