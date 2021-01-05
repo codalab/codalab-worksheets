@@ -408,7 +408,7 @@ class RunStateMachine(StateTransitioner):
                 finished=finished, exitcode=exitcode, failure_message=failure_msg
             )
 
-        def check_resource_utilization(run_state):
+        def check_resource_utilization(run_state: RunState):
             try:
                 cpu_usage, memory_usage = docker_utils.get_container_stats_on_mac(
                     run_state.container

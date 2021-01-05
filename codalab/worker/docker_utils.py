@@ -8,11 +8,14 @@ created if not.
 
 import logging
 import os
+from typing import Tuple
+
 import docker
 from dateutil import parser, tz
 import datetime
 import re
 import requests
+
 from requests.adapters import HTTPAdapter
 import traceback
 from urllib3.util.retry import Retry
@@ -263,7 +266,7 @@ def get_container_stats(container):
 
 
 @wrap_exception('Unable to check Docker API for container')
-def get_container_stats_on_mac(container):
+def get_container_stats_on_mac(container: docker.models.containers.Container):
     if container_exists(container):
         return get_container_stats_helper_by_name(container.name)
     else:
@@ -271,13 +274,13 @@ def get_container_stats_on_mac(container):
 
 
 @wrap_exception('Unable to check Docker API for container')
-def get_container_stats_helper_by_name(container_name):
+def get_container_stats_helper_by_name(container_name: str) -> Tuple[str, str]:
     try:
-        container_stats = client.containers.get(container_name).stats(stream=False)
-        cpu_used = int(container_stats['cpu_stats']['cpu_usage']['total_usage'])
-        total_cpu = int(container_stats['cpu_stats']['system_cpu_usage'])
-        cpu_usage = str(round(float(cpu_used / total_cpu) * 100, 3)) + " %"
-        memory_usage = (
+        container_stats: dict = client.containers.get(container_name).stats(stream=False)
+        cpu_used: int = int(container_stats['cpu_stats']['cpu_usage']['total_usage'])
+        total_cpu: int = int(container_stats['cpu_stats']['system_cpu_usage'])
+        cpu_usage: str = str(round(float(cpu_used / total_cpu) * 100, 3)) + " %"
+        memory_usage: str = (
             str(
                 round(
                     float(
