@@ -125,7 +125,7 @@ def ensure_str(response):
 @retry(urllib.error.URLError, tries=2, delay=1, backoff=2)
 def urlopen_with_retry(request: urllib.request.Request, timeout: int = URLOPEN_TIMEOUT_SECONDS):
     """
-    Makes a request using urlopen with a timeout of 60 seconds and retries on failures.
+    Makes a request using urlopen with a timeout of URLOPEN_TIMEOUT_SECONDS seconds and retries on failures.
     Retries a maximum of 2 times, with an initial delay of 1 second and
     exponential backoff factor of 2 for subsequent failures (1s and 2s).
     :param request: Can be a url string or a Request object
