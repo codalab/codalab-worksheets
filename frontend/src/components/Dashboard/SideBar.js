@@ -9,10 +9,9 @@ import LinearProgress from '@material-ui/core/LinearProgress';
 import $ from 'jquery';
 import { lighten } from '@material-ui/core/es/styles/colorManipulator';
 import { renderSize, renderDuration } from '../../util/worksheet_utils';
+import { BUNDLE_STATES } from '../../constants';
 
 const styles = ({ spacing, palette }) => {
-    const family =
-        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"';
     return {
         box: { marginLeft: 8, marginRight: 8, marginTop: 8, marginBottom: 0 },
         progressBox: {
@@ -40,11 +39,6 @@ const styles = ({ spacing, palette }) => {
             marginBottom: 800,
         },
         avatar: { marginLeft: 8, marginTop: 12, marginBottom: 8 },
-        heading: {
-            fontFamily: family,
-            fontSize: 16,
-            marginBottom: 0,
-        },
         subheader: {
             fontSize: 14,
             fontFamily: 'Roboto',
@@ -106,20 +100,6 @@ class SideBar extends React.Component {
     componentDidMount() {
         const { classes } = this.props;
         // Fetch bundles' count in different states owned by the current user one by one
-        const states: String[] = [
-            'uploading',
-            'created',
-            'staged',
-            'making',
-            'starting',
-            'preparing',
-            'running',
-            'finalizing',
-            'ready',
-            'failed',
-            'killed',
-            'worker_offline',
-        ];
         const bundleUrl: URL = '/rest/interpret/search';
         const fetchBundles = (stateIndex, bundlesDict) => {
             $.ajax({
@@ -128,12 +108,12 @@ class SideBar extends React.Component {
                 type: 'POST',
                 cache: false,
                 data: JSON.stringify(
-                    stateIndex < states.length
+                    stateIndex < BUNDLE_STATES.length
                         ? {
                               keywords: [
                                   'owner=' + this.props.userInfo.user_name,
                                   '.count',
-                                  'state=' + states[stateIndex],
+                                  'state=' + BUNDLE_STATES[stateIndex],
                               ],
                           }
                         : {
@@ -146,8 +126,8 @@ class SideBar extends React.Component {
                 ),
                 contentType: 'application/json; charset=utf-8',
                 success: (data) => {
-                    if (stateIndex < states.length) {
-                        bundlesDict[states[stateIndex]] = data.response.result;
+                    if (stateIndex < BUNDLE_STATES.length) {
+                        bundlesDict[BUNDLE_STATES[stateIndex]] = data.response.result;
                         fetchBundles(stateIndex + 1, bundlesDict);
                     } else {
                         bundlesDict['floating'] = data.response.result;
