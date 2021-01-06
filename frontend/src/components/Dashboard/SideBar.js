@@ -157,14 +157,7 @@ class SideBar extends React.Component {
                             if (bundlesDict[state] > 0) {
                                 bundles.push(
                                     <li key={state} className={classes.subheader}>
-                                        <a
-                                            className={classes.subheader}
-                                            href={
-                                                'https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker/bundle_state.py'
-                                            }
-                                        >
-                                            {state}
-                                        </a>
+                                        {state}
                                         {': ' + bundlesDict[state]}
                                     </li>,
                                 );
@@ -203,7 +196,7 @@ class SideBar extends React.Component {
                         <a
                             className={classes.subheader}
                             href={
-                                'https://github.com/codalab/codalab-worksheets/blob/master/docs/FAQ.md#how-do-i-reduce-the-amount-of-disk-usage'
+                                'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-reduce-the-amount-of-disk-usage'
                             }
                         >
                             Disk Usage
@@ -223,9 +216,7 @@ class SideBar extends React.Component {
                         <br />
                         <a
                             className={classes.subheader}
-                            href={
-                                'https://github.com/codalab/codalab-worksheets/blob/master/docs/FAQ.md'
-                            }
+                            href={'https://codalab-worksheets.readthedocs.io/en/latest/FAQ'}
                         >
                             Time Usage
                         </a>
