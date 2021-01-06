@@ -189,7 +189,7 @@ class SideBar extends React.Component {
         }
         return (
             <Card className={cx(classes.card)} elevation={0} style={{ height: '100%' }}>
-                <Avatar src={'https://i.pravatar.cc/30'} className={classes.avatar} />
+                <Avatar src={'../img/blank_profile.png'} className={classes.avatar} />
                 <Box className={classes.box}>
                     <h3 className={classes.name}>{userInfo.user_name}</h3>
                     {userInfo.affiliation ? (
