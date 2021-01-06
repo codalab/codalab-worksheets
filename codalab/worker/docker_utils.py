@@ -279,23 +279,22 @@ def get_container_stats_helper_by_name(container_name: str) -> Tuple[str, str]:
         container_stats: dict = client.containers.get(container_name).stats(stream=False)
         cpu_used: int = int(container_stats['cpu_stats']['cpu_usage']['total_usage'])
         total_cpu: int = int(container_stats['cpu_stats']['system_cpu_usage'])
-        cpu_usage: str = str(round(float(cpu_used / total_cpu) * 100, 3)) + " %"
-        memory_usage: str = (
-            str(
-                round(
-                    float(
-                        container_stats['memory_stats']['usage']
-                        / container_stats['memory_stats']['limit']
-                    )
-                    * 100,
-                    3,
-                )
+        cpu_usage: str = float_to_percentage(float(cpu_used / total_cpu))
+        memory_usage: str = float_to_percentage(
+            float(
+                container_stats['memory_stats']['usage'] / container_stats['memory_stats']['limit']
             )
-            + " %"
         )
         return cpu_usage, memory_usage
     except docker.errors.NotFound:
         raise
+
+
+# Without this processing of the float number, the output will look like "0.123456789";
+# With it, the output will look like "12.346 %"
+def float_to_percentage(float_number: float) -> str:
+    percentage = round(float_number * 100, 3)
+    return f"{percentage} %"
 
 
 @wrap_exception('Unable to check Docker API for container')
