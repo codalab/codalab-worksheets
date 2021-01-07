@@ -290,8 +290,7 @@ def get_container_stats_helper_by_name(container_name: str) -> Tuple[str, str]:
         raise
 
 
-# Without this processing of the float number, the output will look like "0.123456789";
-# With it, the output will look like "12.346 %"
+# Takes a float number and convert to percentage expression with 3 decimals
 def float_to_percentage(float_number: float) -> str:
     percentage = round(float_number * 100, 3)
     return f"{percentage} %"
