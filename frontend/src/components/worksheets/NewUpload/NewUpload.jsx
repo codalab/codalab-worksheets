@@ -182,7 +182,7 @@ class NewUpload extends React.Component<{
         this.asyncUploadFiles(files);
     }
 
-    uploadFolder = (files) => {
+    uploadFolder = async (files) => {
         if (!files) {
             return;
         }
@@ -212,68 +212,67 @@ class NewUpload extends React.Component<{
             zip.file(file.webkitRelativePath, file);
         });
 
-        zip.generateAsync({type:"uint8array", compression: "DEFLATE"}).then((bytesArray) => {
-
-            $.ajax({
+        const bytesArray = await zip.generateAsync({type:"uint8array", compression: "DEFLATE"});
+        let data;
+        try {
+            data = await $.ajax({
                 url,
                 data: JSON.stringify(createBundleData),
                 contentType: 'application/json',
                 type: 'POST',
-                success: (data, status, jqXHR) => {
-                    const bundleUuid = data.data[0].id;
-                    const url =
-                        '/rest/bundles/' +
-                        bundleUuid +
-                        '/contents/blob/?' +
-                        getQueryParams(folderName + ".zip");
-                    $.ajax({
-                        url: url,
-                        type: 'PUT',
-                        contentType: 'application/octet-stream',
-                        data: new Blob([bytesArray]),
-                        processData: false,
-                        xhr: () => {
-                            let xhr = new window.XMLHttpRequest();
-                            xhr.upload.addEventListener(
-                                'progress',
-                                (evt) => {
-                                    if (evt.lengthComputable) {
-                                        this.setState(prevState => {
-                                            return { numeratorComplete: prevState.numeratorComplete + evt.loaded,
-                                                denominatorComplete: prevState.denominatorComplete + evt.total};
-                                        });
-                                    }
-                                },
-                                false,
-                            );
-                            return xhr;
+            });
+    
+        } catch (error) {
+            this.clearProgress();
+            alert(createAlertText(url, error.responseText));
+        }
+
+        const bundleUuid = data.data[0].id;
+        url =
+            '/rest/bundles/' +
+            bundleUuid +
+            '/contents/blob/?' +
+            getQueryParams(folderName + ".zip");
+        try {
+            await $.ajax({
+                url: url,
+                type: 'PUT',
+                contentType: 'application/octet-stream',
+                data: new Blob([bytesArray]),
+                processData: false,
+                xhr: () => {
+                    let xhr = new window.XMLHttpRequest();
+                    xhr.upload.addEventListener(
+                        'progress',
+                        (evt) => {
+                            if (evt.lengthComputable) {
+                                const percentComplete = parseInt(
+                                    (evt.loaded / evt.total) * 100,
+                                );
+                                this.setState({ percentComplete });
+                            }
                         },
-                        success: (data, status, jqXHR) => {
-                            this.clearProgress();
-                            const moveIndex = true;
-                            const param = { moveIndex };
-                            this.props.reloadWorksheet(undefined, undefined, param);
-                            this.props.onUploadFinish();
-                        },
-                        error: (jqHXR, status, error) => {
-                            this.clearProgress();
-                            alert(
-                                createAlertText(
-                                    url,
-                                    jqHXR.responseText,
-                                    'refresh and try again.',
-                                ),
-                            );
-                            this.props.onUploadFinish();
-                        },
-                    });
-                },
-                error: (jqHXR, status, error) => {
-                    this.clearProgress();
-                    alert(createAlertText(url, jqHXR.responseText));
+                        false,
+                    );
+                    return xhr;
                 },
             });
-        });
+            this.clearProgress();
+            const moveIndex = true;
+            const param = { moveIndex };
+            this.props.reloadWorksheet(undefined, undefined, param);
+            this.props.onUploadFinish();
+        } catch(error) {
+            this.clearProgress();
+            alert(
+                createAlertText(
+                    url,
+                    error.responseText,
+                    'refresh and try again.',
+                ),
+            );
+            this.props.onUploadFinish();
+        }
     }
 
     clearProgress = () => {
