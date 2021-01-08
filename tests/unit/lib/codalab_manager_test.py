@@ -20,7 +20,7 @@ class CodalabManagerTest(unittest.TestCase):
         remove_file_if_exists('config.json')
         del os.environ['CODALAB_HOME']
 
-    def test_get_state_for_temp_codalab_manager(self):
+    def test_temp_codalab_manager(self):
         manager: CodaLabManager = CodaLabManager(temporary=True)
         self.assertEqual(manager.state, {'auth': {}, 'sessions': {}})
         manager.save_state()
