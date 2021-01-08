@@ -6,6 +6,10 @@ This module exports some simple names used throughout the CodaLab bundle system:
 """
 import os
 import http.client
+import urllib.request
+import urllib.error
+
+from retry import retry
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
@@ -116,3 +120,16 @@ def ensure_str(response):
         return response.decode()
     except UnicodeDecodeError:
         return BINARY_PLACEHOLDER
+
+
+@retry(urllib.error.URLError, tries=2, delay=1, backoff=2)
+def urlopen_with_retry(request: urllib.request.Request, timeout: int = URLOPEN_TIMEOUT_SECONDS):
+    """
+    Makes a request using urlopen with a timeout of URLOPEN_TIMEOUT_SECONDS seconds and retries on failures.
+    Retries a maximum of 2 times, with an initial delay of 1 second and
+    exponential backoff factor of 2 for subsequent failures (1s and 2s).
+    :param request: Can be a url string or a Request object
+    :param timeout: Timeout for urlopen in seconds
+    :return: the response object
+    """
+    return urllib.request.urlopen(request, timeout=timeout)

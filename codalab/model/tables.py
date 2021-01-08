@@ -104,6 +104,12 @@ worksheet = Table(
         'frozen', DateTime, nullable=True
     ),  # When the worksheet was frozen (forever immutable) if it is.
     Column('is_anonymous', Boolean, nullable=False, default=False),
+    Column(
+        'date_created', DateTime
+    ),  # When the worksheet was created; Set to null if the worksheet created before v0.5.31; Set to current timestamp by default
+    Column(
+        'date_last_modified', DateTime
+    ),  # When the worksheet was last modified; Set to null if the worksheet created before v0.5.31; Set to current_timestamp by default
     UniqueConstraint('uuid', name='uix_1'),
     Index('worksheet_name_index', 'name'),
     Index('worksheet_owner_index', 'owner_id'),
