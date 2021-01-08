@@ -4,13 +4,18 @@ This module exports some simple names used throughout the CodaLab bundle system:
   - The State class, an enumeration of all legal bundle states.
   - precondition, a utility method that check's a function's input preconditions.
 """
+import os
 import http.client
+import urllib.request
+import urllib.error
+
+from retry import retry
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '0.5.29'
+CODALAB_VERSION = '0.5.32'
 BINARY_PLACEHOLDER = '<binary>'
-URLOPEN_TIMEOUT_SECONDS = 5 * 60
+URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
 
 
 class IntegrityError(ValueError):
@@ -58,6 +63,12 @@ class PermissionError(UsageError):
     """
     Raised when access to a resource is refused because the user does not have
     necessary permissions. Similar to HTTP status 403.
+    """
+
+
+class LoginPermissionError(ValueError):
+    """
+    Raised when the login credentials are incorrect.
     """
 
 
@@ -109,3 +120,16 @@ def ensure_str(response):
         return response.decode()
     except UnicodeDecodeError:
         return BINARY_PLACEHOLDER
+
+
+@retry(urllib.error.URLError, tries=2, delay=1, backoff=2)
+def urlopen_with_retry(request: urllib.request.Request, timeout: int = URLOPEN_TIMEOUT_SECONDS):
+    """
+    Makes a request using urlopen with a timeout of URLOPEN_TIMEOUT_SECONDS seconds and retries on failures.
+    Retries a maximum of 2 times, with an initial delay of 1 second and
+    exponential backoff factor of 2 for subsequent failures (1s and 2s).
+    :param request: Can be a url string or a Request object
+    :param timeout: Timeout for urlopen in seconds
+    :return: the response object
+    """
+    return urllib.request.urlopen(request, timeout=timeout)

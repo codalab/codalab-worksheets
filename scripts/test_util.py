@@ -77,6 +77,7 @@ def run_command(
     include_stderr=False,
     binary=False,
     force_subprocess=False,
+    cwd=None,
 ):
     # We import the following imports here because codalab_service.py imports TestModule from
     # this file. If we kept the imports at the top, then anyone who ran codalab_service.py
@@ -103,6 +104,8 @@ def run_command(
             kwargs = dict(kwargs, encoding="utf-8")
         if include_stderr:
             kwargs = dict(kwargs, stderr=subprocess.STDOUT)
+        if cwd:
+            kwargs = dict(kwargs, cwd=cwd)
         if not force_subprocess:
             # In this case, run the Codalab CLI directly, which is much faster
             # than opening a new subprocess to do so.
