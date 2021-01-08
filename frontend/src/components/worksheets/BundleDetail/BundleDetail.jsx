@@ -174,7 +174,6 @@ class BundleDetail extends React.Component<
                         }
                     }.bind(this),
                 );
-                // $.when.apply($, someArray) is another way of writing
                 await Promise.all(fetchRequests);
                 this.setState(stateUpdate);
             }
