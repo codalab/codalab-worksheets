@@ -148,9 +148,6 @@ class Bundle extends React.Component<
                             }
                         }.bind(this),
                     );
-                    // see https://medium.com/sungthecoder/making-multiple-ajax-calls-and-deciphering-when-apply-array-b35d1b4b1f50
-                    // to understand the command $.when.apply($, someArray)
-                    // await $.when.apply($, fetchRequests);
                     await Promise.all(fetchRequests);
                     this.setState(stateUpdate);
                 }
