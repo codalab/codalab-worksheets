@@ -6,7 +6,13 @@ from codalab.lib.codalab_manager import CodaLabManager
 
 
 class CodalabManagerTest(unittest.TestCase):
+
+    codalab_home = None
+
     def setUp(self):
+        if 'CODALAB_HOME' in os.environ:
+            print(os.environ['CODALAB_HOME'])
+            self.codalab_home = os.environ['CODALAB_HOME']
         os.environ['CODALAB_HOME'] = str(Path.home())
 
     def tearDown(self):
@@ -18,7 +24,11 @@ class CodalabManagerTest(unittest.TestCase):
         # Remove the state and config json files created by the CodaLabManagers
         remove_file_if_exists('state.json')
         remove_file_if_exists('config.json')
-        del os.environ['CODALAB_HOME']
+
+        if self.codalab_home:
+            os.environ['CODALAB_HOME'] = self.codalab_home
+        else:
+            del os.environ['CODALAB_HOME']
 
     def test_temp_codalab_manager(self):
         manager: CodaLabManager = CodaLabManager(temporary=True)
