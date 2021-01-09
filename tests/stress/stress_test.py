@@ -85,7 +85,7 @@ class StressTestRunner:
         'couchbase:latest',
         'golang:latest',
         'iwane/numpy-matplotlib',
-        'jenkins:latest',
+        'jenkins:2.60.3',
         'larger/rdp:dev',
         'maven:latest',
         'mysql:latest',
