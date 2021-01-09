@@ -81,7 +81,8 @@ class AzureBatchWorkerManager(WorkerManager):
 
     def get_worker_jobs(self) -> List[WorkerJob]:
         try:
-            # Count the number active and running tasks for the Azure Batch job
+            # Count the number active and running tasks for the Azure Batch job.
+            # Catch request errors to keep the worker manager running.
             task_counts: TaskCounts = self._batch_client.job.get_task_counts(self.args.job_id)
             return [WorkerJob(True) for _ in range(task_counts.active + task_counts.running)]
         except ClientRequestError as e:
@@ -160,7 +161,8 @@ class AzureBatchWorkerManager(WorkerManager):
         )
 
         try:
-            # Create a task under the Azure Batch job
+            # Create a task under the Azure Batch job.
+            # Catch request errors to keep the worker manager running.
             self._batch_client.task.add(self.args.job_id, task)
         except ClientRequestError as e:
             logger.error(
