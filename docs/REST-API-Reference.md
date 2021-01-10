@@ -289,6 +289,8 @@ Name | Type
 `title` | String
 `frozen` | DateTime
 `is_anonymous` | Boolean
+`date_created` | DateTime
+`date_last_modified` | DateTime
 `tags` | List
 `group_permissions` | Relationship([worksheet-permissions](#worksheet-permissions))
 `items` | Relationship([worksheet-items](#worksheet-items))

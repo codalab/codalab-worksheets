@@ -3,10 +3,11 @@ AuthHandler encapsulates the logic to authenticate users on the server-side.
 """
 import base64
 import json
+
 import urllib.request
 import urllib.parse
 import urllib.error
-from codalab.common import URLOPEN_TIMEOUT_SECONDS, LoginPermissionError
+from codalab.common import LoginPermissionError, urlopen_with_retry
 
 
 # TODO(sckoo): clean up auth logic across:
@@ -60,7 +61,7 @@ class RestOAuthHandler(object):
             data=urllib.parse.urlencode(data).encode('utf-8'),
         )
         try:
-            response = urllib.request.urlopen(request, timeout=URLOPEN_TIMEOUT_SECONDS)
+            response = urlopen_with_retry(request)
             result = json.loads(response.read().decode())
             return result
         except urllib.error.HTTPError as e:
