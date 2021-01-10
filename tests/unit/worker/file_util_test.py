@@ -60,12 +60,23 @@ class FileUtilTest(unittest.TestCase):
         self.assertEqual(un_gzip_bytestring(gzip_bytestring(b'contents')), b'contents')
 
     def test_stream_chunks_from_fileobj(self):
+        """Test stream_chunks_from_fileobj, with all data in a single chunk."""
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             self.addCleanup(lambda: os.remove(temp_file.name))
             temp_file.write(b'contents and more contents')
             name = temp_file.name
         self.assertEqual(
             b"".join(stream_chunks_from_fileobj(open(name, "rb"))), b'contents and more contents'
+        )
+
+    def test_stream_chunks_from_fileobj_with_chunks(self):
+        """Test stream_chunks_from_fileobj, but with multiple chunks, each of size 1."""
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            self.addCleanup(lambda: os.remove(temp_file.name))
+            temp_file.write(b'contents and more contents')
+            name = temp_file.name
+        self.assertEqual(
+            b"".join(stream_chunks_from_fileobj(open(name, "rb"), 1)), b'contents and more contents'
         )
 
 

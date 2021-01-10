@@ -72,6 +72,12 @@ class LoginPermissionError(ValueError):
     """
 
 
+class AbortedError(Exception):
+    """
+    Raised when an operation has been aborted.
+    """
+
+
 # Listed in order of most specific to least specific.
 http_codes_and_exceptions = [
     (http.client.FORBIDDEN, PermissionError),

@@ -6,7 +6,7 @@ import urllib.error
 from typing import Dict
 
 from .file_util import stream_chunks_from_fileobj, un_gzip_stream
-from codalab.common import URLOPEN_TIMEOUT_SECONDS, urlopen_with_retry
+from codalab.common import URLOPEN_TIMEOUT_SECONDS, urlopen_with_retry, AbortedError
 
 import requests
 
@@ -140,7 +140,7 @@ class RestClient(object):
                 if callback is not None:
                     should_resume = callback(bytes_generated)
                     if not should_resume:
-                        raise Exception('Upload aborted by client')
+                        raise AbortedError('Upload aborted by client')
 
         # Start the chunk-encoded request
         # By providing a generator for the response body, requests automatically uses a
