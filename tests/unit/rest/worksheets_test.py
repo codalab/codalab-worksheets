@@ -26,8 +26,8 @@ class WorksheetsTest(BaseTestCase):
                     "relationships": {
                         "items": {
                             "data": [
-                                {"type": "worksheet-items", "id": f"('name', '{worksheet_name}')",},
-                                {"type": "worksheet-items", "id": f"('uuid', '{worksheet_id}')",},
+                                {"type": "worksheet-items", "id": f"('name', '{worksheet_name}')"},
+                                {"type": "worksheet-items", "id": f"('uuid', '{worksheet_id}')"},
                             ]
                         }
                     },
