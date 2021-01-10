@@ -68,7 +68,7 @@ class TestBase:
     """
 
     def setUp(self):
-        self.codalab_manager = CodaLabManager()
+        self.codalab_manager = CodaLabManager(temporary=True)
         self.codalab_manager.config['server']['class'] = 'SQLiteModel'
         self.bundle_manager = BundleManager(self.codalab_manager)
         self.download_manager = self.codalab_manager.download_manager()
