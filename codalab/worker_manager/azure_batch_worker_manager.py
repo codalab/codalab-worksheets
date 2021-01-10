@@ -11,6 +11,7 @@ try:
         TaskCounts,
         TaskContainerSettings,
     )
+    from msrest.exceptions import ClientRequestError  # type: ignore
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         "Running the worker manager requires the azure-batch module.\n"
@@ -79,9 +80,14 @@ class AzureBatchWorkerManager(WorkerManager):
         self._batch_client.config.retry_policy.retries = 1
 
     def get_worker_jobs(self) -> List[WorkerJob]:
-        # Count the number active and running tasks for the Azure Batch job
-        task_counts: TaskCounts = self._batch_client.job.get_task_counts(self.args.job_id)
-        return [WorkerJob(True) for _ in range(task_counts.active + task_counts.running)]
+        try:
+            # Count the number active and running tasks for the Azure Batch job.
+            # Catch request errors to keep the worker manager running.
+            task_counts: TaskCounts = self._batch_client.job.get_task_counts(self.args.job_id)
+            return [WorkerJob(True) for _ in range(task_counts.active + task_counts.running)]
+        except ClientRequestError as e:
+            logger.error('Batch request to retrieve the number of tasks failed: {}'.format(str(e)))
+            return []
 
     def start_worker_job(self) -> None:
         worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
@@ -153,5 +159,14 @@ class AzureBatchWorkerManager(WorkerManager):
                 )
             ],
         )
-        # Create a task under the Azure Batch job
-        self._batch_client.task.add(self.args.job_id, task)
+
+        try:
+            # Create a task under the Azure Batch job.
+            # Catch request errors to keep the worker manager running.
+            self._batch_client.task.add(self.args.job_id, task)
+        except ClientRequestError as e:
+            logger.error(
+                'Batch request to add task {} to job {} failed: {}'.format(
+                    task_id, self.args.job_id, str(e)
+                )
+            )
