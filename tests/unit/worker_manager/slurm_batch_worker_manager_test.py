@@ -10,6 +10,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
     def test_base_command(self):
         args: SimpleNamespace = SimpleNamespace(
             server='some_server',
+            temp_session=True,
             user='some_user',
             partition='some_partition',
             worker_executable='cl-worker',
@@ -47,6 +48,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
     def test_filter_bundles(self):
         args: SimpleNamespace = SimpleNamespace(
             server='some_server',
+            temp_session=True,
             user='some_user',
             partition='some_partition',
             worker_executable='cl-worker',
