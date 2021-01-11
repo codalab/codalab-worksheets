@@ -89,7 +89,7 @@ class WorkerManager(object):
 
     def __init__(self, args):
         self.args = args
-        self.codalab_manager = CodaLabManager()
+        self.codalab_manager = CodaLabManager(args.temp_session)
         self.codalab_client = self.codalab_manager.client(args.server)
         self.staged_uuids = []
         self.worker_manager_start_time = time.time()
