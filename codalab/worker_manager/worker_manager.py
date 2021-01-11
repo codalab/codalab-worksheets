@@ -294,7 +294,7 @@ class WorkerManager(object):
         worker_memory_bytes: int = parse_size('{}m'.format(self.args.memory_mb))
         logger.info(
             f"Current worker manager allocates {self.args.cpus} CPUs, {self.args.gpus} GPUs, "
-            "and {worker_memory_bytes} bytes of RAM"
+            f"and {worker_memory_bytes} bytes of RAM"
         )
         for bundle in bundles:
             # Filter bundles based on the resources specified when creating the worker manager
