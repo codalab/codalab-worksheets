@@ -10,6 +10,7 @@ import IconButton from '@material-ui/core/IconButton';
 import InfoIcon from '@material-ui/icons/InfoOutlined';
 import OpenWithIcon from '@material-ui/icons/OpenWith';
 import './Worksheet.scss';
+import { format } from 'timeago.js';
 
 const styles = {
     backgroundColor: 'white',
@@ -70,8 +71,7 @@ export default ({
                             {/* Hide invalid last modified date */}
                             {info && info['date_last_modified'] ? (
                                 <div style={{ fontWeight: 'normal', fontSize: 'small' }}>
-                                    Last Modified Date:{' '}
-                                    {new Date(info['date_last_modified']).toString()}
+                                    Last Modified: {format(new Date(info['date_last_modified']))}
                                 </div>
                             ) : null}
                         </h5>
