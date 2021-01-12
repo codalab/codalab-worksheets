@@ -270,30 +270,23 @@ def get_container_stats_on_mac(container: docker.models.containers.Container):
     if container_exists(container):
         return get_container_stats_helper_by_name(container.name)
     else:
-        return '', ''
+        return 0.0, 0.0
 
 
 @wrap_exception('Unable to check Docker API for container')
-def get_container_stats_helper_by_name(container_name: str) -> Tuple[str, str]:
+def get_container_stats_helper_by_name(container_name: str) -> Tuple[float, float]:
     try:
         container_stats: dict = client.containers.get(container_name).stats(stream=False)
         cpu_used: int = int(container_stats['cpu_stats']['cpu_usage']['total_usage'])
         total_cpu: int = int(container_stats['cpu_stats']['system_cpu_usage'])
-        cpu_usage: str = float_to_percentage(float(cpu_used / total_cpu))
-        memory_usage: str = float_to_percentage(
-            float(
-                container_stats['memory_stats']['usage'] / container_stats['memory_stats']['limit']
-            )
+        cpu_usage: float = float(cpu_used / total_cpu)
+        memory_usage: float = float(
+            container_stats['memory_stats']['usage'] / container_stats['memory_stats']['limit']
         )
+
         return cpu_usage, memory_usage
     except docker.errors.NotFound:
         raise
-
-
-# Takes a float number and convert to percentage expression with 3 decimals
-def float_to_percentage(float_number: float) -> str:
-    percentage = round(float_number * 100, 3)
-    return f"{percentage} %"
 
 
 @wrap_exception('Unable to check Docker API for container')

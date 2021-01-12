@@ -409,15 +409,9 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state: RunState):
-            try:
-                cpu_usage, memory_usage = docker_utils.get_container_stats_on_mac(
-                    run_state.container
-                )
-                run_state = run_state._replace(cpu_usage=cpu_usage)
-                run_state = run_state._replace(memory_usage=memory_usage)
-            except KeyError:
-                # If the bundle has exited, then some of the keys are missing, so we just dismiss it.
-                pass
+            cpu_usage, memory_usage = docker_utils.get_container_stats_on_mac(run_state.container)
+            run_state = run_state._replace(cpu_usage=cpu_usage)
+            run_state = run_state._replace(memory_usage=memory_usage)
 
             kill_messages = []
 

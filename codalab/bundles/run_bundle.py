@@ -37,9 +37,9 @@ class RunBundle(DerivedBundle):
                                                                 'priority bundles are queued behind bundles with no specified priority.', default=None))
     METADATA_SPECS.append(MetadataSpec('request_network', bool, 'Whether to allow network access.', default=False))
     METADATA_SPECS.append(
-        MetadataSpec('cpu_usage', str, 'Portion of CPU used by this container (e.g., 28 %)', generated=True))
+        MetadataSpec('cpu_usage', float, 'Portion of CPU used by this container (e.g., 0.24)', generated=True))
     METADATA_SPECS.append(
-        MetadataSpec('memory_usage', str, 'Portion of Memory used by this container (e.g., 16 %)', generated=True))
+        MetadataSpec('memory_usage', float, 'Portion of Memory used by this container (e.g., 0.14)', generated=True))
 
     METADATA_SPECS.append(MetadataSpec('exclude_patterns', list, 'Exclude these file patterns from being saved into the bundle contents.', default=[]))
 
