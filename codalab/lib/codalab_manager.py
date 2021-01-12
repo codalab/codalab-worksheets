@@ -121,7 +121,7 @@ class CodaLabManager(object):
     temporary: don't use config files
     '''
 
-    def __init__(self, temporary=False, config=None, clients=None):
+    def __init__(self, temporary=False, config={}, clients={}):
         self.cache = {}
         self.temporary = temporary
 
@@ -328,7 +328,7 @@ class CodaLabManager(object):
     @cached
     def model(self):
         """
-        Return a model.  Called by the server.
+        Return a model. Called by the server.
         """
         model_class = self.config['server']['class']
         model = None
@@ -474,7 +474,7 @@ class CodaLabManager(object):
             token_info = auth['token_info']
             expires_at = token_info.get('expires_at', 0.0)
 
-            # If token is not nearing expiration, just return it.
+            # If token is not nearing expiration (more than 10 minutes left), just return it.
             if expires_at >= (time.time() + 10 * 60):
                 return token_info['access_token']
 
