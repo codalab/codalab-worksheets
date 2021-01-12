@@ -263,8 +263,8 @@ class TestBase:
             remote="",
             exitcode=0,
             failure_message="",
-            cpu_usage='init mock_bundle_checkin',
-            memory_usage='init mock_bundle_checkin',
+            cpu_usage=0.0,
+            memory_limit=0,
         )
         self.bundle_manager._model.bundle_checkin(
             bundle, worker_run, user_id or self.user_id, worker_id

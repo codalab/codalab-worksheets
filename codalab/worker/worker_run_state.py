@@ -103,8 +103,8 @@ RunState = namedtuple(
         'finished',  # bool
         'finalized',  # bool
         'is_restaged',  # bool
-        'cpu_usage',  # str
-        'memory_usage',  # str
+        'cpu_usage',  # float
+        'memory_limit',  # int
     ],
 )
 
@@ -409,9 +409,9 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state: RunState):
-            cpu_usage, memory_usage = docker_utils.get_container_stats_on_mac(run_state.container)
+            cpu_usage, memory_limit = docker_utils.get_container_stats_on_mac(run_state.container)
             run_state = run_state._replace(cpu_usage=cpu_usage)
-            run_state = run_state._replace(memory_usage=memory_usage)
+            run_state = run_state._replace(memory_limit=memory_limit)
 
             kill_messages = []
 

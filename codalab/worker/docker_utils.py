@@ -274,17 +274,15 @@ def get_container_stats_on_mac(container: docker.models.containers.Container):
 
 
 @wrap_exception('Unable to check Docker API for container')
-def get_container_stats_helper_by_name(container_name: str) -> Tuple[float, float]:
+def get_container_stats_helper_by_name(container_name: str) -> Tuple[float, int]:
     try:
         container_stats: dict = client.containers.get(container_name).stats(stream=False)
         cpu_used: int = int(container_stats['cpu_stats']['cpu_usage']['total_usage'])
         total_cpu: int = int(container_stats['cpu_stats']['system_cpu_usage'])
         cpu_usage: float = float(cpu_used / total_cpu)
-        memory_usage: float = float(
-            container_stats['memory_stats']['usage'] / container_stats['memory_stats']['limit']
-        )
+        memory_limit: int = container_stats['memory_stats']['limit']
 
-        return cpu_usage, memory_usage
+        return cpu_usage, memory_limit
     except docker.errors.NotFound:
         raise
 
