@@ -270,21 +270,48 @@ def get_container_stats_on_mac(container: docker.models.containers.Container):
     if container_exists(container):
         return get_container_stats_helper_by_name(container.name)
     else:
-        return 0.0, 0.0
+        return 0.0, 0
 
 
 @wrap_exception('Unable to check Docker API for container')
 def get_container_stats_helper_by_name(container_name: str) -> Tuple[float, int]:
     try:
         container_stats: dict = client.containers.get(container_name).stats(stream=False)
-        cpu_used: int = int(container_stats['cpu_stats']['cpu_usage']['total_usage'])
-        total_cpu: int = int(container_stats['cpu_stats']['system_cpu_usage'])
-        cpu_usage: float = float(cpu_used / total_cpu)
-        memory_limit: int = container_stats['memory_stats']['limit']
+
+        cpu_usage: float = get_cpu_usage(container_stats)
+        memory_limit: int = get_memory_limit(container_stats)
 
         return cpu_usage, memory_limit
     except docker.errors.NotFound:
         raise
+
+
+# The ref of the way of calculation:
+# https://www.jcham.com/2016/02/09/calculating-cpu-percent-and-memory-percentage-for-containers/
+def get_cpu_usage(container_stats: dict) -> float:
+    try:
+        cpu_delta: int = container_stats['cpu_stats']['cpu_usage']['total_usage'] - container_stats[
+            'precpu_stats'
+        ]['cpu_usage']['total_usage']
+        system_delta: int = container_stats['cpu_stats']['system_cpu_usage'] - container_stats[
+            'precpu_stats'
+        ]['system_cpu_usage']
+        if system_delta > 0 and cpu_delta > 0:
+            cpu_usage: float = float(cpu_delta / system_delta) * float(
+                len(container_stats['cpu_stats']['cpu_usage']['percpu_usage'])
+            )
+            return cpu_usage
+        return 0.0
+    except KeyError:
+        return 0.0
+
+
+def get_memory_limit(container_stats: dict) -> int:
+    try:
+        memory_limit: int = container_stats['memory_stats']['limit']
+        return memory_limit
+    except KeyError:
+        return 0
 
 
 @wrap_exception('Unable to check Docker API for container')
