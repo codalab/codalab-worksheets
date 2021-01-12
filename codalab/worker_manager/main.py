@@ -14,6 +14,11 @@ def main():
     parser.add_argument(
         '--server', help='CodaLab instance to connect to', default='https://worksheets.codalab.org'
     )
+    parser.add_argument(
+        '--temp-session',
+        action='store_false',
+        help='Whether to use a temporary session (defaults to true).',
+    )
     parser.add_argument('--min-workers', help='Minimum number of workers', type=int, default=1)
     parser.add_argument('--max-workers', help='Maximum number of workers', type=int, default=10)
     parser.add_argument(
