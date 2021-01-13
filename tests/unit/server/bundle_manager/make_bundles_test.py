@@ -3,6 +3,7 @@ from codalab.objects.dependency import Dependency
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.dataset_bundle import DatasetBundle
 from codalab.lib.spec_util import generate_uuid
+from mock import Mock
 import os
 import tempfile
 from tests.unit.server.bundle_manager import (
@@ -32,6 +33,12 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         """Bundles stuck in "MAKING" should be restaged and go back to the "MAKING" state."""
         bundle = self.create_make_bundle(state=State.MAKING)
         self.save_bundle(bundle)
+
+        # Fixes a race case in which _make_bundle is called before this function can check the bundle state,
+        # and instead sets the bundle state to "READY". We only want to test the restaging behavior in this test,
+        # so we set _make_bundle to do nothing.
+        self.bundle_manager._make_bundle = Mock()
+
         self.bundle_manager._make_bundles()
 
         self.assertTrue(self.bundle_manager._is_making_bundles())

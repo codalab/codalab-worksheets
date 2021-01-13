@@ -28,38 +28,36 @@ class WorksheetTerminal extends React.Component {
         // See JQuery Terminal API reference for more info about this plugin:
         // http://terminal.jcubic.pl/api_reference.php
         this.terminal = $('#command_line').terminal(
-            function(command, terminal) {
+            async function(command, terminal) {
                 if (command.length === 0) {
                     return;
                 }
 
                 var isEnabled = terminal.enabled();
                 terminal.pause();
-                self.executeCommand(command)
-                    .then(function(data) {
-                        if (data.output) {
-                            terminal.echo(data.output.replace(/\n$/, ''));
-                        }
+                try {
+                    const data = await self.executeCommand(command);
+                    if (data.output) {
+                        terminal.echo(data.output.replace(/\n$/, ''));
+                    }
 
-                        if (data.exception) {
-                            terminal.error(data.exception);
-                        }
+                    if (data.exception) {
+                        terminal.error(data.exception);
+                    }
 
-                        // Patch in hyperlinks to bundles
-                        if (data.structured_result && data.structured_result.refs) {
-                            self.renderHyperlinks(data.structured_result.refs);
-                        }
-                    })
-                    .fail(function(error) {
-                        terminal.error(error.responseText);
-                    })
-                    .always(function() {
-                        terminal.resume();
-                        if (!isEnabled) {
-                            terminal.disable();
-                        }
-                        self.props.reloadWorksheet();
-                    });
+                    // Patch in hyperlinks to bundles
+                    if (data.structured_result && data.structured_result.refs) {
+                        self.renderHyperlinks(data.structured_result.refs);
+                    }
+                } catch (error) {
+                    terminal.error(error.responseText);
+                } finally {
+                    terminal.resume();
+                    if (!isEnabled) {
+                        terminal.disable();
+                    }
+                    self.props.reloadWorksheet();
+                }
             },
             {
                 greetings:
@@ -97,12 +95,11 @@ class WorksheetTerminal extends React.Component {
                     }
                     self.props.handleFocus();
                 },
-                completion: function(lastToken, callback) {
+                completion: async function(lastToken, callback) {
                     var command = this.get_command();
 
-                    self.completeCommand(command).then(function(completions) {
-                        callback(completions);
-                    });
+                    const completions = await self.completeCommand(command);
+                    callback(completions);
                 },
             },
         );

@@ -91,7 +91,7 @@ class NavBar extends React.Component<{
         });
     }
 
-    createNewWorksheet() {
+    async createNewWorksheet() {
         this.resetDialog();
         if (!NAME_REGEX.test(this.state.newWorksheetName)) {
             this.setState({
@@ -102,23 +102,24 @@ class NavBar extends React.Component<{
             return;
         }
 
-        executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`)
-            .then((data) => {
-                if (data.structured_result && data.structured_result.ui_actions) {
-                    data.structured_result.ui_actions.forEach(([action, param]) => {
-                        if (action === 'openWorksheet') {
-                            window.location.href = `/worksheets/${param}`;
-                        }
-                    });
-                }
-            })
-            .fail((error) => {
-                this.setState({
-                    snackbarShow: true,
-                    snackbarMessage: error.responseText,
-                    snackbarVariant: 'error',
+        try {
+            const data = await executeCommand(
+                `new ${this.state.newWorksheetName || kDefaultWorksheetName}`,
+            );
+            if (data.structured_result && data.structured_result.ui_actions) {
+                data.structured_result.ui_actions.forEach(([action, param]) => {
+                    if (action === 'openWorksheet') {
+                        window.location.href = `/worksheets/${param}`;
+                    }
                 });
+            }
+        } catch (error) {
+            this.setState({
+                snackbarShow: true,
+                snackbarMessage: error.responseText,
+                snackbarVariant: 'error',
             });
+        }
     }
 
     search(keyword) {

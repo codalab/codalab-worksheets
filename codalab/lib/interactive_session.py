@@ -31,7 +31,7 @@ class InteractiveSession:
         9. Stop and remove the interactive session container.
     """
 
-    _BASH_HISTORY_CONTAINER_PATH = '/root/.bash_history'
+    _BASH_HISTORY_CONTAINER_PATH = "/usr/sbin/.bash_history"
     _CHOOSE_COMMAND_INSTRUCTIONS = (
         "\n\n#\n"
         "# Choose the commands to use for cl run:\n"
@@ -80,10 +80,15 @@ class InteractiveSession:
         self._stderr = stderr
 
     def start(self):
-        self._bundle_path = os.path.join(
+        self._host_bundle_path = os.path.join(
             self._manager.codalab_home, 'local_bundles', self._session_uuid
         )
-        os.makedirs(self._bundle_path)
+        os.makedirs(self._host_bundle_path)
+
+        # Create a blank file which will be used as the bash history file that will later be
+        # mounted and populated during the interactive session.
+        self._host_bash_history_path = os.path.join(self._host_bundle_path, ".bash_history")
+        open(self._host_bash_history_path, 'w').close()
 
         run_command = self.get_docker_run_command()
 
@@ -91,11 +96,13 @@ class InteractiveSession:
             print('\nStarting an interactive session...', file=self._stdout)
             print('%s\n' % run_command, file=self._stdout)
             print('=' * 150, file=self._stdout)
-            print('Session UUID:', self._session_uuid, file=self._stdout)
-            print('CodaLab instance:', self._manager.current_client().address, file=self._stdout)
-            print('Container name:', self._get_container_name(), file=self._stdout)
-            print('Container Docker image:', self._docker_image, file=self._stdout)
-            print('You can find local bundle contents at:', self._bundle_path, file=self._stdout)
+            print('Session UUID: ', self._session_uuid, file=self._stdout)
+            print('CodaLab instance: ', self._manager.current_client().address, file=self._stdout)
+            print('Container name: ', self._get_container_name(), file=self._stdout)
+            print('Container Docker image: ', self._docker_image, file=self._stdout)
+            print(
+                'You can find local bundle contents at: ', self._host_bundle_path, file=self._stdout
+            )
             print('=' * 150 + '\n', file=self._stdout)
 
         self._container = self._start_session(run_command)
@@ -136,13 +143,26 @@ class InteractiveSession:
                 volumes[get_docker_path(key)] = dependency_local_path
 
         name = self._get_container_name()
-        command = ['docker run', '-it', f'--name {name}', f'-w {os.path.sep}{self._session_uuid}']
+        # Start a container as a non-root user. Root (id = 0) is the default user within a container.
+        # When passing a numeric ID, the user does not have to exist in the container.
+        command = [
+            'docker run',
+            '-it',
+            f'--name {name}',
+            f'-w {os.path.sep}{self._session_uuid}',
+            '-u 1',
+        ]
         command.extend(
             [
                 # Example: -v local_path/some_folder:/0x707e903500e54bcf9b072ac7e3f5ed36_dependencies/foo:ro
                 '-v {}:{}:ro'.format(local_path, docker_path)
                 for docker_path, local_path in volumes.items()
             ]
+        )
+        command.append(
+            '-v {}:{}:rw'.format(
+                self._host_bash_history_path, InteractiveSession._BASH_HISTORY_CONTAINER_PATH
+            )
         )
         command.append(self._docker_image)
         command.append('bash')
@@ -154,7 +174,7 @@ class InteractiveSession:
 
         self._container.stop()
         self._container.remove()
-        shutil.rmtree(self._bundle_path, ignore_errors=True)
+        shutil.rmtree(self._host_bundle_path, ignore_errors=True)
         if self._verbose:
             print('Done.\n', file=self._stdout)
 
@@ -175,10 +195,11 @@ class InteractiveSession:
     def _construct_final_command(self):
         try:
             candidate_commands = self._get_bash_history()
-        except Exception:
+        except Exception as e:
             print(
-                'The history of bash commands could not be retrieved at path: %s'
-                % InteractiveSession._BASH_HISTORY_CONTAINER_PATH,
+                'The history of bash commands could not be retrieved at path {}: {}'.format(
+                    InteractiveSession._BASH_HISTORY_CONTAINER_PATH, e
+                ),
                 file=self._stderr,
             )
             return ''
@@ -188,7 +209,7 @@ class InteractiveSession:
             candidate_commands.insert(0, self._initial_command + '\n')
 
         # Write out the commands to choose from and the instructions out to a file
-        path = os.path.join(self._bundle_path, 'edit_commands.txt')
+        path = os.path.join(self._host_bundle_path, 'edit_commands.txt')
         with open(path, 'w') as f:
             for command in candidate_commands:
                 f.write(command)
@@ -210,17 +231,9 @@ class InteractiveSession:
         return final_command
 
     def _get_bash_history(self):
-        # Copies out .bash_history from the container to bundle_path
-        path = os.path.join(self._bundle_path, '.bash_history')
-        f = open(path, 'wb')
-        stream, _ = self._container.get_archive(InteractiveSession._BASH_HISTORY_CONTAINER_PATH)
-        for chunk in stream:
-            f.write(chunk)
-        f.close()
-
         # Extract out a list of commands from .bash_history
         commands = []
-        with open(path) as f:
+        with open(self._host_bash_history_path) as f:
             for i, line in enumerate(f):
                 command = (
                     line.rstrip(InteractiveSession._NULL_BYTE)
