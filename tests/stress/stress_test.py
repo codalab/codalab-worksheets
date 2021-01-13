@@ -117,26 +117,37 @@ class StressTestRunner:
         print('Running stress tests...')
         self._start_heartbeat()
         self._test_large_bundle()
+        print('_test_large_bundle finished')
         self.cleanup()
         self._test_many_gpu_runs()
+        print('_test_many_gpu_runs finished')
         self.cleanup()
         self._test_multiple_cpus_runs_count()
+        print('_test_multiple_cpus_runs_count finished')
         self.cleanup()
         self._test_many_bundle_uploads()
+        print('_test_many_bundle_uploads finished')
         self.cleanup()
         self._test_many_worksheet_copies()
+        print('_test_many_worksheet_copies finished')
         self.cleanup()
         self._test_parallel_runs()
+        print('_test_parallel_runs finished')
         self.cleanup()
         self._test_many_docker_runs()
+        print('_test_many_docker_runs finished')
         self.cleanup()
         self._test_infinite_memory()
+        print('_test_infinite_memory finished')
         self.cleanup()
         self._test_infinite_gpu()
+        print('_test_infinite_gpu finished')
         self.cleanup()
         self._test_infinite_disk()
+        print('_test_infinite_disk finished')
         self.cleanup()
         self._test_many_disk_writes()
+        print('_test_many_disk_writes finished')
         self.cleanup()
         print('Done.')
 
@@ -175,19 +186,16 @@ class StressTestRunner:
         )
         # Wait for the run to finish before cleaning up the dependency
         run_command([cl, 'wait', uuid])
-        print('_test_large_bundle finished')
 
     def _test_many_gpu_runs(self):
         self._set_worksheet('many_gpu_runs')
         for _ in range(self._args.gpu_runs_count):
             self._run_bundle([self._cl, 'run', 'echo running with a gpu...', '--request-gpus=1'])
-        print('_test_many_gpu_runs finished')
 
     def _test_multiple_cpus_runs_count(self):
         self._set_worksheet('multiple_cpus_requested_runs')
         for _ in range(args.multiple_cpus_runs_count):
             self._run_bundle([self._cl, 'run', 'sleep 30', '--request-cpus=4'])
-        print('_test_multiple_cpus_runs_count finished')
 
     def _test_many_bundle_uploads(self):
         self._set_worksheet('many_bundle_uploads')
@@ -195,7 +203,6 @@ class StressTestRunner:
         for _ in range(self._args.bundle_upload_count):
             self._run_bundle([self._cl, 'upload', file.name()])
         file.delete()
-        print('_test_many_bundle_uploads finished')
 
     def _test_many_worksheet_copies(self):
         # Initialize a worksheet with 10 bundles to be replicated
@@ -209,7 +216,6 @@ class StressTestRunner:
         for _ in range(self._args.create_worksheet_count):
             other_worksheet_uuid = self._set_worksheet('other_worksheet_copy')
             run_command([self._cl, 'wadd', worksheet_uuid, other_worksheet_uuid])
-        print('_test_many_worksheet_copies finished')
 
     def _test_parallel_runs(self):
         self._set_worksheet('parallel_runs')
@@ -217,7 +223,6 @@ class StressTestRunner:
         for _ in range(self._args.parallel_runs_count):
             pool.apply(StressTestRunner._simple_run, (self._cl,))
         pool.close()
-        print('_test_parallel_runs finished')
 
     def _test_many_docker_runs(self):
         self._set_worksheet('many_docker_runs')
@@ -233,7 +238,6 @@ class StressTestRunner:
                     image,
                 ]
             )
-        print('_test_many_docker_runs finished')
 
     def _test_infinite_memory(self):
         if not self._args.test_infinite_memory:
@@ -245,7 +249,6 @@ class StressTestRunner:
             [self._cl, 'run', ':' + file.name(), 'python ' + file.name()], expected_exit_code=1
         )
         file.delete()
-        print('_test_infinite_memory finished')
 
     def _create_infinite_memory_script(self):
         code = 'a=["codalab stress test memory"]\nwhile True: a.extend(a); print(a)'
@@ -263,7 +266,6 @@ class StressTestRunner:
                 expected_exit_code=1,
             )
         file.delete()
-        print('_test_infinite_gpu finished')
 
     def _test_infinite_disk(self):
         if not self._args.test_infinite_disk:
@@ -272,7 +274,6 @@ class StressTestRunner:
         # Infinitely write out random characters to disk
         self._run_bundle([self._cl, 'run', 'dd if=/dev/zero of=infinite.bin bs=1G;'])
         self._run_bundle([self._cl, 'run', 'dd if=/dev/urandom of=/dev/sda;'])
-        print('_test_infinite_disk finished')
 
     def _test_many_disk_writes(self):
         self._set_worksheet('many_disk_writes')
@@ -282,7 +283,6 @@ class StressTestRunner:
                 i, self._args.disk_write_size_bytes
             )
             self._run_bundle([self._cl, 'run', command])
-        print('_test_many_disk_writes finished')
 
     def _set_worksheet(self, run_name):
         worksheet_name = self._create_worksheet_name(run_name)
