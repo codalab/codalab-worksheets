@@ -141,8 +141,6 @@ class NavBar extends React.Component<{
         });
     }
 
-    handleChange = (e, { value }) => this.setState({ value });
-
     handleResultSelect = (e, { result }) => {
         this.setState({ value: result.plaintextTitle || result.plaintextDescription });
         window.open('/worksheets/' + result.uuid, '_self');
@@ -158,6 +156,19 @@ class NavBar extends React.Component<{
             )}
         </div>
     );
+
+    handleSearchFocus = () => {
+        // Disable the terminal to avoid the search bar text being mirrored in the terminal
+        if (
+            $('#command_line')
+                .terminal()
+                .enabled()
+        ) {
+            $('#command_line')
+                .terminal()
+                .focus(false);
+        }
+    };
 
     handleSearchChange = (e, { value }) => {
         this.setState({ isLoading: true, value });
@@ -325,6 +336,7 @@ class NavBar extends React.Component<{
                                     onSearchChange={_.debounce(this.handleSearchChange, 500, {
                                         leading: true,
                                     })}
+                                    onFocus={this.handleSearchFocus}
                                     placeholder='search worksheets...'
                                     resultRenderer={this.resultRenderer}
                                     results={results}
