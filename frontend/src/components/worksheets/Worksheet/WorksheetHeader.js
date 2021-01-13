@@ -67,13 +67,6 @@ export default ({
                                 onChange={() => reloadWorksheet()}
                                 allowASCII={true}
                             />
-                            {/* Hide invalid last modified date */}
-                            {info && info['date_last_modified'] ? (
-                                <div style={{ fontWeight: 'normal', fontSize: 'small' }}>
-                                    Last Modified Date:{' '}
-                                    {new Date(info['date_last_modified']).toString()}
-                                </div>
-                            ) : null}
                         </h5>
                         <Grid item style={{ paddingTop: '10px' }}>
                             {info && (
