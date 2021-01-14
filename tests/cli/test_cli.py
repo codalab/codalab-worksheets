@@ -2440,6 +2440,23 @@ def test_wopen(ctx):
     _run_command([cl, 'wopen', 'nonexistent'], expected_exit_code=1)
 
 
+@TestModule.register('metadata')
+def test_metadata(ctx):
+    uuid = _run_command(
+        [
+            cl,
+            "run",
+            "'for i in {1..60}; do sleep 1; done'",
+            "--request-memory",
+            "15m",
+            "--request-docker-image",
+            "python:3.6.10-buster",
+        ]
+    )
+    _run_command([cl, 'info', uuid, '-f', 'cpu_usage'])
+    _run_command([cl, 'info', uuid, '-f', 'memory_limit'])
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'

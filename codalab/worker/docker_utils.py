@@ -8,8 +8,6 @@ created if not.
 
 import logging
 import os
-from typing import Tuple
-
 import docker
 from dateutil import parser, tz
 import datetime
