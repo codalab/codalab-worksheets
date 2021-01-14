@@ -27,6 +27,7 @@ export function renderDuration(s) {
     if (y === 0) return Math.round(d) + 'd' + Math.round(h) + 'h';
 
     d -= y * 365;
+    if (Math.round(d) === 0) return Math.round(y) + 'y';
     return Math.round(y) + 'y' + Math.round(d) + 'd';
 }
 
