@@ -265,29 +265,28 @@ def get_container_stats(container):
 
 
 @wrap_exception('Unable to check Docker API for container')
-def get_container_stats_on_mac(container: docker.models.containers.Container):
+def get_container_stats_with_docker_stats(container: docker.models.containers.Container):
+    """Takes a container, returns the cpu_usage and memory_usage"""
     if container_exists(container):
-        return get_container_stats_helper_by_name(container.name)
+        try:
+            container_stats: dict = client.containers.get(container.name).stats(stream=False)
+
+            cpu_usage: float = get_cpu_usage(container_stats)
+            memory_limit: int = get_memory_limit(container_stats)
+
+            return cpu_usage, memory_limit
+        except docker.errors.NotFound:
+            raise
     else:
         return 0.0, 0
 
 
-@wrap_exception('Unable to check Docker API for container')
-def get_container_stats_helper_by_name(container_name: str) -> Tuple[float, int]:
-    try:
-        container_stats: dict = client.containers.get(container_name).stats(stream=False)
-
-        cpu_usage: float = get_cpu_usage(container_stats)
-        memory_limit: int = get_memory_limit(container_stats)
-
-        return cpu_usage, memory_limit
-    except docker.errors.NotFound:
-        raise
-
-
 # The ref of the way of calculation:
 # https://www.jcham.com/2016/02/09/calculating-cpu-percent-and-memory-percentage-for-containers/
+# How docker client calcualtes it:
+# https://github.com/moby/moby/blob/131e2bf12b2e1b3ee31b628a501f96bbb901f479/api/client/stats.go#L309
 def get_cpu_usage(container_stats: dict) -> float:
+    """Takes a dictionary of container stats returned by docker stats, returns cpu usage"""
     try:
         cpu_delta: int = container_stats['cpu_stats']['cpu_usage']['total_usage'] - container_stats[
             'precpu_stats'
@@ -302,10 +301,13 @@ def get_cpu_usage(container_stats: dict) -> float:
             return cpu_usage
         return 0.0
     except KeyError:
+        # If the bundle is not fully ready or has exited, then the stats returned is missing some keys.
+        # We can just skip for now and wait for calling next time.
         return 0.0
 
 
 def get_memory_limit(container_stats: dict) -> int:
+    """Takes a dictionary of container stats returned by docker stats, returns memory usage"""
     try:
         memory_limit: int = container_stats['memory_stats']['limit']
         return memory_limit
