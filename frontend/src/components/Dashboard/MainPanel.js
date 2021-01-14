@@ -2,7 +2,6 @@ import * as React from 'react';
 import $ from 'jquery';
 import Card from '@material-ui/core/Card';
 import { withStyles } from '@material-ui/core/styles';
-import Box from '@material-ui/core/Box';
 import Button from '@material-ui/core/Button';
 import { green } from '@material-ui/core/colors';
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
@@ -30,7 +29,7 @@ const styles = ({ spacing, palette }) => {
             backgroundColor: 'white',
             alignItems: 'center',
         },
-        titleBox: { margin: 'auto', marginTop: 8, marginBottom: 8, width: '90%' },
+        titleBox: { margin: 'auto', marginTop: 8, marginBottom: 16, width: '90%' },
         wsTitleBox: {
             display: 'flex',
             alignItems: 'center',
@@ -39,7 +38,6 @@ const styles = ({ spacing, palette }) => {
         wsCard: {
             display: 'flex',
             flexDirection: 'column',
-            padding: spacing(2),
             elevation: 5,
             margin: 'auto',
             marginBottom: 8,
@@ -47,7 +45,7 @@ const styles = ({ spacing, palette }) => {
             borderRadius: 12,
             boxShadow: '0 2px 4px 0 rgba(138, 148, 159, 0.2)',
             '& > *:nth-child(1)': {
-                marginRight: spacing(2),
+                marginRight: 16,
             },
             '& > *:nth-child(2)': {
                 flex: 'auto',
@@ -120,19 +118,19 @@ class MainPanel extends React.Component<{
             success: (data) => {
                 const worksheets = data.response.map((ws, i) => (
                     <Card className={classes.wsCard}>
-                        <Box className={classes.wsBox}>
-                            <Box className={classes.wsTitleBox}>
+                        <div className={classes.wsBox}>
+                            <div className={classes.wsTitleBox}>
                                 <a className={classes.subheader} href={'/worksheets/' + ws.uuid}>
                                     {ws.title ? ws.title : 'Untitled'}
                                 </a>
                                 <div className={classes.value} style={{ whiteSpace: 'pre' }}>
                                     {'  by ' + ws.owner_name}
                                 </div>
-                            </Box>
-                            <Box display={'flex'} alignItems={'center'}>
+                            </div>
+                            <div display={'flex'} alignItems={'center'}>
                                 <p className={classes.value}>{ws.name} </p>
-                            </Box>
-                        </Box>
+                            </div>
+                        </div>
                     </Card>
                 ));
                 this.setState({ worksheets });
@@ -195,7 +193,7 @@ class MainPanel extends React.Component<{
         return (
             <div>
                 <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
-                    <Box className={classes.titleBox} display={'flex'} alignItems={'center'}>
+                    <div className={classes.titleBox} display={'flex'} alignItems={'center'}>
                         <h3 className={classes.heading}>Worksheets</h3>
                         &nbsp;&nbsp;&nbsp;&nbsp;
                         <Tooltip title='New Worksheet'>
@@ -208,7 +206,7 @@ class MainPanel extends React.Component<{
                                 ADD
                             </Button>
                         </Tooltip>
-                    </Box>
+                    </div>
 
                     {this.state.worksheets}
                 </Card>

@@ -1,7 +1,6 @@
 import React from 'react';
 import cx from 'clsx';
 import { withStyles } from '@material-ui/core/styles';
-import Box from '@material-ui/core/Box';
 import Card from '@material-ui/core/Card';
 import Avatar from '@material-ui/core/Avatar';
 import Divider from '@material-ui/core/Divider';
@@ -25,11 +24,11 @@ const styles = ({ spacing, palette }) => {
         card: {
             display: 'flex',
             flexDirection: 'column',
-            padding: spacing(2),
+            padding: 8,
             height: '100%',
             boxShadow: '0 2px 4px 0 rgba(138, 148, 159, 0.2)',
             '& > *:nth-child(1)': {
-                marginRight: spacing(2),
+                marginRight: 8,
             },
             '& > *:nth-child(2)': {
                 flex: 'auto',
@@ -162,17 +161,17 @@ class SideBar extends React.Component {
         }
         return (
             <Card className={cx(classes.card)} elevation={0} style={{ height: '100%' }}>
-                <Avatar src={'../img/blank_profile.png'} className={classes.avatar} />
-                <Box className={classes.box}>
+                <Avatar className={classes.avatar}>{userInfo.user_name.charAt(0)}</Avatar>
+                <div className={classes.box}>
                     <h3 className={classes.name}>{userInfo.user_name}</h3>
                     {userInfo.affiliation ? (
                         <p className={classes.affiliation}>Affiliation: {userInfo.affiliation}</p>
                     ) : null}
-                </Box>
+                </div>
                 <Divider />
 
                 {this.props.showQuota ? (
-                    <Box className={classes.box}>
+                    <div className={classes.box}>
                         <a
                             className={classes.subheader}
                             href={
@@ -181,7 +180,7 @@ class SideBar extends React.Component {
                         >
                             Disk Usage
                         </a>
-                        <Box className={classes.progressBox}>
+                        <div className={classes.progressBox}>
                             <BorderLinearProgress
                                 className={classes.progress}
                                 variant='determinate'
@@ -189,7 +188,7 @@ class SideBar extends React.Component {
                                 value={(userInfo.disk_used / userInfo.disk_quota) * 100}
                             />
                             <span className={classes.value}>{renderSize(userInfo.disk_quota)}</span>
-                        </Box>
+                        </div>
                         <span className={classes.value}>
                             {Math.floor((userInfo.disk_used / userInfo.disk_quota) * 100) + '%'}
                         </span>
@@ -200,7 +199,7 @@ class SideBar extends React.Component {
                         >
                             Time Usage
                         </a>
-                        <Box className={classes.progressBox}>
+                        <div className={classes.progressBox}>
                             <BorderLinearProgress
                                 className={classes.progress}
                                 variant='determinate'
@@ -210,20 +209,20 @@ class SideBar extends React.Component {
                             <span className={classes.value}>
                                 {renderDuration(userInfo.time_quota)}
                             </span>
-                        </Box>
+                        </div>
                         <span className={classes.value}>
                             {Math.floor((userInfo.time_used / userInfo.time_quota) * 100) + '%'}
                         </span>
-                    </Box>
+                    </div>
                 ) : null}
-                <Box className={classes.box}>
+                <div className={classes.box}>
                     <p className={classes.subheader}>Bundles</p>
-                    <Box display={'flex'} alignItems={'center'}>
+                    <div display={'flex'} alignItems={'center'}>
                         <ul style={{ listStyleType: 'circle' }}>{this.state.bundles}</ul>
-                    </Box>
-                </Box>
+                    </div>
+                </div>
                 <Divider />
-                <Box className={classes.placeholderBox}></Box>
+                <div className={classes.placeholderBox}></div>
             </Card>
         );
     }

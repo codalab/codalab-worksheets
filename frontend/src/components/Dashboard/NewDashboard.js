@@ -1,7 +1,7 @@
 import * as React from 'react';
 import Grid from '@material-ui/core/Grid';
-import SideBar from './SideBar';
-import MainPanel from './MainPanel';
+import { default as SideBar } from './SideBar';
+import { default as MainPanel } from './MainPanel';
 import $ from 'jquery';
 
 /**
