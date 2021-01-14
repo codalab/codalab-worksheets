@@ -19,7 +19,7 @@ import DialogActions from '@material-ui/core/DialogActions';
  */
 const kDefaultWorksheetName = 'unnamed';
 
-const styles = ({ spacing, palette }) => {
+const styles = ({ palette }) => {
     return {
         wsBox: {
             marginLeft: 20,
