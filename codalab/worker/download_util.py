@@ -63,6 +63,8 @@ def get_target_info(bundle_path, target, depth):
     """
     final_path = _get_normalized_target_path(bundle_path, target)
     if parse_linked_bundle_url(final_path).uses_beam:
+        # If the target is on Azure, use a special method using Apache Beam
+        # to get the target info.
         info = _compute_target_info_beam(final_path, depth)
     else:
         if not os.path.islink(final_path) and not os.path.exists(final_path):
@@ -95,14 +97,16 @@ BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 
 
 def _get_normalized_target_path(bundle_path, target):
-    real_bundle_path = (
-        bundle_path
-        if parse_linked_bundle_url(bundle_path).uses_beam
-        else os.path.realpath(bundle_path)
-    )
-    normalized_target_path = _get_target_path(real_bundle_path, target.subpath)
-    if not parse_linked_bundle_url(normalized_target_path).uses_beam:
-        normalized_target_path = os.path.normpath(normalized_target_path)
+    if parse_linked_bundle_url(bundle_path).uses_beam:
+        # On Azure, don't call os.path functions on the paths (which are azfs:// URLs).
+        real_bundle_path = bundle_path
+        normalized_target_path = _get_target_path(real_bundle_path, target.subpath)
+    else:
+        real_bundle_path = os.path.realpath(bundle_path)
+        normalized_target_path = os.path.normpath(
+            _get_target_path(real_bundle_path, target.subpath)
+        )
+
     error_path = _get_target_path(target.bundle_uuid, target.subpath)
 
     if not normalized_target_path.startswith(real_bundle_path):

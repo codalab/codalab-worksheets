@@ -113,7 +113,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         info = self.download_manager.get_target_info(target, 0)
         self.assertEqual(info["name"], bundle.uuid)
         self.assertEqual(info["size"], 11)
-        # TODO: reenable once permissions work.
+        # TODO (Ashwin): reenable once permissions work.
         # self.assertEqual(info["perm"], self.DEFAULT_PERM)
         self.assertEqual(info["type"], "file")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")

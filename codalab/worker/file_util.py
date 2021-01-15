@@ -212,7 +212,7 @@ def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSE
         and linked_bundle_path.is_zip
         and linked_bundle_path.zip_subpath
     ):
-        # If file path is a zip file, open the specified path within the
+        # If file path is a zip file on Azure, open the specified path within the
         # zip file. zipfile.open only supports 'r', not 'rb', so we always pass in 'r'.
         with ZipFile(FileSystems.open(linked_bundle_path.bundle_path, compression_type)) as f:
             return f.open(linked_bundle_path.zip_subpath, 'r')
@@ -426,10 +426,15 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
     0 is returned. Else, an exception is raised (FileNotFoundError).
     """
     if parse_linked_bundle_url(path).uses_beam:
+        # On Azure, use Apache Beam methods, not native os methods,
+        # to get the path size.
+
+        # Get the size of the specified path (file / directory):
         result = get_path_size(path)
-        patterns = [
-            os.path.join(path, "", "**")
-        ]  # Adds trailing slash if not already there -- this is needed so that on somewhere like S3, we correctly match directory contents, not files starting with the same prefix.
+
+        # If path points to a directory, get the size of all
+        # files within the directory by using the pattern {path}/**.
+        patterns = [os.path.join(path, "", "**")]
         for child in FileSystems.match(patterns)[0].metadata_list:
             if child.path not in exclude_names:
                 result += child.size_in_bytes

@@ -61,17 +61,23 @@ class UploadManager(object):
         )
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
         bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
-        linked_bundle_path = parse_linked_bundle_url(bundle_path)
+        uses_beam = parse_linked_bundle_url(bundle_path).uses_beam
+        if bundle_link_url and not uses_beam:
+            # If we are pointing to an existing file using --link, we shouldn't perform the upload
+            # because the file already exists.
+            return
         try:
-            if not linked_bundle_path.uses_beam:
+            if (
+                not uses_beam
+            ):  # Don't make directories on Azure (which uses a single zip file instead).
                 path_util.make_directory(bundle_path)
             # Note that for uploads with a single source, the directory
             # structure is simplified at the end.
             for source in sources:
                 is_url, is_local_path, is_fileobj, filename = self._interpret_source(source)
-                if not linked_bundle_path.uses_beam:
-                    source_output_path = os.path.join(bundle_path, filename)
-                else:
+                source_output_path = os.path.join(bundle_path, filename)
+                if uses_beam:
+                    # On Azure, we will output to a single zip file, so don't modify the path.
                     source_output_path = bundle_path
                 if is_url:
                     if git:
@@ -115,12 +121,13 @@ class UploadManager(object):
                             simplify_archive=simplify_archives,
                         )
                     else:
-                        # Uploading zip files from Azure (in which case unpack is False),
-                        # or uploading a single file.
+                        # We reach this code path if we are uploading zip files to Azure
+                        # (in which case unpack is set to False), or uploading a single file regularly.
                         with FileSystems.create(source_output_path) as out:
                             shutil.copyfileobj(source[1], out)
 
-            if len(sources) == 1 and not linked_bundle_path.uses_beam:
+            if len(sources) == 1 and not uses_beam:
+                # Don't run _simplify_directory on Azure, as we always want to store bundles in folders there.
                 self._simplify_directory(bundle_path)
         except UsageError:
             if FileSystems.exists(bundle_path):
@@ -179,7 +186,7 @@ class UploadManager(object):
         one file / directory, then replace |path| with that file / directory.
         """
 
-        # If the file is using Apache Beam, then use the Apache Beam FileSystems.rename
+        # If the file is using Azure, then use the Apache Beam FileSystems.rename
         # method to perform this simplification.
         if parse_linked_bundle_url(path).uses_beam:
             if child_path is None:

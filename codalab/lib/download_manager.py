@@ -166,7 +166,8 @@ class DownloadManager(object):
         elif bundle_state != State.RUNNING:
             directory_path = self._get_target_path(target)
             if parse_linked_bundle_url(directory_path).uses_beam:
-                # The file should already be zipped on Azure Blob Storage.
+                # If the file is already on Azure, it should already be zipped, so just stream
+                # that existing file.
                 return file_util.open_file(directory_path)
             return file_util.tar_gzip_directory(directory_path)
         else:
@@ -311,6 +312,7 @@ class DownloadManager(object):
         """
         file_path = self._get_target_path(target)
         if parse_linked_bundle_url(file_path).uses_beam:
+            # Return True if the URL is in Azure Blob Storage.
             return True
         if self._bundle_model.get_bundle_state(target.bundle_uuid) in [
             State.RUNNING,
@@ -331,6 +333,8 @@ class DownloadManager(object):
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
         if bundle_link_url and not parse_linked_bundle_url(bundle_link_url).uses_beam:
+            # If bundle_link_url points to a locally mounted volume, call _transform_link_path
+            # to get the actual path where it can be accessed.
             bundle_link_url = self._transform_link_path(bundle_link_url)
         bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(target.bundle_uuid)
         try:
