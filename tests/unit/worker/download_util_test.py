@@ -2,7 +2,6 @@ from codalab.worker.download_util import get_target_info, BundleTarget
 import apache_beam.io.filesystems
 import unittest
 import random
-import zipfile
 from zipfile import ZipFile
 from apache_beam.io.filesystems import FileSystems, BlobStorageFileSystem
 from codalab.lib.beam.mockblobstoragefilesystem import MockBlobStorageFileSystem
