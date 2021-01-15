@@ -116,9 +116,9 @@ class StressTestRunner:
         cleanup(self._cl, StressTestRunner._TAG, should_wait=False)
         print('Running stress tests...')
         self._start_heartbeat()
-        self._test_large_bundle_dependency()
+        self._test_large_bundle_result()
         self.cleanup()
-        self._test_large_bundle()
+        self._test_large_bundle_upload()
         self.cleanup()
         self._test_many_gpu_runs()
         self.cleanup()
@@ -160,30 +160,47 @@ class StressTestRunner:
             # Have heartbeat run every 30 seconds
             time.sleep(30)
 
-    def _test_large_bundle_dependency(self):
-        self._set_worksheet('large_bundle_dependency')
-        # Set this to larger than the max memory on the system to test that data is being
-        # streamed when the large bundle is being used as a dependency.
-        command = 'dd if=/dev/zero of=largefile bs=1 count=0 seek={}G'.format(
-            self._args.large_dependency_size_gb
+    def _test_large_bundle_result(self):
+        def create_large_file_in_bundle(large_file_size_gb):
+            code = 'with open("largefile", "wb") as out:\n\tout.truncate({} * 1024 * 1024 * 1024)'.format(
+                large_file_size_gb
+            )
+            return TestFile('large_dependency.py', content=code)
+
+        self._set_worksheet('large_bundle_result')
+        file = create_large_file_in_bundle(self._args.large_dependency_size_gb)
+        self._run_bundle([self._cl, 'upload', file.name()])
+        file.delete()
+
+        dependency_uuid = self._run_bundle(
+            [self._cl, 'run', ':' + file.name(), 'python ' + file.name()]
         )
-        dependency_uuid = self._run_bundle([self._cl, 'run', command])
         uuid = self._run_bundle(
             [
                 self._cl,
                 'run',
-                'large_dependency:{}'.format(dependency_uuid),
-                'wc -c large_dependency/largefile',
+                'large_bundle:{}'.format(dependency_uuid),
+                'wc -c large_bundle/largefile',
             ]
         )
         # Wait for the run to finish before cleaning up the dependency
         run_command([cl, 'wait', uuid])
 
-    def _test_large_bundle(self):
-        self._set_worksheet('large_bundles')
-        large_file = TestFile('large_file', self._args.large_file_size_gb * 1024)
-        self._run_bundle([self._cl, 'upload', large_file.name()])
+    def _test_large_bundle_upload(self):
+        self._set_worksheet('large_bundle_upload')
+        large_file = TestFile('large_file', self._args.large_file_size_gb * 1000)
+        dependency_uuid = self._run_bundle([self._cl, 'upload', large_file.name()])
         large_file.delete()
+        uuid = self._run_bundle(
+            [
+                self._cl,
+                'run',
+                'large_dependency:{}'.format(dependency_uuid),
+                'wc -c large_dependency',
+            ]
+        )
+        # Wait for the run to finish before cleaning up the dependency
+        run_command([cl, 'wait', uuid])
 
     def _test_many_gpu_runs(self):
         self._set_worksheet('many_gpu_runs')
@@ -324,8 +341,10 @@ def main():
 
     if args.heavy:
         print('Setting the heavy configuration...')
+        # Set the sizes of the large files to be bigger than the max memory on the system to test that data
+        # is being streamed when the large bundles are used as a dependencies.
         args.large_dependency_size_gb = 15
-        args.large_file_size_gb = 5
+        args.large_file_size_gb = 15
         args.gpu_runs_count = 50
         args.multiple_cpus_runs_count = 50
         args.bundle_upload_count = 500
