@@ -132,7 +132,9 @@ class MainPanel extends React.Component<{
                                 <p className={classes.value}>{ws.name} </p>
                                 <p className={classes.value}>
                                     {' '}
-                                    {format(new Date(ws.date_last_modified))}
+                                    {ws.date_last_modified
+                                        ? format(new Date(ws.date_last_modified))
+                                        : ''}
                                 </p>
                             </div>
                         </div>
