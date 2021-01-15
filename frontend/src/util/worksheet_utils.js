@@ -7,6 +7,13 @@ export function renderDuration(s) {
     // Return a human-readable string.
     // Example: 100 => "1m40s", 10000 => "2h46m"
     // Checking s == null here will cover two cases: 1) s is undefined 2) s is null
+
+    function _ignoreZeroDuration(duration, unit) {
+        // Avoid redudant zero when  rendering duration
+        // Example: 100y0d => 100y
+        return Math.round(duration) === 0 ? '' : Math.round(duration) + unit;
+    }
+
     if (s == null) {
         return '<none>';
     }
@@ -16,19 +23,18 @@ export function renderDuration(s) {
 
     s -= m * 60;
     var h = Math.floor(m / 60);
-    if (h === 0) return Math.round(m) + 'm' + Math.round(s) + 's';
+    if (h === 0) return Math.round(m) + 'm' + _ignoreZeroDuration(s, 's');
 
     m -= h * 60;
     var d = Math.floor(h / 24);
-    if (d === 0) return Math.round(h) + 'h' + Math.round(m) + 'm';
+    if (d === 0) return Math.round(h) + 'h' + _ignoreZeroDuration(m, 'm');
 
     h -= d * 24;
     var y = Math.floor(d / 365);
-    if (y === 0) return Math.round(d) + 'd' + Math.round(h) + 'h';
+    if (y === 0) return Math.round(d) + 'd' + _ignoreZeroDuration(h, 'h');
 
     d -= y * 365;
-    if (Math.round(d) === 0) return Math.round(y) + 'y';
-    return Math.round(y) + 'y' + Math.round(d) + 'd';
+    return Math.round(y) + 'y' + _ignoreZeroDuration(d, 'd');
 }
 
 /**
