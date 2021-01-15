@@ -1357,7 +1357,7 @@ def test_run(ctx):
         2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
     )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
 
-    # test metadata
+    # Test that cpu_usage and memory_limit are properly populated
     uuid = _run_command(
         [
             cl,
