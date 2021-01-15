@@ -284,7 +284,7 @@ def get_container_stats_with_docker_stats(container: docker.models.containers.Co
 # How docker client calcualtes it:
 # https://github.com/moby/moby/blob/131e2bf12b2e1b3ee31b628a501f96bbb901f479/api/client/stats.go#L309
 def get_cpu_usage(container_stats: dict) -> float:
-    """Takes a dictionary of container stats returned by docker stats, returns cpu usage"""
+    """Calculates CPU usage from container stats returned from the Docker Stats API."""
     try:
         cpu_delta: int = container_stats['cpu_stats']['cpu_usage']['total_usage'] - container_stats[
             'precpu_stats'
