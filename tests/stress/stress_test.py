@@ -368,8 +368,8 @@ def main():
         print('Setting the heavy configuration...')
         # Set the sizes of the large files to be bigger than the max memory on the system to test that data
         # is being streamed when the large bundles are used as a dependencies.
-        args.large_dependency_size_gb = 15
-        args.large_file_size_gb = 15
+        args.large_dependency_size_gb = 16
+        args.large_file_size_gb = 16
         args.gpu_runs_count = 50
         args.multiple_cpus_runs_count = 50
         args.bundle_upload_count = 500
