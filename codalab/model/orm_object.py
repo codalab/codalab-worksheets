@@ -6,39 +6,13 @@ with a database row, and their to_dict method serializes them back to a row.
 To use this class, subclass it and set its COLUMNS class attribute to be the
 non-id columns of a SQLAlchemy table.
 '''
-from typing import Tuple, Union
+from typing import Tuple
 
 from codalab.common import precondition
 
 
 class ORMObject(object):
-    COLUMNS: Union[
-        Tuple[
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-            str,
-        ],
-        Tuple[str, str, str, str, str, str],
-        Tuple[str, str, str, str],
-        Tuple[str, str, str, str, str, str, str],
-    ]
+    COLUMNS: Tuple[str, ...]
 
     def __init__(self, row, strict=True):
         self.update_in_memory(dict(row), strict=strict)

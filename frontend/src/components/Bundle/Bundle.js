@@ -120,7 +120,7 @@ class Bundle extends React.Component<
             cache: false,
             context: this, // automatically bind `this` in all callbacks
         })
-            .then(function(response) {
+            .then(async function(response) {
                 const info = response.data;
                 if (!info) return;
                 if (info.type === 'file' || info.type === 'link') {
@@ -148,10 +148,8 @@ class Bundle extends React.Component<
                             }
                         }.bind(this),
                     );
-                    $.when.apply($, fetchRequests).then(() => {
-                        this.setState(stateUpdate);
-                    });
-                    return $.when(fetchRequests);
+                    await Promise.all(fetchRequests);
+                    this.setState(stateUpdate);
                 }
             })
             .fail(function(xhr, status, err) {
