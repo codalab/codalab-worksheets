@@ -9,7 +9,7 @@ export function renderDuration(s) {
     // Checking s == null here will cover two cases: 1) s is undefined 2) s is null
 
     function _ignoreZeroDuration(duration, unit) {
-        // Avoid redudant zero when  rendering duration
+        // Avoid redundant zero when rendering duration
         // Example: 100y0d => 100y
         return Math.round(duration) === 0 ? '' : Math.round(duration) + unit;
     }
