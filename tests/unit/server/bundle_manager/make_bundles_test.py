@@ -3,7 +3,7 @@ from codalab.objects.dependency import Dependency
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.dataset_bundle import DatasetBundle
 from codalab.lib.spec_util import generate_uuid
-from mock import Mock
+from unittest.mock import Mock
 import os
 import tempfile
 from tests.unit.server.bundle_manager import (
