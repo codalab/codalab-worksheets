@@ -442,7 +442,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--large-file-size-gb',
         type=int,
-        help='Size of large file in GB for single upload (defaults to 1).',
+        help='Size of large file in GB for single upload (defaults to 1). Set this to larger than the max memory on the system to test that data is being streamed',
         default=1,
     )
     parser.add_argument(
