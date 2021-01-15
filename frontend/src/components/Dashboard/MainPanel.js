@@ -15,6 +15,7 @@ import TextField from '@material-ui/core/TextField';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogActions from '@material-ui/core/DialogActions';
 import { format } from 'timeago.js';
+import { addUTCTimeZone } from '../../util/worksheet_utils';
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
  */
@@ -133,7 +134,7 @@ class MainPanel extends React.Component<{
                                 <p className={classes.value}>
                                     {' '}
                                     {ws.date_last_modified
-                                        ? format(new Date(ws.date_last_modified))
+                                        ? format(new Date(addUTCTimeZone(ws.date_last_modified)))
                                         : ''}
                                 </p>
                             </div>

@@ -48,6 +48,14 @@ export function padInt(x, numDigits) {
     return prefix + s;
 }
 
+export function addUTCTimeZone(date) {
+    // Append 'Z' to convert the time to ISO format (in UTC).
+    if (date) {
+        date += 'Z';
+    }
+    return date;
+}
+
 export function renderDate(epochSeconds) {
     // epochSeconds: unix timestamp
     // Return a human-readable string.
