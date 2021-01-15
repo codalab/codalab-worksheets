@@ -1357,6 +1357,21 @@ def test_run(ctx):
         2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
     )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
 
+    # test metadata
+    uuid = _run_command(
+        [
+            cl,
+            "run",
+            "'for i in {1..60}; do sleep 1; done'",
+            "--request-memory",
+            "15m",
+            "--request-docker-image",
+            "python:3.6.10-buster",
+        ]
+    )
+    check_not_equals(get_info(uuid, 'cpu_usage'), '0.0')
+    check_not_equals(get_info(uuid, 'memory_limit'), '0')
+
 
 @TestModule.register('link')
 def test_link(ctx):
@@ -2438,23 +2453,6 @@ def test_wopen(ctx):
 
     # Worksheet spec 'nonexistent' does not exist, so open should fail.
     _run_command([cl, 'wopen', 'nonexistent'], expected_exit_code=1)
-
-
-@TestModule.register('metadata')
-def test_metadata(ctx):
-    uuid = _run_command(
-        [
-            cl,
-            "run",
-            "'for i in {1..60}; do sleep 1; done'",
-            "--request-memory",
-            "15m",
-            "--request-docker-image",
-            "python:3.6.10-buster",
-        ]
-    )
-    _run_command([cl, 'info', uuid, '-f', 'cpu_usage'])
-    _run_command([cl, 'info', uuid, '-f', 'memory_limit'])
 
 
 if __name__ == '__main__':
