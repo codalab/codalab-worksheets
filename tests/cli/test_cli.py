@@ -1357,13 +1357,6 @@ def test_run(ctx):
         2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
     )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
 
-    # Test that cpu_usage and memory_limit are properly populated
-    uuid = _run_command(
-        [cl, "run", "'for i in {1..60}; do sleep 1; done'", "--request-memory", "15m"]
-    )
-    assert float(get_info(uuid, 'cpu_usage')) > 0
-    assert int(get_info(uuid, 'memory_limit')) > 0
-
 
 @TestModule.register('link')
 def test_link(ctx):
