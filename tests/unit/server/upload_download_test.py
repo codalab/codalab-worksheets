@@ -188,41 +188,41 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.check_file_target_contents(target)
 
 
-class RegularBundleStoreTest(BaseUploadDownloadBundleTest):
-    """Test uploading and downloading from / to a regular, file-based bundle store."""
+# class RegularBundleStoreTest(BaseUploadDownloadBundleTest):
+#     """Test uploading and downloading from / to a regular, file-based bundle store."""
 
-    def upload_folder(self, bundle, contents):
-        f = BytesIO()
-        with tarfile.open(fileobj=f, mode='w:gz') as tf:
-            for item in contents:
-                tinfo = tarfile.TarInfo(name=item[0])
-                tinfo.size = len(item[1])
-                tf.addfile(tinfo, BytesIO(item[1]))
-        f.seek(0)
-        sources = [["contents.tar.gz", f]]
-        self.upload_manager.upload_to_bundle_store(
-            bundle,
-            sources,
-            follow_symlinks=False,
-            exclude_patterns=None,
-            remove_sources=False,
-            git=False,
-            unpack=True,
-            simplify_archives=True,
-        )
+#     def upload_folder(self, bundle, contents):
+#         f = BytesIO()
+#         with tarfile.open(fileobj=f, mode='w:gz') as tf:
+#             for item in contents:
+#                 tinfo = tarfile.TarInfo(name=item[0])
+#                 tinfo.size = len(item[1])
+#                 tf.addfile(tinfo, BytesIO(item[1]))
+#         f.seek(0)
+#         sources = [["contents.tar.gz", f]]
+#         self.upload_manager.upload_to_bundle_store(
+#             bundle,
+#             sources,
+#             follow_symlinks=False,
+#             exclude_patterns=None,
+#             remove_sources=False,
+#             git=False,
+#             unpack=True,
+#             simplify_archives=True,
+#         )
 
-    def upload_file(self, bundle, contents):
-        sources = [["contents", BytesIO(contents)]]
-        self.upload_manager.upload_to_bundle_store(
-            bundle,
-            sources,
-            follow_symlinks=False,
-            exclude_patterns=None,
-            remove_sources=False,
-            git=False,
-            unpack=False,
-            simplify_archives=True,
-        )
+#     def upload_file(self, bundle, contents):
+#         sources = [["contents", BytesIO(contents)]]
+#         self.upload_manager.upload_to_bundle_store(
+#             bundle,
+#             sources,
+#             follow_symlinks=False,
+#             exclude_patterns=None,
+#             remove_sources=False,
+#             git=False,
+#             unpack=False,
+#             simplify_archives=True,
+#         )
 
 
 class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):

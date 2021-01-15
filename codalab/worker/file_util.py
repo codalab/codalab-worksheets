@@ -219,12 +219,48 @@ def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSE
     return FileSystems.open(file_path, mode)
 
 
+class GzipStream:
+    """A stream that gzips a file in chunks.
+    """
+
+    BUFFER_SIZE = 100 * 1024 * 1024  # Zip in chunks of 100MB
+
+    def __init__(self, fileobj):
+        self.__input = fileobj
+        self.__buffer = BytesBuffer()
+        self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
+
+    def read(self, size=-1):
+        while size < 0 or len(self.__buffer) < size:
+            s = self.__input.read(GzipStream.BUFFER_SIZE)
+            if not s:
+                self.__gzip.close()
+                break
+            self.__gzip.write(s)
+        return self.__buffer.read(size)
+
+    def close(self):
+        self.__input.close()
+
+
 def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
     Note: For right now, it's important for gzip to run in a separate process,
     otherwise things on CodaLab grind to a halt!
     """
+
+    if parse_linked_bundle_url(file_path).uses_beam:
+        # We run gzip in the same process if the file is on Azure, so that
+        # we can use Apache Beam methods to read the file. We may need to
+        # revisit this for performance implications (mentioned above)
+        # once we switch all files to use Azure.
+        try:
+            file_path_obj = open_file(file_path)
+            return GzipStream(file_path_obj)
+        except Exception as e:
+            raise IOError(e)
+
     args = ['gzip', '-c', '-n', file_path]
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
