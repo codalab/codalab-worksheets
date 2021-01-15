@@ -299,7 +299,7 @@ def get_cpu_usage(container_stats: dict) -> float:
             return cpu_usage
         return 0.0
     except KeyError:
-        # If the bundle is not fully ready or has exited, then the stats returned is missing some keys.
+        # The stats returned may be missing some keys if the bundle is not fully ready or has exited.
         # We can just skip for now and wait for calling next time.
         return 0.0
 
