@@ -185,22 +185,22 @@ class StressTestRunner:
             # Have heartbeat run every 30 seconds
             time.sleep(30)
 
-    def _test_large_bundle_result(self):
-        def create_large_file_in_bundle(large_file_size_gb):
-            code = 'with open("largefile", "wb") as out:\n\tout.truncate({} * 1024 * 1024 * 1024)'.format(
+    def _test_large_bundle_result(self) -> None:
+        def create_large_file_in_bundle(large_file_size_gb: int) -> TestFile:
+            code: str = 'with open("largefile", "wb") as out:\n\tout.truncate({} * 1024 * 1024 * 1024)'.format(
                 large_file_size_gb
             )
             return TestFile('large_dependency.py', content=code)
 
         self._set_worksheet('large_bundle_result')
-        file = create_large_file_in_bundle(self._args.large_dependency_size_gb)
+        file: TestFile = create_large_file_in_bundle(self._args.large_dependency_size_gb)
         self._run_bundle([self._cl, 'upload', file.name()])
         file.delete()
 
-        dependency_uuid = self._run_bundle(
+        dependency_uuid: str = self._run_bundle(
             [self._cl, 'run', ':' + file.name(), 'python ' + file.name()]
         )
-        uuid = self._run_bundle(
+        uuid: str = self._run_bundle(
             [
                 self._cl,
                 'run',
@@ -211,12 +211,12 @@ class StressTestRunner:
         # Wait for the run to finish before cleaning up the dependency
         run_command([cl, 'wait', uuid])
 
-    def _test_large_bundle_upload(self):
+    def _test_large_bundle_upload(self) -> None:
         self._set_worksheet('large_bundle_upload')
-        large_file = TestFile('large_file', self._args.large_file_size_gb * 1000)
-        dependency_uuid = self._run_bundle([self._cl, 'upload', large_file.name()])
+        large_file: TestFile = TestFile('large_file', self._args.large_file_size_gb * 1000)
+        dependency_uuid: str = self._run_bundle([self._cl, 'upload', large_file.name()])
         large_file.delete()
-        uuid = self._run_bundle(
+        uuid: str = self._run_bundle(
             [
                 self._cl,
                 'run',
