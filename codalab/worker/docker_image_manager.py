@@ -42,7 +42,7 @@ class DockerImageManager:
         self._state_committer = JsonStateCommitter(commit_file)  # type: JsonStateCommitter
         self._docker = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)  # type: DockerClient
         self._downloading = ThreadDict(
-            fields={'success': False, 'status': 'Download starting.'}, lock=True
+            fields={'success': False, 'status': 'Download starting'}, lock=True
         )
         self._max_image_cache_size = max_image_cache_size
         self._max_image_size = max_image_size
