@@ -188,7 +188,7 @@ class BundleManager(object):
                 self._make_uuids.add(bundle.uuid)
             # Making a bundle could take time, so do the work in a separate
             # thread to ensure quick scheduling.
-            t = threading.Thread(target=BundleManager._make_bundle, args=[self, bundle])
+            t = threading.Thread(target=self._make_bundle, args=[bundle])
             threads.append(t)
             t.start()
         return threads

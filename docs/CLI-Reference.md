@@ -143,6 +143,7 @@ Usage: `cl <command> <arguments>`
       search .format=<format>                : Apply <format> function (see worksheet markdown).
     Arguments:
       keywords              Keywords to search for.
+      -f, --field           Print out these comma-separated fields in the results table
       -a, --append          Append these bundles to the current worksheet.
       -u, --uuid-only       Print only uuids.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
@@ -150,6 +151,7 @@ Usage: `cl <command> <arguments>`
 ### ls
     List bundles in a worksheet.
     Arguments:
+      -f, --field           Print out these comma-separated fields in the results table
       -u, --uuid-only       Print only uuids.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 

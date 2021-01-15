@@ -10,8 +10,8 @@ import $ from 'jquery';
  * @param worksheet_uuid
  *     UUID of active worksheet. (6/3/2019: May be retrieved with ws.info.uuid).
  * Example usage:
-    executeCommand(command)
-    .then(function(data) {
+    try {
+        const data = await self.executeCommand(command);
         if (data.output) {
             terminal.echo(data.output.replace(/\n$/, ''));
         }
@@ -24,17 +24,15 @@ import $ from 'jquery';
         if (data.structured_result && data.structured_result.refs) {
             self.renderHyperlinks(data.structured_result.refs);
         }
-    })
-    .fail(function(error) {
+    } catch (error) {
         terminal.error(error.responseText);
-    })
-    .always(function() {
+    } finally {
         terminal.resume();
         if (!isEnabled) {
             terminal.disable();
         }
         self.props.reloadWorksheet();
-    });
+    }
  */
 export function executeCommand(command: string, worksheet_uuid?: string) {
     // returns a jQuery Promise

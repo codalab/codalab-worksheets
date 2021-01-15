@@ -805,6 +805,10 @@ def test_upload3(ctx):
     uuid = _run_command([cl, 'upload', 'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2'])
     check_contains(['README', 'INSTALL', 'FAQ'], _run_command([cl, 'cat', uuid]))
 
+    # Upload URL with a query string, that's an archive
+    uuid = _run_command([cl, 'upload', 'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2?a=b'])
+    check_contains(['README', 'INSTALL', 'FAQ'], _run_command([cl, 'cat', uuid]))
+
     # Upload URL from Git
     uuid = _run_command([cl, 'upload', 'https://github.com/codalab/codalab-worksheets', '--git'])
     check_contains(['README.md', 'codalab', 'scripts'], _run_command([cl, 'cat', uuid]))
@@ -1131,6 +1135,9 @@ def test_search(ctx):
     uuid1 = _run_command([cl, 'upload', test_path('a.txt'), '-n', name])
     uuid2 = _run_command([cl, 'upload', test_path('b.txt'), '-n', name])
     check_equals(uuid1, _run_command([cl, 'search', uuid1, '-u']))
+    check_equals(
+        uuid1[:8], _run_command([cl, 'search', 'uuid=' + uuid1, '-f', 'uuid']).split("\n")[2]
+    )
     check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, '-u']))
     check_equals('', _run_command([cl, 'search', 'uuid=' + uuid1[0:8], '-u']))
     check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '.*', '-u']))
@@ -2389,6 +2396,50 @@ def test_nonexistent(ctx):
     _run_command([cl, 'work', 'nonexistent::'], expected_exit_code=1)
 
 
+@TestModule.register('worker_manager')
+def test_incorrect_login(ctx):
+    username = os.getenv("CODALAB_USERNAME")
+    password = os.getenv("CODALAB_PASSWORD")
+    del os.environ["CODALAB_USERNAME"]
+    del os.environ["CODALAB_PASSWORD"]
+    _run_command([cl, 'logout'])
+    os.environ["CODALAB_USERNAME"] = username
+    os.environ["CODALAB_PASSWORD"] = "wrongpassword"
+    os.environ['USER'] = "some_user"
+    result = _run_command(
+        [
+            cl_worker_manager,
+            '--server=https://worksheets.codalab.org/',
+            'slurm-batch',
+            '--partition',
+            'foo',
+        ],
+    )
+    check_equals(str(result), "Invalid username or password. Please try again:")
+    os.environ["CODALAB_PASSWORD"] = password
+
+
+@TestModule.register('open')
+def test_open(ctx):
+    uuid = _run_command([cl, 'run', 'echo hello'])
+    _run_command([cl, 'open', uuid], expected_exit_code=0)
+    _run_command([cl, 'open', uuid, '^1'], expected_exit_code=0)
+
+    # Bundle spec 'nonexistent' does not exist, so open should fail.
+    _run_command([cl, 'open', 'nonexistent'], expected_exit_code=1)
+
+
+@TestModule.register('wopen')
+def test_wopen(ctx):
+    _run_command([cl, 'wopen'], expected_exit_code=0)
+    wuuid = _run_command([cl, 'new', random_name()])
+    ctx.collect_worksheet(wuuid)
+    _run_command([cl, 'wopen', wuuid], expected_exit_code=0)
+
+    # Worksheet spec 'nonexistent' does not exist, so open should fail.
+    _run_command([cl, 'wopen', 'nonexistent'], expected_exit_code=1)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'
@@ -2425,10 +2476,17 @@ if __name__ == '__main__':
         choices=list(TestModule.modules.keys()) + ['all', 'default'],
         help='Tests to run from: {%(choices)s}',
     )
+    parser.add_argument(
+        '--cl-worker-manager',
+        type=str,
+        help='Path to codalab worker manager CLI executable, defaults to "cl-worker-manager"',
+        default='cl-worker-manager',
+    )
 
     args = parser.parse_args()
     cl = args.cl_executable
     cl_version = args.cl_version
+    cl_worker_manager = args.cl_worker_manager
     success = TestModule.run(args.tests, args.instance, args.second_instance)
     if not success:
         sys.exit(1)
