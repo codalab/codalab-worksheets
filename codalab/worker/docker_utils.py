@@ -264,7 +264,7 @@ def get_container_stats(container):
 
 @wrap_exception('Unable to check Docker API for container')
 def get_container_stats_with_docker_stats(container: docker.models.containers.Container):
-    """Takes a container, returns the cpu_usage and memory_usage"""
+    """Returns the cpu usage and memory limit of a container using the Docker Stats API."""
     if container_exists(container):
         try:
             container_stats: dict = client.containers.get(container.name).stats(stream=False)
