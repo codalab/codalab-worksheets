@@ -4,6 +4,7 @@ import os
 import sentry_sdk
 
 CODALAB_SENTRY_INGEST = os.getenv("CODALAB_SENTRY_INGEST_URL", None)
+CODALAB_SENTRY_ENVIRONMENT = os.getenv("CODALAB_SENTRY_ENVIRONMENT", None)
 logger = logging.getLogger(__name__)
 
 
@@ -26,7 +27,7 @@ def initialize_sentry():
     Initialize the Sentry SDK if it hasn't already been initialized.
     """
     if sentry_sdk.Hub.current.client is None:
-        sentry_sdk.init(CODALAB_SENTRY_INGEST)
+        sentry_sdk.init(CODALAB_SENTRY_INGEST, environment=CODALAB_SENTRY_ENVIRONMENT)
         print_sentry_warning()
 
 
