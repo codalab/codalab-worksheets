@@ -1479,6 +1479,7 @@ class BundleModel(object):
             cl_worksheet.c.title,
             cl_worksheet.c.frozen,
             cl_worksheet.c.owner_id,
+            cl_worksheet.c.date_last_modified,
         ]
         query = (
             select(cols_to_select)

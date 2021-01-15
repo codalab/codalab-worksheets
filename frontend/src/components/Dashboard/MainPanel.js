@@ -14,6 +14,7 @@ import DialogContent from '@material-ui/core/DialogContent';
 import TextField from '@material-ui/core/TextField';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogActions from '@material-ui/core/DialogActions';
+import { format } from 'timeago.js';
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
  */
@@ -30,7 +31,7 @@ const styles = ({ palette }) => {
             alignItems: 'center',
         },
         titleBox: { margin: 'auto', marginTop: 8, marginBottom: 16, width: '90%' },
-        wsTitleBox: {
+        wsInlineBox: {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -119,7 +120,7 @@ class MainPanel extends React.Component<{
                 const worksheets = data.response.map((ws, i) => (
                     <Card className={classes.wsCard}>
                         <div className={classes.wsBox}>
-                            <div className={classes.wsTitleBox}>
+                            <div className={classes.wsInlineBox}>
                                 <a className={classes.subheader} href={'/worksheets/' + ws.uuid}>
                                     {ws.title ? ws.title : 'Untitled'}
                                 </a>
@@ -127,8 +128,12 @@ class MainPanel extends React.Component<{
                                     {'  by ' + ws.owner_name}
                                 </div>
                             </div>
-                            <div display={'flex'} alignItems={'center'}>
+                            <div className={classes.wsInlineBox}>
                                 <p className={classes.value}>{ws.name} </p>
+                                <p className={classes.value}>
+                                    {' '}
+                                    {format(new Date(ws.date_last_modified))}
+                                </p>
                             </div>
                         </div>
                     </Card>
