@@ -25,8 +25,7 @@ class NamedBundle(Bundle):
         MetadataSpec('data_size', int, 'Size of this bundle (in bytes).', generated=True, formatting='size'),
         MetadataSpec('failure_message', str, 'Error message if this run bundle failed.', generated=True,),
         MetadataSpec('link_url', str, 'Link URL of bundle.', optional=True),
-        MetadataSpec('link_format', str, 'Link format of bundle. Can be equal to'
-                        '"raw" or "zip" (only "raw" is supported as of now).', optional=True),
+        MetadataSpec('link_format', str, 'Link format of bundle. Can be equal to "raw" or "zip" (only "raw" is supported as of now).', optional=True),
     ]  # type: List
     # fmt: on
 
