@@ -1365,12 +1365,10 @@ def test_run(ctx):
             "'for i in {1..60}; do sleep 1; done'",
             "--request-memory",
             "15m",
-            "--request-docker-image",
-            "python:3.6.10-buster",
         ]
     )
-    check_not_equals(get_info(uuid, 'cpu_usage'), '0.0')
-    check_not_equals(get_info(uuid, 'memory_limit'), '0')
+    assert float(get_info(uuid, 'cpu_usage')) > 0
+    assert int(get_info(uuid, 'memory_limit')) > 0
 
 
 @TestModule.register('link')
