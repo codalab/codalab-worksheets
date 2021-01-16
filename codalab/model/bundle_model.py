@@ -935,6 +935,8 @@ class BundleModel(object):
             'time_user': worker_run.container_time_user,
             'time_system': worker_run.container_time_system,
             'remote': worker_run.remote,
+            'cpu_usage': worker_run.cpu_usage,  # > type: float
+            'memory_limit': worker_run.memory_limit,  # > type: int
         }
 
         if worker_run.docker_image is not None:
