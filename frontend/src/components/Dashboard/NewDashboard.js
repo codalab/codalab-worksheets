@@ -3,6 +3,7 @@ import Grid from '@material-ui/core/Grid';
 import { default as SideBar } from './SideBar';
 import { default as MainPanel } from './MainPanel';
 import $ from 'jquery';
+import { withRouter } from 'react-router';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
@@ -99,3 +100,4 @@ class NewDashboard extends React.Component<{
 }
 
 export default NewDashboard;
+export default withRouter(NewDashboard);
