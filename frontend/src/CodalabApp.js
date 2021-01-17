@@ -112,11 +112,11 @@ function CodalabApp() {
                             />
                             <Route path='/bundles/:uuid' component={BundleRoute} />
                             <Route
-                                path='/dashboard/:uid'
+                                path='/users/:username'
                                 component={(props) => <DashboardRoute {...props} auth={fakeAuth} />}
                             />
                             <Route
-                                path='/dashboard'
+                                path='/users'
                                 render={(props) => <NewDashboard {...props} auth={fakeAuth} />}
                             />
                             <Route component={PageNotFound} />
