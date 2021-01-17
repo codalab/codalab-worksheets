@@ -12,16 +12,16 @@ class DashboardRoute extends React.Component<{
     /** Constructor. */
     constructor(props) {
         super(props);
-        const { uid } = this.props.match.params;
+        const { username } = this.props.match.params;
         this.state = {
-            uid,
+            username,
         };
     }
 
     /** Renderer. */
     render() {
-        const { uid } = this.props.match.params;
-        return <NewDahboard uid={uid} auth={this.props.auth} />;
+        const { username } = this.props.match.params;
+        return <NewDahboard username={username} auth={this.props.auth} />;
     }
 }
 
