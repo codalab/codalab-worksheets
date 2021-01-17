@@ -10,7 +10,7 @@ import { withRouter } from 'react-router';
  */
 class NewDashboard extends React.Component<{
     // ID of user.
-    uid: string,
+    username: string,
     classes: {},
     auth: {
         isAuthenticated: boolean,
@@ -26,7 +26,7 @@ class NewDashboard extends React.Component<{
         }
         this.state = {
             userInfo: null, // User info of the current user. (null is the default)
-            authUid: null, // User Id of the current authenticated user
+            authUsername: null, // User Id of the current authenticated user
             ownDashboard: false, // Whether the dashboard is owned by current user
         };
     }
@@ -40,19 +40,19 @@ class NewDashboard extends React.Component<{
             cache: false,
             type: 'GET',
             success: function(data) {
-                let authUid: String = data.data.id;
+                let authUsername: String = data.data.attributes.user_name;
                 // Redirect to current user's own dashboard
-                this.setState({ authUid: authUid });
+                this.setState({ authUsername: authUsername });
                 let ownDashboard: boolean;
-                if (!this.props.uid) {
-                    this.props.history.push('/dashboard/' + authUid);
+                if (!this.props.username) {
+                    this.props.history.push('/users/' + authUsername);
                     ownDashboard = true;
                 } else {
-                    ownDashboard = authUid === this.props.uid;
+                    ownDashboard = authUsername === this.props.username;
                 }
 
                 $.ajax({
-                    url: ownDashboard ? '/rest/user' : '/rest/users/' + this.props.uid,
+                    url: ownDashboard ? '/rest/user' : '/rest/users/' + this.props.username,
                     dataType: 'json',
                     cache: false,
                     type: 'GET',
