@@ -36,3 +36,19 @@ export const FETCH_STATUS_SCHEMA = {
 
 // Default Duration for dialogs shown on the screen
 export const AUTO_HIDDEN_DURATION = 1500;
+
+// All possible bundle states
+export const BUNDLE_STATES: String[] = [
+    'uploading',
+    'created',
+    'staged',
+    'making',
+    'starting',
+    'preparing',
+    'running',
+    'finalizing',
+    'ready',
+    'failed',
+    'killed',
+    'worker_offline',
+];
