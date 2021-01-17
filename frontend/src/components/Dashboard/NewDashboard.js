@@ -99,5 +99,4 @@ class NewDashboard extends React.Component<{
     }
 }
 
-export default NewDashboard;
 export default withRouter(NewDashboard);
