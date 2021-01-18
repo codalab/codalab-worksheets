@@ -32,6 +32,8 @@ The job execution and provenance facilities of CodaLab Worksheets enable a wide 
 
 We provide a small application built on the [CodaLab Worksheets API](REST-API-Reference.md) for running small-scale Kaggle-like competitions. It is packaged as a simple Python script. Competition participants can "submit" their models to the competition by running them on an public dataset provided by the competition organizers, then tagging the resulting predictions bundle with a specific tag. The script searches for bundles with the configured tag, and "mimics" the submitted executions -- rerunning the models while replacing the public dataset with the hidden evaluation dataset. Competition organizers can run this script manually, as a cron job, or as a long-lived daemon.
 
+Once you have finished setting up the submission tutorial worksheet and generating your leaderboard in JSON format, please fill out the [Google form](https://docs.google.com/forms/d/e/1FAIpQLSdFdQTi4i0uXfXR00JD40HlW-j-Np2XCacgaPSZVfBdL4QwQg/viewform?usp=sf_link). 
+
 ## Installation and setup
 
 Install codalab package and its dependencies:
