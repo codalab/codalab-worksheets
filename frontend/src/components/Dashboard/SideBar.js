@@ -30,9 +30,6 @@ const styles = ({ spacing, palette }) => {
             '& > *:nth-child(1)': {
                 marginRight: 8,
             },
-            '& > *:nth-child(2)': {
-                flex: 'auto',
-            },
         },
         placeholderBox: {
             marginBottom: 800,
