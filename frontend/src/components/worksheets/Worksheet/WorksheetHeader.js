@@ -56,7 +56,7 @@ export default ({
                         alignItems='flex-start'
                         justify='space-between'
                     >
-                        <h5 className='worksheet-title'>
+                        <h5 className='worksheet-title' style={{ marginBottom: 0 }}>
                             {/*TODO: use html contenteditable*/}
                             <WorksheetEditableField
                                 key={'title' + editPermission}

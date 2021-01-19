@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.32_
+_version 0.5.34_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -289,6 +289,8 @@ Name | Type
 `title` | String
 `frozen` | DateTime
 `is_anonymous` | Boolean
+`date_created` | DateTime
+`date_last_modified` | DateTime
 `tags` | List
 `group_permissions` | Relationship([worksheet-permissions](#worksheet-permissions))
 `items` | Relationship([worksheet-items](#worksheet-items))

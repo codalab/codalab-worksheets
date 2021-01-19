@@ -21,7 +21,16 @@ def item_sort_key(item):
 
 
 class Worksheet(ORMObject):
-    COLUMNS = ('uuid', 'name', 'owner_id', 'title', 'frozen', 'is_anonymous')
+    COLUMNS = (
+        'uuid',
+        'name',
+        'owner_id',
+        'title',
+        'frozen',
+        'is_anonymous',
+        'date_created',
+        'date_last_modified',
+    )
 
     def validate(self):
         '''

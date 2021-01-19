@@ -2,7 +2,12 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
-import { renderPermissions, getAfterSortKey, createAlertText } from '../../../util/worksheet_utils';
+import {
+    renderPermissions,
+    getAfterSortKey,
+    createAlertText,
+    addUTCTimeZone,
+} from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import InformationModal from '../InformationModal/InformationModal';
@@ -126,6 +131,8 @@ class Worksheet extends React.Component {
             dataType: 'json',
             cache: false,
             success: function(info) {
+                info['date_created'] = addUTCTimeZone(info['date_created']);
+                info['date_last_modified'] = addUTCTimeZone(info['date_last_modified']);
                 this.setState({
                     ws: {
                         ...this.state.ws,

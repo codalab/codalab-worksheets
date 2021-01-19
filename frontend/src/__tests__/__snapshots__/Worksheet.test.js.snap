@@ -29,6 +29,7 @@ Object {
                 >
                   <h5
                     class="worksheet-title"
+                    style="margin-bottom: 0px;"
                   >
                     <span
                       class="editable-field"
@@ -822,6 +823,7 @@ Object {
               >
                 <h5
                   class="worksheet-title"
+                  style="margin-bottom: 0px;"
                 >
                   <span
                     class="editable-field"
