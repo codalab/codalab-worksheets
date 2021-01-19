@@ -52,7 +52,7 @@ class NavBar extends React.Component<{
             accountEl: null,
             newWorksheetShowDialog: false,
             newWorksheetName: '',
-            userInfo: {},
+            userInfo: this.props.userInfo,
             snackbarShow: false,
             snackbarMessage: '',
             snackbarVariant: '',

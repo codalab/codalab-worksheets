@@ -36,6 +36,7 @@ from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
 from codalab.server.authenticated_plugin import ProtectedPlugin
 from codalab.rest.worksheets import get_worksheet_info, search_worksheets
+from codalab.rest.bundles import search_bundles
 from codalab.rest.worksheet_block_schemas import (
     BlockModes,
     MarkupBlockSchema,
@@ -62,7 +63,10 @@ def _interpret_search():
     }
     ```
     """
-    return interpret_search(request.json)  # NOQA - F821: undefined function name
+    query = request.json
+    if 'keywords' not in query:
+        abort(httplib.BAD_REQUEST, 'Missing `keywords`')
+    return {'response': interpret_search(query['keywords'])}
 
 
 @post('/interpret/wsearch', apply=ProtectedPlugin())
@@ -500,6 +504,34 @@ def resolve_interpreted_blocks(interpreted_blocks, brief):
         block['is_refined'] = True
 
     return interpreted_blocks
+
+
+def interpret_search(keywords):
+    """
+    Return a list of row dicts, one per bundle.
+
+    Each keyword is either:
+    - <key>=<value>
+    - .floating: return bundles not in any worksheet
+    - .offset=<int>: return bundles starting at this offset
+    - .limit=<int>: maximum number of bundles to return
+    - .count: just return the number of bundles
+    - .shared: shared with me through a group
+    - .mine: sugar for owner_id=user_id
+    - .last: sugar for id=.sort-
+    Keys are one of the following:
+    - Bundle fields (e.g., uuid)
+    - Metadata fields (e.g., time)
+    - Special fields (e.g., dependencies)
+    Values can be one of the following:
+    - .sort: sort in increasing order
+    - .sort-: sort by decreasing order
+    - .sum: add up the numbers
+    Bare keywords: sugar for uuid_name=.*<word>.*
+    Search only bundles which are readable by user_id.
+    """
+
+    return search_bundles(keywords)
 
 
 def interpret_wsearch(keywords):
