@@ -1056,6 +1056,7 @@ class Worksheet extends React.Component {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('copy');
+                Mousetrap.reset();
             });
             if (this.state.ws.info.edit_permission) {
                 Mousetrap.bind(['backspace', 'del'], () => {
