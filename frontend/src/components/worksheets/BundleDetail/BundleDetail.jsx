@@ -74,7 +74,9 @@ class BundleDetail extends React.Component<
                 clearInterval(this.timer);
             }
         }, 4000);
-        this.props.onOpen();
+        if(this.props.onOpen){
+            this.props.onOpen();
+        }
     }
 
     componentWillUnmount() {
@@ -195,8 +197,8 @@ class BundleDetail extends React.Component<
     }
   
     render(): React.Node {
-        const { uuid, bundleMetadataChanged,
-            onUpdate, onClose, onOpen,
+        const { bundleMetadataChanged,
+            onUpdate,
             rerunItem, showNewRerun,
             showDetail, handleDetailClick,
             editPermission } = this.props;
