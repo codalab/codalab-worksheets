@@ -18,5 +18,5 @@ client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNECTION_STRING)
 
 # This is the account name of the account, which determines the first part of Azure URLs. For example,
 # if AZURE_BLOB_ACCOUNT_NAME is equal to "devstoreaccount1", all Azure URLs for objects within that account
-# will start with "azfs://"
+# will start with "azfs://devstoreaccount1/"
 AZURE_BLOB_ACCOUNT_NAME = client.account_name

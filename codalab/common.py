@@ -9,6 +9,7 @@ import http.client
 import urllib.request
 import urllib.error
 
+from dataclasses import dataclass
 from retry import retry
 
 # Increment this on master when ready to cut a release.
@@ -133,3 +134,69 @@ def urlopen_with_retry(request: urllib.request.Request, timeout: int = URLOPEN_T
     :return: the response object
     """
     return urllib.request.urlopen(request, timeout=timeout)
+
+
+class StorageType(Enum):
+    FILE_STORAGE = 0
+    AZURE_BLOB_STORAGE = 1
+
+
+@dataclass(frozen=True)
+class LinkedBundlePath:
+    """A LinkedBundlePath refers to a path that points to the location of a linked bundle within a specific storage location.
+    It can either point directly to the bundle, or to a file that is located within that bundle.
+    It is constructed by parsing a given bundle link URL by calling parse_bundle_url().
+
+    Attributes:
+        storage_type (StorageType): Which storage type is used to store this bundle.
+
+        bundle_path (str): Path to the bundle contents in that particular storage.
+
+        is_zip (bool): Whether this bundle is stored as a zip file on this storage medium stores folders. Only done currently by Azure Blob Storage.
+
+        uses_beam (bool): Whether this bundle's storage type requires using Apache Beam to interact with it.
+
+        zip_subpath (str): If is_zip is True, returns the subpath within the zip file for the file that this BundlePath points to.
+
+        bundle_uuid (str): UUID of the bundle that this path refers to.
+    """
+
+    storage_type: StorageType
+    bundle_path: str
+    is_zip: bool
+    uses_beam: bool
+    zip_subpath: str
+    bundle_uuid: str
+
+
+def parse_linked_bundle_url(url):
+    """Parses a linked bundle URL. This bundle URL can refer to:
+        - a single file: "azfs://storageclwsdev0/bundles/uuid/contents"
+        - a single file that is stored within a zip file: "azfs://storageclwsdev0/bundles/uuid/contents.zip/file1"
+
+        Returns a LinkedBundlePath instance to encode this information.
+    """
+    if url.startswith("azfs://"):
+        uses_beam = True
+        storage_type = StorageType.AZURE_BLOB_STORAGE
+        url = url[len("azfs://") :]
+        storage_account, container, bundle_uuid, contents_file, *remainder = url.split("/", 4)
+        bundle_path = f"azfs://{storage_account}/{container}/{bundle_uuid}/{contents_file}"
+        is_zip = contents_file.endswith(".zip")
+        zip_subpath = remainder[0] if is_zip and len(remainder) else None
+    else:
+        storage_type = StorageType.FILE_STORAGE
+        bundle_path = url
+        is_zip = False
+        uses_beam = False
+        zip_subpath = None
+        bundle_uuid = None
+    return LinkedBundlePath(
+        storage_type=storage_type,
+        bundle_path=bundle_path,
+        is_zip=is_zip,
+        uses_beam=uses_beam,
+        zip_subpath=zip_subpath,
+        bundle_uuid=bundle_uuid,
+    )
+

@@ -5,7 +5,7 @@ import shutil
 from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
 from apache_beam.io.filesystems import FileSystems
-from codalab.lib.path_util import parse_linked_bundle_url
+from codalab.common import parse_linked_bundle_url
 
 
 class UploadManager(object):

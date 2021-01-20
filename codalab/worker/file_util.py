@@ -11,9 +11,9 @@ import bz2
 from zipfile import ZipFile
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
+from codalab.common import parse_linked_bundle_url
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
-from codalab.lib.path_util import parse_linked_bundle_url
 import tempfile
 
 NONE_PLACEHOLDER = '<none>'

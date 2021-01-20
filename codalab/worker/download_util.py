@@ -1,7 +1,7 @@
 import os
 from apache_beam.io.filesystems import FileSystems
 from zipfile import ZipFile
-from codalab.lib.path_util import parse_linked_bundle_url
+from codalab.common import parse_linked_bundle_url
 
 
 class PathException(Exception):
