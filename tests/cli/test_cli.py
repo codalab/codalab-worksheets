@@ -1470,6 +1470,27 @@ def test_run2(ctx):
         [cl, 'run', 'foo:%s' % dir3, 'foo/bar:%s' % dir1, 'cat foo/bar/f1'], expected_exit_code=1
     )
 
+    # Test that cpu_usage and memory_limit are properly populated
+    uuid = _run_command([cl, "run", "'for i in {1..90}; do sleep 1; done'"])
+    state = get_info(uuid, 'state')
+    # Wait until the bundle is running
+    while state != 'running':
+        if state == 'failed':
+            assert False
+        time.sleep(6)
+        state = get_info(uuid, 'state')
+
+    for i in range(10):
+        _run_command([cl, 'info', uuid])
+        if float(get_info(uuid, 'cpu_usage')) <= 0 or int(get_info(uuid, 'memory_limit')) <= 0:
+            # In this case, we would like to retry, in case that docker stats are not fully ready
+            time.sleep(6)
+        else:
+            # When we have both stats ready, we are done testing.
+            break
+        if i == 9:
+            assert False
+
 
 @TestModule.register('read')
 def test_read(ctx):
