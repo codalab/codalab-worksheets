@@ -408,7 +408,8 @@ class SlurmBatchWorkerManager(WorkerManager):
             gpu_gres_value += ":" + self.args.gpu_type
         gpu_gres_value += ":" + str(self.args.gpus)
         slurm_args['gres'] = gpu_gres_value
-        slurm_args['constraint'] = self.args.constraint
+        if self.args.constraint:
+            slurm_args['constraint'] = self.args.constraint
         # job-name is unique
         slurm_args['job-name'] = worker_id
         slurm_args['cpus-per-task'] = str(self.args.cpus)
