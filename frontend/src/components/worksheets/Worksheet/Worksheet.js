@@ -318,7 +318,7 @@ class Worksheet extends React.Component {
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
         this.setState({ updating: true });
         const bundleCount: number = Object.keys(this.state.uuidBundlesCheckedCount).length;
-        // The toast info is used for showing message when a command being command
+        // This toast info is used for showing a message when a command is being performed
         const toastId = toast.info(this._getToastMsg(cmd, 0, bundleCount), {
             position: 'top-right',
             hideProgressBar: false,
