@@ -211,6 +211,16 @@ def wait(uuid, expected_exit_code=0):
         raise e
 
 
+def wait_until_running(uuid):
+    # Wait until the bundle is running
+    state = get_info(uuid, 'state')
+    while state != 'running':
+        if state == 'failed':
+            assert False
+        time.sleep(6)
+        state = get_info(uuid, 'state')
+
+
 def check_equals(true_value, pred_value):
     assert true_value == pred_value, "expected '%s', but got '%s'" % (true_value, pred_value)
     return pred_value
@@ -1472,13 +1482,7 @@ def test_run2(ctx):
 
     # Test that cpu_usage and memory_limit are properly populated
     uuid = _run_command([cl, 'run', "bash -c 'for i in {1..90}; do sleep 1; done'"])
-    state = get_info(uuid, 'state')
-    # Wait until the bundle is running
-    while state != 'running':
-        if state == 'failed':
-            assert False
-        time.sleep(6)
-        state = get_info(uuid, 'state')
+    wait_until_running(uuid)
 
     for i in range(10):
         _run_command([cl, 'info', uuid])
