@@ -8,6 +8,7 @@ import traceback
 import logging
 
 import bottle
+import sentry_sdk
 from bottle import (
     abort,
     Bottle,
@@ -23,6 +24,7 @@ from bottle import (
     static_file,
     uninstall,
 )
+from sentry_sdk.integrations.bottle import BottleIntegration
 
 from codalab.common import exception_to_http_error
 from codalab.lib import formatting, server_util
@@ -47,6 +49,8 @@ import codalab.rest.worksheets
 
 
 logger = logging.getLogger(__name__)
+
+sentry_sdk.init(dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'), integrations=[BottleIntegration()])
 
 
 class SaveEnvironmentPlugin(object):
