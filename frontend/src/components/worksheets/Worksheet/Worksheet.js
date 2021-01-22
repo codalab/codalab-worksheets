@@ -303,8 +303,22 @@ class Worksheet extends React.Component {
         // The uuid are recorded by handleCheckBundle
         // Refreshes the checkbox after commands
         // If the action failed, the check will persist
+        const cmdMsgMap: { string: string } = { rm: ['deleting', 'deleted'] };
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
         this.setState({ updating: true });
+        let toastMsg =
+            (cmd in cmdMsgMap
+                ? Object.keys(this.state.uuidBundlesCheckedCount).length +
+                  ' bundles ' +
+                  cmdMsgMap[cmd][0]
+                : 'Executing ' + cmd + ' command') + '...';
+        const toastId = toast.info(toastMsg, {
+            position: 'top-right',
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: false,
+            draggable: true,
+        });
         executeCommand(
             buildTerminalCommand([
                 cmd,
@@ -314,8 +328,17 @@ class Worksheet extends React.Component {
             worksheet_uuid,
         )
             .done(() => {
+                toastMsg =
+                    (cmd in cmdMsgMap
+                        ? Object.keys(this.state.uuidBundlesCheckedCount).length +
+                          ' bundles ' +
+                          cmdMsgMap[cmd][1]
+                        : 'Executed ' + cmd + ' command') + '!';
+
                 this.clearCheckedBundles(() => {
-                    toast.info('Executing ' + cmd + ' command', {
+                    toast.update(toastId, {
+                        render: toastMsg,
+                        type: toast.TYPE.SUCCESS,
                         position: 'top-right',
                         autoClose: 2000,
                         hideProgressBar: true,
