@@ -299,6 +299,8 @@ class Worksheet extends React.Component {
     };
 
     _getToastMsg = (command, state, count) => {
+        // Creates a toast message for a given command.
+        // count is the number of bundles on which this command was performed, if applicable.
         // state can take the value of 0 or 1
         // 0 represents the command is being executed
         // 1 represents the command has already been executed
