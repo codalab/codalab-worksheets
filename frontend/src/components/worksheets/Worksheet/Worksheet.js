@@ -336,7 +336,7 @@ class Worksheet extends React.Component {
         )
             .done(() => {
                 this.clearCheckedBundles(() => {
-                    // The toast info is used for showing message when a command has already been executed
+                    // This toast info is used for showing a message when a command has finished executing
                     toast.update(toastId, {
                         render: this._getToastMsg(cmd, 1, bundleCount),
                         type: toast.TYPE.SUCCESS,
