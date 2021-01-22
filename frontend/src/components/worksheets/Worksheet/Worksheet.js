@@ -298,6 +298,20 @@ class Worksheet extends React.Component {
         }
     };
 
+    _getToastMsg = (command, state, count) => {
+        // Creates a toast message for a given command.
+        // count is the number of bundles on which this command was performed, if applicable.
+        // state can take the value of 0 or 1
+        // 0 represents the command is being executed
+        // 1 represents the command has already been executed
+        const cmdMsgMap: { string: string } = { rm: ['deleting', 'deleted'] };
+        let toastMsg =
+            (command in cmdMsgMap
+                ? count + ' bundles ' + cmdMsgMap[command][state]
+                : (state === 0 ? 'Executing ' : 'Executed ') + command + ' command') +
+            (state === 0 ? '...' : '!');
+        return toastMsg;
+    };
     handleSelectedBundleCommand = (cmd, worksheet_uuid = this.state.ws.uuid) => {
         // This function runs the command for bulk bundle operations
         // The uuid are recorded by handleCheckBundle
@@ -305,6 +319,15 @@ class Worksheet extends React.Component {
         // If the action failed, the check will persist
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
         this.setState({ updating: true });
+        const bundleCount: number = Object.keys(this.state.uuidBundlesCheckedCount).length;
+        // This toast info is used for showing a message when a command is being performed
+        const toastId = toast.info(this._getToastMsg(cmd, 0, bundleCount), {
+            position: 'top-right',
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: false,
+            draggable: true,
+        });
         executeCommand(
             buildTerminalCommand([
                 cmd,
@@ -315,7 +338,10 @@ class Worksheet extends React.Component {
         )
             .done(() => {
                 this.clearCheckedBundles(() => {
-                    toast.info('Executing ' + cmd + ' command', {
+                    // This toast info is used for showing a message when a command has finished executing
+                    toast.update(toastId, {
+                        render: this._getToastMsg(cmd, 1, bundleCount),
+                        type: toast.TYPE.SUCCESS,
                         position: 'top-right',
                         autoClose: 2000,
                         hideProgressBar: true,
