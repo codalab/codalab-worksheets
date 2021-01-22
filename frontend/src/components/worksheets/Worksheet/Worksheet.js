@@ -1056,6 +1056,7 @@ class Worksheet extends React.Component {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('copy');
+                Mousetrap.reset();
             });
             if (this.state.ws.info.edit_permission) {
                 Mousetrap.bind(['backspace', 'del'], () => {
@@ -1075,12 +1076,14 @@ class Worksheet extends React.Component {
                         return;
                     }
                     this.toggleCmdDialogNoEvent('kill');
+                    Mousetrap.reset();
                 });
                 Mousetrap.bind(['a d'], () => {
                     if (this.state.openedDialog) {
                         return;
                     }
                     this.toggleCmdDialogNoEvent('cut');
+                    Mousetrap.reset();
                 });
 
                 // Confirm bulk bundle operation
