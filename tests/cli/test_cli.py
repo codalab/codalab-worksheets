@@ -1471,7 +1471,7 @@ def test_run2(ctx):
     )
 
     # Test that cpu_usage and memory_limit are properly populated
-    uuid = _run_command([cl, "run", "'for i in {1..90}; do sleep 1; done'"])
+    uuid = _run_command([cl, 'run', "bash -c 'for i in {1..90}; do sleep 1; done'"])
     state = get_info(uuid, 'state')
     # Wait until the bundle is running
     while state != 'running':
