@@ -298,21 +298,28 @@ class Worksheet extends React.Component {
         }
     };
 
+    _getToastMsg = (command, state, count) => {
+        // state can take the value of 0 or 1
+        // 0 represents the command is being executed
+        // 1 represents the command has already been executed
+        const cmdMsgMap: { string: string } = { rm: ['deleting', 'deleted'] };
+        let toastMsg =
+            (command in cmdMsgMap
+                ? count + ' bundles ' + cmdMsgMap[command][state]
+                : (state === 0 ? 'Executing ' : 'Executed ') + command + ' command') +
+            (state === 0 ? '...' : '!');
+        return toastMsg;
+    };
     handleSelectedBundleCommand = (cmd, worksheet_uuid = this.state.ws.uuid) => {
         // This function runs the command for bulk bundle operations
         // The uuid are recorded by handleCheckBundle
         // Refreshes the checkbox after commands
         // If the action failed, the check will persist
-        const cmdMsgMap: { string: string } = { rm: ['deleting', 'deleted'] };
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
         this.setState({ updating: true });
-        let toastMsg =
-            (cmd in cmdMsgMap
-                ? Object.keys(this.state.uuidBundlesCheckedCount).length +
-                  ' bundles ' +
-                  cmdMsgMap[cmd][0]
-                : 'Executing ' + cmd + ' command') + '...';
-        const toastId = toast.info(toastMsg, {
+        const bundleCount: number = Object.keys(this.state.uuidBundlesCheckedCount).length;
+        // The toast info is used for showing message when a command being command
+        const toastId = toast.info(this._getToastMsg(cmd, 0, bundleCount), {
             position: 'top-right',
             hideProgressBar: false,
             closeOnClick: true,
@@ -328,16 +335,10 @@ class Worksheet extends React.Component {
             worksheet_uuid,
         )
             .done(() => {
-                toastMsg =
-                    (cmd in cmdMsgMap
-                        ? Object.keys(this.state.uuidBundlesCheckedCount).length +
-                          ' bundles ' +
-                          cmdMsgMap[cmd][1]
-                        : 'Executed ' + cmd + ' command') + '!';
-
                 this.clearCheckedBundles(() => {
+                    // The toast info is used for showing message when a command has already been executed
                     toast.update(toastId, {
-                        render: toastMsg,
+                        render: this._getToastMsg(cmd, 1, bundleCount),
                         type: toast.TYPE.SUCCESS,
                         position: 'top-right',
                         autoClose: 2000,
