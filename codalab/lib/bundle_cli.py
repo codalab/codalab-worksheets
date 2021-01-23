@@ -77,7 +77,7 @@ from codalab.lib.cli_util import (
     PERMISSION_SPEC_FORMAT,
     UUID_POST_FUNC,
 )
-from codalab.objects.permission import group_permissions_str, parse_permission, permission_str
+from codalab.objects.permission_utils import group_permissions_str, parse_permission, permission_str
 from codalab.client.json_api_client import JsonApiRelationship
 from codalab.lib.formatting import contents_str
 from codalab.lib.completers import (
