@@ -1,6 +1,7 @@
 import os
 import tarfile
 
+
 def un_tar_directory(fileobj, directory_path, compression='', force=False):
     """
     Extracts the given file-like object containing a tar archive into the given
@@ -16,6 +17,7 @@ def un_tar_directory(fileobj, directory_path, compression='', force=False):
     directory_path = os.path.realpath(directory_path)
     if force:
         from codalab.worker.file_util import remove_path
+
         remove_path(directory_path)
     os.mkdir(directory_path)
     with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:

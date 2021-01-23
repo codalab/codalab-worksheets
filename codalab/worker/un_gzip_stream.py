@@ -1,6 +1,7 @@
 from collections import deque
 import zlib
 
+
 def un_gzip_stream(fileobj):
     """
     Returns a file-like object containing the contents of the given file-like
@@ -47,6 +48,7 @@ def un_gzip_stream(fileobj):
     # they require the input file-like object to support either tell() or
     # fileno(). Our version requires only read() and close().
     return UnGzipStream(fileobj)
+
 
 class BytesBuffer:
     """

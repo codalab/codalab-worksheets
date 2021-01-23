@@ -29,6 +29,7 @@ def retry_if_no_longer_running(f):
 
     return wrapper
 
+
 class DownloadManager(object):
     """
     Used for downloading the contents of bundles. The main purpose of this class
@@ -41,6 +42,7 @@ class DownloadManager(object):
 
     def __init__(self, bundle_model, worker_model, bundle_store):
         from codalab.worker import file_util
+
         self._bundle_model = bundle_model
         self._worker_model = worker_model
         self._bundle_store = bundle_store

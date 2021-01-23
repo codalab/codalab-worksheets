@@ -6,10 +6,11 @@ from codalab.common import UsageError
 
 def parse_permission(permission_str):
     from codalab.model.tables import (
-      GROUP_OBJECT_PERMISSION_ALL,
-      GROUP_OBJECT_PERMISSION_READ,
-      GROUP_OBJECT_PERMISSION_NONE,
+        GROUP_OBJECT_PERMISSION_ALL,
+        GROUP_OBJECT_PERMISSION_READ,
+        GROUP_OBJECT_PERMISSION_NONE,
     )
+
     if 'r' == permission_str or 'read' == permission_str:
         return GROUP_OBJECT_PERMISSION_READ
     if 'a' == permission_str or 'all' == permission_str:

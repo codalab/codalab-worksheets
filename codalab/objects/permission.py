@@ -162,5 +162,3 @@ def check_bundle_have_run_permission(model, user, bundle):
         return True
     except PermissionError:
         return False
-
-

@@ -971,6 +971,7 @@ class BundleCLI(object):
             None
         """
         import codalab.model.bundle_model as bundle_model
+
         if result_size == bundle_model.SEARCH_RESULTS_LIMIT:
             print(
                 'Only {} results are shown. Use .limit=N to show the first N results.'.format(
@@ -1274,7 +1275,7 @@ class BundleCLI(object):
     )
     def do_upload_command(self, args):
         from codalab.lib import zip_util
-        
+
         if args.contents is None and not args.path:
             raise UsageError("Nothing to upload.")
 
@@ -1724,6 +1725,7 @@ class BundleCLI(object):
 
         if args.interactive:
             from codalab.lib.interactive_session import InteractiveSession
+
             # Disable cl run --interactive on headless systems
             self._fail_if_headless(args)
 
@@ -2775,6 +2777,7 @@ class BundleCLI(object):
         Use args.bundles to generate a call to bundle_util.mimic_bundles()
         """
         from codalab.lib import bundle_util
+
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         try:
             bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundles)

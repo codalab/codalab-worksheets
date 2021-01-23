@@ -355,6 +355,7 @@ class CodaLabManager(object):
     @cached
     def worker_model(self):
         from codalab.model.worker_model import WorkerModel
+
         return WorkerModel(self.model().engine, self.worker_socket_dir)
 
     @cached

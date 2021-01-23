@@ -14,6 +14,7 @@ class UploadManager(object):
 
     def __init__(self, bundle_model, bundle_store):
         from codalab.lib import zip_util
+
         # exclude these patterns by default
         DEFAULT_EXCLUDE_PATTERNS = ['.DS_Store', '__MACOSX', '^\._.*']
         self._bundle_model = bundle_model
@@ -148,7 +149,9 @@ class UploadManager(object):
             self._simplify_archive(dest_path)
 
     def _unpack_fileobj(self, source_filename, source_fileobj, dest_path, simplify_archive):
-        self.zip_util.unpack(self.zip_util.get_archive_ext(source_filename), source_fileobj, dest_path)
+        self.zip_util.unpack(
+            self.zip_util.get_archive_ext(source_filename), source_fileobj, dest_path
+        )
         if simplify_archive:
             self._simplify_archive(dest_path)
 

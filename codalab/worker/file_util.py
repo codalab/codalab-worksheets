@@ -393,5 +393,3 @@ def path_is_parent(parent_path, child_path):
     # the parent path will regularize the path name in the same way as the
     # comparison that deals with both paths, removing any trailing path separator.
     return os.path.commonpath([parent_path]) == os.path.commonpath([parent_path, child_path])
-
-
