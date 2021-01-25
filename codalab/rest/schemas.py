@@ -14,7 +14,7 @@ from codalab.lib.bundle_action import BundleAction
 from codalab.lib.spec_util import SUB_PATH_REGEX, NAME_REGEX, UUID_REGEX
 from codalab.lib.worksheet_util import WORKSHEET_ITEM_TYPES
 from codalab.lib.unicode_util import contains_unicode
-from codalab.objects.permission import parse_permission, permission_str
+from codalab.objects.permission_utils import parse_permission, permission_str
 
 
 class CompatibleInteger(fields.Integer):
