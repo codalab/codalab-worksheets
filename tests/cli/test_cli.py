@@ -1643,7 +1643,7 @@ def test_status(ctx):
     # If it takes too long, we should check to ensure that large imports
     # aren't loaded upon startup, and lazy load imports if necessary
     # (see https://github.com/codalab/codalab-worksheets/issues/3211).
-    TIME_LIMIT = 1 # 1 second
+    TIME_LIMIT = 1  # 1 second
     start = time.time()
     _run_command([cl, 'help'], force_subprocess=True)
     time_taken = time.time() - start
