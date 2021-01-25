@@ -208,7 +208,7 @@ class DockerImagesCompleter(CodaLabCompleter):
         first_slash = prefix.find('/')
         trimmed_prefix = prefix[0:first_slash] if first_slash >= 0 else prefix
         try:
-            client = from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
+            client = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
             return (img['name'] for img in client.images.search(trimmed_prefix))
         except docker.errors.APIError as ex:
             warn('Error: {}'.format(ex))

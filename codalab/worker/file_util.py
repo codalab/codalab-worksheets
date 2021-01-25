@@ -4,15 +4,12 @@ import gzip
 import os
 import shutil
 import subprocess
-import tarfile
 import bz2
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
-from .un_gzip_stream import un_gzip_stream
-from .un_tar_directory import un_tar_directory
 
 NONE_PLACEHOLDER = '<none>'
 

@@ -6,11 +6,11 @@ from codalab.lib import spec_util
 from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_ALL,
     GROUP_OBJECT_PERMISSION_READ,
-    GROUP_OBJECT_PERMISSION_NONE,
     group_bundle_permission as cl_group_bundle_permission,
     group_object_permission as cl_group_worksheet_permission,
 )
 from codalab.model.util import LikeQuery
+from codalab.objects.permission_utils import permission_str
 
 
 ############################################################
