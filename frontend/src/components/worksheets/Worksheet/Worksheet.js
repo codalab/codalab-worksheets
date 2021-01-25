@@ -1202,7 +1202,7 @@ class Worksheet extends React.Component {
         var self = this;
         var queryParams = Object.keys(bundleUuids)
             .map(function(bundle_uuid) {
-                return 'uuid=' + bundle_uuid;
+                return 'bundle_uuid=' + bundle_uuid;
             })
             .join('&');
         $.ajax({
@@ -1211,6 +1211,7 @@ class Worksheet extends React.Component {
             dataType: 'json',
             cache: false,
             success: function(worksheet_content) {
+                console.log('content: ', worksheet_content);
                 if (this.state.isUpdatingBundles && worksheet_content.uuid === this.state.ws.uuid) {
                     if (worksheet_content.blocks) {
                         self.reloadWorksheet(worksheet_content.blocks);
@@ -1524,9 +1525,25 @@ class Worksheet extends React.Component {
         } else {
             var ws = _.clone(this.state.ws);
             for (var i = 0; i < partialUpdateItems.length; i++) {
-                if (!partialUpdateItems[i]) continue;
+                if (
+                    !partialUpdateItems[i] ||
+                    !(
+                        'bundles_spec' in partialUpdateItems[i] &&
+                        'bundle_infos' in partialUpdateItems[i]['bundles_spec']
+                    )
+                )
+                    continue;
+                // Update rows
                 // update interpreted items
-                ws.info.blocks[i] = partialUpdateItems[i];
+                for (
+                    let j = 0;
+                    j < partialUpdateItems[i]['bundles_spec']['bundle_infos'].length;
+                    j++
+                ) {
+                    if (partialUpdateItems[i]['bundles_spec']['bundle_infos'][j])
+                        ws.info.blocks[i]['bundles_spec']['bundle_infos'][j] =
+                            partialUpdateItems[i]['bundles_spec']['bundle_infos'][j];
+                }
             }
             this.setState({ ws: ws, version: this.state.version + 1 });
             this.checkRunBundle(ws.info);
