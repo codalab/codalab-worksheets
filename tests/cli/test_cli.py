@@ -211,14 +211,20 @@ def wait(uuid, expected_exit_code=0):
         raise e
 
 
-def wait_until_running(uuid):
-    # Wait until the bundle is running
-    state = get_info(uuid, 'state')
-    while state != 'running':
-        if state == 'failed':
-            assert False
-        time.sleep(6)
-        state = get_info(uuid, 'state')
+def wait_until_running(uuid: str) -> None:
+    # Wait until the bundle is running. The maximal waiting time is 30s.
+    running: bool = False
+    for i in range(10):
+        state: str = get_info(uuid, 'state')
+        if state == 'running':
+            running = True
+            break
+        elif state == 'failed':
+            assert False, f'the bundle {uuid} has failed'
+        else:
+            time.sleep(3)
+    if not running:
+        assert False, f'the bundle {uuid} is not ready after running 30s'
 
 
 def check_equals(true_value, pred_value):
@@ -1481,19 +1487,20 @@ def test_run2(ctx):
     )
 
     # Test that cpu_usage and memory_limit are properly populated
-    uuid = _run_command([cl, 'run', "bash -c 'for i in {1..90}; do sleep 1; done'"])
+    uuid = _run_command([cl, 'run', "bash -c 'for i in {1..30}; do sleep 1; done'"])
     wait_until_running(uuid)
 
+    # Check 10 times to see if the info of cpu_usage and memory_limit is ready, if not for 30s, then fail the test
     for i in range(10):
         _run_command([cl, 'info', uuid])
         if float(get_info(uuid, 'cpu_usage')) <= 0 or int(get_info(uuid, 'memory_limit')) <= 0:
             # In this case, we would like to retry, in case that docker stats are not fully ready
-            time.sleep(6)
+            time.sleep(3)
         else:
             # When we have both stats ready, we are done testing.
             break
         if i == 9:
-            assert False
+            assert False, 'cpu_usage and memory_limit info are not ready for 30s'
 
 
 @TestModule.register('read')
