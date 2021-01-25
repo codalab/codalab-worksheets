@@ -32,7 +32,7 @@ from codalab.lib.worksheet_util import (
     get_command,
 )
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
-from codalab.objects.permission import permission_str
+from codalab.objects.permission_utils import permission_str
 from codalab.rest import util as rest_util
 from codalab.server.authenticated_plugin import ProtectedPlugin
 from codalab.rest.worksheets import get_worksheet_info, search_worksheets
