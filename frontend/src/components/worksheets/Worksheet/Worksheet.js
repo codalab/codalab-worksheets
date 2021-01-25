@@ -1534,6 +1534,7 @@ class Worksheet extends React.Component {
                 )
                     continue;
                 // Update rows
+                ws.info.blocks[i]['rows'] = partialUpdateItems[i]['rows'];
                 // update interpreted items
                 for (
                     let j = 0;
