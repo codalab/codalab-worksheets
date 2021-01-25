@@ -1639,16 +1639,6 @@ def test_status(ctx):
     check_contains("Commands for bundles", cl_output)
     check_equals(cl_output, help_output)
 
-    # Ensure that the "cl help" command doesn't take too long to start up.
-    # If it takes too long, we should check to ensure that large imports
-    # aren't loaded upon startup, and lazy load imports if necessary
-    # (see https://github.com/codalab/codalab-worksheets/issues/3211).
-    TIME_LIMIT = 1  # 1 second
-    start = time.time()
-    _run_command([cl, 'help'], force_subprocess=True)
-    time_taken = time.time() - start
-    assert time_taken <= TIME_LIMIT, f"Time taken for 'cl help' is too long: {time_taken}s, limit {TIME_LIMIT}s"
-
 
 @TestModule.register('batch')
 def test_batch(ctx):
