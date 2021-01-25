@@ -412,7 +412,7 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
     elif genpath == 'summary':
 
         def friendly_render_dep(dep):
-            key = dep['child_path'] or dep['parent_name']
+            key = dep['child_path'] or dep['parent_name'] or ''
             friendly_parent_name = formatting.verbose_contents_str(dep['parent_name'])
             value = (
                 key
