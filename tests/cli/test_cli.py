@@ -2440,6 +2440,11 @@ def test_wopen(ctx):
     _run_command([cl, 'wopen', 'nonexistent'], expected_exit_code=1)
 
 
+@TestModule.register('service')
+def test_service(ctx):
+    _run_command(['codalab-service', '--help'], expected_exit_code=0)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs the specified CodaLab worksheets unit and integration tests against the specified CodaLab instance (defaults to localhost)'

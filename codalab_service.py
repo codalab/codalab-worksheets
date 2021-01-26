@@ -153,7 +153,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='version',
         help='Version of CodaLab (usually the branch name)',
-        default=get_default_version(),
+        default="master",
         flag='-v',
     ),
     CodalabArg(
