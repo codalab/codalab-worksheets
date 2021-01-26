@@ -1211,7 +1211,6 @@ class Worksheet extends React.Component {
             dataType: 'json',
             cache: false,
             success: function(worksheet_content) {
-                console.log('content: ', worksheet_content);
                 if (this.state.isUpdatingBundles && worksheet_content.uuid === this.state.ws.uuid) {
                     if (worksheet_content.blocks) {
                         self.reloadWorksheet(worksheet_content.blocks);
