@@ -21,7 +21,6 @@ import os
 import shutil
 import subprocess
 import sys
-from enum import Enum
 
 from codalab.common import precondition, UsageError
 from codalab.lib import file_util
