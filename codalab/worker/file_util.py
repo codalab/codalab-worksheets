@@ -465,16 +465,10 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
         # On Azure, use Apache Beam methods, not native os methods,
         # to get the path size.
 
-        # Get the size of the specified path (file / directory):
-        result = get_file_size(path)
-
-        # If path points to a directory, get the size of all
-        # files within the directory by using the pattern {path}/**.
-        patterns = [os.path.join(path, "", "**")]
-        for child in FileSystems.match(patterns)[0].metadata_list:
-            if child.path not in exclude_names:
-                result += child.size_in_bytes
-        return result
+        # Get the size of the specified path (file / directory).
+        # This will only get the right size of files, not of directories (but we don't
+        # store any bundles as directories on Azure).
+        return get_file_size(path)
 
     try:
         result = os.lstat(path).st_size
