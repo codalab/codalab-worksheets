@@ -13,24 +13,25 @@ Usage: `cl <command> <arguments>`
       upload <url>             : Upload one bundle whose file contents is downloaded from <url>.
     Most of the other arguments specify metadata fields.
     Arguments:
-      path                     Paths (or URLs) of the files/directories to upload.
-      -c, --contents           Specify the string contents of the bundle.
-      -L, --follow-symlinks    Always dereference (follow) symlinks.
-      -x, --exclude-patterns   Exclude these file patterns.
-      -g, --git                Path is a git repository, git clone it.
-      -p, --pack               If path is an archive file (e.g., zip, tar.gz), keep it packed.
-      -z, --force-compression  Always use compression (this may speed up single-file uploads over a slow network).
-      -w, --worksheet-spec     Upload to this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
-      -i, --ignore             Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
-      -l, --link               Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store.
-      -n, --name               Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
-      -d, --description        Full description of the bundle.
-      --tags                   Space-separated list of tags used for search (e.g., machine-learning).
-      --link-url               Link URL of bundle.
-      --link-format            Link format of bundle. Can be equal to "raw" or "zip" (only "raw" is supported as of now).
-      --license                The license under which this program/dataset is released.
-      --source-url             URL corresponding to the original source of this bundle.
-      -e, --edit               Show an editor to allow editing of the bundle metadata.
+      path                       Paths (or URLs) of the files/directories to upload.
+      -c, --contents             Specify the string contents of the bundle.
+      -L, --follow-symlinks      Always dereference (follow) symlinks.
+      -x, --exclude-patterns     Exclude these file patterns.
+      -g, --git                  Path is a git repository, git clone it.
+      -p, --pack                 If path is an archive file (e.g., zip, tar.gz), keep it packed.
+      -z, --force-compression    Always use compression (this may speed up single-file uploads over a slow network).
+      -w, --worksheet-spec       Upload to this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+      -i, --ignore               Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
+      -l, --link                 Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store.
+      -a, --use-azure-blob-beta  Use Azure Blob Storage to store files (beta feature).
+      -n, --name                 Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
+      -d, --description          Full description of the bundle.
+      --tags                     Space-separated list of tags used for search (e.g., machine-learning).
+      --link-url                 Link URL of bundle.
+      --link-format              Link format of bundle. Can be equal to "raw" or "zip" (only "raw" is supported as of now).
+      --license                  The license under which this program/dataset is released.
+      --source-url               URL corresponding to the original source of this bundle.
+      -e, --edit                 Show an editor to allow editing of the bundle metadata.
 
 ### make
     Create a bundle by combining parts of existing bundles.
@@ -132,7 +133,7 @@ Usage: `cl <command> <arguments>`
       search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
       search .offset=<offset>                : Return results starting at <offset>.
     
-      search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
+      search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-3-14).
       search .after=<datetime>               : Returns bundles created after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
     
       search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
@@ -143,7 +144,6 @@ Usage: `cl <command> <arguments>`
       search .format=<format>                : Apply <format> function (see worksheet markdown).
     Arguments:
       keywords              Keywords to search for.
-      -f, --field           Print out these comma-separated fields in the results table
       -a, --append          Append these bundles to the current worksheet.
       -u, --uuid-only       Print only uuids.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
@@ -151,7 +151,6 @@ Usage: `cl <command> <arguments>`
 ### ls
     List bundles in a worksheet.
     Arguments:
-      -f, --field           Print out these comma-separated fields in the results table
       -u, --uuid-only       Print only uuids.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
@@ -354,7 +353,6 @@ Usage: `cl <command> <arguments>`
 
 ### wls (wsearch, ws)
     List worksheets on the current instance matching the given keywords (returns 10 results by default).
-    Searcher's own worksheets are prioritized.
       wls tag=paper           : List worksheets tagged as "paper".
       wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.
       wls .mine               : List my worksheets.
@@ -450,33 +448,6 @@ Usage: `cl <command> <arguments>`
     To be safe, you can only delete a user if user does not own any bundles, worksheets, or groups.
     Arguments:
       user_spec  Username or id of user to delete.
-
-### uls
-    Lists users on CodaLab (returns 10 results by default).
-      uls <keyword> ... <keyword>         : Username or id contains each <keyword>.
-      uls user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., first_name).
-    
-      uls .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).
-      uls .offset=<offset>                : Return results starting at <offset>.
-    
-      uls .joined_before=<datetime>       : Returns users joined before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
-      uls .joined_after=<datetime>        : Returns users joined after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
-      uls .active_before=<datetime>       : (Root user only) Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).
-      uls .active_after=<datetime>        : (Root user only) Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).
-    
-      uls .disk_used_less_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_less_than=70% or 0.3).
-      uls .disk_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_more_than=70% or 0.3).
-      uls .time_used_less_than=<<percentage> or <float>      : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_less_than=70% or 0.3).
-      uls .time_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_more_than=70% or 0.3).
-    
-      uls size=.sort                      : Sort by a particular field (where `size` can be any metadata field).
-      uls size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).
-      uls .last                           : Sort in reverse chronological order (equivalent to id=.sort-).
-      uls .count                          : Count the number of matching bundles.
-      uls .format=<format>                : Apply <format> function (see worksheet markdown).
-    Arguments:
-      keywords     Keywords to search for.
-      -f, --field  Print out these comma-separated fields.
 
 
 ## Commands for managing server

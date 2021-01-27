@@ -200,4 +200,3 @@ def parse_linked_bundle_url(url):
         zip_subpath=zip_subpath,
         bundle_uuid=bundle_uuid,
     )
-

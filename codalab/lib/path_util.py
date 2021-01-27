@@ -22,7 +22,7 @@ import shutil
 import subprocess
 import sys
 
-from codalab.common import precondition, UsageError
+from codalab.common import precondition, UsageError, parse_linked_bundle_url
 from codalab.lib import file_util
 from codalab.worker.file_util import get_path_size
 
