@@ -31,6 +31,7 @@ from contextlib import closing
 from io import BytesIO
 from shlex import quote
 from typing import Dict
+import webbrowser
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -66,6 +67,7 @@ from codalab.lib.cli_util import (
     parse_key_target,
     parse_target_spec,
     desugar_command,
+    BUNDLES_URL_SEPARATOR,
     INSTANCE_SEPARATOR,
     ADDRESS_SPEC_FORMAT,
     WORKSHEET_SPEC_FORMAT,
@@ -137,7 +139,7 @@ GROUP_AND_PERMISSION_COMMANDS = (
     'chown',
 )
 
-USER_COMMANDS = ('uinfo', 'uedit', 'ufarewell')
+USER_COMMANDS = ('uinfo', 'uedit', 'ufarewell', 'uls')
 
 SERVER_COMMANDS = (
     'workers',
@@ -153,6 +155,15 @@ HEADING_LEVEL_2 = '## '
 HEADING_LEVEL_3 = '### '
 
 NO_RESULTS_FOUND = 'No results found'
+DEFAULT_BUNDLE_INFO_LIST_FIELDS = (
+    'uuid',
+    'name',
+    'summary',
+    'owner',
+    'created',
+    'data_size',
+    'state',
+)
 
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
@@ -562,6 +573,9 @@ class BundleCLI(object):
         """
         instance, worksheet_spec, bundle_spec, subpath = parse_target_spec(target_spec)
 
+        if bundle_spec is None:
+            raise UsageError('Bundle spec is missing')
+
         if instance is not None:
             if self.headless:
                 raise UsageError('Cannot use alias on web CLI')
@@ -656,14 +670,69 @@ class BundleCLI(object):
             )['uuid']
         return worksheet_uuid
 
+    def uls_print_table(self, columns, row_dicts, user_defined=False):
+        """
+        Pretty-print a list of user info from each row in the given list of dicts.
+        """
+
+        # display restricted fields if the server returns those fields - which suggests the user is root
+        try:
+            if row_dicts and row_dicts[0].get('last_login') and not user_defined:
+                columns += ('last_login', 'time', 'disk', 'parallel_run_quota')
+                rows = [columns]
+            else:
+                rows = [columns]
+        except KeyError:
+            pass
+
+        # Get the contents of the table
+        for row_dict in row_dicts:
+            row = []
+            for col in columns:
+                try:
+                    if col == 'time':
+                        cell = formatting.ratio_str(
+                            formatting.duration_str, row_dict['time_used'], row_dict['time_quota']
+                        )
+                    elif col == 'disk':
+                        cell = formatting.ratio_str(
+                            formatting.size_str, row_dict['disk_used'], row_dict['disk_quota']
+                        )
+                    else:
+                        cell = row_dict.get(col)
+                except KeyError:
+                    row.append(' ')
+                    continue
+
+                if cell is None:
+                    cell = contents_str(cell)
+                row.append(cell)
+            rows.append(row)
+
+        # Display the table
+        lengths = [max(len(str(value)) for value in col) for col in zip(*rows)]
+        for (i, row) in enumerate(rows):
+            row_strs = []
+            for (j, value) in enumerate(row):
+                value = str(value)
+                length = lengths[j]
+                padding = (length - len(value)) * ' '
+                if {}.get(columns[j], -1) < 0:
+                    row_strs.append(value + padding)
+                else:
+                    row_strs.append(padding + value)
+            print('' + '  '.join(row_strs), file=self.stdout)
+            if i == 0:
+                print('' + (sum(lengths) + 2 * (len(columns) - 1)) * '-', file=self.stdout)
+
     def print_table(
         self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''
     ):
         """
         Pretty-print a list of columns from each row in the given list of dicts.
         """
-        # Get the contents of the table
         rows = [columns]
+        # Get the contents of the table
         for row_dict in row_dicts:
             row = []
             for col in columns:
@@ -958,7 +1027,9 @@ class BundleCLI(object):
             if 'username' in state:
                 print("username: %s" % state['username'], file=self.stdout)
 
-        print("current_worksheet: %s" % self.worksheet_url(worksheet_info), file=self.stdout)
+        print(
+            "current_worksheet: %s" % self.worksheet_url_and_name(worksheet_info), file=self.stdout
+        )
         print("user: %s" % self.simple_user_str(client.fetch('user')), file=self.stdout)
 
     @Commands.command(
@@ -1200,13 +1271,6 @@ class BundleCLI(object):
                 action='store_true',
                 default=False,
             ),
-            Commands.Argument(
-                '-a',
-                '--use-azure-blob-beta',
-                help='Use Azure Blob Storage to store files (beta feature).',
-                action='store_true',
-                default=True if os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") else False,
-            ),
         )
         + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
@@ -1238,11 +1302,13 @@ class BundleCLI(object):
         if args.link:
             if len(args.path) != 1:
                 raise UsageError("Only a single path can be uploaded when using --link.")
-            bundle_info['metadata']['link_url'] = args.path[0]
+            # If link_url is a relative path, prepend the current working directory to it.
+            bundle_info['metadata']['link_url'] = (
+                args.path[0]
+                if os.path.isabs(args.path[0])
+                else os.path.join(os.getcwd(), args.path[0])
+            )
             bundle_info['metadata']['link_format'] = LinkFormat.RAW
-            # If --link is explicitly specified, we are already pointing to an existing file,
-            # so use_azure_blob_beta should be set to False (in the case it defaults to be True)
-            args.use_azure_blob_beta = False
 
             new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})
 
@@ -1258,7 +1324,6 @@ class BundleCLI(object):
                     'unpack': False,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
-                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1276,7 +1341,6 @@ class BundleCLI(object):
                     'git': args.git,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
-                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1305,7 +1369,6 @@ class BundleCLI(object):
                 exclude_patterns=args.exclude_patterns,
                 force_compression=args.force_compression,
                 ignore_file=args.ignore,
-                use_azure_blob_beta=args.use_azure_blob_beta,
             )
 
             # Create bundle.
@@ -1334,7 +1397,6 @@ class BundleCLI(object):
                         'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
-                        'use_azure_blob_beta': args.use_azure_blob_beta,
                     },
                     progress_callback=progress.update,
                 )
@@ -1976,7 +2038,7 @@ class BundleCLI(object):
             '  search .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).',
             '  search .offset=<offset>                : Return results starting at <offset>.',
             '',
-            '  search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-3-14).',
+            '  search .before=<datetime>              : Returns bundles created before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).',
             '  search .after=<datetime>               : Returns bundles created after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).',
             '',
             '  search size=.sort                      : Sort by a particular field (where `size` can be any metadata field).',
@@ -1988,6 +2050,13 @@ class BundleCLI(object):
         ],
         arguments=(
             Commands.Argument('keywords', help='Keywords to search for.', nargs='+'),
+            Commands.Argument(
+                '-f',
+                '--field',
+                type=str,
+                default=','.join(DEFAULT_BUNDLE_INFO_LIST_FIELDS),
+                help='Print out these comma-separated fields in the results table',
+            ),
             Commands.Argument(
                 '-a',
                 '--append',
@@ -2018,7 +2087,9 @@ class BundleCLI(object):
 
         # Print table
         if len(bundles) > 0:
-            self.print_bundle_info_list(bundles, uuid_only=args.uuid_only, print_ref=False)
+            self.print_bundle_info_list(
+                bundles, uuid_only=args.uuid_only, print_ref=False, fields=args.field.split(",")
+            )
         elif not args.uuid_only:
             print(NO_RESULTS_FOUND, file=self.stderr)
 
@@ -2038,7 +2109,8 @@ class BundleCLI(object):
             )
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print(
-                'Added %d bundles to %s' % (len(bundles), self.worksheet_url(worksheet_info)),
+                'Added %d bundles to %s'
+                % (len(bundles), self.worksheet_url_and_name(worksheet_info)),
                 file=self.stdout,
             )
 
@@ -2064,6 +2136,13 @@ class BundleCLI(object):
         name='ls',
         help='List bundles in a worksheet.',
         arguments=(
+            Commands.Argument(
+                '-f',
+                '--field',
+                type=str,
+                default=','.join(DEFAULT_BUNDLE_INFO_LIST_FIELDS),
+                help='Print out these comma-separated fields in the results table',
+            ),
             Commands.Argument('-u', '--uuid-only', help='Print only uuids.', action='store_true'),
             Commands.Argument(
                 '-w',
@@ -2093,12 +2172,14 @@ class BundleCLI(object):
         bundle_info_list = [
             item['bundle'] for item in worksheet_info['items'] if item['type'] == 'bundle'
         ]
-        self.print_bundle_info_list(bundle_info_list, args.uuid_only, print_ref=True)
+        self.print_bundle_info_list(
+            bundle_info_list, args.uuid_only, print_ref=True, fields=args.field.split(",")
+        )
         return {'refs': self.create_reference_map('bundle', bundle_info_list)}
 
     def _worksheet_description(self, worksheet_info):
         fields = [
-            ('Worksheet', self.worksheet_url(worksheet_info)),
+            ('Worksheet', self.worksheet_url_and_name(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
             ('Tags', ' '.join(worksheet_info['tags'])),
             (
@@ -2114,7 +2195,9 @@ class BundleCLI(object):
         ]
         return '\n'.join('### %s: %s' % (k, v) for k, v in fields)
 
-    def print_bundle_info_list(self, bundle_info_list, uuid_only, print_ref):
+    def print_bundle_info_list(
+        self, bundle_info_list, uuid_only, print_ref, fields=DEFAULT_BUNDLE_INFO_LIST_FIELDS
+    ):
         """
         Helper function: print >>self.stdout, a nice table showing all provided bundles.
         """
@@ -2134,15 +2217,7 @@ class BundleCLI(object):
             for bundle_info in bundle_info_list:
                 bundle_info['owner'] = nested_dict_get(bundle_info, 'owner', 'user_name')
 
-            columns = (('ref',) if print_ref else ()) + (
-                'uuid',
-                'name',
-                'summary',
-                'owner',
-                'created',
-                'data_size',
-                'state',
-            )
+            columns = (('ref',) if print_ref else ()) + tuple(fields)
             post_funcs = {'uuid': UUID_POST_FUNC, 'created': 'date', 'data_size': 'size'}
             justify = {'data_size': 1, 'ref': 1}
             bundle_dicts = [
@@ -2284,7 +2359,7 @@ class BundleCLI(object):
     def print_host_worksheets(self, info):
         print('host_worksheets:', file=self.stdout)
         for host_worksheet_info in info['host_worksheets']:
-            print("  %s" % self.worksheet_url(host_worksheet_info), file=self.stdout)
+            print("  %s" % self.worksheet_url_and_name(host_worksheet_info), file=self.stdout)
 
     def print_permissions(self, info):
         print('permission: %s' % permission_str(info['permission']), file=self.stdout)
@@ -2807,17 +2882,53 @@ class BundleCLI(object):
         )
         print(target.bundle_uuid, file=self.stdout)
 
+    @Commands.command(
+        'open',
+        aliases=('o',),
+        help='Open bundle(s) detail page(s) in a local web browser.',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+    def do_open_command(self, args):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+
+        bundles = client.fetch(
+            'bundles', params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
+        )
+
+        for info in bundles:
+            webbrowser.open(self.bundle_url(info['id']))
+
+        # Headless client should fire OpenBundle UI action
+        if self.headless:
+            return ui_actions.serialize([ui_actions.OpenBundle(bundle['id']) for bundle in bundles])
+
+    def bundle_url(self, bundle_uuid):
+        return '%s%s%s' % (self.manager.session()['address'], BUNDLES_URL_SEPARATOR, bundle_uuid)
+
     #############################################################################
     # CLI methods for worksheet-related commands follow!
     #############################################################################
 
-    def worksheet_url(self, worksheet_info):
-        return '%s%s%s (%s)' % (
+    def worksheet_url(self, worksheet_uuid):
+        return '%s%s%s' % (
             self.manager.session()['address'],
             WORKSHEETS_URL_SEPARATOR,
-            worksheet_info['uuid'],
-            worksheet_info['name'],
+            worksheet_uuid,
         )
+
+    def worksheet_url_and_name(self, worksheet_info):
+        return '%s (%s)' % (self.worksheet_url(worksheet_info['uuid']), worksheet_info['name'],)
 
     @Commands.command(
         'new',
@@ -2990,7 +3101,8 @@ class BundleCLI(object):
                     print(worksheet_info['uuid'], file=self.stdout)
                 else:
                     print(
-                        'Currently on worksheet: %s' % (self.worksheet_url(worksheet_info)),
+                        'Currently on worksheet: %s'
+                        % (self.worksheet_url_and_name(worksheet_info)),
                         file=self.stdout,
                     )
             else:
@@ -3018,7 +3130,8 @@ class BundleCLI(object):
         if verbose:
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print(
-                'Switched to worksheet: %s' % (self.worksheet_url(worksheet_info)), file=self.stdout
+                'Switched to worksheet: %s' % (self.worksheet_url_and_name(worksheet_info)),
+                file=self.stdout,
             )
 
     @Commands.command(
@@ -3230,7 +3343,8 @@ class BundleCLI(object):
             elif mode == BlockModes.subworksheets_block:
                 for worksheet_info in block['subworksheet_infos']:
                     print(
-                        '[Worksheet ' + self.worksheet_url(worksheet_info) + ']', file=self.stdout
+                        '[Worksheet ' + self.worksheet_url_and_name(worksheet_info) + ']',
+                        file=self.stdout,
                     )
             elif mode == BlockModes.placeholder_block:
                 print('[Placeholder]', block['directive'], file=self.stdout)
@@ -3244,6 +3358,7 @@ class BundleCLI(object):
         aliases=('wsearch', 'ws'),
         help=[
             'List worksheets on the current instance matching the given keywords (returns 10 results by default).',
+            'Searcher\'s own worksheets are prioritized.',
             '  wls tag=paper           : List worksheets tagged as "paper".',
             '  wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.',
             '  wls .mine               : List my worksheets.',
@@ -3394,6 +3509,42 @@ class BundleCLI(object):
             'Copied %s worksheet items to %s.' % (len(valid_source_items), dest_worksheet_uuid),
             file=self.stdout,
         )
+
+    @Commands.command(
+        'wopen',
+        aliases=('wo',),
+        help=[
+            'Open worksheet(s) in a local web browser.',
+            '  wopen                   : Open the current worksheet in a local web browser.',
+            '  wopen <worksheet_spec>  : Open worksheets identified by <worksheet_spec> in a local web browser.',
+        ],
+        arguments=(
+            Commands.Argument(
+                'worksheet_spec',
+                help=WORKSHEET_SPEC_FORMAT,
+                nargs='*',
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+    def do_wopen_command(self, args):
+        worksheet_uuids = (
+            [self.manager.get_current_worksheet_uuid()[1]]
+            if not args.worksheet_spec
+            else [
+                self.parse_client_worksheet_uuid(worksheet_spec)[1]
+                for worksheet_spec in args.worksheet_spec
+            ]
+        )
+
+        for worksheet_uuid in worksheet_uuids:
+            webbrowser.open(self.worksheet_url(worksheet_uuid))
+
+        # Headless client should fire OpenWorksheet UI action
+        if self.headless:
+            return ui_actions.serialize(
+                [ui_actions.OpenWorksheet(worksheet_uuid) for worksheet_uuid in worksheet_uuids]
+            )
 
     #############################################################################
     # CLI methods for commands related to groups and permissions follow!
@@ -3652,7 +3803,7 @@ class BundleCLI(object):
             % (
                 self.simple_group_str(group),
                 permission_str(new_permission),
-                self.worksheet_url(worksheet),
+                self.worksheet_url_and_name(worksheet),
             ),
             file=self.stdout,
         )
@@ -3740,7 +3891,6 @@ class BundleCLI(object):
         """
         if args.grant_access and args.remove_access:
             raise UsageError('Can\'t both grant and remove access for a user.')
-
         client = self.manager.current_client()
 
         # Build user info
@@ -3773,6 +3923,60 @@ class BundleCLI(object):
         self.print_user_info(user)
 
     @Commands.command(
+        'uls',
+        help=[
+            'Lists users on CodaLab (returns 10 results by default).',
+            '  uls <keyword> ... <keyword>         : Username or id contains each <keyword>.',
+            '  uls user_name=<value>               : Name is <value>, where `user_name` can be any metadata field (e.g., first_name).',
+            '',
+            '  uls .limit=<limit>                  : Limit the number of results to the top <limit> (e.g., 50).',
+            '  uls .offset=<offset>                : Return results starting at <offset>.',
+            '',
+            '  uls .joined_before=<datetime>       : Returns users joined before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).',
+            '  uls .joined_after=<datetime>        : Returns users joined after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).',
+            '  uls .active_before=<datetime>       : (Root user only) Returns users last logged in before (inclusive) given ISO 8601 timestamp (e.g., .before=2042-03-14).',
+            '  uls .active_after=<datetime>        : (Root user only) Returns users last logged in after (inclusive) given ISO 8601 timestamp (e.g., .after=2120-10-15T00:00:00-08).',
+            '',
+            '  uls .disk_used_less_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_less_than=70% or 0.3).',
+            '  uls .disk_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose disk usage less than (inclusive) given value (e.g., .disk_used_more_than=70% or 0.3).',
+            '  uls .time_used_less_than=<<percentage> or <float>      : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_less_than=70% or 0.3).',
+            '  uls .time_used_more_than=<percentage> or <float>       : (Root user only) Returns users whose time usage less than (inclusive) given value (e.g., .time_used_more_than=70% or 0.3).',
+            '',
+            '  uls size=.sort                      : Sort by a particular field (where `size` can be any metadata field).',
+            '  uls size=.sort-                     : Sort by a particular field in reverse (e.g., `size`).',
+            '  uls .last                           : Sort in reverse chronological order (equivalent to id=.sort-).',
+            '  uls .count                          : Count the number of matching bundles.',
+            '  uls .format=<format>                : Apply <format> function (see worksheet markdown).',
+        ],
+        arguments=(
+            Commands.Argument('keywords', help='Keywords to search for.', nargs='*'),
+            Commands.Argument('-f', '--field', help='Print out these comma-separated fields.'),
+        ),
+    )
+    def do_uls_command(self, args):
+        """
+        Search for specific users.
+        If no argument is passed, we assume the user is searching for a keyword of an empty string.
+        """
+        client = self.manager.current_client()
+        users = client.fetch('users', params={'keywords': args.keywords or ''})
+        # Print direct numeric result
+        if 'meta' in users:
+            print(users['meta']['results'], file=self.stdout)
+            return
+
+        # Print table
+        if len(users) > 0:
+            if args.field:
+                columns = args.field.split(',')
+            else:
+                columns = ('user_name', 'first_name', 'last_name', 'affiliation', 'date_joined')
+            self.print_result_limit_info(len(users))
+            self.uls_print_table(columns, users, user_defined=args.field)
+        else:
+            print(NO_RESULTS_FOUND, file=self.stderr)
+
+    @Commands.command(
         'uinfo',
         help=['Show user information.'],
         arguments=(
@@ -3794,6 +3998,10 @@ class BundleCLI(object):
         else:
             user = client.fetch('users', args.user_spec)
         self.print_user_info(user, args.field)
+
+    def print_users_info(self, users):
+        for user in users:
+            self.print_user_info(user, fields=None)
 
     def print_user_info(self, user, fields=None):
         def print_attribute(key, user, should_pretty_print):
