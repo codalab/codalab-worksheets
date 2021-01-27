@@ -190,6 +190,7 @@ def hash_directory(path, dirs_and_files=None):
     directory and call get_hash again, you would get the same result.
     """
     if parse_linked_bundle_url(path).uses_beam:
+        # On Azure, we just use the directory size for the hashed contents.
         return get_size(path)
     (directories, files) = dirs_and_files or recursive_ls(path)
     # Sort and then hash all directories and then compute a hash of the hashes.

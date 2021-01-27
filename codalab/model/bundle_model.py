@@ -18,7 +18,13 @@ from sqlalchemy.sql.expression import literal, true
 
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.run_bundle import RunBundle
-from codalab.common import IntegrityError, NotFoundError, precondition, UsageError
+from codalab.common import (
+    IntegrityError,
+    NotFoundError,
+    precondition,
+    UsageError,
+    parse_linked_bundle_url,
+)
 from codalab.lib import crypt_util, spec_util, worksheet_util, path_util
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
@@ -1041,14 +1047,17 @@ class BundleModel(object):
         Updates the database rows for the bundle and user with the new disk use
         """
         dirs_and_files = None
-        if os.path.isdir(bundle_location):
-            dirs_and_files = path_util.recursive_ls(bundle_location)
-        else:
-            dirs_and_files = [], [bundle_location]
 
-        # TODO(Ashwin): make this non-fs specific
+        if not parse_linked_bundle_url(bundle_location).uses_beam:
+            # dirs_and_files is only relevant when the bundle exists on disk.
+            if os.path.isdir(bundle_location):
+                dirs_and_files = path_util.recursive_ls(bundle_location)
+            else:
+                dirs_and_files = [], [bundle_location]
+
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
         data_size = path_util.get_size(bundle_location, dirs_and_files)
+
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
             if data_size > disk_left:

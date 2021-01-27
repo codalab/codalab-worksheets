@@ -62,10 +62,6 @@ class UploadManager(object):
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
         bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
         uses_beam = parse_linked_bundle_url(bundle_path).uses_beam
-        if bundle_link_url and not uses_beam:
-            # If we are pointing to an existing file using --link, we shouldn't perform the upload
-            # because the file already exists.
-            return
         try:
             if (
                 not uses_beam

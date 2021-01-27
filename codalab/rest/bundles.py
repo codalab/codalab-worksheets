@@ -754,7 +754,8 @@ def _update_bundle_contents_blob(uuid):
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
         if use_azure_blob_beta:
-            # If uploading a file using Azure Blob Storage, 
+            # If uploading a file using Azure Blob Storage, we set the link_url and link_format
+            # appropriately so that the bundle is recognized as a .zip file on Azure Blob Storage.
             local.model.update_bundle(
                 bundle,
                 {
