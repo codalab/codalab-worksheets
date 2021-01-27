@@ -9,7 +9,7 @@ import shutil
 from typing import Dict
 
 from codalab.lib.formatting import size_str
-from codalab.worker.file_util import remove_path, un_tar_directory
+from codalab.worker.file_util import remove_path, un_tar_directory, unzip_directory
 from codalab.worker.fsm import BaseDependencyManager, DependencyStage, StateTransitioner
 import codalab.worker.pyjson
 from codalab.worker.worker_thread import ThreadDict
@@ -380,7 +380,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             self._paths.add(path)
         return path
 
-    def _store_dependency(self, dependency_path, fileobj, target_type):
+    def _store_dependency(self, dependency_path, fileobj, target_type, content_type):
         """
         Copy the dependency fileobj to its path on the local filesystem
         Overwrite existing files by the same name if found
@@ -396,7 +396,14 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                 else:
                     os.remove(dependency_path)
             if target_type == 'directory':
-                un_tar_directory(fileobj, dependency_path, 'gz')
+                # The dependency can be a .tar.gz (if from local disk)
+                # or a .zip file (if on Azure Blob Storage).
+                if content_type == "application/gzip":
+                    un_tar_directory(fileobj, dependency_path, 'gz')
+                elif content_type == "application/zip":
+                    unzip_directory(fileobj, dependency_path)
+                else:
+                    raise Exception(f"Invalid content type: {content_type}")
             else:
                 with open(dependency_path, 'wb') as f:
                     logger.debug('copying file to %s', dependency_path)
@@ -431,7 +438,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             logger.debug('Downloading dependency %s', dependency_state.dependency_key)
             try:
                 # Start async download to the fileobj
-                fileobj, target_type = self._bundle_service.get_bundle_contents(
+                fileobj, target_type, content_type = self._bundle_service.get_bundle_contents(
                     dependency_state.dependency_key.parent_uuid,
                     dependency_state.dependency_key.parent_path,
                 )
@@ -450,12 +457,13 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                     fileobj.read = interruptable_read
 
                     # Start copying the fileobj to filesystem dependency path
-                    self._store_dependency(dependency_path, fileobj, target_type)
+                    self._store_dependency(dependency_path, fileobj, target_type, content_type)
 
                 logger.debug(
-                    'Finished downloading %s dependency %s to %s',
+                    'Finished downloading %s dependency (%s) %s to %s',
                     target_type,
                     dependency_state.dependency_key,
+                    content_type,
                     dependency_path,
                 )
                 with self._dependency_locks[dependency_state.dependency_key]:
@@ -466,7 +474,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                     self._downloading[dependency_state.dependency_key]['success'] = False
                     self._downloading[dependency_state.dependency_key][
                         'failure_message'
-                    ] = "Dependency download failed: %s " % str(e)
+                    ] = "Dependency download failed: %s, %s" % (str(e), traceback.format_exc())
 
         self._downloading.add_if_new(
             dependency_state.dependency_key, threading.Thread(target=download, args=[])

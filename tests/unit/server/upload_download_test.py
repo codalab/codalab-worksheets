@@ -36,7 +36,7 @@ class BaseUploadDownloadBundleTest(TestBase):
 
         with self.assertRaises(tarfile.ReadError):
             with tarfile.open(
-                fileobj=self.download_manager.stream_tarred_gzipped_directory(target), mode='r:gz'
+                fileobj=self.download_manager.stream_archived_directory(target)[0], mode='r:gz'
             ) as f:
                 pass
 
@@ -87,7 +87,7 @@ class BaseUploadDownloadBundleTest(TestBase):
             )
 
         with tarfile.open(
-            fileobj=self.download_manager.stream_tarred_gzipped_directory(target), mode='r:gz'
+            fileobj=self.download_manager.stream_archived_directory(target)[0], mode='r:gz'
         ) as f:
             self.assertEqual(sorted(f.getnames()), sorted(expected_members))
 

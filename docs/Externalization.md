@@ -72,7 +72,7 @@ of `--link` (applied to the dependency) and `--shared-file-system`:
  --shared-file-system        | Server sends worker just the bundle path (`/u/nlp/data`) | Server sends worker just the bundle path (which must be in CodaLab bundle store `/u/codalab/bundles/...`)
  no --shared-file-system     | Server sends worker the bundle contents (reading from the path - `/u/nlp/data`)   | Server sends worker the bundle contents (reading from the path in the CodaLab bundle store - `/u/codalab/bundles/...`)
 
- ## Azure Blob Storage
+## Azure Blob Storage
 
 Azure Blob Storage can be used as a bundle store. Note that this feature is in beta and may change.
 
