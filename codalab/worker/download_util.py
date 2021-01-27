@@ -151,6 +151,7 @@ def _compute_target_info_local(path, depth):
 def _compute_target_info_beam(path, depth):
     """Computes target info for a file that is externalized on a location
     such as Azure, by using the Apache Beam FileSystem APIs."""
+
     # TODO (Ashwin): properly return permissions.
     linked_bundle_path = parse_linked_bundle_url(path)
     if not linked_bundle_path.is_zip:
@@ -162,69 +163,52 @@ def _compute_target_info_beam(path, depth):
             'size': file.size_in_bytes,
             'perm': 0o777,
         }
-    elif not linked_bundle_path.zip_subpath:
-        # We want the entire zip file, not a subpath within it.
-        with ZipFile(FileSystems.open(linked_bundle_path.bundle_path)) as f:
-            base = {
-                'name': linked_bundle_path.bundle_uuid,
-                'type': 'directory',
-                'size': sum([zipinfo.file_size for zipinfo in f.infolist()]),
-                'perm': 0o777,
-            }
+
+    with ZipFile(FileSystems.open(linked_bundle_path.bundle_path)) as f:
+        zipinfos = [zipinfo for zipinfo in f.infolist()]
+
+    # TODO (Ashwin): properly handle symlinks.
+    islink = lambda zipinfo: False
+    isfile = lambda zipinfo: not zipinfo.is_dir()
+    isdir = lambda zipinfo: zipinfo.is_dir()
+    listdir = lambda path: [
+        p
+        for p in [z.filename[len(path) :] for z in zipinfos if z.filename.startswith(path)]
+        if "/" not in p.strip("/") and p.strip("/")
+    ]
+
+    def _get_info(path, depth):
+        zipinfo = next(z for z in zipinfos if z.filename == path or z.filename == path + '/')
+        result = {}
+        result['name'] = zipinfo.filename.strip("/").split("/")[-1]  # get last part of path
+        result['size'] = zipinfo.file_size
+        result['perm'] = 0o777
+        if islink(zipinfo):
+            result['type'] = 'link'
+            # result['link'] = os.readlink(zipinfo)
+        elif isfile(zipinfo):
+            result['type'] = 'file'
+        elif isdir(zipinfo):
+            result['type'] = 'directory'
+            if depth > 0:
+                result['contents'] = [
+                    _get_info(zipinfo.filename.rstrip("/") + "/" + file_name.lstrip("/"), depth - 1)
+                    for file_name in listdir(path)
+                ]
+        return result
+
+    if linked_bundle_path.zip_subpath:
+        # Return the contents of a subpath within a directory.
+        return _get_info(linked_bundle_path.zip_subpath, depth)
     else:
-        try:
-            with ZipFile(FileSystems.open(linked_bundle_path.bundle_path)) as f:
-                zipinfo = f.getinfo(linked_bundle_path.zip_subpath)
-            is_dir = zipinfo.is_dir()
-            filename = zipinfo.filename
-            file_size = zipinfo.file_size
-        except KeyError:
-            # Assume we're in a directory.
-            is_dir = True
-            filename = linked_bundle_path.zip_subpath
-            file_size = 0
-        if not is_dir:
-            return {
-                'name': filename,
-                'type': 'file',
-                'size': file_size,
-                'perm': 0o777,
-            }
-        base = {
-            'name': filename,
+        # No subpath, return the entire directory.
+        file = FileSystems.match([path])[0].metadata_list[0]
+        result = {
+            'name': linked_bundle_path.bundle_uuid,
             'type': 'directory',
-            'size': file_size,
+            'size': file.size_in_bytes,
             'perm': 0o777,
         }
-
-    def get_last_part(path):
-        parts = path.split("/")
-        return parts[-1]
-
-    dirs = [
-        zipinfo.filename
-        for zipinfo in f.infolist()
-        if zipinfo.is_dir() and not zipinfo.filename.startswith(linked_bundle_path.zip_subpath)
-    ]
-    if depth > 0:
-        base['contents'] = [
-            (
-                {
-                    'name': get_last_part(zipinfo.filename),
-                    'type': 'directory' if zipinfo.is_dir() else 'file',
-                    'size': zipinfo.file_size,
-                    'perm': 0o777,
-                }
-                if not zipinfo.is_dir()
-                else _compute_target_info_beam(
-                    f"{linked_bundle_path.bundle_path}/{zipinfo.filename}", depth - 1,
-                )
-            )
-            for zipinfo in f.infolist()
-            if (
-                not linked_bundle_path.zip_subpath
-                or zipinfo.filename.startswith(linked_bundle_path.zip_subpath)
-            )
-            and not (any(zipinfo.filename.startswith(i) for i in dirs) and not zipinfo.is_dir())
-        ]
-    return base
+        if depth > 0:
+            result['contents'] = [_get_info(file_name, depth - 1) for file_name in listdir("")]
+        return result
