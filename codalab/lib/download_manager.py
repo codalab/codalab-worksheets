@@ -152,7 +152,8 @@ class DownloadManager(object):
     def stream_archived_directory(self, target):
         """
         Returns a file-like object containing an archive of the given directory.
-        If the directory is on the local bundle store, it will be tarred and gzipped.
+        If the directory is on the local bundle store or from a worker hosting a
+        running bundle, it will be tarred and gzipped.
         If it is already an archive (such as .zip) on Blob Storage, that archive
         will be returned directly.
 
