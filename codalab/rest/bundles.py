@@ -923,3 +923,9 @@ def set_bundle_permissions(new_permissions):
     # Sequentially set bundle permissions
     for p in new_permissions:
         local.model.set_group_bundle_permission(p['group_uuid'], p['object_uuid'], p['permission'])
+
+
+def search_bundles(keywords):
+    keywords = resolve_owner_in_keywords(keywords)
+    results = local.model.search_bundles(request.user.user_id, keywords)
+    return results

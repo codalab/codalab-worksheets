@@ -1,5 +1,5 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '0.5.34';
+export const CODALAB_VERSION = '0.5.35';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
@@ -36,3 +36,19 @@ export const FETCH_STATUS_SCHEMA = {
 
 // Default Duration for dialogs shown on the screen
 export const AUTO_HIDDEN_DURATION = 1500;
+
+// All possible bundle states
+export const BUNDLE_STATES: String[] = [
+    'uploading',
+    'created',
+    'staged',
+    'making',
+    'starting',
+    'preparing',
+    'running',
+    'finalizing',
+    'ready',
+    'failed',
+    'killed',
+    'worker_offline',
+];
