@@ -935,6 +935,8 @@ class BundleModel(object):
             'time_user': worker_run.container_time_user,
             'time_system': worker_run.container_time_system,
             'remote': worker_run.remote,
+            'cpu_usage': worker_run.cpu_usage,  # > type: float
+            'memory_limit': worker_run.memory_limit,  # > type: int
         }
 
         if worker_run.docker_image is not None:
@@ -1315,7 +1317,7 @@ class BundleModel(object):
         clauses = []
         offset = 0
         limit = SEARCH_RESULTS_LIMIT
-        sort_key = [cl_worksheet.c.name]
+        sort_key = [cl_worksheet.c.date_last_modified.desc(), cl_worksheet.c.name]
 
         # Number nested subqueries
         subquery_index = [0]
@@ -1479,6 +1481,7 @@ class BundleModel(object):
             cl_worksheet.c.title,
             cl_worksheet.c.frozen,
             cl_worksheet.c.owner_id,
+            cl_worksheet.c.date_last_modified,
         ]
         query = (
             select(cols_to_select)
@@ -1491,7 +1494,7 @@ class BundleModel(object):
 
         # Sort
         if sort_key[0] is not None:
-            query = query.order_by(sort_key[0])
+            query = query.order_by(*sort_key)
 
         with self.engine.begin() as connection:
             rows = connection.execute(query).fetchall()

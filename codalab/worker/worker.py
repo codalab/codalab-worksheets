@@ -554,6 +554,8 @@ class Worker:
                 remote=self.id,
                 exitcode=run_state.exitcode,
                 failure_message=run_state.failure_message,
+                cpu_usage=run_state.cpu_usage,
+                memory_limit=run_state.memory_limit,
             )
             for run_state in self.runs.values()
         ]
@@ -642,6 +644,8 @@ class Worker:
                 finished=False,
                 finalized=False,
                 is_restaged=False,
+                cpu_usage=0.0,
+                memory_limit=0,
             )
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
