@@ -1,3 +1,4 @@
+import tests.unit.azure_blob_mock  # noqa: F401
 from codalab.lib.spec_util import generate_uuid
 from codalab.worker.download_util import BundleTarget
 from codalab.common import NotFoundError
@@ -8,19 +9,6 @@ import tarfile
 import unittest
 import zipfile
 from codalab.worker.bundle_state import LinkFormat
-import apache_beam.io.filesystems
-from apache_beam.io.filesystems import BlobStorageFileSystem
-from codalab.lib.beam.mockblobstoragefilesystem import MockBlobStorageFileSystem
-
-
-# Monkey-patch so that we use MockBlobStorageFileSystem
-# instead of BlobStorageFileSystem
-class DummyClass:
-    pass
-
-
-BlobStorageFileSystem.__bases__ = (DummyClass,)
-apache_beam.io.filesystems.BlobStorageFileSystem = MockBlobStorageFileSystem
 
 
 class BaseUploadDownloadBundleTest(TestBase):

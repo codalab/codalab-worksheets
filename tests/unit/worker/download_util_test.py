@@ -1,20 +1,9 @@
+import tests.unit.azure_blob_mock  # noqa: F401
 from codalab.worker.download_util import get_target_info, BundleTarget
-import apache_beam.io.filesystems
 import unittest
 import random
 from zipfile import ZipFile
-from apache_beam.io.filesystems import FileSystems, BlobStorageFileSystem
-from codalab.lib.beam.mockblobstoragefilesystem import MockBlobStorageFileSystem
-
-
-# Monkey-patch so that we use MockBlobStorageFileSystem
-# instead of BlobStorageFileSystem
-class DummyClass:
-    pass
-
-
-BlobStorageFileSystem.__bases__ = (DummyClass,)
-apache_beam.io.filesystems.BlobStorageFileSystem = MockBlobStorageFileSystem
+from apache_beam.io.filesystems import FileSystems
 
 
 class AzureBlobGetTargetInfoTest(unittest.TestCase):
@@ -34,14 +23,20 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.zip"
         with FileSystems.create(bundle_path) as f:
             with ZipFile(f, "w") as zf:
+                # We need to create separate entries for each directories, as a regular
+                # zip file would have.
                 zf.writestr("README.md", "hello world")
+                zf.writestr("src/", "")
                 zf.writestr("src/test.sh", "echo hi")
+                zf.writestr("dist/", "")
+                zf.writestr("dist/a/", "")
+                zf.writestr("dist/a/b/", "")
                 zf.writestr("dist/a/b/test2.sh", "echo two")
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
         self.assertEqual(
-            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 26, 'perm': 511}
+            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 704, 'perm': 511}
         )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 1)
@@ -51,12 +46,12 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
             {
                 'name': bundle_uuid,
                 'type': 'directory',
-                'size': 26,
+                'size': 704,
                 'perm': 511,
                 'contents': [
                     {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 511},
-                    {'name': 'test.sh', 'type': 'file', 'size': 7, 'perm': 511},
-                    {'name': 'test2.sh', 'type': 'file', 'size': 8, 'perm': 511},
+                    {'name': 'src', 'type': 'directory', 'size': 0, 'perm': 511},
+                    {'name': 'dist', 'type': 'directory', 'size': 0, 'perm': 511},
                 ],
             },
         )
@@ -69,17 +64,13 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "src/test.sh"), 1)
         target_info.pop("resolved_target")
-        self.assertEqual(
-            target_info, {'name': 'src/test.sh', 'type': 'file', 'size': 7, 'perm': 511}
-        )
+        self.assertEqual(target_info, {'name': 'test.sh', 'type': 'file', 'size': 7, 'perm': 511})
 
         target_info = get_target_info(
             bundle_path, BundleTarget(bundle_uuid, "dist/a/b/test2.sh"), 1
         )
         target_info.pop("resolved_target")
-        self.assertEqual(
-            target_info, {'name': 'dist/a/b/test2.sh', 'type': 'file', 'size': 8, 'perm': 511}
-        )
+        self.assertEqual(target_info, {'name': 'test2.sh', 'type': 'file', 'size': 8, 'perm': 511})
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "src"), 1)
         target_info.pop("resolved_target")
@@ -94,10 +85,25 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
             },
         )
 
-        target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "src/a"), 1)
+        # Return all depths
+        target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "dist/a"), 999)
         target_info.pop("resolved_target")
         print(target_info)
         self.assertEqual(
             target_info,
-            {'name': 'src/a', 'type': 'directory', 'size': 0, 'perm': 511, 'contents': []},
+            {
+                'name': 'a',
+                'size': 0,
+                'perm': 511,
+                'type': 'directory',
+                'contents': [
+                    {
+                        'name': 'b',
+                        'size': 0,
+                        'perm': 511,
+                        'type': 'directory',
+                        'contents': [{'name': 'test2.sh', 'size': 8, 'perm': 511, 'type': 'file'}],
+                    }
+                ],
+            },
         )
