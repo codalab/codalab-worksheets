@@ -1271,6 +1271,13 @@ class BundleCLI(object):
                 action='store_true',
                 default=False,
             ),
+            Commands.Argument(
+                '-a',
+                '--use-azure-blob-beta',
+                help='Use Azure Blob Storage to store files (beta feature).',
+                action='store_true',
+                default=True if os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") else False,
+            ),
         )
         + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
@@ -1309,6 +1316,9 @@ class BundleCLI(object):
                 else os.path.join(os.getcwd(), args.path[0])
             )
             bundle_info['metadata']['link_format'] = LinkFormat.RAW
+            # If --link is explicitly specified, we are already pointing to an existing file,
+            # so use_azure_blob_beta should be set to False (in the case it defaults to be True)
+            args.use_azure_blob_beta = False
 
             new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})
 
@@ -1324,6 +1334,7 @@ class BundleCLI(object):
                     'unpack': False,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
+                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1341,6 +1352,7 @@ class BundleCLI(object):
                     'git': args.git,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
+                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1369,6 +1381,7 @@ class BundleCLI(object):
                 exclude_patterns=args.exclude_patterns,
                 force_compression=args.force_compression,
                 ignore_file=args.ignore,
+                use_azure_blob_beta=args.use_azure_blob_beta,
             )
 
             # Create bundle.
@@ -1397,6 +1410,7 @@ class BundleCLI(object):
                         'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
+                        'use_azure_blob_beta': args.use_azure_blob_beta,
                     },
                     progress_callback=progress.update,
                 )
