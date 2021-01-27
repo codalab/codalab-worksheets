@@ -721,8 +721,7 @@ def _update_bundle_contents_blob(uuid):
       the upload completes successfully. Must be either 'ready' or 'failed'.
       Default is 'ready'.
     - `use_azure_blob_beta`: (optional) Use Azure Blob Storage to store the bundle.
-      Default is False. This argument is ignored (and Azure Blob Storage is always
-      used) if the CODALAB_ALWAYS_USE_AZURE_BLOB_BETA environment variable is set on the client.
+      Default is False.
     """
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)

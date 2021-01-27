@@ -24,6 +24,7 @@ URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 
 logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')
 logger.setLevel(logging.WARNING)
 
+
 class IntegrityError(ValueError):
     """
     Raised by the model when there is a database integrity issue.
