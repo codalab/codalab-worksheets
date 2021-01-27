@@ -12,6 +12,7 @@ import urllib.error
 from dataclasses import dataclass
 from retry import retry
 from enum import Enum
+import logging
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
@@ -19,6 +20,9 @@ CODALAB_VERSION = '0.5.35'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
 
+# Silence verbose HTTP output from Azure Blob
+logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')
+logger.setLevel(logging.WARNING)
 
 class IntegrityError(ValueError):
     """

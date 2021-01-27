@@ -466,7 +466,7 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
         # to get the path size.
 
         # Get the size of the specified path (file / directory):
-        result = get_path_size(path)
+        result = get_file_size(path)
 
         # If path points to a directory, get the size of all
         # files within the directory by using the pattern {path}/**.
