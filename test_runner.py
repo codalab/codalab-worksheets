@@ -12,6 +12,7 @@ import string
 import subprocess
 import sys
 import time
+import os
 
 
 class TestRunner(object):
@@ -92,6 +93,8 @@ class TestRunner(object):
             if len(non_frontend_tests):
                 # Run backend tests using test_cli
                 test_command = 'python3 tests/cli/test_cli.py --instance %s ' % self.instance
+                if os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA"):
+                    test_command = f'CODALAB_ALWAYS_USE_AZURE_BLOB_BETA={os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA")} {test_command}'
                 if self.temp_instance_required:
                     test_command += '--second-instance %s ' % self.temp_instance
 

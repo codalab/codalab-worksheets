@@ -301,6 +301,11 @@ def _run_command(
     else:
         # Always use subprocess for non-"cl" commands.
         force_subprocess = True
+    if os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA"):
+        env = dict(
+            env or {},
+            CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA"),
+        )
     return run_command(
         args,
         expected_exit_code,
