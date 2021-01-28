@@ -34,7 +34,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         with gzip.GzipFile(fileobj=self.download_manager.stream_file(target, gzipped=True)) as f:
             self.assertEqual(f.read(), b"hello world")
 
-        with self.assertRaises(tarfile.ReadError):
+        with self.assertRaises(Exception):
             with tarfile.open(
                 fileobj=self.download_manager.stream_archived_directory(target)[0], mode='r:gz'
             ) as f:
@@ -66,30 +66,7 @@ class BaseUploadDownloadBundleTest(TestBase):
 
     def check_folder_target_contents(self, target, expected_members=[]):
         """Checks to make sure that the specified folder has the expected contents and can be streamed, etc."""
-        with self.assertRaises(IsADirectoryError):
-            with self.download_manager.stream_file(target, gzipped=False) as f:
-                pass
-
-        with self.assertRaises(IsADirectoryError):
-            self.download_manager.read_file_section(target, offset=3, length=4, gzipped=False)
-
-        with self.assertRaises(IsADirectoryError):
-            self.download_manager.read_file_section(target, offset=3, length=4, gzipped=True)
-
-        with self.assertRaises(IsADirectoryError):
-            self.download_manager.summarize_file(
-                target,
-                num_head_lines=1,
-                num_tail_lines=1,
-                max_line_length=3,
-                truncation_text="....",
-                gzipped=False,
-            )
-
-        with tarfile.open(
-            fileobj=self.download_manager.stream_archived_directory(target)[0], mode='r:gz'
-        ) as f:
-            self.assertEqual(sorted(f.getnames()), sorted(expected_members))
+        raise NotImplementedError
 
     def test_bundle_single_file(self):
         """Running get_target_info for a bundle with a single file."""
@@ -118,7 +95,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         target = BundleTarget(bundle.uuid, "")
         info = self.download_manager.get_target_info(target, 2)
         self.assertEqual(info["name"], bundle.uuid)
-        self.assertEqual(info["perm"], 493)
+        self.assertEqual(info["perm"], 511)
         self.assertEqual(info["type"], "directory")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
         # Directory size can vary based on platform, so removing it before checking equality.
@@ -131,7 +108,7 @@ class BaseUploadDownloadBundleTest(TestBase):
                     {'name': 'item.txt', 'perm': self.DEFAULT_PERM, 'type': 'file'},
                     {
                         'name': 'src',
-                        'perm': 493,
+                        'perm': 511,
                         'type': 'directory',
                         'contents': [
                             {
@@ -197,6 +174,7 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest):
             git=False,
             unpack=True,
             simplify_archives=True,
+            use_azure_blob_beta=False,
         )
 
     def upload_file(self, bundle, contents):
@@ -210,7 +188,15 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest):
             git=False,
             unpack=False,
             simplify_archives=True,
+            use_azure_blob_beta=False,
         )
+
+    def check_folder_target_contents(self, target, expected_members=[]):
+        """Checks to make sure that the specified folder has the expected contents and can be streamed, etc."""
+        with tarfile.open(
+            fileobj=self.download_manager.stream_archived_directory(target)[0], mode='r:gz'
+        ) as f:
+            self.assertEqual(sorted(f.getnames()), sorted(expected_members))
 
 
 class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
@@ -218,15 +204,17 @@ class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
 
     # TODO: permissions are not yet preserved. Remove this DEFAULT_PERM setting when
     # permissions are properly preserved.
-    DEFAULT_PERM = 384
+    DEFAULT_PERM = 511
 
     def upload_folder(self, bundle, contents):
         f = BytesIO()
-        with zipfile.ZipFile(f, 'w') as zf:
+        with tarfile.open(fileobj=f, mode='w:gz') as tf:
             for item in contents:
-                zf.writestr(item[0], item[1])
+                tinfo = tarfile.TarInfo(name=item[0])
+                tinfo.size = len(item[1])
+                tf.addfile(tinfo, BytesIO(item[1]))
         f.seek(0)
-        sources = [["contents.zip", f]]
+        sources = [["contents.tar.gz", f]]
         self.upload_manager.upload_to_bundle_store(
             bundle,
             sources,
@@ -236,18 +224,10 @@ class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
             git=False,
             unpack=True,
             simplify_archives=True,
+            use_azure_blob_beta=True,
         )
 
     def upload_file(self, bundle, contents):
-        self.update_bundle(
-            bundle,
-            {
-                "metadata": {
-                    "link_url": f"azfs://storageclwsdev0/bundles/{bundle.uuid}/contents",
-                    "link_format": LinkFormat.ZIP,
-                }
-            },
-        )
         sources = [["contents", BytesIO(contents)]]
         self.upload_manager.upload_to_bundle_store(
             bundle,
@@ -258,4 +238,15 @@ class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
             git=False,
             unpack=False,
             simplify_archives=True,
+            use_azure_blob_beta=True,
         )
+
+    def check_folder_target_contents(self, target, expected_members=[]):
+        """Checks to make sure that the specified folder has the expected contents and can be streamed, etc."""
+        with zipfile.ZipFile(
+            self.download_manager.stream_archived_directory(target)[0], mode='r'
+        ) as f:
+            # Remove leading and trailing .'s and /'s from the member list, to account for the slight
+            # differences in .zip and .tar's member list formatting.
+            normalize_list = lambda lst: sorted([m.strip("/.") for m in lst if m.strip("/.")])
+            self.assertEqual(normalize_list(f.namelist()), normalize_list(expected_members))

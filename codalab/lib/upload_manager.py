@@ -4,9 +4,13 @@ import shutil
 
 from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
+from codalab.worker.file_util import zip_directory
+from codalab.lib.beam.filesystems import AZURE_BLOB_ACCOUNT_NAME
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
+from codalab.worker.bundle_state import LinkFormat
+import tempfile
 
 
 class UploadManager(object):
@@ -32,6 +36,7 @@ class UploadManager(object):
         git,
         unpack,
         simplify_archives,
+        use_azure_blob_beta,
     ):
         """
         Uploads contents for the given bundle to the bundle store.
@@ -48,6 +53,7 @@ class UploadManager(object):
         |simplify_archives|: whether to simplify unpacked archives so that if they
                              contain a single file, the final path is just that file,
                              not a directory containing that file.
+        |use_azure_blob_beta|: whether to use Azure Blob Storage.
 
         If |sources| contains one source, then the bundle contents will be that source.
         Otherwise, the bundle contents will be a directory with each of the sources.
@@ -60,22 +66,20 @@ class UploadManager(object):
             if exclude_patterns
             else self._default_exclude_patterns
         )
-        bundle_link_url = getattr(bundle.metadata, "link_url", None)
-        bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
-        uses_beam = parse_linked_bundle_url(bundle_path).uses_beam
+        # If on Azure Blob Storage, handle source download / unpacking
+        # in a temporary directory. Otherwise, download / unpack the bundle
+        # directly in its final location in the disk-based bundle store.
+        if use_azure_blob_beta:
+            bundle_path = tempfile.mkdtemp()
+        else:
+            bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
-            if (
-                not uses_beam
-            ):  # Don't make directories on Azure (which uses a single zip file instead).
-                path_util.make_directory(bundle_path)
+            path_util.make_directory(bundle_path)
             # Note that for uploads with a single source, the directory
             # structure is simplified at the end.
             for source in sources:
                 is_url, is_local_path, is_fileobj, filename = self._interpret_source(source)
                 source_output_path = os.path.join(bundle_path, filename)
-                if uses_beam:
-                    # On Azure, we will output to a single zip file, so don't modify the path.
-                    source_output_path = bundle_path
                 if is_url:
                     if git:
                         source_output_path = file_util.strip_git_ext(source_output_path)
@@ -90,6 +94,8 @@ class UploadManager(object):
                                 simplify_archive=simplify_archives,
                             )
                 elif is_local_path:
+                    # TODO (Ashwin): check if this code path is used (it appears not),
+                    # and if not, remove it.
                     source_path = path_util.normalize(source)
                     path_util.check_isvalid(source_path, 'upload')
 
@@ -120,18 +126,44 @@ class UploadManager(object):
                     else:
                         # We reach this code path if we are uploading zip files to Azure
                         # (in which case unpack is set to False), or uploading a single file regularly.
-                        with FileSystems.create(
-                            source_output_path, compression_type=CompressionTypes.UNCOMPRESSED
-                        ) as out:
+                        with open(source_output_path, 'wb') as out:
                             shutil.copyfileobj(source[1], out)
 
-            if len(sources) == 1 and not uses_beam:
-                # Don't run _simplify_directory on Azure, as we always want to store bundles in folders there.
+            if len(sources) == 1:
                 self._simplify_directory(bundle_path)
+
+            if use_azure_blob_beta:
+                # Now, upload the contents of the temp directory to Azure Blob Storage.
+
+                # is_directory is True if the bundle is a directory and False if it is a single file.
+                is_directory = os.path.isdir(bundle_path)
+                link_url = f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/bundles/{bundle.uuid}{'/contents.zip' if is_directory else '/contents'}"
+                with FileSystems.create(
+                    link_url, compression_type=CompressionTypes.UNCOMPRESSED
+                ) as out:
+                    if is_directory:
+                        shutil.copyfileobj(zip_directory(bundle_path), out)
+                    else:
+                        shutil.copyfileobj(open(bundle_path, 'rb'), out)
+
+                # If uploading a file using Azure Blob Storage, we set the link_url and link_format
+                # appropriately so that the bundle is recognized as a .zip file on Azure Blob Storage.
+                self._bundle_model.update_bundle(
+                    bundle,
+                    {
+                        'metadata': {
+                            'link_url': link_url,
+                            'link_format': LinkFormat.ZIP if is_directory else LinkFormat.RAW,
+                        }
+                    },
+                )
         except UsageError:
             if FileSystems.exists(bundle_path):
                 path_util.remove(bundle_path)
             raise
+        finally:
+            if use_azure_blob_beta:
+                shutil.rmtree(bundle_path) if os.path.isdir(bundle_path) else os.remove(bundle_path)
 
     def _interpret_source(self, source):
         is_url, is_local_path, is_fileobj = False, False, False

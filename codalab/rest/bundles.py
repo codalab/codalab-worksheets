@@ -14,7 +14,6 @@ from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import precondition, UsageError, NotFoundError
 from codalab.lib import canonicalize, spec_util, worksheet_util, path_util
 from codalab.common import parse_linked_bundle_url
-from codalab.lib.beam.filesystems import AZURE_BLOB_ACCOUNT_NAME
 from codalab.lib.server_util import (
     bottle_patch as patch,
     json_api_include,
@@ -751,22 +750,6 @@ def _update_bundle_contents_blob(uuid):
         if request.query.filename:
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
-        if use_azure_blob_beta:
-            # If uploading a file using Azure Blob Storage, we set the link_url and link_format
-            # appropriately so that the bundle is recognized as a .zip file on Azure Blob Storage.
-            local.model.update_bundle(
-                bundle,
-                {
-                    'metadata': {
-                        'link_url': f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/bundles/{bundle.uuid}{'/contents.zip' if filename.endswith('.zip') else '/contents'}",
-                        'link_format': LinkFormat.ZIP
-                        if filename.endswith('.zip')
-                        else LinkFormat.RAW,
-                    },
-                },
-            )
-            bundle = local.model.get_bundle(uuid)
-
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
         if bundle_link_url and not use_azure_blob_beta:
             # Don't upload to bundle store if using --link with a URL that
@@ -783,6 +766,7 @@ def _update_bundle_contents_blob(uuid):
                 git=query_get_bool('git', default=False),
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
+                use_azure_blob_beta=use_azure_blob_beta,
             )  # See UploadManager for full explanation of 'simplify'
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)

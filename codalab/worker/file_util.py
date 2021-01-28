@@ -9,6 +9,7 @@ import tarfile
 import zlib
 import bz2
 from zipfile import ZipFile
+from codalab.lib.beam.seekable_zipfile import ZipFile as SeekableZipFile
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from codalab.common import parse_linked_bundle_url
@@ -140,8 +141,7 @@ def zip_directory(
         try:
             proc = subprocess.Popen(args, stdout=subprocess.PIPE, cwd=directory_path)
             proc.wait()
-            with open(tmp_zip_name, "rb") as out:
-                return BytesIO(out.read())
+            return open(tmp_zip_name, "rb")
         except subprocess.CalledProcessError as e:
             raise IOError(e.output)
 
@@ -202,9 +202,14 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
         do_unzip(fileobj_or_name)
 
 
-def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSED):
+def open_file(
+    file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSED, sub_zip_directory=False
+):
     """
-    Opens the given file. Can be in a directory.
+    Opens the file indicated by the given file path. Can be in a directory.
+    sub_zip_directory: If True, indicates that the given file path points to a directory that exists
+        within a zip file on Azure Blob Storage, in which case that directory will be downloaded,
+        re-zipped, and returned by this function. Default is False.
     """
     linked_bundle_path = parse_linked_bundle_url(file_path)
     if (
@@ -214,9 +219,23 @@ def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSE
     ):
         # If file path is a zip file on Azure, open the specified path within the
         # zip file. zipfile.open only supports 'r', not 'rb', so we always pass in 'r'.
-        with ZipFile(FileSystems.open(linked_bundle_path.bundle_path, compression_type)) as f:
-            return f.open(linked_bundle_path.zip_subpath, 'r')
-    return FileSystems.open(file_path, mode)
+        with SeekableZipFile(
+            FileSystems.open(linked_bundle_path.bundle_path, compression_type)
+        ) as f:
+            zinfo = f.getinfo(linked_bundle_path.zip_subpath + ("/" if sub_zip_directory else ""))
+            if zinfo.is_dir():
+                # If streaming a folder within an Azure bundle, we need to download its contents,
+                # re-archive the folder, and return the .tar.gz version of that folder.
+                with tempfile.TemporaryDirectory() as tmp_dirname:
+                    extracted_path = f.extract(zinfo, tmp_dirname)
+                    for z in f.infolist():
+                        # Extract other members of the directory.
+                        if z.filename.startswith(linked_bundle_path.zip_subpath + "/"):
+                            f.extract(z, tmp_dirname)
+                    return zip_directory(extracted_path)
+            else:
+                return f.open(zinfo, 'r')
+    return FileSystems.open(file_path, mode, compression_type=CompressionTypes.UNCOMPRESSED)
 
 
 class GzipStream:
@@ -358,8 +377,26 @@ def get_file_size(file_path):
     Gets the size of the file, in bytes. If file is not found, raises a
     FileNotFoundError.
     """
+    linked_bundle_path = parse_linked_bundle_url(file_path)
+    if (
+        linked_bundle_path.uses_beam
+        and linked_bundle_path.is_zip
+        and linked_bundle_path.zip_subpath
+    ):
+        # If file path is a zip file on Azure, open the specified path within the
+        # zip file. zipfile.open only supports 'r', not 'rb', so we always pass in 'r'.
+        with ZipFile(
+            FileSystems.open(
+                linked_bundle_path.bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+            )
+        ) as f:
+            try:
+                zinfo = f.getinfo(linked_bundle_path.zip_subpath)
+            except KeyError:
+                raise FileNotFoundError(file_path)
+            return zinfo.file_size
     if not get_path_exists(file_path):
-        raise FileNotFoundError
+        raise FileNotFoundError(file_path)
     # TODO: add a FileSystems.size() method to Apache Beam to make this less verbose.
     filesystem = FileSystems.get_filesystem(file_path)
     return filesystem.size(file_path)

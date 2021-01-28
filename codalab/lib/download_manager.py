@@ -171,9 +171,13 @@ class DownloadManager(object):
         elif bundle_state != State.RUNNING:
             directory_path = self._get_target_path(target)
             if parse_linked_bundle_url(directory_path).uses_beam:
-                # If the file is already on Azure, it should already be zipped, so just stream
-                # that existing file.
-                return (file_util.open_file(directory_path), 'application/zip', '.zip')
+                # If streaming a folder within an Azure bundle, we need to download its contents,
+                # re-zip the folder, and return the zip file.
+                return (
+                    file_util.open_file(directory_path, sub_zip_directory=True),
+                    'application/zip',
+                    '.zip',
+                )
             return (file_util.tar_gzip_directory(directory_path), 'application/gzip', '.tar.gz')
         else:
             # stream_tarred_gzipped_directory calls are sent to the worker even
