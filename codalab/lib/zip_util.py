@@ -16,7 +16,6 @@ from codalab.worker.file_util import (
     un_gzip_stream,
     un_tar_directory,
     unzip_directory,
-    zip_directory,
 )
 
 

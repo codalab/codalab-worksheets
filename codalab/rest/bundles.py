@@ -38,7 +38,7 @@ from codalab.rest.schemas import (
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
 from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin, ProtectedPlugin
-from codalab.worker.bundle_state import State, LinkFormat
+from codalab.worker.bundle_state import State
 from codalab.worker.download_util import BundleTarget
 
 logger = logging.getLogger(__name__)

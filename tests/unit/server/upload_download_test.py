@@ -8,7 +8,6 @@ import gzip
 import tarfile
 import unittest
 import zipfile
-from codalab.worker.bundle_state import LinkFormat
 
 
 class BaseUploadDownloadBundleTest(TestBase):
