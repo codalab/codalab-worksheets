@@ -1,4 +1,5 @@
 import os
+from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from zipfile import ZipFile
 from codalab.common import parse_linked_bundle_url
@@ -164,7 +165,11 @@ def _compute_target_info_beam(path, depth):
             'perm': 0o777,
         }
 
-    with ZipFile(FileSystems.open(linked_bundle_path.bundle_path)) as f:
+    with ZipFile(
+        FileSystems.open(
+            linked_bundle_path.bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+        )
+    ) as f:
         zipinfos = [zipinfo for zipinfo in f.infolist()]
 
     # TODO (Ashwin): properly handle symlinks.

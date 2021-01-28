@@ -3,6 +3,7 @@ from codalab.worker.download_util import get_target_info, BundleTarget
 import unittest
 import random
 from zipfile import ZipFile
+from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 
 
@@ -11,7 +12,7 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
         """Test getting target info of a single file on Azure Blob Storage."""
         bundle_uuid = str(random.random())
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents"
-        with FileSystems.create(bundle_path) as f:
+        with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as f:
             f.write(b"a")
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
@@ -21,7 +22,7 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
         """Test getting target info of different files within a bundle that consists of nested directories, on Azure Blob Storage."""
         bundle_uuid = str(random.random())
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.zip"
-        with FileSystems.create(bundle_path) as f:
+        with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as f:
             with ZipFile(f, "w") as zf:
                 # We need to create separate entries for each directories, as a regular
                 # zip file would have.

@@ -4,6 +4,7 @@ import shutil
 
 from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
+from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
 
@@ -119,7 +120,9 @@ class UploadManager(object):
                     else:
                         # We reach this code path if we are uploading zip files to Azure
                         # (in which case unpack is set to False), or uploading a single file regularly.
-                        with FileSystems.create(source_output_path) as out:
+                        with FileSystems.create(
+                            source_output_path, compression_type=CompressionTypes.UNCOMPRESSED
+                        ) as out:
                             shutil.copyfileobj(source[1], out)
 
             if len(sources) == 1 and not uses_beam:
