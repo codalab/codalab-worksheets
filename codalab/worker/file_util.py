@@ -9,7 +9,7 @@ import tarfile
 import zlib
 import bz2
 from zipfile import ZipFile
-from codalab.lib.beam.seekable_zipfile import ZipFile as SeekableZipFile
+from codalab.lib.beam.seekable_zipfile import ZipFile as SeekableZipFile  # type: ignore
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from codalab.common import parse_linked_bundle_url

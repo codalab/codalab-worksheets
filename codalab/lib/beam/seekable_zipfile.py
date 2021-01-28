@@ -1,3 +1,4 @@
+# type: ignore
 # This file comes from https://raw.githubusercontent.com/python/cpython/ad4f64d58c020016bd438de0e863a0d31d0f0dac/Lib/zipfile.py.
 # It incorporates https://github.com/python/cpython/pull/4966 (allowing seeking for zip files), which was released in Python 3.7.
 # Since we do not require Python 3.7, we are just using this file instead for the seekable zip file functionality.
