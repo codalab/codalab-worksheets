@@ -474,7 +474,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                     self._downloading[dependency_state.dependency_key]['success'] = False
                     self._downloading[dependency_state.dependency_key][
                         'failure_message'
-                    ] = "Dependency download failed: %s, %s" % (str(e), traceback.format_exc())
+                    ] = "Dependency download failed: %s " % str(e)
 
         self._downloading.add_if_new(
             dependency_state.dependency_key, threading.Thread(target=download, args=[])
