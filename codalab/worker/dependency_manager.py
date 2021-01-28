@@ -462,8 +462,8 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                 logger.debug(
                     'Finished downloading %s dependency (%s) %s to %s',
                     target_type,
-                    dependency_state.dependency_key,
                     content_type,
+                    dependency_state.dependency_key,
                     dependency_path,
                 )
                 with self._dependency_locks[dependency_state.dependency_key]:
