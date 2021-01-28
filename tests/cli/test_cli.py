@@ -301,11 +301,6 @@ def _run_command(
     else:
         # Always use subprocess for non-"cl" commands.
         force_subprocess = True
-    if os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA"):
-        env = dict(
-            env or {},
-            CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA"),
-        )
     return run_command(
         args,
         expected_exit_code,
@@ -587,6 +582,11 @@ def test_unittest(ctx):
     _run_command(
         ['coverage', 'report', '--rcfile=tests/unit/.coveragerc'], max_output_chars=sys.maxsize
     )
+
+    # Ensure that environment variables such as CODALAB_ALWAYS_USE_AZURE_BLOB_BETA
+    # were properly passed down to the subprocess.
+    output = _run_command(['printenv', 'CODALAB_ALWAYS_USE_AZURE_BLOB_BETA'])
+    check_equals(output, os.getenv('CODALAB_ALWAYS_USE_AZURE_BLOB_BETA'))
 
 
 @TestModule.register('gen-rest-docs')
