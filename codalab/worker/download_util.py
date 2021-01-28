@@ -2,6 +2,7 @@ import os
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from zipfile import ZipFile
+import stat
 from codalab.common import parse_linked_bundle_url
 
 
@@ -172,48 +173,55 @@ def _compute_target_info_beam(path, depth):
     ) as f:
         zipinfos = [zipinfo for zipinfo in f.infolist()]
 
-    # TODO (Ashwin): properly handle symlinks.
-    islink = lambda zipinfo: False
-    isfile = lambda zipinfo: not zipinfo.is_dir()
-    isdir = lambda zipinfo: zipinfo.is_dir()
-    listdir = lambda path: [
-        p
-        for p in [z.filename[len(path) :] for z in zipinfos if z.filename.startswith(path)]
-        if "/" not in p.strip("/") and p.strip("/")
-    ]
+        # These methods are used to detect and read symlinks created from "zip -y".
+        # The link path is stored in the contents of the file pointed to by zipinfo.
+        # See https://discuss.python.org/t/how-info-zip-represents-symlinks/4104
+        islink = lambda zipinfo: stat.S_ISLNK(zipinfo.external_attr >> 16)
+        readlink = lambda zipinfo: f.read(zipinfo).decode()
 
-    def _get_info(path, depth):
-        zipinfo = next(z for z in zipinfos if z.filename == path or z.filename == path + '/')
-        result = {}
-        result['name'] = zipinfo.filename.strip("/").split("/")[-1]  # get last part of path
-        result['size'] = zipinfo.file_size
-        result['perm'] = 0o777
-        if islink(zipinfo):
-            result['type'] = 'link'
-            # result['link'] = os.readlink(zipinfo)
-        elif isfile(zipinfo):
-            result['type'] = 'file'
-        elif isdir(zipinfo):
-            result['type'] = 'directory'
+        isfile = lambda zipinfo: not zipinfo.is_dir()
+        isdir = lambda zipinfo: zipinfo.is_dir()
+        listdir = lambda path: [
+            p
+            for p in [z.filename[len(path) :] for z in zipinfos if z.filename.startswith(path)]
+            if "/" not in p.strip("/") and p.strip("/")
+        ]
+
+        def _get_info(path, depth):
+            zipinfo = next(z for z in zipinfos if z.filename == path or z.filename == path + '/')
+            result = {}
+            result['name'] = zipinfo.filename.strip("/").split("/")[-1]  # get last part of path
+            result['size'] = zipinfo.file_size
+            result['perm'] = 0o777
+            if islink(zipinfo):
+                # See https://discuss.python.org/t/how-info-zip-represents-symlinks/4104
+                result['type'] = 'link'
+                result['link'] = readlink(zipinfo)
+            elif isfile(zipinfo):
+                result['type'] = 'file'
+            elif isdir(zipinfo):
+                result['type'] = 'directory'
+                if depth > 0:
+                    result['contents'] = [
+                        _get_info(
+                            zipinfo.filename.rstrip("/") + "/" + file_name.lstrip("/"), depth - 1
+                        )
+                        for file_name in listdir(path)
+                    ]
+            return result
+
+        if linked_bundle_path.zip_subpath:
+            # Return the contents of a subpath within a directory.
+            return _get_info(linked_bundle_path.zip_subpath, depth)
+        else:
+            # No subpath, return the entire directory.
+            file = FileSystems.match([path])[0].metadata_list[0]
+            result = {
+                'name': linked_bundle_path.bundle_uuid,
+                'type': 'directory',
+                'size': file.size_in_bytes,
+                'perm': 0o777,
+            }
             if depth > 0:
-                result['contents'] = [
-                    _get_info(zipinfo.filename.rstrip("/") + "/" + file_name.lstrip("/"), depth - 1)
-                    for file_name in listdir(path)
-                ]
-        return result
-
-    if linked_bundle_path.zip_subpath:
-        # Return the contents of a subpath within a directory.
-        return _get_info(linked_bundle_path.zip_subpath, depth)
-    else:
-        # No subpath, return the entire directory.
-        file = FileSystems.match([path])[0].metadata_list[0]
-        result = {
-            'name': linked_bundle_path.bundle_uuid,
-            'type': 'directory',
-            'size': file.size_in_bytes,
-            'perm': 0o777,
-        }
-        if depth > 0:
-            result['contents'] = [_get_info(file_name, depth - 1) for file_name in listdir("")]
-        return result
+                result['contents'] = [_get_info(file_name, depth - 1) for file_name in listdir("")]
+            return result

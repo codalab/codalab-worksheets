@@ -230,6 +230,7 @@ def open_file(
                     extracted_path = f.extract(zinfo, tmp_dirname)
                     for z in f.infolist():
                         # Extract other members of the directory.
+                        # TODO (Ashwin): Make sure this works with symlinks, too. .extract() may not work.
                         if z.filename.startswith(linked_bundle_path.zip_subpath + "/"):
                             f.extract(z, tmp_dirname)
                     return zip_directory(extracted_path)
