@@ -2584,7 +2584,7 @@ class BundleCLI(object):
     def print_ancestors(
         self, client, target_spec, depth,
     ):
-        infos = client.fetch('bundles', params={'specs': target_spec, 'depth': depth})
+        infos = client.fetch('bundles', params={'specs': target_spec})
         infos = {b['uuid']: b for b in infos}  # uuid -> bundle info
         bundle_uuids = list(infos.keys())
         visited = set()
