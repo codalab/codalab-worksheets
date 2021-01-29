@@ -307,6 +307,11 @@ def remove(path):
     """
     Remove the given path, whether it is a directory, file, or link.
     """
+    if parse_linked_bundle_url(path).uses_beam:
+        from apache_beam.io.filesystems import FileSystems
+
+        FileSystems.remove([path])
+        return
     check_isvalid(path, 'remove')
     set_write_permissions(path)  # Allow permissions
     if os.path.islink(path):
