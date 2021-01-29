@@ -585,8 +585,9 @@ def test_unittest(ctx):
 
     # Ensure that environment variables such as CODALAB_ALWAYS_USE_AZURE_BLOB_BETA
     # were properly passed down to the subprocess.
-    output = _run_command(['printenv', 'CODALAB_ALWAYS_USE_AZURE_BLOB_BETA'])
-    check_equals(output, os.getenv('CODALAB_ALWAYS_USE_AZURE_BLOB_BETA'))
+    if os.getenv('CODALAB_ALWAYS_USE_AZURE_BLOB_BETA') == '1':
+        output = _run_command(['printenv', 'CODALAB_ALWAYS_USE_AZURE_BLOB_BETA'])
+        check_equals(output, os.getenv('CODALAB_ALWAYS_USE_AZURE_BLOB_BETA'))
 
 
 @TestModule.register('gen-rest-docs')
