@@ -28,6 +28,9 @@ ImageCacheEntry = namedtuple(
 )
 
 
+docker_image_download_status = []
+
+
 class DockerImageManager:
 
     CACHE_TAG = 'codalab-image-cache/last-used'
@@ -243,7 +246,12 @@ class DockerImageManager:
                 def download():
                     logger.debug('Downloading Docker image %s', image_spec)
                     try:
-                        self._docker.images.pull(image_spec)
+                        client = docker.APIClient(base_url='unix://var/run/docker.sock')
+                        self.generator = client.pull(image_spec, stream=True, decode=True)
+                        global docker_image_download_status
+                        for line in self.generator:
+                            docker_image_download_status.append(line)
+
                         logger.debug('Download for Docker image %s complete', image_spec)
                         self._downloading[image_spec]['success'] = True
                         self._downloading[image_spec]['message'] = "Downloading image"

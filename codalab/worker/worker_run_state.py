@@ -17,6 +17,8 @@ from codalab.worker.bundle_state import State, DependencyKey
 from codalab.worker.fsm import DependencyStage, StateTransitioner
 from codalab.worker.worker_thread import ThreadDict
 
+from codalab.worker.docker_image_manager import docker_image_download_status
+
 logger = logging.getLogger(__name__)
 
 
@@ -221,6 +223,21 @@ class RunStateMachine(StateTransitioner):
             #   dependency_path:docker_dependency_path:ro
             docker_dependencies.append((dependency.parent_path, dependency.docker_path))
 
+        def get_message_of_download_status(status_dict: dict) -> str:
+            logger.info('status dict is ' + str(status_dict))
+            result: str = 'not started\n'
+
+            if 'status' in status_dict:
+                status: str = status_dict['status']
+                result = f'status: {status}'
+            if 'id' in status_dict:
+                image_id: str = status_dict['id']
+                result = f'{result}\nlayer being extracted: {image_id}'
+            if 'progress' in status_dict:
+                progress = status_dict['progress']
+                result = f'{result}\n{progress}'
+            return result
+
         if run_state.is_killed or run_state.is_restaged:
             log_bundle_transition(
                 bundle_uuid=run_state.bundle.uuid,
@@ -279,6 +296,11 @@ class RunStateMachine(StateTransitioner):
             status_messages.append(
                 'Pulling docker image: ' + (image_state.message or docker_image or "")
             )
+            if len(docker_image_download_status) > 0:
+                latest_status = docker_image_download_status[len(docker_image_download_status) - 1]
+                status_messages += (
+                    f'\nPulling status:\n {get_message_of_download_status(latest_status)}'
+                )
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> CLEANING_UP
@@ -290,8 +312,9 @@ class RunStateMachine(StateTransitioner):
         if not dependencies_ready:
             status_message = status_messages.pop()
             if status_messages:
-                status_message += "(and downloading %d other dependencies and docker images)" % len(
-                    status_messages
+                status_message += (
+                    "\n(and downloading %d other dependencies and docker images)"
+                    % len(status_messages)
                 )
             logger.info(
                 f'bundle is not ready yet. uuid: {run_state.bundle.uuid}. status message: {status_message}'
