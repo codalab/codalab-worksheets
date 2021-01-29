@@ -103,8 +103,6 @@ RunState = namedtuple(
         'finished',  # bool
         'finalized',  # bool
         'is_restaged',  # bool
-        'cpu_usage',  # float
-        'memory_limit',  # int
     ],
 )
 
