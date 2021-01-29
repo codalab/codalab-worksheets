@@ -2,15 +2,15 @@ import React from 'react';
 import cx from 'clsx';
 import { withStyles } from '@material-ui/core/styles';
 import Card from '@material-ui/core/Card';
-import Avatar from '@material-ui/core/Avatar';
 import Divider from '@material-ui/core/Divider';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import $ from 'jquery';
 import { lighten } from '@material-ui/core/es/styles/colorManipulator';
 import { renderSize, renderDuration } from '../../util/worksheet_utils';
 import { BUNDLE_STATES } from '../../constants';
+import { default as AvatarEditorModal } from './EditableAvatar';
 
-const styles = ({ spacing, palette }) => {
+const styles = ({ palette }) => {
     return {
         box: { marginLeft: 8, marginRight: 8, marginTop: 8, marginBottom: 0 },
         progressBox: {
@@ -158,7 +158,8 @@ class SideBar extends React.Component {
         }
         return (
             <Card className={cx(classes.card)} elevation={0} style={{ height: '100%' }}>
-                <Avatar className={classes.avatar}>{userInfo.user_name.charAt(0)}</Avatar>
+                <AvatarEditorModal userInfo={userInfo}></AvatarEditorModal>
+                {/*<Avatar className={classes.avatar}>{userInfo.user_name.charAt(0)}</Avatar>*/}
                 <div className={classes.box}>
                     <h3 className={classes.name}>{userInfo.user_name}</h3>
                     {userInfo.affiliation ? (
