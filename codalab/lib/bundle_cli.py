@@ -2608,7 +2608,7 @@ class BundleCLI(object):
                 visited.add(bundle_uuid)
             # Swap in the next batch of bundles for next iteration
             bundle_uuids = next_bundle_uuids
-        print(output)
+        print(output.rstrip())
 
     @Commands.command(
         'wait',
