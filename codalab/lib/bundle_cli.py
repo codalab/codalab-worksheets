@@ -123,6 +123,7 @@ BUNDLE_COMMANDS = (
     'write',
     'mount',
     'netcat',
+    'ancestors',
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -2565,6 +2566,49 @@ class BundleCLI(object):
             print(' -> ' + info['link'], file=self.stdout)
 
         return info
+
+    @Commands.command(
+        'ancestors',
+        help=['Recursively prints out all of the ancestors of the bundle'],
+        arguments=(
+            Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=TargetsCompleter),
+            Commands.Argument(
+                '--depth', type=int, default=10, help='Depth of parents to search and print out',
+            ),
+        ),
+    )
+    def do_ancestors_command(self, args):
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        self.print_ancestors(client, args.target_spec, args.depth)
+
+    def print_ancestors(
+        self, client, target_spec, depth,
+    ):
+        infos = client.fetch('bundles', params={'specs': target_spec, 'depth': depth})
+        infos = {b['uuid']: b for b in infos}  # uuid -> bundle info
+        bundle_uuids = list(infos.keys())
+        visited = set()
+        output = ''
+        for dept in range(depth):
+            next_bundle_uuids = []
+            for bundle_uuid in bundle_uuids:
+                if bundle_uuid in visited:
+                    continue
+                # Add to infos if not there yet
+                if bundle_uuid not in infos:
+                    infos[bundle_uuid] = client.fetch('bundles', bundle_uuid)
+                # Append all of the parents to the next batch of bundles to look at
+                info = infos[bundle_uuid]
+                output += '{}- {}({})\n'.format(dept * ' ', info['metadata']['name'], bundle_uuid)
+                for dep in info['dependencies']:
+                    parent_uuid = dep['parent_uuid']
+                    if parent_uuid not in infos:
+                        next_bundle_uuids.append(parent_uuid)
+                # Mark this bundle as visited
+                visited.add(bundle_uuid)
+            # Swap in the next batch of bundles for next iteration
+            bundle_uuids = next_bundle_uuids
+        print(output)
 
     @Commands.command(
         'wait',

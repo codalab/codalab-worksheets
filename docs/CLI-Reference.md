@@ -275,6 +275,12 @@ Usage: `cl <command> <arguments>`
       --verbose             Verbose mode.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
+### ancestors
+    Recursively prints out all of the ancestors of the bundle
+    Arguments:
+      target_spec  [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
+      --depth      Depth of parents to search and print out
+
 
 ## Commands for worksheets
 ### new
