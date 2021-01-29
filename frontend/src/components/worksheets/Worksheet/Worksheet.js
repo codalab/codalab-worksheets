@@ -1531,6 +1531,8 @@ class Worksheet extends React.Component {
                         'bundle_infos' in partialUpdateItems[i]['bundles_spec']
                     )
                 )
+                    // Partial Update mechanism only designs for the blocks consisting of bundles
+                    // Check whether the block contains the field of 'bundle_infos' to determine whether it is a non-None block containing a list of bundle_infos, which represent a list of bundles
                     continue;
                 // Update rows
                 ws.info.blocks[i]['rows'] = partialUpdateItems[i]['rows'];
