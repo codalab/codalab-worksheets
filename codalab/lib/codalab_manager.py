@@ -46,7 +46,7 @@ from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
 from codalab.lib.print_util import pretty_print_json
 from codalab.lib.upload_manager import UploadManager
 from codalab.lib import formatting
-
+from codalab.model.worker_model import WorkerModel
 
 MAIN_BUNDLE_SERVICE = 'https://worksheets.codalab.org'
 
@@ -354,8 +354,6 @@ class CodaLabManager(object):
 
     @cached
     def worker_model(self):
-        from codalab.model.worker_model import WorkerModel
-
         return WorkerModel(self.model().engine, self.worker_socket_dir)
 
     @cached

@@ -34,7 +34,7 @@ import sys
 
 from codalab.common import PermissionError, UsageError
 from codalab.lib import canonicalize, editor_util, formatting
-from codalab.objects.permission_utils import group_permissions_str, permission_str
+from codalab.objects.permission import group_permissions_str, permission_str
 from codalab.rest.worksheet_block_schemas import (
     FetchStatusSchema,
     BlockModes,

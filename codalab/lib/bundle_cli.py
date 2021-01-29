@@ -36,6 +36,7 @@ import webbrowser
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
 
+import codalab.model.bundle_model as bundle_model
 
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.make_bundle import MakeBundle
@@ -77,7 +78,7 @@ from codalab.lib.cli_util import (
     PERMISSION_SPEC_FORMAT,
     UUID_POST_FUNC,
 )
-from codalab.objects.permission_utils import group_permissions_str, parse_permission, permission_str
+from codalab.objects.permission import group_permissions_str, parse_permission, permission_str
 from codalab.client.json_api_client import JsonApiRelationship
 from codalab.lib.formatting import contents_str
 from codalab.lib.completers import (
@@ -970,8 +971,6 @@ class BundleCLI(object):
         Returns:
             None
         """
-        import codalab.model.bundle_model as bundle_model
-
         if result_size == bundle_model.SEARCH_RESULTS_LIMIT:
             print(
                 'Only {} results are shown. Use .limit=N to show the first N results.'.format(
