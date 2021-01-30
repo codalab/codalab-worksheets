@@ -15,7 +15,7 @@ from codalab.objects.permission import (
     check_bundles_have_read_permission,
     check_bundle_have_run_permission,
 )
-from codalab.common import NotFoundError, PermissionError, parse_linked_bundle_url
+from codalab.common import NotFoundError, PermissionError, parse_linked_bundle_url, normpath
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
@@ -205,7 +205,7 @@ class BundleManager(object):
         try:
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
-            path = os.path.normpath(bundle_location)
+            path = normpath(bundle_location)
 
             deps = []
             parent_bundle_link_urls = self._model.get_bundle_metadata(
@@ -213,13 +213,10 @@ class BundleManager(object):
             )
             for dep in bundle.dependencies:
                 parent_bundle_link_url = parent_bundle_link_urls.get(dep.parent_uuid)
-                parent_bundle_path = parent_bundle_link_url or os.path.normpath(
+                parent_bundle_path = parent_bundle_link_url or normpath(
                     self._bundle_store.get_bundle_location(dep.parent_uuid)
                 )
-                # TODO(Ashwin): make this logic non-fs specific.
-                dependency_path = os.path.normpath(
-                    os.path.join(parent_bundle_path, dep.parent_path)
-                )
+                dependency_path = normpath(os.path.join(parent_bundle_path, dep.parent_path))
                 if not dependency_path.startswith(parent_bundle_path) or (
                     not os.path.islink(dependency_path)
                     and not os.path.exists(dependency_path)
@@ -238,7 +235,7 @@ class BundleManager(object):
                         )
                     )
 
-                child_path = os.path.normpath(os.path.join(path, dep.child_path))
+                child_path = normpath(os.path.join(path, dep.child_path))
                 if not child_path.startswith(path):
                     raise Exception('Invalid key for dependency: %s' % (dep.child_path))
 

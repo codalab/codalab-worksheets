@@ -205,3 +205,12 @@ def parse_linked_bundle_url(url):
         zip_subpath=zip_subpath,
         bundle_uuid=bundle_uuid,
     )
+
+
+def normpath(self, path):
+    """Performs os.path.normpath on a path if it is on the filesystem, but if it is on Beam,
+    doesn't do anything to the path.
+    """
+    if parse_linked_bundle_url(path).uses_beam:
+        return path
+    return os.path.normpath(path)
