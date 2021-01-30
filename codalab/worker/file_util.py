@@ -8,8 +8,7 @@ import subprocess
 import tarfile
 import zlib
 import bz2
-from zipfile import ZipFile
-from codalab.lib.beam.seekable_zipfile import ZipFile as SeekableZipFile  # type: ignore
+from io import IOBase
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from codalab.common import parse_linked_bundle_url
@@ -205,40 +204,110 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
         do_unzip(fileobj_or_name)
 
 
-def open_file(
-    file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSED, sub_zip_directory=False
-):
+class ClosingStreamWrapper(IOBase):
+    def __init__(self, buffer, cleanup_fn, cleanup_args):
+        self._buffer = buffer
+        self._cleanup_fn = cleanup_fn
+        self._cleanup_args = cleanup_args
+
+    def close(self, *args, **kwargs):
+        return self._buffer.close(*args, **kwargs)
+
+    @property
+    def closed(self):
+        return self._buffer.closed
+
+    def fileno(self, *args, **kwargs):
+        return self._buffer.fileno(*args, **kwargs)
+
+    def flush(self, *args, **kwargs):
+        return self._buffer.flush(*args, **kwargs)
+
+    def isatty(self, *args, **kwargs):
+        return self._buffer.isatty(*args, **kwargs)
+
+    def readable(self, *args, **kwargs):
+        return self._buffer.readable(*args, **kwargs)
+
+    def readline(self, *args, **kwargs):
+        return self._buffer.readline(*args, **kwargs)
+
+    def readlines(self, *args, **kwargs):
+        return self._buffer.readlines(*args, **kwargs)
+
+    def seek(self, *args, **kwargs):
+        return self._buffer.seek(*args, **kwargs)
+
+    def seekable(self, *args, **kwargs):
+        return self._buffer.seekable(*args, **kwargs)
+
+    def tell(self, *args, **kwargs):
+        return self._buffer.tell(*args, **kwargs)
+
+    def truncate(self, *args, **kwargs):
+        return self._buffer.truncate(*args, **kwargs)
+
+    def writable(self, *args, **kwargs):
+        return self._buffer.writable(*args, **kwargs)
+
+    def writelines(self, *args, **kwargs):
+        return self._buffer.writelines(*args, **kwargs)
+
+    def read(self, *args, **kwargs):
+        return self._buffer.read(*args, **kwargs)
+
+    def readall(self, *args, **kwargs):
+        return self._buffer.readall(*args, **kwargs)
+
+    def readinto(self, *args, **kwargs):
+        return self._buffer.readinto(*args, **kwargs)
+
+    def write(self, *args, **kwargs):
+        return self._buffer.write(*args, **kwargs)
+
+    def __del__(self, *args, **kwargs):
+        self._cleanup_fn(*self._cleanup_args)
+        return self._buffer.__del__(*args, **kwargs)
+
+
+def open_file(file_path, mode='r'):
     """
     Opens the file indicated by the given file path. Can be in a directory.
-    sub_zip_directory: If True, indicates that the given file path points to a directory that exists
-        within a zip file on Azure Blob Storage, in which case that directory will be downloaded,
-        re-zipped, and returned by this function. Default is False.
     """
     linked_bundle_path = parse_linked_bundle_url(file_path)
     if (
         linked_bundle_path.uses_beam
-        and linked_bundle_path.is_zip
-        and linked_bundle_path.zip_subpath
+        and linked_bundle_path.is_archive
+        and linked_bundle_path.archive_subpath
     ):
-        # If file path is a zip file on Azure, open the specified path within the
-        # zip file. zipfile.open only supports 'r', not 'rb', so we always pass in 'r'.
-        with SeekableZipFile(
-            FileSystems.open(linked_bundle_path.bundle_path, compression_type)
-        ) as f:
-            zinfo = f.getinfo(linked_bundle_path.zip_subpath + ("/" if sub_zip_directory else ""))
-            if zinfo.is_dir():
-                # If streaming a folder within an Azure bundle, we need to download its contents,
-                # re-archive the folder, and return the .tar.gz version of that folder.
-                with tempfile.TemporaryDirectory() as tmp_dirname:
-                    extracted_path = f.extract(zinfo, tmp_dirname)
-                    for z in f.infolist():
-                        # Extract other members of the directory.
-                        # TODO (Ashwin): Make sure this works with symlinks, too. .extract() may not work.
-                        if z.filename.startswith(linked_bundle_path.zip_subpath + "/"):
-                            f.extract(z, tmp_dirname)
-                    return zip_directory(extracted_path)
-            else:
-                return f.open(zinfo, 'r')
+        # If file path is a .tar.gz file on Azure, open the specified path within the
+        # .tar.gz file.
+        f = tarfile.open(
+            fileobj=FileSystems.open(
+                linked_bundle_path.bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+            ),
+            mode="r:gz",
+        )
+        tinfo = f.getmember("./" + linked_bundle_path.archive_subpath)
+        if tinfo.isdir():
+            # If streaming a folder within an Azure bundle, we need to download its contents,
+            # re-archive the folder, and return the .tar.gz version of that folder.
+            # with tempfile.TemporaryDirectory() as tmp_dirname:
+            tmp_dir = tempfile.TemporaryDirectory()
+            extracted_path = os.path.join(tmp_dir.name, linked_bundle_path.archive_subpath)
+            os.mkdir(extracted_path)
+            for m in f.getmembers():
+                # Extract other members of the directory.
+                # TODO (Ashwin): Make sure this works with symlinks, too. .extract() may not work.
+                if m.name.startswith("./" + linked_bundle_path.archive_subpath + "/"):
+                    f.extract(m, tmp_dir.name)
+            return ClosingStreamWrapper(
+                tar_gzip_directory(extracted_path),
+                lambda t, f: t.cleanup() and f.close(),
+                (tmp_dir, f),
+            )
+        else:
+            return ClosingStreamWrapper(f.extractfile(tinfo), lambda f: f.close(), (f,))
     return FileSystems.open(file_path, mode, compression_type=CompressionTypes.UNCOMPRESSED)
 
 
@@ -384,21 +453,22 @@ def get_file_size(file_path):
     linked_bundle_path = parse_linked_bundle_url(file_path)
     if (
         linked_bundle_path.uses_beam
-        and linked_bundle_path.is_zip
-        and linked_bundle_path.zip_subpath
+        and linked_bundle_path.is_archive
+        and linked_bundle_path.archive_subpath
     ):
-        # If file path is a zip file on Azure, open the specified path within the
-        # zip file. zipfile.open only supports 'r', not 'rb', so we always pass in 'r'.
-        with ZipFile(
-            FileSystems.open(
+        # If file path is a .tar.gz file on Azure, open the specified path within the
+        # .tar.gz file.
+        with tarfile.open(
+            fileobj=FileSystems.open(
                 linked_bundle_path.bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-            )
+            ),
+            mode="r:gz",
         ) as f:
             try:
-                zinfo = f.getinfo(linked_bundle_path.zip_subpath)
+                tinfo = f.getmember("./" + linked_bundle_path.archive_subpath)
             except KeyError:
                 raise FileNotFoundError(file_path)
-            return zinfo.file_size
+            return tinfo.size
     if not get_path_exists(file_path):
         raise FileNotFoundError(file_path)
     # TODO: add a FileSystems.size() method to Apache Beam to make this less verbose.

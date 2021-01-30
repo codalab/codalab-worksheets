@@ -7,7 +7,6 @@ from io import BytesIO
 import gzip
 import tarfile
 import unittest
-import zipfile
 
 
 class BaseUploadDownloadBundleTest(TestBase):
@@ -33,9 +32,9 @@ class BaseUploadDownloadBundleTest(TestBase):
         with gzip.GzipFile(fileobj=self.download_manager.stream_file(target, gzipped=True)) as f:
             self.assertEqual(f.read(), b"hello world")
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(tarfile.ReadError):
             with tarfile.open(
-                fileobj=self.download_manager.stream_archived_directory(target)[0], mode='r:gz'
+                fileobj=self.download_manager.stream_tarred_gzipped_directory(target), mode='r:gz'
             ) as f:
                 pass
 
@@ -65,7 +64,10 @@ class BaseUploadDownloadBundleTest(TestBase):
 
     def check_folder_target_contents(self, target, expected_members=[]):
         """Checks to make sure that the specified folder has the expected contents and can be streamed, etc."""
-        raise NotImplementedError
+        with tarfile.open(
+            fileobj=self.download_manager.stream_tarred_gzipped_directory(target), mode='r:gz'
+        ) as f:
+            self.assertEqual(sorted(f.getnames()), sorted(expected_members))
 
     def test_bundle_single_file(self):
         """Running get_target_info for a bundle with a single file."""
@@ -77,8 +79,8 @@ class BaseUploadDownloadBundleTest(TestBase):
         info = self.download_manager.get_target_info(target, 0)
         self.assertEqual(info["name"], bundle.uuid)
         self.assertEqual(info["size"], 11)
-        # TODO (Ashwin): reenable once permissions work.
-        # self.assertEqual(info["perm"], self.DEFAULT_PERM)
+
+        self.assertEqual(info["perm"], 511)
         self.assertEqual(info["type"], "file")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
         self.check_file_target_contents(target)
@@ -107,7 +109,7 @@ class BaseUploadDownloadBundleTest(TestBase):
                     {'name': 'item.txt', 'perm': self.DEFAULT_PERM, 'type': 'file'},
                     {
                         'name': 'src',
-                        'perm': 511,
+                        'perm': 493,
                         'type': 'directory',
                         'contents': [
                             {
@@ -190,20 +192,9 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest):
             use_azure_blob_beta=False,
         )
 
-    def check_folder_target_contents(self, target, expected_members=[]):
-        """Checks to make sure that the specified folder has the expected contents and can be streamed, etc."""
-        with tarfile.open(
-            fileobj=self.download_manager.stream_archived_directory(target)[0], mode='r:gz'
-        ) as f:
-            self.assertEqual(sorted(f.getnames()), sorted(expected_members))
-
 
 class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
     """Test uploading and downloading from / to Azure Blob storage."""
-
-    # TODO: permissions are not yet preserved. Remove this DEFAULT_PERM setting when
-    # permissions are properly preserved.
-    DEFAULT_PERM = 511
 
     def upload_folder(self, bundle, contents):
         f = BytesIO()
@@ -239,13 +230,3 @@ class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
             simplify_archives=True,
             use_azure_blob_beta=True,
         )
-
-    def check_folder_target_contents(self, target, expected_members=[]):
-        """Checks to make sure that the specified folder has the expected contents and can be streamed, etc."""
-        with zipfile.ZipFile(
-            self.download_manager.stream_archived_directory(target)[0], mode='r'
-        ) as f:
-            # Remove leading and trailing .'s and /'s from the member list, to account for the slight
-            # differences in .zip and .tar's member list formatting.
-            normalize_list = lambda lst: sorted([m.strip("/.") for m in lst if m.strip("/.")])
-            self.assertEqual(normalize_list(f.namelist()), normalize_list(expected_members))

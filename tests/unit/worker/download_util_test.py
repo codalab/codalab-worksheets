@@ -2,9 +2,10 @@ import tests.unit.azure_blob_mock  # noqa: F401
 from codalab.worker.download_util import get_target_info, BundleTarget
 import unittest
 import random
-from zipfile import ZipFile
+import tarfile
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
+from io import BytesIO
 
 
 class AzureBlobGetTargetInfoTest(unittest.TestCase):
@@ -21,23 +22,34 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
     def test_nested_directories(self):
         """Test getting target info of different files within a bundle that consists of nested directories, on Azure Blob Storage."""
         bundle_uuid = str(random.random())
-        bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.zip"
+        bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.tar.gz"
+
+        def writestr(tf, name, contents):
+            tinfo = tarfile.TarInfo(name)
+            tinfo.size = len(contents)
+            tf.addfile(tinfo, BytesIO(contents.encode()))
+
+        def writedir(tf, name):
+            tinfo = tarfile.TarInfo(name)
+            tinfo.type = tarfile.DIRTYPE
+            tf.addfile(tinfo, BytesIO())
+
         with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as f:
-            with ZipFile(f, "w") as zf:
+            with tarfile.open(fileobj=f, mode="w:gz") as tf:
                 # We need to create separate entries for each directories, as a regular
                 # zip file would have.
-                zf.writestr("README.md", "hello world")
-                zf.writestr("src/", "")
-                zf.writestr("src/test.sh", "echo hi")
-                zf.writestr("dist/", "")
-                zf.writestr("dist/a/", "")
-                zf.writestr("dist/a/b/", "")
-                zf.writestr("dist/a/b/test2.sh", "echo two")
+                writestr(tf, "./README.md", "hello world")
+                writedir(tf, "./src")
+                writestr(tf, "./src/test.sh", "echo hi")
+                writedir(tf, "./dist")
+                writedir(tf, "./dist/a")
+                writedir(tf, "./dist/a/b")
+                writestr(tf, "./dist/a/b/test2.sh", "echo two")
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
         self.assertEqual(
-            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 704, 'perm': 511}
+            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 246, 'perm': 511}
         )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 1)
@@ -47,12 +59,12 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
             {
                 'name': bundle_uuid,
                 'type': 'directory',
-                'size': 704,
+                'size': 246,
                 'perm': 511,
                 'contents': [
-                    {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 511},
-                    {'name': 'src', 'type': 'directory', 'size': 0, 'perm': 511},
-                    {'name': 'dist', 'type': 'directory', 'size': 0, 'perm': 511},
+                    {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 420},
+                    {'name': 'src', 'type': 'directory', 'size': 0, 'perm': 420},
+                    {'name': 'dist', 'type': 'directory', 'size': 0, 'perm': 420},
                 ],
             },
         )
@@ -60,18 +72,18 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "README.md"), 1)
         target_info.pop("resolved_target")
         self.assertEqual(
-            target_info, {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 511}
+            target_info, {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 420}
         )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "src/test.sh"), 1)
         target_info.pop("resolved_target")
-        self.assertEqual(target_info, {'name': 'test.sh', 'type': 'file', 'size': 7, 'perm': 511})
+        self.assertEqual(target_info, {'name': 'test.sh', 'type': 'file', 'size': 7, 'perm': 420})
 
         target_info = get_target_info(
             bundle_path, BundleTarget(bundle_uuid, "dist/a/b/test2.sh"), 1
         )
         target_info.pop("resolved_target")
-        self.assertEqual(target_info, {'name': 'test2.sh', 'type': 'file', 'size': 8, 'perm': 511})
+        self.assertEqual(target_info, {'name': 'test2.sh', 'type': 'file', 'size': 8, 'perm': 420})
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "src"), 1)
         target_info.pop("resolved_target")
@@ -81,8 +93,8 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
                 'name': 'src',
                 'type': 'directory',
                 'size': 0,
-                'perm': 511,
-                'contents': [{'name': 'test.sh', 'type': 'file', 'size': 7, 'perm': 511}],
+                'perm': 420,
+                'contents': [{'name': 'test.sh', 'type': 'file', 'size': 7, 'perm': 420}],
             },
         )
 
@@ -95,15 +107,15 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
             {
                 'name': 'a',
                 'size': 0,
-                'perm': 511,
+                'perm': 420,
                 'type': 'directory',
                 'contents': [
                     {
                         'name': 'b',
                         'size': 0,
-                        'perm': 511,
+                        'perm': 420,
                         'type': 'directory',
-                        'contents': [{'name': 'test2.sh', 'size': 8, 'perm': 511, 'type': 'file'}],
+                        'contents': [{'name': 'test2.sh', 'size': 8, 'perm': 420, 'type': 'file'}],
                     }
                 ],
             },

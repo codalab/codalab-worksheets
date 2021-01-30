@@ -9,7 +9,7 @@ import shutil
 from typing import Dict
 
 from codalab.lib.formatting import size_str
-from codalab.worker.file_util import remove_path, un_tar_directory, unzip_directory
+from codalab.worker.file_util import remove_path, un_tar_directory
 from codalab.worker.fsm import BaseDependencyManager, DependencyStage, StateTransitioner
 import codalab.worker.pyjson
 from codalab.worker.worker_thread import ThreadDict
@@ -396,14 +396,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                 else:
                     os.remove(dependency_path)
             if target_type == 'directory':
-                # The dependency can be a .tar.gz (if from local disk)
-                # or a .zip file (if on Azure Blob Storage).
-                if content_type == "application/gzip":
-                    un_tar_directory(fileobj, dependency_path, 'gz')
-                elif content_type == "application/zip":
-                    unzip_directory(fileobj, dependency_path)
-                else:
-                    raise Exception(f"Invalid content type: {content_type}")
+                un_tar_directory(fileobj, dependency_path, 'gz')
             else:
                 with open(dependency_path, 'wb') as f:
                     logger.debug('copying file to %s', dependency_path)

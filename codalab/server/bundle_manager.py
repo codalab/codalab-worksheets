@@ -18,7 +18,7 @@ from codalab.objects.permission import (
 from codalab.common import NotFoundError, PermissionError, parse_linked_bundle_url, normpath
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
-from codalab.worker.file_util import remove_path, un_tar_directory, unzip_directory
+from codalab.worker.file_util import remove_path, un_tar_directory
 from codalab.worker.bundle_state import State, RunResources
 from codalab.worker.download_util import get_target_info, BundleTarget
 import tempfile
@@ -263,19 +263,8 @@ class BundleManager(object):
                         # TODO (Ashwin): Unify some of the logic here with the code in DependencyManager._store_dependency()
                         # into common utility functions.
                         if target_info['type'] == 'directory':
-                            (
-                                fileobj,
-                                content_type,
-                                extension,
-                            ) = self._download_manager.stream_archived_directory(target)
-                            # The dependency can be a .tar.gz (if from local disk)
-                            # or a .zip file (if on Azure Blob Storage).
-                            if content_type == "application/gzip":
-                                un_tar_directory(fileobj, dependency_path, 'gz')
-                            elif content_type == "application/zip":
-                                unzip_directory(fileobj, dependency_path)
-                            else:
-                                raise Exception(f"Invalid content type: {content_type}")
+                            fileobj = self._download_manager.stream_tarred_gzipped_directory(target)
+                            un_tar_directory(fileobj, dependency_path, 'gz')
                         else:
                             fileobj = self._download_manager.stream_file(target, gzipped=False)
                             with open(dependency_path, 'wb') as f:

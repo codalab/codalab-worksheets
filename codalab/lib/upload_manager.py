@@ -4,7 +4,7 @@ import shutil
 
 from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
-from codalab.worker.file_util import zip_directory
+from codalab.worker.file_util import tar_gzip_directory
 from codalab.lib.beam.filesystems import AZURE_BLOB_ACCOUNT_NAME
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
@@ -124,7 +124,7 @@ class UploadManager(object):
                             simplify_archive=simplify_archives,
                         )
                     else:
-                        # We reach this code path if we are uploading zip files to Azure
+                        # We reach this code path if we are uploading archive files to Azure
                         # (in which case unpack is set to False), or uploading a single file regularly.
                         with open(source_output_path, 'wb') as out:
                             shutil.copyfileobj(source[1], out)
@@ -137,12 +137,12 @@ class UploadManager(object):
 
                 # is_directory is True if the bundle is a directory and False if it is a single file.
                 is_directory = os.path.isdir(bundle_path)
-                link_url = f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/bundles/{bundle.uuid}{'/contents.zip' if is_directory else '/contents'}"
+                link_url = f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/bundles/{bundle.uuid}{'/contents.tar.gz' if is_directory else '/contents'}"
                 with FileSystems.create(
                     link_url, compression_type=CompressionTypes.UNCOMPRESSED
                 ) as out:
                     if is_directory:
-                        shutil.copyfileobj(zip_directory(bundle_path), out)
+                        shutil.copyfileobj(tar_gzip_directory(bundle_path), out)
                     else:
                         shutil.copyfileobj(open(bundle_path, 'rb'), out)
 

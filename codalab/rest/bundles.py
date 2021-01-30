@@ -638,8 +638,9 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             abort(http.client.BAD_REQUEST, 'Head and tail not supported for directory blobs.')
         # Always return archived directories
         gzipped_stream = False  # but don't set the encoding to 'gzip'
-        fileobj, mimetype, extension = local.download_manager.stream_archived_directory(target)
-        filename += extension
+        fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
+        mimetype = "application/gzip"
+        filename += ".tar.gz"
     elif target_info['type'] == 'file':
         # Let's gzip to save bandwidth.
         # For simplicity, we do this even if the file is already a packed
