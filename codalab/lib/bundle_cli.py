@@ -1490,7 +1490,13 @@ class BundleCLI(object):
                 # or a .zip file (if on Azure Blob Storage).
                 # TODO (Ashwin): Unify some of the logic here with the code in DependencyManager._store_dependency()
                 # into common utility functions.
-                content_type = "application/zip" if parse_linked_bundle_url(nested_dict_get(info, 'metadata', 'link_url')).uses_beam else "application/gzip"
+                content_type = (
+                    "application/zip"
+                    if parse_linked_bundle_url(
+                        nested_dict_get(info, 'metadata', 'link_url')
+                    ).uses_beam
+                    else "application/gzip"
+                )
                 if content_type == "application/gzip":
                     un_tar_directory(contents, final_path, 'gz', force=args.force)
                 elif content_type == "application/zip":
