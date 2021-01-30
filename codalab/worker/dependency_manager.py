@@ -433,7 +433,6 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                         % size_str(bytes_downloaded),
                     )
 
-            # TODO(Ashwin): make this not fs-specific.
             dependency_path = os.path.join(self.dependencies_dir, dependency_state.path)
             logger.debug('Downloading dependency %s', dependency_state.dependency_key)
             try:
