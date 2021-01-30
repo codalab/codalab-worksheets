@@ -12,6 +12,7 @@ from codalab.worker.file_util import (
     summarize_file,
     tar_gzip_directory,
 )
+import logging
 
 
 class Reader(object):
@@ -26,6 +27,7 @@ class Reader(object):
         self.read_threads = []  # Threads
 
     def read(self, run_state, path, read_args, reply):
+        logging.info("reader.read")
         read_type = read_args['type']
         handler = self.read_handlers.get(read_type, None)
         if handler:
@@ -59,6 +61,7 @@ class Reader(object):
         """
         Return target_info of path in bundle as a message on the reply_fn
         """
+        logging.info("reader.get_target_info")
         target_info = None
         dep_paths = set([dep.child_path for dep in run_state.bundle.dependencies])
 

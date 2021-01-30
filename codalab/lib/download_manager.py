@@ -126,9 +126,11 @@ class DownloadManager(object):
             )
             try:
                 read_args = {'type': 'get_target_info', 'depth': depth}
+                logging.info("sent message")
                 self._send_read_message(worker, response_socket_id, target, read_args)
                 with closing(self._worker_model.start_listening(response_socket_id)) as sock:
                     result = self._worker_model.get_json_message(sock, 60)
+                logging.info("done, got message")
                 if result is None:  # dead workers are a fact of life now
                     logging.info('Unable to reach worker, bundle state {}'.format(bundle_state))
                     raise NotFoundError(

@@ -8,6 +8,7 @@ import time
 import urllib.request
 import urllib.parse
 import urllib.error
+import logging
 
 from .rest_client import RestClient, RestClientException
 from .file_util import tar_gzip_directory
@@ -129,6 +130,7 @@ class BundleServiceClient(RestClient):
 
     @wrap_exception('Unable to reply to message from bundle service')
     def reply(self, worker_id, socket_id, message):
+        logging.info("bundle_service_client.reply, %s, %s, %s", worker_id, socket_id, message)
         self._make_request(
             'POST', self._worker_url_prefix(worker_id) + '/reply/' + str(socket_id), data=message
         )

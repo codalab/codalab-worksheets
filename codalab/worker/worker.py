@@ -421,6 +421,7 @@ class Worker:
             'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
             'is_terminating': self.terminate or self.terminate_and_restage,
         }
+        logging.info("checking in")
         try:
             response = self.bundle_service.checkin(self.id, request)
             if not self.last_checkin_successful:
@@ -439,7 +440,7 @@ class Worker:
         if not response or self.terminate_and_restage or self.terminate:
             return
         action_type = response['type']
-        logger.debug('Received %s message: %s', action_type, response)
+        logger.info('Received %s message: %s', action_type, response)
         if action_type == 'run':
             self.initialize_run(response['bundle'], response['resources'])
         else:
@@ -674,7 +675,9 @@ class Worker:
         self.runs[uuid] = self.runs[uuid]._replace(finalized=True)
 
     def read(self, socket_id, uuid, path, args):
+        logging.info("worker.read()")
         def reply(err, message={}, data=None):
+            logging.info("read reply, %s, %s", message, data)
             self.bundle_service_reply(socket_id, err, message, data)
 
         try:
@@ -755,6 +758,7 @@ class Worker:
         self.bundle_service.reply(self.id, socket_id, message)
 
     def bundle_service_reply(self, socket_id, err, message, data):
+        logging.info("worker.bundle_service_reply")
         if err:
             err = {'error_code': err[0], 'error_message': err[1]}
             self.bundle_service.reply(self.id, socket_id, err)

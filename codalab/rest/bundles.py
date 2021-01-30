@@ -435,6 +435,7 @@ def _fetch_bundle_contents_info(uuid, path=''):
     }
     ```
     """
+    logging.info("start get contents info")
     depth = query_get_type(int, 'depth', default=0)
     target = BundleTarget(uuid, path)
     if depth < 0:
@@ -442,7 +443,9 @@ def _fetch_bundle_contents_info(uuid, path=''):
 
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     try:
+        logging.info("start get_target_info")
         info = local.download_manager.get_target_info(target, depth)
+        logging.info("end get_target_info!")
         # Object is not JSON serializable so submit its dict in API response
         # The client is responsible for deserializing it
         info['resolved_target'] = info['resolved_target'].__dict__

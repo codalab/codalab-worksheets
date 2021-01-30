@@ -5,6 +5,7 @@ from contextlib import closing
 import http.client
 import json
 from datetime import datetime
+import logging
 
 from bottle import abort, get, local, post, request, response
 
@@ -71,6 +72,7 @@ def reply(worker_id, socket_id):
     """
     Replies with a single JSON message to the given socket ID.
     """
+    logging.info("received reply %s, %s, %s", worker_id, socket_id, request.json)
     check_reply_permission(worker_id, socket_id)
     local.worker_model.send_json_message(socket_id, request.json, 60, autoretry=False)
 
