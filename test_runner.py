@@ -12,7 +12,6 @@ import string
 import subprocess
 import sys
 import time
-import os
 
 
 class TestRunner(object):
