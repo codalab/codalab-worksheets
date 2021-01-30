@@ -2527,7 +2527,7 @@ class BundleCLI(object):
         info = self.print_target_info(client, target, head=args.head, tail=args.tail)
         if info is None:
             raise UsageError(
-                'Target {} doesn\'t exist in bundle {}'.format(target.subpath, target.bundle_uuid)
+                "Target '{}' doesn't exist in bundle {}".format(target.subpath, target.bundle_uuid)
             )
 
     # Helper: shared between info and cat

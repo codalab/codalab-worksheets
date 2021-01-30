@@ -67,11 +67,16 @@ def get_target_info(bundle_path, target, depth):
     if parse_linked_bundle_url(final_path).uses_beam:
         # If the target is on Azure, use a special method using Apache Beam
         # to get the target info.
-        info = _compute_target_info_beam(final_path, depth)
+        try:
+            info = _compute_target_info_beam(final_path, depth)
+        except PathException:
+            raise PathException(
+                "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
+            )
     else:
         if not os.path.islink(final_path) and not os.path.exists(final_path):
             raise PathException(
-                'Path {} in bundle {} not found'.format(target.bundle_uuid, target.subpath)
+                "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
             )
         info = _compute_target_info_local(final_path, depth)
 
@@ -156,6 +161,8 @@ def _compute_target_info_beam(path, depth):
 
     # TODO (Ashwin): properly return permissions.
     linked_bundle_path = parse_linked_bundle_url(path)
+    if not FileSystems.exists(linked_bundle_path.bundle_path):
+        raise PathException
     if not linked_bundle_path.is_zip:
         # Single file
         file = FileSystems.match([path])[0].metadata_list[0]
@@ -188,7 +195,13 @@ def _compute_target_info_beam(path, depth):
         ]
 
         def _get_info(path, depth):
-            zipinfo = next(z for z in zipinfos if z.filename == path or z.filename == path + '/')
+            try:
+                zipinfo = next(
+                    z for z in zipinfos if z.filename == path or z.filename == path + '/'
+                )
+            except StopIteration:
+                # Not found
+                raise PathException
             result = {}
             result['name'] = zipinfo.filename.strip("/").split("/")[-1]  # get last part of path
             result['size'] = zipinfo.file_size
