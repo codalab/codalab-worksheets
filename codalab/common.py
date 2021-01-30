@@ -207,7 +207,7 @@ def parse_linked_bundle_url(url):
     )
 
 
-def normpath(self, path):
+def normpath(path):
     """Performs os.path.normpath on a path if it is on the filesystem, but if it is on Beam,
     doesn't do anything to the path.
     """
