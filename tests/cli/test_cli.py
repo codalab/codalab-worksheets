@@ -583,12 +583,6 @@ def test_unittest(ctx):
         ['coverage', 'report', '--rcfile=tests/unit/.coveragerc'], max_output_chars=sys.maxsize
     )
 
-    # Ensure that environment variables such as CODALAB_ALWAYS_USE_AZURE_BLOB_BETA
-    # were properly passed down to the subprocess.
-    if os.getenv('CODALAB_ALWAYS_USE_AZURE_BLOB_BETA') == '1':
-        output = _run_command(['printenv', 'CODALAB_ALWAYS_USE_AZURE_BLOB_BETA'])
-        check_equals(output, os.getenv('CODALAB_ALWAYS_USE_AZURE_BLOB_BETA'))
-
 
 @TestModule.register('gen-rest-docs')
 def test_gen_rest_docs(ctx):

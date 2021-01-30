@@ -719,7 +719,8 @@ def _update_bundle_contents_blob(uuid):
       the upload completes successfully. Must be either 'ready' or 'failed'.
       Default is 'ready'.
     - `use_azure_blob_beta`: (optional) Use Azure Blob Storage to store the bundle.
-      Default is False.
+      Default is False. If CODALAB_ALWAYS_USE_AZURE_BLOB_BETA is set, this parameter
+      is disregarded, as Azure Blob Storage will always be used.
     """
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
@@ -729,7 +730,9 @@ def _update_bundle_contents_blob(uuid):
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
     finalize_on_success = query_get_bool('finalize_on_success', default=True)
-    use_azure_blob_beta = query_get_bool('use_azure_blob_beta', default=False)
+    use_azure_blob_beta = os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") or query_get_bool(
+        'use_azure_blob_beta', default=False
+    )
     final_state = request.query.get('state_on_success', default=State.READY)
     if finalize_on_success and final_state not in State.FINAL_STATES:
         abort(

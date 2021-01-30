@@ -90,10 +90,10 @@ In order to enable Azure Blob Storage as a bundle store, follow these instructio
 1. Create a container named "bundles" from the Azure Portal.
 1. Set the `CODALAB_AZURE_BLOB_CONNECTION_STRING` environment variable to the Blob Storage connection string before starting the server.
 
-You can also force usage of Azure Blob Storage for all uploads by setting the environment variable `CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=1` on the client. For example,
+If you want to force the rest server to always use Azure Blob Storage in the upload endpoint, set the `CODALAB_ALWAYS_USE_AZURE_BLOB_BETA` environment variable there:
 
 ```bash
-CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=1 cl upload test.txt
+CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=1 cls start -bd
 ```
 
 ### Local development
