@@ -15,7 +15,7 @@ from codalab.objects.permission import (
     check_bundles_have_read_permission,
     check_bundle_have_run_permission,
 )
-from codalab.common import NotFoundError, PermissionError
+from codalab.common import NotFoundError, PermissionError, parse_linked_bundle_url
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
@@ -221,11 +221,21 @@ class BundleManager(object):
                     os.path.join(parent_bundle_path, dep.parent_path)
                 )
                 if not dependency_path.startswith(parent_bundle_path) or (
-                    not os.path.islink(dependency_path) and not os.path.exists(dependency_path)
+                    not os.path.islink(dependency_path)
+                    and not os.path.exists(dependency_path)
+                    and not parse_linked_bundle_url(dependency_path).uses_beam
                 ):
+                    # raise Exception(
+                    #     'Invalid dependency %s'
+                    #     % (path_util.safe_join(dep.parent_uuid, dep.parent_path))
+                    # )
                     raise Exception(
-                        'Invalid dependency %s'
-                        % (path_util.safe_join(dep.parent_uuid, dep.parent_path))
+                        'Invalid dependency %s, %s, %s'
+                        % (
+                            path_util.safe_join(dep.parent_uuid, dep.parent_path),
+                            dependency_path,
+                            parent_bundle_path,
+                        )
                     )
 
                 child_path = os.path.normpath(os.path.join(path, dep.child_path))
@@ -243,7 +253,6 @@ class BundleManager(object):
                 for dependency_path, child_path in deps:
                     path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
-            # TODO(Ashwin): fix
             self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
