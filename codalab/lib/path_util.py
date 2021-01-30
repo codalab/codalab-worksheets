@@ -309,6 +309,7 @@ def remove(path):
     """
     if parse_linked_bundle_url(path).uses_beam:
         from apache_beam.io.filesystems import FileSystems
+
         if not FileSystems.exists(path):
             FileSystems.delete([path])
         return

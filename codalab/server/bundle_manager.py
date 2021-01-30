@@ -211,7 +211,9 @@ class BundleManager(object):
         try:
             with tempfile.TemporaryDirectory() as tempdir:
                 bundle_link_url = getattr(bundle.metadata, "link_url", None)
-                bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
+                bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(
+                    bundle.uuid
+                )
 
                 path = normpath(bundle_location)
 
