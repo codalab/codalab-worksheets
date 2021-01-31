@@ -414,12 +414,10 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
         def friendly_render_dep(dep):
             key = dep['child_path'] or dep['parent_name'] or ''
             friendly_parent_name = formatting.verbose_contents_str(dep['parent_name'])
-            value = (
-                key
-                + '{'
-                + (friendly_parent_name + ':' if key != dep['parent_name'] else '')
-                + dep['parent_uuid'][0:4]
-                + '}'
+            value = "%s{%s%s}" % (
+                key,
+                friendly_parent_name + ':' if key != dep['parent_name'] else '',
+                dep['parent_uuid'][0:4],
             )
             return key, value
 
