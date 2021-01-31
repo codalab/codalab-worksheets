@@ -180,7 +180,7 @@ def _compute_target_info_beam(path, depth):
     ) as f:
         tinfos = [tinfo for tinfo in f.getmembers()]
 
-    islink = lambda tinfo: tinfo.islnk()
+    islink = lambda tinfo: tinfo.issym()
     readlink = lambda tinfo: tinfo.linkname
 
     isfile = lambda tinfo: tinfo.isfile()
@@ -200,11 +200,10 @@ def _compute_target_info_beam(path, depth):
             # Not found
             raise PathException
         result = {}
-        result['name'] = tinfo.name.strip("/").split("/")[-1]  # get last part of path
+        result['name'] = tinfo.name.split("/")[-1]  # get last part of path
         result['size'] = tinfo.size
         result['perm'] = tinfo.mode
         if islink(tinfo):
-            # See https://discuss.python.org/t/how-info-zip-represents-symlinks/4104
             result['type'] = 'link'
             result['link'] = readlink(tinfo)
         elif isfile(tinfo):
