@@ -7,6 +7,8 @@ import logging
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar
 import stat
 from io import BytesIO
+import tempfile
+import shutil
 
 
 class PathException(Exception):
@@ -73,9 +75,9 @@ def get_target_info(bundle_path, target, depth):
         try:
             logging.info("going to _compute_target_info_beam")
             info = _compute_target_info_beam(final_path, depth)
-            logging.info("info is %s", info)
         except Exception:
             import traceback
+
             logging.info("error!")
             logging.info("error: %s", traceback.format_exc())
             raise PathException(
@@ -180,15 +182,22 @@ def _compute_target_info_beam(path, depth):
             'size': file.size_in_bytes,
             'perm': 0o777,
         }
-    with FileSystems.open(
+    with tempfile.NamedTemporaryFile(suffix=".sqlite") as index_file, FileSystems.open(
         linked_bundle_path.bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
     ) as f:
+        shutil.copyfileobj(
+            FileSystems.open(
+                linked_bundle_path.bundle_path.replace("/contents.tar.gz", "/index.sqlite"),
+                compression_type=CompressionTypes.UNCOMPRESSED,
+            ),
+            index_file,
+        )
         tf = SQLiteIndexedTar(
             fileObject=f,
             tarFileName=linked_bundle_path.bundle_uuid,
-            writeIndex=True,
-            clearIndexCache=True,
-            indexFileName=f"/tmp/{linked_bundle_path.bundle_uuid}.sqlite",
+            writeIndex=False,
+            clearIndexCache=False,
+            indexFileName=index_file.name,
         )
         islink = lambda finfo: stat.S_ISLNK(finfo.mode)
         readlink = lambda finfo: finfo.linkname
@@ -196,8 +205,6 @@ def _compute_target_info_beam(path, depth):
         isfile = lambda finfo: finfo.type in tarfile.REGULAR_TYPES
         isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
         listdir = lambda path: tf.getFileInfo(path, listDir=True)
-
-        logging.info("initial listdir: %s", listdir("/"))
 
         def _get_info(path, depth):
             if not path.startswith("/"):
@@ -219,7 +226,9 @@ def _compute_target_info_beam(path, depth):
                 result['type'] = 'directory'
                 if depth > 0:
                     result['contents'] = [
-                        _get_info(path + "/" + file_name, depth - 1) for file_name in listdir(path) if file_name != "."
+                        _get_info(path + "/" + file_name, depth - 1)
+                        for file_name in listdir(path)
+                        if file_name != "."
                     ]
             return result
 
@@ -241,5 +250,4 @@ def _compute_target_info_beam(path, depth):
                     for file_name in listdir("/")
                     if file_name != "."
                 ]
-                logging.info("listdir %s, %s, %s", linked_bundle_path.bundle_uuid, listdir("/"), listdir("/" + linked_bundle_path.bundle_uuid))
             return result

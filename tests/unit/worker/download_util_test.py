@@ -6,6 +6,9 @@ import tarfile
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from io import BytesIO
+import tempfile
+from codalab.lib.beam.ratarmount import SQLiteIndexedTar
+import shutil
 
 
 class AzureBlobGetTargetInfoTest(unittest.TestCase):
@@ -34,22 +37,48 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
             tinfo.type = tarfile.DIRTYPE
             tf.addfile(tinfo, BytesIO())
 
-        with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as f:
-            with tarfile.open(fileobj=f, mode="w:gz") as tf:
-                # We need to create separate entries for each directories, as a regular
-                # zip file would have.
-                writestr(tf, "./README.md", "hello world")
-                writedir(tf, "./src")
-                writestr(tf, "./src/test.sh", "echo hi")
-                writedir(tf, "./dist")
-                writedir(tf, "./dist/a")
-                writedir(tf, "./dist/a/b")
-                writestr(tf, "./dist/a/b/test2.sh", "echo two")
+        f = BytesIO()
+        with tarfile.open(fileobj=f, mode="w:gz") as tf:
+            # We need to create separate entries for each directory, as a regular
+            # .tar.gz file would have.
+            writestr(tf, "./README.md", "hello world")
+            writedir(tf, "./src")
+            writestr(tf, "./src/test.sh", "echo hi")
+            writedir(tf, "./dist")
+            writedir(tf, "./dist/a")
+            writedir(tf, "./dist/a/b")
+            writestr(tf, "./dist/a/b/test2.sh", "echo two")
+        f.seek(0)
+        # TODO: unify this code with code in upload_manager.
+        with FileSystems.create(
+            bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+        ) as out, tempfile.NamedTemporaryFile(
+            suffix=".tar.gz"
+        ) as tmp_tar_file, tempfile.NamedTemporaryFile(
+            suffix=".sqlite"
+        ) as tmp_index_file:
+            shutil.copyfileobj(f, tmp_tar_file)
+            tmp_tar_file.seek(0)
+            shutil.copyfileobj(tmp_tar_file, out)
+            tmp_tar_file.seek(0)
+            with open(tmp_tar_file.name, "rb") as ttf:
+                SQLiteIndexedTar(
+                    fileObject=ttf,
+                    tarFileName=bundle_uuid,
+                    writeIndex=True,
+                    clearIndexCache=True,
+                    indexFileName=tmp_index_file.name,
+                )
+            with FileSystems.create(
+                bundle_path.replace("/contents.tar.gz", "/index.sqlite"),
+                compression_type=CompressionTypes.UNCOMPRESSED,
+            ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
+                shutil.copyfileobj(tif, out_index_file)
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
         self.assertEqual(
-            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 246, 'perm': 511}
+            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 233, 'perm': 511}
         )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 1)
@@ -59,12 +88,12 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
             {
                 'name': bundle_uuid,
                 'type': 'directory',
-                'size': 246,
+                'size': 233,
                 'perm': 511,
                 'contents': [
                     {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 420},
-                    {'name': 'src', 'type': 'directory', 'size': 0, 'perm': 420},
                     {'name': 'dist', 'type': 'directory', 'size': 0, 'perm': 420},
+                    {'name': 'src', 'type': 'directory', 'size': 0, 'perm': 420},
                 ],
             },
         )
@@ -101,7 +130,7 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
         # Return all depths
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, "dist/a"), 999)
         target_info.pop("resolved_target")
-        print(target_info)
+
         self.assertEqual(
             target_info,
             {
