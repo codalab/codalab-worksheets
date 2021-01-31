@@ -49,7 +49,6 @@ from codalab.common import (
     precondition,
     UsageError,
     ensure_str,
-    parse_linked_bundle_url,
 )
 from codalab.lib import (
     bundle_util,

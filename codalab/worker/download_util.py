@@ -2,7 +2,6 @@ import os
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tarfile
-import stat
 from codalab.common import parse_linked_bundle_url
 
 
