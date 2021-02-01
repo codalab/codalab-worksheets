@@ -4,7 +4,9 @@ from apache_beam.io.filesystems import FileSystems
 import tarfile
 from codalab.common import parse_linked_bundle_url
 import logging
+from codalab.worker.file_util import open_indexed_tar_gz_file
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar
+
 import stat
 from io import BytesIO
 import tempfile
@@ -169,7 +171,6 @@ def _compute_target_info_beam(path, depth):
     """Computes target info for a file that is externalized on a location
     such as Azure, by using the Apache Beam FileSystem APIs."""
 
-    # TODO (Ashwin): properly return permissions.
     linked_bundle_path = parse_linked_bundle_url(path)
     if not FileSystems.exists(linked_bundle_path.bundle_path):
         raise PathException
@@ -182,72 +183,55 @@ def _compute_target_info_beam(path, depth):
             'size': file.size_in_bytes,
             'perm': 0o777,
         }
-    with tempfile.NamedTemporaryFile(suffix=".sqlite") as index_file, FileSystems.open(
-        linked_bundle_path.bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-    ) as f:
-        shutil.copyfileobj(
-            FileSystems.open(
-                linked_bundle_path.bundle_path.replace("/contents.tar.gz", "/index.sqlite"),
-                compression_type=CompressionTypes.UNCOMPRESSED,
-            ),
-            index_file,
-        )
-        tf = SQLiteIndexedTar(
-            fileObject=f,
-            tarFileName=linked_bundle_path.bundle_uuid,
-            writeIndex=False,
-            clearIndexCache=False,
-            indexFileName=index_file.name,
-        )
-        islink = lambda finfo: stat.S_ISLNK(finfo.mode)
-        readlink = lambda finfo: finfo.linkname
 
-        isfile = lambda finfo: finfo.type in tarfile.REGULAR_TYPES
-        isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
-        listdir = lambda path: tf.getFileInfo(path, listDir=True)
+    tf, _ = open_indexed_tar_gz_file(linked_bundle_path.bundle_path)
+    islink = lambda finfo: stat.S_ISLNK(finfo.mode)
+    readlink = lambda finfo: finfo.linkname
 
-        def _get_info(path, depth):
-            if not path.startswith("/"):
-                path = "/" + path
-            finfo = tf.getFileInfo(path)
-            if finfo is None:
-                # Not found
-                raise PathException
-            result = {}
-            result['name'] = path.split("/")[-1]  # get last part of path
-            result['size'] = finfo.size
-            result['perm'] = finfo.mode & 0o777
-            if islink(finfo):
-                result['type'] = 'link'
-                result['link'] = readlink(finfo)
-            elif isfile(finfo):
-                result['type'] = 'file'
-            elif isdir(finfo):
-                result['type'] = 'directory'
-                if depth > 0:
-                    result['contents'] = [
-                        _get_info(path + "/" + file_name, depth - 1)
-                        for file_name in listdir(path)
-                        if file_name != "."
-                    ]
-            return result
+    isfile = lambda finfo: finfo.type in tarfile.REGULAR_TYPES
+    isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
+    listdir = lambda path: tf.getFileInfo(path, listDir=True)
 
-        if linked_bundle_path.archive_subpath:
-            # Return the contents of a subpath within a directory.
-            return _get_info(linked_bundle_path.archive_subpath, depth)
-        else:
-            # No subpath, return the entire directory.
-            file = FileSystems.match([path])[0].metadata_list[0]
-            result = {
-                'name': linked_bundle_path.bundle_uuid,
-                'type': 'directory',
-                'size': file.size_in_bytes,
-                'perm': 0o777,
-            }
+    def _get_info(path, depth):
+        if not path.startswith("/"):
+            path = "/" + path
+        finfo = tf.getFileInfo(path)
+        if finfo is None:
+            # Not found
+            raise PathException
+        result = {}
+        result['name'] = path.split("/")[-1]  # get last part of path
+        result['size'] = finfo.size
+        result['perm'] = finfo.mode & 0o777
+        if islink(finfo):
+            result['type'] = 'link'
+            result['link'] = readlink(finfo)
+        elif isfile(finfo):
+            result['type'] = 'file'
+        elif isdir(finfo):
+            result['type'] = 'directory'
             if depth > 0:
                 result['contents'] = [
-                    _get_info(file_name, depth - 1)
-                    for file_name in listdir("/")
+                    _get_info(path + "/" + file_name, depth - 1)
+                    for file_name in listdir(path)
                     if file_name != "."
                 ]
-            return result
+        return result
+
+    if linked_bundle_path.archive_subpath:
+        # Return the contents of a subpath within a directory.
+        return _get_info(linked_bundle_path.archive_subpath, depth)
+    else:
+        # No subpath, return the entire directory.
+        file = FileSystems.match([path])[0].metadata_list[0]
+        result = {
+            'name': linked_bundle_path.bundle_uuid,
+            'type': 'directory',
+            'size': file.size_in_bytes,
+            'perm': 0o777,
+        }
+        if depth > 0:
+            result['contents'] = [
+                _get_info(file_name, depth - 1) for file_name in listdir("/") if file_name != "."
+            ]
+        return result

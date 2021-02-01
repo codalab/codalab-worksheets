@@ -89,9 +89,25 @@ class BaseUploadDownloadBundleTest(TestBase):
         """Running get_target_info for a bundle with a folder, and with subpaths."""
         bundle = self.create_run_bundle()
         self.save_bundle(bundle)
-        self.upload_folder(
-            bundle, [("item.txt", b"hello world"), ("src/item2.txt", b"hello world")]
-        )
+
+        f = BytesIO()
+
+        def writestr(tf, name, contents):
+            tinfo = tarfile.TarInfo(name)
+            tinfo.size = len(contents)
+            tf.addfile(tinfo, BytesIO(contents.encode()))
+
+        def writedir(tf, name):
+            tinfo = tarfile.TarInfo(name)
+            tinfo.type = tarfile.DIRTYPE
+            tf.addfile(tinfo, BytesIO())
+
+        f.seek(0)
+        with tarfile.open(fileobj=f, mode="w:gz") as tf:
+            writestr(tf, "./item.txt", "hello world")
+            writestr(tf, "./src/item2.txt", "hello world")
+        f.seek(0)
+        self.upload_folder(bundle, f)
 
         target = BundleTarget(bundle.uuid, "")
         info = self.download_manager.get_target_info(target, 2)
@@ -157,14 +173,7 @@ class BaseUploadDownloadBundleTest(TestBase):
 class RegularBundleStoreTest(BaseUploadDownloadBundleTest):
     """Test uploading and downloading from / to a regular, file-based bundle store."""
 
-    def upload_folder(self, bundle, contents):
-        f = BytesIO()
-        with tarfile.open(fileobj=f, mode='w:gz') as tf:
-            for item in contents:
-                tinfo = tarfile.TarInfo(name=item[0])
-                tinfo.size = len(item[1])
-                tf.addfile(tinfo, BytesIO(item[1]))
-        f.seek(0)
+    def upload_folder(self, bundle, f):
         sources = [["contents.tar.gz", f]]
         self.upload_manager.upload_to_bundle_store(
             bundle,
@@ -196,14 +205,7 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest):
 class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
     """Test uploading and downloading from / to Azure Blob storage."""
 
-    def upload_folder(self, bundle, contents):
-        f = BytesIO()
-        with tarfile.open(fileobj=f, mode='w:gz') as tf:
-            for item in contents:
-                tinfo = tarfile.TarInfo(name=item[0])
-                tinfo.size = len(item[1])
-                tf.addfile(tinfo, BytesIO(item[1]))
-        f.seek(0)
+    def upload_folder(self, bundle, f):
         sources = [["contents.tar.gz", f]]
         self.upload_manager.upload_to_bundle_store(
             bundle,

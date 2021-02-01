@@ -37,19 +37,7 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
             tinfo.type = tarfile.DIRTYPE
             tf.addfile(tinfo, BytesIO())
 
-        f = BytesIO()
-        with tarfile.open(fileobj=f, mode="w:gz") as tf:
-            # We need to create separate entries for each directory, as a regular
-            # .tar.gz file would have.
-            writestr(tf, "./README.md", "hello world")
-            writedir(tf, "./src")
-            writestr(tf, "./src/test.sh", "echo hi")
-            writedir(tf, "./dist")
-            writedir(tf, "./dist/a")
-            writedir(tf, "./dist/a/b")
-            writestr(tf, "./dist/a/b/test2.sh", "echo two")
-        f.seek(0)
-        # TODO: unify this code with code in upload_manager.
+        # TODO: Unify this code with code in UploadManager.upload_to_bundle_store().
         with FileSystems.create(
             bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
         ) as out, tempfile.NamedTemporaryFile(
@@ -57,10 +45,17 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
         ) as tmp_tar_file, tempfile.NamedTemporaryFile(
             suffix=".sqlite"
         ) as tmp_index_file:
-            shutil.copyfileobj(f, tmp_tar_file)
-            tmp_tar_file.seek(0)
+            with tarfile.open(name=tmp_tar_file.name, mode="w:gz") as tf:
+                # We need to create separate entries for each directory, as a regular
+                # .tar.gz file would have.
+                writestr(tf, "./README.md", "hello world")
+                writedir(tf, "./src")
+                writestr(tf, "./src/test.sh", "echo hi")
+                writedir(tf, "./dist")
+                writedir(tf, "./dist/a")
+                writedir(tf, "./dist/a/b")
+                writestr(tf, "./dist/a/b/test2.sh", "echo two")
             shutil.copyfileobj(tmp_tar_file, out)
-            tmp_tar_file.seek(0)
             with open(tmp_tar_file.name, "rb") as ttf:
                 SQLiteIndexedTar(
                     fileObject=ttf,
@@ -78,7 +73,7 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
         self.assertEqual(
-            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 233, 'perm': 511}
+            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 249, 'perm': 511}
         )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 1)
@@ -88,7 +83,7 @@ class AzureBlobGetTargetInfoTest(unittest.TestCase):
             {
                 'name': bundle_uuid,
                 'type': 'directory',
-                'size': 233,
+                'size': 249,
                 'perm': 511,
                 'contents': [
                     {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 420},

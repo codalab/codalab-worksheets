@@ -142,31 +142,27 @@ class UploadManager(object):
                 link_url = f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/bundles/{bundle.uuid}{'/contents.tar.gz' if is_directory else '/contents'}"
                 with FileSystems.create(
                     link_url, compression_type=CompressionTypes.UNCOMPRESSED
-                ) as out:
+                ) as out, tempfile.NamedTemporaryFile(
+                    suffix=".tar.gz"
+                ) as tmp_tar_file, tempfile.NamedTemporaryFile(
+                    suffix=".sqlite"
+                ) as tmp_index_file:
                     if is_directory:
-                        f = tar_gzip_directory(bundle_path)
-                        with tempfile.NamedTemporaryFile(
-                            suffix=".tar.gz"
-                        ) as tmp_tar_file, tempfile.NamedTemporaryFile(
-                            suffix=".sqlite"
-                        ) as tmp_index_file:
-                            shutil.copyfileobj(f, tmp_tar_file)
-                            tmp_tar_file.seek(0)
-                            shutil.copyfileobj(tmp_tar_file, out)
-                            tmp_tar_file.seek(0)
-                            with open(tmp_tar_file.name, "rb") as ttf:
-                                SQLiteIndexedTar(
-                                    fileObject=ttf,
-                                    tarFileName=bundle.uuid,
-                                    writeIndex=True,
-                                    clearIndexCache=True,
-                                    indexFileName=tmp_index_file.name,
-                                )
-                            with FileSystems.create(
-                                link_url.replace("/contents.tar.gz", "/index.sqlite"),
-                                compression_type=CompressionTypes.UNCOMPRESSED,
-                            ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
-                                shutil.copyfileobj(tif, out_index_file)
+                        tar_gzip_directory(bundle_path, output_path=tmp_tar_file.name)
+                        shutil.copyfileobj(tmp_tar_file, out)
+                        with open(tmp_tar_file.name, "rb") as ttf:
+                            SQLiteIndexedTar(
+                                fileObject=ttf,
+                                tarFileName=bundle.uuid,
+                                writeIndex=True,
+                                clearIndexCache=True,
+                                indexFileName=tmp_index_file.name,
+                            )
+                        with FileSystems.create(
+                            link_url.replace("/contents.tar.gz", "/index.sqlite"),
+                            compression_type=CompressionTypes.UNCOMPRESSED,
+                        ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
+                            shutil.copyfileobj(tif, out_index_file)
                     else:
                         shutil.copyfileobj(open(bundle_path, 'rb'), out)
 
