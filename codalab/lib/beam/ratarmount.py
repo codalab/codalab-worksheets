@@ -1054,7 +1054,7 @@ class SQLiteIndexedTar:
         fileVersions = self.getFileInfo(path, listVersions=True)
         return len(fileVersions) if isinstance(fileVersions, dict) else 0
 
-    def read(self, path: str, size: int, offset: int, fileInfo: Optional[FileInfo] = None) -> bytes:
+    def read(self, path: str, size: int = None, offset: int = 0, fileInfo: Optional[FileInfo] = None) -> bytes:
         """
         fileInfo: This argument can be specified for performance reasons. It must be the FileInfo object for path!
         """
@@ -1064,6 +1064,9 @@ class SQLiteIndexedTar:
                 fileInfo = queriedFileInfo
         if not isinstance(fileInfo, FileInfo):
             raise ValueError("Specified path '{}' is not a file that can be read!".format(path))
+
+        if size is None:
+            size = fileInfo.size
 
         # Dereference hard links
         if not stat.S_ISREG(fileInfo.mode) and not stat.S_ISLNK(fileInfo.mode) and fileInfo.linkname:
