@@ -134,6 +134,7 @@ Name | Type
 `affiliation` | String
 `url` | Url
 `date_joined` | LocalDateTime
+`avatar_id` | String
 `email` | String
 `notifications` | Integer
 `time_quota` | Integer
@@ -157,6 +158,7 @@ Name | Type
 `affiliation` | String
 `url` | Url
 `date_joined` | LocalDateTime
+`avatar_id` | String
 `email` | String
 `notifications` | Integer
 `time_quota` | Integer
@@ -251,6 +253,7 @@ Name | Type
 `affiliation` | String
 `url` | Url
 `date_joined` | LocalDateTime
+`avatar_id` | String
 
 ## worksheet-items
 
