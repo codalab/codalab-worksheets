@@ -1170,13 +1170,16 @@ class Worksheet extends React.Component {
                                 inSourceEditMode: false,
                                 editorEnabled: false,
                             }); // Needs to be after getting the raw contents
-                            if (saveChanges) {
-                                this.saveAndUpdateWorksheet(saveChanges, rawIndex);
-                            } else {
-                                this.reloadWorksheet(undefined, rawIndex);
-                            }
+                            this.saveAndUpdateWorksheet(saveChanges, rawIndex);
                         },
                     );
+                } else {
+                    var rawIndex = editor.getCursorPosition().row;
+                    this.setState({
+                        inSourceEditMode: false,
+                        editorEnabled: false,
+                    });
+                    this.reloadWorksheet(undefined, rawIndex);
                 }
             } else {
                 // Not allowed to edit the worksheet.
