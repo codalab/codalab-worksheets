@@ -15,10 +15,6 @@ import $ from 'jquery';
 import { createAlertText, getDefaultBundleMetadata } from '../../util/worksheet_utils';
 import Avatar from '@material-ui/core/Avatar';
 
-// TODO: ONLY SHOW THE EDITOR FOR AUTH USER
-// TODO: ADD Field to DB; Update profile filed
-// TODO: FOR AVATAR, fetch content from user info in DB
-
 const styles = (theme) => ({
     root: {
         margin: 10,
@@ -67,6 +63,7 @@ const DialogActions = withStyles((theme) => ({
     },
 }))(MuiDialogActions);
 
+// Convert the image file to DataURL format
 const getBase64 = (img, callback) => {
     const reader = new FileReader();
     reader.addEventListener('load', () => callback(reader.result));
@@ -74,6 +71,13 @@ const getBase64 = (img, callback) => {
 };
 
 class EditableAvatar extends React.Component {
+    componentDidMount() {
+        if (this.props.userInfo.avatar_id) {
+            // Fetch user's uploaded avatar image
+            this.fetchImg(this.props.userInfo.avatar_id);
+        }
+    }
+
     handleClickOpen = () => {
         this.setState({ isOpen: true });
     };
@@ -82,9 +86,9 @@ class EditableAvatar extends React.Component {
     };
 
     state = {
-        isOpen: false,
-        avatar: '',
-        file: null,
+        isOpen: false, // Whether the avatar editor is open or not
+        avatar: '', // DataURL of the avatar image
+        file: null, // Newly uploaded avatar image
     };
 
     handleChange = (file) => {
@@ -96,9 +100,9 @@ class EditableAvatar extends React.Component {
                 file: file,
             });
         });
-        return false;
     };
 
+    // Fetch the image file represented by the bundle
     fetchImg(bundleUuid) {
         // Set defaults
         let url = '/rest/bundles/' + bundleUuid + '/contents/blob/';
@@ -108,7 +112,6 @@ class EditableAvatar extends React.Component {
                 if (response.ok) {
                     return response.arrayBuffer();
                 }
-
                 throw new Error('Network response was not ok.');
             })
             .then(function(data) {
@@ -120,23 +123,20 @@ class EditableAvatar extends React.Component {
                             '',
                         ),
                     );
-
-                // this.setState({
-                //     avatar: dataUrl,
-                // });
-
                 return dataUrl;
             })
             .then((dataUrl) => {
+                // Update avatar shown on the page
                 this.setState({
                     avatar: dataUrl,
                 });
             })
             .catch(function(error) {
-                alert(createAlertText(url, error.responseText));
+                console.log(url, error.responseText);
             });
     }
 
+    // Upload the avatar image as a bundle to the bundle store
     uploadImgAsync(bundleUuid, file, fileName) {
         return new Promise((resolve, reject) => {
             let reader = new FileReader();
@@ -165,7 +165,37 @@ class EditableAvatar extends React.Component {
         });
     }
 
-    // Upload the adjusted avatar
+    // Store the bundle uuid of the avatar to database
+    saveAvatarToDB(bundleUuid) {
+        // Construct a user object for updating user information
+        // Three fields needed: attributes/type/id
+        const newUser = $.extend({}, this.props.userInfo);
+        newUser.attributes = {};
+        newUser.attributes['avatar_id'] = bundleUuid;
+        newUser.type = 'users';
+        newUser.id = this.props.userInfo.user_id;
+
+        // Push changes to server
+        $.ajax({
+            method: 'PATCH',
+            url: '/rest/user',
+            data: JSON.stringify({ data: newUser }),
+            dataType: 'json',
+            contentType: 'application/json',
+            context: this,
+            xhr: function() {
+                // Hack for IE < 9 to use PATCH method
+                return window.XMLHttpRequest === null ||
+                    new window.XMLHttpRequest().addEventListener === null
+                    ? new window.ActiveXObject('Microsoft.XMLHTTP')
+                    : $.ajaxSettings.xhr();
+            },
+        }).fail(function(xhr, status, err) {
+            console.log(err);
+        });
+    }
+
+    // Callback function for avatar editor to upload the adjusted avatar
     submitAvatar = async () => {
         if (!this.editor.props.image) {
             // No image file chosen
@@ -173,13 +203,13 @@ class EditableAvatar extends React.Component {
             this.setState({
                 isOpen: false,
             });
-
             return;
         }
+
         this.editor.getImage().toBlob(async (blob) => {
             this.setState({
                 isOpen: false,
-                headPhoto: this.editor.getImage().toDataURL(), // 编辑完成后的图片base64
+                avatar: this.editor.getImage().toDataURL(),
                 file: blob,
             });
 
@@ -197,18 +227,24 @@ class EditableAvatar extends React.Component {
                     alert(createAlertText(url, error.responseText));
                 }
             }
-            // Fetch the uuid of user's dashboard worksheet for storing the profile-image bundle
 
+            // Fetch the uuid of user's dashboard worksheet for storing the profile-image bundle
             const response = await fetch(`/rest/worksheets?specs=dashboard`).then((e) => e.json());
             const worksheetUUID = response.data[0].id;
             const file = this.state.file;
 
+            // Rename the file to let it be related to the user
             const fileName: string = this.props.userInfo.user_name + '.JPG';
-            const createBundleData = getDefaultBundleMetadata(fileName);
-            let url = `/rest/bundles?worksheet=${worksheetUUID}`;
-            const bundle = await createImageBundle(url, JSON.stringify(createBundleData));
+            const bundle = await createImageBundle(
+                `/rest/bundles?worksheet=${worksheetUUID}`,
+                JSON.stringify(getDefaultBundleMetadata(fileName)),
+            );
             const bundleUuid = bundle.data[0].id;
+            // Upload the avatar as a bundle
             await this.uploadImgAsync(bundleUuid, file, fileName);
+            // Store the bundle id to database
+            await this.saveAvatarToDB(bundleUuid);
+            // Fetch the new avatar from the bundle store by specifying the bundle id
             await this.fetchImg(bundleUuid);
         });
     };
@@ -216,53 +252,60 @@ class EditableAvatar extends React.Component {
         const { classes } = this.props;
         return (
             <div className={classes.box}>
-                <Avatar
-                    className={classes.Avatar}
-                    default={this.props.userInfo.user_name.charAt(0)}
-                    src={this.state.avatar}
-                />
-                <Button variant='outlined' color='primary' onClick={this.handleClickOpen}>
-                    Edit Avatar
-                </Button>
-                <Dialog
-                    onClose={this.handleClose}
-                    aria-labelledby='customized-dialog-title'
-                    open={this.state.isOpen}
-                >
-                    <DialogTitle id='customized-dialog-title' onClose={this.handleClose}>
-                        Change Your Profile Picture
-                    </DialogTitle>
-                    <DialogContent dividers>
-                        <AvatarEditor
-                            ref={(editor) => {
-                                this.editor = editor;
-                            }}
-                            image={this.state.avatar}
-                            width={200}
-                            height={200}
-                            border={50}
-                            color={[0, 0, 0, 0.3]} // RGBA
-                        />
-                        <Button
-                            variant='contained'
-                            label='Upload an Image'
-                            labelPosition='before'
-                            containerElement='label'
+                {this.state.avatar ? (
+                    <Avatar className={classes.Avatar} src={this.state.avatar} />
+                ) : (
+                    <Avatar className={classes.Avatar}>
+                        {' '}
+                        {this.props.userInfo.user_name.charAt(0)}{' '}
+                    </Avatar>
+                )}
+                {this.props.ownDashboard ? (
+                    <div>
+                        <Button variant='outlined' color='primary' onClick={this.handleClickOpen}>
+                            Edit Avatar
+                        </Button>
+                        <Dialog
+                            onClose={this.handleClose}
+                            aria-labelledby='customized-dialog-title'
+                            open={this.state.isOpen}
                         >
-                            <input
-                                ref='in'
-                                type='file'
-                                accept='image/*'
-                                onChange={this.handleChange}
-                            />
-                        </Button>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button autoFocus onClick={this.submitAvatar} color='primary'>
-                            Save
-                        </Button>
-                    </DialogActions>
-                </Dialog>
+                            <DialogTitle id='customized-dialog-title' onClose={this.handleClose}>
+                                Change Your Profile Picture
+                            </DialogTitle>
+                            <DialogContent dividers>
+                                <AvatarEditor
+                                    ref={(editor) => {
+                                        this.editor = editor;
+                                    }}
+                                    image={this.state.avatar}
+                                    width={200}
+                                    height={200}
+                                    border={50}
+                                    color={[0, 0, 0, 0.3]} // RGBA
+                                />
+                                <Button
+                                    variant='contained'
+                                    label='Upload an Image'
+                                    labelPosition='before'
+                                    containerElement='label'
+                                >
+                                    <input
+                                        ref='in'
+                                        type='file'
+                                        accept='image/*'
+                                        onChange={this.handleChange}
+                                    />
+                                </Button>
+                            </DialogContent>
+                            <DialogActions>
+                                <Button autoFocus onClick={this.submitAvatar} color='primary'>
+                                    Save
+                                </Button>
+                            </DialogActions>
+                        </Dialog>
+                    </div>
+                ) : null}
             </div>
         );
     }
