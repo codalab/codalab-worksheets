@@ -150,12 +150,7 @@ class CodalabArg(object):
 
 CODALAB_ARGUMENTS = [
     # Basic settings
-    CodalabArg(
-        name='version',
-        help='Version of CodaLab (usually the branch name)',
-        default="master",
-        flag='-v',
-    ),
+    CodalabArg(name='version', help='Version of CodaLab (usually the branch name)', flag='-v',),
     CodalabArg(
         name='instance_name',
         help='Instance name (prefixed to Docker containers)',
@@ -612,6 +607,8 @@ class CodalabServiceManager(object):
 
         if self.args.version:
             self.args.version = clean_version(self.args.version)
+        else:
+            self.args.version = get_default_version()
         self.compose_cwd = os.path.join(BASE_DIR, 'docker_config', 'compose_files')
 
         self.compose_files = []

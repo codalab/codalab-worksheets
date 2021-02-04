@@ -2442,7 +2442,7 @@ def test_wopen(ctx):
 
 @TestModule.register('service')
 def test_service(ctx):
-    _run_command(['codalab-service', '--help'], expected_exit_code=0)
+    _run_command(['codalab-service', '--help', '--version', 'master'], expected_exit_code=0)
 
 
 if __name__ == '__main__':
