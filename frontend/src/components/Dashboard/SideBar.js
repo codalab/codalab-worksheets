@@ -158,7 +158,10 @@ class SideBar extends React.Component {
         }
         return (
             <Card className={cx(classes.card)} elevation={0} style={{ height: '100%' }}>
-                <AvatarEditorModal userInfo={userInfo}></AvatarEditorModal>
+                <AvatarEditorModal
+                    userInfo={userInfo}
+                    ownDashboard={this.props.ownDashboard}
+                ></AvatarEditorModal>
                 {/*<Avatar className={classes.avatar}>{userInfo.user_name.charAt(0)}</Avatar>*/}
                 <div className={classes.box}>
                     <h3 className={classes.name}>{userInfo.user_name}</h3>
@@ -168,7 +171,7 @@ class SideBar extends React.Component {
                 </div>
                 <Divider />
 
-                {this.props.showQuota ? (
+                {this.props.ownDashboard ? (
                     <div className={classes.box}>
                         <a
                             className={classes.subheader}
