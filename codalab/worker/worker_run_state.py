@@ -205,7 +205,7 @@ class RunStateMachine(StateTransitioner):
             #   dependency_path:docker_dependency_path:ro
             docker_dependencies.append((dependency.parent_path, dependency.docker_path))
 
-        logger.info(f'{run_state.bundle.uuid} is preparing')
+        logger.info(f'Bundle {run_state.bundle.uuid} is preparing')
 
         if run_state.is_killed or run_state.is_restaged:
             logger.info(f'{run_state.bundle.uuid} is cleaning up')
@@ -222,7 +222,6 @@ class RunStateMachine(StateTransitioner):
             )
             logger.error(message)
             logger.error(traceback.format_exc())
-            logger.info(f'{run_state.bundle.uuid} is changing state to {message}')
             return run_state._replace(run_status=message)
 
         dependencies_ready = True
@@ -260,8 +259,7 @@ class RunStateMachine(StateTransitioner):
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> CLEANING_UP
             message = 'Failed to download Docker image: %s' % image_state.message
-            logger.error(message)
-            logger.info(f'{run_state.bundle.uuid} is cleaning up')
+            logger.error(f'Bundle {run_state.bundle.uuid} is cleaning up with {message}')
             return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
 
         # stop proceeding if dependency and image downloads aren't all done
@@ -284,9 +282,8 @@ class RunStateMachine(StateTransitioner):
                         "Please ensure the shared fileystem between the server and "
                         "your worker is mounted properly or contact your administrators."
                     )
-                    logger.error(message)
-                    logger.info(
-                        f'{run_state.bundle.uuid} is cleaning up and changing state to {message}'
+                    logger.error(
+                        f'Bundle {run_state.bundle.uuid} has trouble with bundle path: {message}'
                     )
                     return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
                 logger.info(
@@ -346,8 +343,8 @@ class RunStateMachine(StateTransitioner):
                 try:
                     mount_dependency(dependency, self.shared_file_system)
                 except OSError as e:
-                    logger.info(
-                        f'{run_state.bundle.uuid} is cleaning up and changing state to {str(e)}'
+                    logger.error(
+                        f'Bundle {run_state.bundle.uuid} is cleaning up and changing state to {str(e)}'
                     )
                     return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=str(e))
 
@@ -374,7 +371,9 @@ class RunStateMachine(StateTransitioner):
         except docker_utils.DockerUserErrorException as e:
             message = 'Cannot start Docker container: {}'.format(e)
             logger.warning(message)
-            logger.info(f'{run_state.bundle.uuid} is cleaning up and changing state to {message}')
+            logger.info(
+                f'Bundle {run_state.bundle.uuid} is failed in preparing stage due to: {message}'
+            )
             return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
         except Exception as e:
             message = 'Cannot start Docker container: {}'.format(e)
@@ -424,7 +423,6 @@ class RunStateMachine(StateTransitioner):
             return run_state._replace(
                 finished=finished, exitcode=exitcode, failure_message=failure_msg
             )
-
 
         def check_resource_utilization(run_state: RunState):
             logger.info(f'{run_state.bundle.uuid} is checking resource utilization')
