@@ -93,6 +93,17 @@ class EditableAvatar extends React.Component {
 
     handleChange = (file) => {
         file = file.target.files[0];
+
+        // Set limitation on avatar size
+        // <= 5MB
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Avatar size cannot exceed 5MB');
+            this.setState({
+                isOpen: false,
+            });
+            return;
+        }
+
         getBase64(file, (url) => {
             this.setState({
                 avatar: url,
