@@ -27,7 +27,6 @@ from .bundle_state import BundleInfo, RunResources, BundleCheckinState
 from .worker_run_state import RunStateMachine, RunStage, RunState
 from .reader import Reader
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 """
 Codalab Worker
