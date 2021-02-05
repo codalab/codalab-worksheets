@@ -149,7 +149,7 @@ class DownloadManager(object):
                 self._worker_model.deallocate_socket(response_socket_id)
 
     @retry_if_no_longer_running
-    def stream_archived_directory(self, target):
+    def stream_tarred_gzipped_directory(self, target):
         """
         Returns a file-like object containing an archive of the given directory.
         If the directory is on the local bundle store or from a worker hosting a
@@ -157,7 +157,7 @@ class DownloadManager(object):
         If it is already an archive (such as .zip) on Blob Storage, that archive
         will be returned directly.
 
-        Returns a tuple: (fileobj, mimetype, file extension)
+        Returns fileobj.
         """
         bundle_state = self._bundle_model.get_bundle_state(target.bundle_uuid)
         # Raises NotFoundException if uuid is invalid
@@ -172,13 +172,9 @@ class DownloadManager(object):
             directory_path = self._get_target_path(target)
             if parse_linked_bundle_url(directory_path).uses_beam:
                 # If streaming a folder within an Azure bundle, we need to download its contents,
-                # re-zip the folder, and return the zip file.
-                return (
-                    file_util.open_file(directory_path, sub_zip_directory=True),
-                    'application/zip',
-                    '.zip',
-                )
-            return (file_util.tar_gzip_directory(directory_path), 'application/gzip', '.tar.gz')
+                # re-archive the folder, and return the .tar.gz file.
+                return file_util.open_file(directory_path)
+            return file_util.tar_gzip_directory(directory_path)
         else:
             # stream_tarred_gzipped_directory calls are sent to the worker even
             # on a shared filesystem since
@@ -194,11 +190,7 @@ class DownloadManager(object):
                 read_args = {'type': 'stream_directory'}
                 self._send_read_message(worker, response_socket_id, target, read_args)
                 fileobj = self._get_read_response_stream(response_socket_id)
-                return (
-                    Deallocating(fileobj, self._worker_model, response_socket_id),
-                    'application/gzip',
-                    '.tar.gz',
-                )
+                return Deallocating(fileobj, self._worker_model, response_socket_id)
             except Exception:
                 self._worker_model.deallocate_socket(response_socket_id)
                 raise

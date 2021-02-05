@@ -1,9 +1,16 @@
 import os
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
-from zipfile import ZipFile
-import stat
+import tarfile
 from codalab.common import parse_linked_bundle_url
+import logging
+from codalab.worker.file_util import open_indexed_tar_gz_file
+from codalab.lib.beam.ratarmount import SQLiteIndexedTar
+
+import stat
+from io import BytesIO
+import tempfile
+import shutil
 
 
 class PathException(Exception):
@@ -68,8 +75,13 @@ def get_target_info(bundle_path, target, depth):
         # If the target is on Azure, use a special method using Apache Beam
         # to get the target info.
         try:
+            logging.info("going to _compute_target_info_beam")
             info = _compute_target_info_beam(final_path, depth)
-        except PathException:
+        except Exception:
+            import traceback
+
+            logging.info("error!")
+            logging.info("error: %s", traceback.format_exc())
             raise PathException(
                 "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
             )
@@ -159,11 +171,10 @@ def _compute_target_info_beam(path, depth):
     """Computes target info for a file that is externalized on a location
     such as Azure, by using the Apache Beam FileSystem APIs."""
 
-    # TODO (Ashwin): properly return permissions.
     linked_bundle_path = parse_linked_bundle_url(path)
     if not FileSystems.exists(linked_bundle_path.bundle_path):
         raise PathException
-    if not linked_bundle_path.is_zip:
+    if not linked_bundle_path.is_archive:
         # Single file
         file = FileSystems.match([path])[0].metadata_list[0]
         return {
@@ -173,68 +184,54 @@ def _compute_target_info_beam(path, depth):
             'perm': 0o777,
         }
 
-    with ZipFile(
-        FileSystems.open(
-            linked_bundle_path.bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-        )
-    ) as f:
-        zipinfos = [zipinfo for zipinfo in f.infolist()]
+    tf, _ = open_indexed_tar_gz_file(linked_bundle_path.bundle_path)
+    islink = lambda finfo: stat.S_ISLNK(finfo.mode)
+    readlink = lambda finfo: finfo.linkname
 
-        # These methods are used to detect and read symlinks created from "zip -y".
-        # The link path is stored in the contents of the file pointed to by zipinfo.
-        # See https://discuss.python.org/t/how-info-zip-represents-symlinks/4104
-        islink = lambda zipinfo: stat.S_ISLNK(zipinfo.external_attr >> 16)
-        readlink = lambda zipinfo: f.read(zipinfo).decode()
+    isfile = lambda finfo: finfo.type in tarfile.REGULAR_TYPES
+    isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
+    listdir = lambda path: tf.getFileInfo(path, listDir=True)
 
-        isfile = lambda zipinfo: not zipinfo.is_dir()
-        isdir = lambda zipinfo: zipinfo.is_dir()
-        listdir = lambda path: [
-            p
-            for p in [z.filename[len(path) :] for z in zipinfos if z.filename.startswith(path)]
-            if "/" not in p.strip("/") and p.strip("/")
-        ]
-
-        def _get_info(path, depth):
-            try:
-                zipinfo = next(
-                    z for z in zipinfos if z.filename == path or z.filename == path + '/'
-                )
-            except StopIteration:
-                # Not found
-                raise PathException
-            result = {}
-            result['name'] = zipinfo.filename.strip("/").split("/")[-1]  # get last part of path
-            result['size'] = zipinfo.file_size
-            result['perm'] = 0o777
-            if islink(zipinfo):
-                # See https://discuss.python.org/t/how-info-zip-represents-symlinks/4104
-                result['type'] = 'link'
-                result['link'] = readlink(zipinfo)
-            elif isfile(zipinfo):
-                result['type'] = 'file'
-            elif isdir(zipinfo):
-                result['type'] = 'directory'
-                if depth > 0:
-                    result['contents'] = [
-                        _get_info(
-                            zipinfo.filename.rstrip("/") + "/" + file_name.lstrip("/"), depth - 1
-                        )
-                        for file_name in listdir(path)
-                    ]
-            return result
-
-        if linked_bundle_path.zip_subpath:
-            # Return the contents of a subpath within a directory.
-            return _get_info(linked_bundle_path.zip_subpath, depth)
-        else:
-            # No subpath, return the entire directory.
-            file = FileSystems.match([path])[0].metadata_list[0]
-            result = {
-                'name': linked_bundle_path.bundle_uuid,
-                'type': 'directory',
-                'size': file.size_in_bytes,
-                'perm': 0o777,
-            }
+    def _get_info(path, depth):
+        if not path.startswith("/"):
+            path = "/" + path
+        finfo = tf.getFileInfo(path)
+        if finfo is None:
+            # Not found
+            raise PathException
+        result = {}
+        result['name'] = path.split("/")[-1]  # get last part of path
+        result['size'] = finfo.size
+        result['perm'] = finfo.mode & 0o777
+        if islink(finfo):
+            result['type'] = 'link'
+            result['link'] = readlink(finfo)
+        elif isfile(finfo):
+            result['type'] = 'file'
+        elif isdir(finfo):
+            result['type'] = 'directory'
             if depth > 0:
-                result['contents'] = [_get_info(file_name, depth - 1) for file_name in listdir("")]
-            return result
+                result['contents'] = [
+                    _get_info(path + "/" + file_name, depth - 1)
+                    for file_name in listdir(path)
+                    if file_name != "."
+                ]
+        return result
+
+    if linked_bundle_path.archive_subpath:
+        # Return the contents of a subpath within a directory.
+        return _get_info(linked_bundle_path.archive_subpath, depth)
+    else:
+        # No subpath, return the entire directory.
+        file = FileSystems.match([path])[0].metadata_list[0]
+        result = {
+            'name': linked_bundle_path.bundle_uuid,
+            'type': 'directory',
+            'size': file.size_in_bytes,
+            'perm': 0o777,
+        }
+        if depth > 0:
+            result['contents'] = [
+                _get_info(file_name, depth - 1) for file_name in listdir("/") if file_name != "."
+            ]
+        return result

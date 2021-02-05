@@ -158,27 +158,27 @@ class LinkedBundlePath:
 
         bundle_path (str): Path to the bundle contents in that particular storage.
 
-        is_zip (bool): Whether this bundle is stored as a zip file on this storage medium stores folders. Only done currently by Azure Blob Storage.
+        is_archive (bool): Whether this bundle is stored as a .tar.gz file on this storage medium stores folders. Only done currently by Azure Blob Storage.
 
         uses_beam (bool): Whether this bundle's storage type requires using Apache Beam to interact with it.
 
-        zip_subpath (str): If is_zip is True, returns the subpath within the zip file for the file that this BundlePath points to.
+        archive_subpath (str): If is_archive is True, returns the subpath within the archive file for the file that this BundlePath points to.
 
         bundle_uuid (str): UUID of the bundle that this path refers to.
     """
 
     storage_type: StorageType
     bundle_path: str
-    is_zip: bool
+    is_archive: bool
     uses_beam: bool
-    zip_subpath: str
+    archive_subpath: str
     bundle_uuid: str
 
 
 def parse_linked_bundle_url(url):
     """Parses a linked bundle URL. This bundle URL can refer to:
         - a single file: "azfs://storageclwsdev0/bundles/uuid/contents"
-        - a single file that is stored within a zip file: "azfs://storageclwsdev0/bundles/uuid/contents.zip/file1"
+        - a single file that is stored within an archive file: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz/file1"
 
         Returns a LinkedBundlePath instance to encode this information.
     """
@@ -188,21 +188,21 @@ def parse_linked_bundle_url(url):
         url = url[len("azfs://") :]
         storage_account, container, bundle_uuid, contents_file, *remainder = url.split("/", 4)
         bundle_path = f"azfs://{storage_account}/{container}/{bundle_uuid}/{contents_file}"
-        is_zip = contents_file.endswith(".zip")
-        zip_subpath = remainder[0] if is_zip and len(remainder) else None
+        is_archive = contents_file.endswith(".tar.gz")
+        archive_subpath = remainder[0] if is_archive and len(remainder) else None
     else:
         storage_type = StorageType.FILE_STORAGE
         bundle_path = url
-        is_zip = False
+        is_archive = False
         uses_beam = False
-        zip_subpath = None
+        archive_subpath = None
         bundle_uuid = None
     return LinkedBundlePath(
         storage_type=storage_type,
         bundle_path=bundle_path,
-        is_zip=is_zip,
+        is_archive=is_archive,
         uses_beam=uses_beam,
-        zip_subpath=zip_subpath,
+        archive_subpath=archive_subpath,
         bundle_uuid=bundle_uuid,
     )
 

@@ -9,6 +9,7 @@ a Blob Storage container / Azurite running in the background.
 from apache_beam.io.filesystem import FileSystem
 from apache_beam.io.localfilesystem import LocalFileSystem
 import os
+from io import BytesIO
 
 __all__ = ['MockBlobStorageFileSystem']
 
@@ -63,7 +64,7 @@ class MockBlobStorageFileSystem(LocalFileSystem):
       self,
       path,
       *args, **kwargs):
-    return super().open(self._azfs_to_local(path), *args, **kwargs)
+    return BytesIO(super().open(self._azfs_to_local(path), *args, **kwargs).read())
 
   def copy(self, source_file_names, destination_file_names):
     return super().copy([self._azfs_to_local(p) for p in source_file_names], [self._azfs_to_local(p) for p in destination_file_names])

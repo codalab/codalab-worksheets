@@ -49,7 +49,6 @@ from codalab.common import (
     precondition,
     UsageError,
     ensure_str,
-    parse_linked_bundle_url,
 )
 from codalab.lib import (
     bundle_util,
@@ -98,7 +97,7 @@ from codalab.lib.completers import (
 from codalab.lib.bundle_store import MultiDiskBundleStore
 from codalab.lib.interactive_session import InteractiveSession
 from codalab.lib.print_util import FileTransferProgress
-from codalab.worker.file_util import un_tar_directory, unzip_directory
+from codalab.worker.file_util import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
@@ -1486,21 +1485,7 @@ class BundleCLI(object):
         )
         with progress, closing(contents):
             if target_info['type'] == 'directory':
-                # The dependency can be a .tar.gz (if from local disk)
-                # or a .zip file (if on Azure Blob Storage).
-                # TODO (Ashwin): Unify some of the logic here with the code in DependencyManager._store_dependency()
-                # into common utility functions.
-                content_type = (
-                    "application/zip"
-                    if parse_linked_bundle_url(
-                        nested_dict_get(info, 'metadata', 'link_url')
-                    ).uses_beam
-                    else "application/gzip"
-                )
-                if content_type == "application/gzip":
-                    un_tar_directory(contents, final_path, 'gz', force=args.force)
-                elif content_type == "application/zip":
-                    unzip_directory(contents, final_path, force=args.force)
+                un_tar_directory(contents, final_path, 'gz', force=args.force)
             elif target_info['type'] == 'file':
                 with open(final_path, 'wb') as out:
                     shutil.copyfileobj(contents, out)
