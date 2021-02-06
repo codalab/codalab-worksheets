@@ -37,7 +37,6 @@ class UserTest(BaseTestCase):
                     "notifications": 2,
                     "user_name": "codalab",
                     "affiliation": "",
-                    "avatar_id": None,
                 },
                 "id": "0",
             },
