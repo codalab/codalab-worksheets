@@ -84,7 +84,7 @@ class NewDashboard extends React.Component<{
                         <Grid item xs={3}>
                             <SideBar
                                 userInfo={this.state.userInfo}
-                                showQuota={this.state.ownDashboard}
+                                ownDashboard={this.state.ownDashboard}
                             ></SideBar>
                         </Grid>
                         <Grid item xs>

@@ -32,6 +32,7 @@ class User(ORMObject):
         'disk_used',
         'affiliation',
         'url',
+        'avatar_id',
     )
 
     PASSWORD_MIN_LENGTH = 8
@@ -148,5 +149,6 @@ PUBLIC_USER = User(
         "disk_used": 0,
         "affiliation": None,
         "url": None,
+        "avatar_id": None,
     }
 )
