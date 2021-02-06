@@ -300,17 +300,17 @@ def fetch_interpreted_worksheet(uuid):
     # The bundle_infos for bundles that don't need updating are also None.
     if bundle_uuids:
         for i, block in enumerate(interpreted_blocks['blocks']):
-            if 'bundle_info' not in block:
+            if not ('bundles_spec' in block and 'bundle_infos' in block['bundles_spec']):
                 interpreted_blocks['blocks'][i] = None
             else:
-                if isinstance(block['bundle_info'], dict):
-                    block['bundle_info'] = [block['bundle_info']]
+                if isinstance(block['bundles_spec']['bundle_infos'], dict):
+                    block['bundles_spec']['bundle_infos'] = [block['bundles_spec']['bundle_infos']]
                 is_relevant_block = False
-                for j, bundle in enumerate(block['bundle_info']):
+                for j, bundle in enumerate(block['bundles_spec']['bundle_infos']):
                     if bundle['uuid'] in bundle_uuids:
                         is_relevant_block = True
                     else:
-                        block['bundle_info'][j] = None
+                        block['bundles_spec']['bundle_infos'][j] = None
                 if not is_relevant_block:
                     interpreted_blocks['blocks'][i] = None
     # Grouped individual items into blocks
@@ -347,7 +347,7 @@ def fetch_interpreted_worksheet(uuid):
     # Frontend doesn't use individual 'items' for now
     del worksheet_info['items']
     if bundle_uuids:
-        return {'blocks': worksheet_info['blocks']}
+        return {'blocks': worksheet_info['blocks'], 'uuid': uuid}
     return worksheet_info
 
 
