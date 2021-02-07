@@ -125,6 +125,16 @@ parent_path - path of the dependency
 DependencyToMount = namedtuple('DependencyToMount', 'docker_path, child_path, parent_path')
 
 
+def log_bundle_transition(
+    bundle_uuid: str, previous_state: str, next_state: str, reason: str, warn: bool = False
+):
+    logger.info(
+        f'Bundle {bundle_uuid} is transitioning from {previous_state} to {next_state} due to {reason}'
+    )
+    if warn:
+        logger.warning(traceback.format_exc())
+
+
 class RunStateMachine(StateTransitioner):
     """
     Manages the state machine of the runs running on the local machine
@@ -205,10 +215,16 @@ class RunStateMachine(StateTransitioner):
             #   dependency_path:docker_dependency_path:ro
             docker_dependencies.append((dependency.parent_path, dependency.docker_path))
 
-        logger.info(f'Bundle {run_state.bundle.uuid} is preparing')
+        log_bundle_transition(run_state.bundle.uuid, run_state.stage, RunStage.PREPARING, '')
 
         if run_state.is_killed or run_state.is_restaged:
-            logger.info(f'{run_state.bundle.uuid} is cleaning up')
+            log_bundle_transition(
+                run_state.bundle.uuid,
+                run_state.stage,
+                RunStage.CLEANING_UP,
+                'the bundle is either killed or restaged.',
+                True,
+            )
             return run_state._replace(stage=RunStage.CLEANING_UP)
 
         # Check CPU and GPU availability
@@ -241,7 +257,13 @@ class RunStateMachine(StateTransitioner):
                     dependencies_ready = False
                 elif dependency_state.stage == DependencyStage.FAILED:
                     # Failed to download dependency; -> CLEANING_UP
-                    logger.info(f'{run_state.bundle.uuid} is cleaning up')
+                    log_bundle_transition(
+                        run_state.bundle.uuid,
+                        run_state.stage,
+                        RunStage.CLEANING_UP,
+                        f'dependency key {dep_key} has failed for this bundle',
+                        True,
+                    )
                     return run_state._replace(
                         stage=RunStage.CLEANING_UP,
                         failure_message='Failed to download dependency %s: %s'
@@ -259,7 +281,9 @@ class RunStateMachine(StateTransitioner):
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> CLEANING_UP
             message = 'Failed to download Docker image: %s' % image_state.message
-            logger.error(f'Bundle {run_state.bundle.uuid} is cleaning up with {message}')
+            logger.error(
+                f'Bundle {run_state.bundle.uuid} is transitioning from {run_state.stage} to {RunStage.CLEANING_UP} due to {message}'
+            )
             return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
 
         # stop proceeding if dependency and image downloads aren't all done
@@ -269,7 +293,7 @@ class RunStateMachine(StateTransitioner):
                 status_message += "(and downloading %d other dependencies and docker images)" % len(
                     status_messages
                 )
-            logger.info(f'{run_state.bundle.uuid} is changing state to {status_message}')
+            logger.warning(f'{run_state.bundle.uuid} is not ready yet since {status_message}')
             return run_state._replace(run_status=status_message)
 
         # All dependencies ready! Set up directories, symlinks and container. Start container.
@@ -343,8 +367,11 @@ class RunStateMachine(StateTransitioner):
                 try:
                     mount_dependency(dependency, self.shared_file_system)
                 except OSError as e:
-                    logger.error(
-                        f'Bundle {run_state.bundle.uuid} is cleaning up and changing state to {str(e)}'
+                    log_bundle_transition(
+                        run_state.bundle.uuid,
+                        run_state.stage,
+                        RunStage.CLEANING_UP,
+                        f'since {str(e)}',
                     )
                     return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=str(e))
 
@@ -371,8 +398,8 @@ class RunStateMachine(StateTransitioner):
         except docker_utils.DockerUserErrorException as e:
             message = 'Cannot start Docker container: {}'.format(e)
             logger.warning(message)
-            logger.info(
-                f'Bundle {run_state.bundle.uuid} is failed in preparing stage due to: {message}'
+            log_bundle_transition(
+                run_state.bundle.uuid, run_state.stage, RunStage.CLEANING_UP, f'since the {message}'
             )
             return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
         except Exception as e:
@@ -411,11 +438,9 @@ class RunStateMachine(StateTransitioner):
         2- If run is killed, kill the container
         3- If run is finished, move to CLEANING_UP state
         """
-        logger.info(f'{run_state.bundle.uuid} is running')
 
         def check_and_report_finished(run_state):
             try:
-                logger.info(f'{run_state.bundle.uuid} is checking finished')
                 finished, exitcode, failure_msg = docker_utils.check_finished(run_state.container)
             except docker_utils.DockerException:
                 logger.error(traceback.format_exc())
@@ -425,7 +450,7 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state: RunState):
-            logger.info(f'{run_state.bundle.uuid} is checking resource utilization')
+            logger.info(f'Checking resource utilization for {run_state.bundle.uuid}')
             kill_messages = []
 
             run_stats = docker_utils.get_container_stats(run_state.container)
@@ -469,7 +494,7 @@ class RunStateMachine(StateTransitioner):
             return run_state
 
         def check_disk_utilization():
-            logger.info(f'{run_state.bundle.uuid} is checking disk utilization')
+            logger.info(f'Checking disk utilization for {run_state.bundle.uuid}')
             running = True
             while running:
                 start_time = time.time()
@@ -494,6 +519,7 @@ class RunStateMachine(StateTransitioner):
         run_state = check_resource_utilization(run_state)
 
         if run_state.is_killed or run_state.is_restaged:
+            log_bundle_transition(run_state.bundle.uuid, run_state.stage, RunStage.CLEANING_UP, '')
             if docker_utils.container_exists(run_state.container):
                 try:
                     run_state.container.kill()
@@ -526,7 +552,6 @@ class RunStateMachine(StateTransitioner):
             move to UPLOADING_RESULTS state
            Otherwise move to FINALIZING state
         """
-        logger.info(f'{run_state.bundle.uuid} is cleaning up')
 
         def remove_path_no_fail(path):
             try:
@@ -563,9 +588,13 @@ class RunStateMachine(StateTransitioner):
         self.paths_to_remove = []
 
         if run_state.is_restaged:
+            log_bundle_transition(run_state.bundle.uuid, run_state.stage, RunStage.RESTAGED, '')
             return run_state._replace(stage=RunStage.RESTAGED)
 
         if not self.shared_file_system and run_state.has_contents:
+            log_bundle_transition(
+                run_state.bundle.uuid, run_state.stage, RunStage.UPLOADING_RESULTS, ''
+            )
             return run_state._replace(
                 stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
             )
@@ -592,7 +621,8 @@ class RunStateMachine(StateTransitioner):
         If uploading and finished:
             Move to FINALIZING state
         """
-        logger.info(f'{run_state.bundle.uuid} is uploading results')
+        # logger.info(f'{run_state.bundle.uuid} is uploading results')
+        log_bundle_transition(run_state.bundle.uuid, run_state.stage, RunStage.RESTAGED, '')
         if run_state.is_restaged:
             return run_state._replace(stage=RunStage.RESTAGED)
 
@@ -650,6 +680,7 @@ class RunStateMachine(StateTransitioner):
         """
         Prepare the finalize message to be sent with the next checkin
         """
+        log_bundle_transition(run_state.bundle.uuid, run_state.stage, RunStage.FINALIZING, '')
         if run_state.is_killed:
             # Append kill_message, which contains more useful info on why a run was killed, to the failure message.
             failure_message = (
@@ -657,7 +688,7 @@ class RunStateMachine(StateTransitioner):
                 if run_state.failure_message
                 else run_state.kill_message
             )
-            logger.info(f'{run_state.bundle.uuid} is killed')
+            logger.error(f'{run_state.bundle.uuid} is killed, since {failure_message}')
             run_state = run_state._replace(failure_message=failure_message)
         return run_state._replace(stage=RunStage.FINALIZING, run_status="Finalizing bundle")
 
@@ -667,14 +698,18 @@ class RunStateMachine(StateTransitioner):
         server, if bundle is going be sent back to the server, move on to the RESTAGED state. Otherwise,
         move on to the FINISHED state. Can also remove bundle_path now.
         """
-        logger.info(f'{run_state.bundle.uuid} is finalizing')
         if run_state.is_restaged:
             logger.info(f'{run_state.bundle.uuid} is restaged')
+            log_bundle_transition(
+                run_state.bundle.uuid, run_state.stage, RunStage.RESTAGED, 'it has finalized'
+            )
             return run_state._replace(stage=RunStage.RESTAGED)
         elif run_state.finalized:
             if not self.shared_file_system:
                 remove_path(run_state.bundle_path)  # don't remove bundle if shared FS
-            logger.info(f'{run_state.bundle.uuid} is finished')
+            log_bundle_transition(
+                run_state.bundle.uuid, run_state.stage, RunStage.FINISHED, 'it has finalized'
+            )
             return run_state._replace(stage=RunStage.FINISHED, run_status='Finished')
         else:
             return run_state
