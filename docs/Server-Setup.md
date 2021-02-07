@@ -189,9 +189,9 @@ If you want to modify the database schema, use `alembic` to create a migration. 
 
 1. Modify `codalab/model/tables.py` in your local codebase to the desired schema.
 
-1. Rebuild the Docker image for the rest server:
+1. Rebuild the Docker image for the rest server and mysql:
 
-        ./codalab_service.py start -bd -s rest-server
+        ./codalab_service.py start -bd -s rest-server mysql
 
 1. Auto-generate the migration script. Running the following command generates a file named by a format similar to `2019091920_description_of_your_migration_1975ea83b712.py`. Note that when running `codalab_service.py` with `-d` option (dev mode), this script will be stored at a volume mounted into the Docker container in the `alembic` directory:
 

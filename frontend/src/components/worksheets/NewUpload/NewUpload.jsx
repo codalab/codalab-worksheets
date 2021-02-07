@@ -14,7 +14,7 @@ import {
 } from '../../../util/worksheet_utils';
 import {FILE_SIZE_LIMIT_B, FILE_SIZE_LIMIT_GB} from '../../../constants';
 
-function getQueryParams(filename) {
+ export function getQueryParams(filename) {
     const formattedFilename = createDefaultBundleName(filename);
     const queryParams = {
         finalize: 1,
