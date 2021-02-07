@@ -99,7 +99,7 @@ max_submissions_per_period: 5
 log_worksheet_uuid: '0x2263f854a967abcabade0b6c88f51f29'    
 
 # Configure the tag that participants use to submit to the competition.
-# In this example, any bundle with the tag 'some-competition-submit` would be
+# In this example, any bundle with the tag `some-competition-submit` would be
 # considered as an official submission.
 submission_tag: some-competition-submit
 
