@@ -720,6 +720,7 @@ def _update_bundle_contents_blob(uuid):
       Default is 'ready'.
     """
     check_bundles_have_all_permission(local.model, request.user, [uuid])
+    logging.info("starting _update_bundle_contents_blob, uuid: %s", uuid)
     bundle = local.model.get_bundle(uuid)
     if bundle.state in State.FINAL_STATES:
         abort(http.client.FORBIDDEN, 'Contents cannot be modified, bundle already finalized.')
@@ -748,6 +749,7 @@ def _update_bundle_contents_blob(uuid):
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
         if sources:
+            logging.info("starting upload_to_bundle_store, uuid: %s", uuid)
             local.upload_manager.upload_to_bundle_store(
                 bundle,
                 sources=sources,
@@ -758,14 +760,17 @@ def _update_bundle_contents_blob(uuid):
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
             )  # See UploadManager for full explanation of 'simplify'
+            logging.info("finished upload_to_bundle_store, uuid: %s", uuid)
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
             local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error
+        logging.info("failed UsageError, uuid: %s, err: %s", uuid, err)
         if local.upload_manager.has_contents(bundle):
             local.upload_manager.cleanup_existing_contents(bundle)
+        logging.info("failed UsageError cleanup done, uuid: %s, err: %s", uuid, err)
         msg = "Upload failed: %s" % err
         local.model.update_bundle(
             bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
@@ -774,8 +779,10 @@ def _update_bundle_contents_blob(uuid):
 
     except Exception as e:
         # Upload failed: cleanup, update state if desired, and return HTTP error
+        logging.info("failed Exception, uuid: %s, err: %s", uuid, err)
         if local.upload_manager.has_contents(bundle):
             local.upload_manager.cleanup_existing_contents(bundle)
+        logging.info("failed Exception cleanup done, uuid: %s, err: %s", uuid, err)
 
         msg = "Upload failed: %s" % e
 
@@ -796,6 +803,8 @@ def _update_bundle_contents_blob(uuid):
         if finalize_on_success:
             # Upload succeeded: update state
             local.model.update_bundle(bundle, {'state': final_state})
+    
+    logging.info("finished _update_bundle_contents_blob, uuid: %s", uuid)
 
 
 #############################################################

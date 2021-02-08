@@ -8,6 +8,7 @@ import time
 import urllib.request
 import urllib.parse
 import urllib.error
+import logging
 
 from .rest_client import RestClient, RestClientException
 from .file_util import tar_gzip_directory
@@ -153,6 +154,7 @@ class BundleServiceClient(RestClient):
 
     @wrap_exception('Unable to update bundle contents in bundle service')
     def update_bundle_contents(self, worker_id, uuid, path, exclude_patterns, progress_callback):
+        logging.info("starting update_bundle_contents, uuid: %s", uuid)
         with closing(tar_gzip_directory(path, exclude_patterns=exclude_patterns)) as fileobj:
             self._upload_with_chunked_encoding(
                 'PUT',
@@ -161,6 +163,7 @@ class BundleServiceClient(RestClient):
                 fileobj=fileobj,
                 progress_callback=progress_callback,
             )
+        logging.info("finished update_bundle_contents, uuid: %s", uuid)
 
     @wrap_exception('Unable to get worker code')
     def get_code(self):
