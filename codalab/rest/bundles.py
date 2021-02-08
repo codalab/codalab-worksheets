@@ -806,6 +806,7 @@ def _update_bundle_contents_blob(uuid):
             local.model.update_bundle(bundle, {'state': final_state})
     
     logging.info("finished _update_bundle_contents_blob, uuid: %s", uuid)
+    return {}
 
 
 #############################################################
