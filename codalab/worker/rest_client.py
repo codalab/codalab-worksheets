@@ -125,7 +125,7 @@ class RestClient(object):
         runs to completion
         """
         logging.info("_upload_with_chunked_encoding, url: %s", url)
-        CHUNK_SIZE = 1 * 1024
+        CHUNK_SIZE = 16 * 1024
         # Start the request.
         parsed_base_url = urllib.parse.urlparse(self._base_url)
         path = url + '?' + urllib.parse.urlencode(query_params)
