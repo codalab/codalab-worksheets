@@ -544,7 +544,7 @@ class RunStateMachine(StateTransitioner):
         if run_state.is_restaged:
             return run_state._replace(stage=RunStage.RESTAGED)
 
-        if not self.shared_file_system and run_state.has_contents:
+        if not self.shared_file_system and run_state.has_contents and not run_state.is_killed:
             return run_state._replace(
                 stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
             )
