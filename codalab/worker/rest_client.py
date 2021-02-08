@@ -156,16 +156,16 @@ class RestClient(object):
                 conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
                 bytes_uploaded += len(to_send)
                 if progress_callback is not None:
-                    logging.info("Calling progress_callback, bytes uploaded: %d", bytes_uploaded)
+                    logging.info("Calling progress_callback, bytes uploaded: %d, url: %s", bytes_uploaded, url)
                     should_resume = progress_callback(bytes_uploaded)
                     if not should_resume:
                         raise Exception('Upload aborted by client')
             conn.send(b'0\r\n\r\n')
 
             # Read the response.
-            logging.info("About to read the response")
+            logging.info("About to read the response, url: %s", url)
             response = conn.getresponse()
-            logging.info("Finished reading the response")
+            logging.info("Finished reading the response, url: %s", url)
             if response.status != 200:
                 # Low-level httplib module doesn't throw HTTPError
                 raise urllib.error.HTTPError(
