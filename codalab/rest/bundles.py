@@ -7,6 +7,7 @@ import sys
 import time
 from io import BytesIO
 from http.client import HTTPResponse
+import traceback
 
 from bottle import abort, get, post, put, delete, local, request, response
 from codalab.bundles import get_bundle_subclass
@@ -767,7 +768,7 @@ def _update_bundle_contents_blob(uuid):
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error
-        logging.info("failed UsageError, uuid: %s, err: %s", uuid, err)
+        logging.info("failed UsageError, uuid: %s, err: %s, traceback: %s", uuid, err, traceback.print_exc())
         if local.upload_manager.has_contents(bundle):
             local.upload_manager.cleanup_existing_contents(bundle)
         logging.info("failed UsageError cleanup done, uuid: %s, err: %s", uuid, err)
