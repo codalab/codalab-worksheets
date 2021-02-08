@@ -26,6 +26,7 @@ user = User(
         "disk_used": 0,
         "affiliation": None,
         "url": None,
+        "avatar_id": None,
     }
 )
 

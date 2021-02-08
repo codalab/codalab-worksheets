@@ -283,6 +283,9 @@ user = Table(
     Column('time_used', Float, nullable=False),  # Number of seconds already used
     Column('disk_quota', Float, nullable=False),  # Number of bytes allowed
     Column('disk_used', Float, nullable=False),  # Number of bytes already used
+    Column(
+        'avatar_id', String(63), nullable=True
+    ),  # bundle id of the user's uploaded profile picture; Null if the user has never uploaded one
     Index('user_user_id_index', 'user_id'),
     Index('user_user_name_index', 'user_name'),
     UniqueConstraint('user_id', name='uix_1'),
