@@ -71,8 +71,9 @@ def unpack(ext, source, dest_path):
             unzip_directory(source, dest_path)
         else:
             raise UsageError('Not an archive.')
-    except (tarfile.TarError, IOError):
-        raise UsageError('Invalid archive upload.')
+    except (tarfile.TarError, IOError) as e:
+        raise e
+        # raise UsageError('Invalid archive upload.')
     finally:
         if close_source:
             source.close()
