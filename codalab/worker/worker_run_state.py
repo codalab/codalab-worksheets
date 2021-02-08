@@ -128,9 +128,10 @@ DependencyToMount = namedtuple('DependencyToMount', 'docker_path, child_path, pa
 def log_bundle_transition(
     bundle_uuid: str, previous_state: str, next_state: str, reason: str, warn: bool = False
 ):
-    logger.info(
-        f'Bundle {bundle_uuid} is transitioning from {previous_state} to {next_state} due to {reason}'
-    )
+    info = f'Bundle {bundle_uuid} is transitioning from {previous_state} to {next_state}'
+    if reason != '':
+        info = info + f' due to: {reason}'
+    logger.info(info)
     if warn:
         logger.warning(traceback.format_exc())
 
@@ -222,7 +223,7 @@ class RunStateMachine(StateTransitioner):
                 run_state.bundle.uuid,
                 run_state.stage,
                 RunStage.CLEANING_UP,
-                'the bundle is either killed or restaged.',
+                'The bundle is either killed or restaged.',
                 True,
             )
             return run_state._replace(stage=RunStage.CLEANING_UP)
@@ -261,7 +262,7 @@ class RunStateMachine(StateTransitioner):
                         run_state.bundle.uuid,
                         run_state.stage,
                         RunStage.CLEANING_UP,
-                        f'dependency key {dep_key} has failed for this bundle',
+                        f'Dependency {dep} has failed for this bundle',
                         True,
                     )
                     return run_state._replace(
