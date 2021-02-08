@@ -125,7 +125,7 @@ class RestClient(object):
         runs to completion
         """
         logging.info("_upload_with_chunked_encoding, url: %s", url)
-        CHUNK_SIZE = 16 * 1024
+        CHUNK_SIZE = 1 * 1024
         # Start the request.
         parsed_base_url = urllib.parse.urlparse(self._base_url)
         path = url + '?' + urllib.parse.urlencode(query_params)
@@ -151,7 +151,7 @@ class RestClient(object):
             bytes_uploaded = 0
             while True:
                 to_send = fileobj.read(CHUNK_SIZE)
-                logging.info("Reading a chunk with length %d, tell %d", len(to_send), fileobj.tell())
+                logging.info("Reading a chunk with length %d, chunk_size %d", len(to_send), CHUNK_SIZE)
                 if not to_send:
                     break
                 conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
