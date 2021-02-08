@@ -151,6 +151,7 @@ class RestClient(object):
             bytes_uploaded = 0
             while True:
                 to_send = fileobj.read(CHUNK_SIZE)
+                logging.info("Reading a chunk with length %d, tell %d", len(to_send), fileobj.tell())
                 if not to_send:
                     break
                 conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
