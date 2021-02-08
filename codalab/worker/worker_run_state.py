@@ -205,7 +205,9 @@ class RunStateMachine(StateTransitioner):
             #   dependency_path:docker_dependency_path:ro
             docker_dependencies.append((dependency.parent_path, dependency.docker_path))
 
-        if run_state.is_killed or run_state.is_restaged:
+        if run_state.is_killed:
+            return run_state._replace(stage=RunStage.FINISHED)
+        if run_state.is_restaged:
             return run_state._replace(stage=RunStage.CLEANING_UP)
 
         # Check CPU and GPU availability
@@ -544,7 +546,7 @@ class RunStateMachine(StateTransitioner):
         if run_state.is_restaged:
             return run_state._replace(stage=RunStage.RESTAGED)
 
-        if not self.shared_file_system and run_state.has_contents and not run_state.is_killed:
+        if not self.shared_file_system and run_state.has_contents:
             return run_state._replace(
                 stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
             )
