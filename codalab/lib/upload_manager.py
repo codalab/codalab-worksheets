@@ -4,7 +4,7 @@ import shutil
 
 from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
-
+import logging
 
 class UploadManager(object):
     """
@@ -104,12 +104,14 @@ class UploadManager(object):
                         )
                 elif is_fileobj:
                     if unpack and zip_util.path_is_archive(filename):
+                        logging.info("starting _unpack_fileobj, file: %s", filename)
                         self._unpack_fileobj(
                             source[0],
                             source[1],
                             zip_util.strip_archive_ext(source_output_path),
                             simplify_archive=simplify_archives,
                         )
+                        logging.info("finished _unpack_fileobj, file: %s", filename)
                     else:
                         with open(source_output_path, 'wb') as out:
                             shutil.copyfileobj(source[1], out)

@@ -337,11 +337,11 @@ class DownloadManager(object):
             'path': target.subpath,
             'read_args': read_args,
         }
-        logging.info("trying to reach worker, sending read message: %s", message)
+        # logging.info("trying to reach worker, sending read message: %s", message)
         if not self._worker_model.send_json_message(
             worker['socket_id'], message, 60
         ):  # dead workers are a fact of life now
-            logging.info('Unable to reach worker, message %s', message)
+            logging.info('Unable to reach worker')
 
     def _send_netcat_message(self, worker, response_socket_id, uuid, port, message):
         message = {

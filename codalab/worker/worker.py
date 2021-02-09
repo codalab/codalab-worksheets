@@ -439,7 +439,7 @@ class Worker:
         if not response or self.terminate_and_restage or self.terminate:
             return
         action_type = response['type']
-        logger.debug('Received %s message: %s', action_type, response)
+        # logger.debug('Received %s message: %s', action_type, response)
         if action_type == 'run':
             self.initialize_run(response['bundle'], response['resources'])
         else:

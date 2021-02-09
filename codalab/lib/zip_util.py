@@ -59,6 +59,7 @@ def unpack(ext, source, dest_path):
             close_source = True
 
         if ext == '.tar.gz' or ext == '.tgz':
+            print("un_tar_directory, source %s, dest_path %s", source, dest_path)
             un_tar_directory(source, dest_path, 'gz')
         elif ext == '.tar.bz2':
             un_tar_directory(source, dest_path, 'bz2')
