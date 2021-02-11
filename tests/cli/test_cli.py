@@ -911,6 +911,9 @@ def test_rm(ctx):
     _run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
     _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
 
+@TestModule.register('ancestors')
+def test_ancestors(ctx):
+
 
 @TestModule.register('make')
 def test_make(ctx):
