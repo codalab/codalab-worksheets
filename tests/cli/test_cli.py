@@ -913,6 +913,14 @@ def test_rm(ctx):
 
 @TestModule.register('ancestors')
 def test_ancestors(ctx):
+    dir1 = _run_command([cl, 'upload', test_path('dir1')])
+    dir2 = _run_command([cl, 'upload', test_path('dir2')])
+    dir3 = _run_command([cl, 'upload', test_path('dir3')])
+    uuid = _run_command([cl, 'run', 'foo:%s' % dir1, 'bar:%s' % dir2, 'baz:%s' % dir3, 'cat foo/f1'])
+    wait(uuid)
+    print(uuid)
+    ancestors = _run_command([cl, 'ancestors', uuid[:8]])
+    print(ancestors)
 
 
 @TestModule.register('make')
