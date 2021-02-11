@@ -681,7 +681,7 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
         except NotFoundError:
             pass
         except PermissionError:
-            # Use the array of length 3 to pass the PermissionError to the frontend
+            # Use an array of length 1 to pass the PermissionError to the frontend
             info = ["Forbidden"]
             return info
 
