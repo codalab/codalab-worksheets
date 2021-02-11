@@ -220,9 +220,7 @@ def open_indexed_tar_gz_file(path):
     This way, the .tar.gz file can be read and specific files can be extracted without
     needing to download the entire .tar.gz file.
     """
-    f = FileSystems.open(
-        path, compression_type=CompressionTypes.UNCOMPRESSED
-    )
+    f = FileSystems.open(path, compression_type=CompressionTypes.UNCOMPRESSED)
     with tempfile.NamedTemporaryFile(suffix=".sqlite") as index_file:
         shutil.copyfileobj(
             FileSystems.open(
@@ -231,13 +229,16 @@ def open_indexed_tar_gz_file(path):
             ),
             index_file,
         )
-        return (SQLiteIndexedTar(
-            fileObject=f,
-            tarFileName=parse_linked_bundle_url(path).bundle_uuid,
-            writeIndex=False,
-            clearIndexCache=False,
-            indexFileName=index_file.name,
-        ), f)
+        return (
+            SQLiteIndexedTar(
+                fileObject=f,
+                tarFileName=parse_linked_bundle_url(path).bundle_uuid,
+                writeIndex=False,
+                clearIndexCache=False,
+                indexFileName=index_file.name,
+            ),
+            f,
+        )
 
 
 class ClosingStreamWrapper(IOBase):
@@ -347,7 +348,7 @@ def open_file(file_path, mode='r'):
             # TODO: Implement a tf.open() function so that we don't have to read the entire file.
             return BytesIO(tf.read(path="", fileInfo=finfo, size=finfo.size, offset=0))
     # elif linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
-        
+
     #     return gzip.GzipFile(fileobj=FileSystems.open(file_path, mode, compression_type=CompressionTypes.UNCOMPRESSED))
     return FileSystems.open(file_path, mode, compression_type=CompressionTypes.UNCOMPRESSED)
 
