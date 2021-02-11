@@ -163,12 +163,13 @@ class BundleRow extends Component {
                     rowContent = rowContent['path'].split('/')[1];
                 }
             }
-            if (Array.isArray(rowContent) && rowContent.length === 3) {
-                // Cell is a bundle genpath triple -- see is_bundle_genpath_triple() in backend.
-                if (rowContent[0] === 'Forbidden') {
+            if (Array.isArray(rowContent)) {
+                if (rowContent.length === 1) {
                     // This means that the user has no access to the cell since PermissionError occurred.
+                    // ['Forbidden'] will be returned
                     rowContent = <span style={{ color: 'grey' }}>Forbidden</span>;
-                } else {
+                } else if (rowContent.length === 3) {
+                    // Cell is a bundle genpath triple -- see is_bundle_genpath_triple() in backend.
                     // This means that the cell is only briefly loaded.
                     rowContent = <span style={{ color: 'grey' }}>Loading...</span>;
                 }

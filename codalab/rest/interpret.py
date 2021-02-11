@@ -682,7 +682,7 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
             pass
         except PermissionError:
             # Use the array of length 3 to pass the PermissionError to the frontend
-            info = ["Forbidden", "Forbidden", "Forbidden"]
+            info = ["Forbidden"]
             return info
 
         # Try to interpret the structure of the file by looking inside it.
