@@ -1170,13 +1170,16 @@ class Worksheet extends React.Component {
                                 inSourceEditMode: false,
                                 editorEnabled: false,
                             }); // Needs to be after getting the raw contents
-                            if (saveChanges) {
-                                this.saveAndUpdateWorksheet(saveChanges, rawIndex);
-                            } else {
-                                this.reloadWorksheet(undefined, rawIndex);
-                            }
+                            this.saveAndUpdateWorksheet(saveChanges, rawIndex);
                         },
                     );
+                } else {
+                    var rawIndex = editor.getCursorPosition().row;
+                    this.setState({
+                        inSourceEditMode: false,
+                        editorEnabled: false,
+                    });
+                    this.reloadWorksheet(undefined, rawIndex);
                 }
             } else {
                 // Not allowed to edit the worksheet.
@@ -1202,7 +1205,7 @@ class Worksheet extends React.Component {
         var self = this;
         var queryParams = Object.keys(bundleUuids)
             .map(function(bundle_uuid) {
-                return 'uuid=' + bundle_uuid;
+                return 'bundle_uuid=' + bundle_uuid;
             })
             .join('&');
         $.ajax({
@@ -1524,9 +1527,28 @@ class Worksheet extends React.Component {
         } else {
             var ws = _.clone(this.state.ws);
             for (var i = 0; i < partialUpdateItems.length; i++) {
-                if (!partialUpdateItems[i]) continue;
+                if (
+                    !partialUpdateItems[i] ||
+                    !(
+                        'bundles_spec' in partialUpdateItems[i] &&
+                        'bundle_infos' in partialUpdateItems[i]['bundles_spec']
+                    )
+                )
+                    // Partial Update mechanism only designs for the blocks consisting of bundles
+                    // Check whether the block contains the field of 'bundle_infos' to determine whether it is a non-None block containing a list of bundle_infos, which represent a list of bundles
+                    continue;
+                // Update rows
+                ws.info.blocks[i]['rows'] = partialUpdateItems[i]['rows'];
                 // update interpreted items
-                ws.info.blocks[i] = partialUpdateItems[i];
+                for (
+                    let j = 0;
+                    j < partialUpdateItems[i]['bundles_spec']['bundle_infos'].length;
+                    j++
+                ) {
+                    if (partialUpdateItems[i]['bundles_spec']['bundle_infos'][j])
+                        ws.info.blocks[i]['bundles_spec']['bundle_infos'][j] =
+                            partialUpdateItems[i]['bundles_spec']['bundle_infos'][j];
+                }
             }
             this.setState({ ws: ws, version: this.state.version + 1 });
             this.checkRunBundle(ws.info);

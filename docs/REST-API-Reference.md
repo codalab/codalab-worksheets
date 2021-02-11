@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.35_
+_version 0.5.37_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -134,6 +134,7 @@ Name | Type
 `affiliation` | String
 `url` | Url
 `date_joined` | LocalDateTime
+`avatar_id` | String
 `email` | String
 `notifications` | Integer
 `time_quota` | Integer
@@ -157,6 +158,7 @@ Name | Type
 `affiliation` | String
 `url` | Url
 `date_joined` | LocalDateTime
+`avatar_id` | String
 `email` | String
 `notifications` | Integer
 `time_quota` | Integer
@@ -251,6 +253,7 @@ Name | Type
 `affiliation` | String
 `url` | Url
 `date_joined` | LocalDateTime
+`avatar_id` | String
 
 ## worksheet-items
 
