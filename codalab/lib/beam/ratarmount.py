@@ -27,7 +27,7 @@ try:
 except ImportError:
     pass
 try:
-    import indexed_gzip
+    import indexed_gzip_fileobj_fork_epicfaace as indexed_gzip
 except ImportError:
     pass
 try:
