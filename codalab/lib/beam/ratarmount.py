@@ -1,4 +1,3 @@
-# type: ignore
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -33,19 +32,19 @@ from typing import Any, AnyStr, BinaryIO, Dict, IO, Iterable, List, Optional, Se
 # Can't do this dynamically with importlib.import_module and using supportedCompressions
 # because then the static checkers like mypy and pylint won't recognize the modules!
 try:
-    import indexed_bzip2
+    import indexed_bzip2 # type: ignore
 except ImportError:
     pass
 try:
-    import indexed_gzip_fileobj_fork_epicfaace as indexed_gzip
+    import indexed_gzip_fileobj_fork_epicfaace as indexed_gzip # type: ignore
 except ImportError:
     pass
 try:
-    import indexed_zstd
+    import indexed_zstd # type: ignore
 except ImportError:
     pass
 try:
-    import lzmaffi
+    import lzmaffi # type: ignore
 except ImportError:
     pass
 
