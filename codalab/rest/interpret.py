@@ -16,7 +16,7 @@ import json
 import yaml
 from bottle import get, post, local, request, abort, httplib
 
-from codalab.common import UsageError, NotFoundError
+from codalab.common import UsageError, NotFoundError, PermissionError
 from codalab.lib import formatting, spec_util
 from codalab.lib.worksheet_util import (
     TYPE_DIRECTIVE,
@@ -680,6 +680,10 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
                             info = ''.join(contents)
         except NotFoundError:
             pass
+        except PermissionError:
+            # Use an array of length 1 to pass the PermissionError to the frontend
+            info = ["Forbidden"]
+            return info
 
         # Try to interpret the structure of the file by looking inside it.
         target_cache[target] = info
