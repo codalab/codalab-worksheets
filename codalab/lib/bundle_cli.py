@@ -123,6 +123,7 @@ BUNDLE_COMMANDS = (
     'write',
     'mount',
     'netcat',
+    'ancestors',
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -2915,6 +2916,36 @@ class BundleCLI(object):
 
     def bundle_url(self, bundle_uuid):
         return '%s%s%s' % (self.manager.session()['address'], BUNDLES_URL_SEPARATOR, bundle_uuid)
+
+    @Commands.command(
+        'ancestors',
+        help='Recursively prints out all of the ancestors of a bundle.',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs=1, completer=BundlesCompleter
+            ),
+        ),
+    )
+
+    def do_ancestors_command(self, args):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        bundles = client.fetch(
+            'bundles', params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
+        )
+
+        # DFS through parent dependencies of specified bundle
+        level = 0
+        stack = [(bundle, level) for bundle in bundles]
+        while stack:
+            current, level = stack.pop(0)
+            print(f"{('  ' * level)}- {current['metadata']['name']}({current['uuid'][:8]})")
+            for d in current['dependencies']:
+                parents = client.fetch(
+                    'bundles', params={'specs': d['parent_uuid'], 'worksheet': worksheet_uuid},
+                )
+                for b in parents:
+                    stack.append((b, level + 1))
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
