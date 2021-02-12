@@ -104,6 +104,12 @@ worksheet = Table(
         'frozen', DateTime, nullable=True
     ),  # When the worksheet was frozen (forever immutable) if it is.
     Column('is_anonymous', Boolean, nullable=False, default=False),
+    Column(
+        'date_created', DateTime
+    ),  # When the worksheet was created; Set to null if the worksheet created before v0.5.31; Set to current timestamp by default
+    Column(
+        'date_last_modified', DateTime
+    ),  # When the worksheet was last modified; Set to null if the worksheet created before v0.5.31; Set to current_timestamp by default
     UniqueConstraint('uuid', name='uix_1'),
     Index('worksheet_name_index', 'name'),
     Index('worksheet_owner_index', 'owner_id'),
@@ -277,6 +283,9 @@ user = Table(
     Column('time_used', Float, nullable=False),  # Number of seconds already used
     Column('disk_quota', Float, nullable=False),  # Number of bytes allowed
     Column('disk_used', Float, nullable=False),  # Number of bytes already used
+    Column(
+        'avatar_id', String(63), nullable=True
+    ),  # bundle id of the user's uploaded profile picture; Null if the user has never uploaded one
     Index('user_user_id_index', 'user_id'),
     Index('user_user_name_index', 'user_name'),
     UniqueConstraint('user_id', name='uix_1'),
