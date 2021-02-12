@@ -2926,7 +2926,6 @@ class BundleCLI(object):
             ),
         ),
     )
-
     def do_ancestors_command(self, args):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
