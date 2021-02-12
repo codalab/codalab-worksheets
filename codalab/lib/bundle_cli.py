@@ -2034,6 +2034,7 @@ class BundleCLI(object):
             args.indent_count = 0
         # get the full bundle id to make a get request
         bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        # request bundle information based on uuid
         bundles = client.fetch('bundles', bundle_uuids[0])
         print(
             "  " * args.indent_count
@@ -2044,7 +2045,9 @@ class BundleCLI(object):
             nargs = argparse.Namespace()
             nargs.bundle_spec = [dependency['parent_uuid'][:8]]
             nargs.worksheet_spec = args.worksheet_spec
+            # the indent count increases as the number of ancestors increases.
             nargs.indent_count = args.indent_count + 1
+            # recursively find and print the parents
             self.do_ancestors_command(nargs)
 
     @Commands.command(
