@@ -912,6 +912,13 @@ def test_rm(ctx):
     _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
 
 
+@TestModule.register('ancestors')
+def test_ancestors(ctx):
+    uuid = _run_command([cl, 'upload', test_path('a.txt')])
+    _run_command([cl, 'ancestors', uuid])  # Basic functionality
+    _run_command([cl, 'ancestors', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
+
+
 @TestModule.register('make')
 def test_make(ctx):
     uuid1 = _run_command([cl, 'upload', test_path('a.txt')])
