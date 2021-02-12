@@ -2016,15 +2016,15 @@ class BundleCLI(object):
         'ancestors',
         help='Find ancestors of a bundle.',
         arguments=(
-                Commands.Argument(
-                    'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
-                ),
-                Commands.Argument(
-                    '-w',
-                    '--worksheet-spec',
-                    help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
-                    completer=WorksheetsCompleter,
-                ),
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
         ),
     )
     def do_ancestors_command(self, args):
@@ -2035,7 +2035,10 @@ class BundleCLI(object):
         # get the full bundle id to make a get request
         bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         bundles = client.fetch('bundles', bundle_uuids[0])
-        print("  " * args.indent_count + "- %s(%s)" % (bundles['metadata']['name'], args.bundle_spec[0]))
+        print(
+            "  " * args.indent_count
+            + "- %s(%s)" % (bundles['metadata']['name'], args.bundle_spec[0])
+        )
         for dependency in bundles['dependencies']:
             # find the parents of the parents
             nargs = argparse.Namespace()
