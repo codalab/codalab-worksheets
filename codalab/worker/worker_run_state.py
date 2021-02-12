@@ -238,6 +238,9 @@ class RunStateMachine(StateTransitioner):
                     dependencies_ready = False
                 elif dependency_state.stage == DependencyStage.FAILED:
                     # Failed to download dependency; -> CLEANING_UP
+                    from codalab.lib import telemetry_util
+
+                    telemetry_util.capture_message(dependency_state.message)
                     return run_state._replace(
                         stage=RunStage.CLEANING_UP,
                         failure_message='Failed to download dependency %s: %s'

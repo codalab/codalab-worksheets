@@ -43,6 +43,10 @@ def capture_exception(exception=None):
     sentry_sdk.capture_exception(exception)
 
 
+def capture_message(msg):
+    sentry_sdk.capture_message(msg)
+
+
 @run_once
 def print_sentry_warning():
     logger.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
