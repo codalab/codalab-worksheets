@@ -8,6 +8,7 @@ import { renderFormat, renderPermissions, shorten_uuid } from '../../util/worksh
 import { BundleEditableField } from '../EditableField';
 import { FileBrowser } from '../FileBrowser/FileBrowser';
 import './Bundle.scss';
+import ErrorMessage from '../worksheets/ErrorMessage';
 
 class Bundle extends React.Component<
     {
@@ -181,7 +182,7 @@ class Bundle extends React.Component<
         if (!bundleInfo) {
             // Error
             if (this.state.errorMessages.length > 0) {
-                return renderErrorMessages(this.state.errorMessages);
+                return <ErrorMessage message={"Not found: '/bundles/" + this.props.uuid + "'"} />;
             }
 
             // Still loading

@@ -81,7 +81,7 @@ jobs:
       matrix:
         test:
           - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
-          - worker_manager
+          - worker_manager service
           - run
           - run2
           - search link read kill write mimic workers edit_user sharing_workers
