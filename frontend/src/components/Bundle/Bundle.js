@@ -153,21 +153,23 @@ class Bundle extends React.Component<
                     this.setState(stateUpdate);
                 }
             })
-            .fail(function(xhr, status, err) {
-                // 404 Not Found errors are normal if contents aren't available yet, so ignore them
-                if (xhr.status !== 404) {
-                    this.setState({
-                        bundleInfo: null,
-                        fileContents: null,
-                        stdout: null,
-                        stderr: null,
-                        errorMessages: this.state.errorMessages.concat([xhr.responseText]),
-                    });
-                } else {
-                    // If contents aren't available yet, then also clear stdout and stderr.
-                    this.setState({ fileContents: null, stdout: null, stderr: null });
-                }
-            });
+            .fail(
+                function(xhr, status, err) {
+                    // 404 Not Found errors are normal if contents aren't available yet, so ignore them
+                    if (xhr.status !== 404) {
+                        this.setState({
+                            bundleInfo: null,
+                            fileContents: null,
+                            stdout: null,
+                            stderr: null,
+                            errorMessages: this.state.errorMessages.concat([xhr.responseText]),
+                        });
+                    } else {
+                        // If contents aren't available yet, then also clear stdout and stderr.
+                        this.setState({ fileContents: null, stdout: null, stderr: null });
+                    }
+                }.bind(this),
+            );
     };
 
     componentDidMount() {
