@@ -400,6 +400,9 @@ Query parameters:
   "uploading" regardless of the bundle type, or 0 otherwise. Used when
   copying bundles from another CodaLab instance, this prevents these new
   bundles from being executed by the BundleManager. Default is 0.
+- `avatar`: 1 if the bundle is the user's uploaded avatar,
+  or 0 otherwise. No parent worksheet need to be specified for an avatar bundle.
+  Default is 0.
 
 ### `PATCH /bundles`
 

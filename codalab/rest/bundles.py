@@ -224,12 +224,16 @@ def _create_bundles():
       "uploading" regardless of the bundle type, or 0 otherwise. Used when
       copying bundles from another CodaLab instance, this prevents these new
       bundles from being executed by the BundleManager. Default is 0.
+    - `avatar`: 1 if the bundle is the user's uploaded avatar,
+      or 0 otherwise. No parent worksheet need to be specified for an avatar bundle.
+      Default is 0.
     """
     worksheet_uuid = request.query.get('worksheet')
     shadow_parent_uuid = request.query.get('shadow')
     after_sort_key = request.query.get('after_sort_key')
     detached = query_get_bool('detached', default=False)
-    if worksheet_uuid is None:
+    is_avatar = query_get_bool('avatar', default=False)
+    if not is_avatar and worksheet_uuid is None:
         abort(
             http.client.BAD_REQUEST,
             "Parent worksheet id must be specified as" "'worksheet' query parameter",
@@ -243,9 +247,10 @@ def _create_bundles():
     )
 
     # Check for all necessary permissions
-    worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
-    check_worksheet_has_all_permission(local.model, request.user, worksheet)
-    worksheet_util.check_worksheet_not_frozen(worksheet)
+    if not is_avatar:
+        worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
+        check_worksheet_has_all_permission(local.model, request.user, worksheet)
+        worksheet_util.check_worksheet_not_frozen(worksheet)
     request.user.check_quota(need_time=True, need_disk=True)
 
     created_uuids = []
@@ -266,7 +271,10 @@ def _create_bundles():
             bundle['state'] = State.UPLOADING
         else:
             bundle['state'] = State.CREATED
-        bundle['is_anonymous'] = worksheet.is_anonymous  # inherit worksheet anonymity
+        if not is_avatar:
+            bundle['is_anonymous'] = worksheet.is_anonymous  # inherit worksheet anonymity
+        else:
+            bundle['is_anonymous'] = False
         bundle.setdefault('metadata', {})['created'] = int(time.time())
         for dep in bundle.setdefault('dependencies', []):
             dep['child_uuid'] = bundle_uuid
@@ -277,23 +285,24 @@ def _create_bundles():
         # Save bundle into model
         local.model.save_bundle(bundle)
 
-        # Inherit worksheet permissions
-        group_permissions = local.model.get_group_worksheet_permissions(
-            request.user.user_id, worksheet_uuid
-        )
-        set_bundle_permissions(
-            [
-                {
-                    'object_uuid': bundle_uuid,
-                    'group_uuid': p['group_uuid'],
-                    'permission': p['permission'],
-                }
-                for p in group_permissions
-            ]
-        )
+        if not is_avatar:
+            # Inherit worksheet permissions
+            group_permissions = local.model.get_group_worksheet_permissions(
+                request.user.user_id, worksheet_uuid
+            )
+            set_bundle_permissions(
+                [
+                    {
+                        'object_uuid': bundle_uuid,
+                        'group_uuid': p['group_uuid'],
+                        'permission': p['permission'],
+                    }
+                    for p in group_permissions
+                ]
+            )
 
         # Add as item to worksheet
-        if not detached:
+        if not is_avatar and not detached:
             if shadow_parent_uuid is None:
                 local.model.add_worksheet_items(
                     worksheet_uuid, [worksheet_util.bundle_item(bundle_uuid)], after_sort_key

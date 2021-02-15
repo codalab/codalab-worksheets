@@ -239,15 +239,13 @@ class EditableAvatar extends React.Component {
                 }
             }
 
-            // Fetch the uuid of user's dashboard worksheet for storing the profile-image bundle
-            const response = await fetch(`/rest/worksheets?specs=dashboard`).then((e) => e.json());
-            const worksheetUUID = response.data[0].id;
             const file = this.state.file;
-
             // Rename the file to let it be related to the user
             const fileName: string = this.props.userInfo.user_name + '.JPG';
+            // Specify the bundle is an avatar
+            // So no parent worksheet ID is needed
             const bundle = await createImageBundle(
-                `/rest/bundles?worksheet=${worksheetUUID}`,
+                `/rest/bundles?avatar=1`,
                 JSON.stringify(getDefaultBundleMetadata(fileName)),
             );
             const bundleUuid = bundle.data[0].id;
