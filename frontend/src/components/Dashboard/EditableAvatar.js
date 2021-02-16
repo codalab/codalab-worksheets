@@ -245,7 +245,7 @@ class EditableAvatar extends React.Component {
             // Specify the bundle is an avatar
             // So no parent worksheet ID is needed
             const bundle = await createImageBundle(
-                `/rest/bundles?avatar=1`,
+                `/rest/bundles?parent_worksheet_required=0`,
                 JSON.stringify(getDefaultBundleMetadata(fileName)),
             );
             const bundleUuid = bundle.data[0].id;
