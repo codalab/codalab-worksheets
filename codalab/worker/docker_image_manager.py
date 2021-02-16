@@ -283,7 +283,6 @@ class DockerImageManager:
                             image_spec, ex
                         )
                         logger.error(failure_msg)
-                        capture_message(failure_msg)
                         return ImageAvailabilityState(
                             digest=None, stage=DependencyStage.FAILED, message=failure_msg
                         )
