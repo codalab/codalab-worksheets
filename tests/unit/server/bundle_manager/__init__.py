@@ -269,6 +269,8 @@ class TestBase:
             remote="",
             exitcode=0,
             failure_message="",
+            cpu_usage=0.0,
+            memory_limit=0,
             bundle_profile_stats={
                 RunStage.PREPARING: {'start': 15, 'end': 20, 'elapsed': 5},
                 RunStage.RUNNING: {'start': 15, 'end': 20, 'elapsed': 5},

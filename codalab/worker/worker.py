@@ -560,6 +560,8 @@ class Worker:
                 exitcode=run_state.exitcode,
                 failure_message=run_state.failure_message,
                 bundle_profile_stats=run_state.bundle_profile_stats,
+                cpu_usage=run_state.cpu_usage,
+                memory_limit=run_state.memory_limit,
             )
             for run_state in self.runs.values()
         ]
@@ -655,6 +657,8 @@ class Worker:
                 finished=False,
                 finalized=False,
                 is_restaged=False,
+                cpu_usage=0.0,
+                memory_limit=0,
             )
             # Start measuring bundle stats for the initial bundle state.
             self.start_stage_stats(bundle.uuid, RunStage.PREPARING)
