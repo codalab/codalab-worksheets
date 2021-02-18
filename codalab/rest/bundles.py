@@ -219,21 +219,18 @@ def _create_bundles():
     - `shadow`: UUID of the bundle to "shadow" (the new bundle will be added
       as an item immediately after this bundle in its parent worksheet).
     - `detached`: 1 if should not add new bundle to any worksheet,
+      so the bundle does not have a hosted worksheet(e.g. It is the user's uploaded avatar)
       or 0 otherwise. Default is 0.
     - `wait_for_upload`: 1 if the bundle state should be initialized to
       "uploading" regardless of the bundle type, or 0 otherwise. Used when
       copying bundles from another CodaLab instance, this prevents these new
       bundles from being executed by the BundleManager. Default is 0.
-    - `parent_worksheet_required`: 0 if the bundle does not need a hosted worksheet
-      (e.g. It is the user's uploaded avatar) or 1 otherwise.
-      Default is 1 since the parent worksheet need to be specified by default.
     """
     worksheet_uuid = request.query.get('worksheet')
     shadow_parent_uuid = request.query.get('shadow')
     after_sort_key = request.query.get('after_sort_key')
     detached = query_get_bool('detached', default=False)
-    parent_worksheet_required = query_get_bool('parent_worksheet_required', default=True)
-    if parent_worksheet_required and worksheet_uuid is None:
+    if not detached and worksheet_uuid is None:
         abort(
             http.client.BAD_REQUEST,
             "Parent worksheet id must be specified as" "'worksheet' query parameter",
@@ -247,7 +244,7 @@ def _create_bundles():
     )
 
     # Check for all necessary permissions
-    if parent_worksheet_required:
+    if not detached:
         worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(local.model, request.user, worksheet)
         worksheet_util.check_worksheet_not_frozen(worksheet)
@@ -271,7 +268,7 @@ def _create_bundles():
             bundle['state'] = State.UPLOADING
         else:
             bundle['state'] = State.CREATED
-        if parent_worksheet_required:
+        if not detached:
             bundle['is_anonymous'] = worksheet.is_anonymous  # inherit worksheet anonymity
         else:
             bundle['is_anonymous'] = False
@@ -285,7 +282,7 @@ def _create_bundles():
         # Save bundle into model
         local.model.save_bundle(bundle)
 
-        if parent_worksheet_required:
+        if not detached:
             # Inherit worksheet permissions
             group_permissions = local.model.get_group_worksheet_permissions(
                 request.user.user_id, worksheet_uuid
@@ -302,7 +299,7 @@ def _create_bundles():
             )
 
         # Add as item to worksheet
-        if parent_worksheet_required and not detached:
+        if not detached:
             if shadow_parent_uuid is None:
                 local.model.add_worksheet_items(
                     worksheet_uuid, [worksheet_util.bundle_item(bundle_uuid)], after_sort_key
