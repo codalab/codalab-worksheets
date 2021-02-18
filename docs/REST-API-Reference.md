@@ -395,14 +395,12 @@ Query parameters:
 - `shadow`: UUID of the bundle to "shadow" (the new bundle will be added
   as an item immediately after this bundle in its parent worksheet).
 - `detached`: 1 if should not add new bundle to any worksheet,
+  so the bundle does not have a hosted worksheet(e.g. It is the user's uploaded avatar)
   or 0 otherwise. Default is 0.
 - `wait_for_upload`: 1 if the bundle state should be initialized to
   "uploading" regardless of the bundle type, or 0 otherwise. Used when
   copying bundles from another CodaLab instance, this prevents these new
   bundles from being executed by the BundleManager. Default is 0.
-- `parent_worksheet_required`: 0 if the bundle does not need a hosted worksheet
-  (e.g. It is the user's uploaded avatar) or 1 otherwise.
-  Default is 1 since the parent worksheet need to be specified by default.
 
 ### `PATCH /bundles`
 
