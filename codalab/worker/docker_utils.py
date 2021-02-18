@@ -203,7 +203,7 @@ def start_bundle_container(
         # because a container with the same name already exists. So, we try to remove
         # the container here.
         try:
-            container.remove(force=True)
+            client.api.remove_container(container_name, force=True)
         except Exception:
             logger.warning("Failed to clean up Docker container after failed launch.")
             traceback.print_exc()
