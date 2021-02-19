@@ -167,7 +167,6 @@ class BundleServiceClient(RestClient):
                 query_params={
                     'filename': 'bundle.tar.gz',
                     'finalize_on_success': 0,
-                    'upload_bundle_results': 1,
                 },
                 fileobj=fileobj,
                 progress_callback=progress_callback,
