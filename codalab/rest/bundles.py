@@ -7,8 +7,6 @@ import sys
 import time
 from io import BytesIO
 from http.client import HTTPResponse
-import traceback
-from threading import Thread
 
 from bottle import abort, get, post, put, delete, local, request, response
 from codalab.bundles import get_bundle_subclass
@@ -720,13 +718,8 @@ def _update_bundle_contents_blob(uuid):
     - `state_on_success`: (optional) Update the bundle state to this state if
       the upload completes successfully. Must be either 'ready' or 'failed'.
       Default is 'ready'.
-    - `upload_bundle_results`: (optional). If set, this endpoint runs
-      asynchronously -- it runs upload_to_bundle_store in a separate thread,
-      then sets the bundle state to FINALIZING once the upload is done.
-      Default is None (in which case, the endpoint is synchronous).
     """
     check_bundles_have_all_permission(local.model, request.user, [uuid])
-    logging.info("starting _update_bundle_contents_blob, uuid: %s", uuid)
     bundle = local.model.get_bundle(uuid)
     if bundle.state in State.FINAL_STATES:
         abort(http.client.FORBIDDEN, 'Contents cannot be modified, bundle already finalized.')
@@ -734,111 +727,86 @@ def _update_bundle_contents_blob(uuid):
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
     finalize_on_success = query_get_bool('finalize_on_success', default=True)
-    upload_bundle_results = request.query.get('upload_bundle_results', default=False)
     final_state = request.query.get('state_on_success', default=State.READY)
     if finalize_on_success and final_state not in State.FINAL_STATES:
         abort(
             http.client.BAD_REQUEST,
             'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES),
         )
-    
-    sources = None
-    filename = None
-    file_input = None
-    if request.query.urls:
-        sources = query_get_list('urls')
-    # request without "filename" doesn't need to upload to bundle store
-    if request.query.filename:
-        filename = request.query.get('filename', default='contents')
-        sources = [(filename, BytesIO(request['wsgi.input'].read()) )]
-        # file_input = BytesIO(request['wsgi.input']
-    git = query_get_bool('git', default=False),
-    unpack = query_get_bool('unpack', default=True)
-    simplify_archives = query_get_bool('simplify', default=True)
-    
-    def do_upload(sources, filename, git, unpack, simplify_archives, file_input, bundle_store, model, worker_model, upload_manager):
-        # If this bundle already has data, remove it.
-        if upload_manager.has_contents(bundle):
-            upload_manager.cleanup_existing_contents(bundle)
-        # Store the data.
-        try:
-            # if file_input:
-            #     sources[0] = (sources[0][0], file_input)
-            if sources:
-                logging.info("starting upload_to_bundle_store, uuid: %s", uuid)
-                upload_manager.upload_to_bundle_store(
-                    bundle,
-                    sources=sources,
-                    follow_symlinks=False,
-                    exclude_patterns=None,
-                    remove_sources=False,
-                    git=git,
-                    unpack=unpack,
-                    simplify_archives=simplify_archives,
-                )  # See UploadManager for full explanation of 'simplify'
-                logging.info("finished upload_to_bundle_store, uuid: %s", uuid)
-                bundle_link_url = getattr(bundle.metadata, "link_url", None)
-                bundle_location = bundle_link_url or bundle_store.get_bundle_location(bundle.uuid)
-                model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
-        except UsageError as err:
-            # This is a user error (most likely disk quota overuser) so raise a client HTTP error
-            logging.info(
-                "failed UsageError, uuid: %s, err: %s, traceback: %s",
-                uuid,
-                err,
-                traceback.print_exc(),
-            )
-            if upload_manager.has_contents(bundle):
-                upload_manager.cleanup_existing_contents(bundle)
-            logging.info("failed UsageError cleanup done, uuid: %s, err: %s", uuid, err)
-            msg = "Upload failed: %s" % err
-            model.update_bundle(
-                bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
-            )
-            abort(http.client.BAD_REQUEST, msg)
+    # If this bundle already has data, remove it.
+    if local.upload_manager.has_contents(bundle):
+        local.upload_manager.cleanup_existing_contents(bundle)
 
-        except Exception as e:
-            # Upload failed: cleanup, update state if desired, and return HTTP error
-            logging.info("failed Exception, uuid: %s, err: %s", uuid, e)
-            if upload_manager.has_contents(bundle):
-                upload_manager.cleanup_existing_contents(bundle)
-            logging.info("failed Exception cleanup done, uuid: %s, err: %s", uuid, e)
+    # Store the data.
+    try:
+        sources = None
+        if request.query.urls:
+            sources = query_get_list('urls')
+        # request without "filename" doesn't need to upload to bundle store
+        if request.query.filename:
+            filename = request.query.get('filename', default='contents')
+            sources = [(filename, request['wsgi.input'])]
+        if sources:
+            logging.info("starting upload_to_bundle_store, uuid: %s", uuid)
+            local.upload_manager.upload_to_bundle_store(
+                bundle,
+                sources=sources,
+                follow_symlinks=False,
+                exclude_patterns=None,
+                remove_sources=False,
+                git=query_get_bool('git', default=False),
+                unpack=query_get_bool('unpack', default=True),
+                simplify_archives=query_get_bool('simplify', default=True),
+            )  # See UploadManager for full explanation of 'simplify'
+            logging.info("finished upload_to_bundle_store, uuid: %s", uuid)
+            bundle_link_url = getattr(bundle.metadata, "link_url", None)
+            bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
+            local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
-            msg = "Upload failed: %s" % e
-
-            # The client may not want to finalize the bundle on failure, to keep
-            # open the possibility of retrying the upload in the case of transient
-            # failure.
-            # Workers also use this API endpoint to upload partial contents of
-            # running bundles, and they should use finalize_on_failure=0 to avoid
-            # letting transient errors during upload fail the bundles prematurely.
-            # if finalize_on_failure:
-            model.update_bundle(
-                bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
-            )
-
-            abort(http.client.INTERNAL_SERVER_ERROR, msg)
-
-        else:
-            if finalize_on_success:
-                # Upload succeeded: update state
-                model.update_bundle(bundle, {'state': final_state})
-            if upload_bundle_results:
-                # Worker has finished uploading bundle contents, so set state to FINALIZING.
-                model.update_bundle(bundle, {'state': State.FINALIZING})
-
-        logging.info("finished _update_bundle_contents_blob, uuid: %s", uuid)
-
-    if not upload_bundle_results:
-        # No threads, synchronous
-        do_upload(sources, filename, git, unpack, simplify_archives, file_input, local.bundle_store, local.model, local.worker_model, local.upload_manager)
-    else:
-        t = Thread(
-            target=do_upload,
-            args=(sources, filename, git, unpack, simplify_archives, file_input, local.bundle_store, local.model, local.worker_model, local.upload_manager),
+    except UsageError as err:
+        # This is a user error (most likely disk quota overuser) so raise a client HTTP error
+        logging.info(
+            "failed UsageError, uuid: %s, err: %s, traceback: %s",
+            uuid,
+            err,
+            traceback.print_exc(),
         )
-        t.start()
+        if local.upload_manager.has_contents(bundle):
+            local.upload_manager.cleanup_existing_contents(bundle)
+        msg = "Upload failed: %s" % err
+        local.model.update_bundle(
+            bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
+        )
+        abort(http.client.BAD_REQUEST, msg)
+
+    except Exception as e:
+        # Upload failed: cleanup, update state if desired, and return HTTP error
+        logging.info("failed Exception, uuid: %s, err: %s", uuid, e)
+        if local.upload_manager.has_contents(bundle):
+            local.upload_manager.cleanup_existing_contents(bundle)
+
+        msg = "Upload failed: %s" % e
+
+        # The client may not want to finalize the bundle on failure, to keep
+        # open the possibility of retrying the upload in the case of transient
+        # failure.
+        # Workers also use this API endpoint to upload partial contents of
+        # running bundles, and they should use finalize_on_failure=0 to avoid
+        # letting transient errors during upload fail the bundles prematurely.
+        if finalize_on_failure:
+            local.model.update_bundle(
+                bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
+            )
+
+        abort(http.client.INTERNAL_SERVER_ERROR, msg)
+
+    else:
+        if finalize_on_success:
+            # Upload succeeded: update state
+            local.model.update_bundle(bundle, {'state': final_state})
+    
+    logging.info("Done")
 
 
 #############################################################
