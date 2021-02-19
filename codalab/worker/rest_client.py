@@ -7,6 +7,8 @@ import urllib.parse
 import urllib.error
 from typing import Dict
 import logging
+import socket
+import time
 
 from .un_gzip_stream import un_gzip_stream
 from codalab.common import URLOPEN_TIMEOUT_SECONDS, urlopen_with_retry
@@ -126,13 +128,14 @@ class RestClient(object):
         """
         logging.info("_upload_with_chunked_encoding, url: %s", url)
         CHUNK_SIZE = 16 * 1024
+        TIMEOUT = 60
         # Start the request.
         parsed_base_url = urllib.parse.urlparse(self._base_url)
         path = url + '?' + urllib.parse.urlencode(query_params)
         if parsed_base_url.scheme == 'http':
-            conn = http.client.HTTPConnection(parsed_base_url.netloc)
+            conn = http.client.HTTPConnection(parsed_base_url.netloc, timeout=TIMEOUT)
         else:
-            conn = http.client.HTTPSConnection(parsed_base_url.netloc)
+            conn = http.client.HTTPSConnection(parsed_base_url.netloc, timeout=TIMEOUT)
         with closing(conn):
             conn.putrequest(method, parsed_base_url.path + path)
 
@@ -172,7 +175,15 @@ class RestClient(object):
 
             # Read the response.
             logging.info("About to read the response, url: %s", url)
-            response = conn.getresponse()
+            got_response = False
+            while got_response == False:
+                try:
+                    response = conn.getresponse()
+                    got_response = True
+                except socket.timeout:
+                    # Send an empty byte so that the connection doesn't drop.
+                    logging.info("Socket timeout, retrying")
+                    conn.send(b'\0')
             logging.info("Finished reading the response, url: %s", url)
             if response.status != 200:
                 # Low-level httplib module doesn't throw HTTPError
