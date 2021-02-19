@@ -280,5 +280,5 @@ def run_rest_server(manager, debug, num_processes, num_threads):
         threads=num_threads,
         worker_tmp_dir='/tmp',  # don't use globally set tempdir
         timeout=5 * 60,
-        spew=False
+        spew=False,
     )

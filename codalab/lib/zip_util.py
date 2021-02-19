@@ -13,10 +13,10 @@ from codalab.worker.file_util import (
     gzip_file,
     tar_gzip_directory,
     un_bz2_file,
-    un_gzip_stream,
-    un_tar_directory,
     unzip_directory,
 )
+from codalab.worker.un_gzip_stream import un_gzip_stream
+from codalab.worker.un_tar_directory import un_tar_directory
 
 
 # Files with these extensions are considered archive.

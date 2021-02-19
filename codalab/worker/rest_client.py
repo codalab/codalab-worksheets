@@ -8,7 +8,7 @@ import urllib.error
 from typing import Dict
 import logging
 
-from .file_util import un_gzip_stream
+from .un_gzip_stream import un_gzip_stream
 from codalab.common import URLOPEN_TIMEOUT_SECONDS, urlopen_with_retry
 
 
@@ -160,7 +160,11 @@ class RestClient(object):
                 logging.info("\tFinished sending chunk.")
                 bytes_uploaded += len(to_send)
                 if progress_callback is not None:
-                    logging.info("Calling progress_callback, bytes uploaded: %d, url: %s", bytes_uploaded, url)
+                    logging.info(
+                        "Calling progress_callback, bytes uploaded: %d, url: %s",
+                        bytes_uploaded,
+                        url,
+                    )
                     should_resume = progress_callback(bytes_uploaded)
                     if not should_resume:
                         raise Exception('Upload aborted by client')

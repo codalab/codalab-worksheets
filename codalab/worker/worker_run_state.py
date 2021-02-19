@@ -147,6 +147,7 @@ class RunStateMachine(StateTransitioner):
         docker_network_external,  # Docker network to add internet connected bundles to
         docker_runtime,  # Docker runtime to use for containers (nvidia or runc)
         upload_bundle_callback,  # Function to call to upload bundle results to the server
+        fetch_bundle_callback,  # Function to fetch bundle information from the server
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
     ):
@@ -172,6 +173,7 @@ class RunStateMachine(StateTransitioner):
             fields={'disk_utilization': 0, 'running': True, 'lock': None}
         )
         self.upload_bundle_callback = upload_bundle_callback
+        self.fetch_bundle_callback = fetch_bundle_callback
         self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
         self.shared_file_system = shared_file_system
         self.paths_to_remove = []
@@ -570,6 +572,9 @@ class RunStateMachine(StateTransitioner):
             the callback returns false, allowing killable uploads.
         If uploading and not finished:
             Update run_status with upload progress
+        If uploading has finished, but still waiting on a server response to
+        acknowledge that bundle has been uploaded successfully:
+            Update run_status with upload status
         If uploading and finished:
             Move to FINALIZING state
         """
@@ -610,7 +615,7 @@ class RunStateMachine(StateTransitioner):
                 run_status=self.uploading[run_state.bundle.uuid]['run_status']
             )
         elif not self.uploading[run_state.bundle.uuid]['success']:
-            # upload failed
+            # Upload failed
             failure_message = run_state.failure_message
             if failure_message:
                 run_state = run_state._replace(
@@ -622,9 +627,22 @@ class RunStateMachine(StateTransitioner):
                 run_state = run_state._replace(
                     failure_message=self.uploading[run_state.bundle.uuid]['run_status']
                 )
+        elif self.uploading[run_state.bundle.uuid]['success']:
+            # Upload data has already been sent to the server;
+            # waiting for the server to finalize the bundle.
+            bundle = self.fetch_bundle_callback(run_state.bundle.uuid)
+            bundle_state = bundle["data"]["attributes"]["state"]
+            logging.info("got bundle: %s, state: %s", run_state.bundle.uuid, bundle_state)
+            if bundle_state == State.FINALIZING:
+                self.uploading.remove(run_state.bundle.uuid)
+                return self.finalize_run(run_state)
+            elif bundle_state == State.FAILED:
+                # Upload failed on the server end.
+                run_state = run_state._replace(
+                    failure_message='Uploading results failed on the server end.'
+                )
 
-        self.uploading.remove(run_state.bundle.uuid)
-        return self.finalize_run(run_state)
+        return run_state
 
     def finalize_run(self, run_state):
         """
@@ -646,6 +664,7 @@ class RunStateMachine(StateTransitioner):
         server, if bundle is going be sent back to the server, move on to the RESTAGED state. Otherwise,
         move on to the FINISHED state. Can also remove bundle_path now.
         """
+        logging.info("Finalizing bundle id: %s", run_state.bundle.uuid)
         if run_state.is_restaged:
             return run_state._replace(stage=RunStage.RESTAGED)
         elif run_state.finalized:

@@ -4,7 +4,6 @@ from contextlib import closing
 
 from codalab.common import http_error_to_exception, precondition, UsageError, NotFoundError
 from codalab.worker import download_util
-from codalab.worker import file_util
 from codalab.worker.bundle_state import State
 
 logger = logging.getLogger(__name__)
@@ -42,9 +41,12 @@ class DownloadManager(object):
     """
 
     def __init__(self, bundle_model, worker_model, bundle_store):
+        from codalab.worker import file_util
+
         self._bundle_model = bundle_model
         self._worker_model = worker_model
         self._bundle_store = bundle_store
+        self.file_util = file_util
 
     @retry_if_no_longer_running
     def get_target_info(self, target, depth):
@@ -164,7 +166,7 @@ class DownloadManager(object):
             )
         elif bundle_state != State.RUNNING:
             directory_path = self._get_target_path(target)
-            return file_util.tar_gzip_directory(directory_path)
+            return self.file_util.tar_gzip_directory(directory_path)
         else:
             # stream_tarred_gzipped_directory calls are sent to the worker even
             # on a shared filesystem since
@@ -194,7 +196,7 @@ class DownloadManager(object):
         if self._is_available_locally(target):
             file_path = self._get_target_path(target)
             if gzipped:
-                return file_util.gzip_file(file_path)
+                return self.file_util.gzip_file(file_path)
             else:
                 return open(file_path, 'rb')
         else:
@@ -207,7 +209,7 @@ class DownloadManager(object):
                 self._send_read_message(worker, response_socket_id, target, read_args)
                 fileobj = self._get_read_response_stream(response_socket_id)
                 if not gzipped:
-                    fileobj = file_util.un_gzip_stream(fileobj)
+                    fileobj = self.file_util.un_gzip_stream(fileobj)
                 return Deallocating(fileobj, self._worker_model, response_socket_id)
             except Exception:
                 self._worker_model.deallocate_socket(response_socket_id)
@@ -221,9 +223,9 @@ class DownloadManager(object):
         """
         if self._is_available_locally(target):
             file_path = self._get_target_path(target)
-            bytestring = file_util.read_file_section(file_path, offset, length)
+            bytestring = self.file_util.read_file_section(file_path, offset, length)
             if gzipped:
-                bytestring = file_util.gzip_bytestring(bytestring)
+                bytestring = self.file_util.gzip_bytestring(bytestring)
             return bytestring
         else:
             worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
@@ -239,7 +241,7 @@ class DownloadManager(object):
 
             # Note: all data from the worker is gzipped (see `local_reader.py`).
             if not gzipped:
-                bytestring = file_util.un_gzip_bytestring(bytestring)
+                bytestring = self.file_util.un_gzip_bytestring(bytestring)
             return bytestring
 
     @retry_if_no_longer_running
@@ -256,11 +258,11 @@ class DownloadManager(object):
         if self._is_available_locally(target):
             file_path = self._get_target_path(target)
             # Note: summarize_file returns string, but make it bytes for consistency.
-            bytestring = file_util.summarize_file(
+            bytestring = self.file_util.summarize_file(
                 file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text
             ).encode()
             if gzipped:
-                bytestring = file_util.gzip_bytestring(bytestring)
+                bytestring = self.file_util.gzip_bytestring(bytestring)
             return bytestring
         else:
             worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
@@ -282,7 +284,7 @@ class DownloadManager(object):
 
             # Note: all data from the worker is gzipped (see `local_reader.py`).
             if not gzipped:
-                bytestring = file_util.un_gzip_bytestring(bytestring)
+                bytestring = self.file_util.un_gzip_bytestring(bytestring)
             return bytestring
 
     def netcat(self, uuid, port, message):
