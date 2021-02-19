@@ -10,7 +10,6 @@ import http.client
 import sys
 from typing import Optional, Set, Dict
 
-import json
 import psutil
 
 import docker
@@ -130,7 +129,6 @@ class Worker:
             docker_network_external=self.docker_network_external,
             docker_runtime=docker_runtime,
             upload_bundle_callback=self.upload_bundle_contents,
-            fetch_bundle_callback=self.fetch_bundle,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             shared_file_system=self.shared_file_system,
         )
@@ -441,7 +439,7 @@ class Worker:
         if not response or self.terminate_and_restage or self.terminate:
             return
         action_type = response['type']
-        # logger.debug('Received %s message: %s', action_type, response)
+        logger.debug('Received %s message: %s', action_type, response)
         if action_type == 'run':
             self.initialize_run(response['bundle'], response['resources'])
         else:
@@ -745,12 +743,6 @@ class Worker:
             )
         )
 
-    def fetch_bundle(self, uuid):
-        response = self.execute_bundle_service_command_with_retry(
-            lambda: self.bundle_service.fetch_bundle(uuid)
-        )
-        return json.loads(response.read())
-
     def read_run_missing(self, socket_id):
         message = {
             'error_code': http.client.INTERNAL_SERVER_ERROR,
@@ -773,7 +765,8 @@ class Worker:
         while True:
             try:
                 retries_left -= 1
-                return cmd()
+                cmd()
+                return
             except BundleServiceException as e:
                 if not e.client_error and retries_left > 0:
                     traceback.print_exc()

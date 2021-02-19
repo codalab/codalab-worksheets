@@ -8,7 +8,6 @@ import time
 import urllib.request
 import urllib.parse
 import urllib.error
-import logging
 
 from .rest_client import RestClient, RestClientException
 from .file_util import tar_gzip_directory
@@ -154,24 +153,14 @@ class BundleServiceClient(RestClient):
 
     @wrap_exception('Unable to update bundle contents in bundle service')
     def update_bundle_contents(self, worker_id, uuid, path, exclude_patterns, progress_callback):
-        logging.info(
-            "starting update_bundle_contents, uuid: %s, tar_gzip_directory with path: %s, exclude_patterns: %s",
-            uuid,
-            path,
-            str(exclude_patterns),
-        )
         with closing(tar_gzip_directory(path, exclude_patterns=exclude_patterns)) as fileobj:
             self._upload_with_chunked_encoding(
                 'PUT',
                 '/bundles/' + uuid + '/contents/blob/',
-                query_params={
-                    'filename': 'bundle.tar.gz',
-                    'finalize_on_success': 0,
-                },
+                query_params={'filename': 'bundle.tar.gz', 'finalize_on_success': 0},
                 fileobj=fileobj,
                 progress_callback=progress_callback,
             )
-        logging.info("finished update_bundle_contents, uuid: %s", uuid)
 
     @wrap_exception('Unable to get worker code')
     def get_code(self):
@@ -192,16 +181,3 @@ class BundleServiceClient(RestClient):
             timeout_seconds=URLOPEN_TIMEOUT_SECONDS * 2,
         )
         return response, response.headers.get('Target-Type')
-
-    @wrap_exception('Unable to fetch bundle')
-    def fetch_bundle(self, uuid):
-        """
-        Returns the bundle details.
-        """
-        return self._make_request(
-            'GET',
-            '/bundles/' + uuid,
-            headers={'Accept-Encoding': 'gzip'},
-            return_response=True,
-            timeout_seconds=URLOPEN_TIMEOUT_SECONDS * 2,
-        )
