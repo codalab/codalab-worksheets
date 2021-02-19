@@ -174,7 +174,7 @@ class RestClient(object):
             conn.send(b'0\r\n\r\n')
 
             # Read the response.
-            logging.info("About to read the response, url: %s", url)
+            logging.info("About to read the response... url: %s", url)
             got_response = False
             while got_response == False:
                 try:
