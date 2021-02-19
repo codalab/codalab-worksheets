@@ -26,6 +26,8 @@ nav:
   - Home:
     - Introduction: index.md
     - Examples: https://github.com/codalab/worksheets-examples
+  - Examples:
+      - Quickstart: examples/quickstart.md
   - Concepts:
     - The CodaLab Workflow: Workflow.md
     - Executable Papers: Executable-Papers.md
