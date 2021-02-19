@@ -7,6 +7,7 @@ import sys
 import time
 from io import BytesIO
 from http.client import HTTPResponse
+import traceback
 
 from bottle import abort, get, post, put, delete, local, request, response
 from codalab.bundles import get_bundle_subclass
