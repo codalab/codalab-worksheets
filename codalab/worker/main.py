@@ -214,7 +214,6 @@ def main():
     )
 
     logging.getLogger('urllib3').setLevel(logging.INFO)
-
     # Initialize sentry logging
     if using_sentry():
         initialize_sentry()
