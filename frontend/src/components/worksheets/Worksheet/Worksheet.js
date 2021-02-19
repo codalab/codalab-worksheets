@@ -98,6 +98,7 @@ class Worksheet extends React.Component {
                 showMessage: false,
                 messageContent: null,
             },
+            searchResultCache: {}, // Store the fetched search results
         };
         this.copyCallbacks = [];
         this.bundleTableID = new Set();
@@ -133,6 +134,18 @@ class Worksheet extends React.Component {
             success: function(info) {
                 info['date_created'] = addUTCTimeZone(info['date_created']);
                 info['date_last_modified'] = addUTCTimeZone(info['date_last_modified']);
+                // Use the cache to update directive block if we are in the partial update mode
+                if (!props.searchRefresh) {
+                    for (let i: number = 0; i < info.blocks.length; i++) {
+                        const directive: string = info.blocks[i]['directive'];
+                        if (
+                            'directive' in info.blocks[i] &&
+                            directive in this.state.searchResultCache
+                        ) {
+                            info.blocks[i] = this.state.searchResultCache[directive];
+                        }
+                    }
+                }
                 this.setState({
                     ws: {
                         ...this.state.ws,
@@ -575,6 +588,20 @@ class Worksheet extends React.Component {
     };
 
     onAsyncItemLoad = (focusIndex, item) => {
+        this.setState((prevState) => {
+            const block: {} = prevState.ws.info.blocks[focusIndex];
+            if ('directive' in block) {
+                // Async loading the directive block
+                // Store the search results in the cache
+                prevState.searchResultCache[
+                    prevState.ws.info.blocks[focusIndex]['directive']
+                ] = item;
+            }
+            return {
+                ...prevState,
+                searchResultCache: prevState.searchResultCache,
+            };
+        });
         this.setState({
             ws: {
                 ...this.state.ws,
@@ -1404,6 +1431,7 @@ class Worksheet extends React.Component {
             textDeleted = false,
             fromDeleteCommand = false,
             uploadFiles = false,
+            searchRefresh = true,
         } = {},
     ) => {
         if (partialUpdateItems === undefined) {
@@ -1411,6 +1439,7 @@ class Worksheet extends React.Component {
             this.setState({ updating: true });
             this.fetch({
                 brief: true,
+                searchRefresh: searchRefresh,
                 success: function(data) {
                     if (this.state.ws.uuid !== data.uuid) {
                         this.setState({
@@ -1525,8 +1554,8 @@ class Worksheet extends React.Component {
                 }.bind(this),
             });
         } else {
-            var ws = _.clone(this.state.ws);
-            for (var i = 0; i < partialUpdateItems.length; i++) {
+            let ws = _.clone(this.state.ws);
+            for (let i = 0; i < partialUpdateItems.length; i++) {
                 if (
                     !partialUpdateItems[i] ||
                     !(

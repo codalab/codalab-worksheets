@@ -93,7 +93,9 @@ class TextEditorItem extends React.Component<{
             type: 'POST',
             success: (data, status, jqXHR) => {
                 const moveIndex = true ? mode === 'create' : false;
-                const param = { moveIndex };
+                // No need to refresh the search results when only updating markdown items
+                const searchRefresh = false;
+                const param = { moveIndex, searchRefresh };
                 closeEditor();
                 reloadWorksheet(undefined, undefined, param);
             },
