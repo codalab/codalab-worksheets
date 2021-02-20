@@ -7,7 +7,7 @@ import urllib.parse
 import urllib.error
 from typing import Dict
 
-from .un_gzip_stream import un_gzip_stream
+from .file_util import un_gzip_stream
 from codalab.common import URLOPEN_TIMEOUT_SECONDS, urlopen_with_retry
 
 
