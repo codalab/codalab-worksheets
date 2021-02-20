@@ -13,6 +13,7 @@ from dateutil import parser, tz
 import datetime
 import re
 import requests
+
 from requests.adapters import HTTPAdapter
 import traceback
 from urllib3.util.retry import Retry
@@ -202,7 +203,7 @@ def start_bundle_container(
         # because a container with the same name already exists. So, we try to remove
         # the container here.
         try:
-            container.remove(force=True)
+            client.api.remove_container(container_name, force=True)
         except Exception:
             logger.warning("Failed to clean up Docker container after failed launch.")
             traceback.print_exc()

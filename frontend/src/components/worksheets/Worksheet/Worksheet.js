@@ -2,7 +2,12 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
-import { renderPermissions, getAfterSortKey, createAlertText } from '../../../util/worksheet_utils';
+import {
+    renderPermissions,
+    getAfterSortKey,
+    createAlertText,
+    addUTCTimeZone,
+} from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import InformationModal from '../InformationModal/InformationModal';
@@ -126,8 +131,8 @@ class Worksheet extends React.Component {
             dataType: 'json',
             cache: false,
             success: function(info) {
-                info['date_created'] = this.handleDateFormat(info['date_created']);
-                info['date_last_modified'] = this.handleDateFormat(info['date_last_modified']);
+                info['date_created'] = addUTCTimeZone(info['date_created']);
+                info['date_last_modified'] = addUTCTimeZone(info['date_last_modified']);
                 this.setState({
                     ws: {
                         ...this.state.ws,
@@ -293,6 +298,20 @@ class Worksheet extends React.Component {
         }
     };
 
+    _getToastMsg = (command, state, count) => {
+        // Creates a toast message for a given command.
+        // count is the number of bundles on which this command was performed, if applicable.
+        // state can take the value of 0 or 1
+        // 0 represents the command is being executed
+        // 1 represents the command has already been executed
+        const cmdMsgMap: { string: string } = { rm: ['deleting', 'deleted'] };
+        let toastMsg =
+            (command in cmdMsgMap
+                ? count + ' bundles ' + cmdMsgMap[command][state]
+                : (state === 0 ? 'Executing ' : 'Executed ') + command + ' command') +
+            (state === 0 ? '...' : '!');
+        return toastMsg;
+    };
     handleSelectedBundleCommand = (cmd, worksheet_uuid = this.state.ws.uuid) => {
         // This function runs the command for bulk bundle operations
         // The uuid are recorded by handleCheckBundle
@@ -300,6 +319,15 @@ class Worksheet extends React.Component {
         // If the action failed, the check will persist
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
         this.setState({ updating: true });
+        const bundleCount: number = Object.keys(this.state.uuidBundlesCheckedCount).length;
+        // This toast info is used for showing a message when a command is being performed
+        const toastId = toast.info(this._getToastMsg(cmd, 0, bundleCount), {
+            position: 'top-right',
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: false,
+            draggable: true,
+        });
         executeCommand(
             buildTerminalCommand([
                 cmd,
@@ -310,7 +338,10 @@ class Worksheet extends React.Component {
         )
             .done(() => {
                 this.clearCheckedBundles(() => {
-                    toast.info('Executing ' + cmd + ' command', {
+                    // This toast info is used for showing a message when a command has finished executing
+                    toast.update(toastId, {
+                        render: this._getToastMsg(cmd, 1, bundleCount),
+                        type: toast.TYPE.SUCCESS,
                         position: 'top-right',
                         autoClose: 2000,
                         hideProgressBar: true,
@@ -1051,6 +1082,7 @@ class Worksheet extends React.Component {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('copy');
+                Mousetrap.reset();
             });
             if (this.state.ws.info.edit_permission) {
                 Mousetrap.bind(['backspace', 'del'], () => {
@@ -1070,12 +1102,14 @@ class Worksheet extends React.Component {
                         return;
                     }
                     this.toggleCmdDialogNoEvent('kill');
+                    Mousetrap.reset();
                 });
                 Mousetrap.bind(['a d'], () => {
                     if (this.state.openedDialog) {
                         return;
                     }
                     this.toggleCmdDialogNoEvent('cut');
+                    Mousetrap.reset();
                 });
 
                 // Confirm bulk bundle operation
@@ -1136,13 +1170,16 @@ class Worksheet extends React.Component {
                                 inSourceEditMode: false,
                                 editorEnabled: false,
                             }); // Needs to be after getting the raw contents
-                            if (saveChanges) {
-                                this.saveAndUpdateWorksheet(saveChanges, rawIndex);
-                            } else {
-                                this.reloadWorksheet(undefined, rawIndex);
-                            }
+                            this.saveAndUpdateWorksheet(saveChanges, rawIndex);
                         },
                     );
+                } else {
+                    var rawIndex = editor.getCursorPosition().row;
+                    this.setState({
+                        inSourceEditMode: false,
+                        editorEnabled: false,
+                    });
+                    this.reloadWorksheet(undefined, rawIndex);
                 }
             } else {
                 // Not allowed to edit the worksheet.
@@ -1168,7 +1205,7 @@ class Worksheet extends React.Component {
         var self = this;
         var queryParams = Object.keys(bundleUuids)
             .map(function(bundle_uuid) {
-                return 'uuid=' + bundle_uuid;
+                return 'bundle_uuid=' + bundle_uuid;
             })
             .join('&');
         $.ajax({
@@ -1353,14 +1390,6 @@ class Worksheet extends React.Component {
         return count;
     }
 
-    handleDateFormat(date) {
-        // Append 'Z' to convert the time to ISO format (in UTC).
-        if (date) {
-            date += 'Z';
-        }
-        return date;
-    }
-
     // If partialUpdateItems is undefined, we will fetch the whole worksheet.
     // Otherwise, partialUpdateItems is a list of item parallel to ws.info.blocks that contain only items that need updating.
     // More specifically, all items that don't contain run bundles that need updating are null.
@@ -1498,9 +1527,28 @@ class Worksheet extends React.Component {
         } else {
             var ws = _.clone(this.state.ws);
             for (var i = 0; i < partialUpdateItems.length; i++) {
-                if (!partialUpdateItems[i]) continue;
+                if (
+                    !partialUpdateItems[i] ||
+                    !(
+                        'bundles_spec' in partialUpdateItems[i] &&
+                        'bundle_infos' in partialUpdateItems[i]['bundles_spec']
+                    )
+                )
+                    // Partial Update mechanism only designs for the blocks consisting of bundles
+                    // Check whether the block contains the field of 'bundle_infos' to determine whether it is a non-None block containing a list of bundle_infos, which represent a list of bundles
+                    continue;
+                // Update rows
+                ws.info.blocks[i]['rows'] = partialUpdateItems[i]['rows'];
                 // update interpreted items
-                ws.info.blocks[i] = partialUpdateItems[i];
+                for (
+                    let j = 0;
+                    j < partialUpdateItems[i]['bundles_spec']['bundle_infos'].length;
+                    j++
+                ) {
+                    if (partialUpdateItems[i]['bundles_spec']['bundle_infos'][j])
+                        ws.info.blocks[i]['bundles_spec']['bundle_infos'][j] =
+                            partialUpdateItems[i]['bundles_spec']['bundle_infos'][j];
+                }
             }
             this.setState({ ws: ws, version: this.state.version + 1 });
             this.checkRunBundle(ws.info);

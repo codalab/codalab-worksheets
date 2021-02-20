@@ -7,13 +7,11 @@ import inspect
 import itertools
 import os
 import re
-import docker
 
 from argcomplete import warn
 
 from codalab.common import NotFoundError
-from codalab.lib import spec_util, worksheet_util, cli_util
-from codalab.worker.docker_utils import DEFAULT_DOCKER_TIMEOUT
+from codalab.lib import spec_util, cli_util
 from codalab.worker.download_util import BundleTarget
 
 
@@ -202,6 +200,9 @@ class DockerImagesCompleter(CodaLabCompleter):
     """
 
     def __call__(self, prefix, action=None, parser=None, parsed_args=None):
+        import docker
+        from codalab.worker.docker_utils import DEFAULT_DOCKER_TIMEOUT
+
         if prefix == "":
             prefix = "codalab"
         first_slash = prefix.find('/')
@@ -214,6 +215,8 @@ class DockerImagesCompleter(CodaLabCompleter):
 
 
 def short_uuid(full_uuid):
+    from codalab.lib import worksheet_util
+
     return worksheet_util.apply_func('[0:8]', full_uuid)
 
 

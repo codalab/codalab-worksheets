@@ -268,6 +268,7 @@ class UserSchema(Schema):
     affiliation = fields.String(allow_none=True)
     url = fields.Url(allow_none=True)
     date_joined = fields.LocalDateTime("%c")
+    avatar_id = fields.String(allow_none=True)
 
     class Meta:
         type_ = 'users'

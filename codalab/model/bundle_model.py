@@ -1315,7 +1315,7 @@ class BundleModel(object):
         clauses = []
         offset = 0
         limit = SEARCH_RESULTS_LIMIT
-        sort_key = [cl_worksheet.c.name]
+        sort_key = [cl_worksheet.c.date_last_modified.desc(), cl_worksheet.c.name]
 
         # Number nested subqueries
         subquery_index = [0]
@@ -1479,6 +1479,7 @@ class BundleModel(object):
             cl_worksheet.c.title,
             cl_worksheet.c.frozen,
             cl_worksheet.c.owner_id,
+            cl_worksheet.c.date_last_modified,
         ]
         query = (
             select(cols_to_select)
@@ -1491,7 +1492,7 @@ class BundleModel(object):
 
         # Sort
         if sort_key[0] is not None:
-            query = query.order_by(sort_key[0])
+            query = query.order_by(*sort_key)
 
         with self.engine.begin() as connection:
             rows = connection.execute(query).fetchall()
@@ -2389,6 +2390,7 @@ class BundleModel(object):
         has_access=False,
         time_used=0,
         disk_used=0,
+        avatar_id=None,
     ):
         """
         Create a brand new unverified user.
@@ -2427,6 +2429,7 @@ class BundleModel(object):
                         "disk_used": disk_used,
                         "affiliation": affiliation,
                         "url": None,
+                        "avatar_id": avatar_id,
                     }
                 )
             )
