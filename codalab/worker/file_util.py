@@ -5,7 +5,6 @@ import os
 import shutil
 import subprocess
 import bz2
-import logging
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from apache_beam.io.filesystem import CompressionTypes
@@ -158,7 +157,7 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
         # TODO(Ashwin): preserve permissions with -X.
         exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
         if exitcode != 0:
-            raise UsageError('Invalid archive upload. (zip)')
+            raise UsageError('Invalid archive upload. ')
 
     # If fileobj_or_name is a file object, we have to save it
     # to a temporary file, because unzip doesn't accept input from standard input.

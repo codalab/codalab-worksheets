@@ -8,7 +8,6 @@ import urllib.error
 from typing import Dict
 import logging
 import socket
-import time
 
 from .un_gzip_stream import un_gzip_stream
 from codalab.common import URLOPEN_TIMEOUT_SECONDS, urlopen_with_retry
@@ -126,7 +125,6 @@ class RestClient(object):
         download if False and resumes it if True. If i's not specified the download
         runs to completion
         """
-        logging.info("_upload_with_chunked_encoding, url: %s", url)
         CHUNK_SIZE = 16 * 1024
         TIMEOUT = 60
         # Start the request.
@@ -153,38 +151,33 @@ class RestClient(object):
             # Use chunked transfer encoding to send the data through.
             bytes_uploaded = 0
             while True:
-                logging.info("\tReading chunk...")
                 to_send = fileobj.read(CHUNK_SIZE)
-                logging.info("\tFinished reading chunk. Sending chunk...")
                 if not to_send:
-                    logging.info("No more to_send, break. Bytes uploaded: %d", bytes_uploaded)
                     break
                 conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
-                logging.info("\tFinished sending chunk.")
                 bytes_uploaded += len(to_send)
                 if progress_callback is not None:
-                    logging.info(
-                        "Calling progress_callback, bytes uploaded: %d, url: %s",
-                        bytes_uploaded,
-                        url,
-                    )
                     should_resume = progress_callback(bytes_uploaded)
                     if not should_resume:
                         raise Exception('Upload aborted by client')
             conn.send(b'0\r\n\r\n')
 
             # Read the response.
-            logging.info("About to read the response... url: %s", url)
+            logging.debug("About to read the response... url: %s", url)
+
+            # Sometimes, it may take a while for the server to process
+            # the data and send the response. In this case, we want to
+            # periodically keep sending empty bytes so that the
+            # connection doesn't drop before the response is available.
             got_response = False
-            while got_response == False:
+            while not got_response:
                 try:
                     response = conn.getresponse()
                     got_response = True
                 except socket.timeout:
-                    # Send an empty byte so that the connection doesn't drop.
-                    logging.info("Socket timeout, retrying")
+                    logging.debug("Socket timeout, retrying")
                     conn.send(b'\0')
-            logging.info("Finished reading the response, url: %s", url)
+            logging.debug("Finished reading the response, url: %s", url)
             if response.status != 200:
                 # Low-level httplib module doesn't throw HTTPError
                 raise urllib.error.HTTPError(

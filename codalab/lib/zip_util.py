@@ -7,6 +7,7 @@ import os
 import shutil
 import tarfile
 import tempfile
+import logging
 
 from codalab.common import UsageError
 from codalab.worker.file_util import (
@@ -59,7 +60,6 @@ def unpack(ext, source, dest_path):
             close_source = True
 
         if ext == '.tar.gz' or ext == '.tgz':
-            print("un_tar_directory, source %s, dest_path %s", source, dest_path)
             un_tar_directory(source, dest_path, 'gz')
         elif ext == '.tar.bz2':
             un_tar_directory(source, dest_path, 'bz2')
@@ -73,8 +73,8 @@ def unpack(ext, source, dest_path):
         else:
             raise UsageError('Not an archive.')
     except (tarfile.TarError, IOError) as e:
-        raise e
-        # raise UsageError('Invalid archive upload.')
+        logging.error("Invalid archive upload: %s", e)
+        raise UsageError('Invalid archive upload.')
     finally:
         if close_source:
             source.close()

@@ -7,7 +7,6 @@ import sys
 import time
 from io import BytesIO
 from http.client import HTTPResponse
-import traceback
 
 from bottle import abort, get, post, put, delete, local, request, response
 from codalab.bundles import get_bundle_subclass
@@ -749,7 +748,6 @@ def _update_bundle_contents_blob(uuid):
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
         if sources:
-            logging.info("starting upload_to_bundle_store, uuid: %s", uuid)
             local.upload_manager.upload_to_bundle_store(
                 bundle,
                 sources=sources,
@@ -760,19 +758,12 @@ def _update_bundle_contents_blob(uuid):
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
             )  # See UploadManager for full explanation of 'simplify'
-            logging.info("finished upload_to_bundle_store, uuid: %s", uuid)
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
             local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error
-        logging.info(
-            "failed UsageError, uuid: %s, err: %s, traceback: %s",
-            uuid,
-            err,
-            traceback.print_exc(),
-        )
         if local.upload_manager.has_contents(bundle):
             local.upload_manager.cleanup_existing_contents(bundle)
         msg = "Upload failed: %s" % err
@@ -783,7 +774,6 @@ def _update_bundle_contents_blob(uuid):
 
     except Exception as e:
         # Upload failed: cleanup, update state if desired, and return HTTP error
-        logging.info("failed Exception, uuid: %s, err: %s", uuid, e)
         if local.upload_manager.has_contents(bundle):
             local.upload_manager.cleanup_existing_contents(bundle)
 
@@ -806,8 +796,6 @@ def _update_bundle_contents_blob(uuid):
         if finalize_on_success:
             # Upload succeeded: update state
             local.model.update_bundle(bundle, {'state': final_state})
-    
-    logging.info("Done")
 
 
 #############################################################

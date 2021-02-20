@@ -1,6 +1,5 @@
 import os
 import tarfile
-import logging
 
 
 def un_tar_directory(fileobj, directory_path, compression='', force=False):
@@ -22,15 +21,9 @@ def un_tar_directory(fileobj, directory_path, compression='', force=False):
         remove_path(directory_path)
     os.mkdir(directory_path)
     with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:
-        logging.info("un_tar_directory, opening tar file, with directory path: %s", directory_path)
         for member in tar:
             # Make sure that there is no trickery going on (see note in
             # TarFile.extractall() documentation.
-            logging.info(
-                "un_tar_directory, extracting member: %s, directory_path: %s",
-                member.name,
-                directory_path,
-            )
             member_path = os.path.realpath(os.path.join(directory_path, member.name))
             if not member_path.startswith(directory_path):
                 raise tarfile.TarError('Archive member extracts outside the directory.')
