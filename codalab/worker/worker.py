@@ -260,17 +260,22 @@ class Worker:
 
     def start(self):
         """Return whether we ran anything."""
-        self.load_state()
-        self.sync_state()
-        self.image_manager.start()
-        if not self.shared_file_system:
-            self.dependency_manager.start()
+        try:
+            self.load_state()
+            self.sync_state()
+            self.image_manager.start()
+            if not self.shared_file_system:
+                self.dependency_manager.start()
+        except Exception as ex:
+            # if we encounter any problem of starting up before it goes to the loop, we still want to cleanup.
+            logger.error(ex)
+            self.cleanup()
         while not self.terminate:
             try:
                 self.process_runs()
                 self.save_state()
                 self.checkin()
-                self.check_termination()
+                self.check_termination()  # if terminate_and_restage and no restaged bundles, then it will terminate.
                 self.save_state()
                 if self.check_idle_stop() or self.check_num_runs_stop():
                     self.terminate = True
@@ -309,6 +314,7 @@ class Worker:
                             except Exception:
                                 traceback.print_exc()
                             self.terminate = True
+                        # else: if it's not ready to terminate and restage, I think we can't clean up.
                         if self.terminate:
                             break
                         time.sleep(5)
