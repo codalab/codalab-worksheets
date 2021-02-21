@@ -3,6 +3,7 @@ import logging
 import os
 import psutil
 import socket
+import subprocess
 import sys
 import time
 import traceback
@@ -320,3 +321,32 @@ class WorkerManager(object):
                 filtered_bundles.append(bundle)
 
         return filtered_bundles
+
+    def run_command(self, command, verbose=True) -> str:
+        """
+        Run a given shell command and return the result
+        :param command: the input command as list
+        :return: an empty string if an error is caught. Otherwise, return the actual result
+        """
+        try:
+            proc: subprocess.Popen = subprocess.Popen(
+                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            output, errors = proc.communicate()
+            if output:
+                logger.info("Executed command: {}".format(' '.join(command)))
+                result: str = output.decode()
+                if verbose:
+                    logger.info(result)
+                return result
+            if errors:
+                logger.error(
+                    "Failed to execute {}: {}, {}".format(
+                        ' '.join(command), errors, proc.returncode
+                    )
+                )
+        except Exception as e:
+            logger.error(
+                "Caught an exception when executing command {}: {}".format(' '.join(command), e)
+            )
+        return ""

@@ -279,33 +279,6 @@ class SlurmBatchWorkerManager(WorkerManager):
 
         return command
 
-    def run_command(self, command, verbose=True):
-        """
-        Run a given shell command and return the result
-        :param command: the input command as list
-        :return: an empty string if an error is caught. Otherwise, return the actual result
-        """
-        try:
-            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            output, errors = proc.communicate()
-            if output:
-                logger.info("Executed command: {}".format(' '.join(command)))
-                result = output.decode()
-                if verbose:
-                    logger.info(result)
-                return result
-            if errors:
-                logger.error(
-                    "Failed to execute {}: {}, {}".format(
-                        ' '.join(command), errors, proc.returncode
-                    )
-                )
-        except Exception as e:
-            logger.error(
-                "Caught an exception when executing command {}: {}".format(' '.join(command), e)
-            )
-        return ""
-
     def save_job_definition(self, job_file, job_definition):
         """
         Save the batch job definition to file.
