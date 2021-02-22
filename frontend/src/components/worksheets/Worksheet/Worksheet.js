@@ -135,7 +135,7 @@ class Worksheet extends React.Component {
                 info['date_created'] = addUTCTimeZone(info['date_created']);
                 info['date_last_modified'] = addUTCTimeZone(info['date_last_modified']);
                 // Use the cache to update directive block if we are in the partial update mode
-                if (!props.searchRefresh) {
+                if (props.skipSearchRefresh) {
                     for (let i: number = 0; i < info.blocks.length; i++) {
                         const directive: string = info.blocks[i]['directive'];
                         if (
@@ -1431,7 +1431,7 @@ class Worksheet extends React.Component {
             textDeleted = false,
             fromDeleteCommand = false,
             uploadFiles = false,
-            searchRefresh = true,
+            skipSearchRefresh = false, // if true, then the search results won't be refreshed to improve performance
         } = {},
     ) => {
         if (partialUpdateItems === undefined) {
@@ -1439,7 +1439,7 @@ class Worksheet extends React.Component {
             this.setState({ updating: true });
             this.fetch({
                 brief: true,
-                searchRefresh: searchRefresh,
+                skipSearchRefresh: skipSearchRefresh,
                 success: function(data) {
                     if (this.state.ws.uuid !== data.uuid) {
                         this.setState({
