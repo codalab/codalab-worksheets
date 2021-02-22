@@ -140,6 +140,9 @@ def log_bundle_transition(
         logger.warning(traceback.format_exc())
 
 
+restage_common_reason = 'The bundle is not in terminal states when the worker checks termination'
+
+
 class RunStateMachine(StateTransitioner):
     """
     Manages the state machine of the runs running on the local machine
@@ -231,7 +234,7 @@ class RunStateMachine(StateTransitioner):
                 bundle_uuid=run_state.bundle.uuid,
                 previous_state=run_state.stage,
                 next_state=RunStage.CLEANING_UP,
-                reason='the bundle is ' + 'killed' if run_state.is_killed else 'restaged',
+                reason=f'the bundle is {"killed" if run_state.is_killed else "restaged"}',
             )
             return run_state._replace(stage=RunStage.CLEANING_UP)
 
@@ -538,7 +541,7 @@ class RunStateMachine(StateTransitioner):
                 bundle_uuid=run_state.bundle.uuid,
                 previous_state=run_state.stage,
                 next_state=RunStage.CLEANING_UP,
-                reason='the bundle is ' + 'killed' if run_state.is_killed else 'restaged',
+                reason=f'the bundle is {"killed" if run_state.is_killed else "restaged"}',
             )
             if docker_utils.container_exists(run_state.container):
                 try:
@@ -612,6 +615,7 @@ class RunStateMachine(StateTransitioner):
                 bundle_uuid=run_state.bundle.uuid,
                 previous_state=run_state.stage,
                 next_state=RunStage.RESTAGED,
+                reason=restage_common_reason,
             )
             return run_state._replace(stage=RunStage.RESTAGED)
 
@@ -652,7 +656,7 @@ class RunStateMachine(StateTransitioner):
                 bundle_uuid=run_state.bundle.uuid,
                 previous_state=run_state.stage,
                 next_state=RunStage.RESTAGED,
-                reason='the bundle has not started uploading yet',
+                reason=restage_common_reason,
             )
             return run_state._replace(stage=RunStage.RESTAGED)
 
@@ -750,7 +754,7 @@ class RunStateMachine(StateTransitioner):
                 bundle_uuid=run_state.bundle.uuid,
                 previous_state=run_state.stage,
                 next_state=RunStage.RESTAGED,
-                reason='the bundle is going to be sent back to the server',
+                reason='the bundle is restaged, as `pass-down-termination` is specified for worker',
             )
             return run_state._replace(stage=RunStage.RESTAGED)
         elif run_state.finalized:
@@ -758,7 +762,7 @@ class RunStateMachine(StateTransitioner):
                 bundle_uuid=run_state.bundle.uuid,
                 previous_state=run_state.stage,
                 next_state=RunStage.FINISHED,
-                reason='a full worker cycle has passed',
+                reason='a full worker cycle has passed and `pass-down-termination` is not specified for worker',
             )
             if not self.shared_file_system:
                 remove_path(run_state.bundle_path)  # don't remove bundle if shared FS
