@@ -7,6 +7,7 @@ from typing import Callable, Any
 from codalab.lib import path_util, spec_util
 from codalab.worker.bundle_state import State
 from functools import reduce
+from codalab.common import StorageType
 
 
 def require_partitions(f: Callable[['MultiDiskBundleStore', Any], Any]):
@@ -34,7 +35,20 @@ To use MultiDiskBundleStore, you must add at least one partition. Try the follow
     return wrapper
 
 
-class MultiDiskBundleStore(object):
+class BundleStore(object):
+    """
+    Base class for a bundle store.
+    """
+    def __init__(self, bundle_model, codalab_home):
+        self._bundle_model = bundle_model
+        self.codalab_home = path_util.normalize(codalab_home)
+
+    def get_bundle_location(self, uuid):
+        raise NotImplementedError
+    
+    def cleanup(self, uuid, dry_run):
+        raise NotImplementedError
+class MultiDiskBundleStore(BundleStore):
     """
     Responsible for taking a set of locations and load-balancing the placement of
     bundle data between the locations.
@@ -48,8 +62,8 @@ class MultiDiskBundleStore(object):
     DATA_SUBDIRECTORY = 'bundles'
     CACHE_SIZE = 1 * 1000 * 1000  # number of entries to cache
 
-    def __init__(self, codalab_home):
-        self.codalab_home = path_util.normalize(codalab_home)
+    def __init__(self, bundle_model, codalab_home):
+        super(BundleStore, self).__init__(bundle_model, codalab_home)
 
         self.partitions = os.path.join(self.codalab_home, 'partitions')
         path_util.make_directory(self.partitions)
@@ -368,3 +382,24 @@ class MultiDiskBundleStore(object):
                 '\tBundles that need data_hash recompute: %d' % data_hash_recomputed,
                 file=sys.stderr,
             )
+
+class MultiDiskBundleStoreWithBlobStorage(MultiDiskBundleStore):
+    """
+    A multi-disk bundle store that also supports storing bundles in a CodaLab-managed
+    Blob Storage container.
+
+    If bundles are indicated to be stored in Blob Storage, they are retrieved from Blob
+    Storage. Otherwise, the bundle is retrieved from the underlying disk bundle store.
+    """
+
+    def __init__(self, bundle_model, codalab_home, azure_blob_account_name):
+        super(BundleStore, self).__init__(bundle_model, codalab_home)
+
+        self._azure_blob_account_name = azure_blob_account_name
+
+    def get_bundle_location(self, uuid):
+        storage_type, is_dir = self._bundle_model.get_bundle_storage_info(uuid)
+        if storage_type == StorageType.AZURE_BLOB:
+            return f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/contents.tar.gz"
+        else:
+            return super(MultiDiskBundleStore, self).get_bundle_location(uuid)

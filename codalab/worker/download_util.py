@@ -70,7 +70,6 @@ def get_target_info(bundle_path, target, depth):
         # If the target is on Azure, use a special method using Apache Beam
         # to get the target info.
         try:
-            logging.info("going to _compute_target_info_beam")
             info = _compute_target_info_beam(final_path, depth)
         except Exception:
             import traceback

@@ -319,9 +319,6 @@ def open_file(file_path, mode='r'):
         else:
             # TODO: Implement a tf.open() function so that we don't have to read the entire file.
             return BytesIO(tf.read(path="", fileInfo=finfo, size=finfo.size, offset=0))
-    # elif linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
-
-    #     return gzip.GzipFile(fileobj=FileSystems.open(file_path, mode, compression_type=CompressionTypes.UNCOMPRESSED))
     return FileSystems.open(file_path, mode, compression_type=CompressionTypes.UNCOMPRESSED)
 
 

@@ -755,10 +755,9 @@ def _update_bundle_contents_blob(uuid):
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
-        if bundle_link_url and not use_azure_blob_beta:
-            # Don't upload to bundle store if using --link with a URL that
-            # already exists. (If using Azure Blob Storage, though,
-            # we do want to perform the upload to the URL specified).
+        if bundle_link_url:
+            # Don't upload to bundle store if using --link, as the path
+            # already exists.
             pass
         elif sources:
             local.upload_manager.upload_to_bundle_store(
@@ -916,13 +915,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     # Delete the data.
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
     for uuid in relevant_uuids:
-        # check first is needs to be deleted
         bundle_link_url = bundle_link_urls.get(uuid)
-        if bundle_link_url:
-            # Don't physically delete linked bundles, unless they're from Azure.
-            if parse_linked_bundle_url(bundle_link_url).uses_beam:
-                path_util.remove(bundle_link_url)
-        else:
+        if not bundle_link_url: # Don't physically delete linked bundles.
             bundle_location = local.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):
                 local.bundle_store.cleanup(uuid, dry_run)

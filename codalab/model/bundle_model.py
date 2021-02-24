@@ -1214,6 +1214,22 @@ class BundleModel(object):
             ).fetchall()
             return dict((r.uuid, r.state) for r in rows)
 
+    def get_bundle_storage_info(self, uuid):
+        result_dict = self.get_bundle_storage_infos([uuid])
+        if uuid not in result_dict:
+            raise NotFoundError('Could not find bundle with uuid %s' % uuid)
+        return result_dict[uuid]
+
+    def get_bundle_storage_infos(self, uuids):
+        """
+        Return {uuid: (storage_type, is_dir), ...}
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_bundle.c.uuid, cl_bundle.c.storage_type, cl_bundle.c.is_dir]).where(cl_bundle.c.uuid.in_(uuids))
+            ).fetchall()
+            return dict((r.uuid, (r.storage_type, r.is_dir)) for r in rows)
+
     def delete_bundles(self, uuids):
         """
         Delete bundles with the given uuids.

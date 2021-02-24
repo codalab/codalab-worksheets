@@ -6,6 +6,7 @@ from codalab.common import http_error_to_exception, precondition, UsageError, No
 from codalab.worker import download_util
 from codalab.worker.bundle_state import State
 from codalab.common import parse_linked_bundle_url
+from codalab.common import StorageType
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +102,7 @@ class DownloadManager(object):
         bundle_link_url = self._bundle_model.get_bundle_metadata(
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
-        if bundle_link_url and not parse_linked_bundle_url(bundle_link_url).uses_beam:
+        if bundle_link_url:
             bundle_link_url = self._transform_link_path(bundle_link_url)
         # Raises NotFoundException if uuid is invalid
         if bundle_state == State.PREPARING:
@@ -339,7 +340,7 @@ class DownloadManager(object):
         bundle_link_url = self._bundle_model.get_bundle_metadata(
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
-        if bundle_link_url and not parse_linked_bundle_url(bundle_link_url).uses_beam:
+        if bundle_link_url:
             # If bundle_link_url points to a locally mounted volume, call _transform_link_path
             # to get the actual path where it can be accessed.
             bundle_link_url = self._transform_link_path(bundle_link_url)

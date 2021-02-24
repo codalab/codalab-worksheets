@@ -1315,9 +1315,6 @@ class BundleCLI(object):
                 else os.path.join(os.getcwd(), args.path[0])
             )
             bundle_info['metadata']['link_format'] = LinkFormat.RAW
-            # If --link is explicitly specified, we are already pointing to an existing file,
-            # so use_azure_blob_beta should be set to False (in the case it defaults to be True)
-            args.use_azure_blob_beta = False
 
             new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})
 
