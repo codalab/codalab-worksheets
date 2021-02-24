@@ -11,7 +11,6 @@ from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
 from codalab.worker.bundle_state import LinkFormat
 import tempfile
-import logging
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar
 
 

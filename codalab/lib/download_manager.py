@@ -208,7 +208,7 @@ class DownloadManager(object):
             if gzipped:
                 return self.file_util.gzip_file(file_path)
             else:
-                return file_util.open_file(file_path)
+                return self.file_util.open_file(file_path)
         else:
             worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
             response_socket_id = self._worker_model.allocate_socket(

@@ -1,16 +1,11 @@
 import os
-from apache_beam.io.filesystem import CompressionTypes
-from apache_beam.io.filesystems import FileSystems
-import tarfile
-from codalab.common import parse_linked_bundle_url
-import logging
-from codalab.worker.file_util import open_indexed_tar_gz_file
-from codalab.lib.beam.ratarmount import SQLiteIndexedTar
-
 import stat
-from io import BytesIO
-import tempfile
-import shutil
+import tarfile
+import logging
+
+from apache_beam.io.filesystems import FileSystems
+from codalab.common import parse_linked_bundle_url
+from codalab.worker.file_util import open_indexed_tar_gz_file
 
 
 class PathException(Exception):
