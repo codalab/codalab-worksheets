@@ -13,6 +13,7 @@ from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
 import logging
+import tarfile
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar
 
 NONE_PLACEHOLDER = '<none>'

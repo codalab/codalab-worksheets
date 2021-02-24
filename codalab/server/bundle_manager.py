@@ -18,7 +18,8 @@ from codalab.objects.permission import (
 from codalab.common import NotFoundError, PermissionError, parse_linked_bundle_url, normpath
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
-from codalab.worker.file_util import remove_path, un_tar_directory
+from codalab.worker.file_util import remove_path
+from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.bundle_state import State, RunResources
 from codalab.worker.download_util import get_target_info, BundleTarget
 import tempfile
