@@ -171,18 +171,11 @@ class UploadManager(object):
                 # If uploading a file using Azure Blob Storage, we set storage_type and is_dir appropriately.
                 self._bundle_model.update_bundle(
                     bundle,
-                    {
-                        'storage_type': StorageType.AZURE_BLOB_STORAGE,
-                        'is_dir': is_directory
-                    },
+                    {'storage_type': StorageType.AZURE_BLOB_STORAGE, 'is_dir': is_directory},
                 )
             else:
                 self._bundle_model.update_bundle(
-                    bundle,
-                    {
-                        'storage_type': StorageType.DISK_STORAGE,
-                        'is_dir': is_directory
-                    },
+                    bundle, {'storage_type': StorageType.DISK_STORAGE, 'is_dir': is_directory},
                 )
         except UsageError:
             if FileSystems.exists(bundle_path):

@@ -175,6 +175,7 @@ class StorageType(Enum):
     When updating this enum, sync it with with the enum in the storage_type column
     in codalab.model.tables and add the appropriate migrations to reflect the column change.
     """
+
     DISK_STORAGE = "disk"
     AZURE_BLOB_STORAGE = "azure_blob"
 

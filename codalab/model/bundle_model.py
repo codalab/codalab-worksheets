@@ -1226,7 +1226,9 @@ class BundleModel(object):
         """
         with self.engine.begin() as connection:
             rows = connection.execute(
-                select([cl_bundle.c.uuid, cl_bundle.c.storage_type, cl_bundle.c.is_dir]).where(cl_bundle.c.uuid.in_(uuids))
+                select([cl_bundle.c.uuid, cl_bundle.c.storage_type, cl_bundle.c.is_dir]).where(
+                    cl_bundle.c.uuid.in_(uuids)
+                )
             ).fetchall()
             return dict((r.uuid, (r.storage_type, r.is_dir)) for r in rows)
 

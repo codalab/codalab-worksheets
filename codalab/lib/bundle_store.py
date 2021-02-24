@@ -39,15 +39,18 @@ class BundleStore(object):
     """
     Base class for a bundle store.
     """
+
     def __init__(self, bundle_model, codalab_home):
         self._bundle_model = bundle_model
         self.codalab_home = path_util.normalize(codalab_home)
 
     def get_bundle_location(self, uuid):
         raise NotImplementedError
-    
+
     def cleanup(self, uuid, dry_run):
         raise NotImplementedError
+
+
 class MultiDiskBundleStore(BundleStore):
     """
     Responsible for taking a set of locations and load-balancing the placement of
@@ -382,6 +385,7 @@ class MultiDiskBundleStore(BundleStore):
                 '\tBundles that need data_hash recompute: %d' % data_hash_recomputed,
                 file=sys.stderr,
             )
+
 
 class MultiDiskBundleStoreWithBlobStorage(MultiDiskBundleStore):
     """
