@@ -9,7 +9,8 @@ import shutil
 from typing import Dict
 
 from codalab.lib.formatting import size_str
-from codalab.worker.file_util import remove_path, un_tar_directory
+from codalab.worker.file_util import remove_path
+from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.fsm import BaseDependencyManager, DependencyStage, StateTransitioner
 import codalab.worker.pyjson
 from codalab.worker.worker_thread import ThreadDict
