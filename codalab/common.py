@@ -142,6 +142,16 @@ def urlopen_with_retry(request: urllib.request.Request, timeout: int = URLOPEN_T
     return urllib.request.urlopen(request, timeout=timeout)
 
 
+class StorageType(Enum):
+    """Possible storage types for bundles.
+    When updating this enum, sync it with with the enum in the storage_type column
+    in codalab.model.tables and add the appropriate migrations to reflect the column change.
+    """
+
+    DISK_STORAGE = "disk"
+    AZURE_BLOB_STORAGE = "azure_blob"
+
+
 @dataclass(frozen=True)
 class LinkedBundlePath:
     """A LinkedBundlePath refers to a path that points to the location of a linked bundle within a specific storage location.
@@ -168,16 +178,6 @@ class LinkedBundlePath:
     uses_beam: bool
     archive_subpath: str
     bundle_uuid: str
-
-
-class StorageType(Enum):
-    """Possible storage types for bundles.
-    When updating this enum, sync it with with the enum in the storage_type column
-    in codalab.model.tables and add the appropriate migrations to reflect the column change.
-    """
-
-    DISK_STORAGE = "disk"
-    AZURE_BLOB_STORAGE = "azure_blob"
 
 
 def parse_linked_bundle_url(url):
