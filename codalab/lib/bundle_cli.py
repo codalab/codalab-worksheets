@@ -3163,7 +3163,12 @@ class BundleCLI(object):
             Commands.Argument('-o', '--owner-spec', help='Change owner of worksheet.'),
             Commands.Argument(
                 '--freeze',
-                help='Freeze worksheet to prevent future modification (PERMANENT!).',
+                help='Freeze worksheet to prevent future modification.',
+                action='store_true',
+            ),
+            Commands.Argument(
+                '--unfreeze',
+                help='Unfreeze worksheet to allow future modification.',
                 action='store_true',
             ),
             Commands.Argument(
@@ -3175,7 +3180,7 @@ class BundleCLI(object):
             ),
             Commands.Argument(
                 '--not-anonymous',
-                help='Set bundle to be NOT anonymous.',
+                help='Set worksheet to be NOT anonymous.',
                 dest='anonymous',
                 action='store_false',
             ),
@@ -3194,9 +3199,13 @@ class BundleCLI(object):
             worksheet_uuid,
             params={'include': ['items', 'items.bundle', 'items.subworksheet']},
         )
-        if args.freeze or any(
-            arg is not None
-            for arg in (args.name, args.title, args.tags, args.owner_spec, args.anonymous)
+        if (
+            args.freeze
+            or args.unfreeze
+            or any(
+                arg is not None
+                for arg in (args.name, args.title, args.tags, args.owner_spec, args.anonymous)
+            )
         ):
             # Update the worksheet metadata.
             info = {'id': worksheet_info['id']}
@@ -3211,6 +3220,8 @@ class BundleCLI(object):
                 info['owner'] = JsonApiRelationship('users', owner['id'])
             if args.freeze:
                 info['frozen'] = datetime.datetime.utcnow().isoformat()
+            if args.unfreeze:
+                info['frozen'] = None
             if args.anonymous is not None:
                 info['is_anonymous'] = args.anonymous
 

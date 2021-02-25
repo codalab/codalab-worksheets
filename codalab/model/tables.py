@@ -100,9 +100,7 @@ worksheet = Table(
     Column(
         'title', Unicode(255), nullable=True
     ),  # Short human-readable description of the worksheet
-    Column(
-        'frozen', DateTime, nullable=True
-    ),  # When the worksheet was frozen (forever immutable) if it is.
+    Column('frozen', DateTime, nullable=True),  # When the worksheet was frozen, if it is.
     Column('is_anonymous', Boolean, nullable=False, default=False),
     Column(
         'date_created', DateTime

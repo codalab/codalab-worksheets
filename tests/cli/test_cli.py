@@ -1077,7 +1077,7 @@ def test(ctx):
     check_contains('non_root_user', _run_command([cl, 'uls']))
 
 
-@TestModule.register('freeze')
+@TestModule.register('freeze_unfreeze')
 def test_freeze(ctx):
     _run_command([cl, 'work', '-u'])
     wname = random_name()
@@ -1089,7 +1089,9 @@ def test_freeze(ctx):
     _run_command([cl, 'add', 'text', 'message'])
     _run_command([cl, 'wedit', '-t', 'new_title'])
     _run_command([cl, 'wperm', wuuid, 'public', 'n'])
+
     _run_command([cl, 'wedit', '--freeze'])
+
     # After freezing: can only modify contents
     _run_command([cl, 'detach', uuid1], 1)  # would remove an item
     _run_command([cl, 'rm', uuid1], 1)  # would remove an item
@@ -1097,6 +1099,14 @@ def test_freeze(ctx):
     _run_command([cl, 'wedit', '-t', 'new_title'])  # can edit
     _run_command([cl, 'wperm', wuuid, 'public', 'a'])  # can edit
 
+    _run_command([cl, 'wedit', '--unfreeze'])
+
+    # After unfreezing: can modify everything
+    _run_command([cl, 'detach', uuid1])  # would remove an item
+    _run_command([cl, 'rm', uuid1]) # would remove an item
+    _run_command([cl, 'add', 'text', 'message'])  # would add an item
+    _run_command([cl, 'wedit', '-t', 'new_title'])  # can edit
+    _run_command([cl, 'wperm', wuuid, 'public', 'n'])  # can edit
 
 @TestModule.register('detach')
 def test_detach(ctx):
