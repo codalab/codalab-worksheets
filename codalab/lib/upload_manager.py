@@ -166,6 +166,7 @@ class UploadManager(object):
                         ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                             shutil.copyfileobj(tif, out_index_file)
                     else:
+                        # TODO: use a .tar.gz file instead here.
                         shutil.copyfileobj(open(bundle_path, 'rb'), out)
 
                 # If uploading a file using Azure Blob Storage, we set storage_type and is_dir appropriately.

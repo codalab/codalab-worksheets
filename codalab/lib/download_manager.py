@@ -173,11 +173,13 @@ class DownloadManager(object):
             )
         elif bundle_state != State.RUNNING:
             directory_path = self._get_target_path(target)
-            if parse_linked_bundle_url(directory_path).uses_beam:
+            storage_type, is_dir = self._bundle_model.get_bundle_storage_info(uuid)
+            if storage_type == StorageType.AZURE_BLOB:
                 # If streaming a folder within an Azure bundle, we need to download its contents,
                 # re-archive the folder, and return the .tar.gz file.
                 return self.file_util.open_file(directory_path)
-            return self.file_util.tar_gzip_directory(directory_path)
+            else:
+                return self.file_util.tar_gzip_directory(directory_path)
         else:
             # stream_tarred_gzipped_directory calls are sent to the worker even
             # on a shared filesystem since
