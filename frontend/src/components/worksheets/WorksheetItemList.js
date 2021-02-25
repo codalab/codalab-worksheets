@@ -1,5 +1,4 @@
 import * as React from 'react';
-import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import { getAfterSortKey, getIds } from '../../util/worksheet_utils';
@@ -30,97 +29,17 @@ export const BLOCK_TO_COMPONENT = {
     schema_block: SchemaItem,
 };
 
-// Create a worksheet item based on props and add it to worksheet_items.
-// - item: information about the table to display
-// - index: integer representing the index in the list of items
-// - focused: whether this item has the focus
-// - editPermission: whether we have permission to edit this item
-// - setFocus: call back to select this item
-// - updateWorksheetSubFocusIndex: call back to notify parent of which row is selected (for tables)
-const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) {
-    var item = props.item;
-
-    // Determine URL corresponding to item.
-    var url = null;
-    if (
-        item.bundles_spec &&
-        item.bundles_spec.bundle_infos[0] &&
-        item.bundles_spec.bundle_infos[0].uuid
-    )
-        url = '/bundles/' + item.bundles_spec.bundle_infos[0].uuid;
-    if (item.subworksheet_info) url = '/worksheets/' + item.subworksheet_info.uuid;
-
-    props.key = props.id = 'codalab-worksheet-item-' + props.focusIndex;
-    props.url = url;
-    props.prevItem = prevItem;
-    props.after_sort_key = getAfterSortKey(
-        props.item,
-        props.item.mode === 'markup_block' ? undefined : props.subFocusIndex,
-    );
-    props.ids = getIds(item);
-    // showNewButtonsAfterEachBundleRow is set to true when we have a bundle table, because in this case,
-    // we must show the new upload / new run buttons after each row in the table (in the BundleRow component)
-    // as opposed to at the end of the table (in ItemWrapper).
-    props.showNewButtonsAfterEachBundleRow =
-        props.item.mode === 'table_block' && !props.item.loadedFromPlaceholder;
-    const constructor = BLOCK_TO_COMPONENT[item.mode];
-
-    let elem;
-    if (constructor) {
-        elem = React.createElement(constructor, props);
-    } else {
-        elem = React.createElement(
-            'div',
-            null,
-            React.createElement(
-                'strong',
-                null,
-                'Internal error unsupported block mode:',
-                item.mode,
-            ),
-        );
-    }
-    worksheet_items.push(
-        <ItemWrapper
-            prevItem={prevItem}
-            item={item}
-            afterItem={afterItem}
-            ws={props.ws}
-            worksheetUUID={props.worksheetUUID}
-            reloadWorksheet={props.reloadWorksheet}
-            showNewRun={
-                !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewRun
-            }
-            showNewText={
-                !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewText
-            }
-            showNewSchema={
-                !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewSchema
-            }
-            onHideNewRun={props.onHideNewRun}
-            onHideNewText={props.onHideNewText}
-            onHideNewSchema={props.onHideNewSchema}
-            updateSchemaItem={props.updateSchemaItem}
-            saveAndUpdateWorksheet={props.saveAndUpdateWorksheet}
-            key={props.key}
-            focusIndex={props.focusIndex}
-            subFocusIndex={props.subFocusIndex}
-            after_sort_key={props.after_sort_key}
-            ids={props.ids}
-            id={props.id}
-        >
-            {elem}
-        </ItemWrapper>,
-    );
-};
-
 class WorksheetItemList extends React.Component {
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = Immutable({
+        this.state = {
             newUploadKey: Math.random() + '',
-        });
+            /** Index of the array represents the version number
+             *  elements are Set() containing the directives in current version which are being fetched
+             */
+            fetchingDirectives: [],
+        };
     }
 
     static displayName = 'WorksheetItemList';
@@ -185,6 +104,117 @@ class WorksheetItemList extends React.Component {
         if (event.target === event.currentTarget) {
             this.props.setFocus(-1, 0, false);
         }
+    };
+
+    // Create a worksheet item based on props and add it to worksheet_items.
+    // - item: information about the table to display
+    // - index: integer representing the index in the list of items
+    // - focused: whether this item has the focus
+    // - editPermission: whether we have permission to edit this item
+    // - setFocus: call back to select this item
+    // - updateWorksheetSubFocusIndex: call back to notify parent of which row is selected (for tables)
+    addWorksheetItems = (props, worksheet_items, prevItem, afterItem) => {
+        var item = props.item;
+
+        // Determine URL corresponding to item.
+        var url = null;
+        if (
+            item.bundles_spec &&
+            item.bundles_spec.bundle_infos[0] &&
+            item.bundles_spec.bundle_infos[0].uuid
+        )
+            url = '/bundles/' + item.bundles_spec.bundle_infos[0].uuid;
+        if (item.subworksheet_info) url = '/worksheets/' + item.subworksheet_info.uuid;
+
+        props.key = props.id = 'codalab-worksheet-item-' + props.focusIndex;
+        props.url = url;
+        props.prevItem = prevItem;
+        props.after_sort_key = getAfterSortKey(
+            props.item,
+            props.item.mode === 'markup_block' ? undefined : props.subFocusIndex,
+        );
+        props.ids = getIds(item);
+        // showNewButtonsAfterEachBundleRow is set to true when we have a bundle table, because in this case,
+        // we must show the new upload / new run buttons after each row in the table (in the BundleRow component)
+        // as opposed to at the end of the table (in ItemWrapper).
+        props.showNewButtonsAfterEachBundleRow =
+            props.item.mode === 'table_block' && !props.item.loadedFromPlaceholder;
+        const constructor = BLOCK_TO_COMPONENT[item.mode];
+
+        // for a placeholder block, if the directive in current version is already being fetched
+        // no need to fetch the same directive again
+        let skipDirectiveFetch = false;
+        if (item.mode === 'placeholder_block') {
+            const directive = item.directive;
+            if (
+                props.version <= this.state.fetchingDirectives.length - 1 &&
+                this.state.fetchingDirectives[props.version].has(directive)
+            ) {
+                skipDirectiveFetch = true;
+            } else {
+                this.setState((prevState) => {
+                    const newfetchingDirectives = prevState.fetchingDirectives;
+                    if (props.version > this.state.fetchingDirectives.length - 1) {
+                        newfetchingDirectives.push(new Set());
+                    }
+                    newfetchingDirectives[props.version].add(directive);
+                    return {
+                        ...prevState,
+                        fetchingDirectives: newfetchingDirectives,
+                    };
+                });
+            }
+            props = { ...props, skipDirectiveFetch: skipDirectiveFetch };
+        }
+
+        let elem;
+        if (constructor) {
+            elem = React.createElement(constructor, props);
+        } else {
+            elem = React.createElement(
+                'div',
+                null,
+                React.createElement(
+                    'strong',
+                    null,
+                    'Internal error unsupported block mode:',
+                    item.mode,
+                ),
+            );
+        }
+
+        worksheet_items.push(
+            <ItemWrapper
+                prevItem={prevItem}
+                item={item}
+                afterItem={afterItem}
+                ws={props.ws}
+                worksheetUUID={props.worksheetUUID}
+                reloadWorksheet={props.reloadWorksheet}
+                showNewRun={
+                    !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewRun
+                }
+                showNewText={
+                    !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewText
+                }
+                showNewSchema={
+                    !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewSchema
+                }
+                onHideNewRun={props.onHideNewRun}
+                onHideNewText={props.onHideNewText}
+                onHideNewSchema={props.onHideNewSchema}
+                updateSchemaItem={props.updateSchemaItem}
+                saveAndUpdateWorksheet={props.saveAndUpdateWorksheet}
+                key={props.key}
+                focusIndex={props.focusIndex}
+                subFocusIndex={props.subFocusIndex}
+                after_sort_key={props.after_sort_key}
+                ids={props.ids}
+                id={props.id}
+            >
+                {elem}
+            </ItemWrapper>,
+        );
     };
 
     render() {
@@ -252,7 +282,7 @@ class WorksheetItemList extends React.Component {
                         updateSchemaItem: this.props.updateSchemaItem,
                         setDeleteSchemaItemCallback: this.props.setDeleteSchemaItemCallback,
                     };
-                    addWorksheetItems(
+                    this.addWorksheetItems(
                         props,
                         worksheet_items,
                         index > 0 ? info.blocks[index - 1] : null,
