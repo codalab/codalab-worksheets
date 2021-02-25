@@ -1103,10 +1103,11 @@ def test_freeze(ctx):
 
     # After unfreezing: can modify everything
     _run_command([cl, 'detach', uuid1])  # would remove an item
-    _run_command([cl, 'rm', uuid1]) # would remove an item
+    _run_command([cl, 'rm', uuid1])  # would remove an item
     _run_command([cl, 'add', 'text', 'message'])  # would add an item
     _run_command([cl, 'wedit', '-t', 'new_title'])  # can edit
     _run_command([cl, 'wperm', wuuid, 'public', 'n'])  # can edit
+
 
 @TestModule.register('detach')
 def test_detach(ctx):
