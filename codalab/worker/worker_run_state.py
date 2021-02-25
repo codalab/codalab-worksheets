@@ -293,7 +293,9 @@ class RunStateMachine(StateTransitioner):
                 status_message += "(and downloading %d other dependencies and docker images)" % len(
                     status_messages
                 )
-            logger.info(f'{run_state.bundle.uuid} is not ready yet since {status_message}')
+            logger.info(
+                f'bundle is not ready yet. uuid: {run_state.bundle.uuid}. status message: {status_message}'
+            )
             return run_state._replace(run_status=status_message)
 
         # All dependencies ready! Set up directories, symlinks and container. Start container.
@@ -458,7 +460,7 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state: RunState):
-            logger.info(f'Checking resource utilization for {run_state.bundle.uuid}')
+            logger.info(f'Checking resource utilization for bundle. uuid: {run_state.bundle.uuid}')
             kill_messages = []
 
             run_stats = docker_utils.get_container_stats(run_state.container)
@@ -502,7 +504,7 @@ class RunStateMachine(StateTransitioner):
             return run_state
 
         def check_disk_utilization():
-            logger.info(f'Checking disk utilization for {run_state.bundle.uuid}')
+            logger.info(f'Checking disk utilization for bundle. uuid: {run_state.bundle.uuid}')
             running = True
             while running:
                 start_time = time.time()
@@ -687,13 +689,15 @@ class RunStateMachine(StateTransitioner):
             # upload failed
             failure_message = run_state.failure_message
             if failure_message:
-                failure_message = f'{failure_message}. {self.uploading[run_state.bundle.uuid]["run_status"]}'
+                failure_message = (
+                    f'{failure_message}. {self.uploading[run_state.bundle.uuid]["run_status"]}'
+                )
             else:
                 failure_message = self.uploading[run_state.bundle.uuid]['run_status']
-            logger.info(f'upload failed, uuid: {run_state.bundle.uuid}. failure message: {failure_message}')
-            run_state = run_state._replace(
-                failure_message=failure_message
+            logger.info(
+                f'Upload failed. uuid: {run_state.bundle.uuid}. failure message: {failure_message}'
             )
+            run_state = run_state._replace(failure_message=failure_message)
 
         self.uploading.remove(run_state.bundle.uuid)
         return self.finalize_run(run_state)
@@ -713,7 +717,7 @@ class RunStateMachine(StateTransitioner):
                 bundle_uuid=run_state.bundle.uuid,
                 previous_stage=run_state.stage,
                 next_stage=RunStage.FINALIZING,
-                reason=f'Bundle is killed. uuid: {run_state.bundle.uuid}. failure message: {failure_message}'
+                reason=f'Bundle is killed. uuid: {run_state.bundle.uuid}. failure message: {failure_message}',
             )
             run_state = run_state._replace(failure_message=failure_message)
         else:
