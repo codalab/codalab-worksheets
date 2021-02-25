@@ -173,8 +173,8 @@ class DownloadManager(object):
             )
         elif bundle_state != State.RUNNING:
             directory_path = self._get_target_path(target)
-            storage_type, is_dir = self._bundle_model.get_bundle_storage_info(uuid)
-            if storage_type == StorageType.AZURE_BLOB:
+            storage_type, is_dir = self._bundle_model.get_bundle_storage_info(target.bundle_uuid)
+            if storage_type == StorageType.AZURE_BLOB_STORAGE.value:
                 # If streaming a folder within an Azure bundle, we need to download its contents,
                 # re-archive the folder, and return the .tar.gz file.
                 return self.file_util.open_file(directory_path)

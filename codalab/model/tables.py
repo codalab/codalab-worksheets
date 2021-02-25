@@ -44,7 +44,7 @@ bundle = Table(
     Column('is_anonymous', Boolean, nullable=False, default=False),
     Column(
         'storage_type',
-        Enum(StorageType.DISK_STORAGE, StorageType.AZURE_BLOB_STORAGE),
+        Enum(StorageType.DISK_STORAGE.value, StorageType.AZURE_BLOB_STORAGE.value),
         nullable=True,
     ),  # Where the bundle contents are stored. If set to null, nothing has been uploaded for the bundle yet.
     # When updating this column, sync it with codalab.model.bundle_model.StorageType.

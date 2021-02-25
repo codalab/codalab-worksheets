@@ -189,14 +189,14 @@ def parse_linked_bundle_url(url):
     """
     if url.startswith("azfs://"):
         uses_beam = True
-        storage_type = StorageType.AZURE_BLOB_STORAGE
+        storage_type = StorageType.AZURE_BLOB_STORAGE.value
         url = url[len("azfs://") :]
         storage_account, container, bundle_uuid, contents_file, *remainder = url.split("/", 4)
         bundle_path = f"azfs://{storage_account}/{container}/{bundle_uuid}/{contents_file}"
         is_archive = contents_file.endswith(".tar.gz")
         archive_subpath = remainder[0] if is_archive and len(remainder) else None
     else:
-        storage_type = StorageType.DISK_STORAGE
+        storage_type = StorageType.DISK_STORAGE.value
         bundle_path = url
         is_archive = False
         uses_beam = False

@@ -66,7 +66,7 @@ class MultiDiskBundleStore(BundleStore):
     CACHE_SIZE = 1 * 1000 * 1000  # number of entries to cache
 
     def __init__(self, bundle_model, codalab_home):
-        super(BundleStore, self).__init__(bundle_model, codalab_home)
+        super(MultiDiskBundleStore, self).__init__(bundle_model, codalab_home)
 
         self.partitions = os.path.join(self.codalab_home, 'partitions')
         path_util.make_directory(self.partitions)
@@ -397,13 +397,13 @@ class MultiDiskBundleStoreWithBlobStorage(MultiDiskBundleStore):
     """
 
     def __init__(self, bundle_model, codalab_home, azure_blob_account_name):
-        super(BundleStore, self).__init__(bundle_model, codalab_home)
+        super(MultiDiskBundleStoreWithBlobStorage, self).__init__(bundle_model, codalab_home)
 
         self._azure_blob_account_name = azure_blob_account_name
 
     def get_bundle_location(self, uuid):
         storage_type, is_dir = self._bundle_model.get_bundle_storage_info(uuid)
-        if storage_type == StorageType.AZURE_BLOB:
+        if storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             return f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/{'contents.tar.gz' if is_dir else 'contents'}"
         else:
-            return super(MultiDiskBundleStore, self).get_bundle_location(uuid)
+            return super(MultiDiskBundleStoreWithBlobStorage, self).get_bundle_location(uuid)
