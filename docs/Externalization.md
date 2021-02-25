@@ -67,7 +67,7 @@ means that the _workers_ and the server share a file system from which they can 
 When a bundle is run with a dependency, here is what the CodaLab server sends the worker, based on different combinations
 of `--link` (applied to the dependency) and `--shared-file-system`:
 
- <!-- -->       |--link | no --link            |
+---       |--link | no --link            |
 -------| ----------|------------------------------|
  --shared-file-system        | Server sends worker just the bundle path (`/u/nlp/data`) | Server sends worker just the bundle path (which must be in CodaLab bundle store `/u/codalab/bundles/...`)
  no --shared-file-system     | Server sends worker the bundle contents (reading from the path - `/u/nlp/data`)   | Server sends worker the bundle contents (reading from the path in the CodaLab bundle store - `/u/codalab/bundles/...`)
