@@ -1210,7 +1210,7 @@ class BundleModel(object):
     def get_bundle_storage_info(self, uuid):
         result_dict = self.get_bundle_storage_infos([uuid])
         if uuid not in result_dict:
-            return None
+            return None, None
         return result_dict[uuid]
 
     def get_bundle_storage_infos(self, uuids):
