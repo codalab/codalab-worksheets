@@ -8,7 +8,6 @@ import time
 import shutil
 from typing import Dict
 
-from codalab.lib import telemetry_util
 from codalab.lib.formatting import size_str
 from codalab.worker.file_util import remove_path
 from codalab.worker.un_tar_directory import un_tar_directory
