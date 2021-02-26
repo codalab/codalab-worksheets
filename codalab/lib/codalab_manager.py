@@ -39,7 +39,7 @@ from distutils.util import strtobool
 
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import CODALAB_VERSION, PermissionError, UsageError
-from codalab.lib.bundle_store import MultiDiskBundleStore
+from codalab.lib.bundle_store import MultiDiskBundleStore, MultiDiskBundleStoreWithBlobStorage
 from codalab.lib.crypt_util import get_random_string
 from codalab.lib.download_manager import DownloadManager
 from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
@@ -47,6 +47,7 @@ from codalab.lib.print_util import pretty_print_json
 from codalab.lib.upload_manager import UploadManager
 from codalab.lib import formatting
 from codalab.model.worker_model import WorkerModel
+from codalab.lib.beam.filesystems import AZURE_BLOB_ACCOUNT_NAME
 
 MAIN_BUNDLE_SERVICE = 'https://worksheets.codalab.org'
 
@@ -247,9 +248,13 @@ class CodaLabManager(object):
         depends on what the user has configured, but if no bundle store is configured manually then it defaults to a
         MultiDiskBundleStore.
         """
-        store_type = self.config.get('bundle_store', 'MultiDiskBundleStore')
+        store_type = self.config.get('bundle_store', 'MultiDiskBundleStoreWithBlobStorage')
         if store_type == MultiDiskBundleStore.__name__:
-            return MultiDiskBundleStore(self.codalab_home)
+            return MultiDiskBundleStore(self.model(), self.codalab_home)
+        elif store_type == MultiDiskBundleStoreWithBlobStorage.__name__:
+            return MultiDiskBundleStoreWithBlobStorage(
+                self.model(), self.codalab_home, AZURE_BLOB_ACCOUNT_NAME
+            )
         else:
             print("Invalid bundle store type \"%s\"", store_type, file=sys.stderr)
             sys.exit(1)
