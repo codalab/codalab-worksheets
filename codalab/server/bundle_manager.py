@@ -545,7 +545,7 @@ class BundleManager(object):
 
         # Filter by worker's available disk space.
         workers_list = [
-            worker for worker in workers_list if worker['free_disk_bytes'] > bundle_resources.disk
+            worker for worker in workers_list if worker['free_disk_bytes'] >= bundle_resources.disk
         ]
 
         # Sort workers list according to these keys in the following succession:
