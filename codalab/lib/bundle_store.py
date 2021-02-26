@@ -400,7 +400,7 @@ class MultiDiskBundleStoreWithBlobStorage(MultiDiskBundleStore):
 
     If the bundle is a directory, the entire contents of the bundle is stored in the .tar.gz file;
     otherwise, if the bundle is a single file, the file is stored in the .tar.gz file as an archive
-    member with name equal to the bundle id and is_dir is set to False in the database.
+    member with name equal to the bundle uuid and is_dir is set to False in the database.
     """
 
     def __init__(self, bundle_model, codalab_home, azure_blob_account_name):

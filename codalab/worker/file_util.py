@@ -191,6 +191,8 @@ def open_indexed_tar_gz_file(path):
 
     This way, the .tar.gz file can be read and specific files can be extracted without
     needing to download the entire .tar.gz file.
+
+    Returns a tuple: (SQLiteIndexedTar object, fileobj of the .tar.gz file)
     """
     f = FileSystems.open(path, compression_type=CompressionTypes.UNCOMPRESSED)
     with tempfile.NamedTemporaryFile(suffix=".sqlite") as index_file:
