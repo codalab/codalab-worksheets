@@ -27,10 +27,10 @@ Usage: `cl <command> <arguments>`
       -n, --name                 Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description          Full description of the bundle.
       --tags                     Space-separated list of tags used for search (e.g., machine-learning).
-      --link-url                 Link URL of bundle.
-      --link-format              Link format of bundle. Can be equal to "raw" or "zip" (only "raw" is supported as of now).
       --license                  The license under which this program/dataset is released.
       --source-url               URL corresponding to the original source of this bundle.
+      --link-url                 Link URL of bundle.
+      --link-format              Link format of bundle. Can be equal to"raw" or "zip" (only "raw" is supported as of now).
       -e, --edit                 Show an editor to allow editing of the bundle metadata.
 
 ### make
@@ -43,8 +43,6 @@ Usage: `cl <command> <arguments>`
       -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description            Full description of the bundle.
       --tags                       Space-separated list of tags used for search (e.g., machine-learning).
-      --link-url                   Link URL of bundle.
-      --link-format                Link format of bundle. Can be equal to "raw" or "zip" (only "raw" is supported as of now).
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
 
@@ -60,8 +58,6 @@ Usage: `cl <command> <arguments>`
       -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description            Full description of the bundle.
       --tags                       Space-separated list of tags used for search (e.g., machine-learning).
-      --link-url                   Link URL of bundle.
-      --link-format                Link format of bundle. Can be equal to "raw" or "zip" (only "raw" is supported as of now).
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
       --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.
       --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.
@@ -200,8 +196,6 @@ Usage: `cl <command> <arguments>`
       -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$. (for makes and runs)
       -d, --description            Full description of the bundle. (for makes and runs)
       --tags                       Space-separated list of tags used for search (e.g., machine-learning). (for makes and runs)
-      --link-url                   Link URL of bundle. (for makes and runs)
-      --link-format                Link format of bundle. Can be equal to "raw" or "zip" (only "raw" is supported as of now). (for makes and runs)
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies. (for makes and runs)
       --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use. (for runs)
       --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left. (for runs)
@@ -231,8 +225,6 @@ Usage: `cl <command> <arguments>`
       -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$. (for makes and runs)
       -d, --description            Full description of the bundle. (for makes and runs)
       --tags                       Space-separated list of tags used for search (e.g., machine-learning). (for makes and runs)
-      --link-url                   Link URL of bundle. (for makes and runs)
-      --link-format                Link format of bundle. Can be equal to "raw" or "zip" (only "raw" is supported as of now). (for makes and runs)
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies. (for makes and runs)
       --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use. (for runs)
       --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left. (for runs)

@@ -1,7 +1,7 @@
 import tests.unit.azure_blob_mock  # noqa: F401
 from codalab.lib.spec_util import generate_uuid
 from codalab.worker.download_util import BundleTarget
-from codalab.common import NotFoundError
+from codalab.common import NotFoundError, StorageType
 from tests.unit.server.bundle_manager import TestBase
 from io import BytesIO
 import gzip
@@ -75,6 +75,8 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.save_bundle(bundle)
         self.upload_file(bundle, b"hello world")
         target = BundleTarget(bundle.uuid, "")
+        self.assertEqual(bundle.is_dir, False)
+        self.assertEqual(bundle.storage_type, StorageType.DISK_STORAGE.value)
 
         info = self.download_manager.get_target_info(target, 0)
         self.assertEqual(info["name"], bundle.uuid)
@@ -108,6 +110,8 @@ class BaseUploadDownloadBundleTest(TestBase):
             writestr(tf, "./src/item2.txt", "hello world")
         f.seek(0)
         self.upload_folder(bundle, f)
+        self.assertEqual(bundle.is_dir, True)
+        self.assertEqual(bundle.storage_type, StorageType.DISK_STORAGE.value)
 
         target = BundleTarget(bundle.uuid, "")
         info = self.download_manager.get_target_info(target, 2)

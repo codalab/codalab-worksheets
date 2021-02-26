@@ -47,7 +47,7 @@ bundle = Table(
         Enum(StorageType.DISK_STORAGE.value, StorageType.AZURE_BLOB_STORAGE.value),
         nullable=True,
     ),  # Where the bundle contents are stored. If set to null, nothing has been uploaded for the bundle yet.
-    # When updating this column, sync it with codalab.model.bundle_model.StorageType.
+    # When updating this column, sync it with codalab.common.StorageType.
     Column(
         'is_dir', Boolean, nullable=True,
     ),  # Whether the bundle is a directory or just a single file. If set to null, nothing has been uploaded for the bundle yet.

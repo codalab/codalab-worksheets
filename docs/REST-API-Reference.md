@@ -220,6 +220,8 @@ Name | Type
 `state` | String
 `owner` | Relationship([users](#users))
 `is_anonymous` | Boolean
+`storage_type` | String
+`is_dir` | Boolean
 `metadata` | Dict
 `dependencies` | [BundleDependencySchema](#BundleDependencySchema)
 `children` | Relationship([bundles](#bundles))

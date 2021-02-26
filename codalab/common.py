@@ -181,8 +181,9 @@ class LinkedBundlePath:
 
 
 def parse_linked_bundle_url(url):
-    """Parses a linked bundle URL. This bundle URL usually refers to a single file that is stored within
-        an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz/file1"
+    """Parses a linked bundle URL. This bundle URL usually refers to:
+        - an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz"
+        - a single file that is stored within a subpath of an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz/file1"
 
         Returns a LinkedBundlePath instance to encode this information.
     """

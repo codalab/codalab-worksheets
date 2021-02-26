@@ -3,6 +3,7 @@ import os
 import shutil
 
 from codalab.common import UsageError
+from codalab.common import StorageType
 from codalab.lib import crypt_util, file_util, path_util
 from codalab.worker.file_util import tar_gzip_directory
 from apache_beam.io.filesystem import CompressionTypes
