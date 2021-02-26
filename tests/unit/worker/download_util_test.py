@@ -21,7 +21,7 @@ class AzureBlobTestBase:
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/test.txt"
         with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as f:
             f.write(contents)
-        return bundle_path
+        return bundle_uuid, bundle_path
 
     def create_directory(self):
         """Creates a directory and returns its path."""
@@ -71,20 +71,20 @@ class AzureBlobTestBase:
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                 shutil.copyfileobj(tif, out_index_file)
 
-        return bundle_path
+        return bundle_uuid, bundle_path
 
 
 class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
     def test_single_file(self):
         """Test getting target info of a single file on Azure Blob Storage."""
-        bundle_path = self.create_file(b"a")
+        bundle_uuid, bundle_path = self.create_file(b"a")
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
         self.assertEqual(target_info, {'name': bundle_uuid, 'type': 'file', 'size': 1, 'perm': 511})
 
     def test_nested_directories(self):
         """Test getting target info of different files within a bundle that consists of nested directories, on Azure Blob Storage."""
-        bundle_path = self.create_directory()
+        bundle_uuid, bundle_path = self.create_directory()
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
