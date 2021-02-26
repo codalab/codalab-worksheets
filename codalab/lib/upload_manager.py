@@ -3,6 +3,7 @@ import os
 import shutil
 
 from codalab.common import UsageError
+from codalab.common import StorageType
 from codalab.lib import crypt_util, file_util, path_util
 
 
@@ -119,6 +120,11 @@ class UploadManager(object):
 
             if len(sources) == 1:
                 self._simplify_directory(bundle_path)
+            # is_directory is True if the bundle is a directory and False if it is a single file.
+            is_directory = os.path.isdir(bundle_path)
+            self._bundle_model.update_bundle(
+                bundle, {'storage_type': StorageType.DISK_STORAGE.value, 'is_dir': is_directory},
+            )
         except UsageError:
             if os.path.exists(bundle_path):
                 path_util.remove(bundle_path)

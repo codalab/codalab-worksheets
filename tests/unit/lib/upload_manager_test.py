@@ -16,9 +16,13 @@ class UploadManagerTest(unittest.TestCase):
             def get_bundle_location(self, uuid):
                 return self.bundle_location
 
+        class MockBundleModel(object):
+            def update_bundle(self, *args, **kwargs):
+                return
+
         self.temp_dir = tempfile.mkdtemp()
         self.bundle_location = os.path.join(self.temp_dir, 'bundle')
-        self.manager = UploadManager(None, MockBundleStore(self.bundle_location))
+        self.manager = UploadManager(MockBundleModel(), MockBundleStore(self.bundle_location))
 
     def tearDown(self):
         remove_path(self.temp_dir)
@@ -32,6 +36,7 @@ class UploadManagerTest(unittest.TestCase):
         git=False,
         unpack=True,
         simplify_archives=True,
+        use_azure_blob_beta=False,
     ):
         class FakeBundle(object):
             def __init__(self):
