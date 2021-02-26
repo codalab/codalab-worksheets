@@ -4,9 +4,8 @@ from unittest import mock
 import os
 import unittest
 
-from codalab.common import PreconditionViolation, parse_linked_bundle_url
+from codalab.common import PreconditionViolation, parse_linked_bundle_url, StorageType
 from codalab.lib import path_util
-from codalab.lib.path_util import StorageType
 
 
 class PathUtilTest(unittest.TestCase):
