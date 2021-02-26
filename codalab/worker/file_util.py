@@ -546,15 +546,6 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
     If ignore_nonexistent_path is True and the input path is nonexistent, the value
     0 is returned. Else, an exception is raised (FileNotFoundError).
     """
-    if parse_linked_bundle_url(path).uses_beam:
-        # On Azure, use Apache Beam methods, not native os methods,
-        # to get the path size.
-
-        # Get the size of the specified path (file / directory).
-        # This will only get the right size of files, not of directories (but we don't
-        # store any bundles as directories on Azure).
-        return get_file_size(path)
-
     try:
         result = os.lstat(path).st_size
     except FileNotFoundError:
