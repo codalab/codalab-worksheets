@@ -489,5 +489,5 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             with self._paths_lock:
                 self._paths.remove(dependency_state.path)
 
-            telemetry_util.capture_message(failure_message)
+            logger.error(failure_message)
             return dependency_state._replace(stage=DependencyStage.FAILED, message=failure_message)
