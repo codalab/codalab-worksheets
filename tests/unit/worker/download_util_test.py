@@ -1,5 +1,9 @@
 import tests.unit.azure_blob_mock  # noqa: F401
-from codalab.worker.download_util import get_target_info, BundleTarget
+from codalab.worker.download_util import (
+    get_target_info,
+    BundleTarget,
+    compute_target_info_beam_descendants_flat,
+)
 import unittest
 import random
 import tarfile
@@ -159,4 +163,40 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
                     }
                 ],
             },
+        )
+
+    def test_nested_directories_get_descendants_flat(self):
+        """Test the compute_target_info_beam_descendants_flat function with nested directories."""
+        bundle_uuid, bundle_path = self.create_directory()
+
+        # Entire directory
+        results = compute_target_info_beam_descendants_flat(bundle_path)
+        self.assertEqual(
+            results,
+            [
+                {'name': f'README.md', 'size': 11, 'perm': 420, 'type': 'file', 'contents': None,},
+                {'name': f'dist', 'size': 0, 'perm': 420, 'type': 'directory', 'contents': None,},
+                {'name': 'dist/a', 'size': 0, 'perm': 420, 'type': 'directory', 'contents': None},
+                {'name': 'dist/a/b', 'size': 0, 'perm': 420, 'type': 'directory', 'contents': None},
+                {
+                    'name': 'dist/a/b/test2.sh',
+                    'size': 8,
+                    'perm': 420,
+                    'type': 'file',
+                    'contents': None,
+                },
+                {'name': f'src', 'size': 0, 'perm': 420, 'type': 'directory', 'contents': None,},
+                {'name': 'src/test.sh', 'size': 7, 'perm': 420, 'type': 'file', 'contents': None},
+            ],
+        )
+
+        # Subdirectory
+        results = compute_target_info_beam_descendants_flat(bundle_path + "/" + "dist")
+        self.assertEqual(
+            results,
+            [
+                {'name': 'a', 'size': 0, 'perm': 420, 'type': 'directory', 'contents': None},
+                {'name': 'a/b', 'size': 0, 'perm': 420, 'type': 'directory', 'contents': None},
+                {'name': 'a/b/test2.sh', 'size': 8, 'perm': 420, 'type': 'file', 'contents': None},
+            ],
         )

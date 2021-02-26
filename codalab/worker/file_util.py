@@ -299,31 +299,43 @@ def open_file(file_path, mode='r'):
         tf, _ = open_indexed_tar_gz_file(linked_bundle_path.bundle_path)
 
         isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
-        listdir = lambda path: tf.getFileInfo(path, listDir=True)
 
         fpath = "/" + linked_bundle_path.archive_subpath
         finfo = tf.getFileInfo(fpath)
         if finfo is None:
             raise FileNotFoundError(fpath)
         if isdir(finfo):
+            from codalab.worker.download_util import compute_target_info_beam_descendants_flat
+
             # If streaming a folder within an Azure bundle, we need to download its contents,
             # re-archive the folder, and return the .tar.gz version of that folder.
             # with tempfile.TemporaryDirectory() as tmp_dirname:
             tmp_dir = tempfile.TemporaryDirectory()
             extracted_path = os.path.join(tmp_dir.name, linked_bundle_path.archive_subpath)
             os.mkdir(extracted_path)
-            for member_name, member_fileinfo in listdir(fpath).items():
+            for member in compute_target_info_beam_descendants_flat(file_path):
                 # Make sure that there is no trickery going on (see note in
                 # TarFile.extractall() documentation.
-                member_path = os.path.realpath(os.path.join(extracted_path, member_name))
+                member_path = os.path.realpath(os.path.join(extracted_path, member['name']))
                 if not member_path.startswith(os.path.realpath(extracted_path)):
                     raise tarfile.TarError('Archive member extracts outside the directory.')
                 # Extract other members of the directory.
                 # TODO (Ashwin): Make sure this works with symlinks, too.
-                with open(os.path.join(extracted_path, member_name), "wb+") as f:
-                    f.write(
-                        tf.read("", fileInfo=member_fileinfo, size=member_fileinfo.size, offset=0)
-                    )
+                if member['type'] == 'directory':
+                    os.makedirs(member_path, exist_ok=True)
+                else:
+                    with open(member_path, "wb+") as f:
+                        os.makedirs(os.path.dirname(member_path), exist_ok=True)
+                        f.write(
+                            tf.read(
+                                path="/"
+                                + linked_bundle_path.archive_subpath
+                                + "/"
+                                + member['name'],
+                                size=member['size'],
+                                offset=0,
+                            )
+                        )
             # We use ClosingStreamWrapper as a workaround to ensure that tmp_dir isn't automatically closed.
             # If we just return `tar_gzip_directory(extracted_path)`, for some reason, Python closes
             # tmp_dir, so we end up just reading from an empty file.

@@ -231,3 +231,24 @@ def _compute_target_info_beam(path, depth):
                 _get_info(file_name, depth - 1) for file_name in listdir("/") if file_name != "."
             ]
         return result
+
+
+def compute_target_info_beam_descendants_flat(path):
+    """Given a path on Azure Blob Storage,
+    returns a flat array of all descendants within that directory in the format
+    [{name, type, size, perm}], where "name" is equal to the full path of each item.
+    """
+    target_info = _compute_target_info_beam(path, float("inf"))
+    results = []
+
+    def append_results(tinfo, prefix=""):
+        results.append(dict(tinfo, contents=None, name=prefix + tinfo["name"]))
+        if 'contents' in tinfo:
+            for t in tinfo['contents']:
+                append_results(t, prefix + tinfo['name'] + '/')
+
+    if 'contents' in target_info:
+        for t in target_info['contents']:
+            append_results(t)
+
+    return results
