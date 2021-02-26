@@ -121,7 +121,10 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
         )
 
         # TODO(Ashwin): fix issue where subdirectories only return top-level items.
-        # self.assertEqual(tarfile.open(fileobj=open_file(f"{dirname}/dist"), mode='r:gz').getnames(), ['.', './a', './a/b', './a/b/test2.sh'])
+        self.assertEqual(
+            tarfile.open(fileobj=open_file(f"{dirname}/dist"), mode='r:gz').getnames(),
+            ['.', './a', './a/b', './a/b/test2.sh'],
+        )
 
 
 class ArchiveTestBase:
