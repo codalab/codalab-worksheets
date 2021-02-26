@@ -12,8 +12,7 @@ from bottle import abort, get, post, put, delete, local, request, response
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import precondition, UsageError, NotFoundError
-from codalab.lib import canonicalize, spec_util, worksheet_util, path_util
-from codalab.lib.path_util import parse_linked_bundle_url
+from codalab.lib import canonicalize, spec_util, worksheet_util
 from codalab.lib.server_util import (
     bottle_patch as patch,
     json_api_include,
