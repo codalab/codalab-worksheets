@@ -210,6 +210,7 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
+            print("_make_bundle")
             with tempfile.TemporaryDirectory() as tempdir:
                 bundle_link_url = getattr(bundle.metadata, "link_url", None)
                 bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(
@@ -219,31 +220,31 @@ class BundleManager(object):
                 path = normpath(bundle_location)
 
                 deps = []
+                print([dep.parent_uuid for dep in bundle.dependencies])
                 parent_bundle_link_urls = self._model.get_bundle_metadata(
                     [dep.parent_uuid for dep in bundle.dependencies], "link_url"
                 )
+                print(parent_bundle_link_urls)
                 for dep in bundle.dependencies:
                     parent_bundle_link_url = parent_bundle_link_urls.get(dep.parent_uuid)
-                    parent_bundle_path = parent_bundle_link_url or normpath(
-                        self._bundle_store.get_bundle_location(dep.parent_uuid)
-                    )
+                    try:
+                        parent_bundle_path = parent_bundle_link_url or normpath(
+                            self._bundle_store.get_bundle_location(dep.parent_uuid)
+                        )
+                    except NotFoundError:
+                        raise Exception(
+                            'Invalid dependency %s'
+                            % (path_util.safe_join(dep.parent_uuid, dep.parent_path))
+                        )
                     dependency_path = normpath(os.path.join(parent_bundle_path, dep.parent_path))
                     if not dependency_path.startswith(parent_bundle_path) or (
                         not os.path.islink(dependency_path)
                         and not os.path.exists(dependency_path)
                         and not parse_linked_bundle_url(dependency_path).uses_beam
                     ):
-                        # raise Exception(
-                        #     'Invalid dependency %s'
-                        #     % (path_util.safe_join(dep.parent_uuid, dep.parent_path))
-                        # )
                         raise Exception(
-                            'Invalid dependency %s, %s, %s'
-                            % (
-                                path_util.safe_join(dep.parent_uuid, dep.parent_path),
-                                dependency_path,
-                                parent_bundle_path,
-                            )
+                            'Invalid dependency %s'
+                            % (path_util.safe_join(dep.parent_uuid, dep.parent_path))
                         )
 
                     child_path = normpath(os.path.join(path, dep.child_path))

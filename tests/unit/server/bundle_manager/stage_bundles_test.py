@@ -85,7 +85,7 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
         """A bundle with parents that the user doesn't have permission to should
         not be staged."""
         bundle, parent = self.create_bundle_single_dep()
-        parent.owner_id = generate_uuid()
+        self.bundle_manager._model.update_bundle(parent, {"owner_id": generate_uuid()})
 
         self.bundle_manager._stage_bundles()
 
