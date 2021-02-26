@@ -152,7 +152,7 @@ class RunStateMachine(StateTransitioner):
 
     _ROOT = '/'
     _CURRENT_DIRECTORY = '.'
-    RESTAGEG_REASON = 'The bundle is not in terminal states {READY, FAILED, KILLED} when the worker checks termination'
+    RESTAGED_REASON = 'The bundle is not in terminal states {READY, FAILED, KILLED} when the worker checks termination'
 
     def __init__(
         self,
@@ -403,7 +403,7 @@ class RunStateMachine(StateTransitioner):
             )
             self.worker_docker_network.connect(container)
         except docker_utils.DockerUserErrorException as e:
-            message = 'Cannot start Docker container.'.format(e)
+            message = 'Cannot start Docker container: {}'.format(e)
             log_bundle_transition(
                 bundle_uuid=run_state.bundle.uuid,
                 previous_stage=run_state.stage,
@@ -607,7 +607,7 @@ class RunStateMachine(StateTransitioner):
                 bundle_uuid=run_state.bundle.uuid,
                 previous_stage=run_state.stage,
                 next_stage=RunStage.RESTAGED,
-                reason=self.RESTAGEG_REASON,
+                reason=self.RESTAGED_REASON,
             )
             return run_state._replace(stage=RunStage.RESTAGED)
 
@@ -648,7 +648,7 @@ class RunStateMachine(StateTransitioner):
                 bundle_uuid=run_state.bundle.uuid,
                 previous_stage=run_state.stage,
                 next_stage=RunStage.RESTAGED,
-                reason=self.RESTAGEG_REASON,
+                reason=self.RESTAGED_REASON,
             )
             return run_state._replace(stage=RunStage.RESTAGED)
 
