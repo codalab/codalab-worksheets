@@ -12,6 +12,7 @@ from codalab.worker.bundle_state import LinkFormat
 from codalab.common import StorageType
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar
 import tempfile
+import tarfile
 
 
 class UploadManager(object):
@@ -136,11 +137,22 @@ class UploadManager(object):
             if len(sources) == 1:
                 self._simplify_directory(bundle_path)
 
+            # is_directory is True if the bundle is a directory and False if it is a single file.
+            is_directory = os.path.isdir(bundle_path)
+            if use_azure_blob_beta:
+                # If uploading a file using Azure Blob Storage, we set storage_type and is_dir appropriately.
+                self._bundle_model.update_bundle(
+                    bundle,
+                    {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_directory},
+                )
+            else:
+                self._bundle_model.update_bundle(
+                    bundle,
+                    {'storage_type': StorageType.DISK_STORAGE.value, 'is_dir': is_directory},
+                )
             if use_azure_blob_beta:
                 # Now, upload the contents of the temp directory to Azure Blob Storage.
 
-                # is_directory is True if the bundle is a directory and False if it is a single file.
-                is_directory = os.path.isdir(bundle_path)
                 bundle_url = self._bundle_store.get_bundle_location(bundle.uuid)
                 with FileSystems.create(
                     bundle_url, compression_type=CompressionTypes.UNCOMPRESSED
@@ -151,33 +163,26 @@ class UploadManager(object):
                 ) as tmp_index_file:
                     if is_directory:
                         tar_gzip_directory(bundle_path, output_path=tmp_tar_file.name)
-                        shutil.copyfileobj(tmp_tar_file, out)
-                        with open(tmp_tar_file.name, "rb") as ttf:
-                            SQLiteIndexedTar(
-                                fileObject=ttf,
-                                tarFileName=bundle.uuid,
-                                writeIndex=True,
-                                clearIndexCache=True,
-                                indexFileName=tmp_index_file.name,
-                            )
-                        with FileSystems.create(
-                            bundle_url.replace("/contents.tar.gz", "/index.sqlite"),
-                            compression_type=CompressionTypes.UNCOMPRESSED,
-                        ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
-                            shutil.copyfileobj(tif, out_index_file)
                     else:
-                        # TODO: use a .tar.gz file instead here.
-                        shutil.copyfileobj(open(bundle_path, 'rb'), out)
-
-                # If uploading a file using Azure Blob Storage, we set storage_type and is_dir appropriately.
-                self._bundle_model.update_bundle(
-                    bundle,
-                    {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_directory},
-                )
-            else:
-                self._bundle_model.update_bundle(
-                    bundle, {'storage_type': StorageType.DISK_STORAGE.value, 'is_dir': is_directory},
-                )
+                        # For single files, create a single .tar.gz file, which contains a single archive
+                        # member with the file contents and a name equal to the bundle uid.
+                        with tarfile.open(tmp_tar_file.name, "w:gz") as tar:
+                            tar.add(bundle_path, arcname=bundle.uuid)
+                    shutil.copyfileobj(tmp_tar_file, out)
+                    with open(tmp_tar_file.name, "rb") as ttf:
+                        SQLiteIndexedTar(
+                            fileObject=ttf,
+                            tarFileName=bundle.uuid,
+                            writeIndex=True,
+                            clearIndexCache=True,
+                            indexFileName=tmp_index_file.name,
+                        )
+                    with FileSystems.create(
+                        bundle_url.replace("/contents.tar.gz", "/index.sqlite"),
+                        compression_type=CompressionTypes.UNCOMPRESSED,
+                    ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
+                        print(bundle_url.replace("/contents.tar.gz", "/index.sqlite"))
+                        shutil.copyfileobj(tif, out_index_file)
         except UsageError:
             if FileSystems.exists(bundle_path):
                 path_util.remove(bundle_path)
@@ -239,14 +244,6 @@ class UploadManager(object):
         Modifies |path| in place: If the |path| directory contains exactly
         one file / directory, then replace |path| with that file / directory.
         """
-
-        # If the file is using Azure, then use the Apache Beam FileSystems.rename
-        # method to perform this simplification.
-        if parse_linked_bundle_url(path).uses_beam:
-            if child_path is None:
-                child_path = FileSystems.match([path + "/*"])[0].metadata_list[0].path
-            FileSystems.rename([child_path], [path])
-            return
 
         if child_path is None:
             child_path = os.listdir(path)[0]

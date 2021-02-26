@@ -80,7 +80,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.assertEqual(info["name"], bundle.uuid)
         self.assertEqual(info["size"], 11)
 
-        self.assertEqual(info["perm"], 511)
+        self.assertEqual(info["perm"], 420)
         self.assertEqual(info["type"], "file")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
         self.check_file_target_contents(target)

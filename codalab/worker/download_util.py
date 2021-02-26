@@ -167,7 +167,7 @@ def _compute_target_info_beam(path, depth):
 
     linked_bundle_path = parse_linked_bundle_url(path)
     if not FileSystems.exists(linked_bundle_path.bundle_path):
-        raise PathException
+        raise PathException(linked_bundle_path.bundle_path)
     if not linked_bundle_path.is_archive:
         # Single file
         file = FileSystems.match([path])[0].metadata_list[0]

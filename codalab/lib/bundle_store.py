@@ -404,6 +404,6 @@ class MultiDiskBundleStoreWithBlobStorage(MultiDiskBundleStore):
     def get_bundle_location(self, uuid):
         storage_type, is_dir = self._bundle_model.get_bundle_storage_info(uuid)
         if storage_type == StorageType.AZURE_BLOB_STORAGE.value:
-            return f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/{'contents.tar.gz' if is_dir else 'contents'}"
+            return f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/contents.tar.gz"
         else:
             return super(MultiDiskBundleStoreWithBlobStorage, self).get_bundle_location(uuid)

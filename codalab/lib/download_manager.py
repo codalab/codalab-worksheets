@@ -115,6 +115,9 @@ class DownloadManager(object):
             bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(
                 target.bundle_uuid
             )
+            storage_type, is_dir = self._bundle_model.get_bundle_storage_info(target.bundle_uuid)
+            if storage_type == StorageType.AZURE_BLOB_STORAGE.value and not is_dir:
+                bundle_path = f"{bundle_path}/{target.bundle_uuid}"
             try:
                 return download_util.get_target_info(bundle_path, target, depth)
             except download_util.PathException as err:
@@ -347,6 +350,9 @@ class DownloadManager(object):
             # to get the actual path where it can be accessed.
             bundle_link_url = self._transform_link_path(bundle_link_url)
         bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(target.bundle_uuid)
+        storage_type, is_dir = self._bundle_model.get_bundle_storage_info(target.bundle_uuid)
+        if storage_type == StorageType.AZURE_BLOB_STORAGE.value and not is_dir:
+            bundle_path = f"{bundle_path}/{target.bundle_uuid}"
         try:
             path = download_util.get_target_path(bundle_path, target)
             return path

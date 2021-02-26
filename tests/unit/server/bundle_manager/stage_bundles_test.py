@@ -22,8 +22,6 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
     def test_with_dependency(self):
         """A single bundle with a dependency should be staged."""
         bundle, parent = self.create_bundle_single_dep()
-        self.save_bundle(parent)
-        self.save_bundle(bundle)
 
         self.bundle_manager._stage_bundles()
 
@@ -37,8 +35,6 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
                 bundle, parent = self.create_bundle_single_dep(
                     parent_state=state, bundle_state=State.CREATED
                 )
-                self.save_bundle(bundle)
-                self.save_bundle(parent)
 
                 self.bundle_manager._stage_bundles()
 
@@ -57,8 +53,6 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
                 bundle, parent = self.create_bundle_single_dep()
                 bundle.state = State.CREATED
                 bundle.metadata.allow_failed_dependencies = True
-                self.save_bundle(bundle)
-                self.save_bundle(parent)
 
                 self.bundle_manager._stage_bundles()
 
@@ -92,8 +86,6 @@ class BundleManagerStageBundlesTest(BaseBundleManagerTest):
         not be staged."""
         bundle, parent = self.create_bundle_single_dep()
         parent.owner_id = generate_uuid()
-        self.save_bundle(parent)
-        self.save_bundle(bundle)
 
         self.bundle_manager._stage_bundles()
 

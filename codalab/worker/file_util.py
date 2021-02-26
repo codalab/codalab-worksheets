@@ -310,7 +310,7 @@ def open_file(file_path, mode='r'):
                 # Make sure that there is no trickery going on (see note in
                 # TarFile.extractall() documentation.
                 member_path = os.path.realpath(os.path.join(extracted_path, member_name))
-                if not member_path.startswith(extracted_path):
+                if not member_path.startswith(os.path.realpath(extracted_path)):
                     raise tarfile.TarError('Archive member extracts outside the directory.')
                 # Extract other members of the directory.
                 # TODO (Ashwin): Make sure this works with symlinks, too.
