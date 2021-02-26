@@ -625,6 +625,9 @@ Query parameters:
 - `state_on_success`: (optional) Update the bundle state to this state if
   the upload completes successfully. Must be either 'ready' or 'failed'.
   Default is 'ready'.
+- `use_azure_blob_beta`: (optional) Use Azure Blob Storage to store the bundle.
+  Default is False. If CODALAB_ALWAYS_USE_AZURE_BLOB_BETA is set, this parameter
+  is disregarded, as Azure Blob Storage will always be used.
 
 
 &uarr; [Back to Top](#table-of-contents)
