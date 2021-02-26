@@ -275,7 +275,7 @@ class Worker:
                 self.process_runs()
                 self.save_state()
                 self.checkin()
-                self.check_termination()  # if terminate_and_restage and no restaged bundles, then it will terminate.
+                self.check_termination()
                 self.save_state()
                 if self.check_idle_stop() or self.check_num_runs_stop():
                     self.terminate = True
@@ -314,7 +314,6 @@ class Worker:
                             except Exception:
                                 traceback.print_exc()
                             self.terminate = True
-                        # else: if it's not ready to terminate and restage, I think we can't clean up.
                         if self.terminate:
                             break
                         time.sleep(5)
