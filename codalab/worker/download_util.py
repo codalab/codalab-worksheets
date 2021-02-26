@@ -1,4 +1,12 @@
 import os
+import stat
+import tarfile
+import logging
+import traceback
+
+from apache_beam.io.filesystems import FileSystems
+from codalab.common import parse_linked_bundle_url
+from codalab.worker.file_util import open_indexed_tar_gz_file
 
 
 class PathException(Exception):
@@ -59,15 +67,28 @@ def get_target_info(bundle_path, target, depth):
     If reading the given path is not secure, raises a PathException.
     """
     final_path = _get_normalized_target_path(bundle_path, target)
+    if parse_linked_bundle_url(final_path).uses_beam:
+        # If the target is on Azure, use a special method using Apache Beam
+        # to get the target info.
+        try:
+            info = _compute_target_info_beam(final_path, depth)
+        except Exception:
+            logging.error(
+                "Path '{}' in bundle {} not found: {}".format(
+                    target.subpath, target.bundle_uuid, traceback.format_exc()
+                )
+            )
+            raise PathException(
+                "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
+            )
+    else:
+        if not os.path.islink(final_path) and not os.path.exists(final_path):
+            raise PathException(
+                "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
+            )
+        info = _compute_target_info_local(final_path, depth)
 
-    if not os.path.islink(final_path) and not os.path.exists(final_path):
-        raise PathException(
-            'Path {} in bundle {} not found'.format(target.bundle_uuid, target.subpath)
-        )
-
-    info = _compute_target_info(final_path, depth)
     info['resolved_target'] = target
-
     return info
 
 
@@ -91,8 +112,16 @@ BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 
 
 def _get_normalized_target_path(bundle_path, target):
-    real_bundle_path = os.path.realpath(bundle_path)
-    normalized_target_path = os.path.normpath(_get_target_path(real_bundle_path, target.subpath))
+    if parse_linked_bundle_url(bundle_path).uses_beam:
+        # On Azure, don't call os.path functions on the paths (which are azfs:// URLs).
+        # We can just concatenate them together.
+        return f"{bundle_path}/{target.subpath}" if target.subpath else bundle_path
+    else:
+        real_bundle_path = os.path.realpath(bundle_path)
+        normalized_target_path = os.path.normpath(
+            _get_target_path(real_bundle_path, target.subpath)
+        )
+
     error_path = _get_target_path(target.bundle_uuid, target.subpath)
 
     if not normalized_target_path.startswith(real_bundle_path):
@@ -110,7 +139,8 @@ def _get_target_path(bundle_path, path):
         return bundle_path
 
 
-def _compute_target_info(path, depth):
+def _compute_target_info_local(path, depth):
+    """Computes target info for a local file."""
     result = {}
     result['name'] = os.path.basename(path)
     stat = os.lstat(path)
@@ -125,9 +155,79 @@ def _compute_target_info(path, depth):
         result['type'] = 'directory'
         if depth > 0:
             result['contents'] = [
-                _compute_target_info(os.path.join(path, file_name), depth - 1)
+                _compute_target_info_local(os.path.join(path, file_name), depth - 1)
                 for file_name in os.listdir(path)
             ]
     if result is None:
         raise PathException()
     return result
+
+
+def _compute_target_info_beam(path, depth):
+    """Computes target info for a file that is externalized on a location
+    such as Azure, by using the Apache Beam FileSystem APIs."""
+
+    linked_bundle_path = parse_linked_bundle_url(path)
+    if not FileSystems.exists(linked_bundle_path.bundle_path):
+        raise PathException(linked_bundle_path.bundle_path)
+    if not linked_bundle_path.is_archive:
+        # Single file
+        file = FileSystems.match([path])[0].metadata_list[0]
+        return {
+            'name': linked_bundle_path.bundle_uuid,
+            'type': 'file',
+            'size': file.size_in_bytes,
+            'perm': 0o777,
+        }
+
+    tf, _ = open_indexed_tar_gz_file(linked_bundle_path.bundle_path)
+    islink = lambda finfo: stat.S_ISLNK(finfo.mode)
+    readlink = lambda finfo: finfo.linkname
+
+    isfile = lambda finfo: finfo.type in tarfile.REGULAR_TYPES
+    isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
+    listdir = lambda path: tf.getFileInfo(path, listDir=True)
+
+    def _get_info(path, depth):
+        if not path.startswith("/"):
+            path = "/" + path
+        finfo = tf.getFileInfo(path)
+        if finfo is None:
+            # Not found
+            raise PathException
+        result = {}
+        result['name'] = path.split("/")[-1]  # get last part of path
+        result['size'] = finfo.size
+        result['perm'] = finfo.mode & 0o777
+        if islink(finfo):
+            result['type'] = 'link'
+            result['link'] = readlink(finfo)
+        elif isfile(finfo):
+            result['type'] = 'file'
+        elif isdir(finfo):
+            result['type'] = 'directory'
+            if depth > 0:
+                result['contents'] = [
+                    _get_info(path + "/" + file_name, depth - 1)
+                    for file_name in listdir(path)
+                    if file_name != "."
+                ]
+        return result
+
+    if linked_bundle_path.archive_subpath:
+        # Return the contents of a subpath within a directory.
+        return _get_info(linked_bundle_path.archive_subpath, depth)
+    else:
+        # No subpath, return the entire directory.
+        file = FileSystems.match([path])[0].metadata_list[0]
+        result = {
+            'name': linked_bundle_path.bundle_uuid,
+            'type': 'directory',
+            'size': file.size_in_bytes,
+            'perm': 0o777,
+        }
+        if depth > 0:
+            result['contents'] = [
+                _get_info(file_name, depth - 1) for file_name in listdir("/") if file_name != "."
+            ]
+        return result
