@@ -23,7 +23,6 @@ from codalab.common import (
     NotFoundError,
     precondition,
     UsageError,
-    parse_linked_bundle_url,
 )
 from codalab.lib import crypt_util, spec_util, worksheet_util, path_util
 from codalab.model.util import LikeQuery
