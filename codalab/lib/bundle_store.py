@@ -394,6 +394,13 @@ class MultiDiskBundleStoreWithBlobStorage(MultiDiskBundleStore):
 
     If bundles are indicated to be stored in Blob Storage, they are retrieved from Blob
     Storage. Otherwise, the bundle is retrieved from the underlying disk bundle store.
+
+    In Blob Storage, each bundle is stored in the format:
+    azfs://{container name}/bundles/{bundle uuid}/contents.tar.gz.
+
+    If the bundle is a directory, the entire contents of the bundle is stored in the .tar.gz file;
+    otherwise, if the bundle is a single file, the file is stored in the .tar.gz file as an archive
+    member with name equal to the bundle id and is_dir is set to False in the database.
     """
 
     def __init__(self, bundle_model, codalab_home, azure_blob_account_name):

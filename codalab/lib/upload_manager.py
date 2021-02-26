@@ -165,11 +165,13 @@ class UploadManager(object):
                         tar_gzip_directory(bundle_path, output_path=tmp_tar_file.name)
                     else:
                         # For single files, create a single .tar.gz file, which contains a single archive
-                        # member with the file contents and a name equal to the bundle uid.
+                        # member with the file contents and a name equal to the bundle uuid.
                         with tarfile.open(tmp_tar_file.name, "w:gz") as tar:
                             tar.add(bundle_path, arcname=bundle.uuid)
+                    # Write .tar.gz file to Azure Blob Storage.
                     shutil.copyfileobj(tmp_tar_file, out)
                     with open(tmp_tar_file.name, "rb") as ttf:
+                        # Write index file to tmp_index_file.
                         SQLiteIndexedTar(
                             fileObject=ttf,
                             tarFileName=bundle.uuid,
@@ -181,7 +183,7 @@ class UploadManager(object):
                         bundle_url.replace("/contents.tar.gz", "/index.sqlite"),
                         compression_type=CompressionTypes.UNCOMPRESSED,
                     ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
-                        print(bundle_url.replace("/contents.tar.gz", "/index.sqlite"))
+                        # Write index file to Azure Blob Storage.
                         shutil.copyfileobj(tif, out_index_file)
         except UsageError:
             if FileSystems.exists(bundle_path):

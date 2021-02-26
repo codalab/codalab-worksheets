@@ -158,12 +158,6 @@ class DownloadManager(object):
     def stream_tarred_gzipped_directory(self, target):
         """
         Returns a file-like object containing an archive of the given directory.
-        If the directory is on the local bundle store or from a worker hosting a
-        running bundle, it will be tarred and gzipped.
-        If it is already an archive (such as .zip) on Blob Storage, that archive
-        will be returned directly.
-
-        Returns fileobj.
         """
         bundle_state = self._bundle_model.get_bundle_state(target.bundle_uuid)
         # Raises NotFoundException if uuid is invalid
@@ -320,8 +314,8 @@ class DownloadManager(object):
         return bytestring
 
     def _is_available_locally(self, target):
-        """Returns whether the target is "available locally." This means that the target is accessible from
-        the current machine, so it applies more generally to return True if the URL is in Azure Blob Storage.
+        """Returns whether the target is accessible from the current machine. Returns True
+        if the target is on an accessible disk or if the target is on Azure Blob Storage.
         """
         file_path = self._get_target_path(target)
         if parse_linked_bundle_url(file_path).uses_beam:
