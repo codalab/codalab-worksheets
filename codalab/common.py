@@ -12,7 +12,6 @@ import urllib.error
 from dataclasses import dataclass
 from retry import retry
 from enum import Enum
-import logging
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
