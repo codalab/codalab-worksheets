@@ -171,9 +171,7 @@ class BundleServiceClient(RestClient):
     @wrap_exception('Unable to get bundle contents from bundle service')
     def get_bundle_contents(self, uuid, path):
         """
-        Gets the contents of the specified bundle and (optional) path within the bundle.
-        Returns a tuple: (fileobj, target type, content type)
-        target type - "file" or "directory"
+        Returns a file-like object and a file name.
         """
         response = self._make_request(
             'GET',
@@ -182,4 +180,4 @@ class BundleServiceClient(RestClient):
             return_response=True,
             timeout_seconds=URLOPEN_TIMEOUT_SECONDS * 2,
         )
-        return response, response.headers.get('Target-Type'), response.headers.get('Content-Type')
+        return response, response.headers.get('Target-Type')

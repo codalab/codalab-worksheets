@@ -636,11 +636,11 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             abort(http.client.BAD_REQUEST, 'Range not supported for directory blobs.')
         if head_lines or tail_lines:
             abort(http.client.BAD_REQUEST, 'Head and tail not supported for directory blobs.')
-        # Always return archived directories
+        # Always tar and gzip directories
         gzipped_stream = False  # but don't set the encoding to 'gzip'
-        fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
         mimetype = "application/gzip"
         filename += ".tar.gz"
+        fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
     elif target_info['type'] == 'file':
         # Let's gzip to save bandwidth.
         # For simplicity, we do this even if the file is already a packed
@@ -916,7 +916,9 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
     for uuid in relevant_uuids:
         bundle_link_url = bundle_link_urls.get(uuid)
-        if not bundle_link_url:  # Don't physically delete linked bundles.
+        if bundle_link_url:  # Don't physically delete linked bundles.
+            pass
+        else:
             bundle_location = local.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):
                 local.bundle_store.cleanup(uuid, dry_run)

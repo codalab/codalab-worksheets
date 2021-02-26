@@ -381,7 +381,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             self._paths.add(path)
         return path
 
-    def _store_dependency(self, dependency_path, fileobj, target_type, content_type):
+    def _store_dependency(self, dependency_path, fileobj, target_type):
         """
         Copy the dependency fileobj to its path on the local filesystem
         Overwrite existing files by the same name if found
@@ -431,7 +431,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             logger.debug('Downloading dependency %s', dependency_state.dependency_key)
             try:
                 # Start async download to the fileobj
-                fileobj, target_type, content_type = self._bundle_service.get_bundle_contents(
+                fileobj, target_type = self._bundle_service.get_bundle_contents(
                     dependency_state.dependency_key.parent_uuid,
                     dependency_state.dependency_key.parent_path,
                 )
@@ -450,12 +450,11 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                     fileobj.read = interruptable_read
 
                     # Start copying the fileobj to filesystem dependency path
-                    self._store_dependency(dependency_path, fileobj, target_type, content_type)
+                    self._store_dependency(dependency_path, fileobj, target_type)
 
                 logger.debug(
-                    'Finished downloading %s dependency (%s) %s to %s',
+                    'Finished downloading %s dependency %s to %s',
                     target_type,
-                    content_type,
                     dependency_state.dependency_key,
                     dependency_path,
                 )
