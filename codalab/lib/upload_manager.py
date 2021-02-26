@@ -32,6 +32,7 @@ class UploadManager(object):
         git,
         unpack,
         simplify_archives,
+        use_azure_blob_beta,
     ):
         """
         Uploads contents for the given bundle to the bundle store.
@@ -48,6 +49,7 @@ class UploadManager(object):
         |simplify_archives|: whether to simplify unpacked archives so that if they
                              contain a single file, the final path is just that file,
                              not a directory containing that file.
+        |use_azure_blob_beta|: whether to use Azure Blob Storage.
 
         If |sources| contains one source, then the bundle contents will be that source.
         Otherwise, the bundle contents will be a directory with each of the sources.
