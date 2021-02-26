@@ -120,7 +120,7 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
             ['.', './test.sh'],
         )
 
-        # TODO(Ashwin): fix issue where subdirectories only return top-level items.
+        # Read a subdirectory with nested children
         self.assertEqual(
             tarfile.open(fileobj=open_file(f"{dirname}/dist"), mode='r:gz').getnames(),
             ['.', './a', './a/b', './a/b/test2.sh'],
