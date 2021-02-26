@@ -2,6 +2,7 @@ import os
 import stat
 import tarfile
 import logging
+import traceback
 
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
@@ -72,10 +73,11 @@ def get_target_info(bundle_path, target, depth):
         try:
             info = _compute_target_info_beam(final_path, depth)
         except Exception:
-            import traceback
-
-            logging.info("error!")
-            logging.info("error: %s", traceback.format_exc())
+            logging.error(
+                "Path '{}' in bundle {} not found: {}".format(
+                    target.subpath, target.bundle_uuid, traceback.format_exc()
+                )
+            )
             raise PathException(
                 "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
             )
@@ -112,8 +114,8 @@ BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 def _get_normalized_target_path(bundle_path, target):
     if parse_linked_bundle_url(bundle_path).uses_beam:
         # On Azure, don't call os.path functions on the paths (which are azfs:// URLs).
-        real_bundle_path = bundle_path
-        normalized_target_path = _get_target_path(real_bundle_path, target.subpath)
+        # We can just concatenate them together.
+        return f"{bundle_path}/{target.subpath}" if target.subpath else bundle_path
     else:
         real_bundle_path = os.path.realpath(bundle_path)
         normalized_target_path = os.path.normpath(
