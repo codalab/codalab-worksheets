@@ -10,7 +10,7 @@ from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
 from codalab.worker.bundle_state import LinkFormat
 from codalab.common import StorageType
-from codalab.lib.beam.ratarmount import SQLiteIndexedTar
+from ratarmount import SQLiteIndexedTar
 import tempfile
 import tarfile
 
