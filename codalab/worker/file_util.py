@@ -214,6 +214,10 @@ def open_indexed_tar_gz_file(path):
 
 
 class ClosingStreamWrapper(IOBase):
+    """A wrapper around a fileobj. It runs cleanup_fn when this wrapper is closed.
+    This is used as a workaround to get around a file closing issue (see open_file).
+    """
+
     def __init__(self, buffer, cleanup_fn, cleanup_args):
         self._buffer = buffer
         self._cleanup_fn = cleanup_fn
@@ -318,6 +322,9 @@ def open_file(file_path, mode='r'):
                     f.write(
                         tf.read("", fileInfo=member_fileinfo, size=member_fileinfo.size, offset=0)
                     )
+            # We use ClosingStreamWrapper as a workaround to ensure that tmp_dir isn't automatically closed.
+            # If we just return `tar_gzip_directory(extracted_path)`, for some reason, Python closes
+            # tmp_dir, so we end up just reading from an empty file.
             return ClosingStreamWrapper(
                 tar_gzip_directory(extracted_path), lambda t: t.cleanup(), (tmp_dir,),
             )
