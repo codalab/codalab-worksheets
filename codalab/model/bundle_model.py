@@ -1044,21 +1044,15 @@ class BundleModel(object):
         Computes the disk use and data hash of the given bundle.
         Updates the database rows for the bundle and user with the new disk use
         """
-
         dirs_and_files = None
-        if parse_linked_bundle_url(bundle_location).uses_beam:
-            # When the file is on Azure as a single file, we don't need to use
-            # dirs_and_files to recursively get the size.
-            pass
+        if os.path.isdir(bundle_location):
+            dirs_and_files = path_util.recursive_ls(bundle_location)
         else:
-            if os.path.isdir(bundle_location):
-                dirs_and_files = path_util.recursive_ls(bundle_location)
-            else:
-                dirs_and_files = [], [bundle_location]
+            dirs_and_files = [], [bundle_location]
 
+        # TODO(Ashwin): make this non-fs specific
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
         data_size = path_util.get_size(bundle_location, dirs_and_files)
-
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
             if data_size > disk_left:
