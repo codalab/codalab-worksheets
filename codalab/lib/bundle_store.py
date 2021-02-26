@@ -7,7 +7,7 @@ from typing import Callable, Any
 from codalab.lib import path_util, spec_util
 from codalab.worker.bundle_state import State
 from functools import reduce
-from codalab.lib.path_util import StorageType
+from codalab.common import StorageType
 
 
 def require_partitions(f: Callable[['MultiDiskBundleStore', Any], Any]):
