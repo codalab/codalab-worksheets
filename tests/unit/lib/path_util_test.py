@@ -4,7 +4,7 @@ from unittest import mock
 import os
 import unittest
 
-from codalab.common import PreconditionViolation
+from codalab.common import PreconditionViolation, parse_linked_bundle_url
 from codalab.lib import path_util
 from codalab.lib.path_util import StorageType
 
@@ -120,7 +120,7 @@ class PathUtilTest(unittest.TestCase):
 class ParseBundleUrl(unittest.TestCase):
     def test_single_file(self):
         """Parse a URL referring to a single file on Azure."""
-        linked_bundle_path = path_util.parse_linked_bundle_url(
+        linked_bundle_path = parse_linked_bundle_url(
             "azfs://storageclwsdev0/bundles/uuid/contents.txt"
         )
         self.assertEqual(linked_bundle_path.storage_type, StorageType.AZURE_BLOB_STORAGE)
@@ -134,7 +134,7 @@ class ParseBundleUrl(unittest.TestCase):
 
     def test_directory(self):
         """Parse a URL referring to a zipped directory."""
-        linked_bundle_path = path_util.parse_linked_bundle_url(
+        linked_bundle_path = parse_linked_bundle_url(
             "azfs://storageclwsdev0/bundles/uuid/contents.zip"
         )
         self.assertEqual(linked_bundle_path.storage_type, StorageType.AZURE_BLOB_STORAGE)
@@ -147,7 +147,7 @@ class ParseBundleUrl(unittest.TestCase):
 
     def test_directory_with_subpath(self):
         """Parse a URL referring to a subpath within a zipped directory."""
-        linked_bundle_path = path_util.parse_linked_bundle_url(
+        linked_bundle_path = parse_linked_bundle_url(
             "azfs://storageclwsdev0/bundles/uuid/contents.zip/a/b.txt"
         )
         self.assertEqual(linked_bundle_path.storage_type, StorageType.AZURE_BLOB_STORAGE)
@@ -160,7 +160,7 @@ class ParseBundleUrl(unittest.TestCase):
 
     def test_non_azure_file(self):
         """Should parse a non-Azure URL properly."""
-        linked_bundle_path = path_util.parse_linked_bundle_url(
+        linked_bundle_path = parse_linked_bundle_url(
             "/tmp/storageclwsdev0/bundles/uuid/contents.txt"
         )
         self.assertEqual(linked_bundle_path.storage_type, StorageType.FILE_STORAGE)

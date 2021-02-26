@@ -18,7 +18,13 @@ from sqlalchemy.sql.expression import literal, true
 
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.run_bundle import RunBundle
-from codalab.common import IntegrityError, NotFoundError, precondition, UsageError
+from codalab.common import (
+    IntegrityError,
+    NotFoundError,
+    precondition,
+    UsageError,
+    parse_linked_bundle_url,
+)
 from codalab.lib import crypt_util, spec_util, worksheet_util, path_util
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
@@ -1038,15 +1044,21 @@ class BundleModel(object):
         Computes the disk use and data hash of the given bundle.
         Updates the database rows for the bundle and user with the new disk use
         """
-        dirs_and_files = None
-        if os.path.isdir(bundle_location):
-            dirs_and_files = path_util.recursive_ls(bundle_location)
-        else:
-            dirs_and_files = [], [bundle_location]
 
-        # TODO(Ashwin): make this non-fs specific
+        dirs_and_files = None
+        if parse_linked_bundle_url(bundle_location).uses_beam:
+            # When the file is on Azure as a single file, we don't need to use
+            # dirs_and_files to recursively get the size.
+            pass
+        else:
+            if os.path.isdir(bundle_location):
+                dirs_and_files = path_util.recursive_ls(bundle_location)
+            else:
+                dirs_and_files = [], [bundle_location]
+
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
         data_size = path_util.get_size(bundle_location, dirs_and_files)
+
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
             if data_size > disk_left:
@@ -1201,6 +1213,24 @@ class BundleModel(object):
                 select([cl_bundle.c.uuid, cl_bundle.c.state]).where(cl_bundle.c.uuid.in_(uuids))
             ).fetchall()
             return dict((r.uuid, r.state) for r in rows)
+
+    def get_bundle_storage_info(self, uuid):
+        result_dict = self.get_bundle_storage_infos([uuid])
+        if uuid not in result_dict:
+            raise NotFoundError('Could not find bundle with uuid %s' % uuid)
+        return result_dict[uuid]
+
+    def get_bundle_storage_infos(self, uuids):
+        """
+        Return {uuid: (storage_type, is_dir), ...}
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_bundle.c.uuid, cl_bundle.c.storage_type, cl_bundle.c.is_dir]).where(
+                    cl_bundle.c.uuid.in_(uuids)
+                )
+            ).fetchall()
+            return dict((r.uuid, (r.storage_type, r.is_dir)) for r in rows)
 
     def delete_bundles(self, uuids):
         """
