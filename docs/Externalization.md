@@ -93,7 +93,7 @@ In order to enable Azure Blob Storage as a bundle store, follow these instructio
 If you want to force the rest server to always use Azure Blob Storage in the upload endpoint, set the `CODALAB_ALWAYS_USE_AZURE_BLOB_BETA` environment variable there:
 
 ```bash
-CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=1 cls start -bd
+CODALAB_AZURE_BLOB_CONNECTION_STRING=... CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=1 cls start -bd
 ```
 
 ### Local development
@@ -102,4 +102,14 @@ During local development, you can simulate the Azure Blob Storage Account by run
 
 ```
 python codalab_service.py start -bds default azurite
+```
+
+### Internals
+
+See `MultiDiskBundleStoreWithBlobStorage` in `bundle_store.py` for more information about how the files are stored on Azure Blob Storage.
+
+By default, the configured bundle store on the server is `MultiDiskBundleStoreWithBlobStorage`. Note that if you have set the `bundle_store` config to `MultiDiskBundleStore` on the server, you may need to change the server configuration to enable Blob Storage support by running:
+
+```
+cl config bundle_store MultiDiskBundleStoreWithBlobStorage
 ```

@@ -367,9 +367,10 @@ def gzip_file(file_path):
 
     if parse_linked_bundle_url(file_path).uses_beam:
         # We run gzip in the same process if the file is on Azure, so that
-        # we can use Apache Beam methods to read the file. We may need to
-        # revisit this for performance implications (mentioned above)
-        # once we switch all files to use Azure.
+        # we can use Apache Beam methods to read the file. This may cause
+        # performance issues once we switch all files to use Azure, but
+        # they should be mitigated when we allow users to connect to Azure
+        # servers directly to download files.
         try:
             file_path_obj = open_file(file_path)
             return GzipStream(file_path_obj)
