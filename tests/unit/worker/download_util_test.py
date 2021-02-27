@@ -180,14 +180,8 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
         self.assertEqual(
             results,
             [
-                {
-                    'name': f'README.md',
-                    'size': 11,
-                    'perm': 0o644,
-                    'type': 'file',
-                    'contents': None,
-                },
-                {'name': f'dist', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None,},
+                {'name': 'README.md', 'size': 11, 'perm': 0o644, 'type': 'file', 'contents': None,},
+                {'name': 'dist', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None,},
                 {'name': 'dist/a', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None},
                 {
                     'name': 'dist/a/b',
@@ -203,7 +197,7 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
                     'type': 'file',
                     'contents': None,
                 },
-                {'name': f'src', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None,},
+                {'name': 'src', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None,},
                 {'name': 'src/test.sh', 'size': 7, 'perm': 0o644, 'type': 'file', 'contents': None},
             ],
         )

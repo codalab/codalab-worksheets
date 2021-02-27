@@ -20,9 +20,6 @@ from codalab.worker.file_util import (
 )
 from codalab.worker.un_gzip_stream import un_gzip_stream
 from codalab.worker.un_tar_directory import un_tar_directory
-from apache_beam.io.filesystem import CompressionTypes
-from apache_beam.io.filesystems import FileSystems
-import random
 from tests.unit.worker.download_util_test import AzureBlobTestBase
 
 FILES_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'cli', 'files')
@@ -120,7 +117,7 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
             ['.', './test.sh'],
         )
 
-        # TODO(Ashwin): fix issue where subdirectories only return top-level items.
+        # Read a subdirectory with nested children
         self.assertEqual(
             tarfile.open(fileobj=open_file(f"{dirname}/dist"), mode='r:gz').getnames(),
             ['.', './a', './a/b', './a/b/test2.sh'],
