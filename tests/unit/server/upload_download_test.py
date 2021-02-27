@@ -15,7 +15,7 @@ class BaseUploadDownloadBundleTest(TestBase):
     and upload_file methods.	
     """
 
-    DEFAULT_PERM = 420
+    DEFAULT_PERM = 0o644
 
     def upload_folder(self, bundle, contents):
         raise NotImplementedError
@@ -87,7 +87,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.assertEqual(info["name"], bundle.uuid)
         self.assertEqual(info["size"], 11)
 
-        self.assertEqual(info["perm"], 420)
+        self.assertEqual(info["perm"], self.DEFAULT_PERM)
         self.assertEqual(info["type"], "file")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
         self.check_file_target_contents(target)
@@ -121,7 +121,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         target = BundleTarget(bundle.uuid, "")
         info = self.download_manager.get_target_info(target, 2)
         self.assertEqual(info["name"], bundle.uuid)
-        self.assertEqual(info["perm"], 511)
+        self.assertEqual(info["perm"], 0o755)
         self.assertEqual(info["type"], "directory")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
         # Directory size can vary based on platform, so removing it before checking equality.
@@ -134,7 +134,7 @@ class BaseUploadDownloadBundleTest(TestBase):
                     {'name': 'item.txt', 'perm': self.DEFAULT_PERM, 'type': 'file'},
                     {
                         'name': 'src',
-                        'perm': 493,
+                        'perm': 0o755,
                         'type': 'directory',
                         'contents': [
                             {
@@ -179,7 +179,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.check_file_target_contents(target)
 
 
-class RegularBundleStoreTest(BaseUploadDownloadBundleTest):
+class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
     """Test uploading and downloading from / to a regular, file-based bundle store."""
 
     expected_storage_type = StorageType.DISK_STORAGE.value
