@@ -160,7 +160,7 @@ class WorksheetDialogs extends React.Component {
                             id='alert-dialog-description'
                             style={{ color: 'red', marginBottom: '20px' }}
                         >
-                            {'WORKSHEET deletion cannot be undone.'}
+                            {'WORKSHEET deletion cannot be undone. Continue worksheet deletion:'}
                             <Checkbox
                                 checked={this.state.deleteWorksheetCheck}
                                 onChange={this.toggleDeleteWorksheet}
