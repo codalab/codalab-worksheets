@@ -21,7 +21,6 @@ class WorksheetDialogs extends React.Component {
     }
 
     toggleDeleteWorksheet = () => {
-        console.log('?>????');
         this.setState({ deleteWorksheetCheck: !this.state.deleteWorksheetCheck });
     };
 
