@@ -11,6 +11,8 @@ from unittest.mock import patch, MagicMock
 from urllib.response import addinfourl
 import urllib
 
+urlopen_real = urllib.request.urlopen
+
 
 class NotFoundTest(TestBase):
     def test_not_found(self):
@@ -23,6 +25,10 @@ class NotFoundTest(TestBase):
 class BaseUploadDownloadBundleTest(TestBase):
     """Base class for UploadDownload tests.
     """
+
+    def setUp(self):
+        urllib.request.urlopen = urlopen_real
+        super().setUp()
 
     def create_fileobj_to_upload(self):
         """Create the fileobj that is to be uploaded."""
@@ -278,7 +284,7 @@ class FileObjUploadBase(TestBase):
 
 
 class URLUploadBase(TestBase):
-    """Upload sources as a URL."""
+    """Upload sources as a mock URL."""
 
     def get_sources(self, fileobj):
         url = f"https://codalab/contents{self.ext}"
@@ -404,3 +410,175 @@ class BlobUploadTarBz2FolderURLTest(
     """Upload a .tar.bz2 folder as a URL to the blob bundle store."""
 
     pass
+
+
+class BlobUploadTarBz2FolderRealURLTest(
+    TarBz2FolderBase,
+    BlobBundleStoreBase,
+    URLUploadBase,
+    BaseUploadDownloadBundleTest,
+    TestBase,
+    unittest.TestCase,
+):
+    """Upload sources from a real URL (this test actually hits the network).
+    This test is necessary because there are subtle differences in behavior when you mock the
+    URL versus when you call the actual URL.
+    """
+
+    def get_sources(self, fileobj):
+        urllib.request.urlopen = urlopen_real
+        return ['http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2']
+
+    def check_contents(self, bundle):
+        self.assertEqual(bundle.is_dir, True)
+        self.assertEqual(bundle.storage_type, self.expected_storage_type)
+
+        target = BundleTarget(bundle.uuid, "")
+        info = self.download_manager.get_target_info(target, 1)
+        self.assertEqual(info["name"], bundle.uuid)
+        self.assertEqual(info["perm"], 0o755)
+        self.assertEqual(info["type"], "directory")
+        self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
+        # Directory size can vary based on platform, so removing it before checking equality.
+        for i in info["contents"]:
+            i.pop("size")
+        self.assertEqual(
+            sorted(info["contents"], key=lambda x: x["name"]),
+            sorted(
+                [
+                    {'name': 'AUTHORS', 'perm': 420, 'type': 'file'},
+                    {'name': 'COPYING', 'perm': 420, 'type': 'file'},
+                    {'name': 'COPYING.LIB', 'perm': 420, 'type': 'file'},
+                    {'name': 'ChangeLog', 'perm': 420, 'type': 'file'},
+                    {'name': 'Examples', 'perm': 511, 'type': 'directory'},
+                    {'name': 'FAQ', 'perm': 420, 'type': 'file'},
+                    {'name': 'INSTALL', 'perm': 420, 'type': 'file'},
+                    {'name': 'Makefile.am', 'perm': 420, 'type': 'file'},
+                    {'name': 'Makefile.in', 'perm': 436, 'type': 'file'},
+                    {'name': 'NEWS', 'perm': 420, 'type': 'file'},
+                    {'name': 'README', 'perm': 420, 'type': 'file'},
+                    {'name': 'Test', 'perm': 511, 'type': 'directory'},
+                    {'name': 'aclocal.m4', 'perm': 436, 'type': 'file'},
+                    {'name': 'bc', 'perm': 511, 'type': 'directory'},
+                    {'name': 'config.h.in', 'perm': 436, 'type': 'file'},
+                    {'name': 'configure', 'perm': 509, 'type': 'file'},
+                    {'name': 'configure.in', 'perm': 420, 'type': 'file'},
+                    {'name': 'dc', 'perm': 511, 'type': 'directory'},
+                    {'name': 'depcomp', 'perm': 493, 'type': 'file'},
+                    {'name': 'doc', 'perm': 511, 'type': 'directory'},
+                    {'name': 'h', 'perm': 511, 'type': 'directory'},
+                    {'name': 'install-sh', 'perm': 493, 'type': 'file'},
+                    {'name': 'lib', 'perm': 511, 'type': 'directory'},
+                    {'name': 'missing', 'perm': 493, 'type': 'file'},
+                ],
+                key=lambda x: x["name"],
+            ),
+        )
+        self.check_folder_target_contents(
+            target,
+            expected_members=[
+                '.',
+                './AUTHORS',
+                './COPYING',
+                './COPYING.LIB',
+                './ChangeLog',
+                './Examples',
+                './Examples/ckbook.b',
+                './Examples/pi.b',
+                './Examples/primes.b',
+                './Examples/twins.b',
+                './FAQ',
+                './INSTALL',
+                './Makefile.am',
+                './Makefile.in',
+                './NEWS',
+                './README',
+                './Test',
+                './Test/BUG.bc',
+                './Test/array.b',
+                './Test/arrayp.b',
+                './Test/aryprm.b',
+                './Test/atan.b',
+                './Test/checklib.b',
+                './Test/div.b',
+                './Test/exp.b',
+                './Test/fact.b',
+                './Test/jn.b',
+                './Test/ln.b',
+                './Test/mul.b',
+                './Test/raise.b',
+                './Test/signum',
+                './Test/sine.b',
+                './Test/sqrt.b',
+                './Test/sqrt1.b',
+                './Test/sqrt2.b',
+                './Test/testfn.b',
+                './Test/timetest',
+                './aclocal.m4',
+                './bc',
+                './bc/Makefile.am',
+                './bc/Makefile.in',
+                './bc/bc.c',
+                './bc/bc.h',
+                './bc/bc.y',
+                './bc/bcdefs.h',
+                './bc/const.h',
+                './bc/execute.c',
+                './bc/fix-libmath_h',
+                './bc/global.c',
+                './bc/global.h',
+                './bc/libmath.b',
+                './bc/libmath.h',
+                './bc/load.c',
+                './bc/main.c',
+                './bc/proto.h',
+                './bc/sbc.y',
+                './bc/scan.c',
+                './bc/scan.l',
+                './bc/storage.c',
+                './bc/util.c',
+                './bc/warranty.c',
+                './config.h.in',
+                './configure',
+                './configure.in',
+                './dc',
+                './dc/Makefile.am',
+                './dc/Makefile.in',
+                './dc/TODO',
+                './dc/array.c',
+                './dc/dc-proto.h',
+                './dc/dc-regdef.h',
+                './dc/dc.c',
+                './dc/dc.h',
+                './dc/eval.c',
+                './dc/misc.c',
+                './dc/numeric.c',
+                './dc/stack.c',
+                './dc/string.c',
+                './depcomp',
+                './doc',
+                './doc/Makefile.am',
+                './doc/Makefile.in',
+                './doc/bc.1',
+                './doc/bc.info',
+                './doc/bc.texi',
+                './doc/dc.1',
+                './doc/dc.info',
+                './doc/dc.texi',
+                './doc/texi-ver.incl.in',
+                './doc/texinfo.tex',
+                './h',
+                './h/getopt.h',
+                './h/number.h',
+                './install-sh',
+                './lib',
+                './lib/Makefile.am',
+                './lib/Makefile.in',
+                './lib/getopt.c',
+                './lib/getopt1.c',
+                './lib/number.c',
+                './lib/testmul.c',
+                './lib/vfprintf.c',
+                './missing',
+            ],
+        )

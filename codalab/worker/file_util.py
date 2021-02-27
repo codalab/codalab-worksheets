@@ -184,7 +184,7 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
         do_unzip(fileobj_or_name)
 
 
-def open_indexed_tar_gz_file(path):
+class OpenIndexedTarGzFile(object):
     """Open a .tar.gz file specified by the provided path on Azure Blob Storage.
     Also reads this file's associated index.sqlite file, then opens the file as an
     SQLiteIndexedTar object.
@@ -192,27 +192,33 @@ def open_indexed_tar_gz_file(path):
     This way, the .tar.gz file can be read and specific files can be extracted without
     needing to download the entire .tar.gz file.
 
-    Returns a tuple: (SQLiteIndexedTar object, fileobj of the .tar.gz file)
+    Returns the SQLiteIndexedTar object.
     """
-    f = FileSystems.open(path, compression_type=CompressionTypes.UNCOMPRESSED)
-    with tempfile.NamedTemporaryFile(suffix=".sqlite") as index_file:
-        shutil.copyfileobj(
-            FileSystems.open(
-                path.replace("/contents.tar.gz", "/index.sqlite"),
-                compression_type=CompressionTypes.UNCOMPRESSED,
-            ),
-            index_file,
+
+    def __init__(self, path):
+        self.f = FileSystems.open(path, compression_type=CompressionTypes.UNCOMPRESSED)
+        self.path = path
+        with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as index_fileobj:
+            self.index_file_name = index_fileobj.name
+            shutil.copyfileobj(
+                FileSystems.open(
+                    path.replace("/contents.tar.gz", "/index.sqlite"),
+                    compression_type=CompressionTypes.UNCOMPRESSED,
+                ),
+                index_fileobj,
+            )
+
+    def __enter__(self):
+        return SQLiteIndexedTar(
+            fileObject=self.f,
+            tarFileName=parse_linked_bundle_url(self.path).bundle_uuid,
+            writeIndex=False,
+            clearIndexCache=False,
+            indexFileName=self.index_file_name,
         )
-        return (
-            SQLiteIndexedTar(
-                fileObject=f,
-                tarFileName=parse_linked_bundle_url(path).bundle_uuid,
-                writeIndex=False,
-                clearIndexCache=False,
-                indexFileName=index_file.name,
-            ),
-            f,
-        )
+
+    def __exit__(self, type, value, traceback):
+        os.remove(self.index_file_name)
 
 
 class ClosingStreamWrapper(IOBase):
@@ -296,55 +302,53 @@ def open_file(file_path, mode='r'):
         and linked_bundle_path.archive_subpath
     ):
         # If file path is a .tar.gz file on Azure, open the specified path within the archive.
-        tf, _ = open_indexed_tar_gz_file(linked_bundle_path.bundle_path)
+        with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
+            isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
+            fpath = "/" + linked_bundle_path.archive_subpath
+            finfo = tf.getFileInfo(fpath)
+            if finfo is None:
+                raise FileNotFoundError(fpath)
+            if isdir(finfo):
+                from codalab.worker.download_util import compute_target_info_beam_descendants_flat
 
-        isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
-
-        fpath = "/" + linked_bundle_path.archive_subpath
-        finfo = tf.getFileInfo(fpath)
-        if finfo is None:
-            raise FileNotFoundError(fpath)
-        if isdir(finfo):
-            from codalab.worker.download_util import compute_target_info_beam_descendants_flat
-
-            # If streaming a folder within an Azure bundle, we need to download its contents,
-            # re-archive the folder, and return the .tar.gz version of that folder.
-            # with tempfile.TemporaryDirectory() as tmp_dirname:
-            tmp_dir = tempfile.TemporaryDirectory()
-            extracted_path = os.path.join(tmp_dir.name, linked_bundle_path.archive_subpath)
-            os.mkdir(extracted_path)
-            for member in compute_target_info_beam_descendants_flat(file_path):
-                # Make sure that there is no trickery going on (see note in
-                # TarFile.extractall() documentation.
-                member_path = os.path.realpath(os.path.join(extracted_path, member['name']))
-                if not member_path.startswith(os.path.realpath(extracted_path)):
-                    raise tarfile.TarError('Archive member extracts outside the directory.')
-                # Extract other members of the directory.
-                # TODO (Ashwin): Make sure this works with symlinks, too.
-                if member['type'] == 'directory':
-                    os.makedirs(member_path, exist_ok=True)
-                else:
-                    with open(member_path, "wb+") as f:
-                        os.makedirs(os.path.dirname(member_path), exist_ok=True)
-                        f.write(
-                            tf.read(
-                                path="/"
-                                + linked_bundle_path.archive_subpath
-                                + "/"
-                                + member['name'],
-                                size=member['size'],
-                                offset=0,
+                # If streaming a folder within an Azure bundle, we need to download its contents,
+                # re-archive the folder, and return the .tar.gz version of that folder.
+                # with tempfile.TemporaryDirectory() as tmp_dirname:
+                tmp_dir = tempfile.TemporaryDirectory()
+                extracted_path = os.path.join(tmp_dir.name, linked_bundle_path.archive_subpath)
+                os.mkdir(extracted_path)
+                for member in compute_target_info_beam_descendants_flat(file_path):
+                    # Make sure that there is no trickery going on (see note in
+                    # TarFile.extractall() documentation.
+                    member_path = os.path.realpath(os.path.join(extracted_path, member['name']))
+                    if not member_path.startswith(os.path.realpath(extracted_path)):
+                        raise tarfile.TarError('Archive member extracts outside the directory.')
+                    # Extract other members of the directory.
+                    # TODO (Ashwin): Make sure this works with symlinks, too.
+                    if member['type'] == 'directory':
+                        os.makedirs(member_path, exist_ok=True)
+                    else:
+                        with open(member_path, "wb+") as f:
+                            os.makedirs(os.path.dirname(member_path), exist_ok=True)
+                            f.write(
+                                tf.read(
+                                    path="/"
+                                    + linked_bundle_path.archive_subpath
+                                    + "/"
+                                    + member['name'],
+                                    size=member['size'],
+                                    offset=0,
+                                )
                             )
-                        )
-            # We use ClosingStreamWrapper as a workaround to ensure that tmp_dir isn't automatically closed.
-            # If we just return `tar_gzip_directory(extracted_path)`, for some reason, Python closes
-            # tmp_dir, so we end up just reading from an empty file.
-            return ClosingStreamWrapper(
-                tar_gzip_directory(extracted_path), lambda t: t.cleanup(), (tmp_dir,),
-            )
-        else:
-            # TODO: Implement a tf.open() function so that we don't have to read the entire file.
-            return BytesIO(tf.read(path="", fileInfo=finfo, size=finfo.size, offset=0))
+                # We use ClosingStreamWrapper as a workaround to ensure that tmp_dir isn't automatically closed.
+                # If we just return `tar_gzip_directory(extracted_path)`, for some reason, Python closes
+                # tmp_dir, so we end up just reading from an empty file.
+                return ClosingStreamWrapper(
+                    tar_gzip_directory(extracted_path), lambda t: t.cleanup(), (tmp_dir,),
+                )
+            else:
+                # TODO: Implement a tf.open() function so that we don't have to read the entire file.
+                return BytesIO(tf.read(path="", fileInfo=finfo, size=finfo.size, offset=0))
     return FileSystems.open(file_path, mode, compression_type=CompressionTypes.UNCOMPRESSED)
 
 
@@ -448,13 +452,12 @@ def get_file_size(file_path):
     ):
         # If file path is a .tar.gz file on Azure, open the specified path within the
         # .tar.gz file.
-        tf, _ = open_indexed_tar_gz_file(linked_bundle_path.bundle_path)
-
-        fpath = "/" + linked_bundle_path.archive_subpath
-        finfo = tf.getFileInfo(fpath)
-        if finfo is None:
-            raise FileNotFoundError(fpath)
-        return finfo.size
+        with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
+            fpath = "/" + linked_bundle_path.archive_subpath
+            finfo = tf.getFileInfo(fpath)
+            if finfo is None:
+                raise FileNotFoundError(fpath)
+            return finfo.size
     if not get_path_exists(file_path):
         raise FileNotFoundError(file_path)
     # TODO: add a FileSystems.size() method to Apache Beam to make this less verbose.

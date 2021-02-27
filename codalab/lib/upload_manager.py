@@ -180,6 +180,11 @@ class UploadManager(object):
                         compression_type=CompressionTypes.UNCOMPRESSED,
                     ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                         # Write index file to Azure Blob Storage.
+                        print(
+                            "tarfile2",
+                            is_directory,
+                            bundle_url.replace("/contents.tar.gz", "/index.sqlite"),
+                        )
                         shutil.copyfileobj(tif, out_index_file)
         except UsageError:
             if FileSystems.exists(bundle_path):
