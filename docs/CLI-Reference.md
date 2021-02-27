@@ -13,24 +13,25 @@ Usage: `cl <command> <arguments>`
       upload <url>             : Upload one bundle whose file contents is downloaded from <url>.
     Most of the other arguments specify metadata fields.
     Arguments:
-      path                     Paths (or URLs) of the files/directories to upload.
-      -c, --contents           Specify the string contents of the bundle.
-      -L, --follow-symlinks    Always dereference (follow) symlinks.
-      -x, --exclude-patterns   Exclude these file patterns.
-      -g, --git                Path is a git repository, git clone it.
-      -p, --pack               If path is an archive file (e.g., zip, tar.gz), keep it packed.
-      -z, --force-compression  Always use compression (this may speed up single-file uploads over a slow network).
-      -w, --worksheet-spec     Upload to this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
-      -i, --ignore             Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
-      -l, --link               Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store.
-      -n, --name               Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
-      -d, --description        Full description of the bundle.
-      --tags                   Space-separated list of tags used for search (e.g., machine-learning).
-      --license                The license under which this program/dataset is released.
-      --source-url             URL corresponding to the original source of this bundle.
-      --link-url               Link URL of bundle.
-      --link-format            Link format of bundle. Can be equal to"raw" or "zip" (only "raw" is supported as of now).
-      -e, --edit               Show an editor to allow editing of the bundle metadata.
+      path                       Paths (or URLs) of the files/directories to upload.
+      -c, --contents             Specify the string contents of the bundle.
+      -L, --follow-symlinks      Always dereference (follow) symlinks.
+      -x, --exclude-patterns     Exclude these file patterns.
+      -g, --git                  Path is a git repository, git clone it.
+      -p, --pack                 If path is an archive file (e.g., zip, tar.gz), keep it packed.
+      -z, --force-compression    Always use compression (this may speed up single-file uploads over a slow network).
+      -w, --worksheet-spec       Upload to this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+      -i, --ignore               Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
+      -l, --link                 Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store.
+      -a, --use-azure-blob-beta  Use Azure Blob Storage to store files (beta feature).
+      -n, --name                 Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
+      -d, --description          Full description of the bundle.
+      --tags                     Space-separated list of tags used for search (e.g., machine-learning).
+      --license                  The license under which this program/dataset is released.
+      --source-url               URL corresponding to the original source of this bundle.
+      --link-url                 Link URL of bundle.
+      --link-format              Link format of bundle. Can be equal to"raw" or "zip" (only "raw" is supported as of now).
+      -e, --edit                 Show an editor to allow editing of the bundle metadata.
 
 ### make
     Create a bundle by combining parts of existing bundles.
