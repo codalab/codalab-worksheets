@@ -916,7 +916,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
     for uuid in relevant_uuids:
         bundle_link_url = bundle_link_urls.get(uuid)
-        if bundle_link_url:  # Don't physically delete linked bundles.
+        if bundle_link_url:
+            # Don't physically delete linked bundles.
             pass
         else:
             bundle_location = local.bundle_store.get_bundle_location(uuid)
