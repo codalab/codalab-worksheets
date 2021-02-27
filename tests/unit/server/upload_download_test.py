@@ -72,8 +72,8 @@ class BaseUploadDownloadBundleTest(TestBase):
             self.assertEqual(f.read(), b"hello world")
 
         with self.assertRaises(tarfile.ReadError):
-            with tarfile.open(
-                fileobj=self.download_manager.stream_tarred_gzipped_directory(target), mode='r:gz'
+            with self.download_manager.stream_tarred_gzipped_directory(target) as t, tarfile.open(
+                fileobj=t, mode='r:gz'
             ) as f:
                 pass
 
@@ -103,8 +103,8 @@ class BaseUploadDownloadBundleTest(TestBase):
 
     def check_folder_target_contents(self, target, expected_members=[]):
         """Checks to make sure that the specified folder has the expected contents and can be streamed, etc."""
-        with tarfile.open(
-            fileobj=self.download_manager.stream_tarred_gzipped_directory(target), mode='r:gz'
+        with self.download_manager.stream_tarred_gzipped_directory(target) as t, tarfile.open(
+            fileobj=t, mode='r:gz'
         ) as f:
             self.assertEqual(sorted(f.getnames()), sorted(expected_members))
 

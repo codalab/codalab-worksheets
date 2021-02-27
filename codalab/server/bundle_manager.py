@@ -261,8 +261,10 @@ class BundleManager(object):
                         # TODO (Ashwin): Unify some of the logic here with the code in DependencyManager._store_dependency()
                         # into common utility functions.
                         if target_info['type'] == 'directory':
-                            fileobj = self._download_manager.stream_tarred_gzipped_directory(target)
-                            un_tar_directory(fileobj, dependency_path, 'gz')
+                            with self._download_manager.stream_tarred_gzipped_directory(
+                                target
+                            ) as fileobj:
+                                un_tar_directory(fileobj, dependency_path, 'gz')
                         else:
                             fileobj = self._download_manager.stream_file(target, gzipped=False)
                             with open(dependency_path, 'wb') as f:

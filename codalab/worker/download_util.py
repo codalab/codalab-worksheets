@@ -238,7 +238,9 @@ def _compute_target_info_beam(path, depth):
 def compute_target_info_beam_descendants_flat(path):
     """Given a path on Azure Blob Storage,
     returns a flat array of all descendants within that directory in the format
-    [{name, type, size, perm}], where "name" is equal to the full path of each item.
+    [{name, type, size, perm}], where `name` is equal to the full path of each item.
+
+    Also includes an entry for the specified directory with `name` equal to an empty string.
     """
     target_info = _compute_target_info_beam(path, float("inf"))
     results = []
@@ -249,6 +251,7 @@ def compute_target_info_beam_descendants_flat(path):
             for t in tinfo['contents']:
                 append_results(t, prefix + tinfo['name'] + '/')
 
+    results.append(dict(target_info, contents=None, name=""))
     if 'contents' in target_info:
         for t in target_info['contents']:
             append_results(t)

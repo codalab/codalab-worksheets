@@ -639,7 +639,8 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         gzipped_stream = False  # but don't set the encoding to 'gzip'
         mimetype = "application/gzip"
         filename += ".tar.gz"
-        fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
+        with local.download_manager.stream_tarred_gzipped_directory(target) as f:
+            fileobj = f
     elif target_info['type'] == 'file':
         # Let's gzip to save bandwidth.
         # For simplicity, we do this even if the file is already a packed

@@ -16,7 +16,7 @@ from codalab.worker.file_util import (
     read_file_section,
     zip_directory,
     unzip_directory,
-    open_file,
+    OpenFile,
 )
 from codalab.worker.un_gzip_stream import un_gzip_stream
 from codalab.worker.un_tar_directory import un_tar_directory
@@ -90,38 +90,42 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
 
     def test_open_file(self):
         _, fname = self.create_file()
-        self.assertEqual(open_file(fname).read(), b"hello world")
+        with OpenFile(fname) as f:
+            self.assertEqual(f.read(), b"hello world")
 
         _, dirname = self.create_directory()
 
         # Read single file from directory
-        self.assertEqual(open_file(f"{dirname}/README.md").read(), b"hello world")
+        with OpenFile(f"{dirname}/README.md") as f:
+            self.assertEqual(f.read(), b"hello world")
 
         # Read entire directory
-        self.assertEqual(
-            tarfile.open(fileobj=open_file(dirname), mode='r:gz').getnames(),
-            [
-                './README.md',
-                './src',
-                './src/test.sh',
-                './dist',
-                './dist/a',
-                './dist/a/b',
-                './dist/a/b/test2.sh',
-            ],
-        )
+        with OpenFile(dirname) as f:
+            self.assertEqual(
+                tarfile.open(fileobj=f, mode='r:gz').getnames(),
+                [
+                    './README.md',
+                    './src',
+                    './src/test.sh',
+                    './dist',
+                    './dist/a',
+                    './dist/a/b',
+                    './dist/a/b/test2.sh',
+                ],
+            )
 
         # Read a subdirectory
-        self.assertEqual(
-            tarfile.open(fileobj=open_file(f"{dirname}/src"), mode='r:gz').getnames(),
-            ['.', './test.sh'],
-        )
+        with OpenFile(f"{dirname}/src") as f:
+            self.assertEqual(
+                tarfile.open(fileobj=f, mode='r:gz').getnames(), ['.', './test.sh'],
+            )
 
         # Read a subdirectory with nested children
-        self.assertEqual(
-            tarfile.open(fileobj=open_file(f"{dirname}/dist"), mode='r:gz').getnames(),
-            ['.', './a', './a/b', './a/b/test2.sh'],
-        )
+        with OpenFile(f"{dirname}/dist") as f:
+            self.assertEqual(
+                tarfile.open(fileobj=f, mode='r:gz').getnames(),
+                ['.', './a', './a/b', './a/b/test2.sh'],
+            )
 
 
 class ArchiveTestBase:

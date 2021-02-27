@@ -175,7 +175,8 @@ class DownloadManager(object):
             if storage_type == StorageType.AZURE_BLOB_STORAGE.value:
                 # If streaming a folder within an Azure bundle, we need to download its contents,
                 # re-archive the folder, and return the .tar.gz file.
-                return self.file_util.open_file(directory_path)
+                # Note: Here we are returning a context manager!
+                return self.file_util.OpenFile(directory_path)
             else:
                 return self.file_util.tar_gzip_directory(directory_path)
         else:
@@ -209,7 +210,8 @@ class DownloadManager(object):
             if gzipped:
                 return self.file_util.gzip_file(file_path)
             else:
-                return self.file_util.open_file(file_path)
+                with self.file_util.OpenFile(file_path) as f:
+                    return f
         else:
             worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
             response_socket_id = self._worker_model.allocate_socket(
