@@ -177,7 +177,7 @@ def _compute_target_info_beam(path, depth):
             'name': linked_bundle_path.bundle_uuid,
             'type': 'file',
             'size': file.size_in_bytes,
-            'perm': 0o777,
+            'perm': 0o755,
         }
 
     tf, _ = open_indexed_tar_gz_file(linked_bundle_path.bundle_path)
@@ -224,7 +224,7 @@ def _compute_target_info_beam(path, depth):
             'name': linked_bundle_path.bundle_uuid,
             'type': 'directory',
             'size': file.size_in_bytes,
-            'perm': 0o777,
+            'perm': 0o755,
         }
         if depth > 0:
             result['contents'] = [
