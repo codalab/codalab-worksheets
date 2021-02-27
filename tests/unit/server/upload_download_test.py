@@ -10,6 +10,11 @@ import unittest
 
 
 class BaseUploadDownloadBundleTest(TestBase):
+    """Base class for UploadDownload tests.	
+    All subclasses must implement the upload_folder	
+    and upload_file methods.	
+    """
+
     DEFAULT_PERM = 420
 
     def upload_folder(self, bundle, contents):
@@ -76,7 +81,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.upload_file(bundle, b"hello world")
         target = BundleTarget(bundle.uuid, "")
         self.assertEqual(bundle.is_dir, False)
-        self.assertEqual(bundle.storage_type, StorageType.DISK_STORAGE.value)
+        self.assertEqual(bundle.storage_type, self.expected_storage_type)
 
         info = self.download_manager.get_target_info(target, 0)
         self.assertEqual(info["name"], bundle.uuid)
@@ -111,7 +116,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         f.seek(0)
         self.upload_folder(bundle, f)
         self.assertEqual(bundle.is_dir, True)
-        self.assertEqual(bundle.storage_type, StorageType.DISK_STORAGE.value)
+        self.assertEqual(bundle.storage_type, self.expected_storage_type)
 
         target = BundleTarget(bundle.uuid, "")
         info = self.download_manager.get_target_info(target, 2)
@@ -177,6 +182,8 @@ class BaseUploadDownloadBundleTest(TestBase):
 class RegularBundleStoreTest(BaseUploadDownloadBundleTest):
     """Test uploading and downloading from / to a regular, file-based bundle store."""
 
+    expected_storage_type = StorageType.DISK_STORAGE.value
+
     def upload_folder(self, bundle, f):
         sources = [["contents.tar.gz", f]]
         self.upload_manager.upload_to_bundle_store(
@@ -208,6 +215,8 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest):
 
 class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
     """Test uploading and downloading from / to Azure Blob storage."""
+
+    expected_storage_type = StorageType.AZURE_BLOB_STORAGE.value
 
     def upload_folder(self, bundle, f):
         sources = [["contents.tar.gz", f]]

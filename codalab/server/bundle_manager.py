@@ -205,9 +205,6 @@ class BundleManager(object):
         with self._make_uuids_lock:
             return uuid in self._make_uuids
 
-    def _download_bundle(self):
-        pass
-
     def _make_bundle(self, bundle):
         try:
             with tempfile.TemporaryDirectory() as tempdir:
