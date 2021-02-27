@@ -180,15 +180,6 @@ def _compute_target_info_beam(path, depth):
             'perm': 0o755,
         }
 
-    print(
-        "LBP",
-        len(FileSystems.open(linked_bundle_path.bundle_path).read()),
-        len(
-            FileSystems.open(
-                linked_bundle_path.bundle_path.replace("contents.tar.gz", "index.sqlite")
-            ).read()
-        ),
-    )
     with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
         islink = lambda finfo: stat.S_ISLNK(finfo.mode)
         readlink = lambda finfo: finfo.linkname
