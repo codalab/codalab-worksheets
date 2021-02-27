@@ -7,7 +7,7 @@ from io import BytesIO
 import gzip
 import tarfile
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 from urllib.response import addinfourl
 import urllib
 
@@ -23,8 +23,7 @@ class NotFoundTest(TestBase):
 
 
 class BaseUploadDownloadBundleTest(TestBase):
-    """Base class for UploadDownload tests.
-    """
+    """Base class for UploadDownload tests."""
 
     def setUp(self):
         urllib.request.urlopen = urlopen_real
@@ -111,8 +110,7 @@ class BaseUploadDownloadBundleTest(TestBase):
 
 
 class FolderBase(TestBase):
-    """Upload a folder. Subclasses must define `ext` and `mode`.
-    """
+    """Upload a folder. Subclasses must define `ext` and `mode`."""
 
     @property
     def mode(self):
@@ -214,8 +212,7 @@ class TarBz2FolderBase(FolderBase):
 
 
 class FileBase(TestBase):
-    """Upload a file.
-    """
+    """Upload a file."""
 
     ext = ""
 
