@@ -21,7 +21,7 @@ from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
 from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.bundle_state import State, RunResources
-from codalab.worker.download_util import get_target_info, BundleTarget
+from codalab.worker.download_util import BundleTarget
 import tempfile
 import shutil
 
@@ -252,8 +252,8 @@ class BundleManager(object):
                     if parsed_dependency_path.uses_beam:
                         dependency_path = os.path.join(tempdir, dep.parent_uuid)
 
-                        target_info = get_target_info(
-                            parent_bundle_path, BundleTarget(dep.parent_uuid, dep.parent_path), 0
+                        target_info = self._download_manager.get_target_info(
+                            BundleTarget(dep.parent_uuid, dep.parent_path), 0
                         )
                         target = target_info['resolved_target']
 
@@ -284,7 +284,7 @@ class BundleManager(object):
                 logger.info('Finished making bundle %s', bundle.uuid)
                 self._model.update_bundle(bundle, {'state': State.READY})
         except Exception as e:
-            logger.info('Failing bundle %s: %s', bundle.uuid, str(e))
+            logger.info('Failing bundle %s: %s. %s', bundle.uuid, str(e), traceback.format_exc())
             self._model.update_bundle(
                 bundle, {'state': State.FAILED, 'metadata': {'failure_message': str(e)}}
             )
