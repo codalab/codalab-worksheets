@@ -8,9 +8,6 @@ from codalab.lib import crypt_util, file_util, path_util
 from codalab.worker.file_util import tar_gzip_directory
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
-from codalab.common import parse_linked_bundle_url
-from codalab.worker.bundle_state import LinkFormat
-from codalab.common import StorageType
 from ratarmount import SQLiteIndexedTar
 import tempfile
 import tarfile
